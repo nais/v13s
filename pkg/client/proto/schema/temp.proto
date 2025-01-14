@@ -1,0 +1,46 @@
+//v1/clusters/{cluster}/namespaces/{namespace}/workloads/{workload}
+
+syntax = "proto3";
+
+//package nais.io.v13s.v1;
+
+option go_package = "./pkg/client/proto/vulnerabilities";
+/*service Vulnerabilities {
+  rpc List(ListVulnerabilitySummaryRequest) returns (ListVulnerabilitySummaryResponse);
+  rpc Get(GetSummaryRequest) returns (GetSummaryResponse);
+  rpc GetDetails(GetDetailsRequest) returns (GetDetailsResponse);
+
+  // TODO: should we have a GetSummary for each type of resource? or have a single GetSummary that takes a filter?
+  rpc GetClusterSummary(GetSummaryRequest) returns (GetClusterSummaryResponse);
+  rpc GetNamespaceSummary(GetSummaryRequest) returns (GetNamespaceSummaryResponse);
+  rpc GetWorkloadSummary(GetSummaryRequest) returns (GetWorkloadSummaryResponse);
+
+}
+
+
+message GetClusterSummaryResponse {
+  string cluster = 1;
+  Summary vulnerability_summary = 2;
+}
+
+message WorkloadsSummary {
+  string name = 1;
+  string type = 2;
+  repeated Summary vulnerability_summary = 3;
+}
+
+message ListVulnerabilitySummaryRequest {
+  optional ListFilter filter = 1;
+}
+
+message ListFilter{
+  string cluster = 1;
+  optional string namespace = 2;
+}
+
+message ListVulnerabilitySummaryResponse {
+  Filter filter = 1;
+  repeated Summary vulnerability_summary = 2;
+}
+
+*/

@@ -1,0 +1,104 @@
+// Trying to adhere to the following - https://cloud.google.com/apis/design/proto3
+// https://cloud.google.com/apis/design
+syntax = "proto3";
+
+//package nais.io.v13s.v1;
+
+option go_package = "./pkg/client/proto/vulnerabilities";
+
+import "google/protobuf/timestamp.proto";
+
+//consider adding this at a later stage - https://github.com/grpc-ecosystem/grpc-gateway
+//import "google/api/annotations.proto";
+
+service Vulnerabilities {
+  rpc ListWorkloadSummaries(ListWorkloadSummariesRequest) returns (ListWorkloadSummariesResponse);
+  // TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
+  rpc ListVulnerabilities(ListVulnerabilitiesRequest) returns (ListVulnerabilitiesResponse);
+
+  rpc GetSummary(GetSummaryRequest) returns (GetSummaryResponse);
+}
+
+message ListWorkloadSummariesResponse {
+  repeated WorkloadSummary workload_summaries = 1;
+}
+
+message ListWorkloadSummariesRequest {
+  Filter filter = 1;
+}
+
+message ListVulnerabilitiesRequest {
+  Filter filter = 1;
+}
+
+message ListVulnerabilitiesResponse {
+  Filter filter = 1;
+  repeated WorkloadVulnerabilities workloads = 2;
+}
+
+message GetSummaryResponse {
+  Filter filter = 1;
+  Summary vulnerability_summary = 2;
+}
+
+message WorkloadSummary {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  string name = 3;
+  string type = 4;
+  Summary vulnerability_summary = 5;
+}
+
+message GetSummaryRequest {
+  Filter filter = 1;
+}
+
+message Filter {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+}
+
+message WorkloadVulnerabilities {
+  string cluster = 1;
+  string namespace = 2;
+  string name = 3;
+  string type = 4;
+  repeated Vulnerability vulnerabilities = 5;
+  optional google.protobuf.Timestamp last_updated = 6;
+}
+
+// TODO: should it be grouped by package like now or cwe?
+message Vulnerability {
+  string package = 1;
+  Cwe cwe = 2;
+}
+
+message Cwe {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string link = 4;
+  Severity severity = 5;
+}
+
+message Summary {
+  int32 unknown = 1;
+  int32 critical = 2;
+  int32 high = 3;
+  int32 medium = 4;
+  int32 low = 5;
+  int32 unassigned = 6;
+  int32 riskScore = 7;
+  optional google.protobuf.Timestamp last_updated = 8;
+}
+
+enum Severity {
+  UNKNOWN = 0;
+  CRITICAL = 1;
+  HIGH = 2;
+  MEDIUM = 3;
+  LOW = 4;
+  UNASSIGNED = 5;
+}
