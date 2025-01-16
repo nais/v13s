@@ -8,7 +8,8 @@ import (
 
 type Client interface {
 	Close() error
-	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListWorkloadSummariesResponse, error)
+	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
+	GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 }
 
 var _ Client = &client{}
@@ -33,10 +34,21 @@ func (c *client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListWorkloadSummariesResponse, error) {
+func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 
-	return c.c.ListVulnerabilitySummaries(ctx, &ListWorkloadSummariesRequest{
+	return c.c.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
 		Filter: o.filter,
 	}, o.callOptions...)
+}
+
+func (c *client) GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
+	o := applyOptions(opts...)
+
+	return c.c.GetVulnerabilitySummary(
+		ctx,
+		&GetVulnerabilitySummaryRequest{
+			Filter: o.filter,
+		},
+	)
 }

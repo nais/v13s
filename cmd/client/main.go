@@ -17,18 +17,14 @@ func main() {
 		panic(err)
 	}
 
-	resp, err := c.ListVulnerabilitySummaries(context.Background())
-	handle(resp, err)
-
-	resp, err = c.ListVulnerabilitySummaries(
+	resp, err := c.ListVulnerabilitySummaries(
 		context.Background(),
-		vulnerabilities.ClusterFilter("cluster1"),
-		vulnerabilities.NamespaceFilter("namespace1"),
+		vulnerabilities.ClusterFilter("cluster-1"),
 	)
 	handle(resp, err)
 }
 
-func handle(resp *vulnerabilities.ListWorkloadSummariesResponse, err error) {
+func handle(resp *vulnerabilities.ListVulnerabilitySummariesResponse, err error) {
 	if err != nil {
 		panic(err)
 	}

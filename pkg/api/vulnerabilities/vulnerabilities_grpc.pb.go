@@ -24,17 +24,27 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	Vulnerabilities_ListVulnerabilitySummaries_FullMethodName = "/Vulnerabilities/ListVulnerabilitySummaries"
 	Vulnerabilities_ListVulnerabilities_FullMethodName        = "/Vulnerabilities/ListVulnerabilities"
-	Vulnerabilities_GetSummary_FullMethodName                 = "/Vulnerabilities/GetSummary"
+	Vulnerabilities_GetVulnerabilitySummary_FullMethodName    = "/Vulnerabilities/GetVulnerabilitySummary"
 )
 
 // VulnerabilitiesClient is the client API for Vulnerabilities service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VulnerabilitiesClient interface {
-	ListVulnerabilitySummaries(ctx context.Context, in *ListWorkloadSummariesRequest, opts ...grpc.CallOption) (*ListWorkloadSummariesResponse, error)
-	// TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
+	// List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
+	// Example: only supplying a namespace will return all workloads in that namespace across all clusters
+	ListVulnerabilitySummaries(ctx context.Context, in *ListVulnerabilitySummariesRequest, opts ...grpc.CallOption) (*ListVulnerabilitySummariesResponse, error)
+	// List all vulnerabilities for the given filters: cluster, namespace, workload, workload_type
+	// Example: only supplying a namespace will return all vulnerabilities for all workloads in that namespace across all clusters
 	ListVulnerabilities(ctx context.Context, in *ListVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListVulnerabilitiesResponse, error)
-	GetSummary(ctx context.Context, in *GetSummaryRequest, opts ...grpc.CallOption) (*GetSummaryResponse, error)
+	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
+	// Examples:
+	// Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
+	// Only supplying a cluster will give the total summary for all workloads in that cluster across all namespaces
+	// Only supplying a workload will give the summary for that workload across all clusters and namespaces
+	// Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
+	// Supplying all filters will give the summary for that specific workload
+	GetVulnerabilitySummary(ctx context.Context, in *GetVulnerabilitySummaryRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryResponse, error)
 }
 
 type vulnerabilitiesClient struct {
@@ -45,8 +55,8 @@ func NewVulnerabilitiesClient(cc grpc.ClientConnInterface) VulnerabilitiesClient
 	return &vulnerabilitiesClient{cc}
 }
 
-func (c *vulnerabilitiesClient) ListVulnerabilitySummaries(ctx context.Context, in *ListWorkloadSummariesRequest, opts ...grpc.CallOption) (*ListWorkloadSummariesResponse, error) {
-	out := new(ListWorkloadSummariesResponse)
+func (c *vulnerabilitiesClient) ListVulnerabilitySummaries(ctx context.Context, in *ListVulnerabilitySummariesRequest, opts ...grpc.CallOption) (*ListVulnerabilitySummariesResponse, error) {
+	out := new(ListVulnerabilitySummariesResponse)
 	err := c.cc.Invoke(ctx, Vulnerabilities_ListVulnerabilitySummaries_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -63,9 +73,9 @@ func (c *vulnerabilitiesClient) ListVulnerabilities(ctx context.Context, in *Lis
 	return out, nil
 }
 
-func (c *vulnerabilitiesClient) GetSummary(ctx context.Context, in *GetSummaryRequest, opts ...grpc.CallOption) (*GetSummaryResponse, error) {
-	out := new(GetSummaryResponse)
-	err := c.cc.Invoke(ctx, Vulnerabilities_GetSummary_FullMethodName, in, out, opts...)
+func (c *vulnerabilitiesClient) GetVulnerabilitySummary(ctx context.Context, in *GetVulnerabilitySummaryRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryResponse, error) {
+	out := new(GetVulnerabilitySummaryResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_GetVulnerabilitySummary_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +86,20 @@ func (c *vulnerabilitiesClient) GetSummary(ctx context.Context, in *GetSummaryRe
 // All implementations must embed UnimplementedVulnerabilitiesServer
 // for forward compatibility
 type VulnerabilitiesServer interface {
-	ListVulnerabilitySummaries(context.Context, *ListWorkloadSummariesRequest) (*ListWorkloadSummariesResponse, error)
-	// TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
+	// List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
+	// Example: only supplying a namespace will return all workloads in that namespace across all clusters
+	ListVulnerabilitySummaries(context.Context, *ListVulnerabilitySummariesRequest) (*ListVulnerabilitySummariesResponse, error)
+	// List all vulnerabilities for the given filters: cluster, namespace, workload, workload_type
+	// Example: only supplying a namespace will return all vulnerabilities for all workloads in that namespace across all clusters
 	ListVulnerabilities(context.Context, *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error)
-	GetSummary(context.Context, *GetSummaryRequest) (*GetSummaryResponse, error)
+	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
+	// Examples:
+	// Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
+	// Only supplying a cluster will give the total summary for all workloads in that cluster across all namespaces
+	// Only supplying a workload will give the summary for that workload across all clusters and namespaces
+	// Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
+	// Supplying all filters will give the summary for that specific workload
+	GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error)
 	mustEmbedUnimplementedVulnerabilitiesServer()
 }
 
@@ -87,14 +107,14 @@ type VulnerabilitiesServer interface {
 type UnimplementedVulnerabilitiesServer struct {
 }
 
-func (UnimplementedVulnerabilitiesServer) ListVulnerabilitySummaries(context.Context, *ListWorkloadSummariesRequest) (*ListWorkloadSummariesResponse, error) {
+func (UnimplementedVulnerabilitiesServer) ListVulnerabilitySummaries(context.Context, *ListVulnerabilitySummariesRequest) (*ListVulnerabilitySummariesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListVulnerabilitySummaries not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) ListVulnerabilities(context.Context, *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListVulnerabilities not implemented")
 }
-func (UnimplementedVulnerabilitiesServer) GetSummary(context.Context, *GetSummaryRequest) (*GetSummaryResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSummary not implemented")
+func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummary not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) mustEmbedUnimplementedVulnerabilitiesServer() {}
 
@@ -110,7 +130,7 @@ func RegisterVulnerabilitiesServer(s grpc.ServiceRegistrar, srv VulnerabilitiesS
 }
 
 func _Vulnerabilities_ListVulnerabilitySummaries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWorkloadSummariesRequest)
+	in := new(ListVulnerabilitySummariesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -122,7 +142,7 @@ func _Vulnerabilities_ListVulnerabilitySummaries_Handler(srv interface{}, ctx co
 		FullMethod: Vulnerabilities_ListVulnerabilitySummaries_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).ListVulnerabilitySummaries(ctx, req.(*ListWorkloadSummariesRequest))
+		return srv.(VulnerabilitiesServer).ListVulnerabilitySummaries(ctx, req.(*ListVulnerabilitySummariesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -145,20 +165,20 @@ func _Vulnerabilities_ListVulnerabilities_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Vulnerabilities_GetSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSummaryRequest)
+func _Vulnerabilities_GetVulnerabilitySummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVulnerabilitySummaryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(VulnerabilitiesServer).GetSummary(ctx, in)
+		return srv.(VulnerabilitiesServer).GetVulnerabilitySummary(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Vulnerabilities_GetSummary_FullMethodName,
+		FullMethod: Vulnerabilities_GetVulnerabilitySummary_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).GetSummary(ctx, req.(*GetSummaryRequest))
+		return srv.(VulnerabilitiesServer).GetVulnerabilitySummary(ctx, req.(*GetVulnerabilitySummaryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -179,8 +199,8 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Vulnerabilities_ListVulnerabilities_Handler,
 		},
 		{
-			MethodName: "GetSummary",
-			Handler:    _Vulnerabilities_GetSummary_Handler,
+			MethodName: "GetVulnerabilitySummary",
+			Handler:    _Vulnerabilities_GetVulnerabilitySummary_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

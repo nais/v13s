@@ -12,11 +12,22 @@ import "google/protobuf/timestamp.proto";
 //import "google/api/annotations.proto";
 
 service Vulnerabilities {
-  rpc ListVulnerabilitySummaries(ListWorkloadSummariesRequest) returns (ListWorkloadSummariesResponse);
-  // TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
+  // List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
+  // Example: only supplying a namespace will return all workloads in that namespace across all clusters
+  rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
+
+  // List all vulnerabilities for the given filters: cluster, namespace, workload, workload_type
+  // Example: only supplying a namespace will return all vulnerabilities for all workloads in that namespace across all clusters
   rpc ListVulnerabilities(ListVulnerabilitiesRequest) returns (ListVulnerabilitiesResponse);
 
-  rpc GetSummary(GetSummaryRequest) returns (GetSummaryResponse);
+  // Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
+  // Examples:
+  // Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
+  // Only supplying a cluster will give the total summary for all workloads in that cluster across all namespaces
+  // Only supplying a workload will give the summary for that workload across all clusters and namespaces
+  // Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
+  // Supplying all filters will give the summary for that specific workload
+  rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
 }
 
 // alternative
@@ -27,11 +38,11 @@ service Vulnz {
 }
  */
 
-message ListWorkloadSummariesResponse {
+message ListVulnerabilitySummariesResponse {
   repeated WorkloadSummary workload_summaries = 1;
 }
 
-message ListWorkloadSummariesRequest {
+message ListVulnerabilitySummariesRequest {
   Filter filter = 1;
 }
 
@@ -44,7 +55,7 @@ message ListVulnerabilitiesResponse {
   repeated WorkloadVulnerabilities workloads = 2;
 }
 
-message GetSummaryResponse {
+message GetVulnerabilitySummaryResponse {
   Filter filter = 1;
   Summary vulnerability_summary = 2;
 }
@@ -54,7 +65,7 @@ message WorkloadSummary {
   Summary vulnerability_summary = 2;
 }
 
-message GetSummaryRequest {
+message GetVulnerabilitySummaryRequest {
   Filter filter = 1;
 }
 
@@ -74,12 +85,9 @@ message Workload {
 }
 
 message WorkloadVulnerabilities {
-  string cluster = 1;
-  string namespace = 2;
-  string name = 3;
-  string type = 4;
-  repeated Vulnerability vulnerabilities = 5;
-  optional google.protobuf.Timestamp last_updated = 6;
+  Workload workload = 1;
+  repeated Vulnerability vulnerabilities = 2;
+  optional google.protobuf.Timestamp last_updated = 3;
 }
 
 // TODO: should it be grouped by package like now or cwe?
