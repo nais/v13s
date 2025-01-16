@@ -1,7 +1,7 @@
 generate-proto:
 	protoc \
-		-I pkg/client/proto/schema/ \
-		./pkg/client/proto/schema/*.proto \
+		-I pkg/api/vulnerabilities/schema/ \
+		./pkg/api/vulnerabilities/schema/*.proto \
 		--go_out=. \
 		--go-grpc_out=.
 

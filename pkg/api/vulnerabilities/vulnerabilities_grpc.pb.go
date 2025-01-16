@@ -22,16 +22,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Vulnerabilities_ListWorkloadSummaries_FullMethodName = "/Vulnerabilities/ListWorkloadSummaries"
-	Vulnerabilities_ListVulnerabilities_FullMethodName   = "/Vulnerabilities/ListVulnerabilities"
-	Vulnerabilities_GetSummary_FullMethodName            = "/Vulnerabilities/GetSummary"
+	Vulnerabilities_ListVulnerabilitySummaries_FullMethodName = "/Vulnerabilities/ListVulnerabilitySummaries"
+	Vulnerabilities_ListVulnerabilities_FullMethodName        = "/Vulnerabilities/ListVulnerabilities"
+	Vulnerabilities_GetSummary_FullMethodName                 = "/Vulnerabilities/GetSummary"
 )
 
 // VulnerabilitiesClient is the client API for Vulnerabilities service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VulnerabilitiesClient interface {
-	ListWorkloadSummaries(ctx context.Context, in *ListWorkloadSummariesRequest, opts ...grpc.CallOption) (*ListWorkloadSummariesResponse, error)
+	ListVulnerabilitySummaries(ctx context.Context, in *ListWorkloadSummariesRequest, opts ...grpc.CallOption) (*ListWorkloadSummariesResponse, error)
 	// TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
 	ListVulnerabilities(ctx context.Context, in *ListVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListVulnerabilitiesResponse, error)
 	GetSummary(ctx context.Context, in *GetSummaryRequest, opts ...grpc.CallOption) (*GetSummaryResponse, error)
@@ -45,9 +45,9 @@ func NewVulnerabilitiesClient(cc grpc.ClientConnInterface) VulnerabilitiesClient
 	return &vulnerabilitiesClient{cc}
 }
 
-func (c *vulnerabilitiesClient) ListWorkloadSummaries(ctx context.Context, in *ListWorkloadSummariesRequest, opts ...grpc.CallOption) (*ListWorkloadSummariesResponse, error) {
+func (c *vulnerabilitiesClient) ListVulnerabilitySummaries(ctx context.Context, in *ListWorkloadSummariesRequest, opts ...grpc.CallOption) (*ListWorkloadSummariesResponse, error) {
 	out := new(ListWorkloadSummariesResponse)
-	err := c.cc.Invoke(ctx, Vulnerabilities_ListWorkloadSummaries_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListVulnerabilitySummaries_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *vulnerabilitiesClient) GetSummary(ctx context.Context, in *GetSummaryRe
 // All implementations must embed UnimplementedVulnerabilitiesServer
 // for forward compatibility
 type VulnerabilitiesServer interface {
-	ListWorkloadSummaries(context.Context, *ListWorkloadSummariesRequest) (*ListWorkloadSummariesResponse, error)
+	ListVulnerabilitySummaries(context.Context, *ListWorkloadSummariesRequest) (*ListWorkloadSummariesResponse, error)
 	// TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
 	ListVulnerabilities(context.Context, *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error)
 	GetSummary(context.Context, *GetSummaryRequest) (*GetSummaryResponse, error)
@@ -87,8 +87,8 @@ type VulnerabilitiesServer interface {
 type UnimplementedVulnerabilitiesServer struct {
 }
 
-func (UnimplementedVulnerabilitiesServer) ListWorkloadSummaries(context.Context, *ListWorkloadSummariesRequest) (*ListWorkloadSummariesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadSummaries not implemented")
+func (UnimplementedVulnerabilitiesServer) ListVulnerabilitySummaries(context.Context, *ListWorkloadSummariesRequest) (*ListWorkloadSummariesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListVulnerabilitySummaries not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) ListVulnerabilities(context.Context, *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListVulnerabilities not implemented")
@@ -109,20 +109,20 @@ func RegisterVulnerabilitiesServer(s grpc.ServiceRegistrar, srv VulnerabilitiesS
 	s.RegisterService(&Vulnerabilities_ServiceDesc, srv)
 }
 
-func _Vulnerabilities_ListWorkloadSummaries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Vulnerabilities_ListVulnerabilitySummaries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListWorkloadSummariesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(VulnerabilitiesServer).ListWorkloadSummaries(ctx, in)
+		return srv.(VulnerabilitiesServer).ListVulnerabilitySummaries(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Vulnerabilities_ListWorkloadSummaries_FullMethodName,
+		FullMethod: Vulnerabilities_ListVulnerabilitySummaries_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).ListWorkloadSummaries(ctx, req.(*ListWorkloadSummariesRequest))
+		return srv.(VulnerabilitiesServer).ListVulnerabilitySummaries(ctx, req.(*ListWorkloadSummariesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -171,8 +171,8 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*VulnerabilitiesServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ListWorkloadSummaries",
-			Handler:    _Vulnerabilities_ListWorkloadSummaries_Handler,
+			MethodName: "ListVulnerabilitySummaries",
+			Handler:    _Vulnerabilities_ListVulnerabilitySummaries_Handler,
 		},
 		{
 			MethodName: "ListVulnerabilities",

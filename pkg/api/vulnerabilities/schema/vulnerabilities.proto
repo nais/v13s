@@ -4,7 +4,7 @@ syntax = "proto3";
 
 //package nais.io.v13s.v1;
 
-option go_package = "./pkg/client/proto/vulnerabilities";
+option go_package = "./pkg/api/vulnerabilities";
 
 import "google/protobuf/timestamp.proto";
 
@@ -12,12 +12,20 @@ import "google/protobuf/timestamp.proto";
 //import "google/api/annotations.proto";
 
 service Vulnerabilities {
-  rpc ListWorkloadSummaries(ListWorkloadSummariesRequest) returns (ListWorkloadSummariesResponse);
+  rpc ListVulnerabilitySummaries(ListWorkloadSummariesRequest) returns (ListWorkloadSummariesResponse);
   // TODO: consider getting details for an namespace or cluster, needs a link to the workload - should it be a list operation?
   rpc ListVulnerabilities(ListVulnerabilitiesRequest) returns (ListVulnerabilitiesResponse);
 
   rpc GetSummary(GetSummaryRequest) returns (GetSummaryResponse);
 }
+
+// alternative
+/*
+service Vulnz {
+  rpc ListSummariesByNamespace(ListSummariesByNamespaceRequest) returns (ListSummariesByNamespaceResponse);
+  rpc ListSummariesByCluster(ListSummariesByClusterRequest) returns (ListSummariesByClusterResponse);
+}
+ */
 
 message ListWorkloadSummariesResponse {
   repeated WorkloadSummary workload_summaries = 1;
@@ -42,11 +50,8 @@ message GetSummaryResponse {
 }
 
 message WorkloadSummary {
-  optional string cluster = 1;
-  optional string namespace = 2;
-  string name = 3;
-  string type = 4;
-  Summary vulnerability_summary = 5;
+  Workload workload = 1;
+  Summary vulnerability_summary = 2;
 }
 
 message GetSummaryRequest {
@@ -58,6 +63,14 @@ message Filter {
   optional string namespace = 2;
   optional string workload = 3;
   optional string workload_type = 4;
+}
+
+message Workload {
+  string cluster = 1;
+  string namespace = 2;
+  string name = 3;
+  string type = 4;
+  string image = 5;
 }
 
 message WorkloadVulnerabilities {

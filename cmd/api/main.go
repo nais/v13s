@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/nais/v13s/pkg/client/proto/vulnerabilities"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -15,17 +15,20 @@ type Server struct {
 	vulnerabilities.UnimplementedVulnerabilitiesServer
 }
 
-// ListWorkloadSummaries implements the ListWorkloadSummaries RPC
-func (s *Server) ListWorkloadSummaries(ctx context.Context, req *vulnerabilities.ListWorkloadSummariesRequest) (*vulnerabilities.ListWorkloadSummariesResponse, error) {
-	log.Printf("Received ListWorkloadSummaries request: %v", req)
+// ListVulnerabilitySummaries implements the ListVulnerabilitySummaries RPC
+func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabilities.ListWorkloadSummariesRequest) (*vulnerabilities.ListWorkloadSummariesResponse, error) {
+	log.Printf("Received ListVulnerabilitySummaries request: %v", req)
 	cluster := "cluster-1"
 	namespace := "namespace-1"
 	allWorkloads := []*vulnerabilities.WorkloadSummary{
 		{
-			Cluster:              &cluster,
-			Namespace:            &namespace,
-			Name:                 "workload-1",
-			Type:                 "deployment",
+			Workload: &vulnerabilities.Workload{
+				Cluster:   cluster,
+				Namespace: namespace,
+				Name:      "wName",
+				Type:      "deploy",
+				Image:     "image1:tag1",
+			},
 			VulnerabilitySummary: &vulnerabilities.Summary{Critical: 5, High: 10, Medium: 20, Low: 15},
 		},
 	}
