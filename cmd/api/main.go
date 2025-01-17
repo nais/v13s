@@ -20,7 +20,7 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 
-	listener, err := net.Listen("tcp", ":50051")
+	listener, err := net.Listen("tcp", "127.0.0.1:50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
