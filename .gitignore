@@ -1,2 +1,6 @@
 /.idea/
 bin/
+/internal/dependencytrack/client/.travis.yml
+/internal/dependencytrack/client/git_push.sh
+/internal/dependencytrack/client/go.mo
+.env

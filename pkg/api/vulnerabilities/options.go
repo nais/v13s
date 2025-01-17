@@ -56,6 +56,16 @@ func NamespaceFilter(name string) Option {
 	})
 }
 
+// TODO: document the options
+func WorkloadTypeFilter(name string) Option {
+	return newFuncOption(func(o *options) {
+		if o.filter == nil {
+			o.filter = &Filter{}
+		}
+		o.filter.WorkloadType = &name
+	})
+}
+
 func applyOptions(opts ...Option) *options {
 	o := &options{}
 	for _, opt := range opts {

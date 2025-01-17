@@ -19,7 +19,8 @@ func main() {
 
 	resp, err := c.ListVulnerabilitySummaries(
 		context.Background(),
-		vulnerabilities.ClusterFilter("cluster-1"),
+		vulnerabilities.NamespaceFilter("nais-system"),
+		vulnerabilities.WorkloadTypeFilter("app"),
 	)
 	handle(resp, err)
 }
