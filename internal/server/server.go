@@ -2,13 +2,14 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 	"strings"
+	"time"
 )
 
 var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
@@ -30,7 +31,6 @@ func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilitie
 		tagFilter := "env:" + *filter.Cluster
 		return s.DpClient.GetProjectsByTag(ctx, tagFilter)
 	} else if filter.Namespace != nil {
-		fmt.Println("filter.Namespace: ", *filter.Namespace)
 		tagFilter := "team:" + *filter.Namespace
 		return s.DpClient.GetProjectsByTag(ctx, tagFilter)
 	}
@@ -75,11 +75,8 @@ func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilitie
 	return summaries
 }
 
-// ListVulnerabilitySummaries implements the ListVulnerabilitySummaries RPC
-func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
-	log.Printf("Received ListVulnerabilitySummaries request: %v", req)
-
-	projects, err := s.getFilteredProjects(ctx, req.Filter)
+func (s *Server) getFilteredSummaries(ctx context.Context, filter *vulnerabilities.Filter) ([]*vulnerabilities.WorkloadSummary, error) {
+	projects, err := s.getFilteredProjects(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -87,17 +84,26 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabil
 	allSummaries := s.parseSummariesFrom(projects)
 	filteredSummaries := allSummaries
 
-	// Apply further filtering if necessary (for Workload and WorkloadType)
-	if req.Filter != nil && (req.Filter.Workload != nil || req.Filter.WorkloadType != nil) {
+	// Apply additional filtering for Workload and WorkloadType
+	if filter != nil && (filter.Workload != nil || filter.WorkloadType != nil) {
 		filteredSummaries = collections.Filter(allSummaries, func(summary *vulnerabilities.WorkloadSummary) bool {
-			return matchesFilter(summary.Workload, req.Filter)
+			return matchesFilter(summary.Workload, filter)
 		})
+	}
+
+	return filteredSummaries, nil
+}
+
+// ListVulnerabilitySummaries implements the ListVulnerabilitySummaries RPC
+func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
+	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter)
+	if err != nil {
+		return nil, err
 	}
 
 	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
 		WorkloadSummaries: filteredSummaries,
 	}
-	log.Printf("Responding with: %v", response)
 	return response, nil
 }
 
@@ -106,9 +112,33 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	panic("implement me")
 }
 
-func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
+	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now().Truncate(24 * time.Hour)
+	lastUpdated := timestamppb.New(now)
+	summary := vulnerabilities.Summary{
+		LastUpdated: lastUpdated,
+	}
+
+	for _, sum := range filteredSummaries {
+		if sum.VulnerabilitySummary != nil {
+			summary.Critical += sum.VulnerabilitySummary.Critical
+			summary.High += sum.VulnerabilitySummary.High
+			summary.Medium += sum.VulnerabilitySummary.Medium
+			summary.Low += sum.VulnerabilitySummary.Low
+			summary.Unassigned += sum.VulnerabilitySummary.Unassigned
+		}
+	}
+
+	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
+		Filter:               req.Filter,
+		VulnerabilitySummary: &summary,
+	}
+	return response, nil
 }
 
 func matchesFilter(workload *vulnerabilities.Workload, filter *vulnerabilities.Filter) bool {

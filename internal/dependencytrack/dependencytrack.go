@@ -27,20 +27,47 @@ func NewClient(apiKey, url string) (*Client, error) {
 	return &Client{client.NewAPIClient(setupConfig(apiKey, url))}, nil
 }
 
-// Should use pages returned from the API to get all projects
-func (c *Client) GetProjects(ctx context.Context) ([]client.Project, error) {
-	p, _, err := c.client.ProjectAPI.GetProjects(ctx).Execute()
-	if err != nil {
-		return nil, err
+func (c *Client) paginateProjects(ctx context.Context, callFunc func(ctx context.Context, limit, offset int) ([]client.Project, error)) ([]client.Project, error) {
+	var allProjects []client.Project
+	pageSize := 100
+	offset := 0
+
+	for {
+		p, err := callFunc(ctx, pageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+
+		allProjects = append(allProjects, p...)
+
+		if len(p) < pageSize {
+			break
+		}
+
+		offset += pageSize
 	}
-	return p, nil
+
+	return allProjects, nil
 }
 
-// Should use pages returned from the API to get all projects
 func (c *Client) GetProjectsByTag(ctx context.Context, tag string) ([]client.Project, error) {
-	p, _, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
+	return c.paginateProjects(ctx, func(ctx context.Context, limit, offset int) ([]client.Project, error) {
+		pageNumber := (offset / limit) + 1
+		p, _, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
+			PageSize(limit).
+			PageNumber(pageNumber).
+			Execute()
+		return p, err
+	})
+}
+
+func (c *Client) GetProjects(ctx context.Context) ([]client.Project, error) {
+	return c.paginateProjects(ctx, func(ctx context.Context, limit, offset int) ([]client.Project, error) {
+		pageNumber := (offset / limit) + 1
+		p, _, err := c.client.ProjectAPI.GetProjects(ctx).
+			PageSize(limit).
+			PageNumber(pageNumber).
+			Execute()
+		return p, err
+	})
 }
