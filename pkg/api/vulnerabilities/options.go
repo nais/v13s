@@ -11,6 +11,7 @@ type Option interface {
 type options struct {
 	filter      *Filter
 	callOptions []grpc.CallOption
+	Suppressed  bool
 	// pagination..
 	// sorting..
 }
@@ -63,6 +64,12 @@ func WorkloadTypeFilter(name string) Option {
 			o.filter = &Filter{}
 		}
 		o.filter.WorkloadType = &name
+	})
+}
+
+func Suppressed() Option {
+	return newFuncOption(func(o *options) {
+		o.Suppressed = true
 	})
 }
 

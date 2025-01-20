@@ -19,11 +19,11 @@ var _ MappedNullable = &Finding{}
 
 // Finding struct for Finding
 type Finding struct {
-	Component     map[string]map[string]interface{} `json:"component,omitempty"`
-	Vulnerability map[string]map[string]interface{} `json:"vulnerability,omitempty"`
-	Analysis      map[string]map[string]interface{} `json:"analysis,omitempty"`
-	Attribution   map[string]map[string]interface{} `json:"attribution,omitempty"`
-	Matrix        *string                           `json:"matrix,omitempty"`
+	Component     map[string]interface{} `json:"component,omitempty"`
+	Vulnerability map[string]interface{} `json:"vulnerability,omitempty"`
+	Analysis      map[string]interface{} `json:"analysis,omitempty"`
+	Attribution   map[string]interface{} `json:"attribution,omitempty"`
+	Matrix        *string                `json:"matrix,omitempty"`
 }
 
 // NewFinding instantiates a new Finding object
@@ -44,9 +44,9 @@ func NewFindingWithDefaults() *Finding {
 }
 
 // GetComponent returns the Component field value if set, zero value otherwise.
-func (o *Finding) GetComponent() map[string]map[string]interface{} {
+func (o *Finding) GetComponent() map[string]interface{} {
 	if o == nil || IsNil(o.Component) {
-		var ret map[string]map[string]interface{}
+		var ret map[string]interface{}
 		return ret
 	}
 	return o.Component
@@ -54,9 +54,9 @@ func (o *Finding) GetComponent() map[string]map[string]interface{} {
 
 // GetComponentOk returns a tuple with the Component field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *Finding) GetComponentOk() (map[string]map[string]interface{}, bool) {
+func (o *Finding) GetComponentOk() (map[string]interface{}, bool) {
 	if o == nil || IsNil(o.Component) {
-		return map[string]map[string]interface{}{}, false
+		return map[string]interface{}{}, false
 	}
 	return o.Component, true
 }
@@ -70,15 +70,15 @@ func (o *Finding) HasComponent() bool {
 	return false
 }
 
-// SetComponent gets a reference to the given map[string]map[string]interface{} and assigns it to the Component field.
-func (o *Finding) SetComponent(v map[string]map[string]interface{}) {
+// SetComponent gets a reference to the given map[string]interface{} and assigns it to the Component field.
+func (o *Finding) SetComponent(v map[string]interface{}) {
 	o.Component = v
 }
 
 // GetVulnerability returns the Vulnerability field value if set, zero value otherwise.
-func (o *Finding) GetVulnerability() map[string]map[string]interface{} {
+func (o *Finding) GetVulnerability() map[string]interface{} {
 	if o == nil || IsNil(o.Vulnerability) {
-		var ret map[string]map[string]interface{}
+		var ret map[string]interface{}
 		return ret
 	}
 	return o.Vulnerability
@@ -86,9 +86,9 @@ func (o *Finding) GetVulnerability() map[string]map[string]interface{} {
 
 // GetVulnerabilityOk returns a tuple with the Vulnerability field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *Finding) GetVulnerabilityOk() (map[string]map[string]interface{}, bool) {
+func (o *Finding) GetVulnerabilityOk() (map[string]interface{}, bool) {
 	if o == nil || IsNil(o.Vulnerability) {
-		return map[string]map[string]interface{}{}, false
+		return map[string]interface{}{}, false
 	}
 	return o.Vulnerability, true
 }
@@ -102,15 +102,15 @@ func (o *Finding) HasVulnerability() bool {
 	return false
 }
 
-// SetVulnerability gets a reference to the given map[string]map[string]interface{} and assigns it to the Vulnerability field.
-func (o *Finding) SetVulnerability(v map[string]map[string]interface{}) {
+// SetVulnerability gets a reference to the given map[string]interface{} and assigns it to the Vulnerability field.
+func (o *Finding) SetVulnerability(v map[string]interface{}) {
 	o.Vulnerability = v
 }
 
 // GetAnalysis returns the Analysis field value if set, zero value otherwise.
-func (o *Finding) GetAnalysis() map[string]map[string]interface{} {
+func (o *Finding) GetAnalysis() map[string]interface{} {
 	if o == nil || IsNil(o.Analysis) {
-		var ret map[string]map[string]interface{}
+		var ret map[string]interface{}
 		return ret
 	}
 	return o.Analysis
@@ -118,9 +118,9 @@ func (o *Finding) GetAnalysis() map[string]map[string]interface{} {
 
 // GetAnalysisOk returns a tuple with the Analysis field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *Finding) GetAnalysisOk() (map[string]map[string]interface{}, bool) {
+func (o *Finding) GetAnalysisOk() (map[string]interface{}, bool) {
 	if o == nil || IsNil(o.Analysis) {
-		return map[string]map[string]interface{}{}, false
+		return map[string]interface{}{}, false
 	}
 	return o.Analysis, true
 }
@@ -134,15 +134,15 @@ func (o *Finding) HasAnalysis() bool {
 	return false
 }
 
-// SetAnalysis gets a reference to the given map[string]map[string]interface{} and assigns it to the Analysis field.
-func (o *Finding) SetAnalysis(v map[string]map[string]interface{}) {
+// SetAnalysis gets a reference to the given map[string]interface{} and assigns it to the Analysis field.
+func (o *Finding) SetAnalysis(v map[string]interface{}) {
 	o.Analysis = v
 }
 
 // GetAttribution returns the Attribution field value if set, zero value otherwise.
-func (o *Finding) GetAttribution() map[string]map[string]interface{} {
+func (o *Finding) GetAttribution() map[string]interface{} {
 	if o == nil || IsNil(o.Attribution) {
-		var ret map[string]map[string]interface{}
+		var ret map[string]interface{}
 		return ret
 	}
 	return o.Attribution
@@ -150,9 +150,9 @@ func (o *Finding) GetAttribution() map[string]map[string]interface{} {
 
 // GetAttributionOk returns a tuple with the Attribution field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *Finding) GetAttributionOk() (map[string]map[string]interface{}, bool) {
+func (o *Finding) GetAttributionOk() (map[string]interface{}, bool) {
 	if o == nil || IsNil(o.Attribution) {
-		return map[string]map[string]interface{}{}, false
+		return map[string]interface{}{}, false
 	}
 	return o.Attribution, true
 }
@@ -166,8 +166,8 @@ func (o *Finding) HasAttribution() bool {
 	return false
 }
 
-// SetAttribution gets a reference to the given map[string]map[string]interface{} and assigns it to the Attribution field.
-func (o *Finding) SetAttribution(v map[string]map[string]interface{}) {
+// SetAttribution gets a reference to the given map[string]interface{} and assigns it to the Attribution field.
+func (o *Finding) SetAttribution(v map[string]interface{}) {
 	o.Attribution = v
 }
 

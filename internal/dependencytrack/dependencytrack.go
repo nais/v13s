@@ -11,6 +11,15 @@ type Client struct {
 	client *client.APIClient
 }
 
+type Vulnerability struct {
+	UUID         string `json:"uuid"`
+	VulnId       string `json:"vulnId"`
+	Severity     string `json:"severity"`
+	SeverityRank int    `json:"severityRank"`
+	Source       string `json:"source"`
+	Title        string `json:"title"`
+}
+
 func setupConfig(apiKey, url string) *client.Configuration {
 	cfg := client.NewConfiguration()
 	cfg.AddDefaultHeader(ClientXApiKeyHeader, apiKey)
@@ -25,6 +34,13 @@ func setupConfig(apiKey, url string) *client.Configuration {
 
 func NewClient(apiKey, url string) (*Client, error) {
 	return &Client{client.NewAPIClient(setupConfig(apiKey, url))}, nil
+}
+
+func (c *Client) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
+	p, _, err := c.client.FindingAPI.GetFindingsByProject(ctx, uuid).
+		Suppressed(suppressed).
+		Execute()
+	return p, err
 }
 
 func (c *Client) paginateProjects(ctx context.Context, callFunc func(ctx context.Context, limit, offset int) ([]client.Project, error)) ([]client.Project, error) {

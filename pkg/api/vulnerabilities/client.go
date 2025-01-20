@@ -10,6 +10,7 @@ type Client interface {
 	Close() error
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
+	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
 }
 
 var _ Client = &client{}
@@ -49,6 +50,18 @@ func (c *client) GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Op
 		ctx,
 		&GetVulnerabilitySummaryRequest{
 			Filter: o.filter,
+		},
+	)
+}
+
+func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error) {
+	o := applyOptions(opts...)
+
+	return c.c.ListVulnerabilities(
+		ctx,
+		&ListVulnerabilitiesRequest{
+			Suppressed: &o.Suppressed,
+			Filter:     o.filter,
 		},
 	)
 }

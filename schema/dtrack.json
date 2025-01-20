@@ -13456,35 +13456,23 @@
         "properties": {
           "component": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {}
-            }
+            "properties": {}
           },
           "vulnerability": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {}
-            }
+            "properties": {}
           },
           "analysis": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {}
-            }
+            "properties": {}
           },
           "attribution": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {}
-            }
-          },
-          "matrix": {
-            "type": "string"
+            "properties": {}
           }
+        },
+        "matrix": {
+          "type": "string"
         }
       },
       "GroupedFinding": {
