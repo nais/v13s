@@ -19,8 +19,8 @@ var _ MappedNullable = &ExternalReference{}
 
 // ExternalReference struct for ExternalReference
 type ExternalReference struct {
-	Type    *string `json:"type,omitempty"`
-	Url     *string `json:"url,omitempty"`
+	Type *string `json:"type,omitempty"`
+	Url *string `json:"url,omitempty"`
 	Comment *string `json:"comment,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
 }
 
@@ -138,7 +138,7 @@ func (o *ExternalReference) SetComment(v string) {
 }
 
 func (o ExternalReference) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -194,3 +194,5 @@ func (v *NullableExternalReference) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

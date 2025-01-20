@@ -19,14 +19,15 @@ import (
 	"strings"
 )
 
+
 // VexAPIService VexAPI service
 type VexAPIService service
 
 type ApiExportProjectAsCycloneDx1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *VexAPIService
-	uuid       string
-	download   *bool
+	uuid string
+	download *bool
 }
 
 // Force the resulting VEX to be downloaded as a file (defaults to &#39;false&#39;)
@@ -44,27 +45,26 @@ ExportProjectAsCycloneDx1 Returns a VEX for a project in CycloneDX format
 
 <p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to export
-	@return ApiExportProjectAsCycloneDx1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to export
+ @return ApiExportProjectAsCycloneDx1Request
 */
 func (a *VexAPIService) ExportProjectAsCycloneDx1(ctx context.Context, uuid string) ApiExportProjectAsCycloneDx1Request {
 	return ApiExportProjectAsCycloneDx1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *VexAPIService) ExportProjectAsCycloneDx1Execute(r ApiExportProjectAsCycloneDx1Request) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VexAPIService.ExportProjectAsCycloneDx1")
@@ -151,12 +151,12 @@ func (a *VexAPIService) ExportProjectAsCycloneDx1Execute(r ApiExportProjectAsCyc
 }
 
 type ApiUploadVexRequest struct {
-	ctx            context.Context
-	ApiService     *VexAPIService
-	project        *string
-	projectName    *string
+	ctx context.Context
+	ApiService *VexAPIService
+	project *string
+	projectName *string
 	projectVersion *string
-	vex            *string
+	vex *string
 }
 
 func (r ApiUploadVexRequest) Project(project string) ApiUploadVexRequest {
@@ -187,36 +187,32 @@ func (r ApiUploadVexRequest) Execute() (*http.Response, error) {
 UploadVex Upload a supported VEX document
 
 <p>
-
-	Expects CycloneDX and a valid project UUID. If a UUID is not specified,
-	then the <code>projectName</code> and <code>projectVersion</code> must be specified.
-
+  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
 </p>
 <p>
-
-	The VEX will be validated against the CycloneDX schema. If schema validation fails,
-	a response with problem details in RFC 9457 format will be returned. In this case,
-	the response's content type will be <code>application/problem+json</code>.
-
+  The VEX will be validated against the CycloneDX schema. If schema validation fails,
+  a response with problem details in RFC 9457 format will be returned. In this case,
+  the response's content type will be <code>application/problem+json</code>.
 </p>
 <p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUploadVexRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUploadVexRequest
 */
 func (a *VexAPIService) UploadVex(ctx context.Context) ApiUploadVexRequest {
 	return ApiUploadVexRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *VexAPIService) UploadVexExecute(r ApiUploadVexRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VexAPIService.UploadVex")
@@ -302,8 +298,8 @@ func (a *VexAPIService) UploadVexExecute(r ApiUploadVexRequest) (*http.Response,
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarHTTPResponse, newErr
 		}
 		return localVarHTTPResponse, newErr
@@ -313,9 +309,9 @@ func (a *VexAPIService) UploadVexExecute(r ApiUploadVexRequest) (*http.Response,
 }
 
 type ApiUploadVex1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *VexAPIService
-	body       *VexSubmitRequest
+	body *VexSubmitRequest
 }
 
 func (r ApiUploadVex1Request) Body(body VexSubmitRequest) ApiUploadVex1Request {
@@ -331,43 +327,37 @@ func (r ApiUploadVex1Request) Execute() (*http.Response, error) {
 UploadVex1 Upload a supported VEX document
 
 <p>
-
-	Expects CycloneDX and a valid project UUID. If a UUID is not specified,
-	then the <code>projectName</code> and <code>projectVersion</code> must be specified.
-
+  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
 </p>
 <p>
-
-	The VEX will be validated against the CycloneDX schema. If schema validation fails,
-	a response with problem details in RFC 9457 format will be returned. In this case,
-	the response's content type will be <code>application/problem+json</code>.
-
+  The VEX will be validated against the CycloneDX schema. If schema validation fails,
+  a response with problem details in RFC 9457 format will be returned. In this case,
+  the response's content type will be <code>application/problem+json</code>.
 </p>
 <p>
-
-	The maximum allowed length of the <code>vex</code> value is 20'000'000 characters.
-	When uploading large VEX files, the <code>POST</code> endpoint is preferred,
-	as it does not have this limit.
-
+  The maximum allowed length of the <code>vex</code> value is 20'000'000 characters.
+  When uploading large VEX files, the <code>POST</code> endpoint is preferred,
+  as it does not have this limit.
 </p>
 <p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUploadVex1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUploadVex1Request
 */
 func (a *VexAPIService) UploadVex1(ctx context.Context) ApiUploadVex1Request {
 	return ApiUploadVex1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *VexAPIService) UploadVex1Execute(r ApiUploadVex1Request) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPut
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VexAPIService.UploadVex1")
@@ -443,8 +433,8 @@ func (a *VexAPIService) UploadVex1Execute(r ApiUploadVex1Request) (*http.Respons
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarHTTPResponse, newErr
 		}
 		return localVarHTTPResponse, newErr

@@ -11,10 +11,10 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"time"
+	"bytes"
+	"fmt"
 )
 
 // checks if the FindingAttribution type satisfies the MappedNullable interface at compile time
@@ -22,13 +22,13 @@ var _ MappedNullable = &FindingAttribution{}
 
 // FindingAttribution struct for FindingAttribution
 type FindingAttribution struct {
-	AttributedOn        time.Time     `json:"attributedOn"`
-	AnalyzerIdentity    *string       `json:"analyzerIdentity,omitempty"`
-	Component           Component     `json:"component"`
-	Vulnerability       Vulnerability `json:"vulnerability"`
-	AlternateIdentifier *string       `json:"alternateIdentifier,omitempty"`
-	ReferenceUrl        *string       `json:"referenceUrl,omitempty"`
-	Uuid                string        `json:"uuid"`
+	AttributedOn time.Time `json:"attributedOn"`
+	AnalyzerIdentity *string `json:"analyzerIdentity,omitempty"`
+	Component Component `json:"component"`
+	Vulnerability Vulnerability `json:"vulnerability"`
+	AlternateIdentifier *string `json:"alternateIdentifier,omitempty"`
+	ReferenceUrl *string `json:"referenceUrl,omitempty"`
+	Uuid string `json:"uuid"`
 }
 
 type _FindingAttribution FindingAttribution
@@ -247,7 +247,7 @@ func (o *FindingAttribution) SetUuid(v string) {
 }
 
 func (o FindingAttribution) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -288,10 +288,10 @@ func (o *FindingAttribution) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -347,3 +347,5 @@ func (v *NullableFindingAttribution) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

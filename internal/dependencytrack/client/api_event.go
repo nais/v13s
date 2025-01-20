@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // EventAPIService EventAPI service
 type EventAPIService service
 
 type ApiIsTokenBeingProcessed1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *EventAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiIsTokenBeingProcessed1Request) Execute() (*IsTokenBeingProcessedResponse, *http.Response, error) {
@@ -36,39 +37,36 @@ func (r ApiIsTokenBeingProcessed1Request) Execute() (*IsTokenBeingProcessedRespo
 IsTokenBeingProcessed1 Determines if there are any tasks associated with the token that are being processed, or in the queue to be processed.
 
 <p>
-
-	This endpoint is intended to be used in conjunction with other API calls which return a token for asynchronous tasks.
-	The token can then be queried using this endpoint to determine if the task is complete:
-	<ul>
-	  <li>A value of <code>true</code> indicates processing is occurring.</li>
-	  <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
-	</ul>
-	However, a value of <code>false</code> also does not confirm the token is valid,
-	only that no processing is associated with the specified token.
-
+  This endpoint is intended to be used in conjunction with other API calls which return a token for asynchronous tasks.
+  The token can then be queried using this endpoint to determine if the task is complete:
+  <ul>
+    <li>A value of <code>true</code> indicates processing is occurring.</li>
+    <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
+  </ul>
+  However, a value of <code>false</code> also does not confirm the token is valid,
+  only that no processing is associated with the specified token.
 </p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the token to query
-	@return ApiIsTokenBeingProcessed1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the token to query
+ @return ApiIsTokenBeingProcessed1Request
 */
 func (a *EventAPIService) IsTokenBeingProcessed1(ctx context.Context, uuid string) ApiIsTokenBeingProcessed1Request {
 	return ApiIsTokenBeingProcessed1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return IsTokenBeingProcessedResponse
+//  @return IsTokenBeingProcessedResponse
 func (a *EventAPIService) IsTokenBeingProcessed1Execute(r ApiIsTokenBeingProcessed1Request) (*IsTokenBeingProcessedResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *IsTokenBeingProcessedResponse
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *IsTokenBeingProcessedResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "EventAPIService.IsTokenBeingProcessed1")

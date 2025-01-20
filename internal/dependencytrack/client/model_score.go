@@ -19,12 +19,12 @@ var _ MappedNullable = &Score{}
 
 // Score struct for Score
 type Score struct {
-	LikelihoodScore      *float64 `json:"likelihoodScore,omitempty"`
+	LikelihoodScore *float64 `json:"likelihoodScore,omitempty"`
 	TechnicalImpactScore *float64 `json:"technicalImpactScore,omitempty"`
-	BusinessImpactScore  *float64 `json:"businessImpactScore,omitempty"`
-	Likelihood           *string  `json:"likelihood,omitempty"`
-	TechnicalImpact      *string  `json:"technicalImpact,omitempty"`
-	BusinessImpact       *string  `json:"businessImpact,omitempty"`
+	BusinessImpactScore *float64 `json:"businessImpactScore,omitempty"`
+	Likelihood *string `json:"likelihood,omitempty"`
+	TechnicalImpact *string `json:"technicalImpact,omitempty"`
+	BusinessImpact *string `json:"businessImpact,omitempty"`
 }
 
 // NewScore instantiates a new Score object
@@ -237,7 +237,7 @@ func (o *Score) SetBusinessImpact(v string) {
 }
 
 func (o Score) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -302,3 +302,5 @@ func (v *NullableScore) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

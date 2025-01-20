@@ -18,11 +18,12 @@ import (
 	"net/url"
 )
 
+
 // ConfigPropertyAPIService ConfigPropertyAPI service
 type ConfigPropertyAPIService service
 
 type ApiGetConfigPropertiesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ConfigPropertyAPIService
 }
 
@@ -35,25 +36,24 @@ GetConfigProperties Returns a list of all ConfigProperties for the specified gro
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetConfigPropertiesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetConfigPropertiesRequest
 */
 func (a *ConfigPropertyAPIService) GetConfigProperties(ctx context.Context) ApiGetConfigPropertiesRequest {
 	return ApiGetConfigPropertiesRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ConfigProperty
+//  @return []ConfigProperty
 func (a *ConfigPropertyAPIService) GetConfigPropertiesExecute(r ApiGetConfigPropertiesRequest) ([]ConfigProperty, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ConfigProperty
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ConfigProperty
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ConfigPropertyAPIService.GetConfigProperties")
@@ -136,9 +136,9 @@ func (a *ConfigPropertyAPIService) GetConfigPropertiesExecute(r ApiGetConfigProp
 }
 
 type ApiUpdateConfigPropertyRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ConfigPropertyAPIService
-	body       *[]ConfigProperty
+	body *[]ConfigProperty
 }
 
 func (r ApiUpdateConfigPropertyRequest) Body(body []ConfigProperty) ApiUpdateConfigPropertyRequest {
@@ -155,25 +155,24 @@ UpdateConfigProperty Updates an array of config properties
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateConfigPropertyRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateConfigPropertyRequest
 */
 func (a *ConfigPropertyAPIService) UpdateConfigProperty(ctx context.Context) ApiUpdateConfigPropertyRequest {
 	return ApiUpdateConfigPropertyRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ConfigProperty
+//  @return []ConfigProperty
 func (a *ConfigPropertyAPIService) UpdateConfigPropertyExecute(r ApiUpdateConfigPropertyRequest) ([]ConfigProperty, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ConfigProperty
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ConfigProperty
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ConfigPropertyAPIService.UpdateConfigProperty")
@@ -258,9 +257,9 @@ func (a *ConfigPropertyAPIService) UpdateConfigPropertyExecute(r ApiUpdateConfig
 }
 
 type ApiUpdateConfigProperty1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ConfigPropertyAPIService
-	body       *ConfigProperty
+	body *ConfigProperty
 }
 
 func (r ApiUpdateConfigProperty1Request) Body(body ConfigProperty) ApiUpdateConfigProperty1Request {
@@ -277,25 +276,24 @@ UpdateConfigProperty1 Updates a config property
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateConfigProperty1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateConfigProperty1Request
 */
 func (a *ConfigPropertyAPIService) UpdateConfigProperty1(ctx context.Context) ApiUpdateConfigProperty1Request {
 	return ApiUpdateConfigProperty1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ConfigProperty
+//  @return ConfigProperty
 func (a *ConfigPropertyAPIService) UpdateConfigProperty1Execute(r ApiUpdateConfigProperty1Request) (*ConfigProperty, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ConfigProperty
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ConfigProperty
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ConfigPropertyAPIService.UpdateConfigProperty1")

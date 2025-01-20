@@ -21,9 +21,9 @@ var _ MappedNullable = &AffectedVersionAttribution{}
 // AffectedVersionAttribution struct for AffectedVersionAttribution
 type AffectedVersionAttribution struct {
 	FirstSeen *time.Time `json:"firstSeen,omitempty"`
-	LastSeen  *time.Time `json:"lastSeen,omitempty"`
-	Source    *string    `json:"source,omitempty"`
-	Uuid      *string    `json:"uuid,omitempty"`
+	LastSeen *time.Time `json:"lastSeen,omitempty"`
+	Source *string `json:"source,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
 }
 
 // NewAffectedVersionAttribution instantiates a new AffectedVersionAttribution object
@@ -172,7 +172,7 @@ func (o *AffectedVersionAttribution) SetUuid(v string) {
 }
 
 func (o AffectedVersionAttribution) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -231,3 +231,5 @@ func (v *NullableAffectedVersionAttribution) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

@@ -19,13 +19,14 @@ import (
 	"reflect"
 )
 
+
 // SearchAPIService SearchAPI service
 type SearchAPIService service
 
 type ApiAggregateSearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
+	query *string
 }
 
 func (r ApiAggregateSearchRequest) Query(query string) ApiAggregateSearchRequest {
@@ -42,25 +43,24 @@ AggregateSearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiAggregateSearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiAggregateSearchRequest
 */
 func (a *SearchAPIService) AggregateSearch(ctx context.Context) ApiAggregateSearchRequest {
 	return ApiAggregateSearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) AggregateSearchExecute(r ApiAggregateSearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.AggregateSearch")
@@ -146,9 +146,9 @@ func (a *SearchAPIService) AggregateSearchExecute(r ApiAggregateSearchRequest) (
 }
 
 type ApiComponentSearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
+	query *string
 }
 
 func (r ApiComponentSearchRequest) Query(query string) ApiComponentSearchRequest {
@@ -165,25 +165,24 @@ ComponentSearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiComponentSearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiComponentSearchRequest
 */
 func (a *SearchAPIService) ComponentSearch(ctx context.Context) ApiComponentSearchRequest {
 	return ApiComponentSearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) ComponentSearchExecute(r ApiComponentSearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.ComponentSearch")
@@ -269,9 +268,9 @@ func (a *SearchAPIService) ComponentSearchExecute(r ApiComponentSearchRequest) (
 }
 
 type ApiLicenseSearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
+	query *string
 }
 
 func (r ApiLicenseSearchRequest) Query(query string) ApiLicenseSearchRequest {
@@ -288,25 +287,24 @@ LicenseSearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiLicenseSearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiLicenseSearchRequest
 */
 func (a *SearchAPIService) LicenseSearch(ctx context.Context) ApiLicenseSearchRequest {
 	return ApiLicenseSearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) LicenseSearchExecute(r ApiLicenseSearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.LicenseSearch")
@@ -392,9 +390,9 @@ func (a *SearchAPIService) LicenseSearchExecute(r ApiLicenseSearchRequest) (*Sea
 }
 
 type ApiProjectSearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
+	query *string
 }
 
 func (r ApiProjectSearchRequest) Query(query string) ApiProjectSearchRequest {
@@ -411,25 +409,24 @@ ProjectSearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiProjectSearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiProjectSearchRequest
 */
 func (a *SearchAPIService) ProjectSearch(ctx context.Context) ApiProjectSearchRequest {
 	return ApiProjectSearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) ProjectSearchExecute(r ApiProjectSearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.ProjectSearch")
@@ -515,9 +512,9 @@ func (a *SearchAPIService) ProjectSearchExecute(r ApiProjectSearchRequest) (*Sea
 }
 
 type ApiReindexRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	type_      *[]string
+	type_ *[]string
 }
 
 func (r ApiReindexRequest) Type_(type_ []string) ApiReindexRequest {
@@ -534,22 +531,22 @@ Reindex Rebuild lucene indexes for search operations
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiReindexRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiReindexRequest
 */
 func (a *SearchAPIService) Reindex(ctx context.Context) ApiReindexRequest {
 	return ApiReindexRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *SearchAPIService) ReindexExecute(r ApiReindexRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.Reindex")
@@ -634,9 +631,9 @@ func (a *SearchAPIService) ReindexExecute(r ApiReindexRequest) (*http.Response, 
 }
 
 type ApiServiceSearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
+	query *string
 }
 
 func (r ApiServiceSearchRequest) Query(query string) ApiServiceSearchRequest {
@@ -653,25 +650,24 @@ ServiceSearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiServiceSearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiServiceSearchRequest
 */
 func (a *SearchAPIService) ServiceSearch(ctx context.Context) ApiServiceSearchRequest {
 	return ApiServiceSearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) ServiceSearchExecute(r ApiServiceSearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.ServiceSearch")
@@ -757,9 +753,9 @@ func (a *SearchAPIService) ServiceSearchExecute(r ApiServiceSearchRequest) (*Sea
 }
 
 type ApiVulnerabilitySearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
+	query *string
 }
 
 func (r ApiVulnerabilitySearchRequest) Query(query string) ApiVulnerabilitySearchRequest {
@@ -776,25 +772,24 @@ VulnerabilitySearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiVulnerabilitySearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiVulnerabilitySearchRequest
 */
 func (a *SearchAPIService) VulnerabilitySearch(ctx context.Context) ApiVulnerabilitySearchRequest {
 	return ApiVulnerabilitySearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) VulnerabilitySearchExecute(r ApiVulnerabilitySearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.VulnerabilitySearch")
@@ -880,10 +875,10 @@ func (a *SearchAPIService) VulnerabilitySearchExecute(r ApiVulnerabilitySearchRe
 }
 
 type ApiVulnerableSoftwareSearchRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *SearchAPIService
-	query      *string
-	cpe        *string
+	query *string
+	cpe *string
 }
 
 func (r ApiVulnerableSoftwareSearchRequest) Query(query string) ApiVulnerableSoftwareSearchRequest {
@@ -905,25 +900,24 @@ VulnerableSoftwareSearch Processes and returns search results
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiVulnerableSoftwareSearchRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiVulnerableSoftwareSearchRequest
 */
 func (a *SearchAPIService) VulnerableSoftwareSearch(ctx context.Context) ApiVulnerableSoftwareSearchRequest {
 	return ApiVulnerableSoftwareSearchRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return SearchResult
+//  @return SearchResult
 func (a *SearchAPIService) VulnerableSoftwareSearchExecute(r ApiVulnerableSoftwareSearchRequest) (*SearchResult, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *SearchResult
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *SearchResult
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "SearchAPIService.VulnerableSoftwareSearch")

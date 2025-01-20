@@ -18,11 +18,12 @@ import (
 	"net/url"
 )
 
+
 // VersionAPIService VersionAPI service
 type VersionAPIService service
 
 type ApiGetVersionRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *VersionAPIService
 }
 
@@ -35,25 +36,24 @@ GetVersion Returns application version information
 
 Returns a simple json object containing the name of the application and the version
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetVersionRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetVersionRequest
 */
 func (a *VersionAPIService) GetVersion(ctx context.Context) ApiGetVersionRequest {
 	return ApiGetVersionRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return About
+//  @return About
 func (a *VersionAPIService) GetVersionExecute(r ApiGetVersionRequest) (*About, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *About
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *About
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "VersionAPIService.GetVersion")

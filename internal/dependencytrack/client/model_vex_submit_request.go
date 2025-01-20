@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,10 +21,10 @@ var _ MappedNullable = &VexSubmitRequest{}
 
 // VexSubmitRequest struct for VexSubmitRequest
 type VexSubmitRequest struct {
-	Project        string  `json:"project" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
-	ProjectName    *string `json:"projectName,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Project string `json:"project" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
+	ProjectName *string `json:"projectName,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
 	ProjectVersion *string `json:"projectVersion,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Vex            string  `json:"vex" validate:"regexp=^(?:[A-Za-z0-9+\\/]{4})*(?:[A-Za-z0-9+\\/]{2}==|[A-Za-z0-9+\\/]{3}=)?$"`
+	Vex string `json:"vex" validate:"regexp=^(?:[A-Za-z0-9+\\/]{4})*(?:[A-Za-z0-9+\\/]{2}==|[A-Za-z0-9+\\/]{3}=)?$"`
 }
 
 type _VexSubmitRequest VexSubmitRequest
@@ -161,7 +161,7 @@ func (o *VexSubmitRequest) SetVex(v string) {
 }
 
 func (o VexSubmitRequest) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -195,10 +195,10 @@ func (o *VexSubmitRequest) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -254,3 +254,5 @@ func (v *NullableVexSubmitRequest) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

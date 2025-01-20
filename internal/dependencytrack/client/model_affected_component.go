@@ -19,15 +19,15 @@ var _ MappedNullable = &AffectedComponent{}
 
 // AffectedComponent struct for AffectedComponent
 type AffectedComponent struct {
-	IdentityType                *string                      `json:"identityType,omitempty"`
-	Identity                    *string                      `json:"identity,omitempty"`
-	VersionType                 *string                      `json:"versionType,omitempty"`
-	Version                     *string                      `json:"version,omitempty"`
-	VersionEndExcluding         *string                      `json:"versionEndExcluding,omitempty"`
-	VersionEndIncluding         *string                      `json:"versionEndIncluding,omitempty"`
-	VersionStartExcluding       *string                      `json:"versionStartExcluding,omitempty"`
-	VersionStartIncluding       *string                      `json:"versionStartIncluding,omitempty"`
-	Uuid                        *string                      `json:"uuid,omitempty"`
+	IdentityType *string `json:"identityType,omitempty"`
+	Identity *string `json:"identity,omitempty"`
+	VersionType *string `json:"versionType,omitempty"`
+	Version *string `json:"version,omitempty"`
+	VersionEndExcluding *string `json:"versionEndExcluding,omitempty"`
+	VersionEndIncluding *string `json:"versionEndIncluding,omitempty"`
+	VersionStartExcluding *string `json:"versionStartExcluding,omitempty"`
+	VersionStartIncluding *string `json:"versionStartIncluding,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
 	AffectedVersionAttributions []AffectedVersionAttribution `json:"affectedVersionAttributions,omitempty"`
 }
 
@@ -369,7 +369,7 @@ func (o *AffectedComponent) SetAffectedVersionAttributions(v []AffectedVersionAt
 }
 
 func (o AffectedComponent) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -446,3 +446,5 @@ func (v *NullableAffectedComponent) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

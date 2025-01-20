@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // CweAPIService CweAPI service
 type CweAPIService service
 
 type ApiGetCweRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *CweAPIService
-	cweId      int32
+	cweId int32
 }
 
 func (r ApiGetCweRequest) Execute() (*Cwe, *http.Response, error) {
@@ -35,27 +36,26 @@ func (r ApiGetCweRequest) Execute() (*Cwe, *http.Response, error) {
 /*
 GetCwe Returns a specific CWE
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param cweId The CWE ID of the CWE to retrieve
-	@return ApiGetCweRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param cweId The CWE ID of the CWE to retrieve
+ @return ApiGetCweRequest
 */
 func (a *CweAPIService) GetCwe(ctx context.Context, cweId int32) ApiGetCweRequest {
 	return ApiGetCweRequest{
 		ApiService: a,
-		ctx:        ctx,
-		cweId:      cweId,
+		ctx: ctx,
+		cweId: cweId,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Cwe
+//  @return Cwe
 func (a *CweAPIService) GetCweExecute(r ApiGetCweRequest) (*Cwe, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Cwe
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Cwe
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "CweAPIService.GetCwe")
@@ -139,14 +139,14 @@ func (a *CweAPIService) GetCweExecute(r ApiGetCweRequest) (*Cwe, *http.Response,
 }
 
 type ApiGetCwesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *CweAPIService
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -192,25 +192,24 @@ func (r ApiGetCwesRequest) Execute() ([]Cwe, *http.Response, error) {
 /*
 GetCwes Returns a list of all CWEs
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetCwesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetCwesRequest
 */
 func (a *CweAPIService) GetCwes(ctx context.Context) ApiGetCwesRequest {
 	return ApiGetCwesRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Cwe
+//  @return []Cwe
 func (a *CweAPIService) GetCwesExecute(r ApiGetCwesRequest) ([]Cwe, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Cwe
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Cwe
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "CweAPIService.GetCwes")

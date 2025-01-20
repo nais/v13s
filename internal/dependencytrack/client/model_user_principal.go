@@ -19,12 +19,12 @@ var _ MappedNullable = &UserPrincipal{}
 
 // UserPrincipal struct for UserPrincipal
 type UserPrincipal struct {
-	Name        *string      `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 	Permissions []Permission `json:"permissions,omitempty"`
-	Id          *int64       `json:"id,omitempty"`
-	Teams       []Team       `json:"teams,omitempty"`
-	Username    *string      `json:"username,omitempty"`
-	Email       *string      `json:"email,omitempty"`
+	Id *int64 `json:"id,omitempty"`
+	Teams []Team `json:"teams,omitempty"`
+	Username *string `json:"username,omitempty"`
+	Email *string `json:"email,omitempty"`
 }
 
 // NewUserPrincipal instantiates a new UserPrincipal object
@@ -237,7 +237,7 @@ func (o *UserPrincipal) SetEmail(v string) {
 }
 
 func (o UserPrincipal) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -302,3 +302,5 @@ func (v *NullableUserPrincipal) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

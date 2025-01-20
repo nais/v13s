@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // RepositoryAPIService RepositoryAPI service
 type RepositoryAPIService service
 
 type ApiCreateRepositoryRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *RepositoryAPIService
-	body       *Repository
+	body *Repository
 }
 
 func (r ApiCreateRepositoryRequest) Body(body Repository) ApiCreateRepositoryRequest {
@@ -42,25 +43,24 @@ CreateRepository Creates a new repository
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateRepositoryRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateRepositoryRequest
 */
 func (a *RepositoryAPIService) CreateRepository(ctx context.Context) ApiCreateRepositoryRequest {
 	return ApiCreateRepositoryRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Repository
+//  @return Repository
 func (a *RepositoryAPIService) CreateRepositoryExecute(r ApiCreateRepositoryRequest) (*Repository, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Repository
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Repository
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RepositoryAPIService.CreateRepository")
@@ -145,9 +145,9 @@ func (a *RepositoryAPIService) CreateRepositoryExecute(r ApiCreateRepositoryRequ
 }
 
 type ApiDeleteRepositoryRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *RepositoryAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteRepositoryRequest) Execute() (*http.Response, error) {
@@ -159,24 +159,24 @@ DeleteRepository Deletes a repository
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the repository to delete
-	@return ApiDeleteRepositoryRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the repository to delete
+ @return ApiDeleteRepositoryRequest
 */
 func (a *RepositoryAPIService) DeleteRepository(ctx context.Context, uuid string) ApiDeleteRepositoryRequest {
 	return ApiDeleteRepositoryRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *RepositoryAPIService) DeleteRepositoryExecute(r ApiDeleteRepositoryRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RepositoryAPIService.DeleteRepository")
@@ -251,14 +251,14 @@ func (a *RepositoryAPIService) DeleteRepositoryExecute(r ApiDeleteRepositoryRequ
 }
 
 type ApiGetRepositoriesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *RepositoryAPIService
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -306,25 +306,24 @@ GetRepositories Returns a list of all repositories
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetRepositoriesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetRepositoriesRequest
 */
 func (a *RepositoryAPIService) GetRepositories(ctx context.Context) ApiGetRepositoriesRequest {
 	return ApiGetRepositoriesRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Repository
+//  @return []Repository
 func (a *RepositoryAPIService) GetRepositoriesExecute(r ApiGetRepositoriesRequest) ([]Repository, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Repository
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Repository
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RepositoryAPIService.GetRepositories")
@@ -431,15 +430,15 @@ func (a *RepositoryAPIService) GetRepositoriesExecute(r ApiGetRepositoriesReques
 }
 
 type ApiGetRepositoriesByTypeRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *RepositoryAPIService
-	type_      string
+	type_ string
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -487,27 +486,26 @@ GetRepositoriesByType Returns repositories that support the specific type
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param type_ The type of repositories to retrieve
-	@return ApiGetRepositoriesByTypeRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param type_ The type of repositories to retrieve
+ @return ApiGetRepositoriesByTypeRequest
 */
 func (a *RepositoryAPIService) GetRepositoriesByType(ctx context.Context, type_ string) ApiGetRepositoriesByTypeRequest {
 	return ApiGetRepositoriesByTypeRequest{
 		ApiService: a,
-		ctx:        ctx,
-		type_:      type_,
+		ctx: ctx,
+		type_: type_,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Repository
+//  @return []Repository
 func (a *RepositoryAPIService) GetRepositoriesByTypeExecute(r ApiGetRepositoriesByTypeRequest) ([]Repository, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Repository
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Repository
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RepositoryAPIService.GetRepositoriesByType")
@@ -615,9 +613,9 @@ func (a *RepositoryAPIService) GetRepositoriesByTypeExecute(r ApiGetRepositories
 }
 
 type ApiGetRepositoryMetaComponentRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *RepositoryAPIService
-	purl       *string
+	purl *string
 }
 
 // The Package URL for the component to query
@@ -633,25 +631,24 @@ func (r ApiGetRepositoryMetaComponentRequest) Execute() (*RepositoryMetaComponen
 /*
 GetRepositoryMetaComponent Attempts to resolve the latest version of the component available in the configured repositories
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetRepositoryMetaComponentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetRepositoryMetaComponentRequest
 */
 func (a *RepositoryAPIService) GetRepositoryMetaComponent(ctx context.Context) ApiGetRepositoryMetaComponentRequest {
 	return ApiGetRepositoryMetaComponentRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return RepositoryMetaComponent
+//  @return RepositoryMetaComponent
 func (a *RepositoryAPIService) GetRepositoryMetaComponentExecute(r ApiGetRepositoryMetaComponentRequest) (*RepositoryMetaComponent, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *RepositoryMetaComponent
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *RepositoryMetaComponent
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RepositoryAPIService.GetRepositoryMetaComponent")
@@ -738,9 +735,9 @@ func (a *RepositoryAPIService) GetRepositoryMetaComponentExecute(r ApiGetReposit
 }
 
 type ApiUpdateRepositoryRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *RepositoryAPIService
-	body       *Repository
+	body *Repository
 }
 
 func (r ApiUpdateRepositoryRequest) Body(body Repository) ApiUpdateRepositoryRequest {
@@ -757,25 +754,24 @@ UpdateRepository Updates a repository
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateRepositoryRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateRepositoryRequest
 */
 func (a *RepositoryAPIService) UpdateRepository(ctx context.Context) ApiUpdateRepositoryRequest {
 	return ApiUpdateRepositoryRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Repository
+//  @return Repository
 func (a *RepositoryAPIService) UpdateRepositoryExecute(r ApiUpdateRepositoryRequest) (*Repository, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Repository
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Repository
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "RepositoryAPIService.UpdateRepository")

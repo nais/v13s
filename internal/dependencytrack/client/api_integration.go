@@ -18,11 +18,12 @@ import (
 	"net/url"
 )
 
+
 // IntegrationAPIService IntegrationAPI service
 type IntegrationAPIService service
 
 type ApiGetAllEcosystemsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *IntegrationAPIService
 }
 
@@ -35,25 +36,24 @@ GetAllEcosystems Returns a list of all ecosystems in OSV
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetAllEcosystemsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetAllEcosystemsRequest
 */
 func (a *IntegrationAPIService) GetAllEcosystems(ctx context.Context) ApiGetAllEcosystemsRequest {
 	return ApiGetAllEcosystemsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []string
+//  @return []string
 func (a *IntegrationAPIService) GetAllEcosystemsExecute(r ApiGetAllEcosystemsRequest) ([]string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "IntegrationAPIService.GetAllEcosystems")
@@ -136,7 +136,7 @@ func (a *IntegrationAPIService) GetAllEcosystemsExecute(r ApiGetAllEcosystemsReq
 }
 
 type ApiGetInactiveEcosystemsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *IntegrationAPIService
 }
 
@@ -149,25 +149,24 @@ GetInactiveEcosystems Returns a list of available inactive ecosystems in OSV to 
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetInactiveEcosystemsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetInactiveEcosystemsRequest
 */
 func (a *IntegrationAPIService) GetInactiveEcosystems(ctx context.Context) ApiGetInactiveEcosystemsRequest {
 	return ApiGetInactiveEcosystemsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []string
+//  @return []string
 func (a *IntegrationAPIService) GetInactiveEcosystemsExecute(r ApiGetInactiveEcosystemsRequest) ([]string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "IntegrationAPIService.GetInactiveEcosystems")

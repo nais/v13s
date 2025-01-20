@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,37 +21,37 @@ var _ MappedNullable = &ProjectMetrics{}
 
 // ProjectMetrics struct for ProjectMetrics
 type ProjectMetrics struct {
-	Project                              *Project `json:"project,omitempty"`
-	Critical                             int32    `json:"critical"`
-	High                                 int32    `json:"high"`
-	Medium                               int32    `json:"medium"`
-	Low                                  int32    `json:"low"`
-	Unassigned                           *int32   `json:"unassigned,omitempty"`
-	Vulnerabilities                      *int64   `json:"vulnerabilities,omitempty"`
-	VulnerableComponents                 *int32   `json:"vulnerableComponents,omitempty"`
-	Components                           *int32   `json:"components,omitempty"`
-	Suppressed                           *int32   `json:"suppressed,omitempty"`
-	FindingsTotal                        *int32   `json:"findingsTotal,omitempty"`
-	FindingsAudited                      *int32   `json:"findingsAudited,omitempty"`
-	FindingsUnaudited                    *int32   `json:"findingsUnaudited,omitempty"`
-	InheritedRiskScore                   *float64 `json:"inheritedRiskScore,omitempty"`
-	PolicyViolationsFail                 *int32   `json:"policyViolationsFail,omitempty"`
-	PolicyViolationsWarn                 *int32   `json:"policyViolationsWarn,omitempty"`
-	PolicyViolationsInfo                 *int32   `json:"policyViolationsInfo,omitempty"`
-	PolicyViolationsTotal                *int32   `json:"policyViolationsTotal,omitempty"`
-	PolicyViolationsAudited              *int32   `json:"policyViolationsAudited,omitempty"`
-	PolicyViolationsUnaudited            *int32   `json:"policyViolationsUnaudited,omitempty"`
-	PolicyViolationsSecurityTotal        *int32   `json:"policyViolationsSecurityTotal,omitempty"`
-	PolicyViolationsSecurityAudited      *int32   `json:"policyViolationsSecurityAudited,omitempty"`
-	PolicyViolationsSecurityUnaudited    *int32   `json:"policyViolationsSecurityUnaudited,omitempty"`
-	PolicyViolationsLicenseTotal         *int32   `json:"policyViolationsLicenseTotal,omitempty"`
-	PolicyViolationsLicenseAudited       *int32   `json:"policyViolationsLicenseAudited,omitempty"`
-	PolicyViolationsLicenseUnaudited     *int32   `json:"policyViolationsLicenseUnaudited,omitempty"`
-	PolicyViolationsOperationalTotal     *int32   `json:"policyViolationsOperationalTotal,omitempty"`
-	PolicyViolationsOperationalAudited   *int32   `json:"policyViolationsOperationalAudited,omitempty"`
-	PolicyViolationsOperationalUnaudited *int32   `json:"policyViolationsOperationalUnaudited,omitempty"`
-	FirstOccurrence                      float32  `json:"firstOccurrence"`
-	LastOccurrence                       float32  `json:"lastOccurrence"`
+	Project *Project `json:"project,omitempty"`
+	Critical int32 `json:"critical"`
+	High int32 `json:"high"`
+	Medium int32 `json:"medium"`
+	Low int32 `json:"low"`
+	Unassigned *int32 `json:"unassigned,omitempty"`
+	Vulnerabilities *int64 `json:"vulnerabilities,omitempty"`
+	VulnerableComponents *int32 `json:"vulnerableComponents,omitempty"`
+	Components *int32 `json:"components,omitempty"`
+	Suppressed *int32 `json:"suppressed,omitempty"`
+	FindingsTotal *int32 `json:"findingsTotal,omitempty"`
+	FindingsAudited *int32 `json:"findingsAudited,omitempty"`
+	FindingsUnaudited *int32 `json:"findingsUnaudited,omitempty"`
+	InheritedRiskScore *float64 `json:"inheritedRiskScore,omitempty"`
+	PolicyViolationsFail *int32 `json:"policyViolationsFail,omitempty"`
+	PolicyViolationsWarn *int32 `json:"policyViolationsWarn,omitempty"`
+	PolicyViolationsInfo *int32 `json:"policyViolationsInfo,omitempty"`
+	PolicyViolationsTotal *int32 `json:"policyViolationsTotal,omitempty"`
+	PolicyViolationsAudited *int32 `json:"policyViolationsAudited,omitempty"`
+	PolicyViolationsUnaudited *int32 `json:"policyViolationsUnaudited,omitempty"`
+	PolicyViolationsSecurityTotal *int32 `json:"policyViolationsSecurityTotal,omitempty"`
+	PolicyViolationsSecurityAudited *int32 `json:"policyViolationsSecurityAudited,omitempty"`
+	PolicyViolationsSecurityUnaudited *int32 `json:"policyViolationsSecurityUnaudited,omitempty"`
+	PolicyViolationsLicenseTotal *int32 `json:"policyViolationsLicenseTotal,omitempty"`
+	PolicyViolationsLicenseAudited *int32 `json:"policyViolationsLicenseAudited,omitempty"`
+	PolicyViolationsLicenseUnaudited *int32 `json:"policyViolationsLicenseUnaudited,omitempty"`
+	PolicyViolationsOperationalTotal *int32 `json:"policyViolationsOperationalTotal,omitempty"`
+	PolicyViolationsOperationalAudited *int32 `json:"policyViolationsOperationalAudited,omitempty"`
+	PolicyViolationsOperationalUnaudited *int32 `json:"policyViolationsOperationalUnaudited,omitempty"`
+	FirstOccurrence float32 `json:"firstOccurrence"`
+	LastOccurrence float32 `json:"lastOccurrence"`
 }
 
 type _ProjectMetrics ProjectMetrics
@@ -1024,7 +1024,7 @@ func (o *ProjectMetrics) SetLastOccurrence(v float32) {
 }
 
 func (o ProjectMetrics) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -1135,10 +1135,10 @@ func (o *ProjectMetrics) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -1194,3 +1194,5 @@ func (v *NullableProjectMetrics) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

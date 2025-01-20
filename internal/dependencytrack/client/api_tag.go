@@ -19,11 +19,12 @@ import (
 	"strings"
 )
 
+
 // TagAPIService TagAPI service
 type TagAPIService service
 
 type ApiGetTagsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TagAPIService
 	policyUuid string
 }
@@ -37,27 +38,26 @@ GetTags Returns a list of all tags associated with a given policy
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param policyUuid The UUID of the policy
-	@return ApiGetTagsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param policyUuid The UUID of the policy
+ @return ApiGetTagsRequest
 */
 func (a *TagAPIService) GetTags(ctx context.Context, policyUuid string) ApiGetTagsRequest {
 	return ApiGetTagsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 		policyUuid: policyUuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Tag
+//  @return []Tag
 func (a *TagAPIService) GetTagsExecute(r ApiGetTagsRequest) ([]Tag, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Tag
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Tag
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTags")

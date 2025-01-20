@@ -18,15 +18,16 @@ import (
 	"net/url"
 )
 
+
 // AnalysisAPIService AnalysisAPI service
 type AnalysisAPIService service
 
 type ApiRetrieveAnalysisRequest struct {
-	ctx           context.Context
-	ApiService    *AnalysisAPIService
-	component     *string
+	ctx context.Context
+	ApiService *AnalysisAPIService
+	component *string
 	vulnerability *string
-	project       *string
+	project *string
 }
 
 // The UUID of the component
@@ -56,25 +57,24 @@ RetrieveAnalysis Retrieves an analysis trail
 
 <p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiRetrieveAnalysisRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiRetrieveAnalysisRequest
 */
 func (a *AnalysisAPIService) RetrieveAnalysis(ctx context.Context) ApiRetrieveAnalysisRequest {
 	return ApiRetrieveAnalysisRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Analysis
+//  @return Analysis
 func (a *AnalysisAPIService) RetrieveAnalysisExecute(r ApiRetrieveAnalysisRequest) (*Analysis, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Analysis
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Analysis
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AnalysisAPIService.RetrieveAnalysis")
@@ -168,9 +168,9 @@ func (a *AnalysisAPIService) RetrieveAnalysisExecute(r ApiRetrieveAnalysisReques
 }
 
 type ApiUpdateAnalysisRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *AnalysisAPIService
-	body       *AnalysisRequest
+	body *AnalysisRequest
 }
 
 func (r ApiUpdateAnalysisRequest) Body(body AnalysisRequest) ApiUpdateAnalysisRequest {
@@ -187,25 +187,24 @@ UpdateAnalysis Records an analysis decision
 
 <p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateAnalysisRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateAnalysisRequest
 */
 func (a *AnalysisAPIService) UpdateAnalysis(ctx context.Context) ApiUpdateAnalysisRequest {
 	return ApiUpdateAnalysisRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Analysis
+//  @return Analysis
 func (a *AnalysisAPIService) UpdateAnalysisExecute(r ApiUpdateAnalysisRequest) (*Analysis, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Analysis
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Analysis
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AnalysisAPIService.UpdateAnalysis")

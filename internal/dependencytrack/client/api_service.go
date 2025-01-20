@@ -19,14 +19,15 @@ import (
 	"strings"
 )
 
+
 // ServiceAPIService ServiceAPI service
 type ServiceAPIService service
 
 type ApiCreateServiceRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ServiceAPIService
-	uuid       string
-	body       *ServiceComponent
+	uuid string
+	body *ServiceComponent
 }
 
 func (r ApiCreateServiceRequest) Body(body ServiceComponent) ApiCreateServiceRequest {
@@ -43,27 +44,26 @@ CreateService Creates a new service
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project
-	@return ApiCreateServiceRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project
+ @return ApiCreateServiceRequest
 */
 func (a *ServiceAPIService) CreateService(ctx context.Context, uuid string) ApiCreateServiceRequest {
 	return ApiCreateServiceRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ServiceComponent
+//  @return ServiceComponent
 func (a *ServiceAPIService) CreateServiceExecute(r ApiCreateServiceRequest) (*ServiceComponent, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ServiceComponent
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ServiceComponent
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceAPIService.CreateService")
@@ -149,9 +149,9 @@ func (a *ServiceAPIService) CreateServiceExecute(r ApiCreateServiceRequest) (*Se
 }
 
 type ApiDeleteServiceRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ServiceAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteServiceRequest) Execute() (*http.Response, error) {
@@ -163,24 +163,24 @@ DeleteService Deletes a service
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the service to delete
-	@return ApiDeleteServiceRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the service to delete
+ @return ApiDeleteServiceRequest
 */
 func (a *ServiceAPIService) DeleteService(ctx context.Context, uuid string) ApiDeleteServiceRequest {
 	return ApiDeleteServiceRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *ServiceAPIService) DeleteServiceExecute(r ApiDeleteServiceRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceAPIService.DeleteService")
@@ -255,15 +255,15 @@ func (a *ServiceAPIService) DeleteServiceExecute(r ApiDeleteServiceRequest) (*ht
 }
 
 type ApiGetAllServicesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ServiceAPIService
-	uuid       string
+	uuid string
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -311,27 +311,26 @@ GetAllServices Returns a list of all services for a given project
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project
-	@return ApiGetAllServicesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project
+ @return ApiGetAllServicesRequest
 */
 func (a *ServiceAPIService) GetAllServices(ctx context.Context, uuid string) ApiGetAllServicesRequest {
 	return ApiGetAllServicesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ServiceComponent
+//  @return []ServiceComponent
 func (a *ServiceAPIService) GetAllServicesExecute(r ApiGetAllServicesRequest) ([]ServiceComponent, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ServiceComponent
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ServiceComponent
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceAPIService.GetAllServices")
@@ -439,9 +438,9 @@ func (a *ServiceAPIService) GetAllServicesExecute(r ApiGetAllServicesRequest) ([
 }
 
 type ApiGetServiceByUuidRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ServiceAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetServiceByUuidRequest) Execute() (*ServiceComponent, *http.Response, error) {
@@ -453,27 +452,26 @@ GetServiceByUuid Returns a specific service
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the service to retrieve
-	@return ApiGetServiceByUuidRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the service to retrieve
+ @return ApiGetServiceByUuidRequest
 */
 func (a *ServiceAPIService) GetServiceByUuid(ctx context.Context, uuid string) ApiGetServiceByUuidRequest {
 	return ApiGetServiceByUuidRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ServiceComponent
+//  @return ServiceComponent
 func (a *ServiceAPIService) GetServiceByUuidExecute(r ApiGetServiceByUuidRequest) (*ServiceComponent, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ServiceComponent
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ServiceComponent
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceAPIService.GetServiceByUuid")
@@ -557,9 +555,9 @@ func (a *ServiceAPIService) GetServiceByUuidExecute(r ApiGetServiceByUuidRequest
 }
 
 type ApiUpdateServiceRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ServiceAPIService
-	body       *ServiceComponent
+	body *ServiceComponent
 }
 
 func (r ApiUpdateServiceRequest) Body(body ServiceComponent) ApiUpdateServiceRequest {
@@ -576,25 +574,24 @@ UpdateService Updates a service
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateServiceRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateServiceRequest
 */
 func (a *ServiceAPIService) UpdateService(ctx context.Context) ApiUpdateServiceRequest {
 	return ApiUpdateServiceRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ServiceComponent
+//  @return ServiceComponent
 func (a *ServiceAPIService) UpdateServiceExecute(r ApiUpdateServiceRequest) (*ServiceComponent, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ServiceComponent
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ServiceComponent
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServiceAPIService.UpdateService")

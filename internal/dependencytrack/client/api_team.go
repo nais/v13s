@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // TeamAPIService TeamAPI service
 type TeamAPIService service
 
 type ApiCreateTeamRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	body       *Team
+	body *Team
 }
 
 func (r ApiCreateTeamRequest) Body(body Team) ApiCreateTeamRequest {
@@ -42,25 +43,24 @@ CreateTeam Creates a new team along with an associated API key
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateTeamRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateTeamRequest
 */
 func (a *TeamAPIService) CreateTeam(ctx context.Context) ApiCreateTeamRequest {
 	return ApiCreateTeamRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Team
+//  @return Team
 func (a *TeamAPIService) CreateTeamExecute(r ApiCreateTeamRequest) (*Team, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Team
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Team
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.CreateTeam")
@@ -145,9 +145,9 @@ func (a *TeamAPIService) CreateTeamExecute(r ApiCreateTeamRequest) (*Team, *http
 }
 
 type ApiDeleteApiKeyRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	apikey     string
+	apikey string
 }
 
 func (r ApiDeleteApiKeyRequest) Execute() (*http.Response, error) {
@@ -159,24 +159,24 @@ DeleteApiKey Deletes the specified API key
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param apikey The API key to delete
-	@return ApiDeleteApiKeyRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param apikey The API key to delete
+ @return ApiDeleteApiKeyRequest
 */
 func (a *TeamAPIService) DeleteApiKey(ctx context.Context, apikey string) ApiDeleteApiKeyRequest {
 	return ApiDeleteApiKeyRequest{
 		ApiService: a,
-		ctx:        ctx,
-		apikey:     apikey,
+		ctx: ctx,
+		apikey: apikey,
 	}
 }
 
 // Execute executes the request
 func (a *TeamAPIService) DeleteApiKeyExecute(r ApiDeleteApiKeyRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.DeleteApiKey")
@@ -251,9 +251,9 @@ func (a *TeamAPIService) DeleteApiKeyExecute(r ApiDeleteApiKeyRequest) (*http.Re
 }
 
 type ApiDeleteTeamRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	body       *Team
+	body *Team
 }
 
 func (r ApiDeleteTeamRequest) Body(body Team) ApiDeleteTeamRequest {
@@ -270,22 +270,22 @@ DeleteTeam Deletes a team
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiDeleteTeamRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiDeleteTeamRequest
 */
 func (a *TeamAPIService) DeleteTeam(ctx context.Context) ApiDeleteTeamRequest {
 	return ApiDeleteTeamRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *TeamAPIService) DeleteTeamExecute(r ApiDeleteTeamRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.DeleteTeam")
@@ -361,9 +361,9 @@ func (a *TeamAPIService) DeleteTeamExecute(r ApiDeleteTeamRequest) (*http.Respon
 }
 
 type ApiGenerateApiKeyRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGenerateApiKeyRequest) Execute() (*ApiKey, *http.Response, error) {
@@ -375,27 +375,26 @@ GenerateApiKey Generates an API key and returns its value
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the team to generate a key for
-	@return ApiGenerateApiKeyRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the team to generate a key for
+ @return ApiGenerateApiKeyRequest
 */
 func (a *TeamAPIService) GenerateApiKey(ctx context.Context, uuid string) ApiGenerateApiKeyRequest {
 	return ApiGenerateApiKeyRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ApiKey
+//  @return ApiKey
 func (a *TeamAPIService) GenerateApiKeyExecute(r ApiGenerateApiKeyRequest) (*ApiKey, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ApiKey
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ApiKey
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.GenerateApiKey")
@@ -479,7 +478,7 @@ func (a *TeamAPIService) GenerateApiKeyExecute(r ApiGenerateApiKeyRequest) (*Api
 }
 
 type ApiGetSelfRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
 }
 
@@ -490,25 +489,24 @@ func (r ApiGetSelfRequest) Execute() (*TeamSelfResponse, *http.Response, error) 
 /*
 GetSelf Returns information about the current team.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetSelfRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetSelfRequest
 */
 func (a *TeamAPIService) GetSelf(ctx context.Context) ApiGetSelfRequest {
 	return ApiGetSelfRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return TeamSelfResponse
+//  @return TeamSelfResponse
 func (a *TeamAPIService) GetSelfExecute(r ApiGetSelfRequest) (*TeamSelfResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *TeamSelfResponse
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *TeamSelfResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.GetSelf")
@@ -591,9 +589,9 @@ func (a *TeamAPIService) GetSelfExecute(r ApiGetSelfRequest) (*TeamSelfResponse,
 }
 
 type ApiGetTeamRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetTeamRequest) Execute() (*Team, *http.Response, error) {
@@ -605,27 +603,26 @@ GetTeam Returns a specific team
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the team to retrieve
-	@return ApiGetTeamRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the team to retrieve
+ @return ApiGetTeamRequest
 */
 func (a *TeamAPIService) GetTeam(ctx context.Context, uuid string) ApiGetTeamRequest {
 	return ApiGetTeamRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Team
+//  @return Team
 func (a *TeamAPIService) GetTeamExecute(r ApiGetTeamRequest) (*Team, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Team
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Team
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.GetTeam")
@@ -709,7 +706,7 @@ func (a *TeamAPIService) GetTeamExecute(r ApiGetTeamRequest) (*Team, *http.Respo
 }
 
 type ApiGetTeamsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
 }
 
@@ -722,25 +719,24 @@ GetTeams Returns a list of all teams
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetTeamsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetTeamsRequest
 */
 func (a *TeamAPIService) GetTeams(ctx context.Context) ApiGetTeamsRequest {
 	return ApiGetTeamsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Team
+//  @return []Team
 func (a *TeamAPIService) GetTeamsExecute(r ApiGetTeamsRequest) ([]Team, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Team
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Team
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.GetTeams")
@@ -823,9 +819,9 @@ func (a *TeamAPIService) GetTeamsExecute(r ApiGetTeamsRequest) ([]Team, *http.Re
 }
 
 type ApiRegenerateApiKeyRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	apikey     string
+	apikey string
 }
 
 func (r ApiRegenerateApiKeyRequest) Execute() (*ApiKey, *http.Response, error) {
@@ -837,27 +833,26 @@ RegenerateApiKey Regenerates an API key by removing the specified key, generatin
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param apikey The API key to regenerate
-	@return ApiRegenerateApiKeyRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param apikey The API key to regenerate
+ @return ApiRegenerateApiKeyRequest
 */
 func (a *TeamAPIService) RegenerateApiKey(ctx context.Context, apikey string) ApiRegenerateApiKeyRequest {
 	return ApiRegenerateApiKeyRequest{
 		ApiService: a,
-		ctx:        ctx,
-		apikey:     apikey,
+		ctx: ctx,
+		apikey: apikey,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ApiKey
+//  @return ApiKey
 func (a *TeamAPIService) RegenerateApiKeyExecute(r ApiRegenerateApiKeyRequest) (*ApiKey, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ApiKey
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ApiKey
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.RegenerateApiKey")
@@ -941,10 +936,10 @@ func (a *TeamAPIService) RegenerateApiKeyExecute(r ApiRegenerateApiKeyRequest) (
 }
 
 type ApiUpdateApiKeyCommentRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	key        string
-	body       *string
+	key string
+	body *string
 }
 
 func (r ApiUpdateApiKeyCommentRequest) Body(body string) ApiUpdateApiKeyCommentRequest {
@@ -961,27 +956,26 @@ UpdateApiKeyComment Updates an API key's comment
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param key
-	@return ApiUpdateApiKeyCommentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param key
+ @return ApiUpdateApiKeyCommentRequest
 */
 func (a *TeamAPIService) UpdateApiKeyComment(ctx context.Context, key string) ApiUpdateApiKeyCommentRequest {
 	return ApiUpdateApiKeyCommentRequest{
 		ApiService: a,
-		ctx:        ctx,
-		key:        key,
+		ctx: ctx,
+		key: key,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ApiKey
+//  @return ApiKey
 func (a *TeamAPIService) UpdateApiKeyCommentExecute(r ApiUpdateApiKeyCommentRequest) (*ApiKey, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ApiKey
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ApiKey
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.UpdateApiKeyComment")
@@ -1067,9 +1061,9 @@ func (a *TeamAPIService) UpdateApiKeyCommentExecute(r ApiUpdateApiKeyCommentRequ
 }
 
 type ApiUpdateTeamRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *TeamAPIService
-	body       *Team
+	body *Team
 }
 
 func (r ApiUpdateTeamRequest) Body(body Team) ApiUpdateTeamRequest {
@@ -1086,25 +1080,24 @@ UpdateTeam Updates a team's fields including
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateTeamRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateTeamRequest
 */
 func (a *TeamAPIService) UpdateTeam(ctx context.Context) ApiUpdateTeamRequest {
 	return ApiUpdateTeamRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Team
+//  @return Team
 func (a *TeamAPIService) UpdateTeamExecute(r ApiUpdateTeamRequest) (*Team, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Team
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Team
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TeamAPIService.UpdateTeam")

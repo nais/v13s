@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // MetricsAPIService MetricsAPI service
 type MetricsAPIService service
 
 type ApiGetComponentCurrentMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetComponentCurrentMetricsRequest) Execute() (*DependencyMetrics, *http.Response, error) {
@@ -37,27 +38,26 @@ GetComponentCurrentMetrics Returns current metrics for a specific component
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to retrieve metrics for
-	@return ApiGetComponentCurrentMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to retrieve metrics for
+ @return ApiGetComponentCurrentMetricsRequest
 */
 func (a *MetricsAPIService) GetComponentCurrentMetrics(ctx context.Context, uuid string) ApiGetComponentCurrentMetricsRequest {
 	return ApiGetComponentCurrentMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return DependencyMetrics
+//  @return DependencyMetrics
 func (a *MetricsAPIService) GetComponentCurrentMetricsExecute(r ApiGetComponentCurrentMetricsRequest) (*DependencyMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *DependencyMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *DependencyMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetComponentCurrentMetrics")
@@ -141,10 +141,10 @@ func (a *MetricsAPIService) GetComponentCurrentMetricsExecute(r ApiGetComponentC
 }
 
 type ApiGetComponentMetricsSinceRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
-	date       string
+	uuid string
+	date string
 }
 
 func (r ApiGetComponentMetricsSinceRequest) Execute() ([]DependencyMetrics, *http.Response, error) {
@@ -157,29 +157,28 @@ GetComponentMetricsSince Returns historical metrics for a specific component fro
 <p>Date format must be <code>YYYYMMDD</code></p>
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to retrieve metrics for
-	@param date The start date to retrieve metrics for
-	@return ApiGetComponentMetricsSinceRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to retrieve metrics for
+ @param date The start date to retrieve metrics for
+ @return ApiGetComponentMetricsSinceRequest
 */
 func (a *MetricsAPIService) GetComponentMetricsSince(ctx context.Context, uuid string, date string) ApiGetComponentMetricsSinceRequest {
 	return ApiGetComponentMetricsSinceRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
-		date:       date,
+		ctx: ctx,
+		uuid: uuid,
+		date: date,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []DependencyMetrics
+//  @return []DependencyMetrics
 func (a *MetricsAPIService) GetComponentMetricsSinceExecute(r ApiGetComponentMetricsSinceRequest) ([]DependencyMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []DependencyMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []DependencyMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetComponentMetricsSince")
@@ -264,10 +263,10 @@ func (a *MetricsAPIService) GetComponentMetricsSinceExecute(r ApiGetComponentMet
 }
 
 type ApiGetComponentMetricsXDaysRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
-	days       int32
+	uuid string
+	days int32
 }
 
 func (r ApiGetComponentMetricsXDaysRequest) Execute() ([]DependencyMetrics, *http.Response, error) {
@@ -279,29 +278,28 @@ GetComponentMetricsXDays Returns X days of historical metrics for a specific com
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to retrieve metrics for
-	@param days The number of days back to retrieve metrics for
-	@return ApiGetComponentMetricsXDaysRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to retrieve metrics for
+ @param days The number of days back to retrieve metrics for
+ @return ApiGetComponentMetricsXDaysRequest
 */
 func (a *MetricsAPIService) GetComponentMetricsXDays(ctx context.Context, uuid string, days int32) ApiGetComponentMetricsXDaysRequest {
 	return ApiGetComponentMetricsXDaysRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
-		days:       days,
+		ctx: ctx,
+		uuid: uuid,
+		days: days,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []DependencyMetrics
+//  @return []DependencyMetrics
 func (a *MetricsAPIService) GetComponentMetricsXDaysExecute(r ApiGetComponentMetricsXDaysRequest) ([]DependencyMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []DependencyMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []DependencyMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetComponentMetricsXDays")
@@ -386,7 +384,7 @@ func (a *MetricsAPIService) GetComponentMetricsXDaysExecute(r ApiGetComponentMet
 }
 
 type ApiGetPortfolioCurrentMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
 }
 
@@ -399,25 +397,24 @@ GetPortfolioCurrentMetrics Returns current metrics for the entire portfolio
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetPortfolioCurrentMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetPortfolioCurrentMetricsRequest
 */
 func (a *MetricsAPIService) GetPortfolioCurrentMetrics(ctx context.Context) ApiGetPortfolioCurrentMetricsRequest {
 	return ApiGetPortfolioCurrentMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return PortfolioMetrics
+//  @return PortfolioMetrics
 func (a *MetricsAPIService) GetPortfolioCurrentMetricsExecute(r ApiGetPortfolioCurrentMetricsRequest) (*PortfolioMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *PortfolioMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *PortfolioMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetPortfolioCurrentMetrics")
@@ -500,9 +497,9 @@ func (a *MetricsAPIService) GetPortfolioCurrentMetricsExecute(r ApiGetPortfolioC
 }
 
 type ApiGetPortfolioMetricsSinceRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	date       string
+	date string
 }
 
 func (r ApiGetPortfolioMetricsSinceRequest) Execute() ([]PortfolioMetrics, *http.Response, error) {
@@ -515,27 +512,26 @@ GetPortfolioMetricsSince Returns historical metrics for the entire portfolio fro
 <p>Date format must be <code>YYYYMMDD</code></p>
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param date The start date to retrieve metrics for
-	@return ApiGetPortfolioMetricsSinceRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param date The start date to retrieve metrics for
+ @return ApiGetPortfolioMetricsSinceRequest
 */
 func (a *MetricsAPIService) GetPortfolioMetricsSince(ctx context.Context, date string) ApiGetPortfolioMetricsSinceRequest {
 	return ApiGetPortfolioMetricsSinceRequest{
 		ApiService: a,
-		ctx:        ctx,
-		date:       date,
+		ctx: ctx,
+		date: date,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []PortfolioMetrics
+//  @return []PortfolioMetrics
 func (a *MetricsAPIService) GetPortfolioMetricsSinceExecute(r ApiGetPortfolioMetricsSinceRequest) ([]PortfolioMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []PortfolioMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []PortfolioMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetPortfolioMetricsSince")
@@ -619,9 +615,9 @@ func (a *MetricsAPIService) GetPortfolioMetricsSinceExecute(r ApiGetPortfolioMet
 }
 
 type ApiGetPortfolioMetricsXDaysRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	days       int32
+	days int32
 }
 
 func (r ApiGetPortfolioMetricsXDaysRequest) Execute() ([]PortfolioMetrics, *http.Response, error) {
@@ -633,27 +629,26 @@ GetPortfolioMetricsXDays Returns X days of historical metrics for the entire por
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param days The number of days back to retrieve metrics for
-	@return ApiGetPortfolioMetricsXDaysRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param days The number of days back to retrieve metrics for
+ @return ApiGetPortfolioMetricsXDaysRequest
 */
 func (a *MetricsAPIService) GetPortfolioMetricsXDays(ctx context.Context, days int32) ApiGetPortfolioMetricsXDaysRequest {
 	return ApiGetPortfolioMetricsXDaysRequest{
 		ApiService: a,
-		ctx:        ctx,
-		days:       days,
+		ctx: ctx,
+		days: days,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []PortfolioMetrics
+//  @return []PortfolioMetrics
 func (a *MetricsAPIService) GetPortfolioMetricsXDaysExecute(r ApiGetPortfolioMetricsXDaysRequest) ([]PortfolioMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []PortfolioMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []PortfolioMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetPortfolioMetricsXDays")
@@ -737,9 +732,9 @@ func (a *MetricsAPIService) GetPortfolioMetricsXDaysExecute(r ApiGetPortfolioMet
 }
 
 type ApiGetProjectCurrentMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetProjectCurrentMetricsRequest) Execute() (*ProjectMetrics, *http.Response, error) {
@@ -751,27 +746,26 @@ GetProjectCurrentMetrics Returns current metrics for a specific project
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve metrics for
-	@return ApiGetProjectCurrentMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve metrics for
+ @return ApiGetProjectCurrentMetricsRequest
 */
 func (a *MetricsAPIService) GetProjectCurrentMetrics(ctx context.Context, uuid string) ApiGetProjectCurrentMetricsRequest {
 	return ApiGetProjectCurrentMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ProjectMetrics
+//  @return ProjectMetrics
 func (a *MetricsAPIService) GetProjectCurrentMetricsExecute(r ApiGetProjectCurrentMetricsRequest) (*ProjectMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ProjectMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ProjectMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetProjectCurrentMetrics")
@@ -855,10 +849,10 @@ func (a *MetricsAPIService) GetProjectCurrentMetricsExecute(r ApiGetProjectCurre
 }
 
 type ApiGetProjectMetricsSinceRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
-	date       string
+	uuid string
+	date string
 }
 
 func (r ApiGetProjectMetricsSinceRequest) Execute() ([]ProjectMetrics, *http.Response, error) {
@@ -871,29 +865,28 @@ GetProjectMetricsSince Returns historical metrics for a specific project from a 
 <p>Date format must be <code>YYYYMMDD</code></p>
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve metrics for
-	@param date The start date to retrieve metrics for
-	@return ApiGetProjectMetricsSinceRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve metrics for
+ @param date The start date to retrieve metrics for
+ @return ApiGetProjectMetricsSinceRequest
 */
 func (a *MetricsAPIService) GetProjectMetricsSince(ctx context.Context, uuid string, date string) ApiGetProjectMetricsSinceRequest {
 	return ApiGetProjectMetricsSinceRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
-		date:       date,
+		ctx: ctx,
+		uuid: uuid,
+		date: date,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ProjectMetrics
+//  @return []ProjectMetrics
 func (a *MetricsAPIService) GetProjectMetricsSinceExecute(r ApiGetProjectMetricsSinceRequest) ([]ProjectMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ProjectMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ProjectMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetProjectMetricsSince")
@@ -978,10 +971,10 @@ func (a *MetricsAPIService) GetProjectMetricsSinceExecute(r ApiGetProjectMetrics
 }
 
 type ApiGetProjectMetricsXDaysRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
-	days       int32
+	uuid string
+	days int32
 }
 
 func (r ApiGetProjectMetricsXDaysRequest) Execute() ([]ProjectMetrics, *http.Response, error) {
@@ -993,29 +986,28 @@ GetProjectMetricsXDays Returns X days of historical metrics for a specific proje
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve metrics for
-	@param days The number of days back to retrieve metrics for
-	@return ApiGetProjectMetricsXDaysRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve metrics for
+ @param days The number of days back to retrieve metrics for
+ @return ApiGetProjectMetricsXDaysRequest
 */
 func (a *MetricsAPIService) GetProjectMetricsXDays(ctx context.Context, uuid string, days int32) ApiGetProjectMetricsXDaysRequest {
 	return ApiGetProjectMetricsXDaysRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
-		days:       days,
+		ctx: ctx,
+		uuid: uuid,
+		days: days,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ProjectMetrics
+//  @return []ProjectMetrics
 func (a *MetricsAPIService) GetProjectMetricsXDaysExecute(r ApiGetProjectMetricsXDaysRequest) ([]ProjectMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ProjectMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ProjectMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetProjectMetricsXDays")
@@ -1100,7 +1092,7 @@ func (a *MetricsAPIService) GetProjectMetricsXDaysExecute(r ApiGetProjectMetrics
 }
 
 type ApiGetVulnerabilityMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
 }
 
@@ -1113,25 +1105,24 @@ GetVulnerabilityMetrics Returns the sum of all vulnerabilities in the database b
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetVulnerabilityMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetVulnerabilityMetricsRequest
 */
 func (a *MetricsAPIService) GetVulnerabilityMetrics(ctx context.Context) ApiGetVulnerabilityMetricsRequest {
 	return ApiGetVulnerabilityMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []VulnerabilityMetrics
+//  @return []VulnerabilityMetrics
 func (a *MetricsAPIService) GetVulnerabilityMetricsExecute(r ApiGetVulnerabilityMetricsRequest) ([]VulnerabilityMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []VulnerabilityMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []VulnerabilityMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.GetVulnerabilityMetrics")
@@ -1214,9 +1205,9 @@ func (a *MetricsAPIService) GetVulnerabilityMetricsExecute(r ApiGetVulnerability
 }
 
 type ApiRefreshComponentMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiRefreshComponentMetricsRequest) Execute() (*http.Response, error) {
@@ -1228,24 +1219,24 @@ RefreshComponentMetrics Requests a refresh of a specific components metrics
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to refresh metrics on
-	@return ApiRefreshComponentMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to refresh metrics on
+ @return ApiRefreshComponentMetricsRequest
 */
 func (a *MetricsAPIService) RefreshComponentMetrics(ctx context.Context, uuid string) ApiRefreshComponentMetricsRequest {
 	return ApiRefreshComponentMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *MetricsAPIService) RefreshComponentMetricsExecute(r ApiRefreshComponentMetricsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodGet
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.RefreshComponentMetrics")
@@ -1320,7 +1311,7 @@ func (a *MetricsAPIService) RefreshComponentMetricsExecute(r ApiRefreshComponent
 }
 
 type ApiRefreshPortfolioMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
 }
 
@@ -1333,25 +1324,24 @@ RefreshPortfolioMetrics Requests a refresh of the portfolio metrics
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiRefreshPortfolioMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiRefreshPortfolioMetricsRequest
 */
 func (a *MetricsAPIService) RefreshPortfolioMetrics(ctx context.Context) ApiRefreshPortfolioMetricsRequest {
 	return ApiRefreshPortfolioMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return PortfolioMetrics
+//  @return PortfolioMetrics
 func (a *MetricsAPIService) RefreshPortfolioMetricsExecute(r ApiRefreshPortfolioMetricsRequest) (*PortfolioMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *PortfolioMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *PortfolioMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.RefreshPortfolioMetrics")
@@ -1434,9 +1424,9 @@ func (a *MetricsAPIService) RefreshPortfolioMetricsExecute(r ApiRefreshPortfolio
 }
 
 type ApiRefreshProjectMetricsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *MetricsAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiRefreshProjectMetricsRequest) Execute() (*http.Response, error) {
@@ -1448,24 +1438,24 @@ RefreshProjectMetrics Requests a refresh of a specific projects metrics
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to refresh metrics on
-	@return ApiRefreshProjectMetricsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to refresh metrics on
+ @return ApiRefreshProjectMetricsRequest
 */
 func (a *MetricsAPIService) RefreshProjectMetrics(ctx context.Context, uuid string) ApiRefreshProjectMetricsRequest {
 	return ApiRefreshProjectMetricsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *MetricsAPIService) RefreshProjectMetricsExecute(r ApiRefreshProjectMetricsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodGet
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MetricsAPIService.RefreshProjectMetrics")

@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // BadgeAPIService BadgeAPI service
 type BadgeAPIService service
 
 type ApiGetProjectPolicyViolationsBadgeRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *BadgeAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetProjectPolicyViolationsBadgeRequest) Execute() (string, *http.Response, error) {
@@ -35,27 +36,26 @@ func (r ApiGetProjectPolicyViolationsBadgeRequest) Execute() (string, *http.Resp
 /*
 GetProjectPolicyViolationsBadge Returns a policy violations badge for a specific project
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve a badge for
-	@return ApiGetProjectPolicyViolationsBadgeRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve a badge for
+ @return ApiGetProjectPolicyViolationsBadgeRequest
 */
 func (a *BadgeAPIService) GetProjectPolicyViolationsBadge(ctx context.Context, uuid string) ApiGetProjectPolicyViolationsBadgeRequest {
 	return ApiGetProjectPolicyViolationsBadgeRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *BadgeAPIService) GetProjectPolicyViolationsBadgeExecute(r ApiGetProjectPolicyViolationsBadgeRequest) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BadgeAPIService.GetProjectPolicyViolationsBadge")
@@ -125,10 +125,10 @@ func (a *BadgeAPIService) GetProjectPolicyViolationsBadgeExecute(r ApiGetProject
 }
 
 type ApiGetProjectPolicyViolationsBadge1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *BadgeAPIService
-	name       string
-	version    string
+	name string
+	version string
 }
 
 func (r ApiGetProjectPolicyViolationsBadge1Request) Execute() (string, *http.Response, error) {
@@ -138,29 +138,28 @@ func (r ApiGetProjectPolicyViolationsBadge1Request) Execute() (string, *http.Res
 /*
 GetProjectPolicyViolationsBadge1 Returns a policy violations badge for a specific project
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name The name of the project to query on
-	@param version The version of the project to query on
-	@return ApiGetProjectPolicyViolationsBadge1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name The name of the project to query on
+ @param version The version of the project to query on
+ @return ApiGetProjectPolicyViolationsBadge1Request
 */
 func (a *BadgeAPIService) GetProjectPolicyViolationsBadge1(ctx context.Context, name string, version string) ApiGetProjectPolicyViolationsBadge1Request {
 	return ApiGetProjectPolicyViolationsBadge1Request{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
-		version:    version,
+		ctx: ctx,
+		name: name,
+		version: version,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *BadgeAPIService) GetProjectPolicyViolationsBadge1Execute(r ApiGetProjectPolicyViolationsBadge1Request) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BadgeAPIService.GetProjectPolicyViolationsBadge1")
@@ -231,10 +230,10 @@ func (a *BadgeAPIService) GetProjectPolicyViolationsBadge1Execute(r ApiGetProjec
 }
 
 type ApiGetProjectVulnerabilitiesBadgeRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *BadgeAPIService
-	name       string
-	version    string
+	name string
+	version string
 }
 
 func (r ApiGetProjectVulnerabilitiesBadgeRequest) Execute() (*ProjectMetrics, *http.Response, error) {
@@ -244,29 +243,28 @@ func (r ApiGetProjectVulnerabilitiesBadgeRequest) Execute() (*ProjectMetrics, *h
 /*
 GetProjectVulnerabilitiesBadge Returns current metrics for a specific project
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name The name of the project to query on
-	@param version The version of the project to query on
-	@return ApiGetProjectVulnerabilitiesBadgeRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name The name of the project to query on
+ @param version The version of the project to query on
+ @return ApiGetProjectVulnerabilitiesBadgeRequest
 */
 func (a *BadgeAPIService) GetProjectVulnerabilitiesBadge(ctx context.Context, name string, version string) ApiGetProjectVulnerabilitiesBadgeRequest {
 	return ApiGetProjectVulnerabilitiesBadgeRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
-		version:    version,
+		ctx: ctx,
+		name: name,
+		version: version,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ProjectMetrics
+//  @return ProjectMetrics
 func (a *BadgeAPIService) GetProjectVulnerabilitiesBadgeExecute(r ApiGetProjectVulnerabilitiesBadgeRequest) (*ProjectMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ProjectMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ProjectMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BadgeAPIService.GetProjectVulnerabilitiesBadge")
@@ -337,9 +335,9 @@ func (a *BadgeAPIService) GetProjectVulnerabilitiesBadgeExecute(r ApiGetProjectV
 }
 
 type ApiGetProjectVulnerabilitiesBadge1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *BadgeAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetProjectVulnerabilitiesBadge1Request) Execute() (*ProjectMetrics, *http.Response, error) {
@@ -349,27 +347,26 @@ func (r ApiGetProjectVulnerabilitiesBadge1Request) Execute() (*ProjectMetrics, *
 /*
 GetProjectVulnerabilitiesBadge1 Returns current metrics for a specific project
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve metrics for
-	@return ApiGetProjectVulnerabilitiesBadge1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve metrics for
+ @return ApiGetProjectVulnerabilitiesBadge1Request
 */
 func (a *BadgeAPIService) GetProjectVulnerabilitiesBadge1(ctx context.Context, uuid string) ApiGetProjectVulnerabilitiesBadge1Request {
 	return ApiGetProjectVulnerabilitiesBadge1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ProjectMetrics
+//  @return ProjectMetrics
 func (a *BadgeAPIService) GetProjectVulnerabilitiesBadge1Execute(r ApiGetProjectVulnerabilitiesBadge1Request) (*ProjectMetrics, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ProjectMetrics
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ProjectMetrics
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BadgeAPIService.GetProjectVulnerabilitiesBadge1")

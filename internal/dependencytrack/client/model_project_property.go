@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,12 +21,12 @@ var _ MappedNullable = &ProjectProperty{}
 
 // ProjectProperty struct for ProjectProperty
 type ProjectProperty struct {
-	Project       *Project `json:"project,omitempty"`
-	GroupName     *string  `json:"groupName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	PropertyName  *string  `json:"propertyName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	PropertyValue *string  `json:"propertyValue,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	PropertyType  string   `json:"propertyType"`
-	Description   *string  `json:"description,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Project *Project `json:"project,omitempty"`
+	GroupName *string `json:"groupName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	PropertyName *string `json:"propertyName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	PropertyValue *string `json:"propertyValue,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	PropertyType string `json:"propertyType"`
+	Description *string `json:"description,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
 }
 
 type _ProjectProperty ProjectProperty
@@ -234,7 +234,7 @@ func (o *ProjectProperty) SetDescription(v string) {
 }
 
 func (o ProjectProperty) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -275,10 +275,10 @@ func (o *ProjectProperty) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -334,3 +334,5 @@ func (v *NullableProjectProperty) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

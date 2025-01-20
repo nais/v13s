@@ -13469,10 +13469,10 @@
           "attribution": {
             "type": "object",
             "properties": {}
+          },
+          "matrix": {
+            "type": "string"
           }
-        },
-        "matrix": {
-          "type": "string"
         }
       },
       "GroupedFinding": {

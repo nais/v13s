@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,15 +21,15 @@ var _ MappedNullable = &Policy{}
 
 // Policy struct for Policy
 type Policy struct {
-	Name             *string           `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Operator         *string           `json:"operator,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	ViolationState   *string           `json:"violationState,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Operator *string `json:"operator,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	ViolationState *string `json:"violationState,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
 	PolicyConditions []PolicyCondition `json:"policyConditions,omitempty"`
-	Projects         []Project         `json:"projects,omitempty"`
-	Tags             []Tag             `json:"tags,omitempty"`
-	Uuid             string            `json:"uuid"`
-	IncludeChildren  *bool             `json:"includeChildren,omitempty"`
-	Global           *bool             `json:"global,omitempty"`
+	Projects []Project `json:"projects,omitempty"`
+	Tags []Tag `json:"tags,omitempty"`
+	Uuid string `json:"uuid"`
+	IncludeChildren *bool `json:"includeChildren,omitempty"`
+	Global *bool `json:"global,omitempty"`
 }
 
 type _Policy Policy
@@ -333,7 +333,7 @@ func (o *Policy) SetGlobal(v bool) {
 }
 
 func (o Policy) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -383,10 +383,10 @@ func (o *Policy) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -442,3 +442,5 @@ func (v *NullablePolicy) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

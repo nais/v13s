@@ -18,13 +18,14 @@ import (
 	"net/url"
 )
 
+
 // ViolationanalysisAPIService ViolationanalysisAPI service
 type ViolationanalysisAPIService service
 
 type ApiRetrieveAnalysis1Request struct {
-	ctx             context.Context
-	ApiService      *ViolationanalysisAPIService
-	component       *string
+	ctx context.Context
+	ApiService *ViolationanalysisAPIService
+	component *string
 	policyViolation *string
 }
 
@@ -49,25 +50,24 @@ RetrieveAnalysis1 Retrieves a violation analysis trail
 
 <p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiRetrieveAnalysis1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiRetrieveAnalysis1Request
 */
 func (a *ViolationanalysisAPIService) RetrieveAnalysis1(ctx context.Context) ApiRetrieveAnalysis1Request {
 	return ApiRetrieveAnalysis1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ViolationAnalysis
+//  @return ViolationAnalysis
 func (a *ViolationanalysisAPIService) RetrieveAnalysis1Execute(r ApiRetrieveAnalysis1Request) (*ViolationAnalysis, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ViolationAnalysis
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ViolationAnalysis
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ViolationanalysisAPIService.RetrieveAnalysis1")
@@ -158,9 +158,9 @@ func (a *ViolationanalysisAPIService) RetrieveAnalysis1Execute(r ApiRetrieveAnal
 }
 
 type ApiUpdateAnalysis1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *ViolationanalysisAPIService
-	body       *ViolationAnalysisRequest
+	body *ViolationAnalysisRequest
 }
 
 func (r ApiUpdateAnalysis1Request) Body(body ViolationAnalysisRequest) ApiUpdateAnalysis1Request {
@@ -177,25 +177,24 @@ UpdateAnalysis1 Records a violation analysis decision
 
 <p>Requires permission <strong>POLICY_VIOLATION_ANALYSIS</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateAnalysis1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateAnalysis1Request
 */
 func (a *ViolationanalysisAPIService) UpdateAnalysis1(ctx context.Context) ApiUpdateAnalysis1Request {
 	return ApiUpdateAnalysis1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ViolationAnalysis
+//  @return ViolationAnalysis
 func (a *ViolationanalysisAPIService) UpdateAnalysis1Execute(r ApiUpdateAnalysis1Request) (*ViolationAnalysis, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ViolationAnalysis
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ViolationAnalysis
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ViolationanalysisAPIService.UpdateAnalysis1")

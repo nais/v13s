@@ -19,13 +19,14 @@ import (
 	"strings"
 )
 
+
 // OidcAPIService OidcAPI service
 type OidcAPIService service
 
 type ApiAddMapping2Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	body       *MappedOidcGroupRequest
+	body *MappedOidcGroupRequest
 }
 
 func (r ApiAddMapping2Request) Body(body MappedOidcGroupRequest) ApiAddMapping2Request {
@@ -42,25 +43,24 @@ AddMapping2 Adds a mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiAddMapping2Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiAddMapping2Request
 */
 func (a *OidcAPIService) AddMapping2(ctx context.Context) ApiAddMapping2Request {
 	return ApiAddMapping2Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return MappedOidcGroup
+//  @return MappedOidcGroup
 func (a *OidcAPIService) AddMapping2Execute(r ApiAddMapping2Request) (*MappedOidcGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *MappedOidcGroup
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *MappedOidcGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.AddMapping2")
@@ -145,9 +145,9 @@ func (a *OidcAPIService) AddMapping2Execute(r ApiAddMapping2Request) (*MappedOid
 }
 
 type ApiCreateGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	body       *OidcGroup
+	body *OidcGroup
 }
 
 func (r ApiCreateGroupRequest) Body(body OidcGroup) ApiCreateGroupRequest {
@@ -164,25 +164,24 @@ CreateGroup Creates group
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateGroupRequest
 */
 func (a *OidcAPIService) CreateGroup(ctx context.Context) ApiCreateGroupRequest {
 	return ApiCreateGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return OidcGroup
+//  @return OidcGroup
 func (a *OidcAPIService) CreateGroupExecute(r ApiCreateGroupRequest) (*OidcGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *OidcGroup
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *OidcGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.CreateGroup")
@@ -267,9 +266,9 @@ func (a *OidcAPIService) CreateGroupExecute(r ApiCreateGroupRequest) (*OidcGroup
 }
 
 type ApiDeleteGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteGroupRequest) Execute() (*http.Response, error) {
@@ -281,24 +280,24 @@ DeleteGroup Deletes a group
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the group to delete
-	@return ApiDeleteGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the group to delete
+ @return ApiDeleteGroupRequest
 */
 func (a *OidcAPIService) DeleteGroup(ctx context.Context, uuid string) ApiDeleteGroupRequest {
 	return ApiDeleteGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *OidcAPIService) DeleteGroupExecute(r ApiDeleteGroupRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.DeleteGroup")
@@ -373,10 +372,10 @@ func (a *OidcAPIService) DeleteGroupExecute(r ApiDeleteGroupRequest) (*http.Resp
 }
 
 type ApiDeleteMapping2Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	groupUuid  string
-	teamUuid   string
+	groupUuid string
+	teamUuid string
 }
 
 func (r ApiDeleteMapping2Request) Execute() (*http.Response, error) {
@@ -388,26 +387,26 @@ DeleteMapping2 Deletes a mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param groupUuid The UUID of the group to delete a mapping for
-	@param teamUuid The UUID of the team to delete a mapping for
-	@return ApiDeleteMapping2Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param groupUuid The UUID of the group to delete a mapping for
+ @param teamUuid The UUID of the team to delete a mapping for
+ @return ApiDeleteMapping2Request
 */
 func (a *OidcAPIService) DeleteMapping2(ctx context.Context, groupUuid string, teamUuid string) ApiDeleteMapping2Request {
 	return ApiDeleteMapping2Request{
 		ApiService: a,
-		ctx:        ctx,
-		groupUuid:  groupUuid,
-		teamUuid:   teamUuid,
+		ctx: ctx,
+		groupUuid: groupUuid,
+		teamUuid: teamUuid,
 	}
 }
 
 // Execute executes the request
 func (a *OidcAPIService) DeleteMapping2Execute(r ApiDeleteMapping2Request) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.DeleteMapping2")
@@ -483,9 +482,9 @@ func (a *OidcAPIService) DeleteMapping2Execute(r ApiDeleteMapping2Request) (*htt
 }
 
 type ApiDeleteMappingByUuidRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteMappingByUuidRequest) Execute() (*http.Response, error) {
@@ -497,24 +496,24 @@ DeleteMappingByUuid Deletes a mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the mapping to delete
-	@return ApiDeleteMappingByUuidRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the mapping to delete
+ @return ApiDeleteMappingByUuidRequest
 */
 func (a *OidcAPIService) DeleteMappingByUuid(ctx context.Context, uuid string) ApiDeleteMappingByUuidRequest {
 	return ApiDeleteMappingByUuidRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *OidcAPIService) DeleteMappingByUuidExecute(r ApiDeleteMappingByUuidRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.DeleteMappingByUuid")
@@ -589,7 +588,7 @@ func (a *OidcAPIService) DeleteMappingByUuidExecute(r ApiDeleteMappingByUuidRequ
 }
 
 type ApiIsAvailableRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
 }
 
@@ -600,25 +599,24 @@ func (r ApiIsAvailableRequest) Execute() (bool, *http.Response, error) {
 /*
 IsAvailable Indicates if OpenID Connect is available for this application
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiIsAvailableRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiIsAvailableRequest
 */
 func (a *OidcAPIService) IsAvailable(ctx context.Context) ApiIsAvailableRequest {
 	return ApiIsAvailableRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return bool
+//  @return bool
 func (a *OidcAPIService) IsAvailableExecute(r ApiIsAvailableRequest) (bool, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue bool
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  bool
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.IsAvailable")
@@ -701,7 +699,7 @@ func (a *OidcAPIService) IsAvailableExecute(r ApiIsAvailableRequest) (bool, *htt
 }
 
 type ApiRetrieveGroupsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
 }
 
@@ -714,25 +712,24 @@ RetrieveGroups Returns a list of all groups
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiRetrieveGroupsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiRetrieveGroupsRequest
 */
 func (a *OidcAPIService) RetrieveGroups(ctx context.Context) ApiRetrieveGroupsRequest {
 	return ApiRetrieveGroupsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []OidcGroup
+//  @return []OidcGroup
 func (a *OidcAPIService) RetrieveGroupsExecute(r ApiRetrieveGroupsRequest) ([]OidcGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []OidcGroup
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []OidcGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.RetrieveGroups")
@@ -815,9 +812,9 @@ func (a *OidcAPIService) RetrieveGroupsExecute(r ApiRetrieveGroupsRequest) ([]Oi
 }
 
 type ApiRetrieveTeamsMappedToGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	uuid       string
+	uuid string
 }
 
 func (r ApiRetrieveTeamsMappedToGroupRequest) Execute() ([]Team, *http.Response, error) {
@@ -829,27 +826,26 @@ RetrieveTeamsMappedToGroup Returns a list of teams associated with the specified
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the mapping to retrieve the team for
-	@return ApiRetrieveTeamsMappedToGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the mapping to retrieve the team for
+ @return ApiRetrieveTeamsMappedToGroupRequest
 */
 func (a *OidcAPIService) RetrieveTeamsMappedToGroup(ctx context.Context, uuid string) ApiRetrieveTeamsMappedToGroupRequest {
 	return ApiRetrieveTeamsMappedToGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Team
+//  @return []Team
 func (a *OidcAPIService) RetrieveTeamsMappedToGroupExecute(r ApiRetrieveTeamsMappedToGroupRequest) ([]Team, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Team
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Team
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.RetrieveTeamsMappedToGroup")
@@ -933,9 +929,9 @@ func (a *OidcAPIService) RetrieveTeamsMappedToGroupExecute(r ApiRetrieveTeamsMap
 }
 
 type ApiUpdateGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OidcAPIService
-	body       *OidcGroup
+	body *OidcGroup
 }
 
 func (r ApiUpdateGroupRequest) Body(body OidcGroup) ApiUpdateGroupRequest {
@@ -952,25 +948,24 @@ UpdateGroup Updates group
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateGroupRequest
 */
 func (a *OidcAPIService) UpdateGroup(ctx context.Context) ApiUpdateGroupRequest {
 	return ApiUpdateGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return OidcGroup
+//  @return OidcGroup
 func (a *OidcAPIService) UpdateGroupExecute(r ApiUpdateGroupRequest) (*OidcGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *OidcGroup
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *OidcGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OidcAPIService.UpdateGroup")
