@@ -7,6 +7,7 @@ syntax = "proto3";
 option go_package = "./pkg/api/vulnerabilities";
 
 import "google/protobuf/timestamp.proto";
+import "pagination.proto";
 
 //consider adding this at a later stage - https://github.com/grpc-ecosystem/grpc-gateway
 //import "google/api/annotations.proto";
@@ -38,22 +39,28 @@ service Vulnz {
 }
  */
 
-message ListVulnerabilitySummariesResponse {
-  repeated WorkloadSummary workload_summaries = 1;
-}
-
 message ListVulnerabilitySummariesRequest {
   Filter filter = 1;
+  int64 limit = 2;
+  int64 offset = 3;
+}
+
+message ListVulnerabilitySummariesResponse {
+  repeated WorkloadSummary workload_summaries = 1;
+  PageInfo page_info = 2;
 }
 
 message ListVulnerabilitiesRequest {
   Filter filter = 1;
   optional bool suppressed = 2;
+  int64 limit = 3;
+  int64 offset = 4;
 }
 
 message ListVulnerabilitiesResponse {
   Filter filter = 1;
   repeated WorkloadVulnerabilities workloads = 2;
+  PageInfo page_info = 3;
 }
 
 message GetVulnerabilitySummaryResponse {

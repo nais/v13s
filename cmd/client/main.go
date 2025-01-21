@@ -21,6 +21,8 @@ func main() {
 		context.Background(),
 		vulnerabilities.ClusterFilter("prod-gcp"),
 		vulnerabilities.NamespaceFilter("nais-system"),
+		vulnerabilities.Limit(10),
+		vulnerabilities.Offset(0),
 	)
 
 	handle(resp, err)
@@ -34,7 +36,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	fmt.Printf("Filters: %v\n", resp2.Filter)
 	fmt.Printf("summary: %v\n", resp2.VulnerabilitySummary)
 
@@ -43,9 +44,9 @@ func main() {
 		vulnerabilities.ClusterFilter("prod-gcp"),
 		vulnerabilities.NamespaceFilter("nais-system"),
 		vulnerabilities.WorkloadTypeFilter("job"),
+		vulnerabilities.Limit(10),
 		vulnerabilities.Suppressed(),
 	)
-
 	if err != nil {
 		panic(err)
 	}

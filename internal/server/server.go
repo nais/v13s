@@ -6,6 +6,7 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/nais/v13s/internal/grpc/grpcpagination"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
@@ -20,24 +21,24 @@ type Server struct {
 	DpClient *dependencytrack.Client
 }
 
-func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter) ([]client.Project, error) {
+func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]client.Project, error) {
 	if filter == nil {
-		return s.DpClient.GetProjects(ctx)
+		return s.DpClient.GetProjects(ctx, limit, offset)
 	}
 
 	if filter.Cluster != nil && filter.Namespace != nil {
 		tagFilter := "team:" + *filter.Namespace
-		return s.DpClient.GetProjectsByTag(ctx, tagFilter)
+		return s.DpClient.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	} else if filter.Cluster != nil {
 		tagFilter := "env:" + *filter.Cluster
-		return s.DpClient.GetProjectsByTag(ctx, tagFilter)
+		return s.DpClient.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	} else if filter.Namespace != nil {
 		tagFilter := "team:" + *filter.Namespace
-		return s.DpClient.GetProjectsByTag(ctx, tagFilter)
+		return s.DpClient.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	}
 
 	// Fetch all projects if no specific cluster or namespace is defined
-	return s.DpClient.GetProjects(ctx)
+	return s.DpClient.GetProjects(ctx, limit, offset)
 }
 
 func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilities.WorkloadSummary {
@@ -68,8 +69,8 @@ func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilitie
 	return summaries
 }
 
-func (s *Server) getFilteredSummaries(ctx context.Context, filter *vulnerabilities.Filter) ([]*vulnerabilities.WorkloadSummary, error) {
-	projects, err := s.getFilteredProjects(ctx, filter)
+func (s *Server) getFilteredSummaries(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]*vulnerabilities.WorkloadSummary, error) {
+	projects, err := s.getFilteredProjects(ctx, filter, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -88,13 +89,24 @@ func (s *Server) getFilteredSummaries(ctx context.Context, filter *vulnerabiliti
 }
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
-	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter)
+	limit, offset, err := grpcpagination.Pagination(req)
+	if err != nil {
+		return nil, err
+	}
+
+	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	pageInfo, err := grpcpagination.PageInfo(req, len(filteredSummaries))
 	if err != nil {
 		return nil, err
 	}
 
 	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
 		WorkloadSummaries: filteredSummaries,
+		PageInfo:          pageInfo,
 	}
 	return response, nil
 }
@@ -170,7 +182,12 @@ func (s *Server) processProjects(ctx context.Context, projects []client.Project,
 }
 
 func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
-	projects, err := s.getFilteredProjects(ctx, request.Filter)
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+
+	projects, err := s.getFilteredProjects(ctx, request.Filter, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +264,7 @@ func (s *Server) getFindings(ctx context.Context, project client.Project, suppre
 }
 
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
-	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter)
+	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter, 50, 0)
 	if err != nil {
 		return nil, err
 	}

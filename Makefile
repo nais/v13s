@@ -8,7 +8,7 @@ fmt:
 	go run mvdan.cc/gofumpt@latest -w ./
 
 test:
-	go test -cover -tags integration_test --race ./...
+	go test -cover --race ./...
 
 check: staticcheck vulncheck deadcode gosec
 

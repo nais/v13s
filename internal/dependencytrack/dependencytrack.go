@@ -43,31 +43,29 @@ func (c *Client) GetFindings(ctx context.Context, uuid string, suppressed bool) 
 	return p, err
 }
 
-func (c *Client) paginateProjects(ctx context.Context, callFunc func(ctx context.Context, limit, offset int) ([]client.Project, error)) ([]client.Project, error) {
+func (c *Client) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
 	var allProjects []client.Project
-	pageSize := 100
-	offset := 0
 
 	for {
-		p, err := callFunc(ctx, pageSize, offset)
+		p, err := callFunc(ctx, offset)
 		if err != nil {
 			return nil, err
 		}
 
 		allProjects = append(allProjects, p...)
 
-		if len(p) < pageSize {
+		if len(p) < int(limit) {
 			break
 		}
 
-		offset += pageSize
+		offset += limit
 	}
 
 	return allProjects, nil
 }
 
-func (c *Client) GetProjectsByTag(ctx context.Context, tag string) ([]client.Project, error) {
-	return c.paginateProjects(ctx, func(ctx context.Context, limit, offset int) ([]client.Project, error) {
+func (c *Client) GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error) {
+	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
 		p, _, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
 			PageSize(limit).
@@ -77,8 +75,8 @@ func (c *Client) GetProjectsByTag(ctx context.Context, tag string) ([]client.Pro
 	})
 }
 
-func (c *Client) GetProjects(ctx context.Context) ([]client.Project, error) {
-	return c.paginateProjects(ctx, func(ctx context.Context, limit, offset int) ([]client.Project, error) {
+func (c *Client) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
+	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
 		p, _, err := c.client.ProjectAPI.GetProjects(ctx).
 			PageSize(limit).

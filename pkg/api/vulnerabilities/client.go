@@ -40,6 +40,8 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 
 	return c.c.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
 		Filter: o.filter,
+		Limit:  o.limit,
+		Offset: o.offset,
 	}, o.callOptions...)
 }
 
@@ -60,8 +62,10 @@ func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*List
 	return c.c.ListVulnerabilities(
 		ctx,
 		&ListVulnerabilitiesRequest{
-			Suppressed: &o.Suppressed,
 			Filter:     o.filter,
+			Limit:      o.limit,
+			Offset:     o.offset,
+			Suppressed: &o.suppressed,
 		},
 	)
 }

@@ -1,6 +1,9 @@
 package vulnerabilities
 
-import "google.golang.org/grpc"
+import (
+	"fmt"
+	"google.golang.org/grpc"
+)
 
 var _ Option = (*funcOption)(nil)
 
@@ -11,8 +14,9 @@ type Option interface {
 type options struct {
 	filter      *Filter
 	callOptions []grpc.CallOption
-	Suppressed  bool
-	// pagination..
+	suppressed  bool
+	limit       int64
+	offset      int64
 	// sorting..
 }
 
@@ -69,7 +73,20 @@ func WorkloadTypeFilter(name string) Option {
 
 func Suppressed() Option {
 	return newFuncOption(func(o *options) {
-		o.Suppressed = true
+		o.suppressed = true
+	})
+}
+
+func Limit(limit int64) Option {
+	return newFuncOption(func(o *options) {
+		fmt.Println("limit", limit)
+		o.limit = limit
+	})
+}
+
+func Offset(offset int64) Option {
+	return newFuncOption(func(o *options) {
+		o.offset = offset
 	})
 }
 
