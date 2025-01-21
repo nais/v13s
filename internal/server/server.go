@@ -40,26 +40,6 @@ func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilitie
 	return s.DpClient.GetProjects(ctx)
 }
 
-func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {
-	var workloads []*vulnerabilities.Workload
-
-	for _, tag := range project.Tags {
-		if tag.Name == nil || !strings.HasPrefix(*tag.Name, "workload:") {
-			continue
-		}
-
-		parts := strings.Split(strings.TrimPrefix(*tag.Name, "workload:"), "|")
-		if len(parts) != 4 {
-			log.Printf("Invalid workload tag: %s", *tag.Name)
-			continue
-		}
-
-		workloads = append(workloads, workload(parts[0], parts[1], parts[3], parts[2], *project.Name))
-	}
-
-	return workloads
-}
-
 func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilities.WorkloadSummary {
 	var summaries []*vulnerabilities.WorkloadSummary
 
@@ -119,40 +99,24 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabil
 	return response, nil
 }
 
-func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
-	projects, err := s.getFilteredProjects(ctx, request.Filter)
-	if err != nil {
-		return nil, err
-	}
+func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {
+	var workloads []*vulnerabilities.Workload
 
-	workloadVulnerabilities, err := s.processProjects(ctx, projects, request)
-	if err != nil {
-		return nil, err
-	}
-
-	return &vulnerabilities.ListVulnerabilitiesResponse{
-		Filter:    request.Filter,
-		Workloads: workloadVulnerabilities,
-	}, nil
-}
-
-func (s *Server) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilities, error) {
-	var workloadVulnerabilities []*vulnerabilities.WorkloadVulnerabilities
-
-	for _, project := range projects {
-		workloads := s.extractWorkloadsFromProject(project)
-		filteredWorkloads := s.filterWorkloads(workloads, request.Filter)
-
-		for _, w := range filteredWorkloads {
-			vuln, err := s.getVulnerabilitiesForWorkload(ctx, project, w, request.GetSuppressed())
-			if err != nil {
-				return nil, err
-			}
-			workloadVulnerabilities = append(workloadVulnerabilities, vuln)
+	for _, tag := range project.Tags {
+		if tag.Name == nil || !strings.HasPrefix(*tag.Name, "workload:") {
+			continue
 		}
+
+		parts := strings.Split(strings.TrimPrefix(*tag.Name, "workload:"), "|")
+		if len(parts) != 4 {
+			log.Printf("Invalid workload tag: %s", *tag.Name)
+			continue
+		}
+
+		workloads = append(workloads, workload(parts[0], parts[1], parts[3], parts[2], *project.Name))
 	}
 
-	return workloadVulnerabilities, nil
+	return workloads
 }
 
 func (s *Server) filterWorkloads(workloads []*vulnerabilities.Workload, filter *vulnerabilities.Filter) []*vulnerabilities.Workload {
@@ -183,6 +147,42 @@ func (s *Server) getVulnerabilitiesForWorkload(ctx context.Context, project clie
 		Workload:        workload,
 		Vulnerabilities: vuln,
 		LastUpdated:     timestamppb.New(time.Now()),
+	}, nil
+}
+
+func (s *Server) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilities, error) {
+	var workloadVulnerabilities []*vulnerabilities.WorkloadVulnerabilities
+
+	for _, project := range projects {
+		workloads := s.extractWorkloadsFromProject(project)
+		filteredWorkloads := s.filterWorkloads(workloads, request.Filter)
+
+		for _, w := range filteredWorkloads {
+			vuln, err := s.getVulnerabilitiesForWorkload(ctx, project, w, request.GetSuppressed())
+			if err != nil {
+				return nil, err
+			}
+			workloadVulnerabilities = append(workloadVulnerabilities, vuln)
+		}
+	}
+
+	return workloadVulnerabilities, nil
+}
+
+func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
+	projects, err := s.getFilteredProjects(ctx, request.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	workloadVulnerabilities, err := s.processProjects(ctx, projects, request)
+	if err != nil {
+		return nil, err
+	}
+
+	return &vulnerabilities.ListVulnerabilitiesResponse{
+		Filter:    request.Filter,
+		Workloads: workloadVulnerabilities,
 	}, nil
 }
 
