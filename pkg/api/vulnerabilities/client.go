@@ -3,6 +3,7 @@ package vulnerabilities
 import (
 	"context"
 	"fmt"
+
 	"google.golang.org/grpc"
 )
 

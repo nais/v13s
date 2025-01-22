@@ -2,8 +2,9 @@ package grpcpagination
 
 import (
 	"errors"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"math"
+
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
 type Paginatable interface {

@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
-	"github.com/nais/v13s/internal/dependencytrack"
-	"github.com/nais/v13s/internal/server"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/joho/godotenv"
+	"github.com/nais/v13s/internal/dependencytrack"
+	"github.com/nais/v13s/internal/server"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc"
 )
 
 func main() {

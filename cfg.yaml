@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
+package: client
+output: internal/dependencytrack/client/client.gen.go
+output-options:
+  response-type-suffix: Yolo
+
+  #response-type-suffix: YoloResponse
+
+generate:
+  models: true
+  client: true

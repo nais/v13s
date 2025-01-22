@@ -2,6 +2,7 @@ package dependencytrack
 
 import (
 	"context"
+
 	"github.com/nais/v13s/internal/dependencytrack/client"
 )
 

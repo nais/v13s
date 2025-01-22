@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -50,7 +51,6 @@ func main() {
 		vulnerabilities.ClusterFilter("prod-gcp"),
 		vulnerabilities.NamespaceFilter("nais-system"),
 	)
-
 	if err != nil {
 		panic(err)
 	}

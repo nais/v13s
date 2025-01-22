@@ -52,3 +52,8 @@ generate_dp_track:
 			echo "Please visit https://openapi-generator.tech/docs/installation/ for installation instructions."; \
 			exit 1; \
 		}
+
+generate-sql:
+	go run github.com/sqlc-dev/sqlc/cmd/sqlc generate -f .configs/sqlc.yaml
+	go run github.com/sqlc-dev/sqlc/cmd/sqlc vet -f .configs/sqlc.yaml
+	go run mvdan.cc/gofumpt@latest -w ./

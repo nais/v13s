@@ -2,10 +2,11 @@ package grpcpagination
 
 import (
 	"errors"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
+
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/stretchr/testify/assert"
 )
 
 type MockRequest struct {

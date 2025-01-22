@@ -3,15 +3,16 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
 	"github.com/nais/v13s/internal/grpc/grpcpagination"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"log"
-	"strings"
-	"time"
 )
 
 var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)

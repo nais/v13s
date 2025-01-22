@@ -2,6 +2,7 @@ package iterator
 
 import (
 	"context"
+
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
