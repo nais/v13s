@@ -94,8 +94,10 @@ message Summary {
 
 message GetVulnerabilitySummaryResponse {
   Filter filter = 1;
-  Summary vulnerability_summary = 2;
-  PageInfo page_info = 3;
+  int32 total_workloads = 2;
+  int32 workloads_with_sbom = 3;
+  Summary vulnerability_summary = 4;
+  PageInfo page_info = 5;
 }
 
 message Workload {
