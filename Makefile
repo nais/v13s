@@ -5,7 +5,8 @@ build:
 	go build -o bin/api ./cmd/api
 
 fmt:
-	go run mvdan.cc/gofumpt@latest -w ./
+	@echo "Running go fmt..."
+	go fmt $(GO_PACKAGES)
 
 test:
 	go test -cover --race ./...
