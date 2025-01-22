@@ -197,9 +197,15 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, err
 	}
 
+	pageInfo, err := grpcpagination.PageInfo(request, len(workloadVulnerabilities))
+	if err != nil {
+		return nil, err
+	}
+
 	return &vulnerabilities.ListVulnerabilitiesResponse{
 		Filter:    request.Filter,
 		Workloads: workloadVulnerabilities,
+		PageInfo:  pageInfo,
 	}, nil
 }
 
@@ -295,9 +301,15 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabiliti
 		}
 	}
 
+	pageInfo, err := grpcpagination.PageInfo(req, 1)
+	if err != nil {
+		return nil, err
+	}
+
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               req.Filter,
 		VulnerabilitySummary: &summary,
+		PageInfo:             pageInfo,
 	}
 	return response, nil
 }
