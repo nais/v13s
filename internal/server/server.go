@@ -69,12 +69,7 @@ func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilitie
 	return summaries
 }
 
-func (s *Server) getFilteredSummaries(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]*vulnerabilities.WorkloadSummary, error) {
-	projects, err := s.getFilteredProjects(ctx, filter, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Server) getFilteredSummaries(projects []client.Project, filter *vulnerabilities.Filter) ([]*vulnerabilities.WorkloadSummary, error) {
 	allSummaries := s.parseSummariesFrom(projects)
 	filteredSummaries := allSummaries
 
@@ -94,7 +89,12 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabil
 		return nil, err
 	}
 
-	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter, limit, offset)
+	projects, err := s.getFilteredProjects(ctx, req.Filter, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	filteredSummaries, err := s.getFilteredSummaries(projects, req.Filter)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,17 @@ func (s *Server) getFindings(ctx context.Context, project client.Project, suppre
 }
 
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
-	filteredSummaries, err := s.getFilteredSummaries(ctx, req.Filter, 50, 0)
+	limit, offset, err := grpcpagination.Pagination(req)
+	if err != nil {
+		return nil, err
+	}
+
+	projects, err := s.getFilteredProjects(ctx, req.Filter, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	filteredSummaries, err := s.getFilteredSummaries(projects, req.Filter)
 	if err != nil {
 		return nil, err
 	}

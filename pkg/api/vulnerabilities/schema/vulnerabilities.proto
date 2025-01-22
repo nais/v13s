@@ -39,6 +39,18 @@ service Vulnz {
 }
  */
 
+message Filter {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+}
+
+message WorkloadSummary {
+  Workload workload = 1;
+  Summary vulnerability_summary = 2;
+}
+
 message ListVulnerabilitySummariesRequest {
   Filter filter = 1;
   int64 limit = 2;
@@ -63,54 +75,10 @@ message ListVulnerabilitiesResponse {
   PageInfo page_info = 3;
 }
 
-message GetVulnerabilitySummaryResponse {
-  Filter filter = 1;
-  Summary vulnerability_summary = 2;
-}
-
-message WorkloadSummary {
-  Workload workload = 1;
-  Summary vulnerability_summary = 2;
-}
-
 message GetVulnerabilitySummaryRequest {
   Filter filter = 1;
-}
-
-message Filter {
-  optional string cluster = 1;
-  optional string namespace = 2;
-  optional string workload = 3;
-  optional string workload_type = 4;
-}
-
-message Workload {
-  string cluster = 1;
-  string namespace = 2;
-  string name = 3;
-  string type = 4;
-  string image = 5;
-}
-
-message WorkloadVulnerabilities {
-  Workload workload = 1;
-  repeated Vulnerability vulnerabilities = 2;
-  optional google.protobuf.Timestamp last_updated = 3;
-}
-
-// TODO: should it be grouped by package like now or cwe?
-message Vulnerability {
-  string package = 1;
-  Cwe cwe = 2;
-  optional bool suppressed = 3;
-}
-
-message Cwe {
-  string id = 1;
-  string title = 2;
-  string description = 3;
-  string link = 4;
-  Severity severity = 5;
+  int64 limit = 2;
+  int64 offset = 3;
 }
 
 message Summary {
@@ -124,6 +92,20 @@ message Summary {
   optional google.protobuf.Timestamp last_updated = 8;
 }
 
+message GetVulnerabilitySummaryResponse {
+  Filter filter = 1;
+  Summary vulnerability_summary = 2;
+  PageInfo page_info = 3;
+}
+
+message Workload {
+  string cluster = 1;
+  string namespace = 2;
+  string name = 3;
+  string type = 4;
+  string image = 5;
+}
+
 enum Severity {
   UNKNOWN = 0;
   CRITICAL = 1;
@@ -131,4 +113,25 @@ enum Severity {
   MEDIUM = 3;
   LOW = 4;
   UNASSIGNED = 5;
+}
+
+message Cwe {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string link = 4;
+  Severity severity = 5;
+}
+
+// TODO: should it be grouped by package like now or cwe?
+message Vulnerability {
+  string package = 1;
+  Cwe cwe = 2;
+  optional bool suppressed = 3;
+}
+
+message WorkloadVulnerabilities {
+  Workload workload = 1;
+  repeated Vulnerability vulnerabilities = 2;
+  optional google.protobuf.Timestamp last_updated = 3;
 }

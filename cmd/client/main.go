@@ -27,18 +27,6 @@ func main() {
 
 	handle(resp, err)
 
-	resp2, err := c.GetVulnerabilitySummaryResponse(
-		context.Background(),
-		vulnerabilities.ClusterFilter("prod-gcp"),
-		vulnerabilities.NamespaceFilter("nais-system"),
-	)
-
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Filters: %v\n", resp2.Filter)
-	fmt.Printf("summary: %v\n", resp2.VulnerabilitySummary)
-
 	resp3, err := c.ListVulnerabilities(
 		context.Background(),
 		vulnerabilities.ClusterFilter("prod-gcp"),
@@ -56,6 +44,19 @@ func main() {
 		fmt.Printf("workload: %v\n", v.Workload)
 		fmt.Printf("vulnerabilities: %v\n", v.Vulnerabilities)
 	}
+
+	resp2, err := c.GetVulnerabilitySummaryResponse(
+		context.Background(),
+		vulnerabilities.ClusterFilter("prod-gcp"),
+		vulnerabilities.NamespaceFilter("nais-system"),
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Filters: %v\n", resp2.Filter)
+	fmt.Printf("summary: %v\n", resp2.VulnerabilitySummary)
 }
 
 func handle(resp *vulnerabilities.ListVulnerabilitySummariesResponse, err error) {

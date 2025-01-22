@@ -1,7 +1,6 @@
 package vulnerabilities
 
 import (
-	"fmt"
 	"google.golang.org/grpc"
 )
 
@@ -79,7 +78,6 @@ func Suppressed() Option {
 
 func Limit(limit int64) Option {
 	return newFuncOption(func(o *options) {
-		fmt.Println("limit", limit)
 		o.limit = limit
 	})
 }
