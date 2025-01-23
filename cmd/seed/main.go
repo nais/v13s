@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
 	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 func main() {
@@ -25,8 +26,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	
-	projects, err := dpClient.GetProjectsByTag(ctx, "nais-system", 10, 0)
+
+	projects, err := dpClient.GetProjectsByTag(ctx, "team:nais-system", 10, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -44,6 +45,16 @@ func main() {
 		if project.Metrics == nil {
 			fmt.Println("project metrics is nil", project)
 			continue
+		}
+
+		image := sql.CreateImageParams{
+			Name: *project.Name,
+			Tag:  *project.Version,
+		}
+
+		_, err := db.CreateImage(ctx, image)
+		if err != nil {
+			panic(err)
 		}
 
 		arg := sql.CreateVulnerabilitySummaryParams{

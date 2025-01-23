@@ -64,6 +64,13 @@ func AllWorkloadTypeValues() []WorkloadType {
 	}
 }
 
+type Image struct {
+	Name      string
+	Tag       string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type VulnerabilitySummary struct {
 	ID         pgtype.UUID
 	ImageName  string

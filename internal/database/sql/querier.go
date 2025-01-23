@@ -8,6 +8,7 @@ import (
 
 type Querier interface {
 	Create(ctx context.Context, arg CreateParams) (*Workload, error)
+	CreateImage(ctx context.Context, arg CreateImageParams) (*Image, error)
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	ListVulnerabilitySummary(ctx context.Context, arg ListVulnerabilitySummaryParams) ([]*VulnerabilitySummary, error)
 	Update(ctx context.Context, arg UpdateParams) (*Workload, error)
