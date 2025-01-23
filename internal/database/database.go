@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/exaring/otelpgx"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3"
 	"github.com/sirupsen/logrus"
@@ -55,20 +54,21 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 		}),
 	)
 
-	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		t, err := conn.LoadType(ctx, "slug") // slug type
-		if err != nil {
-			return fmt.Errorf("failed to load type: %w", err)
-		}
-		conn.TypeMap().RegisterType(t)
-
-		t, err = conn.LoadType(ctx, "_slug") // array of slug type
-		if err != nil {
-			return fmt.Errorf("failed to load type: %w", err)
-		}
-		conn.TypeMap().RegisterType(t)
-		return nil
-	}
+	// TODO: Add custom types
+	//config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+	//	t, err := conn.LoadType(ctx, "slug") // slug type
+	//	if err != nil {
+	//		return fmt.Errorf("failed to load type: %w", err)
+	//	}
+	//	conn.TypeMap().RegisterType(t)
+	//
+	//	t, err = conn.LoadType(ctx, "_slug") // array of slug type
+	//	if err != nil {
+	//		return fmt.Errorf("failed to load type: %w", err)
+	//	}
+	//	conn.TypeMap().RegisterType(t)
+	//	return nil
+	//}
 
 	conn, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {

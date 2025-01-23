@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/nais/v13s/internal/database"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/dependencytrack"
@@ -26,6 +29,12 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
+	ctx := context.Background()
+	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", log.WithField("component", "database"))
+	if err != nil {
+		panic(err)
+	}
+	defer pool.Close()
 	grpcServer := grpc.NewServer()
 	dpClient, err := dependencytrack.NewClient(
 		os.Getenv("V13S_DEPENDENCYTRACK_API_KEY"),
@@ -41,13 +50,11 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Println("gRPC server is running on port 50051...")
 		if err := grpcServer.Serve(listener); err != nil {
 			log.Fatalf("Failed to serve: %v", err)
 		}
 	}()
 
 	<-stop
-	log.Println("Shutting down gRPC server...")
 	grpcServer.GracefulStop()
 }

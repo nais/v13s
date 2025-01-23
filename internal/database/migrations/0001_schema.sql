@@ -18,19 +18,8 @@ $$;
 CREATE
 EXTENSION fuzzystrmatch;
 
--- functions
-CREATE
-OR REPLACE FUNCTION set_updated_at () RETURNS TRIGGER AS $$
-BEGIN NEW.updated_at
-= NOW();
-RETURN NEW;
-END; $$
-LANGUAGE plpgsql
-;
-
 CREATE TYPE workload_type AS ENUM('deployment')
 ;
-
 
 -- tables
 CREATE TABLE workloads
@@ -42,7 +31,8 @@ CREATE TABLE workloads
     cluster       TEXT          NOT NULL,
     image_name    TEXT          NOT NULL,
     image_tag     TEXT          NOT NULL,
-    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 )
 ;
 
@@ -51,12 +41,35 @@ CREATE TABLE images
     name       TEXT NOT NULL,
     tag        TEXT NOT NULL,
     PRIMARY KEY (name, tag),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+)
+;
+
+CREATE TABLE vulnerability_summary
+(
+    id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
+    image_name TEXT NOT NULL,
+    image_tag  TEXT NOT NULL,
+    critical   INT  NOT NULL,
+    high       INT  NOT NULL,
+    medium     INT  NOT NULL,
+    low        INT  NOT NULL,
+    unassigned INT  NOT NULL,
+    risk_score INT  NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 )
 ;
 
 ALTER TABLE workloads
     ADD CONSTRAINT fk_image
         FOREIGN KEY (image_name, image_tag)
-        REFERENCES images (name, tag)
-        ON DELETE CASCADE;
+            REFERENCES images (name, tag)
+            ON DELETE CASCADE;
+
+ALTER TABLE vulnerability_summary
+    ADD CONSTRAINT fk_image
+        FOREIGN KEY (image_name, image_tag)
+            REFERENCES images (name, tag)
+            ON DELETE CASCADE;
