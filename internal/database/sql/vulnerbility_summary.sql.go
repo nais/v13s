@@ -57,7 +57,7 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 	return &i, err
 }
 
-const listVulnerabilitySummary = `-- name: ListVulnerabilitySummary :many
+const listAllVulnerabilitySummaries = `-- name: ListAllVulnerabilitySummaries :many
 SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at FROM vulnerability_summary
 ORDER BY
     CASE
@@ -74,14 +74,14 @@ OFFSET
 	$2
 `
 
-type ListVulnerabilitySummaryParams struct {
+type ListAllVulnerabilitySummariesParams struct {
 	OrderBy string
 	Offset  int32
 	Limit   int32
 }
 
-func (q *Queries) ListVulnerabilitySummary(ctx context.Context, arg ListVulnerabilitySummaryParams) ([]*VulnerabilitySummary, error) {
-	rows, err := q.db.Query(ctx, listVulnerabilitySummary, arg.OrderBy, arg.Offset, arg.Limit)
+func (q *Queries) ListAllVulnerabilitySummaries(ctx context.Context, arg ListAllVulnerabilitySummariesParams) ([]*VulnerabilitySummary, error) {
+	rows, err := q.db.Query(ctx, listAllVulnerabilitySummaries, arg.OrderBy, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +101,114 @@ func (q *Queries) ListVulnerabilitySummary(ctx context.Context, arg ListVulnerab
 			&i.RiskScore,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVulnerabilitySummaries = `-- name: ListVulnerabilitySummaries :many
+SELECT
+    w.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    v.critical,
+    v.high,
+    v.medium,
+    v.low,
+    v.unassigned,
+    v.risk_score,
+    w.created_at AS workload_created_at,
+    w.updated_at AS workload_updated_at,
+    v.created_at AS vulnerability_created_at,
+    v.updated_at AS vulnerability_updated_at
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+WHERE
+    (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
+  AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
+  AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
+  AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
+ORDER BY w.updated_at DESC
+LIMIT
+    $6
+OFFSET
+    $5
+`
+
+type ListVulnerabilitySummariesParams struct {
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+	WorkloadName *string
+	Offset       int32
+	Limit        int32
+}
+
+type ListVulnerabilitySummariesRow struct {
+	ID                     pgtype.UUID
+	WorkloadName           string
+	WorkloadType           string
+	Namespace              string
+	Cluster                string
+	ImageName              string
+	ImageTag               string
+	Critical               *int32
+	High                   *int32
+	Medium                 *int32
+	Low                    *int32
+	Unassigned             *int32
+	RiskScore              *int32
+	WorkloadCreatedAt      pgtype.Timestamptz
+	WorkloadUpdatedAt      pgtype.Timestamptz
+	VulnerabilityCreatedAt pgtype.Timestamptz
+	VulnerabilityUpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error) {
+	rows, err := q.db.Query(ctx, listVulnerabilitySummaries,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListVulnerabilitySummariesRow{}
+	for rows.Next() {
+		var i ListVulnerabilitySummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.RiskScore,
+			&i.WorkloadCreatedAt,
+			&i.WorkloadUpdatedAt,
+			&i.VulnerabilityCreatedAt,
+			&i.VulnerabilityUpdatedAt,
 		); err != nil {
 			return nil, err
 		}

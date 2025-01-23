@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const create = `-- name: Create :one
+const createWorkload = `-- name: CreateWorkload :one
 INSERT INTO
     workloads (name, workload_type, namespace, cluster, image_name, image_tag)
 VALUES
@@ -18,17 +18,17 @@ RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 `
 
-type CreateParams struct {
+type CreateWorkloadParams struct {
 	Name         string
-	WorkloadType WorkloadType
+	WorkloadType string
 	Namespace    string
 	Cluster      string
 	ImageName    string
 	ImageTag     string
 }
 
-func (q *Queries) Create(ctx context.Context, arg CreateParams) (*Workload, error) {
-	row := q.db.QueryRow(ctx, create,
+func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error) {
+	row := q.db.QueryRow(ctx, createWorkload,
 		arg.Name,
 		arg.WorkloadType,
 		arg.Namespace,
@@ -51,7 +51,7 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) (*Workload, erro
 	return &i, err
 }
 
-const update = `-- name: Update :one
+const updateWorkload = `-- name: UpdateWorkload :one
 UPDATE workloads
 SET
     name = COALESCE($1, name),
@@ -66,9 +66,9 @@ RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 `
 
-type UpdateParams struct {
+type UpdateWorkloadParams struct {
 	Name         *string
-	WorkloadType NullWorkloadType
+	WorkloadType *string
 	Namespace    *string
 	Cluster      *string
 	ImageName    *string
@@ -76,8 +76,8 @@ type UpdateParams struct {
 	ID           pgtype.UUID
 }
 
-func (q *Queries) Update(ctx context.Context, arg UpdateParams) (*Workload, error) {
-	row := q.db.QueryRow(ctx, update,
+func (q *Queries) UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error) {
+	row := q.db.QueryRow(ctx, updateWorkload,
 		arg.Name,
 		arg.WorkloadType,
 		arg.Namespace,

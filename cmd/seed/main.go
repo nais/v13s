@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/nais/v13s/internal/dependencytrack/client"
 
 	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/database"
@@ -41,6 +44,13 @@ func main() {
 	defer pool.Close()
 
 	db := sql.New(pool)
+
+	log.Infof("reseting database")
+	err = db.ResetDatabase(ctx)
+	if err != nil {
+		panic(err)
+	}
+
 	for _, project := range projects {
 		if project.Metrics == nil {
 			fmt.Println("project metrics is nil", project)
@@ -55,6 +65,14 @@ func main() {
 		_, err := db.CreateImage(ctx, image)
 		if err != nil {
 			panic(err)
+		}
+
+		workloads := toCreateWorkloadParams(project, image)
+		for _, workload := range workloads {
+			_, err := db.CreateWorkload(ctx, *workload)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		arg := sql.CreateVulnerabilitySummaryParams{
@@ -73,4 +91,28 @@ func main() {
 		}
 		log.Infof("created vulnerability summary: %v", res)
 	}
+}
+
+func toCreateWorkloadParams(p client.Project, image sql.CreateImageParams) []*sql.CreateWorkloadParams {
+	workloads := make([]*sql.CreateWorkloadParams, 0)
+	for _, t := range p.Tags {
+		if strings.HasPrefix(*t.Name, "workload:") {
+			parts := strings.Split(strings.TrimPrefix(*t.Name, "workload:"), "|")
+			if len(parts) != 4 {
+				log.Printf("Invalid workload tag: %s", *t.Name)
+				continue
+			}
+			fmt.Printf("workload: %v\n", parts)
+			workloads = append(workloads, &sql.CreateWorkloadParams{
+				Cluster:      parts[0],
+				Namespace:    parts[1],
+				WorkloadType: parts[2],
+				Name:         parts[3],
+				ImageName:    image.Name,
+				ImageTag:     image.Tag,
+			})
+
+		}
+	}
+	return workloads
 }

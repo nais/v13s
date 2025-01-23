@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/database/sql"
 	"net"
 	"os"
 	"os/signal"
@@ -30,11 +31,16 @@ func main() {
 	}
 
 	ctx := context.Background()
+	log.Infof("initializing database")
+
+	// TODO: fix env stuff, use transactions etc. look at nais api
 	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", log.WithField("component", "database"))
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create database pool: %v", err)
 	}
 	defer pool.Close()
+	db := sql.New(pool)
+
 	grpcServer := grpc.NewServer()
 	dpClient, err := dependencytrack.NewClient(
 		os.Getenv("V13S_DEPENDENCYTRACK_API_KEY"),
@@ -44,7 +50,7 @@ func main() {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &server.Server{DpClient: dpClient})
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &server.Server{DpClient: dpClient, Db: db})
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

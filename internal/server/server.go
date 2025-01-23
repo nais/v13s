@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/database/sql"
 	"log"
 	"strings"
 	"time"
@@ -20,6 +21,58 @@ var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
 type Server struct {
 	vulnerabilities.UnimplementedVulnerabilitiesServer
 	DpClient *dependencytrack.Client
+	Db       *sql.Queries
+}
+
+func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(req)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries, err := s.Db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
+		Cluster:      req.Filter.Cluster,
+		Namespace:    req.Filter.Namespace,
+		WorkloadType: req.Filter.WorkloadType,
+		WorkloadName: req.Filter.Workload,
+		Limit:        limit,
+		Offset:       offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
+	}
+
+	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+		return &vulnerabilities.WorkloadSummary{
+			Workload: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				Type:      row.WorkloadType,
+			},
+			VulnerabilitySummary: &vulnerabilities.Summary{
+				Unknown:     0,
+				Critical:    *row.Critical,
+				High:        *row.High,
+				Medium:      *row.Medium,
+				Low:         *row.Low,
+				Unassigned:  *row.Unassigned,
+				RiskScore:   *row.RiskScore,
+				LastUpdated: timestamppb.New(row.VulnerabilityUpdatedAt.Time),
+			},
+		}
+	})
+
+	pageInfo, err := grpcpagination.PageInfo(req, len(ws))
+	if err != nil {
+		return nil, err
+	}
+
+	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
+		WorkloadSummaries: ws,
+		PageInfo:          pageInfo,
+	}
+	return response, nil
 }
 
 func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]client.Project, error) {
@@ -82,34 +135,6 @@ func (s *Server) getFilteredSummaries(projects []client.Project, filter *vulnera
 	}
 
 	return filteredSummaries, nil
-}
-
-func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
-	limit, offset, err := grpcpagination.Pagination(req)
-	if err != nil {
-		return nil, err
-	}
-
-	projects, err := s.getFilteredProjects(ctx, req.Filter, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	filteredSummaries, err := s.getFilteredSummaries(projects, req.Filter)
-	if err != nil {
-		return nil, err
-	}
-
-	pageInfo, err := grpcpagination.PageInfo(req, len(filteredSummaries))
-	if err != nil {
-		return nil, err
-	}
-
-	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
-		WorkloadSummaries: filteredSummaries,
-		PageInfo:          pageInfo,
-	}
-	return response, nil
 }
 
 func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {

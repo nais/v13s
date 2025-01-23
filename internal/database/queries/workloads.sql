@@ -1,4 +1,4 @@
--- name: Create :one
+-- name: CreateWorkload :one
 INSERT INTO
     workloads (name, workload_type, namespace, cluster, image_name, image_tag)
 VALUES
@@ -7,7 +7,7 @@ RETURNING
     *
 ;
 
--- name: Update :one
+-- name: UpdateWorkload :one
 UPDATE workloads
 SET
     name = COALESCE(sqlc.narg(name), name),

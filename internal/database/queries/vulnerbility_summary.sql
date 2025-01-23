@@ -22,7 +22,7 @@ RETURNING
     *
 ;
 
--- name: ListVulnerabilitySummary :many
+-- name: ListAllVulnerabilitySummaries :many
 SELECT * FROM vulnerability_summary
 ORDER BY
     CASE
@@ -37,4 +37,38 @@ LIMIT
 	sqlc.arg('limit')
 OFFSET
 	sqlc.arg('offset')
+;
+
+-- name: ListVulnerabilitySummaries :many
+SELECT
+    w.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    v.critical,
+    v.high,
+    v.medium,
+    v.low,
+    v.unassigned,
+    v.risk_score,
+    w.created_at AS workload_created_at,
+    w.updated_at AS workload_updated_at,
+    v.created_at AS vulnerability_created_at,
+    v.updated_at AS vulnerability_updated_at
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+WHERE
+    (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+ORDER BY w.updated_at DESC
+LIMIT
+    sqlc.arg('limit')
+OFFSET
+    sqlc.arg('offset')
 ;
