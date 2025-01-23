@@ -1,29 +1,21 @@
 package grpcpagination
 
 import (
-	"errors"
-	"math"
-
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
 type Paginatable interface {
-	GetLimit() int64
-	GetOffset() int64
+	GetLimit() int32
+	GetOffset() int32
 }
 
 func Pagination(r Paginatable) (limit int32, offset int32, err error) {
-	l, o := r.GetLimit(), r.GetOffset()
-	if l > math.MaxInt32 || o > math.MaxInt32 {
-		return 0, 0, errors.New("limit or offset exceeds maximum int32 value")
-	}
-
-	limit, offset = int32(l), int32(o)
+	limit = r.GetLimit()
 	if limit == 0 {
 		limit = 50
 	}
 
-	return limit, offset, nil
+	return limit, r.GetOffset(), nil
 }
 
 func PageInfo(r Paginatable, total int) (*vulnerabilities.PageInfo, error) {

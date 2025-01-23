@@ -14,8 +14,8 @@ type options struct {
 	filter      *Filter
 	callOptions []grpc.CallOption
 	suppressed  bool
-	limit       int64
-	offset      int64
+	limit       int32
+	offset      int32
 	// sorting..
 }
 
@@ -76,13 +76,13 @@ func Suppressed() Option {
 	})
 }
 
-func Limit(limit int64) Option {
+func Limit(limit int32) Option {
 	return newFuncOption(func(o *options) {
 		o.limit = limit
 	})
 }
 
-func Offset(offset int64) Option {
+func Offset(offset int32) Option {
 	return newFuncOption(func(o *options) {
 		o.offset = offset
 	})

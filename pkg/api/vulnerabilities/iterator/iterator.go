@@ -12,9 +12,9 @@ type Iterable[T any] interface {
 }
 
 type Iterator[T any, I Iterable[T]] struct {
-	offset int64
-	limit  int64
-	req    func(limit, offset int64) (I, error)
+	offset int32
+	limit  int32
+	req    func(limit, offset int32) (I, error)
 
 	// internal
 	buffer      []T
@@ -23,7 +23,7 @@ type Iterator[T any, I Iterable[T]] struct {
 	err         error
 }
 
-func New[T any, I Iterable[T]](ctx context.Context, limit int64, req func(limit, offset int64) (I, error)) *Iterator[T, I] {
+func New[T any, I Iterable[T]](ctx context.Context, limit int32, req func(limit, offset int32) (I, error)) *Iterator[T, I] {
 	return &Iterator[T, I]{
 		limit:       limit,
 		req:         req,

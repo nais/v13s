@@ -1,8 +1,6 @@
 package grpcpagination
 
 import (
-	"errors"
-	"math"
 	"testing"
 
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -10,12 +8,12 @@ import (
 )
 
 type MockRequest struct {
-	Limit  int64
-	Offset int64
+	Limit  int32
+	Offset int32
 }
 
-func (m *MockRequest) GetLimit() int64  { return m.Limit }
-func (m *MockRequest) GetOffset() int64 { return m.Offset }
+func (m *MockRequest) GetLimit() int32  { return m.Limit }
+func (m *MockRequest) GetOffset() int32 { return m.Offset }
 
 func TestPagination(t *testing.T) {
 	tests := []struct {
@@ -27,7 +25,6 @@ func TestPagination(t *testing.T) {
 	}{
 		{"Default limit", &MockRequest{0, 0}, 50, 0, nil},
 		{"Custom limit", &MockRequest{100, 10}, 100, 10, nil},
-		{"Exceed max int32", &MockRequest{math.MaxInt64, math.MaxInt64}, 0, 0, errors.New("limit or offset exceeds maximum int32 value")},
 	}
 
 	for _, tt := range tests {
@@ -58,13 +55,6 @@ func TestPageInfo(t *testing.T) {
 				HasPreviousPage: true,
 			},
 			nil,
-		},
-		{
-			"Input exceeds max int32",
-			&MockRequest{math.MaxInt64, math.MaxInt64},
-			300,
-			nil,
-			errors.New("limit or offset exceeds maximum int32 value"),
 		},
 	}
 
