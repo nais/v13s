@@ -28,28 +28,29 @@ func main() {
 
 	handle(resp, err)
 
-	resp3, err := c.ListVulnerabilities(
-		context.Background(),
-		vulnerabilities.ClusterFilter("prod-gcp"),
-		vulnerabilities.NamespaceFilter("nais-system"),
-		vulnerabilities.WorkloadTypeFilter("job"),
-		vulnerabilities.Limit(10),
-		vulnerabilities.Suppressed(),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Filters: %v\n", resp3.Filter)
-	for _, v := range resp3.Workloads {
-		fmt.Printf("workload: %v\n", v.Workload)
-		fmt.Printf("vulnerabilities: %v\n", v.Vulnerabilities)
-	}
+	//resp3, err := c.ListVulnerabilities(
+	//	context.Background(),
+	//	vulnerabilities.ClusterFilter("prod-gcp"),
+	//	vulnerabilities.NamespaceFilter("nais-system"),
+	//	vulnerabilities.WorkloadTypeFilter("job"),
+	//	vulnerabilities.Limit(10),
+	//	vulnerabilities.Suppressed(),
+	//)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//fmt.Printf("Filters: %v\n", resp3.Filter)
+	//for _, v := range resp3.Workloads {
+	//	fmt.Printf("workload: %v\n", v.Workload)
+	//	fmt.Printf("vulnerabilities: %v\n", v.Vulnerabilities)
+	//}
 
 	resp2, err := c.GetVulnerabilitySummaryResponse(
 		context.Background(),
 		vulnerabilities.ClusterFilter("prod-gcp"),
 		vulnerabilities.NamespaceFilter("nais-system"),
+		vulnerabilities.WorkloadFilter("pull-metrics"),
 	)
 	if err != nil {
 		panic(err)

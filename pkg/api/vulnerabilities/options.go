@@ -70,6 +70,15 @@ func WorkloadTypeFilter(name string) Option {
 	})
 }
 
+func WorkloadFilter(name string) Option {
+	return newFuncOption(func(o *options) {
+		if o.filter == nil {
+			o.filter = &Filter{}
+		}
+		o.filter.Workload = &name
+	})
+}
+
 func Suppressed() Option {
 	return newFuncOption(func(o *options) {
 		o.suppressed = true

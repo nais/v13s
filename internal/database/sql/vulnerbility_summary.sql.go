@@ -57,6 +57,65 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 	return &i, err
 }
 
+const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
+SELECT
+    CAST(COUNT(w.id) AS INT4) AS total_workloads,
+    CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical_vulnerabilities,
+    CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high_vulnerabilities,
+    CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium_vulnerabilities,
+    CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low_vulnerabilities,
+    CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned_vulnerabilities,
+    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS total_risk_score,
+    TO_CHAR(COALESCE(MAX(v.updated_at), '1970-01-01 00:00:00'), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS vulnerability_updated_at
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+WHERE
+    (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
+  AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
+  AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.workload_type = $3::TEXT ELSE TRUE END)
+  AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.name = $4::TEXT ELSE TRUE END)
+`
+
+type GetVulnerabilitySummaryParams struct {
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+	WorkloadName *string
+}
+
+type GetVulnerabilitySummaryRow struct {
+	TotalWorkloads            int32
+	CriticalVulnerabilities   int32
+	HighVulnerabilities       int32
+	MediumVulnerabilities     int32
+	LowVulnerabilities        int32
+	UnassignedVulnerabilities int32
+	TotalRiskScore            int32
+	VulnerabilityUpdatedAt    string
+}
+
+func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
+	row := q.db.QueryRow(ctx, getVulnerabilitySummary,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+	)
+	var i GetVulnerabilitySummaryRow
+	err := row.Scan(
+		&i.TotalWorkloads,
+		&i.CriticalVulnerabilities,
+		&i.HighVulnerabilities,
+		&i.MediumVulnerabilities,
+		&i.LowVulnerabilities,
+		&i.UnassignedVulnerabilities,
+		&i.TotalRiskScore,
+		&i.VulnerabilityUpdatedAt,
+	)
+	return &i, err
+}
+
 const listAllVulnerabilitySummaries = `-- name: ListAllVulnerabilitySummaries :many
 SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at FROM vulnerability_summary
 ORDER BY

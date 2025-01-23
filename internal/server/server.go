@@ -124,20 +124,6 @@ func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilitie
 	return summaries
 }
 
-func (s *Server) getFilteredSummaries(projects []client.Project, filter *vulnerabilities.Filter) ([]*vulnerabilities.WorkloadSummary, error) {
-	allSummaries := s.parseSummariesFrom(projects)
-	filteredSummaries := allSummaries
-
-	// Apply additional filtering for Workload and WorkloadType
-	if filter != nil && (filter.Workload != nil || filter.WorkloadType != nil) {
-		filteredSummaries = collections.Filter(allSummaries, func(summary *vulnerabilities.WorkloadSummary) bool {
-			return matchesFilter(summary.Workload, filter)
-		})
-	}
-
-	return filteredSummaries, nil
-}
-
 func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {
 	var workloads []*vulnerabilities.Workload
 
@@ -297,46 +283,35 @@ func (s *Server) getFindings(ctx context.Context, project client.Project, suppre
 }
 
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
-	limit, offset, err := grpcpagination.Pagination(req)
+	sum, err := s.Db.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
+		Cluster:      req.Filter.Cluster,
+		Namespace:    req.Filter.Namespace,
+		WorkloadType: req.Filter.WorkloadType,
+		WorkloadName: req.Filter.Workload,
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	projects, err := s.getFilteredProjects(ctx, req.Filter, limit, offset)
+	var summary = vulnerabilities.Summary{
+		Critical:   sum.CriticalVulnerabilities,
+		High:       sum.HighVulnerabilities,
+		Medium:     sum.MediumVulnerabilities,
+		Low:        sum.LowVulnerabilities,
+		Unassigned: sum.UnassignedVulnerabilities,
+		RiskScore:  sum.TotalRiskScore,
+	}
+
+	parsedTime, err := time.Parse(time.RFC3339, sum.VulnerabilityUpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	filteredSummaries, err := s.getFilteredSummaries(projects, req.Filter)
-	if err != nil {
-		return nil, err
-	}
-
-	now := time.Now().Truncate(24 * time.Hour)
-	lastUpdated := timestamppb.New(now)
-	summary := vulnerabilities.Summary{
-		LastUpdated: lastUpdated,
-	}
-
-	for _, sum := range filteredSummaries {
-		if sum.VulnerabilitySummary != nil {
-			summary.Critical += sum.VulnerabilitySummary.Critical
-			summary.High += sum.VulnerabilitySummary.High
-			summary.Medium += sum.VulnerabilitySummary.Medium
-			summary.Low += sum.VulnerabilitySummary.Low
-			summary.Unassigned += sum.VulnerabilitySummary.Unassigned
-		}
-	}
-
-	pageInfo, err := grpcpagination.PageInfo(req, 1)
-	if err != nil {
-		return nil, err
-	}
-
+	summary.LastUpdated = timestamppb.New(parsedTime)
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               req.Filter,
 		VulnerabilitySummary: &summary,
-		PageInfo:             pageInfo,
 	}
 	return response, nil
 }
