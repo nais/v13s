@@ -56,4 +56,3 @@ generate_dp_track:
 generate-sql:
 	go run github.com/sqlc-dev/sqlc/cmd/sqlc generate -f .configs/sqlc.yaml
 	go run github.com/sqlc-dev/sqlc/cmd/sqlc vet -f .configs/sqlc.yaml
-	go run mvdan.cc/gofumpt@latest -w ./

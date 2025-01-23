@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nais/v13s/internal/database/sql"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/nais/v13s/internal/database/sql"
 
 	"github.com/nais/v13s/internal/database"
 	log "github.com/sirupsen/logrus"

@@ -3,10 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/nais/v13s/internal/database/sql"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/nais/v13s/internal/database/sql"
 
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/dependencytrack"
