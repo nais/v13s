@@ -19,16 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Management_CreateWorkload_FullMethodName = "/Management/CreateWorkload"
-	Management_UpdateWorkload_FullMethodName = "/Management/UpdateWorkload"
+	Management_RegisterWorkload_FullMethodName = "/Management/RegisterWorkload"
 )
 
 // ManagementClient is the client API for Management service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ManagementClient interface {
-	CreateWorkload(ctx context.Context, in *CreateWorkloadRequest, opts ...grpc.CallOption) (*CreateWorkloadResponse, error)
-	UpdateWorkload(ctx context.Context, in *UpdateWorkloadRequest, opts ...grpc.CallOption) (*UpdateWorkloadResponse, error)
+	RegisterWorkload(ctx context.Context, in *RegisterWorkloadRequest, opts ...grpc.CallOption) (*RegisterWorkloadResponse, error)
 }
 
 type managementClient struct {
@@ -39,20 +37,10 @@ func NewManagementClient(cc grpc.ClientConnInterface) ManagementClient {
 	return &managementClient{cc}
 }
 
-func (c *managementClient) CreateWorkload(ctx context.Context, in *CreateWorkloadRequest, opts ...grpc.CallOption) (*CreateWorkloadResponse, error) {
+func (c *managementClient) RegisterWorkload(ctx context.Context, in *RegisterWorkloadRequest, opts ...grpc.CallOption) (*RegisterWorkloadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateWorkloadResponse)
-	err := c.cc.Invoke(ctx, Management_CreateWorkload_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *managementClient) UpdateWorkload(ctx context.Context, in *UpdateWorkloadRequest, opts ...grpc.CallOption) (*UpdateWorkloadResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateWorkloadResponse)
-	err := c.cc.Invoke(ctx, Management_UpdateWorkload_FullMethodName, in, out, cOpts...)
+	out := new(RegisterWorkloadResponse)
+	err := c.cc.Invoke(ctx, Management_RegisterWorkload_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +51,7 @@ func (c *managementClient) UpdateWorkload(ctx context.Context, in *UpdateWorkloa
 // All implementations must embed UnimplementedManagementServer
 // for forward compatibility.
 type ManagementServer interface {
-	CreateWorkload(context.Context, *CreateWorkloadRequest) (*CreateWorkloadResponse, error)
-	UpdateWorkload(context.Context, *UpdateWorkloadRequest) (*UpdateWorkloadResponse, error)
+	RegisterWorkload(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error)
 	mustEmbedUnimplementedManagementServer()
 }
 
@@ -75,11 +62,8 @@ type ManagementServer interface {
 // pointer dereference when methods are called.
 type UnimplementedManagementServer struct{}
 
-func (UnimplementedManagementServer) CreateWorkload(context.Context, *CreateWorkloadRequest) (*CreateWorkloadResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateWorkload not implemented")
-}
-func (UnimplementedManagementServer) UpdateWorkload(context.Context, *UpdateWorkloadRequest) (*UpdateWorkloadResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkload not implemented")
+func (UnimplementedManagementServer) RegisterWorkload(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterWorkload not implemented")
 }
 func (UnimplementedManagementServer) mustEmbedUnimplementedManagementServer() {}
 func (UnimplementedManagementServer) testEmbeddedByValue()                    {}
@@ -102,38 +86,20 @@ func RegisterManagementServer(s grpc.ServiceRegistrar, srv ManagementServer) {
 	s.RegisterService(&Management_ServiceDesc, srv)
 }
 
-func _Management_CreateWorkload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateWorkloadRequest)
+func _Management_RegisterWorkload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterWorkloadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ManagementServer).CreateWorkload(ctx, in)
+		return srv.(ManagementServer).RegisterWorkload(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Management_CreateWorkload_FullMethodName,
+		FullMethod: Management_RegisterWorkload_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ManagementServer).CreateWorkload(ctx, req.(*CreateWorkloadRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Management_UpdateWorkload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateWorkloadRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ManagementServer).UpdateWorkload(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Management_UpdateWorkload_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ManagementServer).UpdateWorkload(ctx, req.(*UpdateWorkloadRequest))
+		return srv.(ManagementServer).RegisterWorkload(ctx, req.(*RegisterWorkloadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -146,12 +112,8 @@ var Management_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ManagementServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateWorkload",
-			Handler:    _Management_CreateWorkload_Handler,
-		},
-		{
-			MethodName: "UpdateWorkload",
-			Handler:    _Management_UpdateWorkload_Handler,
+			MethodName: "RegisterWorkload",
+			Handler:    _Management_RegisterWorkload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

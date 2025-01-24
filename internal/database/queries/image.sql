@@ -7,3 +7,6 @@ RETURNING
         *
 ;
 
+-- name: GetImage :one
+SELECT * FROM images WHERE name = @name AND tag = @tag;
+

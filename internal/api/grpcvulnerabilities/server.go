@@ -70,6 +70,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	return response, nil
 }
 
+// TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
+// TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
 	sum, err := s.Db.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:      request.Filter.Cluster,

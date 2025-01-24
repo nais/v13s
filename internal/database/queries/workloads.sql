@@ -1,3 +1,27 @@
+-- name: UpsertWorkload :exec
+INSERT INTO workloads(
+    name,
+    workload_type,
+    namespace,
+    cluster,
+    image_name,
+    image_tag
+)
+VALUES (
+    @name,
+    @workload_type,
+    @namespace,
+    @cluster,
+    @image_name,
+    @image_tag
+) ON CONFLICT
+    ON CONSTRAINT workload_id DO
+        UPDATE
+    SET
+        image_name = @image_name,
+        image_tag = @image_tag
+;
+
 -- name: CreateWorkload :one
 INSERT INTO
     workloads (name, workload_type, namespace, cluster, image_name, image_tag)
@@ -10,14 +34,13 @@ RETURNING
 -- name: UpdateWorkload :one
 UPDATE workloads
 SET
-    name = COALESCE(sqlc.narg(name), name),
-    workload_type = COALESCE(sqlc.narg(workload_type), workload_type),
-    namespace = COALESCE(sqlc.narg(namespace), namespace),
-    cluster = COALESCE(sqlc.narg(cluster), cluster),
-    image_name = COALESCE(sqlc.narg(image_name), image_name),
-    image_tag = COALESCE(sqlc.narg(image_tag), image_tag)
+    image_name = @image_name,
+    image_tag = @image_tag
 WHERE
-    workloads.id = @id
+    cluster = @cluster AND
+    namespace = @namespace AND
+    workload_type = @workload_type AND
+    name = @name
 RETURNING
     *
 ;

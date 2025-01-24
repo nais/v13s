@@ -3,6 +3,7 @@ package vulnerabilities
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 
 	"google.golang.org/grpc"
 )
@@ -12,13 +13,19 @@ type Client interface {
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
+	management.ManagementClient
 }
 
 var _ Client = &client{}
 
 type client struct {
 	c    VulnerabilitiesClient
+	m    management.ManagementClient
 	conn *grpc.ClientConn
+}
+
+func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWorkloadRequest, opts ...grpc.CallOption) (*management.RegisterWorkloadResponse, error) {
+	return c.m.RegisterWorkload(ctx, in, opts...)
 }
 
 func NewClient(target string, opts ...grpc.DialOption) (Client, error) {
@@ -28,6 +35,7 @@ func NewClient(target string, opts ...grpc.DialOption) (Client, error) {
 	}
 	return &client{
 		c:    NewVulnerabilitiesClient(conn),
+		m:    management.NewManagementClient(conn),
 		conn: conn,
 	}, nil
 }

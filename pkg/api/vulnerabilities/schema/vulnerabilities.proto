@@ -91,7 +91,7 @@ message Summary {
 
 message GetVulnerabilitySummaryResponse {
   Filter filter = 1;
-  Summary vulnerability_summary = 2;
+  optional Summary vulnerability_summary = 2;
   int32 workload_count = 3;
 }
 

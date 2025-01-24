@@ -26,6 +26,7 @@ CREATE TABLE workloads
     workload_type TEXT                                               NOT NULL,
     namespace     TEXT                                               NOT NULL,
     cluster       TEXT                                               NOT NULL,
+    CONSTRAINT workload_id UNIQUE (name, workload_type, namespace, cluster),
     image_name    TEXT                                               NOT NULL,
     image_tag     TEXT                                               NOT NULL,
     created_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,

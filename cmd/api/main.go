@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"net"
 	"os"
 	"os/signal"
@@ -51,7 +53,8 @@ func main() {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &grpcvulnerabilities.Server{DpClient: dpClient, Db: db})
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &grpcvulnerabilities.Server{Db: db})
+	management.RegisterManagementServer(grpcServer, &grpcmgmt.Server{Db: db, DpClient: dpClient})
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

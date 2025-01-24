@@ -3,11 +3,10 @@ syntax = "proto3";
 option go_package = "./pkg/api/vulnerabilities/management";
 
 service Management{
-  rpc CreateWorkload(CreateWorkloadRequest) returns (CreateWorkloadResponse);
-  rpc UpdateWorkload(UpdateWorkloadRequest) returns (UpdateWorkloadResponse);
+  rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
 }
 
-message CreateWorkloadRequest {
+message RegisterWorkloadRequest {
   string cluster = 1;
   string namespace = 2;
   string workload = 3;
@@ -21,18 +20,6 @@ message Metadata {
   map<string, string> labels = 1;
 }
 
-message CreateWorkloadResponse {}
-
-message UpdateWorkloadRequest {
-  string cluster = 1;
-  string namespace = 2;
-  string workload = 3;
-  string workload_type = 4;
-  string image_name = 5;
-  string image_tag = 6;
-  optional Metadata metadata = 7;
-}
-
-message UpdateWorkloadResponse {}
+message RegisterWorkloadResponse {}
 
 

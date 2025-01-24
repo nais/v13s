@@ -36,3 +36,25 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) (*Imag
 	)
 	return &i, err
 }
+
+const getImage = `-- name: GetImage :one
+SELECT name, tag, metadata, created_at, updated_at FROM images WHERE name = $1 AND tag = $2
+`
+
+type GetImageParams struct {
+	Name string
+	Tag  string
+}
+
+func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, error) {
+	row := q.db.QueryRow(ctx, getImage, arg.Name, arg.Tag)
+	var i Image
+	err := row.Scan(
+		&i.Name,
+		&i.Tag,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc"
@@ -17,6 +18,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	workloadManagement(c)
 
 	resp, err := c.ListVulnerabilitySummaries(
 		context.Background(),
@@ -58,6 +61,30 @@ func main() {
 
 	fmt.Printf("Filters: %v\n", resp2.Filter)
 	fmt.Printf("summary: %v\n", resp2.VulnerabilitySummary)
+}
+
+func workloadManagement(c vulnerabilities.Client) {
+	ctx := context.Background()
+	_, err := c.RegisterWorkload(
+		ctx,
+		&management.RegisterWorkloadRequest{
+			Cluster:      "dev-fss",
+			Namespace:    "nais-system",
+			Workload:     "aivenator",
+			WorkloadType: "app",
+			ImageName:    "europe-north1-docker.pkg.dev/nais-io/nais/images/aivenator",
+			ImageTag:     "2025-01-22-124805-9221180",
+			Metadata: &management.Metadata{
+				Labels: map[string]string{
+					"workflow": "deploy",
+				},
+			},
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func handle(resp *vulnerabilities.ListVulnerabilitySummariesResponse, err error) {

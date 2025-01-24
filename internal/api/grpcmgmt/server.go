@@ -2,6 +2,8 @@ package grpcmgmt
 
 import (
 	"context"
+	"errors"
+	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -15,24 +17,31 @@ type Server struct {
 	Db       *sql.Queries
 }
 
-func (s *Server) CreateWorkload(ctx context.Context, request *management.CreateWorkloadRequest) (*management.CreateWorkloadResponse, error) {
+func (s *Server) RegisterWorkload(ctx context.Context, request *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
 	metadata := map[string]string{}
 	if request.Metadata != nil {
 		metadata = request.Metadata.Labels
 	}
 
-	imageParams := sql.CreateImageParams{
-		Name:     request.ImageName,
-		Tag:      request.ImageTag,
-		Metadata: metadata,
-	}
+	_, err := s.Db.GetImage(ctx, sql.GetImageParams{
+		Name: request.ImageName,
+		Tag:  request.ImageTag,
+	})
 
-	_, err := s.Db.CreateImage(ctx, imageParams)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
+		_, err = s.Db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     request.ImageName,
+			Tag:      request.ImageTag,
+			Metadata: metadata,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
 		return nil, err
 	}
 
-	w := sql.CreateWorkloadParams{
+	w := sql.UpsertWorkloadParams{
 		Name:         request.Workload,
 		WorkloadType: request.WorkloadType,
 		Namespace:    request.Namespace,
@@ -41,7 +50,7 @@ func (s *Server) CreateWorkload(ctx context.Context, request *management.CreateW
 		ImageTag:     request.ImageTag,
 	}
 
-	_, err = s.Db.CreateWorkload(ctx, w)
+	err = s.Db.UpsertWorkload(ctx, w)
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +60,8 @@ func (s *Server) CreateWorkload(ctx context.Context, request *management.CreateW
 		return nil, err
 	}
 
-	response := &management.CreateWorkloadResponse{}
-	if p.Metrics == nil {
+	response := &management.RegisterWorkloadResponse{}
+	if p == nil || p.Metrics == nil {
 		return response, nil
 	}
 
@@ -76,9 +85,4 @@ func (s *Server) CreateWorkload(ctx context.Context, request *management.CreateW
 	err = s.Db.UpsertVulnerabilitySummary(ctx, summary)
 
 	return response, err
-}
-
-func (s *Server) UpdateWorkload(ctx context.Context, request *management.UpdateWorkloadRequest) (*management.UpdateWorkloadResponse, error) {
-	//TODO implement me
-	panic("implement me")
 }

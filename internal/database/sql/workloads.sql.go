@@ -5,8 +5,6 @@ package sql
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createWorkload = `-- name: CreateWorkload :one
@@ -54,37 +52,34 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 const updateWorkload = `-- name: UpdateWorkload :one
 UPDATE workloads
 SET
-    name = COALESCE($1, name),
-    workload_type = COALESCE($2, workload_type),
-    namespace = COALESCE($3, namespace),
-    cluster = COALESCE($4, cluster),
-    image_name = COALESCE($5, image_name),
-    image_tag = COALESCE($6, image_tag)
+    image_name = $1,
+    image_tag = $2
 WHERE
-    workloads.id = $7
+    cluster = $3 AND
+    namespace = $4 AND
+    workload_type = $5 AND
+    name = $6
 RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 `
 
 type UpdateWorkloadParams struct {
-	Name         *string
-	WorkloadType *string
-	Namespace    *string
-	Cluster      *string
-	ImageName    *string
-	ImageTag     *string
-	ID           pgtype.UUID
+	ImageName    string
+	ImageTag     string
+	Cluster      string
+	Namespace    string
+	WorkloadType string
+	Name         string
 }
 
 func (q *Queries) UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error) {
 	row := q.db.QueryRow(ctx, updateWorkload,
-		arg.Name,
-		arg.WorkloadType,
-		arg.Namespace,
-		arg.Cluster,
 		arg.ImageName,
 		arg.ImageTag,
-		arg.ID,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.Name,
 	)
 	var i Workload
 	err := row.Scan(
@@ -99,4 +94,49 @@ func (q *Queries) UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) 
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const upsertWorkload = `-- name: UpsertWorkload :exec
+INSERT INTO workloads(
+    name,
+    workload_type,
+    namespace,
+    cluster,
+    image_name,
+    image_tag
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+) ON CONFLICT
+    ON CONSTRAINT workload_id DO
+        UPDATE
+    SET
+        image_name = $5,
+        image_tag = $6
+`
+
+type UpsertWorkloadParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+}
+
+func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error {
+	_, err := q.db.Exec(ctx, upsertWorkload,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+		arg.ImageName,
+		arg.ImageTag,
+	)
+	return err
 }

@@ -10,6 +10,7 @@ type Querier interface {
 	CreateImage(ctx context.Context, arg CreateImageParams) (*Image, error)
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
+	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	ListAllVulnerabilitySummaries(ctx context.Context, arg ListAllVulnerabilitySummariesParams) ([]*VulnerabilitySummary, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
@@ -17,6 +18,7 @@ type Querier interface {
 	UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error)
 	UpsertVulnerabilitySummary(ctx context.Context, arg UpsertVulnerabilitySummaryParams) error
+	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error
 }
 
 var _ Querier = (*Queries)(nil)

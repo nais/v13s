@@ -2,7 +2,6 @@ package dependencytrack
 
 import (
 	"context"
-
 	"github.com/nais/v13s/internal/dependencytrack/client"
 )
 
@@ -77,10 +76,18 @@ func (c *Client) GetProjectsByTag(ctx context.Context, tag string, limit, offset
 }
 
 func (c *Client) GetProject(ctx context.Context, name, version string) (*client.Project, error) {
-	p, _, err := c.client.ProjectAPI.GetProjectByNameAndVersion(ctx).
+	p, resp, err := c.client.ProjectAPI.GetProjectByNameAndVersion(ctx).
 		Name(name).
 		Version(version).
 		Execute()
+
+	if resp != nil && resp.StatusCode == 404 {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	return p, err
 }
 
