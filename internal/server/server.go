@@ -52,7 +52,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, req *vulnerabil
 				Type:      row.WorkloadType,
 			},
 			VulnerabilitySummary: &vulnerabilities.Summary{
-				Unknown:     0,
 				Critical:    *row.Critical,
 				High:        *row.High,
 				Medium:      *row.Medium,
@@ -266,11 +265,6 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabiliti
 		return nil, err
 	}
 
-	parsedTime, err := time.Parse(time.RFC3339, sum.VulnerabilityUpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-
 	var summary = vulnerabilities.Summary{
 		Critical:    sum.CriticalVulnerabilities,
 		High:        sum.HighVulnerabilities,
@@ -278,14 +272,13 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabiliti
 		Low:         sum.LowVulnerabilities,
 		Unassigned:  sum.UnassignedVulnerabilities,
 		RiskScore:   sum.TotalRiskScore,
-		LastUpdated: timestamppb.New(parsedTime),
+		LastUpdated: timestamppb.New(time.Now()),
 	}
 
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               req.Filter,
 		VulnerabilitySummary: &summary,
-		// TODO: should we return the total number of workloads? or both?
-		TotalWorkloads: sum.TotalWorkloads,
+		WorkloadCount:        sum.WorkloadCount,
 	}
 	return response, nil
 }

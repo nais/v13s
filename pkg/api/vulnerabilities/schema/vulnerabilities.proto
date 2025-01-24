@@ -86,13 +86,13 @@ message Summary {
   int32 low = 4;
   int32 unassigned = 5;
   int32 riskScore = 6;
-  int32 total_workloads_with_sbom = 7;
-  optional google.protobuf.Timestamp last_updated = 8;
+  optional google.protobuf.Timestamp last_updated = 7;
 }
 
 message GetVulnerabilitySummaryResponse {
   Filter filter = 1;
   Summary vulnerability_summary = 2;
+  int32 workload_count = 3;
 }
 
 message Workload {

@@ -75,14 +75,13 @@ OFFSET
 
 -- name: GetVulnerabilitySummary :one
 SELECT
-    CAST(COUNT(w.id) AS INT4) AS total_workloads,
+    CAST(COUNT(w.id) AS INT4) AS workload_count,
     CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical_vulnerabilities,
     CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high_vulnerabilities,
     CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium_vulnerabilities,
     CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low_vulnerabilities,
     CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned_vulnerabilities,
-    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS total_risk_score,
-    TO_CHAR(COALESCE(MAX(v.updated_at), '1970-01-01 00:00:00'), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS vulnerability_updated_at
+    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS total_risk_score
 FROM workloads w
          LEFT JOIN vulnerability_summary v
                    ON w.image_name = v.image_name AND w.image_tag = v.image_tag
