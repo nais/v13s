@@ -28,6 +28,12 @@ sql:
         json_tags_id_uppercase: true
         omit_unused_structs: true
         omit_sqlc_version: true
+        overrides:
+          - column: "images.metadata"
+            go_type:
+              import: "github.com/nais/v13s/internal/database/typeext"
+              package: "typeext"
+              type: "MapStringString"
 #
 #  - <<: *default_domain
 #    name: "Service accounts SQL"

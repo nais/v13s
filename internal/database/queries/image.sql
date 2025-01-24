@@ -1,8 +1,8 @@
 -- name: CreateImage :one
 INSERT INTO
-        images (name, tag)
+        images (name, tag, metadata)
 VALUES
-        (@name, @tag)
+        (@name, @tag, @metadata)
 RETURNING
         *
 ;

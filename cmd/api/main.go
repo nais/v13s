@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"net"
 	"os"
 	"os/signal"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/dependencytrack"
-	"github.com/nais/v13s/internal/server"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc"
 )
@@ -51,7 +51,7 @@ func main() {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &server.Server{DpClient: dpClient, Db: db})
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &grpcvulnerabilities.Server{DpClient: dpClient, Db: db})
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

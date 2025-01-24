@@ -4,11 +4,13 @@ package sql
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 type Image struct {
 	Name      string
 	Tag       string
+	Metadata  typeext.MapStringString
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

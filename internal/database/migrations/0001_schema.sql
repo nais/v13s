@@ -18,7 +18,6 @@ $$;
 CREATE
 EXTENSION fuzzystrmatch;
 
-
 -- tables
 CREATE TABLE workloads
 (
@@ -40,6 +39,7 @@ CREATE TABLE images
     name       TEXT                                               NOT NULL,
     tag        TEXT                                               NOT NULL,
     PRIMARY KEY (name, tag),
+    metadata   JSONB                                              NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL
 )
@@ -57,7 +57,8 @@ CREATE TABLE vulnerability_summary
     unassigned INT                                                NOT NULL,
     risk_score INT                                                NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    CONSTRAINT image_name_tag UNIQUE (image_name, image_tag)
 )
 ;
 

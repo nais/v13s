@@ -1,3 +1,30 @@
+-- name: UpsertVulnerabilitySummary :exec
+INSERT INTO vulnerability_summary(image_name,
+                                  image_tag,
+                                  critical,
+                                  high,
+                                  medium,
+                                  low,
+                                  unassigned,
+                                  risk_score)
+VALUES (@image_name,
+        @image_tag,
+        @critical,
+        @high,
+        @medium,
+        @low,
+        @unassigned,
+        @risk_score) ON CONFLICT
+ON CONSTRAINT image_name_tag DO
+UPDATE
+    SET critical = @critical,
+    high = @high,
+    medium = @medium,
+    low = @low,
+    unassigned = @unassigned,
+    risk_score = @risk_score
+;
+
 -- name: CreateVulnerabilitySummary :one
 INSERT INTO
     vulnerability_summary (image_name, image_tag, critical, high, medium, low, unassigned, risk_score)

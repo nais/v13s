@@ -76,6 +76,14 @@ func (c *Client) GetProjectsByTag(ctx context.Context, tag string, limit, offset
 	})
 }
 
+func (c *Client) GetProject(ctx context.Context, name, version string) (*client.Project, error) {
+	p, _, err := c.client.ProjectAPI.GetProjectByNameAndVersion(ctx).
+		Name(name).
+		Version(version).
+		Execute()
+	return p, err
+}
+
 func (c *Client) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
 	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1

@@ -16,6 +16,7 @@ type Querier interface {
 	ResetDatabase(ctx context.Context) error
 	UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error)
+	UpsertVulnerabilitySummary(ctx context.Context, arg UpsertVulnerabilitySummaryParams) error
 }
 
 var _ Querier = (*Queries)(nil)

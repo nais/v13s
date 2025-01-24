@@ -327,3 +327,55 @@ func (q *Queries) UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVuln
 	)
 	return &i, err
 }
+
+const upsertVulnerabilitySummary = `-- name: UpsertVulnerabilitySummary :exec
+INSERT INTO vulnerability_summary(image_name,
+                                  image_tag,
+                                  critical,
+                                  high,
+                                  medium,
+                                  low,
+                                  unassigned,
+                                  risk_score)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8) ON CONFLICT
+ON CONSTRAINT image_name_tag DO
+UPDATE
+    SET critical = $3,
+    high = $4,
+    medium = $5,
+    low = $6,
+    unassigned = $7,
+    risk_score = $8
+`
+
+type UpsertVulnerabilitySummaryParams struct {
+	ImageName  string
+	ImageTag   string
+	Critical   int32
+	High       int32
+	Medium     int32
+	Low        int32
+	Unassigned int32
+	RiskScore  int32
+}
+
+func (q *Queries) UpsertVulnerabilitySummary(ctx context.Context, arg UpsertVulnerabilitySummaryParams) error {
+	_, err := q.db.Exec(ctx, upsertVulnerabilitySummary,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.Critical,
+		arg.High,
+		arg.Medium,
+		arg.Low,
+		arg.Unassigned,
+		arg.RiskScore,
+	)
+	return err
+}

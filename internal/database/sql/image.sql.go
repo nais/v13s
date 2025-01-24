@@ -5,28 +5,32 @@ package sql
 
 import (
 	"context"
+
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 const createImage = `-- name: CreateImage :one
 INSERT INTO
-        images (name, tag)
+        images (name, tag, metadata)
 VALUES
-        ($1, $2)
+        ($1, $2, $3)
 RETURNING
-        name, tag, created_at, updated_at
+        name, tag, metadata, created_at, updated_at
 `
 
 type CreateImageParams struct {
-	Name string
-	Tag  string
+	Name     string
+	Tag      string
+	Metadata typeext.MapStringString
 }
 
 func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) (*Image, error) {
-	row := q.db.QueryRow(ctx, createImage, arg.Name, arg.Tag)
+	row := q.db.QueryRow(ctx, createImage, arg.Name, arg.Tag, arg.Metadata)
 	var i Image
 	err := row.Scan(
 		&i.Name,
 		&i.Tag,
+		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
