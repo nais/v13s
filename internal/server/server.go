@@ -96,34 +96,6 @@ func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilitie
 	return s.DpClient.GetProjects(ctx, limit, offset)
 }
 
-func (s *Server) parseSummariesFrom(projects []client.Project) []*vulnerabilities.WorkloadSummary {
-	var summaries []*vulnerabilities.WorkloadSummary
-
-	for _, project := range projects {
-		workloads := s.extractWorkloadsFromProject(project)
-
-		for _, w := range workloads {
-			summary := &vulnerabilities.WorkloadSummary{
-				Workload: w,
-			}
-
-			if project.Metrics != nil {
-				summary.VulnerabilitySummary = metric(
-					project.Metrics.Critical,
-					project.Metrics.High,
-					project.Metrics.Medium,
-					project.Metrics.Low,
-					*project.Metrics.Unassigned,
-				)
-			}
-
-			summaries = append(summaries, summary)
-		}
-	}
-
-	return summaries
-}
-
 func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {
 	var workloads []*vulnerabilities.Workload
 
@@ -294,24 +266,26 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, req *vulnerabiliti
 		return nil, err
 	}
 
-	var summary = vulnerabilities.Summary{
-		Critical:   sum.CriticalVulnerabilities,
-		High:       sum.HighVulnerabilities,
-		Medium:     sum.MediumVulnerabilities,
-		Low:        sum.LowVulnerabilities,
-		Unassigned: sum.UnassignedVulnerabilities,
-		RiskScore:  sum.TotalRiskScore,
-	}
-
 	parsedTime, err := time.Parse(time.RFC3339, sum.VulnerabilityUpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	summary.LastUpdated = timestamppb.New(parsedTime)
+	var summary = vulnerabilities.Summary{
+		Critical:    sum.CriticalVulnerabilities,
+		High:        sum.HighVulnerabilities,
+		Medium:      sum.MediumVulnerabilities,
+		Low:         sum.LowVulnerabilities,
+		Unassigned:  sum.UnassignedVulnerabilities,
+		RiskScore:   sum.TotalRiskScore,
+		LastUpdated: timestamppb.New(parsedTime),
+	}
+
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               req.Filter,
 		VulnerabilitySummary: &summary,
+		// TODO: should we return the total number of workloads? or both?
+		TotalWorkloads: sum.TotalWorkloads,
 	}
 	return response, nil
 }
@@ -342,15 +316,5 @@ func workload(c, ns, n, t, i string) *vulnerabilities.Workload {
 		Name:      n,
 		Type:      t,
 		Image:     i,
-	}
-}
-
-func metric(c, h, m, l, u int32) *vulnerabilities.Summary {
-	return &vulnerabilities.Summary{
-		Critical:   c,
-		High:       h,
-		Medium:     m,
-		Low:        l,
-		Unassigned: u,
 	}
 }
