@@ -17,4 +17,4 @@ packages:
       Querier:
   github.com/nais/v13s/internal/dependencytrack:
     interfaces:
-      InternalClient:
+      Client:

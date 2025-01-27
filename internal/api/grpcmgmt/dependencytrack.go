@@ -14,26 +14,26 @@ import (
 
 func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]client.Project, error) {
 	if filter == nil {
-		return s.DpClient.GetProjects(ctx, limit, offset)
+		return s.client.GetProjects(ctx, limit, offset)
 	}
 
 	if filter.Cluster != nil && filter.Namespace != nil {
 		tagFilter := "team:" + *filter.Namespace
-		return s.DpClient.GetProjectsByTag(ctx, tagFilter, limit, offset)
+		return s.client.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	} else if filter.Cluster != nil {
 		tagFilter := "env:" + *filter.Cluster
-		return s.DpClient.GetProjectsByTag(ctx, tagFilter, limit, offset)
+		return s.client.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	} else if filter.Namespace != nil {
 		tagFilter := "team:" + *filter.Namespace
-		return s.DpClient.GetProjectsByTag(ctx, tagFilter, limit, offset)
+		return s.client.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	}
 
 	// Fetch all projects if no specific cluster or namespace is defined
-	return s.DpClient.GetProjects(ctx, limit, offset)
+	return s.client.GetProjects(ctx, limit, offset)
 }
 
 func (s *Server) getFindings(ctx context.Context, project client.Project, suppressed bool) ([]client.Finding, error) {
-	projectFindings, err := s.DpClient.GetFindings(ctx, project.Uuid, suppressed)
+	projectFindings, err := s.client.GetFindings(ctx, project.Uuid, suppressed)
 	if err != nil {
 		return nil, err
 	}

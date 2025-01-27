@@ -13,8 +13,15 @@ var _ management.ManagementServer = (*Server)(nil)
 
 type Server struct {
 	management.UnimplementedManagementServer
-	DpClient *dependencytrack.Client
-	Db       *sql.Queries
+	client dependencytrack.Client
+	db     sql.Querier
+}
+
+func NewServer(db sql.Querier, client dependencytrack.Client) *Server {
+	return &Server{
+		db:     db,
+		client: client,
+	}
 }
 
 func (s *Server) RegisterWorkload(ctx context.Context, request *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
@@ -23,17 +30,18 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		metadata = request.Metadata.Labels
 	}
 
-	_, err := s.Db.GetImage(ctx, sql.GetImageParams{
+	_, err := s.db.GetImage(ctx, sql.GetImageParams{
 		Name: request.ImageName,
 		Tag:  request.ImageTag,
 	})
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		_, err = s.Db.CreateImage(ctx, sql.CreateImageParams{
+		_, err = s.db.CreateImage(ctx, sql.CreateImageParams{
 			Name:     request.ImageName,
 			Tag:      request.ImageTag,
 			Metadata: metadata,
 		})
+
 		if err != nil {
 			return nil, err
 		}
@@ -50,12 +58,12 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		ImageTag:     request.ImageTag,
 	}
 
-	err = s.Db.UpsertWorkload(ctx, w)
+	err = s.db.UpsertWorkload(ctx, w)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := s.DpClient.GetProject(ctx, request.ImageName, request.ImageTag)
+	p, err := s.client.GetProject(ctx, request.ImageName, request.ImageTag)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +90,7 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		summary.RiskScore = int32(*p.Metrics.InheritedRiskScore)
 	}
 
-	err = s.Db.UpsertVulnerabilitySummary(ctx, summary)
+	err = s.db.UpsertVulnerabilitySummary(ctx, summary)
 
 	return response, err
 }

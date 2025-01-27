@@ -7,7 +7,16 @@ import (
 
 const ClientXApiKeyHeader = "X-Api-Key"
 
-type Client struct {
+var _ Client = &dependencyTrackClient{}
+
+type Client interface {
+	GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error)
+	GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error)
+	GetProject(ctx context.Context, name, version string) (*client.Project, error)
+	GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error)
+}
+
+type dependencyTrackClient struct {
 	client *client.APIClient
 }
 
@@ -32,18 +41,18 @@ func setupConfig(apiKey, url string) *client.Configuration {
 	return cfg
 }
 
-func NewClient(apiKey, url string) (*Client, error) {
-	return &Client{client.NewAPIClient(setupConfig(apiKey, url))}, nil
+func NewClient(apiKey, url string) (Client, error) {
+	return &dependencyTrackClient{client.NewAPIClient(setupConfig(apiKey, url))}, nil
 }
 
-func (c *Client) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
+func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
 	p, _, err := c.client.FindingAPI.GetFindingsByProject(ctx, uuid).
 		Suppressed(suppressed).
 		Execute()
 	return p, err
 }
 
-func (c *Client) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
+func (c *dependencyTrackClient) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
 	var allProjects []client.Project
 
 	for {
@@ -64,7 +73,7 @@ func (c *Client) paginateProjects(ctx context.Context, limit, offset int32, call
 	return allProjects, nil
 }
 
-func (c *Client) GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error) {
+func (c *dependencyTrackClient) GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error) {
 	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
 		p, _, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
@@ -75,7 +84,7 @@ func (c *Client) GetProjectsByTag(ctx context.Context, tag string, limit, offset
 	})
 }
 
-func (c *Client) GetProject(ctx context.Context, name, version string) (*client.Project, error) {
+func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version string) (*client.Project, error) {
 	p, resp, err := c.client.ProjectAPI.GetProjectByNameAndVersion(ctx).
 		Name(name).
 		Version(version).
@@ -91,7 +100,7 @@ func (c *Client) GetProject(ctx context.Context, name, version string) (*client.
 	return p, err
 }
 
-func (c *Client) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
+func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
 	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
 		p, _, err := c.client.ProjectAPI.GetProjects(ctx).
