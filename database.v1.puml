@@ -1,0 +1,76 @@
+@startuml
+!define primary_key(x) <b>x</b>
+!define foreign_key(x) <i>x</i>
+
+entity workloads {
+    primary_key(id) UUID
+    name TEXT
+    workload_type TEXT
+    namespace TEXT
+    cluster TEXT
+    image_name TEXT
+    image_tag TEXT
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+entity images {
+    primary_key(name) TEXT
+    primary_key(tag) TEXT
+    metadata JSONB
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+entity vulnerability_summary {
+    primary_key(id) UUID
+    image_name TEXT
+    image_tag TEXT
+    critical INT
+    high INT
+    medium INT
+    low INT
+    unassigned INT
+    risk_score INT
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+entity vulnerabilities {
+    primary_key(id) UUID
+    image_name TEXT
+    image_tag TEXT
+    package TEXT
+    cwe_id TEXT
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+entity suppressed_vulnerabilities {
+    primary_key(id) UUID
+    image_name TEXT
+    package TEXT
+    cwe_id TEXT
+    suppressed BOOLEAN
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+entity cwe {
+    primary_key(cwe_id) TEXT
+    cwe_title TEXT
+    cwe_desc TEXT
+    cwe_link TEXT
+    severity INT
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+' Adjusting layout to make it more vertical
+workloads ||--|{ images : "uses"
+vulnerability_summary ||--|| images : "analyzes"
+vulnerabilities ||--|| images : "scans"
+vulnerabilities }|--|| cwe : "linked to"
+suppressed_vulnerabilities }|--|| cwe : "related to"
+
+@enduml

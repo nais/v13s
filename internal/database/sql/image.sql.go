@@ -9,13 +9,12 @@ import (
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
-const createImage = `-- name: CreateImage :one
+const createImage = `-- name: CreateImage :exec
 INSERT INTO
         images (name, tag, metadata)
 VALUES
         ($1, $2, $3)
-RETURNING
-        name, tag, metadata, created_at, updated_at
+ON CONFLICT DO NOTHING
 `
 
 type CreateImageParams struct {
@@ -24,17 +23,9 @@ type CreateImageParams struct {
 	Metadata typeext.MapStringString
 }
 
-func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) (*Image, error) {
-	row := q.db.QueryRow(ctx, createImage, arg.Name, arg.Tag, arg.Metadata)
-	var i Image
-	err := row.Scan(
-		&i.Name,
-		&i.Tag,
-		&i.Metadata,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return &i, err
+func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error {
+	_, err := q.db.Exec(ctx, createImage, arg.Name, arg.Tag, arg.Metadata)
+	return err
 }
 
 const getImage = `-- name: GetImage :one

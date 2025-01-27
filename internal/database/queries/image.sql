@@ -1,10 +1,9 @@
--- name: CreateImage :one
+-- name: CreateImage :exec
 INSERT INTO
         images (name, tag, metadata)
 VALUES
         (@name, @tag, @metadata)
-RETURNING
-        *
+ON CONFLICT DO NOTHING
 ;
 
 -- name: GetImage :one

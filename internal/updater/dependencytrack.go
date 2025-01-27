@@ -1,4 +1,4 @@
-package grpcmgmt
+package updater
 
 import (
 	"context"
@@ -13,43 +13,43 @@ import (
 	"time"
 )
 
-func (s *Server) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]client.Project, error) {
+func (u *Updater) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]client.Project, error) {
 	if filter == nil {
-		return s.client.GetProjects(ctx, limit, offset)
+		return u.source.GetProjects(ctx, limit, offset)
 	}
 
 	if filter.Cluster != nil && filter.Namespace != nil {
 		tagFilter := "team:" + *filter.Namespace
-		return s.client.GetProjectsByTag(ctx, tagFilter, limit, offset)
+		return u.source.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	} else if filter.Cluster != nil {
 		tagFilter := "env:" + *filter.Cluster
-		return s.client.GetProjectsByTag(ctx, tagFilter, limit, offset)
+		return u.source.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	} else if filter.Namespace != nil {
 		tagFilter := "team:" + *filter.Namespace
-		return s.client.GetProjectsByTag(ctx, tagFilter, limit, offset)
+		return u.source.GetProjectsByTag(ctx, tagFilter, limit, offset)
 	}
 
 	// Fetch all projects if no specific cluster or namespace is defined
-	return s.client.GetProjects(ctx, limit, offset)
+	return u.source.GetProjects(ctx, limit, offset)
 }
 
-func (s *Server) getFindings(ctx context.Context, project client.Project, suppressed bool) ([]client.Finding, error) {
-	projectFindings, err := s.client.GetFindings(ctx, project.Uuid, suppressed)
+func (u *Updater) getFindings(ctx context.Context, project client.Project, suppressed bool) ([]client.Finding, error) {
+	projectFindings, err := u.source.GetFindings(ctx, project.Uuid, suppressed)
 	if err != nil {
 		return nil, err
 	}
 	return projectFindings, nil
 }
 
-func (s *Server) getVulnerabilitiesForWorkload(ctx context.Context, project client.Project, workload *vulnerabilities.Workload, includeSuppressed bool) (*vulnerabilities.WorkloadVulnerabilities, error) {
-	findings, err := s.getFindings(ctx, project, includeSuppressed)
+func (u *Updater) getVulnerabilitiesForWorkload(ctx context.Context, project client.Project, workload *vulnerabilities.Workload, includeSuppressed bool) (*vulnerabilities.WorkloadVulnerabilities, error) {
+	findings, err := u.getFindings(ctx, project, includeSuppressed)
 	if err != nil {
 		return nil, err
 	}
 
 	var vuln []*vulnerabilities.Vulnerability
 	for _, finding := range findings {
-		vulnerability, err := s.parseFindingToVulnerability(finding)
+		vulnerability, err := u.parseFindingToVulnerability(finding)
 		if err != nil {
 			return nil, err
 		}
@@ -63,15 +63,15 @@ func (s *Server) getVulnerabilitiesForWorkload(ctx context.Context, project clie
 	}, nil
 }
 
-func (s *Server) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilities, error) {
+func (u *Updater) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilities, error) {
 	var workloadVulnerabilities []*vulnerabilities.WorkloadVulnerabilities
 
 	for _, project := range projects {
-		workloads := s.extractWorkloadsFromProject(project)
-		filteredWorkloads := s.filterWorkloads(workloads, request.Filter)
+		workloads := u.extractWorkloadsFromProject(project)
+		filteredWorkloads := u.filterWorkloads(workloads, request.Filter)
 
 		for _, w := range filteredWorkloads {
-			vuln, err := s.getVulnerabilitiesForWorkload(ctx, project, w, request.GetSuppressed())
+			vuln, err := u.getVulnerabilitiesForWorkload(ctx, project, w, request.GetSuppressed())
 			if err != nil {
 				return nil, err
 			}
@@ -82,7 +82,7 @@ func (s *Server) processProjects(ctx context.Context, projects []client.Project,
 	return workloadVulnerabilities, nil
 }
 
-func (s *Server) parseFinding(imageName, imageTag string, finding client.Finding) (*sql.Vulnerability, *sql.Cwe, error) {
+func (u *Updater) parseFinding(imageName, imageTag string, finding client.Finding) (*sql.Vulnerability, *sql.Cwe, error) {
 	component, componentOk := finding.GetComponentOk()
 	if !componentOk {
 		return nil, nil, fmt.Errorf("missing component for finding")
@@ -146,7 +146,7 @@ func (s *Server) parseFinding(imageName, imageTag string, finding client.Finding
 		nil
 }
 
-func (s *Server) parseFindingToVulnerability(finding client.Finding) (*vulnerabilities.Vulnerability, error) {
+func (u *Updater) parseFindingToVulnerability(finding client.Finding) (*vulnerabilities.Vulnerability, error) {
 	component, componentOk := finding.GetComponentOk()
 	if !componentOk {
 		return nil, fmt.Errorf("missing component for finding")
@@ -198,7 +198,7 @@ func (s *Server) parseFindingToVulnerability(finding client.Finding) (*vulnerabi
 	}, nil
 }
 
-func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {
+func (u *Updater) extractWorkloadsFromProject(project client.Project) []*vulnerabilities.Workload {
 	var workloads []*vulnerabilities.Workload
 
 	for _, tag := range project.Tags {
@@ -218,7 +218,7 @@ func (s *Server) extractWorkloadsFromProject(project client.Project) []*vulnerab
 	return workloads
 }
 
-func (s *Server) filterWorkloads(workloads []*vulnerabilities.Workload, filter *vulnerabilities.Filter) []*vulnerabilities.Workload {
+func (u *Updater) filterWorkloads(workloads []*vulnerabilities.Workload, filter *vulnerabilities.Filter) []*vulnerabilities.Workload {
 	if filter == nil || (filter.Workload == nil && filter.WorkloadType == nil) {
 		return workloads
 	}
