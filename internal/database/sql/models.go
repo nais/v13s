@@ -7,10 +7,30 @@ import (
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
+type Cwe struct {
+	CweID     string
+	CweTitle  string
+	CweDesc   string
+	CweLink   string
+	Severity  int32
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type Image struct {
 	Name      string
 	Tag       string
 	Metadata  typeext.MapStringString
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type Vulnerability struct {
+	ID        pgtype.UUID
+	ImageName string
+	ImageTag  string
+	Package   string
+	CweID     string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

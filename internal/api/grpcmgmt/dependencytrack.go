@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack/client"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	log "github.com/sirupsen/logrus"
@@ -79,6 +80,70 @@ func (s *Server) processProjects(ctx context.Context, projects []client.Project,
 	}
 
 	return workloadVulnerabilities, nil
+}
+
+func (s *Server) parseFinding(imageName, imageTag string, finding client.Finding) (*sql.Vulnerability, *sql.Cwe, error) {
+	component, componentOk := finding.GetComponentOk()
+	if !componentOk {
+		return nil, nil, fmt.Errorf("missing component for finding")
+	}
+
+	analysis, analysisOk := finding.GetAnalysisOk()
+	if !analysisOk {
+		return nil, nil, fmt.Errorf("missing analysis for finding")
+	}
+
+	vulnData, vulnOk := finding.GetVulnerabilityOk()
+	if !vulnOk {
+		return nil, nil, fmt.Errorf("missing vulnerability data for finding")
+	}
+
+	var severity vulnerabilities.Severity
+	switch vulnData["severity"].(string) {
+	case "CRITICAL":
+		severity = vulnerabilities.Severity_CRITICAL
+	case "HIGH":
+		severity = vulnerabilities.Severity_HIGH
+	case "MEDIUM":
+		severity = vulnerabilities.Severity_MEDIUM
+	case "LOW":
+		severity = vulnerabilities.Severity_LOW
+	default:
+		severity = vulnerabilities.Severity_UNASSIGNED
+	}
+
+	var link string
+	switch vulnData["source"].(string) {
+	case "NVD":
+		link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vulnData["vulnId"].(string))
+	case "GITHUB":
+		link = fmt.Sprintf("https://github.com/advisories/%s", vulnData["vulnId"].(string))
+	}
+
+	// TODO: Implement isSuppressed
+	isSuppressed := analysis["isSuppressed"].(bool)
+	fmt.Printf("isSuppressed: %v\n", isSuppressed)
+	title := "unknown"
+	desc := "unknown"
+	if vulnData["title"] != nil {
+		title = vulnData["title"].(string)
+	}
+	if vulnData["description"] != nil {
+		desc = vulnData["description"].(string)
+	}
+	return &sql.Vulnerability{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Package:   component["purl"].(string),
+			CweID:     vulnData["vulnId"].(string),
+		}, &sql.Cwe{
+			CweID:    vulnData["vulnId"].(string),
+			CweTitle: title,
+			CweDesc:  desc,
+			CweLink:  link,
+			Severity: int32(severity),
+		},
+		nil
 }
 
 func (s *Server) parseFindingToVulnerability(finding client.Finding) (*vulnerabilities.Vulnerability, error) {

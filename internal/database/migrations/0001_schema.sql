@@ -63,6 +63,48 @@ CREATE TABLE vulnerability_summary
 )
 ;
 
+-- TODO: consider adding a type for severity
+-- TODO: consider adding a table for package and cwe
+CREATE TABLE vulnerabilities
+(
+    id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
+    image_name TEXT                                               NOT NULL,
+    image_tag  TEXT                                               NOT NULL,
+    package    TEXT                                               NOT NULL,
+    cwe_id     TEXT                                               NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    CONSTRAINT image_name_tag_cwe_id_package UNIQUE (image_name, image_tag, cwe_id, package)
+)
+;
+
+CREATE TABLE suppressed_vulnerabilities
+(
+    id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
+    image_name TEXT                                               NOT NULL,
+    package    TEXT                                               NOT NULL,
+    cwe_id     TEXT                                               NOT NULL,
+    suppressed BOOLEAN                                            NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    CONSTRAINT image_name_package_cwe_id UNIQUE (image_name, package, cwe_id)
+)
+;
+
+-- TODO: pluralize this table name?
+CREATE TABLE cwe
+(
+    cwe_id     TEXT                                               NOT NULL,
+    PRIMARY KEY (cwe_id),
+    cwe_title  TEXT                                               NOT NULL,
+    cwe_desc   TEXT                                               NOT NULL,
+    cwe_link   TEXT                                               NOT NULL,
+    severity   INT                                                NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL
+)
+;
+
 ALTER TABLE workloads
     ADD CONSTRAINT fk_image
         FOREIGN KEY (image_name, image_tag)
@@ -73,4 +115,16 @@ ALTER TABLE vulnerability_summary
     ADD CONSTRAINT fk_image
         FOREIGN KEY (image_name, image_tag)
             REFERENCES images (name, tag)
+            ON DELETE CASCADE;
+
+ALTER TABLE vulnerabilities
+    ADD CONSTRAINT fk_image
+        FOREIGN KEY (image_name, image_tag)
+            REFERENCES images (name, tag)
+            ON DELETE CASCADE;
+
+ALTER TABLE vulnerabilities
+    ADD CONSTRAINT fk_cwe
+        FOREIGN KEY (cwe_id)
+            REFERENCES cwe (cwe_id)
             ON DELETE CASCADE;

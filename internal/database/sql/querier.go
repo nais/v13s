@@ -7,10 +7,14 @@ import (
 )
 
 type Querier interface {
+	BatchUpsertCwe(ctx context.Context, arg []BatchUpsertCweParams) *BatchUpsertCweBatchResults
+	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	CreateImage(ctx context.Context, arg CreateImageParams) (*Image, error)
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
+	GetCwe(ctx context.Context, cweID string) (*Cwe, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
+	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	ListAllVulnerabilitySummaries(ctx context.Context, arg ListAllVulnerabilitySummariesParams) ([]*VulnerabilitySummary, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)

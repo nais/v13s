@@ -54,7 +54,7 @@ func main() {
 	}
 
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &grpcvulnerabilities.Server{Db: db})
-	management.RegisterManagementServer(grpcServer, &grpcmgmt.Server{db: db, client: dpClient})
+	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, dpClient))
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

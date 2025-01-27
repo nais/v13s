@@ -68,12 +68,12 @@ func workloadManagement(c vulnerabilities.Client) {
 	_, err := c.RegisterWorkload(
 		ctx,
 		&management.RegisterWorkloadRequest{
-			Cluster:      "dev-fss",
+			Cluster:      "management",
 			Namespace:    "nais-system",
-			Workload:     "aivenator",
+			Workload:     "console-frontend",
 			WorkloadType: "app",
-			ImageName:    "europe-north1-docker.pkg.dev/nais-io/nais/images/aivenator",
-			ImageTag:     "2025-01-22-124805-9221180",
+			ImageName:    "europe-north1-docker.pkg.dev/nais-io/nais/images/console-frontend",
+			ImageTag:     "2025-01-24-150550-a8e0b9e",
 			Metadata: &management.Metadata{
 				Labels: map[string]string{
 					"workflow": "deploy",
