@@ -29,7 +29,7 @@ gosec:
 	@echo "Running gosec..."
 	go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude G404,G101 --exclude-generated -terse ./...
 
-generate: generate-proto generate_dp_track
+generate: generate-proto generate_dp_track generate-sql generate-mocks
 
 generate-proto:
 	protoc \
@@ -56,3 +56,8 @@ generate_dp_track:
 generate-sql:
 	go run github.com/sqlc-dev/sqlc/cmd/sqlc generate -f .configs/sqlc.yaml
 	go run github.com/sqlc-dev/sqlc/cmd/sqlc vet -f .configs/sqlc.yaml
+
+generate-mocks:
+	find internal pkg -type f -name "mock_*.go" -delete
+	go run github.com/vektra/mockery/v2 --config ./.configs/mockery.yaml
+	find internal pkg -type f -name "mock_*.go" -exec go run mvdan.cc/gofumpt@latest -w {} \;
