@@ -67,7 +67,6 @@ func (c *client) GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Op
 
 func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error) {
 	o := applyOptions(opts...)
-
 	return c.c.ListVulnerabilities(
 		ctx,
 		&ListVulnerabilitiesRequest{

@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/v13s/internal/api/grpcpagination"
-	"time"
-
 	"github.com/nais/v13s/internal/database/sql"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
@@ -20,10 +19,73 @@ type Server struct {
 	Db *sql.Queries
 }
 
+func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.Filter == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	v, err := s.Db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+		Cluster:           request.Filter.Cluster,
+		Namespace:         request.Filter.Namespace,
+		WorkloadType:      request.Filter.WorkloadType,
+		WorkloadName:      request.Filter.Workload,
+		IncludeSuppressed: request.Suppressed,
+		Limit:             limit,
+		Offset:            offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
+	}
+
+	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.WorkloadVulnerabilities {
+		return &vulnerabilities.WorkloadVulnerabilities{
+			Workload: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				Type:      row.WorkloadType,
+			},
+			Vulnerabilities: []*vulnerabilities.Vulnerability{
+				{
+					Package: row.Package,
+					Cwe: &vulnerabilities.Cwe{
+						Id:          row.CweID,
+						Title:       row.CweTitle,
+						Description: row.CweDesc,
+						Link:        row.CweLink,
+						Severity:    vulnerabilities.Severity(row.Severity),
+					},
+					Suppressed: &row.Suppressed,
+				},
+			},
+		}
+	})
+
+	pageInfo, err := grpcpagination.PageInfo(request, len(vulnz))
+	if err != nil {
+		return nil, err
+	}
+
+	return &vulnerabilities.ListVulnerabilitiesResponse{
+		Filter:    request.Filter,
+		Workloads: vulnz,
+		PageInfo:  pageInfo,
+	}, nil
+}
+
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
+	}
+
+	if request.Filter == nil {
+		request.Filter = &vulnerabilities.Filter{}
 	}
 
 	summaries, err := s.Db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
@@ -73,6 +135,10 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 // TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
+	if request.Filter == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
 	sum, err := s.Db.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:      request.Filter.Cluster,
 		Namespace:    request.Filter.Namespace,

@@ -77,6 +77,73 @@ func AllImageStateValues() []ImageState {
 	}
 }
 
+type VulnerabilitySuppressReason string
+
+const (
+	VulnerabilitySuppressReasonInTriage      VulnerabilitySuppressReason = "in_triage"
+	VulnerabilitySuppressReasonResolved      VulnerabilitySuppressReason = "resolved"
+	VulnerabilitySuppressReasonFalsePositive VulnerabilitySuppressReason = "false_positive"
+	VulnerabilitySuppressReasonNotAffected   VulnerabilitySuppressReason = "not_affected"
+	VulnerabilitySuppressReasonNotSet        VulnerabilitySuppressReason = "not_set"
+)
+
+func (e *VulnerabilitySuppressReason) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = VulnerabilitySuppressReason(s)
+	case string:
+		*e = VulnerabilitySuppressReason(s)
+	default:
+		return fmt.Errorf("unsupported scan type for VulnerabilitySuppressReason: %T", src)
+	}
+	return nil
+}
+
+type NullVulnerabilitySuppressReason struct {
+	VulnerabilitySuppressReason VulnerabilitySuppressReason
+	Valid                       bool // Valid is true if VulnerabilitySuppressReason is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullVulnerabilitySuppressReason) Scan(value interface{}) error {
+	if value == nil {
+		ns.VulnerabilitySuppressReason, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.VulnerabilitySuppressReason.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullVulnerabilitySuppressReason) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.VulnerabilitySuppressReason), nil
+}
+
+func (e VulnerabilitySuppressReason) Valid() bool {
+	switch e {
+	case VulnerabilitySuppressReasonInTriage,
+		VulnerabilitySuppressReasonResolved,
+		VulnerabilitySuppressReasonFalsePositive,
+		VulnerabilitySuppressReasonNotAffected,
+		VulnerabilitySuppressReasonNotSet:
+		return true
+	}
+	return false
+}
+
+func AllVulnerabilitySuppressReasonValues() []VulnerabilitySuppressReason {
+	return []VulnerabilitySuppressReason{
+		VulnerabilitySuppressReasonInTriage,
+		VulnerabilitySuppressReasonResolved,
+		VulnerabilitySuppressReasonFalsePositive,
+		VulnerabilitySuppressReasonNotAffected,
+		VulnerabilitySuppressReasonNotSet,
+	}
+}
+
 type Cwe struct {
 	CweID     string
 	CweTitle  string
@@ -94,6 +161,18 @@ type Image struct {
 	State     ImageState
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type SuppressedVulnerability struct {
+	ID         pgtype.UUID
+	ImageName  string
+	Package    string
+	CweID      string
+	Suppressed bool
+	Reason     VulnerabilitySuppressReason
+	ReasonText string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type Vulnerability struct {

@@ -102,5 +102,8 @@ func applyOptions(opts ...Option) *options {
 	for _, opt := range opts {
 		opt.apply(o)
 	}
+	if o.filter == nil {
+		o.filter = &Filter{}
+	}
 	return o
 }

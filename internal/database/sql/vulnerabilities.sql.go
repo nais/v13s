@@ -5,6 +5,8 @@ package sql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getCwe = `-- name: GetCwe :one
@@ -20,6 +22,33 @@ func (q *Queries) GetCwe(ctx context.Context, cweID string) (*Cwe, error) {
 		&i.CweDesc,
 		&i.CweLink,
 		&i.Severity,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const getSuppressedVulnerability = `-- name: GetSuppressedVulnerability :one
+SELECT id, image_name, package, cwe_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1 AND package = $2 AND cwe_id = $3
+`
+
+type GetSuppressedVulnerabilityParams struct {
+	ImageName string
+	Package   string
+	CweID     string
+}
+
+func (q *Queries) GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error) {
+	row := q.db.QueryRow(ctx, getSuppressedVulnerability, arg.ImageName, arg.Package, arg.CweID)
+	var i SuppressedVulnerability
+	err := row.Scan(
+		&i.ID,
+		&i.ImageName,
+		&i.Package,
+		&i.CweID,
+		&i.Suppressed,
+		&i.Reason,
+		&i.ReasonText,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -55,4 +84,203 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const listSuppressedVulnerabilitiesForImage = `-- name: ListSuppressedVulnerabilitiesForImage :many
+SELECT id, image_name, package, cwe_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1
+ORDER BY updated_at DESC
+LIMIT
+    $3
+OFFSET
+    $2
+`
+
+type ListSuppressedVulnerabilitiesForImageParams struct {
+	ImageName string
+	Offset    int32
+	Limit     int32
+}
+
+func (q *Queries) ListSuppressedVulnerabilitiesForImage(ctx context.Context, arg ListSuppressedVulnerabilitiesForImageParams) ([]*SuppressedVulnerability, error) {
+	rows, err := q.db.Query(ctx, listSuppressedVulnerabilitiesForImage, arg.ImageName, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*SuppressedVulnerability{}
+	for rows.Next() {
+		var i SuppressedVulnerability
+		if err := rows.Scan(
+			&i.ID,
+			&i.ImageName,
+			&i.Package,
+			&i.CweID,
+			&i.Suppressed,
+			&i.Reason,
+			&i.ReasonText,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVulnerabilities = `-- name: ListVulnerabilities :many
+SELECT
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    v.image_name,
+    v.image_tag,
+    v.package,
+    v.cwe_id,
+    v.created_at,
+    v.updated_at,
+    c.cwe_title,
+    c.cwe_desc,
+    c.cwe_link,
+    c.severity,
+    COALESCE(sv.suppressed, FALSE) AS suppressed,
+    sv.reason,
+    sv.reason_text
+FROM vulnerabilities v
+         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cwe_id = sv.cwe_id
+WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
+   AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
+   AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
+   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
+   AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+ORDER BY (v.image_name, v.image_tag) DESC
+LIMIT
+    $7
+    OFFSET
+    $6
+`
+
+type ListVulnerabilitiesParams struct {
+	Cluster           *string
+	Namespace         *string
+	WorkloadType      *string
+	WorkloadName      *string
+	IncludeSuppressed *bool
+	Offset            int32
+	Limit             int32
+}
+
+type ListVulnerabilitiesRow struct {
+	WorkloadName string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+	Package      string
+	CweID        string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	CweTitle     string
+	CweDesc      string
+	CweLink      string
+	Severity     int32
+	Suppressed   bool
+	Reason       NullVulnerabilitySuppressReason
+	ReasonText   *string
+}
+
+func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
+	rows, err := q.db.Query(ctx, listVulnerabilities,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+		arg.IncludeSuppressed,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListVulnerabilitiesRow{}
+	for rows.Next() {
+		var i ListVulnerabilitiesRow
+		if err := rows.Scan(
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.Package,
+			&i.CweID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CweTitle,
+			&i.CweDesc,
+			&i.CweLink,
+			&i.Severity,
+			&i.Suppressed,
+			&i.Reason,
+			&i.ReasonText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const suppressVulnerability = `-- name: SuppressVulnerability :exec
+INSERT INTO suppressed_vulnerabilities(image_name,
+                                       package,
+                                       cwe_id,
+                                       suppressed,
+                                       reason,
+                                       reason_text)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6) ON CONFLICT
+ON CONSTRAINT image_name_package_cwe_id DO UPDATE
+SET suppressed = $4,
+    reason = $5,
+    reason_text = $6
+`
+
+type SuppressVulnerabilityParams struct {
+	ImageName  string
+	Package    string
+	CweID      string
+	Suppressed bool
+	Reason     VulnerabilitySuppressReason
+	ReasonText string
+}
+
+func (q *Queries) SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error {
+	_, err := q.db.Exec(ctx, suppressVulnerability,
+		arg.ImageName,
+		arg.Package,
+		arg.CweID,
+		arg.Suppressed,
+		arg.Reason,
+		arg.ReasonText,
+	)
+	return err
 }
