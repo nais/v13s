@@ -19,6 +19,7 @@ type Querier interface {
 	ListAllVulnerabilitySummaries(ctx context.Context, arg ListAllVulnerabilitySummariesParams) ([]*VulnerabilitySummary, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
 	ResetDatabase(ctx context.Context) error
+	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
 	UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error)
 	UpsertVulnerabilitySummary(ctx context.Context, arg UpsertVulnerabilitySummaryParams) error

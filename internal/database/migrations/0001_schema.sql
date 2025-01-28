@@ -34,6 +34,8 @@ CREATE TABLE workloads
 )
 ;
 
+CREATE TYPE image_state AS ENUM ('initialized','updated','queued', 'failed', 'outdated');
+
 -- TODO: consider adding the workload to the image table instead of the other way around
 CREATE TABLE images
 (
@@ -41,6 +43,7 @@ CREATE TABLE images
     tag        TEXT                                               NOT NULL,
     PRIMARY KEY (name, tag),
     metadata   JSONB                                              NOT NULL DEFAULT '{}'::jsonb,
+    state      image_state                                        NOT NULL DEFAULT 'initialized',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL
 )

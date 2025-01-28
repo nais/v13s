@@ -3,9 +3,79 @@
 package sql
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
+
+type ImageState string
+
+const (
+	ImageStateInitialized ImageState = "initialized"
+	ImageStateUpdated     ImageState = "updated"
+	ImageStateQueued      ImageState = "queued"
+	ImageStateFailed      ImageState = "failed"
+	ImageStateOutdated    ImageState = "outdated"
+)
+
+func (e *ImageState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ImageState(s)
+	case string:
+		*e = ImageState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ImageState: %T", src)
+	}
+	return nil
+}
+
+type NullImageState struct {
+	ImageState ImageState
+	Valid      bool // Valid is true if ImageState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullImageState) Scan(value interface{}) error {
+	if value == nil {
+		ns.ImageState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ImageState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullImageState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ImageState), nil
+}
+
+func (e ImageState) Valid() bool {
+	switch e {
+	case ImageStateInitialized,
+		ImageStateUpdated,
+		ImageStateQueued,
+		ImageStateFailed,
+		ImageStateOutdated:
+		return true
+	}
+	return false
+}
+
+func AllImageStateValues() []ImageState {
+	return []ImageState{
+		ImageStateInitialized,
+		ImageStateUpdated,
+		ImageStateQueued,
+		ImageStateFailed,
+		ImageStateOutdated,
+	}
+}
 
 type Cwe struct {
 	CweID     string
@@ -21,6 +91,7 @@ type Image struct {
 	Name      string
 	Tag       string
 	Metadata  typeext.MapStringString
+	State     ImageState
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

@@ -2,7 +2,10 @@ package dependencytrack
 
 import (
 	"context"
+	"fmt"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"io"
+	"strings"
 )
 
 const ClientXApiKeyHeader = "X-Api-Key"
@@ -91,10 +94,16 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 		Execute()
 
 	if resp != nil && resp.StatusCode == 404 {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		if strings.Contains(string(b), "The project could not be found") {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("getting project: 404 not found %s", string(b))
 	}
 
 	return p, err

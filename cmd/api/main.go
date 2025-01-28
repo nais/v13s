@@ -55,10 +55,8 @@ func main() {
 	}
 
 	u := updater.NewUpdater(db, dpClient)
-	fmt.Printf("Temporary print of Updater: %v\n", u)
-
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &grpcvulnerabilities.Server{Db: db})
-	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db))
+	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

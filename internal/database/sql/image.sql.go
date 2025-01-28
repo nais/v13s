@@ -29,7 +29,7 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 }
 
 const getImage = `-- name: GetImage :one
-SELECT name, tag, metadata, created_at, updated_at FROM images WHERE name = $1 AND tag = $2
+SELECT name, tag, metadata, state, created_at, updated_at FROM images WHERE name = $1 AND tag = $2
 `
 
 type GetImageParams struct {
@@ -44,8 +44,28 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.Name,
 		&i.Tag,
 		&i.Metadata,
+		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const updateImageState = `-- name: UpdateImageState :exec
+UPDATE images
+SET
+    state = $1,
+    updated_at = NOW()
+WHERE name = $2 AND tag = $3
+`
+
+type UpdateImageStateParams struct {
+	State ImageState
+	Name  string
+	Tag   string
+}
+
+func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error {
+	_, err := q.db.Exec(ctx, updateImageState, arg.State, arg.Name, arg.Tag)
+	return err
 }

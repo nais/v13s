@@ -3,6 +3,7 @@ package grpcmgmt
 import (
 	"context"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 )
 
@@ -10,12 +11,14 @@ var _ management.ManagementServer = (*Server)(nil)
 
 type Server struct {
 	management.UnimplementedManagementServer
-	db sql.Querier
+	db      sql.Querier
+	updater *updater.Updater
 }
 
-func NewServer(db sql.Querier) *Server {
+func NewServer(db sql.Querier, updater *updater.Updater) *Server {
 	return &Server{
-		db: db,
+		db:      db,
+		updater: updater,
 	}
 }
 
@@ -46,6 +49,11 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 	}
 
 	err = s.db.UpsertWorkload(ctx, w)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.updater.QueueImage(ctx, request.ImageName, request.ImageTag)
 	if err != nil {
 		return nil, err
 	}

@@ -16,14 +16,46 @@ type Updater struct {
 }
 
 func NewUpdater(db sql.Querier, source dependencytrack.Client) *Updater {
-	return &Updater{source: source}
+	return &Updater{db: db, source: source}
+}
+
+// TODO: use transactions to ensure consistency
+// TODO: go routines error handling
+func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
+	err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		State: sql.ImageStateQueued,
+		Name:  imageName,
+		Tag:   imageTag,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		ctx = context.Background()
+		err := u.UpdateForImage(ctx, imageName, imageTag)
+		if err != nil {
+			log.WithError(err).Errorf("error updating image")
+			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				State: sql.ImageStateFailed,
+				Name:  imageName,
+				Tag:   imageTag,
+			})
+			if err != nil {
+				log.WithError(err).Errorf("error updating image state")
+			}
+		}
+	}()
+
+	return nil
 }
 
 // TODO: go routines and interval
 func (u *Updater) UpdateForImage(ctx context.Context, imageName, imageTag string) error {
 	p, err := u.source.GetProject(ctx, imageName, imageTag)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting project: %w", err)
 	}
 
 	if p == nil || p.Metrics == nil {
@@ -53,6 +85,16 @@ func (u *Updater) UpdateForImage(ctx context.Context, imageName, imageTag string
 	}
 
 	_, err = u.updateVulnerabilities(ctx, *p)
+	if err != nil {
+		return err
+	}
+
+	err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		State: sql.ImageStateUpdated,
+		Name:  imageName,
+		Tag:   imageTag,
+	})
+
 	if err != nil {
 		return err
 	}

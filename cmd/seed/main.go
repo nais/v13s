@@ -62,8 +62,7 @@ func main() {
 			Tag:  *project.Version,
 		}
 
-		_, err := db.CreateImage(ctx, image)
-		if err != nil {
+		if err := db.CreateImage(ctx, image); err != nil {
 			panic(err)
 		}
 
