@@ -120,33 +120,21 @@ func (_c *MockQuerier_BatchUpsertVulnerabilities_Call) RunAndReturn(run func(con
 }
 
 // CreateImage provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) CreateImage(ctx context.Context, arg CreateImageParams) (*Image, error) {
+func (_m *MockQuerier) CreateImage(ctx context.Context, arg CreateImageParams) error {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateImage")
 	}
 
-	var r0 *Image
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, CreateImageParams) (*Image, error)); ok {
-		return rf(ctx, arg)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, CreateImageParams) *Image); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, CreateImageParams) error); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*Image)
-		}
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, CreateImageParams) error); ok {
-		r1 = rf(ctx, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // MockQuerier_CreateImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateImage'
@@ -168,12 +156,12 @@ func (_c *MockQuerier_CreateImage_Call) Run(run func(ctx context.Context, arg Cr
 	return _c
 }
 
-func (_c *MockQuerier_CreateImage_Call) Return(_a0 *Image, _a1 error) *MockQuerier_CreateImage_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockQuerier_CreateImage_Call) Return(_a0 error) *MockQuerier_CreateImage_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockQuerier_CreateImage_Call) RunAndReturn(run func(context.Context, CreateImageParams) (*Image, error)) *MockQuerier_CreateImage_Call {
+func (_c *MockQuerier_CreateImage_Call) RunAndReturn(run func(context.Context, CreateImageParams) error) *MockQuerier_CreateImage_Call {
 	_c.Call.Return(run)
 	return _c
 }
