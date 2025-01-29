@@ -8,9 +8,7 @@ import (
 	"github.com/nais/v13s/internal/dependencytrack/client"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
-	"time"
 )
 
 func (u *Updater) getFilteredProjects(ctx context.Context, filter *vulnerabilities.Filter, limit int32, offset int32) ([]client.Project, error) {
@@ -39,47 +37,6 @@ func (u *Updater) getFindings(ctx context.Context, project client.Project, suppr
 		return nil, err
 	}
 	return projectFindings, nil
-}
-
-func (u *Updater) getVulnerabilitiesForWorkload(ctx context.Context, project client.Project, workload *vulnerabilities.Workload, includeSuppressed bool) (*vulnerabilities.WorkloadVulnerabilityFindings, error) {
-	findings, err := u.getFindings(ctx, project, includeSuppressed)
-	if err != nil {
-		return nil, err
-	}
-
-	var vuln []*vulnerabilities.Vulnerability
-	for _, finding := range findings {
-		vulnerability, err := u.parseFindingToVulnerability(finding)
-		if err != nil {
-			return nil, err
-		}
-		vuln = append(vuln, vulnerability)
-	}
-
-	return &vulnerabilities.WorkloadVulnerabilityFindings{
-		Workload:    workload,
-		Findings:    vuln,
-		LastUpdated: timestamppb.New(time.Now()),
-	}, nil
-}
-
-func (u *Updater) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilityFindings, error) {
-	var workloadVulnerabilities []*vulnerabilities.WorkloadVulnerabilityFindings
-
-	for _, project := range projects {
-		workloads := u.extractWorkloadsFromProject(project)
-		filteredWorkloads := u.filterWorkloads(workloads, request.Filter)
-
-		for _, w := range filteredWorkloads {
-			vuln, err := u.getVulnerabilitiesForWorkload(ctx, project, w, request.GetSuppressed())
-			if err != nil {
-				return nil, err
-			}
-			workloadVulnerabilities = append(workloadVulnerabilities, vuln)
-		}
-	}
-
-	return workloadVulnerabilities, nil
 }
 
 func (u *Updater) parseFinding(imageName, imageTag string, finding client.Finding) (*sql.Vulnerability, *sql.Cwe, error) {
@@ -252,6 +209,6 @@ func workload(c, ns, n, t, i string) *vulnerabilities.Workload {
 		Namespace: ns,
 		Name:      n,
 		Type:      t,
-		Image:     i,
+		ImageName: i,
 	}
 }

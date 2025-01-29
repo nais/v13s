@@ -48,7 +48,94 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		assert.NoError(t, err)
 		// equals all rows in vulnerabilities table in db
 		// 24 workloads * 4 vulns per workload = 96
-		assert.Equal(t, 96, len(resp.Vulnerabilities))
+		assert.Equal(t, 96, len(resp.Nodes))
+	})
+
+	t.Run("list all vulnerabilities for cluster-1", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.ClusterFilter("cluster-1"),
+		)
+		assert.NoError(t, err)
+		// 12 workloads * 4 vulns per workload = 48
+		assert.Equal(t, 48, len(resp.Nodes))
+	})
+
+	t.Run("list all vulnerabilities for namespace-1", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.NamespaceFilter("namespace-1"),
+		)
+		assert.NoError(t, err)
+		// 8 workloads * 4 vulns per workload = 32
+		assert.Equal(t, 32, len(resp.Nodes))
+	})
+
+	t.Run("list all vulnerabilities for cluster-1 and namespace-1", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.ClusterFilter("cluster-1"),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+		)
+		assert.NoError(t, err)
+		// 4 workloads * 4 vulns per workload = 16
+		assert.Equal(t, 16, len(resp.Nodes))
+	})
+
+	t.Run("list all vulnerabilities for workload-1", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.WorkloadFilter("workload-1"),
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, len(clusters)*len(namespaces)*vulnsPerWorkload, len(resp.Nodes))
+	})
+
+	t.Run("list all vulnerabilities for cluster-1, namespace-1, and workload-1", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.ClusterFilter("cluster-1"),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.WorkloadFilter("workload-1"),
+		)
+
+		assert.NoError(t, err)
+		assert.Equal(t, vulnsPerWorkload, len(resp.Nodes))
+
+		for _, v := range resp.Nodes {
+			assert.Equal(t, "workload-1", v.WorkloadRef.Name)
+			assert.Equal(t, "namespace-1", v.WorkloadRef.Namespace)
+			assert.Equal(t, "cluster-1", v.WorkloadRef.Cluster)
+			assert.Equal(t, "app", v.WorkloadRef.Type)
+		}
+	})
+
+	t.Run("list vulnerabilities with limit and pagination", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.Limit(2),
+		)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(resp.Nodes))
+		//v := resp.Nodes[0].Vulnerability
+		for _, v := range resp.Nodes {
+			fmt.Println("Første")
+			fmt.Printf("image %s, tag: %s, cwe %s, pkg %s \n", v.WorkloadRef.ImageName, v.WorkloadRef.ImageTag, v.Vulnerability.Cwe.Id, v.Vulnerability.Package)
+		}
+
+		resp, err = client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.Limit(2),
+			vulnerabilities.Offset(3),
+		)
+
+		for _, v := range resp.Nodes {
+			fmt.Println("Andre")
+			fmt.Printf("image %s, tag: %s, cwe %s, pkg %s \n", v.WorkloadRef.ImageName, v.WorkloadRef.ImageTag, v.Vulnerability.Cwe.Id, v.Vulnerability.Package)
+		}
+
+		assert.NoError(t, err)
 	})
 }
 
@@ -61,7 +148,6 @@ func startGrpcServer(db sql.Querier) (*grpc.Server, vulnerabilities.Client, func
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
-			fmt.Errorf("failed to serve: %v", err)
 			panic(err)
 		}
 	}()

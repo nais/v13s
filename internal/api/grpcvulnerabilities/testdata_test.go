@@ -38,7 +38,6 @@ func generateTestWorkloads(clusters, namespaces []string, workloadsPerNamespace,
 					ImageTag:     imageTag,
 					Vulnz:        generateVulnerabilities(vulnsPerWorkload, i, imageName, imageTag), // Generate a different number of vulnerabilities
 				}
-				fmt.Printf("ImageName: %s, ImageTag: %s\n", workload.ImageName, workload.ImageTag)
 				workloads = append(workloads, workload)
 			}
 		}

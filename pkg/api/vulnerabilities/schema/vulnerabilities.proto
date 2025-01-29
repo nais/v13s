@@ -71,7 +71,7 @@ message ListVulnerabilitiesRequest {
 
 message ListVulnerabilitiesResponse {
   Filter filter = 1;
-  repeated WorkloadVulnerabilityFindings vulnerabilities = 2;
+  repeated Finding nodes = 2;
   PageInfo page_info = 3;
 }
 
@@ -100,7 +100,8 @@ message Workload {
   string namespace = 2;
   string name = 3;
   string type = 4;
-  string image = 5;
+  string image_name = 5;
+  string image_tag = 6;
 }
 
 enum Severity {
@@ -126,8 +127,8 @@ message Vulnerability {
   optional bool suppressed = 3;
 }
 
-message WorkloadVulnerabilityFindings {
-  Workload workload = 1;
-  repeated Vulnerability findings = 2;
+message Finding {
+  Workload workload_ref = 1;
+  Vulnerability vulnerability = 2;
   optional google.protobuf.Timestamp last_updated = 3;
 }

@@ -7,5 +7,5 @@ import (
 )
 
 type Source interface {
-	ListVulnerabilitySummaries(ctx context.Context, filter vulnerabilities.Filter) ([]*vulnerabilities.WorkloadVulnerabilities, error)
+	ListVulnerabilitySummaries(ctx context.Context, filter vulnerabilities.Filter) ([]*vulnerabilities.Finding, error)
 }

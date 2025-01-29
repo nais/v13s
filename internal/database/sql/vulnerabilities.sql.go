@@ -162,7 +162,7 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
    AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
    AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
    AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY (v.image_name, v.image_tag) DESC
+ORDER BY (w.cluster, w.namespace, w.name) ASC
 LIMIT
     $7
     OFFSET

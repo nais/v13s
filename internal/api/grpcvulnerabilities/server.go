@@ -48,25 +48,25 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
 	}
 
-	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.WorkloadVulnerabilityFindings {
-		return &vulnerabilities.WorkloadVulnerabilityFindings{
-			Workload: &vulnerabilities.Workload{
+	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
+		return &vulnerabilities.Finding{
+			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
 			},
-			Findings: []*vulnerabilities.Vulnerability{
-				{
-					Package: row.Package,
-					Cwe: &vulnerabilities.Cwe{
-						Id:          row.CweID,
-						Title:       row.CweTitle,
-						Description: row.CweDesc,
-						Link:        row.CweLink,
-						Severity:    vulnerabilities.Severity(row.Severity),
-					},
-					Suppressed: &row.Suppressed,
+			Vulnerability: &vulnerabilities.Vulnerability{
+				Package:    row.Package,
+				Suppressed: &row.Suppressed,
+				Cwe: &vulnerabilities.Cwe{
+					Id:          row.CweID,
+					Title:       row.CweTitle,
+					Description: row.CweDesc,
+					Link:        row.CweLink,
+					Severity:    vulnerabilities.Severity(row.Severity),
 				},
 			},
 		}
@@ -78,9 +78,9 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesResponse{
-		Filter:          request.Filter,
-		Vulnerabilities: vulnz,
-		PageInfo:        pageInfo,
+		Filter:   request.Filter,
+		Nodes:    vulnz,
+		PageInfo: pageInfo,
 	}, nil
 }
 
