@@ -51,7 +51,7 @@ func main() {
 	//	fmt.Printf("vulnerabilities: %v\n", v.Vulnerabilities)
 	//}
 
-	resp2, err := c.GetVulnerabilitySummaryResponse(
+	resp2, err := c.GetVulnerabilitySummary(
 		context.Background(),
 		vulnerabilities.ClusterFilter("prod-gcp"),
 		vulnerabilities.NamespaceFilter("nais-system"),

@@ -11,7 +11,7 @@ import (
 type Client interface {
 	Close() error
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
-	GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
+	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
 	management.ManagementClient
 }
@@ -54,7 +54,7 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 	}, o.callOptions...)
 }
 
-func (c *client) GetVulnerabilitySummaryResponse(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
+func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
 	o := applyOptions(opts...)
 
 	return c.c.GetVulnerabilitySummary(
