@@ -74,8 +74,8 @@ func listVulnz(c vulnerabilities.Client) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("number of vulnerabilities: %v\n", len(resp.Workloads))
-	for _, w := range resp.Workloads {
+	fmt.Printf("number of vulnerabilities: %v\n", len(resp.Vulnerabilities))
+	for _, w := range resp.Vulnerabilities {
 		fmt.Printf("workload: %v\n", w.Workload)
 		//fmt.Printf("vulnerabilities: %v\n", w.Vulnerabilities)
 	}

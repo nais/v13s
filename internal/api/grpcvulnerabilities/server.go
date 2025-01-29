@@ -16,7 +16,13 @@ var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
 
 type Server struct {
 	vulnerabilities.UnimplementedVulnerabilitiesServer
-	Db *sql.Queries
+	db sql.Querier
+}
+
+func NewServer(db sql.Querier) *Server {
+	return &Server{
+		db: db,
+	}
 }
 
 func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
@@ -29,7 +35,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	v, err := s.Db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+	v, err := s.db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.Filter.Cluster,
 		Namespace:         request.Filter.Namespace,
 		WorkloadType:      request.Filter.WorkloadType,
@@ -42,15 +48,15 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
 	}
 
-	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.WorkloadVulnerabilities {
-		return &vulnerabilities.WorkloadVulnerabilities{
+	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.WorkloadVulnerabilityFindings {
+		return &vulnerabilities.WorkloadVulnerabilityFindings{
 			Workload: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
 			},
-			Vulnerabilities: []*vulnerabilities.Vulnerability{
+			Findings: []*vulnerabilities.Vulnerability{
 				{
 					Package: row.Package,
 					Cwe: &vulnerabilities.Cwe{
@@ -72,9 +78,9 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesResponse{
-		Filter:    request.Filter,
-		Workloads: vulnz,
-		PageInfo:  pageInfo,
+		Filter:          request.Filter,
+		Vulnerabilities: vulnz,
+		PageInfo:        pageInfo,
 	}, nil
 }
 
@@ -88,7 +94,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	summaries, err := s.Db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
+	summaries, err := s.db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:      request.Filter.Cluster,
 		Namespace:    request.Filter.Namespace,
 		WorkloadType: request.Filter.WorkloadType,
@@ -139,7 +145,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	sum, err := s.Db.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
+	sum, err := s.db.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:      request.Filter.Cluster,
 		Namespace:    request.Filter.Namespace,
 		WorkloadType: request.Filter.WorkloadType,

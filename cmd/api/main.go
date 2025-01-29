@@ -55,7 +55,7 @@ func main() {
 	}
 
 	u := updater.NewUpdater(db, dpClient)
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, &grpcvulnerabilities.Server{Db: db})
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
 	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
 
 	stop := make(chan os.Signal, 1)

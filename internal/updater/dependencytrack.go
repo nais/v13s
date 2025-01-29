@@ -41,7 +41,7 @@ func (u *Updater) getFindings(ctx context.Context, project client.Project, suppr
 	return projectFindings, nil
 }
 
-func (u *Updater) getVulnerabilitiesForWorkload(ctx context.Context, project client.Project, workload *vulnerabilities.Workload, includeSuppressed bool) (*vulnerabilities.WorkloadVulnerabilities, error) {
+func (u *Updater) getVulnerabilitiesForWorkload(ctx context.Context, project client.Project, workload *vulnerabilities.Workload, includeSuppressed bool) (*vulnerabilities.WorkloadVulnerabilityFindings, error) {
 	findings, err := u.getFindings(ctx, project, includeSuppressed)
 	if err != nil {
 		return nil, err
@@ -56,15 +56,15 @@ func (u *Updater) getVulnerabilitiesForWorkload(ctx context.Context, project cli
 		vuln = append(vuln, vulnerability)
 	}
 
-	return &vulnerabilities.WorkloadVulnerabilities{
-		Workload:        workload,
-		Vulnerabilities: vuln,
-		LastUpdated:     timestamppb.New(time.Now()),
+	return &vulnerabilities.WorkloadVulnerabilityFindings{
+		Workload:    workload,
+		Findings:    vuln,
+		LastUpdated: timestamppb.New(time.Now()),
 	}, nil
 }
 
-func (u *Updater) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilities, error) {
-	var workloadVulnerabilities []*vulnerabilities.WorkloadVulnerabilities
+func (u *Updater) processProjects(ctx context.Context, projects []client.Project, request *vulnerabilities.ListVulnerabilitiesRequest) ([]*vulnerabilities.WorkloadVulnerabilityFindings, error) {
+	var workloadVulnerabilities []*vulnerabilities.WorkloadVulnerabilityFindings
 
 	for _, project := range projects {
 		workloads := u.extractWorkloadsFromProject(project)

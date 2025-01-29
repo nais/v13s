@@ -71,7 +71,7 @@ message ListVulnerabilitiesRequest {
 
 message ListVulnerabilitiesResponse {
   Filter filter = 1;
-  repeated WorkloadVulnerabilities workloads = 2;
+  repeated WorkloadVulnerabilityFindings vulnerabilities = 2;
   PageInfo page_info = 3;
 }
 
@@ -126,8 +126,8 @@ message Vulnerability {
   optional bool suppressed = 3;
 }
 
-message WorkloadVulnerabilities {
+message WorkloadVulnerabilityFindings {
   Workload workload = 1;
-  repeated Vulnerability vulnerabilities = 2;
+  repeated Vulnerability findings = 2;
   optional google.protobuf.Timestamp last_updated = 3;
 }
