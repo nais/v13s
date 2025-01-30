@@ -34,7 +34,7 @@ CREATE TABLE workloads
 )
 ;
 
-CREATE TYPE image_state AS ENUM ('initialized','updated','queued', 'failed', 'outdated');
+CREATE TYPE image_state AS ENUM ('initialized','updated','queued', 'failed', 'resync', 'outdated');
 
 -- TODO: consider adding the workload to the image table instead of the other way around
 CREATE TABLE images
@@ -85,15 +85,15 @@ CREATE TYPE vulnerability_suppress_reason AS ENUM ('in_triage', 'resolved', 'fal
 
 CREATE TABLE suppressed_vulnerabilities
 (
-    id          UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
-    image_name  TEXT                                               NOT NULL,
-    package     TEXT                                               NOT NULL,
-    cwe_id      TEXT                                               NOT NULL,
-    suppressed  BOOLEAN                                            NOT NULL DEFAULT FALSE,
-    reason      vulnerability_suppress_reason                      NOT NULL DEFAULT 'not_set',
-    reason_text TEXT                                               NOT NULL DEFAULT '',
-    created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    id          UUID PRIMARY KEY                       DEFAULT gen_random_uuid(),
+    image_name  TEXT                          NOT NULL,
+    package     TEXT                          NOT NULL,
+    cwe_id      TEXT                          NOT NULL,
+    suppressed  BOOLEAN                       NOT NULL DEFAULT FALSE,
+    reason      vulnerability_suppress_reason NOT NULL DEFAULT 'not_set',
+    reason_text TEXT                          NOT NULL DEFAULT '',
+    created_at  TIMESTAMP WITH TIME ZONE               DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at  TIMESTAMP WITH TIME ZONE               DEFAULT NOW() NOT NULL,
     CONSTRAINT image_name_package_cwe_id UNIQUE (image_name, package, cwe_id)
 )
 ;

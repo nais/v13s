@@ -17,6 +17,7 @@ const (
 	ImageStateUpdated     ImageState = "updated"
 	ImageStateQueued      ImageState = "queued"
 	ImageStateFailed      ImageState = "failed"
+	ImageStateResync      ImageState = "resync"
 	ImageStateOutdated    ImageState = "outdated"
 )
 
@@ -61,6 +62,7 @@ func (e ImageState) Valid() bool {
 		ImageStateUpdated,
 		ImageStateQueued,
 		ImageStateFailed,
+		ImageStateResync,
 		ImageStateOutdated:
 		return true
 	}
@@ -73,6 +75,7 @@ func AllImageStateValues() []ImageState {
 		ImageStateUpdated,
 		ImageStateQueued,
 		ImageStateFailed,
+		ImageStateResync,
 		ImageStateOutdated,
 	}
 }

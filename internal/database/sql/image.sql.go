@@ -6,6 +6,7 @@ package sql
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
@@ -49,6 +50,55 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
+SELECT name, tag, metadata, state, created_at, updated_at FROM images
+WHERE
+    state = 'initialized'
+    OR state = 'resync'
+ORDER BY
+    updated_at DESC
+`
+
+func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, error) {
+	rows, err := q.db.Query(ctx, getImagesScheduledForSync)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Image{}
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.Name,
+			&i.Tag,
+			&i.Metadata,
+			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markImagesForResync = `-- name: MarkImagesForResync :exec
+UPDATE images
+SET
+    state = 'resync',
+    updated_at = NOW()
+WHERE updated_at < $1
+`
+
+func (q *Queries) MarkImagesForResync(ctx context.Context, thresholdTime pgtype.Timestamptz) error {
+	_, err := q.db.Exec(ctx, markImagesForResync, thresholdTime)
+	return err
 }
 
 const updateImageState = `-- name: UpdateImageState :exec

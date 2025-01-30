@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
@@ -10,13 +11,45 @@ import (
 	"time"
 )
 
+const (
+	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
+)
+
 type Updater struct {
-	db     sql.Querier
-	source dependencytrack.Client
+	db                           sql.Querier
+	source                       dependencytrack.Client
+	resyncImagesOlderThanMinutes time.Duration
 }
 
 func NewUpdater(db sql.Querier, source dependencytrack.Client) *Updater {
-	return &Updater{db: db, source: source}
+	return &Updater{
+		db:                           db,
+		source:                       source,
+		resyncImagesOlderThanMinutes: DefaultResyncImagesOlderThanMinutes,
+	}
+}
+
+func (u *Updater) Run(ctx context.Context) error {
+	err := u.MarkForResync(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = u.ResyncImages(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		func() {
+		}()
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(DefaultResyncImagesOlderThanMinutes):
+		}
+	}
 }
 
 // TODO: use transactions to ensure consistency
@@ -34,7 +67,7 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) er
 
 	go func() {
 		ctx = context.Background()
-		err := u.UpdateForImage(ctx, imageName, imageTag)
+		err = u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
 			log.WithError(err).Errorf("error updating image")
 			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
@@ -51,8 +84,36 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) er
 	return nil
 }
 
+func (u *Updater) ResyncImages(ctx context.Context) error {
+	images, err := u.db.GetImagesScheduledForSync(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, image := range images {
+		err = u.QueueImage(ctx, image.Name, image.Tag)
+		if err != nil {
+			log.WithError(err).Errorf("error queuing image")
+		}
+	}
+
+	return nil
+}
+
+func (u *Updater) MarkForResync(ctx context.Context) error {
+	err := u.db.MarkImagesForResync(ctx,
+		pgtype.Timestamptz{
+			Time:  time.Now().Add(-u.resyncImagesOlderThanMinutes * time.Minute),
+			Valid: true,
+		})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // TODO: go routines and interval
-func (u *Updater) UpdateForImage(ctx context.Context, imageName, imageTag string) error {
+func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string) error {
 	p, err := u.source.GetProject(ctx, imageName, imageTag)
 	if err != nil {
 		return fmt.Errorf("error getting project: %w", err)

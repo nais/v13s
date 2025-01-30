@@ -11,7 +11,7 @@ fmt:
 test:
 	go test -cover --race ./...
 
-check: staticcheck vulncheck deadcode gosec
+check: vulncheck deadcode gosec staticcheck
 
 staticcheck:
 	@echo "Running staticcheck..."
