@@ -198,12 +198,14 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
    AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
    AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
    AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
-   AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+   AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
+   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
+   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY (w.cluster, w.namespace, w.name, v.id) ASC
 LIMIT
-    $7
+    $9
 OFFSET
-    $6
+    $8
 `
 
 type ListVulnerabilitiesParams struct {
@@ -211,6 +213,8 @@ type ListVulnerabilitiesParams struct {
 	Namespace         *string
 	WorkloadType      *string
 	WorkloadName      *string
+	ImageName         *string
+	ImageTag          *string
 	IncludeSuppressed *bool
 	Offset            int32
 	Limit             int32
@@ -242,6 +246,8 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 		arg.Namespace,
 		arg.WorkloadType,
 		arg.WorkloadName,
+		arg.ImageName,
+		arg.ImageTag,
 		arg.IncludeSuppressed,
 		arg.Offset,
 		arg.Limit,

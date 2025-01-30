@@ -29,21 +29,18 @@ service Vulnerabilities {
   // Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
   // Supplying all filters will give the summary for that specific workload
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
-}
 
-// alternative
-/*
-service Vulnz {
-  rpc ListSummariesByNamespace(ListSummariesByNamespaceRequest) returns (ListSummariesByNamespaceResponse);
-  rpc ListSummariesByCluster(ListSummariesByClusterRequest) returns (ListSummariesByClusterResponse);
+  // Used on image details page in console, could also include summary and list of vulnerabilities
+  //rpc GetImageVulnerabilityDetails()
 }
- */
 
 message Filter {
   optional string cluster = 1;
   optional string namespace = 2;
   optional string workload = 3;
   optional string workload_type = 4;
+  optional string image_name = 5;
+  optional string image_tag = 6;
 }
 
 message WorkloadSummary {

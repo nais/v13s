@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -139,9 +140,28 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 
 	t.Run("list vulnerabilities for workloads using the same image", func(t *testing.T) {
 
-		// TODO: should we have image_name and image_tag as filter aswell?
-		// TODO: we might have gotten the design wrong, or the wrong query for vulnerabilities,
-		// i.e. if multiple workloads have the same image and tag, we dont get the duplicate vulnerabilities? We want all vulns in the cluster...
+		w := sql.UpsertWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-prod",
+			ImageName:    "image-cluster-1-namespace-1-workload-1",
+			ImageTag:     "v1.0",
+		}
+
+		err = db.UpsertWorkload(ctx, w)
+		assert.NoError(t, err)
+
+		resp, err := client.ListVulnerabilities(
+			ctx,
+			vulnerabilities.ImageFilter("image-cluster-1-namespace-1-workload-1", "v1.0"),
+		)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 8, len(resp.Nodes))
+		assert.True(t, collections.Contains(resp.Nodes, func(f *vulnerabilities.Finding) bool {
+			return f.WorkloadRef.Name == "workload-1" && f.WorkloadRef.Namespace == "namespace-1" && f.WorkloadRef.Cluster == "cluster-prod"
+		}))
 	})
 }
 

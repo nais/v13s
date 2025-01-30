@@ -25,6 +25,7 @@ func NewServer(db sql.Querier) *Server {
 	}
 }
 
+// TODO: add input validation for request, especially for filter values
 func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -40,6 +41,8 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		Namespace:         request.Filter.Namespace,
 		WorkloadType:      request.Filter.WorkloadType,
 		WorkloadName:      request.Filter.Workload,
+		ImageName:         request.Filter.ImageName,
+		ImageTag:          request.Filter.ImageTag,
 		IncludeSuppressed: request.Suppressed,
 		Limit:             limit,
 		Offset:            offset,
@@ -92,6 +95,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}, nil
 }
 
+// TODO: do we want image_name and image_tag as filter aswell? must update sql query
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {

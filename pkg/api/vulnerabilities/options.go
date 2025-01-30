@@ -79,6 +79,16 @@ func WorkloadFilter(name string) Option {
 	})
 }
 
+func ImageFilter(name, tag string) Option {
+	return newFuncOption(func(o *options) {
+		if o.filter == nil {
+			o.filter = &Filter{}
+		}
+		o.filter.ImageName = &name
+		o.filter.ImageTag = &tag
+	})
+}
+
 func Suppressed() Option {
 	return newFuncOption(func(o *options) {
 		o.suppressed = true
