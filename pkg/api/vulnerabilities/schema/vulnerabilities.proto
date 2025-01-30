@@ -13,13 +13,13 @@ import "pagination.proto";
 //import "google/api/annotations.proto";
 
 service Vulnerabilities {
-  // List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
-  // Example: only supplying a namespace will return all workloads in that namespace across all clusters
-  rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
-
   // List all vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Example: only supplying a namespace will return all vulnerabilities for all workloads in that namespace across all clusters
   rpc ListVulnerabilities(ListVulnerabilitiesRequest) returns (ListVulnerabilitiesResponse);
+
+  // List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
+  // Example: only supplying a namespace will return all workloads in that namespace across all clusters
+  rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
 
   // Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Examples:
@@ -31,7 +31,9 @@ service Vulnerabilities {
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
 
   // Used on image details page in console, could also include summary and list of vulnerabilities
+  // TODO: implement the commented out rpcs
   //rpc GetImageVulnerabilityDetails()
+  //rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
 }
 
 message Filter {
