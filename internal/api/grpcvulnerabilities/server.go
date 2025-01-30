@@ -72,7 +72,15 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		}
 	})
 
-	pageInfo, err := grpcpagination.PageInfo(request, len(vulnz))
+	total, err := s.db.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
+		Cluster:           request.Filter.Cluster,
+		Namespace:         request.Filter.Namespace,
+		WorkloadType:      request.Filter.WorkloadType,
+		WorkloadName:      request.Filter.Workload,
+		IncludeSuppressed: request.Suppressed,
+	})
+
+	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
 		return nil, err
 	}

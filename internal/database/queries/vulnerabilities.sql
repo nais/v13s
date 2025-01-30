@@ -61,6 +61,22 @@ SET suppressed = @suppressed,
 -- name: GetSuppressedVulnerability :one
 SELECT * FROM suppressed_vulnerabilities WHERE image_name = @image_name AND package = @package AND cwe_id = @cwe_id;
 
+-- name: CountVulnerabilities :one
+SELECT COUNT(*) AS total
+FROM vulnerabilities v
+         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cwe_id = sv.cwe_id
+WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+   AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+   AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+   AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+;
+
 -- name: ListVulnerabilities :many
 SELECT
     w.name AS workload_name,
@@ -92,10 +108,10 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
    AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
    AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY (w.cluster, w.namespace, w.name) ASC
+ORDER BY (w.cluster, w.namespace, w.name, v.id) ASC
 LIMIT
     sqlc.arg('limit')
-    OFFSET
+OFFSET
     sqlc.arg('offset')
 ;
 

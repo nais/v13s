@@ -9,6 +9,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countVulnerabilities = `-- name: CountVulnerabilities :one
+SELECT COUNT(*) AS total
+FROM vulnerabilities v
+         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cwe_id = sv.cwe_id
+WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
+   AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
+   AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
+   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
+   AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+`
+
+type CountVulnerabilitiesParams struct {
+	Cluster           *string
+	Namespace         *string
+	WorkloadType      *string
+	WorkloadName      *string
+	IncludeSuppressed *bool
+}
+
+func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countVulnerabilities,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+		arg.IncludeSuppressed,
+	)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const getCwe = `-- name: GetCwe :one
 SELECT cwe_id, cwe_title, cwe_desc, cwe_link, severity, created_at, updated_at FROM cwe WHERE cwe_id = $1
 `
@@ -162,10 +199,10 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
    AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
    AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
    AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY (w.cluster, w.namespace, w.name) ASC
+ORDER BY (w.cluster, w.namespace, w.name, v.id) ASC
 LIMIT
     $7
-    OFFSET
+OFFSET
     $6
 `
 

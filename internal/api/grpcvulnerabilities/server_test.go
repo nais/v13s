@@ -111,32 +111,57 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 	})
 
 	t.Run("list vulnerabilities with limit and pagination", func(t *testing.T) {
+
+		limit := int32(10)
+		offset := int32(0)
 		resp, err := client.ListVulnerabilities(
 			ctx,
-			vulnerabilities.Limit(2),
+			vulnerabilities.Limit(limit),
+			vulnerabilities.Offset(offset),
 		)
-
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resp.Nodes))
-		//v := resp.Nodes[0].Vulnerability
-		for _, v := range resp.Nodes {
-			fmt.Println("Første")
-			fmt.Printf("image %s, tag: %s, cwe %s, pkg %s \n", v.WorkloadRef.ImageName, v.WorkloadRef.ImageTag, v.Vulnerability.Cwe.Id, v.Vulnerability.Package)
+		uniqueRows := map[string]bool{}
+		flatten(t, uniqueRows, resp.Nodes)
+
+		for resp.PageInfo.HasNextPage {
+			offset += limit
+			resp, err = client.ListVulnerabilities(
+				ctx,
+				vulnerabilities.Limit(limit),
+				vulnerabilities.Offset(offset),
+			)
+			assert.NoError(t, err)
+			flatten(t, uniqueRows, resp.Nodes)
 		}
 
-		resp, err = client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.Limit(2),
-			vulnerabilities.Offset(3),
-		)
-
-		for _, v := range resp.Nodes {
-			fmt.Println("Andre")
-			fmt.Printf("image %s, tag: %s, cwe %s, pkg %s \n", v.WorkloadRef.ImageName, v.WorkloadRef.ImageTag, v.Vulnerability.Cwe.Id, v.Vulnerability.Package)
-		}
-
-		assert.NoError(t, err)
+		assert.Equal(t, 96, len(uniqueRows))
 	})
+
+	t.Run("list vulnerabilities for workloads using the same image", func(t *testing.T) {
+
+		// TODO: should we have image_name and image_tag as filter aswell?
+		// TODO: we might have gotten the design wrong, or the wrong query for vulnerabilities,
+		// i.e. if multiple workloads have the same image and tag, we dont get the duplicate vulnerabilities? We want all vulns in the cluster...
+	})
+}
+
+func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) {
+	for _, v := range nodes {
+		key := fmt.Sprintf(
+			"%s.%s.%s.%s.%s.%s.%s",
+			v.WorkloadRef.Cluster,
+			v.WorkloadRef.Namespace,
+			v.WorkloadRef.Name,
+			v.WorkloadRef.ImageName,
+			v.WorkloadRef.ImageTag,
+			v.Vulnerability.Package,
+			v.Vulnerability.Cwe.Id,
+		)
+		if m[key] {
+			t.Fatalf("duplicate key: %s", key)
+		}
+		m[key] = true
+	}
 }
 
 // startGrpcServer initializes an in-memory gRPC server
