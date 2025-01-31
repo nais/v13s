@@ -19,69 +19,80 @@ type Updater struct {
 	db                           sql.Querier
 	source                       dependencytrack.Client
 	resyncImagesOlderThanMinutes time.Duration
+	updateInterval               time.Duration
 }
 
-func NewUpdater(db sql.Querier, source dependencytrack.Client) *Updater {
+func NewUpdater(db sql.Querier, source dependencytrack.Client, updateInterval time.Duration) *Updater {
 	return &Updater{
 		db:                           db,
 		source:                       source,
 		resyncImagesOlderThanMinutes: DefaultResyncImagesOlderThanMinutes,
+		updateInterval:               updateInterval,
 	}
 }
 
 func (u *Updater) Run(ctx context.Context) error {
-	err := u.MarkForResync(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = u.ResyncImages(ctx)
-	if err != nil {
-		return err
-	}
+	ticker := time.NewTicker(u.updateInterval)
+	defer ticker.Stop()
 
 	for {
-		func() {
-		}()
-
 		select {
 		case <-ctx.Done():
+			log.Info("Updater stopped")
 			return ctx.Err()
-		case <-time.After(DefaultResyncImagesOlderThanMinutes):
+		case <-ticker.C:
+			log.Info("Starting scheduled resync")
+
+			if err := u.MarkForResync(ctx); err != nil {
+				log.WithError(err).Error("Failed to mark images for resync")
+				continue
+			}
+
+			if err := u.ResyncImages(ctx); err != nil {
+				log.WithError(err).Error("Failed to resync images")
+			}
 		}
 	}
 }
 
 // TODO: use transactions to ensure consistency
-// TODO: go routines error handling
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
 	err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateQueued,
 		Name:  imageName,
 		Tag:   imageTag,
 	})
-
 	if err != nil {
 		return err
 	}
 
+	errCh := make(chan error, 1)
+
 	go func() {
-		ctx = context.Background()
-		err = u.updateForImage(ctx, imageName, imageTag)
+		defer close(errCh) // Close channel after execution
+		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
-			log.WithError(err).Errorf("error updating image")
-			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			log.WithError(err).Errorf("Error updating image")
+
+			if dbErr := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
-			})
-			if err != nil {
-				log.WithError(err).Errorf("error updating image state")
+			}); dbErr != nil {
+				log.WithError(dbErr).Errorf("Error updating image state")
 			}
+
+			errCh <- err
 		}
 	}()
 
-	return nil
+	// Handle error if needed (non-blocking)
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("error processing image %s:%s: %w", imageName, imageTag, err)
+	default:
+		return nil
+	}
 }
 
 func (u *Updater) ResyncImages(ctx context.Context) error {
@@ -113,6 +124,7 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 }
 
 // TODO: go routines and interval
+// TODO: use transactions to ensure consistency
 func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string) error {
 	p, err := u.source.GetProject(ctx, imageName, imageTag)
 	if err != nil {
@@ -205,6 +217,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, project client.Proj
 	return nil, nil
 }
 
+// TODO: use transactions to ensure consistency
 func (u *Updater) upsertBatchVulnerabilities(ctx context.Context, batch []sql.BatchUpsertVulnerabilitiesParams) (upserted, errors int) {
 	if len(batch) == 0 {
 		return
@@ -229,6 +242,7 @@ func (u *Updater) upsertBatchVulnerabilities(ctx context.Context, batch []sql.Ba
 	return
 }
 
+// TODO: use transactions to ensure consistency
 func (u *Updater) upsertBatchCwe(ctx context.Context, batch []sql.BatchUpsertCweParams) (upserted, errors int) {
 	if len(batch) == 0 {
 		return

@@ -83,6 +83,10 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		IncludeSuppressed: request.Suppressed,
 	})
 
+	if err != nil {
+		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
+	}
+
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
 		return nil, err

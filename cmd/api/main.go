@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
 
@@ -23,26 +24,38 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	listenAddr = "127.0.0.1:50051"
+)
+
+// handle env vars better
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("No .env file found")
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:50051")
+	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	ctx := context.Background()
-	log.Infof("initializing database")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// TODO: fix env stuff, use transactions etc. look at nais api
-	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", log.WithField("component", "database"))
+	log.Info("Initializing database")
+
+	dbURL := os.Getenv("V13S_DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("Database URL is not set")
+	}
+
+	pool, err := database.New(ctx, dbURL, log.WithField("component", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
 	defer pool.Close()
+
 	db := sql.New(pool)
 
 	grpcServer := grpc.NewServer()
@@ -54,19 +67,30 @@ func main() {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	u := updater.NewUpdater(db, dpClient)
+	u := updater.NewUpdater(db, dpClient, 60*time.Minute)
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
 	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
+
+	go func() {
+		if err := u.Run(ctx); err != nil {
+			log.Fatalf("Updater failed: %v", err)
+		}
+	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	srvErr := make(chan error, 1)
 	go func() {
-		if err := grpcServer.Serve(listener); err != nil {
-			log.Fatalf("Failed to serve: %v", err)
-		}
+		srvErr <- grpcServer.Serve(listener)
 	}()
 
-	<-stop
+	select {
+	case <-stop:
+		log.Info("Shutting down gracefully")
+	case err := <-srvErr:
+		log.Fatalf("GRPC Server Error: %v", err)
+	}
+
 	grpcServer.GracefulStop()
 }

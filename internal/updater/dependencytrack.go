@@ -78,8 +78,7 @@ func (u *Updater) parseFinding(imageName, imageTag string, finding client.Findin
 	}
 
 	// TODO: Implement isSuppressed
-	isSuppressed := analysis["isSuppressed"].(bool)
-	fmt.Printf("isSuppressed: %v\n", isSuppressed)
+	_ = analysis["isSuppressed"].(bool)
 	title := "unknown"
 	desc := "unknown"
 	if vulnData["title"] != nil {

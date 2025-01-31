@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/database/typeext"
 	"os"
 	"strings"
 
@@ -58,8 +59,9 @@ func main() {
 		}
 
 		image := sql.CreateImageParams{
-			Name: *project.Name,
-			Tag:  *project.Version,
+			Name:     *project.Name,
+			Tag:      *project.Version,
+			Metadata: make(typeext.MapStringString),
 		}
 
 		if err := db.CreateImage(ctx, image); err != nil {

@@ -53,12 +53,10 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
-SELECT name, tag, metadata, state, created_at, updated_at FROM images
-WHERE
-    state = 'initialized'
-    OR state = 'resync'
-ORDER BY
-    updated_at DESC
+SELECT name, tag, metadata, state, created_at, updated_at
+FROM images
+WHERE state IN ('initialized', 'resync')
+ORDER BY updated_at DESC
 `
 
 func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, error) {
@@ -94,6 +92,7 @@ SET
     state = 'resync',
     updated_at = NOW()
 WHERE updated_at < $1
+  AND state != 'resync'
 `
 
 func (q *Queries) MarkImagesForResync(ctx context.Context, thresholdTime pgtype.Timestamptz) error {
