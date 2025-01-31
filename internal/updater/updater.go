@@ -31,6 +31,7 @@ func NewUpdater(db sql.Querier, source dependencytrack.Client, updateInterval ti
 	}
 }
 
+// TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) error {
 	ticker := time.NewTicker(u.updateInterval)
 	defer ticker.Stop()

@@ -34,23 +34,7 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
 		defer cancel()
 
-		for _, p := range projectNames {
-			err := db.CreateImage(ctx, sql.CreateImageParams{
-				Name:     p,
-				Tag:      "v1",
-				Metadata: map[string]string{"key": "value"},
-			})
-			assert.NoError(t, err)
-
-			err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
-				Name:         fmt.Sprintf("workload-%s", p),
-				WorkloadType: "app",
-				Namespace:    "namespace-1",
-				Cluster:      "cluster-1",
-				ImageName:    p,
-				ImageTag:     "v1",
-			})
-		}
+		insertWorkloads(ctx, t, db, projectNames)
 
 		err = u.Run(updaterCtx)
 		if err != nil {
@@ -81,6 +65,65 @@ func TestUpdater(t *testing.T) {
 		}))
 
 	})
+
+	t.Run("images older than interval should be marked with resync and vulnerabilities updated", func(t *testing.T) {
+		insertWorkloads(ctx, t, db, projectNames)
+		_, err := pool.Exec(
+			ctx,
+			"UPDATE images SET state = $1 WHERE state = $2;",
+			sql.ImageStateUpdated,
+			sql.ImageStateInitialized,
+		)
+		assert.NoError(t, err)
+
+		imageLastUpdated := time.Now().Add(-(time.Hour * 24))
+		imageName := projectNames[0]
+		_, err = pool.Exec(
+			ctx,
+			"UPDATE images SET updated_at = $1 WHERE name = $2 AND tag=$3;",
+			imageLastUpdated,
+			imageName,
+			"v1",
+		)
+		assert.NoError(t, err)
+
+		dpTrack.AddFinding(imageName, "new-vuln")
+
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
+		defer cancel()
+
+		// Should update projectName[0] since it is older than updater.DefaultResyncImagesOlderThanMinutes
+		err = u.Run(updaterCtx)
+		if err != nil {
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		}
+
+		vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{Limit: 100})
+		assert.NoError(t, err)
+		assert.Len(t, vulns, 5)
+	})
+}
+
+func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {
+	for _, p := range projectNames {
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     p,
+			Tag:      "v1",
+			Metadata: map[string]string{"key": "value"},
+		})
+		assert.NoError(t, err)
+
+		err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         fmt.Sprintf("workload-%s", p),
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    p,
+			ImageTag:     "v1",
+		})
+	}
 }
 
 var _ dependencytrack.Client = (*MockDtrack)(nil)
@@ -88,6 +131,32 @@ var _ dependencytrack.Client = (*MockDtrack)(nil)
 type MockDtrack struct {
 	projects []*client.Project
 	findings map[string][]client.Finding
+}
+
+func (m MockDtrack) AddFinding(projectName string, vulnName string) {
+	u := ""
+	for _, p := range m.projects {
+		if *p.Name == projectName {
+			u = p.Uuid
+		}
+	}
+	findings := m.findings[u]
+	findings = append(findings, client.Finding{
+		Component: map[string]interface{}{
+			"purl": fmt.Sprintf("pkg:component-%s", vulnName),
+		},
+		Vulnerability: map[string]interface{}{
+			"severity":    "CRITICAL",
+			"source":      "NVD",
+			"title":       "title",
+			"description": "description",
+			"vulnId":      fmt.Sprintf("CVE-%s", vulnName),
+		},
+		Analysis: map[string]interface{}{
+			"isSuppressed": false,
+		},
+	})
+	m.findings[u] = findings
 }
 
 func (m MockDtrack) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
