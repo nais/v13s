@@ -147,11 +147,11 @@ func AllVulnerabilitySuppressReasonValues() []VulnerabilitySuppressReason {
 	}
 }
 
-type Cwe struct {
-	CweID     string
-	CweTitle  string
-	CweDesc   string
-	CweLink   string
+type Cve struct {
+	CveID     string
+	CveTitle  string
+	CveDesc   string
+	CveLink   string
 	Severity  int32
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
@@ -170,7 +170,7 @@ type SuppressedVulnerability struct {
 	ID         pgtype.UUID
 	ImageName  string
 	Package    string
-	CweID      string
+	CveID      string
 	Suppressed bool
 	Reason     VulnerabilitySuppressReason
 	ReasonText string
@@ -183,7 +183,7 @@ type Vulnerability struct {
 	ImageName string
 	ImageTag  string
 	Package   string
-	CweID     string
+	CveID     string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

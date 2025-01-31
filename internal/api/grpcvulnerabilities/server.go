@@ -64,11 +64,11 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 			Vulnerability: &vulnerabilities.Vulnerability{
 				Package:    row.Package,
 				Suppressed: &row.Suppressed,
-				Cwe: &vulnerabilities.Cwe{
-					Id:          row.CweID,
-					Title:       row.CweTitle,
-					Description: row.CweDesc,
-					Link:        row.CweLink,
+				Cve: &vulnerabilities.Cve{
+					Id:          row.CveID,
+					Title:       row.CveTitle,
+					Description: row.CveDesc,
+					Link:        row.CveLink,
 					Severity:    vulnerabilities.Severity(row.Severity),
 				},
 			},

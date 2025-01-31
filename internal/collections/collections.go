@@ -18,7 +18,7 @@ func Map[T1, T2 any](s []T1, f func(T1) T2) []T2 {
 	return r
 }
 
-func Contains[T1 any](s []T1, f func(e T1) bool) bool {
+func AnyMatch[T1 any](s []T1, f func(e T1) bool) bool {
 	for _, v := range s {
 		if f(v) {
 			return true

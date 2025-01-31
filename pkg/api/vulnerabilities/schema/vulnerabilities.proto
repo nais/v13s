@@ -111,7 +111,7 @@ enum Severity {
   UNASSIGNED = 4;
 }
 
-message Cwe {
+message Cve {
   string id = 1;
   string title = 2;
   string description = 3;
@@ -119,10 +119,10 @@ message Cwe {
   Severity severity = 5;
 }
 
-// TODO: should it be grouped by package like now or cwe?
+// TODO: should it be grouped by package like now or Cve?
 message Vulnerability {
   string package = 1;
-  Cwe cwe = 2;
+  Cve cve = 2;
   optional bool suppressed = 3;
 }
 

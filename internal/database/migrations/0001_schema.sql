@@ -67,17 +67,16 @@ CREATE TABLE vulnerability_summary
 ;
 
 -- TODO: consider adding a type for severity
--- TODO: consider adding a table for package and cwe
 CREATE TABLE vulnerabilities
 (
     id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
     image_name TEXT                                               NOT NULL,
     image_tag  TEXT                                               NOT NULL,
     package    TEXT                                               NOT NULL,
-    cwe_id     TEXT                                               NOT NULL,
+    cve_id     TEXT                                               NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
-    CONSTRAINT image_name_tag_cwe_id_package UNIQUE (image_name, image_tag, cwe_id, package)
+    CONSTRAINT image_name_tag_cve_id_package UNIQUE (image_name, image_tag, cve_id, package)
 )
 ;
 
@@ -88,24 +87,24 @@ CREATE TABLE suppressed_vulnerabilities
     id          UUID PRIMARY KEY                       DEFAULT gen_random_uuid(),
     image_name  TEXT                          NOT NULL,
     package     TEXT                          NOT NULL,
-    cwe_id      TEXT                          NOT NULL,
+    cve_id      TEXT                          NOT NULL,
     suppressed  BOOLEAN                       NOT NULL DEFAULT FALSE,
     reason      vulnerability_suppress_reason NOT NULL DEFAULT 'not_set',
     reason_text TEXT                          NOT NULL DEFAULT '',
     created_at  TIMESTAMP WITH TIME ZONE               DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at  TIMESTAMP WITH TIME ZONE               DEFAULT NOW() NOT NULL,
-    CONSTRAINT image_name_package_cwe_id UNIQUE (image_name, package, cwe_id)
+    CONSTRAINT image_name_package_cve_id UNIQUE (image_name, package, cve_id)
 )
 ;
 
 -- TODO: pluralize this table name?
-CREATE TABLE cwe
+CREATE TABLE cve
 (
-    cwe_id     TEXT                                               NOT NULL,
-    PRIMARY KEY (cwe_id),
-    cwe_title  TEXT                                               NOT NULL,
-    cwe_desc   TEXT                                               NOT NULL,
-    cwe_link   TEXT                                               NOT NULL,
+    cve_id     TEXT                                               NOT NULL,
+    PRIMARY KEY (cve_id),
+    cve_title  TEXT                                               NOT NULL,
+    cve_desc   TEXT                                               NOT NULL,
+    cve_link   TEXT                                               NOT NULL,
     severity   INT                                                NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL
@@ -131,7 +130,7 @@ ALTER TABLE vulnerabilities
             ON DELETE CASCADE;
 
 ALTER TABLE vulnerabilities
-    ADD CONSTRAINT fk_cwe
-        FOREIGN KEY (cwe_id)
-            REFERENCES cwe (cwe_id)
+    ADD CONSTRAINT fk_cve
+        FOREIGN KEY (cve_id)
+            REFERENCES cve (cve_id)
             ON DELETE CASCADE;

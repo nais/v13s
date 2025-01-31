@@ -39,7 +39,7 @@ func (u *Updater) getFindings(ctx context.Context, project client.Project, suppr
 	return projectFindings, nil
 }
 
-func (u *Updater) parseFinding(imageName, imageTag string, finding client.Finding) (*sql.Vulnerability, *sql.Cwe, error) {
+func (u *Updater) parseFinding(imageName, imageTag string, finding client.Finding) (*sql.Vulnerability, *sql.Cve, error) {
 	component, componentOk := finding.GetComponentOk()
 	if !componentOk {
 		return nil, nil, fmt.Errorf("missing component for finding")
@@ -91,12 +91,12 @@ func (u *Updater) parseFinding(imageName, imageTag string, finding client.Findin
 			ImageName: imageName,
 			ImageTag:  imageTag,
 			Package:   component["purl"].(string),
-			CweID:     vulnData["vulnId"].(string),
-		}, &sql.Cwe{
-			CweID:    vulnData["vulnId"].(string),
-			CweTitle: title,
-			CweDesc:  desc,
-			CweLink:  link,
+			CveID:     vulnData["vulnId"].(string),
+		}, &sql.Cve{
+			CveID:    vulnData["vulnId"].(string),
+			CveTitle: title,
+			CveDesc:  desc,
+			CveLink:  link,
 			Severity: int32(severity),
 		},
 		nil
@@ -143,7 +143,7 @@ func (u *Updater) parseFindingToVulnerability(finding client.Finding) (*vulnerab
 	isSuppressed := analysis["isSuppressed"].(bool)
 	return &vulnerabilities.Vulnerability{
 		Package: component["purl"].(string),
-		Cwe: &vulnerabilities.Cwe{
+		Cve: &vulnerabilities.Cve{
 			Id:          vulnData["vulnId"].(string),
 			Title:       vulnData["title"].(string),
 			Description: vulnData["description"].(string),

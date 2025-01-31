@@ -155,7 +155,7 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 8, len(resp.Nodes))
-		assert.True(t, collections.Contains(resp.Nodes, func(f *vulnerabilities.Finding) bool {
+		assert.True(t, collections.AnyMatch(resp.Nodes, func(f *vulnerabilities.Finding) bool {
 			return f.WorkloadRef.Name == "workload-1" && f.WorkloadRef.Namespace == "namespace-1" && f.WorkloadRef.Cluster == "cluster-prod"
 		}))
 	})
@@ -171,7 +171,7 @@ func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) 
 			v.WorkloadRef.ImageName,
 			v.WorkloadRef.ImageTag,
 			v.Vulnerability.Package,
-			v.Vulnerability.Cwe.Id,
+			v.Vulnerability.Cve.Id,
 		)
 		if m[key] {
 			t.Fatalf("duplicate key: %s", key)
@@ -234,27 +234,28 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 		err = db.UpsertWorkload(ctx, w)
 		assert.NoError(t, err)
 
-		cweParams := make([]sql.BatchUpsertCweParams, 0)
+		cweParams := make([]sql.BatchUpsertCveParams, 0)
 		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 		for _, f := range workload.Vulnz {
 			v := f.vuln
-			cwe := f.cwe
-			cweParams = append(cweParams, sql.BatchUpsertCweParams{
-				CweID:    cwe.CweID,
-				CweTitle: cwe.CweTitle,
-				CweDesc:  cwe.CweDesc,
-				CweLink:  cwe.CweLink,
-				Severity: cwe.Severity,
+			cve := f.cve
+
+			cweParams = append(cweParams, sql.BatchUpsertCveParams{
+				CveID:    cve.CveID,
+				CveTitle: cve.CveTitle,
+				CveDesc:  cve.CveDesc,
+				CveLink:  cve.CveLink,
+				Severity: cve.Severity,
 			})
 			vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
 				ImageName: v.ImageName,
 				ImageTag:  v.ImageTag,
 				Package:   v.Package,
-				CweID:     v.CweID,
+				CveID:     v.CveID,
 			})
 		}
 
-		db.BatchUpsertCwe(ctx, cweParams).Exec(func(i int, err error) {
+		db.BatchUpsertCve(ctx, cweParams).Exec(func(i int, err error) {
 			if err != nil {
 				assert.NoError(t, err)
 			}

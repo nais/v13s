@@ -14,57 +14,57 @@ var (
 	ErrBatchAlreadyClosed = errors.New("batch already closed")
 )
 
-const batchUpsertCwe = `-- name: BatchUpsertCwe :batchexec
-INSERT INTO cwe(cwe_id,
-                cwe_title,
-                cwe_desc,
-                cwe_link,
+const batchUpsertCve = `-- name: BatchUpsertCve :batchexec
+INSERT INTO cve(cve_id,
+                cve_title,
+                cve_desc,
+                cve_link,
                 severity)
 VALUES ($1,
         $2,
         $3,
         $4,
         $5)
-ON CONFLICT (cwe_id)
+ON CONFLICT (cve_id)
     DO
         UPDATE
-    SET cwe_title = $2,
-        cwe_desc = $3,
-        cwe_link = $4,
+    SET cve_title = $2,
+        cve_desc = $3,
+        cve_link = $4,
         severity = $5
 `
 
-type BatchUpsertCweBatchResults struct {
+type BatchUpsertCveBatchResults struct {
 	br     pgx.BatchResults
 	tot    int
 	closed bool
 }
 
-type BatchUpsertCweParams struct {
-	CweID    string
-	CweTitle string
-	CweDesc  string
-	CweLink  string
+type BatchUpsertCveParams struct {
+	CveID    string
+	CveTitle string
+	CveDesc  string
+	CveLink  string
 	Severity int32
 }
 
-func (q *Queries) BatchUpsertCwe(ctx context.Context, arg []BatchUpsertCweParams) *BatchUpsertCweBatchResults {
+func (q *Queries) BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults {
 	batch := &pgx.Batch{}
 	for _, a := range arg {
 		vals := []interface{}{
-			a.CweID,
-			a.CweTitle,
-			a.CweDesc,
-			a.CweLink,
+			a.CveID,
+			a.CveTitle,
+			a.CveDesc,
+			a.CveLink,
 			a.Severity,
 		}
-		batch.Queue(batchUpsertCwe, vals...)
+		batch.Queue(batchUpsertCve, vals...)
 	}
 	br := q.db.SendBatch(ctx, batch)
-	return &BatchUpsertCweBatchResults{br, len(arg), false}
+	return &BatchUpsertCveBatchResults{br, len(arg), false}
 }
 
-func (b *BatchUpsertCweBatchResults) Exec(f func(int, error)) {
+func (b *BatchUpsertCveBatchResults) Exec(f func(int, error)) {
 	defer b.br.Close()
 	for t := 0; t < b.tot; t++ {
 		if b.closed {
@@ -80,7 +80,7 @@ func (b *BatchUpsertCweBatchResults) Exec(f func(int, error)) {
 	}
 }
 
-func (b *BatchUpsertCweBatchResults) Close() error {
+func (b *BatchUpsertCveBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }
@@ -89,7 +89,7 @@ const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchex
 INSERT INTO vulnerabilities(image_name,
                                   image_tag,
                                   package,
-                                  cwe_id)
+                                  cve_id)
 
 VALUES ($1,
         $2,
@@ -108,7 +108,7 @@ type BatchUpsertVulnerabilitiesParams struct {
 	ImageName string
 	ImageTag  string
 	Package   string
-	CweID     string
+	CveID     string
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -118,7 +118,7 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.ImageName,
 			a.ImageTag,
 			a.Package,
-			a.CweID,
+			a.CveID,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

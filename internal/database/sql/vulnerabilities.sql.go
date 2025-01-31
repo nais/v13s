@@ -12,12 +12,12 @@ import (
 const countVulnerabilities = `-- name: CountVulnerabilities :one
 SELECT COUNT(*) AS total
 FROM vulnerabilities v
-         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
          LEFT JOIN suppressed_vulnerabilities sv
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
-                       AND v.cwe_id = sv.cwe_id
+                       AND v.cve_id = sv.cve_id
 WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
    AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
    AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
@@ -46,18 +46,18 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
-const getCwe = `-- name: GetCwe :one
-SELECT cwe_id, cwe_title, cwe_desc, cwe_link, severity, created_at, updated_at FROM cwe WHERE cwe_id = $1
+const getCve = `-- name: GetCve :one
+SELECT cve_id, cve_title, cve_desc, cve_link, severity, created_at, updated_at FROM cve WHERE cve_id = $1
 `
 
-func (q *Queries) GetCwe(ctx context.Context, cweID string) (*Cwe, error) {
-	row := q.db.QueryRow(ctx, getCwe, cweID)
-	var i Cwe
+func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
+	row := q.db.QueryRow(ctx, getCve, cveID)
+	var i Cve
 	err := row.Scan(
-		&i.CweID,
-		&i.CweTitle,
-		&i.CweDesc,
-		&i.CweLink,
+		&i.CveID,
+		&i.CveTitle,
+		&i.CveDesc,
+		&i.CveLink,
 		&i.Severity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -66,23 +66,23 @@ func (q *Queries) GetCwe(ctx context.Context, cweID string) (*Cwe, error) {
 }
 
 const getSuppressedVulnerability = `-- name: GetSuppressedVulnerability :one
-SELECT id, image_name, package, cwe_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1 AND package = $2 AND cwe_id = $3
+SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1 AND package = $2 AND cve_id = $3
 `
 
 type GetSuppressedVulnerabilityParams struct {
 	ImageName string
 	Package   string
-	CweID     string
+	CveID     string
 }
 
 func (q *Queries) GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error) {
-	row := q.db.QueryRow(ctx, getSuppressedVulnerability, arg.ImageName, arg.Package, arg.CweID)
+	row := q.db.QueryRow(ctx, getSuppressedVulnerability, arg.ImageName, arg.Package, arg.CveID)
 	var i SuppressedVulnerability
 	err := row.Scan(
 		&i.ID,
 		&i.ImageName,
 		&i.Package,
-		&i.CweID,
+		&i.CveID,
 		&i.Suppressed,
 		&i.Reason,
 		&i.ReasonText,
@@ -93,14 +93,14 @@ func (q *Queries) GetSuppressedVulnerability(ctx context.Context, arg GetSuppres
 }
 
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cwe_id, created_at, updated_at FROM vulnerabilities WHERE image_name = $1 AND image_tag = $2 AND package = $3 AND cwe_id = $4
+SELECT id, image_name, image_tag, package, cve_id, created_at, updated_at FROM vulnerabilities WHERE image_name = $1 AND image_tag = $2 AND package = $3 AND cve_id = $4
 `
 
 type GetVulnerabilityParams struct {
 	ImageName string
 	ImageTag  string
 	Package   string
-	CweID     string
+	CveID     string
 }
 
 func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error) {
@@ -108,7 +108,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		arg.ImageName,
 		arg.ImageTag,
 		arg.Package,
-		arg.CweID,
+		arg.CveID,
 	)
 	var i Vulnerability
 	err := row.Scan(
@@ -116,7 +116,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.ImageName,
 		&i.ImageTag,
 		&i.Package,
-		&i.CweID,
+		&i.CveID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -124,7 +124,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 }
 
 const listSuppressedVulnerabilitiesForImage = `-- name: ListSuppressedVulnerabilitiesForImage :many
-SELECT id, image_name, package, cwe_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1
+SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1
 ORDER BY updated_at DESC
 LIMIT
     $3
@@ -151,7 +151,7 @@ func (q *Queries) ListSuppressedVulnerabilitiesForImage(ctx context.Context, arg
 			&i.ID,
 			&i.ImageName,
 			&i.Package,
-			&i.CweID,
+			&i.CveID,
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,
@@ -177,23 +177,23 @@ SELECT
     v.image_name,
     v.image_tag,
     v.package,
-    v.cwe_id,
+    v.cve_id,
     v.created_at,
     v.updated_at,
-    c.cwe_title,
-    c.cwe_desc,
-    c.cwe_link,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
     c.severity,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
     sv.reason,
     sv.reason_text
 FROM vulnerabilities v
-         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
          LEFT JOIN suppressed_vulnerabilities sv
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
-                       AND v.cwe_id = sv.cwe_id
+                       AND v.cve_id = sv.cve_id
 WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
    AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
    AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
@@ -228,12 +228,12 @@ type ListVulnerabilitiesRow struct {
 	ImageName    string
 	ImageTag     string
 	Package      string
-	CweID        string
+	CveID        string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
-	CweTitle     string
-	CweDesc      string
-	CweLink      string
+	CveTitle     string
+	CveDesc      string
+	CveLink      string
 	Severity     int32
 	Suppressed   bool
 	Reason       NullVulnerabilitySuppressReason
@@ -267,12 +267,12 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.ImageName,
 			&i.ImageTag,
 			&i.Package,
-			&i.CweID,
+			&i.CveID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.CweTitle,
-			&i.CweDesc,
-			&i.CweLink,
+			&i.CveTitle,
+			&i.CveDesc,
+			&i.CveLink,
 			&i.Severity,
 			&i.Suppressed,
 			&i.Reason,
@@ -291,7 +291,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 const suppressVulnerability = `-- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,
-                                       cwe_id,
+                                       cve_id,
                                        suppressed,
                                        reason,
                                        reason_text)
@@ -301,7 +301,7 @@ VALUES ($1,
         $4,
         $5,
         $6) ON CONFLICT
-ON CONSTRAINT image_name_package_cwe_id DO UPDATE
+ON CONSTRAINT image_name_package_cve_id DO UPDATE
 SET suppressed = $4,
     reason = $5,
     reason_text = $6
@@ -310,7 +310,7 @@ SET suppressed = $4,
 type SuppressVulnerabilityParams struct {
 	ImageName  string
 	Package    string
-	CweID      string
+	CveID      string
 	Suppressed bool
 	Reason     VulnerabilitySuppressReason
 	ReasonText string
@@ -320,7 +320,7 @@ func (q *Queries) SuppressVulnerability(ctx context.Context, arg SuppressVulnera
 	_, err := q.db.Exec(ctx, suppressVulnerability,
 		arg.ImageName,
 		arg.Package,
-		arg.CweID,
+		arg.CveID,
 		arg.Suppressed,
 		arg.Reason,
 		arg.ReasonText,

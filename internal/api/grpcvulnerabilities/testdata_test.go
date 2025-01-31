@@ -17,7 +17,7 @@ type Workload struct {
 
 type Vulnerability struct {
 	vuln *sql.Vulnerability
-	cwe  *sql.Cwe
+	cve  *sql.Cve
 }
 
 func generateTestWorkloads(clusters, namespaces []string, workloadsPerNamespace, vulnsPerWorkload int) []*Workload {
@@ -56,20 +56,20 @@ func generateVulnerabilities(numVulns, workloadIndex int, imageName string, imag
 }
 
 // createVulnerability generates a predictable vulnerability instance
-func createVulnerability(cweID string, imageName string, imageTag string) *Vulnerability {
+func createVulnerability(cveID string, imageName string, imageTag string) *Vulnerability {
 
 	return &Vulnerability{
 		vuln: &sql.Vulnerability{
 			ImageName: imageName,
 			ImageTag:  imageTag,
-			Package:   fmt.Sprintf("package-%s", cweID),
-			CweID:     cweID,
+			Package:   fmt.Sprintf("package-%s", cveID),
+			CveID:     cveID,
 		},
-		cwe: &sql.Cwe{
-			CweID:    cweID,
-			CweTitle: "CWE Title for " + cweID,
-			CweDesc:  "Description for " + cweID,
-			CweLink:  "https://example.com/" + cweID,
+		cve: &sql.Cve{
+			CveID:    cveID,
+			CveTitle: "CWE Title for " + cveID,
+			CveDesc:  "Description for " + cveID,
+			CveLink:  "https://example.com/" + cveID,
 			Severity: 1,
 		},
 	}

@@ -57,14 +57,14 @@ func (u *Updater) Run(ctx context.Context) error {
 
 // TODO: use transactions to ensure consistency
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
-	err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	/*err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateQueued,
 		Name:  imageName,
 		Tag:   imageTag,
 	})
 	if err != nil {
 		return err
-	}
+	}*/
 
 	errCh := make(chan error, 1)
 
@@ -181,37 +181,37 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, project client.Proj
 	if err != nil {
 		return nil, err
 	}
-	cweParams := make([]sql.BatchUpsertCweParams, 0)
+	CveParams := make([]sql.BatchUpsertCveParams, 0)
 	vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	for _, f := range findings {
-		v, cwe, err := u.parseFinding(*project.Name, *project.Version, f)
+		v, Cve, err := u.parseFinding(*project.Name, *project.Version, f)
 		if err != nil {
 			return nil, err
 		}
-		cweParams = append(cweParams, sql.BatchUpsertCweParams{
-			CweID:    cwe.CweID,
-			CweTitle: cwe.CweTitle,
-			CweDesc:  cwe.CweDesc,
-			CweLink:  cwe.CweLink,
-			Severity: cwe.Severity,
+		CveParams = append(CveParams, sql.BatchUpsertCveParams{
+			CveID:    Cve.CveID,
+			CveTitle: Cve.CveTitle,
+			CveDesc:  Cve.CveDesc,
+			CveLink:  Cve.CveLink,
+			Severity: Cve.Severity,
 		})
 		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
 			ImageName: v.ImageName,
 			ImageTag:  v.ImageTag,
 			Package:   v.Package,
-			CweID:     v.CweID,
+			CveID:     v.CveID,
 		})
 	}
 
 	// TODO: how to handle errors here?
-	_, errors := u.upsertBatchCwe(ctx, cweParams)
+	_, errors := u.upsertBatchCve(ctx, CveParams)
 	if errors > 0 {
-		return nil, fmt.Errorf("error upserting CWEs, num errors: %d", errors)
+		return nil, fmt.Errorf("error upserting Cves, num errors: %d", errors)
 	}
 
 	_, errors = u.upsertBatchVulnerabilities(ctx, vulnParams)
 	if errors > 0 {
-		return nil, fmt.Errorf("error upserting CWEs, num errors: %d", errors)
+		return nil, fmt.Errorf("error upserting Cves, num errors: %d", errors)
 	}
 
 	return nil, nil
@@ -243,7 +243,7 @@ func (u *Updater) upsertBatchVulnerabilities(ctx context.Context, batch []sql.Ba
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) upsertBatchCwe(ctx context.Context, batch []sql.BatchUpsertCweParams) (upserted, errors int) {
+func (u *Updater) upsertBatchCve(ctx context.Context, batch []sql.BatchUpsertCveParams) (upserted, errors int) {
 	if len(batch) == 0 {
 		return
 	}
@@ -251,7 +251,7 @@ func (u *Updater) upsertBatchCwe(ctx context.Context, batch []sql.BatchUpsertCwe
 	start := time.Now()
 	var batchErr error
 
-	u.db.BatchUpsertCwe(ctx, batch).Exec(func(i int, err error) {
+	u.db.BatchUpsertCve(ctx, batch).Exec(func(i int, err error) {
 		if err != nil {
 			batchErr = err
 			errors++

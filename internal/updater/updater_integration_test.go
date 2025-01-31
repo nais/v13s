@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
@@ -27,15 +28,14 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
-	assert.NoError(t, err)
-	u := updater.NewUpdater(db, dpTrack, 1*time.Second)
+	u := updater.NewUpdater(db, dpTrack, 200*time.Millisecond)
 
-	t.Run("TestUpdater", func(t *testing.T) {
-		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(3*time.Second))
+	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
 		defer cancel()
 
 		for _, p := range projectNames {
-			err = db.CreateImage(ctx, sql.CreateImageParams{
+			err := db.CreateImage(ctx, sql.CreateImageParams{
 				Name:     p,
 				Tag:      "v1",
 				Metadata: map[string]string{"key": "value"},
@@ -59,13 +59,27 @@ func TestUpdater(t *testing.T) {
 			}
 		}
 
-		image, err := db.GetImage(ctx, sql.GetImageParams{
-			Name: "project-1",
-			Tag:  "v1",
-		})
+		imageName := projectNames[0]
+		imageTag := "v1"
 
+		image, err := db.GetImage(ctx, sql.GetImageParams{
+			Name: imageName,
+			Tag:  imageTag,
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateUpdated, image.State)
+
+		vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+			ImageName: &imageName,
+			ImageTag:  &imageTag,
+			Limit:     100,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, vulns, 4)
+		assert.True(t, collections.AnyMatch(vulns, func(r *sql.ListVulnerabilitiesRow) bool {
+			return r.ImageName == imageName && r.ImageTag == imageTag && r.CveID == fmt.Sprintf("CVE-%s-0", imageName)
+		}))
+
 	})
 }
 
@@ -144,7 +158,7 @@ func NewMock(projectNames []string) *MockDtrack {
 					"source":      "NVD",
 					"title":       "title",
 					"description": "description",
-					"vulnId":      fmt.Sprintf("CWE-vulnId-%d", j),
+					"vulnId":      fmt.Sprintf("CVE-%s-%d", p, j),
 				},
 				Analysis: map[string]interface{}{
 					"isSuppressed": false,

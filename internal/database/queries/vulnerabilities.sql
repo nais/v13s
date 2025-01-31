@@ -2,74 +2,74 @@
 INSERT INTO vulnerabilities(image_name,
                                   image_tag,
                                   package,
-                                  cwe_id)
+                                  cve_id)
 
 VALUES (@image_name,
         @image_tag,
         @package,
-        @cwe_id)
+        @cve_id)
 ON CONFLICT DO NOTHING
 ;
 
--- name: BatchUpsertCwe :batchexec
-INSERT INTO cwe(cwe_id,
-                cwe_title,
-                cwe_desc,
-                cwe_link,
+-- name: BatchUpsertCve :batchexec
+INSERT INTO cve(cve_id,
+                cve_title,
+                cve_desc,
+                cve_link,
                 severity)
-VALUES (@cwe_id,
-        @cwe_title,
-        @cwe_desc,
-        @cwe_link,
+VALUES (@cve_id,
+        @cve_title,
+        @cve_desc,
+        @cve_link,
         @severity)
-ON CONFLICT (cwe_id)
+ON CONFLICT (cve_id)
     DO
         UPDATE
-    SET cwe_title = @cwe_title,
-        cwe_desc = @cwe_desc,
-        cwe_link = @cwe_link,
+    SET cve_title = @cve_title,
+        cve_desc = @cve_desc,
+        cve_link = @cve_link,
         severity = @severity
 ;
 
--- name: GetCwe :one
-SELECT * FROM cwe WHERE cwe_id = @cwe_id;
+-- name: GetCve :one
+SELECT * FROM cve WHERE cve_id = @cve_id;
 
 
 -- name: GetVulnerability :one
-SELECT * FROM vulnerabilities WHERE image_name = @image_name AND image_tag = @image_tag AND package = @package AND cwe_id = @cwe_id;
+SELECT * FROM vulnerabilities WHERE image_name = @image_name AND image_tag = @image_tag AND package = @package AND cve_id = @cve_id;
 
 
 -- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,
-                                       cwe_id,
+                                       cve_id,
                                        suppressed,
                                        reason,
                                        reason_text)
 VALUES (@image_name,
         @package,
-        @cwe_id,
+        @cve_id,
         @suppressed,
         @reason,
         @reason_text) ON CONFLICT
-ON CONSTRAINT image_name_package_cwe_id DO UPDATE
+ON CONSTRAINT image_name_package_cve_id DO UPDATE
 SET suppressed = @suppressed,
     reason = @reason,
     reason_text = @reason_text
 ;
 
 -- name: GetSuppressedVulnerability :one
-SELECT * FROM suppressed_vulnerabilities WHERE image_name = @image_name AND package = @package AND cwe_id = @cwe_id;
+SELECT * FROM suppressed_vulnerabilities WHERE image_name = @image_name AND package = @package AND cve_id = @cve_id;
 
 -- name: CountVulnerabilities :one
 SELECT COUNT(*) AS total
 FROM vulnerabilities v
-         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
          LEFT JOIN suppressed_vulnerabilities sv
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
-                       AND v.cwe_id = sv.cwe_id
+                       AND v.cve_id = sv.cve_id
 WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
    AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
    AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
@@ -86,23 +86,23 @@ SELECT
     v.image_name,
     v.image_tag,
     v.package,
-    v.cwe_id,
+    v.cve_id,
     v.created_at,
     v.updated_at,
-    c.cwe_title,
-    c.cwe_desc,
-    c.cwe_link,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
     c.severity,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
     sv.reason,
     sv.reason_text
 FROM vulnerabilities v
-         JOIN cwe c ON v.cwe_id = c.cwe_id
+         JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
          LEFT JOIN suppressed_vulnerabilities sv
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
-                       AND v.cwe_id = sv.cwe_id
+                       AND v.cve_id = sv.cve_id
 WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
    AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
    AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
