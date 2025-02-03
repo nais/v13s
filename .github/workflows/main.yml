@@ -1,0 +1,91 @@
+name: Build and deploy
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE.md'
+env:
+  NAME: v13s
+  FEATURE_REPOSITORY: oci://europe-north1-docker.pkg.dev/nais-io/nais/feature
+
+jobs:
+  go_version:
+    outputs:
+      go_version: ${{ steps.go_version.outputs.GO_VERSION }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find Go version
+        id: go_version
+        run: |
+          echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
+  tests:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    needs: go_version
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ needs.go_version.outputs.go_version }}
+          cache-dependency-path: ./go.sum
+
+     # - name: Check for vulnerable dependencies and static code
+      #  run: make check
+
+      - name: Run tests
+        run: make test
+
+  build_and_push:
+    outputs:
+      version: ${{ steps.build-push-sign.outputs.version }}
+    needs:
+      - tests
+    permissions:
+      contents: "read"
+      id-token: "write"
+    name: build and push
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build push v13s image
+        uses: nais/platform-build-push-sign@main
+        id: build-push-sign
+        with:
+          name: ${{ env.NAME }}
+          google_service_account: gh-${{ env.NAME }}
+          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
+          push: true
+
+      - name: Update values.yaml
+        run: |-
+          yq e '.image.tag = "${{ steps.build-push-sign.outputs.version }}"' -i ./charts/values.yaml
+
+      - uses: azure/setup-helm@v4
+        name: "Setup Helm"
+        with:
+          version: "v3.15.1"
+
+      - name: Build Chart
+        run: |-
+          yq e '.version = "${{ steps.build-push-sign.outputs.version }}"' -i charts/Chart.yaml
+          helm package charts
+
+      - name: Push Chart
+        run: |-
+          helm push ${{ env.NAME }}*.tgz ${{ env.FEATURE_REPOSITORY }}
+
+  rollout:
+    needs:
+      - build_and_push
+    runs-on: fasit-deploy
+    permissions:
+      id-token: write
+    steps:
+      - uses: nais/fasit-deploy@v2
+        with:
+          chart: ${{ env.FEATURE_REPOSITORY }}/${{ env.NAME }}
+          version: ${{ needs.build_and_push.outputs.version }}

@@ -32,7 +32,7 @@ type Vulnerability struct {
 	Title        string `json:"title"`
 }
 
-func setupConfig(apiKey, url string) *client.Configuration {
+func setupConfig(url, apiKey string) *client.Configuration {
 	cfg := client.NewConfiguration()
 	cfg.AddDefaultHeader(ClientXApiKeyHeader, apiKey)
 	cfg.Scheme = "https"
@@ -44,8 +44,8 @@ func setupConfig(apiKey, url string) *client.Configuration {
 	return cfg
 }
 
-func NewClient(apiKey, url string) (Client, error) {
-	return &dependencyTrackClient{client.NewAPIClient(setupConfig(apiKey, url))}, nil
+func NewClient(url, apiKey string) (Client, error) {
+	return &dependencyTrackClient{client.NewAPIClient(setupConfig(url, apiKey))}, nil
 }
 
 func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {

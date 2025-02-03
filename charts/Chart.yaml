@@ -1,0 +1,8 @@
+apiVersion: v2
+name: v13s
+icon: https://slsa.dev/images/slsa-dancing-goose-logo.svg
+sources:
+  - https://github.com/nais/v13s/tree/main/charts
+description: v13s is an api for vulnerabilities data across multiple sources
+type: application
+version: 0.1.0

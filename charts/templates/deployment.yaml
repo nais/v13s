@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "v13s.fullname" . }}
+  labels:
+    {{- include "v13s.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "v13s.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "v13s.selectorLabels" . | nindent 8 }}
+      annotations:
+        kubectl.kubernetes.io/default-container: {{ .Chart.Name }}
+    spec:
+      serviceAccountName: {{ include "v13s.name" . }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: {{ include "v13s.fullname" . }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+            - name: http-metrics
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        - name: cloud-sql-proxy
+          image: {{ .Values.image.cloudsql_proxy }}
+          command:
+            - "/cloud_sql_proxy"
+            - "-log_debug_stdout"
+            - "-instances={{ .Values.database.instance }}=tcp:5432"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "0.22"

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "v13s.labels" . | nindent 4 }}
+  name: {{ include "v13s.fullname" . }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      name: http-metrics
+      targetPort: http-metrics
+    - name: grpc
+      port: 3001
+      protocol: TCP
+      targetPort: grpc
+  selector:
+    {{- include "v13s.selectorLabels" . | nindent 4 }}

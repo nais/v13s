@@ -1,0 +1,18 @@
+image:
+  repository: europe-north1-docker.pkg.dev/nais-io/nais/images
+  name: v13s
+  tag: tull
+  cloudsql_proxy: gcr.io/cloudsql-docker/gce-proxy:1.33.16
+serviceAccountEmail:
+dependencytrack:
+    url:
+    apikey:
+database:
+  instance:
+  name:
+  user:
+  password:
+resources:
+  requests:
+    cpu: 20m
+    memory: 256Mi

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "v13s.name" . }}
+  labels:
+    {{- include "v13s.labels" . | nindent 4 }}
+  annotations:
+    iam.gke.io/gcp-service-account: {{ .Values.serviceAccountEmail }}

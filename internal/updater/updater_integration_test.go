@@ -19,7 +19,7 @@ import (
 func TestUpdater(t *testing.T) {
 	ctx := context.Background()
 
-	pool := test.GetPool(ctx, t, false)
+	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
 	db := sql.New(pool)
 

@@ -19,14 +19,18 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc"
 )
 
-const (
-	listenAddr = "127.0.0.1:50051"
-)
+type config struct {
+	ListenAddr            string `default:"127.0.0.1:50051"`
+	DependencytrackUrl    string `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
+	DependencytrackApiKey string `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
+	DatabaseUrl           string `envconfig:"DATABASE_URL" required:"true"`
+}
 
 // handle env vars better
 func main() {
@@ -35,7 +39,13 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 
-	listener, err := net.Listen("tcp", listenAddr)
+	var c config
+	err = envconfig.Process("V13S", &c)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	listener, err := net.Listen("tcp", c.ListenAddr)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -45,12 +55,7 @@ func main() {
 
 	log.Info("Initializing database")
 
-	dbURL := os.Getenv("V13S_DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("Database URL is not set")
-	}
-
-	pool, err := database.New(ctx, dbURL, log.WithField("component", "database"))
+	pool, err := database.New(ctx, c.DatabaseUrl, log.WithField("component", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
@@ -60,8 +65,8 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	dpClient, err := dependencytrack.NewClient(
-		os.Getenv("V13S_DEPENDENCYTRACK_API_KEY"),
-		os.Getenv("V13S_DEPENDENCYTRACK_URL"),
+		c.DependencytrackUrl,
+		c.DependencytrackApiKey,
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)

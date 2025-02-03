@@ -2,3 +2,4 @@ golang 1.23.5
 protoc-gen-go-grpc 1.5.1
 protoc-gen-go 1.36.3
 protoc 29.3
+helm 3.15.1
