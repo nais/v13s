@@ -239,7 +239,7 @@ func (u *Updater) upsertBatchVulnerabilities(ctx context.Context, batch []sql.Ba
 		"duration":   time.Since(start),
 		"num_rows":   upserted,
 		"num_errors": errors,
-	}).Infof("upserted batch")
+	}).Infof("upserted batch of vulnerabilities")
 	return
 }
 
@@ -264,6 +264,6 @@ func (u *Updater) upsertBatchCve(ctx context.Context, batch []sql.BatchUpsertCve
 		"duration":   time.Since(start),
 		"num_rows":   upserted,
 		"num_errors": errors,
-	}).Infof("upserted batch")
+	}).Infof("upserted batch of Cves")
 	return
 }

@@ -9,7 +9,7 @@ fmt:
 	go fmt $(GO_PACKAGES)
 
 test:
-	go test -cover --race ./...
+	go test -cover ./...
 
 check: vulncheck deadcode gosec staticcheck
 
@@ -64,6 +64,4 @@ generate-mocks:
 
 
 refresh-db:
-	docker compose down
-	docker volume rm v13s_pgdata
-	docker compose up -d
+	docker compose down -v

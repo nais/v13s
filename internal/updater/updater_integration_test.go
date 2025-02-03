@@ -78,12 +78,13 @@ func TestUpdater(t *testing.T) {
 
 		imageLastUpdated := time.Now().Add(-(time.Hour * 24))
 		imageName := projectNames[0]
+		imageVersion := "v1"
 		_, err = pool.Exec(
 			ctx,
 			"UPDATE images SET updated_at = $1 WHERE name = $2 AND tag=$3;",
 			imageLastUpdated,
 			imageName,
-			"v1",
+			imageVersion,
 		)
 		assert.NoError(t, err)
 
@@ -100,9 +101,19 @@ func TestUpdater(t *testing.T) {
 			}
 		}
 
-		vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{Limit: 100})
+		vulns, err := db.ListVulnerabilities(
+			ctx,
+			sql.ListVulnerabilitiesParams{Limit: 100, ImageName: &imageName, ImageTag: &imageVersion},
+		)
 		assert.NoError(t, err)
 		assert.Len(t, vulns, 5)
+
+		images, err := db.GetImage(ctx, sql.GetImageParams{
+			Name: imageName,
+			Tag:  imageVersion,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateUpdated, images.State)
 	})
 }
 
@@ -123,6 +134,7 @@ func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, project
 			ImageName:    p,
 			ImageTag:     "v1",
 		})
+		assert.NoError(t, err)
 	}
 }
 
