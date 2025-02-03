@@ -51,5 +51,5 @@ values:
   serviceAccountEmail:
     displayName: Google service account email
     computed:
-      template:
+      template: |
         {{.Env.v13s_serviceaccount_email | quote}}
