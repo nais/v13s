@@ -11,7 +11,9 @@ values:
     displayName: dependencytrack API key
     config:
       type: string
+      secret: true
     required: true
+
   
   dependencytrack.url:
     displayName: dependencytrack URL
@@ -42,6 +44,9 @@ values:
         {{ .Env.v13s_db_user | quote }}
 
   database.password:
+    config:
+      type: string
+      secret: true
     displayName: Database password
     description: The password for the database
     computed:
