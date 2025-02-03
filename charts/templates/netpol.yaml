@@ -4,11 +4,9 @@ metadata:
   name: {{ include "v13s.fullname" . }}
 spec:
   egress:
-    - ports:
-        - port: 443
-          protocol: TCP
-        - port: 80
-          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
     - to:
         - namespaceSelector: { }
           podSelector:
