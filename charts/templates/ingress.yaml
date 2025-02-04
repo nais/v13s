@@ -25,4 +25,3 @@ spec:
                 name: {{ include "v13s.fullname" . }}
                 port:
                   name: grpc
-                  number: 3001
