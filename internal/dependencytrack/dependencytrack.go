@@ -35,7 +35,10 @@ type Vulnerability struct {
 func setupConfig(url, apiKey string) *client.Configuration {
 	cfg := client.NewConfiguration()
 	cfg.AddDefaultHeader(ClientXApiKeyHeader, apiKey)
-	cfg.Scheme = "https"
+	cfg.Scheme = "http"
+	if strings.HasPrefix(url, "https") {
+		cfg.Scheme = "https"
+	}
 	cfg.Servers = client.ServerConfigurations{
 		{
 			URL: url,
