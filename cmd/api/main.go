@@ -26,10 +26,11 @@ import (
 )
 
 type config struct {
-	ListenAddr            string `default:"127.0.0.1:50051"`
-	DependencytrackUrl    string `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
-	DependencytrackApiKey string `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
-	DatabaseUrl           string `envconfig:"DATABASE_URL" required:"true"`
+	ListenAddr            string        `default:"127.0.0.1:50051"`
+	DependencytrackUrl    string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
+	DependencytrackApiKey string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
+	DatabaseUrl           string        `envconfig:"DATABASE_URL" required:"true"`
+	UpdateInterval        time.Duration `envconfig:"UPDATE_INTERVAL" default:"1h"`
 }
 
 // handle env vars better
@@ -72,7 +73,7 @@ func main() {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	u := updater.NewUpdater(db, dpClient, 60*time.Minute)
+	u := updater.NewUpdater(db, dpClient, c.UpdateInterval)
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
 	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
 
