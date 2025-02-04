@@ -2,67 +2,64 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"strings"
 
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
+	url := "vulnerabilities.dev-nais.cloud.nais.io:443"
+	dialOptions := make([]grpc.DialOption, 0)
+	if strings.Contains(url, "localhost") {
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		tlsOpts := &tls.Config{}
+		cred := credentials.NewTLS(tlsOpts)
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(cred))
+	}
+
 	c, err := vulnerabilities.NewClient(
-		"localhost:50051",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		url,
+		dialOptions...,
 	)
 	if err != nil {
 		panic(err)
 	}
-
-	workloadManagement(c)
 
 	listVulnz(c)
+	//workloadManagement(c)
+	/*
+		listVulnz(c)
 
-	resp, err := c.ListVulnerabilitySummaries(
-		context.Background(),
-		vulnerabilities.ClusterFilter("prod-gcp"),
-		vulnerabilities.NamespaceFilter("nais-system"),
-		vulnerabilities.Limit(10),
-		vulnerabilities.Offset(0),
-	)
+		resp, err := c.ListVulnerabilitySummaries(
+			context.Background(),
+			vulnerabilities.ClusterFilter("prod-gcp"),
+			vulnerabilities.NamespaceFilter("nais-system"),
+			vulnerabilities.Limit(10),
+			vulnerabilities.Offset(0),
+		)
 
-	handle(resp, err)
+		handle(resp, err)
 
-	//resp3, err := c.ListVulnerabilities(
-	//	context.Background(),
-	//	vulnerabilities.ClusterFilter("prod-gcp"),
-	//	vulnerabilities.NamespaceFilter("nais-system"),
-	//	vulnerabilities.WorkloadTypeFilter("job"),
-	//	vulnerabilities.Limit(10),
-	//	vulnerabilities.Suppressed(),
-	//)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//fmt.Printf("Filters: %v\n", resp3.Filter)
-	//for _, v := range resp3.Workloads {
-	//	fmt.Printf("workload: %v\n", v.Workload)
-	//	fmt.Printf("vulnerabilities: %v\n", v.Vulnerabilities)
-	//}
+		resp2, err := c.GetVulnerabilitySummary(
+			context.Background(),
+			vulnerabilities.ClusterFilter("prod-gcp"),
+			vulnerabilities.NamespaceFilter("nais-system"),
+			vulnerabilities.WorkloadFilter("pull-metrics"),
+		)
+		if err != nil {
+			panic(err)
+		}
 
-	resp2, err := c.GetVulnerabilitySummary(
-		context.Background(),
-		vulnerabilities.ClusterFilter("prod-gcp"),
-		vulnerabilities.NamespaceFilter("nais-system"),
-		vulnerabilities.WorkloadFilter("pull-metrics"),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Filters: %v\n", resp2.Filter)
-	fmt.Printf("summary: %v\n", resp2.VulnerabilitySummary)
+		fmt.Printf("Filters: %v\n", resp2.Filter)
+		fmt.Printf("summary: %v\n", resp2.VulnerabilitySummary)
+	*/
 }
 
 func listVulnz(c vulnerabilities.Client) {
