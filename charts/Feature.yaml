@@ -29,6 +29,13 @@ values:
       template: |
         {{ .Env.v13s_db_instance | quote }}
 
+  database.public_ip:
+    displayName: Cloud SQL instance public IP
+    description: The Public IP Cloud SQL instance
+    computed:
+      template: |
+        {{ .Env.v13s_db_instance_public_ip | quote }}
+
   database.name:
     displayName: Database name
     description: The name of the database

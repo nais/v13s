@@ -10,6 +10,7 @@ dependencytrack:
     apikey:
 database:
   instance:
+  public_ip:
   name:
   user:
   password:
