@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "v13s.name" . }}
+  name: {{ .Values.serviceAccountName }}
   labels:
     {{- include "v13s.labels" . | nindent 4 }}
   annotations:

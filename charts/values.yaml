@@ -4,6 +4,7 @@ image:
   tag: tull
   cloudsql_proxy: gcr.io/cloudsql-docker/gce-proxy:1.33.16
 serviceAccountEmail:
+serviceAccountName: v13s-sa
 dependencytrack:
     url:
     apikey:
