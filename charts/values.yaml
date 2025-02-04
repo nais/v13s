@@ -6,9 +6,12 @@ image:
 serviceAccountEmail:
 serviceAccountName: v13s-sa
 updateInterval: 1h
+ingress:
+  className: nais-ingress
+  host: ""
 dependencytrack:
-    url:
-    apikey:
+  url:
+  apikey:
 database:
   instance:
   public_ip:

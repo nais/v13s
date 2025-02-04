@@ -1,7 +1,14 @@
 environmentKinds:
   - management
 values:
-  
+
+  ingress.host:
+    displayName: Ingress host
+    config:
+      type: string
+    computed:
+      template: '"{{ subdomain . "vulnerabilities" }}"'
+
   image.tag:
     displayName: Image tag
     config:
