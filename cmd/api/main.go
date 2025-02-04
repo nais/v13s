@@ -26,7 +26,7 @@ import (
 )
 
 type config struct {
-	ListenAddr            string        `default:"127.0.0.1:50051"`
+	ListenAddr            string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
 	DependencytrackUrl    string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
 	DependencytrackApiKey string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
 	DatabaseUrl           string        `envconfig:"DATABASE_URL" required:"true"`
