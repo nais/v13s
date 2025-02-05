@@ -28,6 +28,7 @@ func main() {
 		url,
 		dialOptions...,
 	)
+	defer c.Close()
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +66,7 @@ func main() {
 func listVulnz(c vulnerabilities.Client) {
 	resp, err := c.ListVulnerabilities(
 		context.Background(),
-		vulnerabilities.ClusterFilter("dev-gcp"),
+		//vulnerabilities.ClusterFilter("dev-gcp"),
 		vulnerabilities.Suppressed(),
 	)
 	if err != nil {

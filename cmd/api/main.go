@@ -7,6 +7,7 @@ import (
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"google.golang.org/grpc/grpclog"
 	"net"
 	"os"
 	"os/signal"
@@ -45,6 +46,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stderr))
 
 	listener, err := net.Listen("tcp", c.ListenAddr)
 	if err != nil {
