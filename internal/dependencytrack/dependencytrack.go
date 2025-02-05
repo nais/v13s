@@ -127,9 +127,6 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
 	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
-		if offset%limit != 0 {
-			pageNumber++
-		}
 		p, _, err := c.client.ProjectAPI.GetProjects(ctx).
 			PageSize(limit).
 			PageNumber(pageNumber).
