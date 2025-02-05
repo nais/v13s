@@ -48,6 +48,13 @@ func setupConfig(url, apiKey string) *client.Configuration {
 }
 
 func NewClient(url, apiKey string) (Client, error) {
+	if url == "" {
+		return nil, fmt.Errorf("NewClient: URL cannot be empty")
+	}
+	if apiKey == "" {
+		return nil, fmt.Errorf("NewClient: API key cannot be empty")
+	}
+
 	return &dependencyTrackClient{client.NewAPIClient(setupConfig(url, apiKey))}, nil
 }
 
@@ -55,7 +62,12 @@ func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid string, su
 	p, _, err := c.client.FindingAPI.GetFindingsByProject(ctx, uuid).
 		Suppressed(suppressed).
 		Execute()
-	return p, err
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get findings for project %s: %w", uuid, err)
+	}
+
+	return p, nil
 }
 
 func (c *dependencyTrackClient) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
@@ -96,17 +108,17 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 		Version(version).
 		Execute()
 
-	if resp != nil && resp.StatusCode == 404 {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
+	if err != nil && resp != nil && resp.StatusCode == 404 {
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", readErr)
 		}
 
-		if strings.Contains(string(b), "The project could not be found") {
+		if strings.Contains(string(body), "The project could not be found") {
 			return nil, nil
 		}
 
-		return nil, fmt.Errorf("getting project: 404 not found %s", string(b))
+		return nil, fmt.Errorf("project not found: %s", string(body))
 	}
 
 	return p, err
@@ -115,6 +127,9 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
 	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
+		if offset%limit != 0 {
+			pageNumber++
+		}
 		p, _, err := c.client.ProjectAPI.GetProjects(ctx).
 			PageSize(limit).
 			PageNumber(pageNumber).

@@ -30,7 +30,7 @@ type config struct {
 	DependencytrackUrl    string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
 	DependencytrackApiKey string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
 	DatabaseUrl           string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval        time.Duration `envconfig:"UPDATE_INTERVAL" default:"1h"`
+	UpdateInterval        time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 }
 
 // handle env vars better
