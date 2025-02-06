@@ -15,17 +15,14 @@ values:
       type: string
 
   auth.audience:
-    displayName: Audience
+    displayName: Required token audience
     config:
       type: string
 
   auth.serviceAccounts:
     displayName: Authorized service accounts
-    required: true
     config:
-      type: array
-      items:
-        type: string
+      type: string_array
 
   dependencytrack.apikey:
     displayName: dependencytrack API key
