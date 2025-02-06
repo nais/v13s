@@ -13,7 +13,20 @@ values:
     displayName: Image tag
     config:
       type: string
-  
+
+  auth.audience:
+    displayName: Audience
+    config:
+      type: string
+
+  auth.serviceAccounts:
+    displayName: Authorized service accounts
+    required: true
+    config:
+      type: array
+      items:
+        type: string
+
   dependencytrack.apikey:
     displayName: dependencytrack API key
     config:

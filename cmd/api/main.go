@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/updater"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"google.golang.org/grpc/grpclog"
 	"net"
@@ -22,16 +24,17 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/nais/v13s/internal/dependencytrack"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc"
 )
 
 type config struct {
-	ListenAddr            string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	DependencytrackUrl    string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
-	DependencytrackApiKey string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
-	DatabaseUrl           string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval        time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
+	ListenAddr               string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	DependencytrackUrl       string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
+	DependencytrackApiKey    string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
+	DatabaseUrl              string        `envconfig:"DATABASE_URL" required:"true"`
+	UpdateInterval           time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
+	RequiredAudience         string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
+	AutorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
 }
 
 // handle env vars better
@@ -67,7 +70,6 @@ func main() {
 
 	db := sql.New(pool)
 
-	grpcServer := grpc.NewServer()
 	dpClient, err := dependencytrack.NewClient(
 		c.DependencytrackUrl,
 		c.DependencytrackApiKey,
@@ -77,8 +79,8 @@ func main() {
 	}
 
 	u := updater.NewUpdater(db, dpClient, c.UpdateInterval)
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
-	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
+
+	grpcServer := createGrpcServer(c, db, u)
 
 	go func() {
 		if err := u.Run(ctx); err != nil {
@@ -102,4 +104,16 @@ func main() {
 	}
 
 	grpcServer.GracefulStop()
+}
+
+func createGrpcServer(cfg config, db sql.Querier, u *updater.Updater) *grpc.Server {
+	serverOpts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AutorizedServiceAccounts)),
+	}
+	grpcServer := grpc.NewServer(serverOpts...)
+
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
+	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
+
+	return grpcServer
 }

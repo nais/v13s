@@ -6,6 +6,9 @@ image:
 serviceAccountEmail:
 serviceAccountName: v13s-sa
 updateInterval: 1h
+auth:
+  audience: "v13s"
+  serviceAccounts: []
 ingress:
   className: nais-ingress
   host: ""

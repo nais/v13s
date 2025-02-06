@@ -4,17 +4,21 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/auth"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"strings"
-
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
 func main() {
-	url := "vulnerabilities.dev-nais.cloud.nais.io:443"
+	//url := "vulnerabilities.dev-nais.cloud.nais.io"
+	url := "localhost:50051"
+	ctx := context.Background()
+
 	dialOptions := make([]grpc.DialOption, 0)
 	if strings.Contains(url, "localhost") {
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -23,15 +27,21 @@ func main() {
 		cred := credentials.NewTLS(tlsOpts)
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(cred))
 	}
+	creds, err := auth.PerRPCGoogleIDToken(ctx, "v13s-sa@nais-management-7178.iam.gserviceaccount.com", "vulnz")
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(creds))
 
 	c, err := vulnerabilities.NewClient(
 		url,
 		dialOptions...,
 	)
-	defer c.Close()
 	if err != nil {
 		panic(err)
 	}
+
+	defer c.Close()
 
 	listVulnz(c)
 	//workloadManagement(c)
