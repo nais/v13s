@@ -4,14 +4,14 @@ GO_PACKAGES := $(shell go list ./... | grep -v $(IGNORED_PATH))
 build:
 	go build -o bin/api ./cmd/api
 
-fmt:
-	@echo "Running go fmt..."
-	go fmt $(GO_PACKAGES)
-
 test:
 	go test -cover ./...
 
-check: vulncheck deadcode gosec staticcheck
+check: fmt vulncheck deadcode gosec staticcheck
+
+fmt:
+	@echo "Running go fmt..."
+	go fmt $(GO_PACKAGES)
 
 staticcheck:
 	@echo "Running staticcheck..."
@@ -61,7 +61,6 @@ generate-mocks:
 	find internal pkg -type f -name "mock_*.go" -delete
 	go run github.com/vektra/mockery/v2 --config ./.configs/mockery.yaml
 	find internal pkg -type f -name "mock_*.go" -exec go run mvdan.cc/gofumpt@latest -w {} \;
-
 
 refresh-db:
 	docker compose down -v

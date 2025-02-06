@@ -6,7 +6,7 @@ RUN go version
 COPY . /src
 WORKDIR /src
 RUN go mod download
-RUN go build -a -installsuffix cgo -o /bin/api cmd/api/main.go
+RUN go build -installsuffix cgo -o /bin/api cmd/api/main.go
 
 FROM cgr.dev/chainguard/static:latest
 WORKDIR /app
