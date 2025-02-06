@@ -58,29 +58,20 @@ func (u *Updater) Run(ctx context.Context) error {
 
 // TODO: use transactions to ensure consistency
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
-	/*err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
-		State: sql.ImageStateQueued,
-		Name:  imageName,
-		Tag:   imageTag,
-	})
-	if err != nil {
-		return err
-	}*/
-
 	errCh := make(chan error, 1)
 
 	go func() {
 		defer close(errCh) // Close channel after execution
 		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
-			log.WithError(err).Errorf("Error updating image")
+			log.Errorf("processing image %s:%s failed: %v", imageName, imageTag, err)
 
 			if dbErr := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
 			}); dbErr != nil {
-				log.WithError(dbErr).Errorf("Error updating image state")
+				log.Errorf("failed to update image state to failed: %v", dbErr)
 			}
 
 			errCh <- err
@@ -90,7 +81,7 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) er
 	// Handle error if needed (non-blocking)
 	select {
 	case err := <-errCh:
-		return fmt.Errorf("error processing image %s:%s: %w", imageName, imageTag, err)
+		return fmt.Errorf("processing image %s:%s: %w", imageName, imageTag, err)
 	default:
 		return nil
 	}
@@ -105,7 +96,7 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	for _, image := range images {
 		err = u.QueueImage(ctx, image.Name, image.Tag)
 		if err != nil {
-			log.WithError(err).Errorf("error queuing image")
+			log.Errorf("failed to queue image %s:%s for resync: %v", image.Name, image.Tag, err)
 		}
 	}
 
@@ -129,7 +120,7 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string) error {
 	p, err := u.source.GetProject(ctx, imageName, imageTag)
 	if err != nil {
-		return fmt.Errorf("error getting project: %w", err)
+		return fmt.Errorf("getting project: %w", err)
 	}
 
 	if p == nil || p.Metrics == nil {
@@ -207,12 +198,12 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, project client.Proj
 	// TODO: how to handle errors here?
 	_, errors := u.upsertBatchCve(ctx, CveParams)
 	if errors > 0 {
-		return nil, fmt.Errorf("error upserting Cves, num errors: %d", errors)
+		return nil, fmt.Errorf("upserting Cves, num errors: %d", errors)
 	}
 
 	_, errors = u.upsertBatchVulnerabilities(ctx, vulnParams)
 	if errors > 0 {
-		return nil, fmt.Errorf("error upserting Cves, num errors: %d", errors)
+		return nil, fmt.Errorf("upserting Cves, num errors: %d", errors)
 	}
 
 	return nil, nil
