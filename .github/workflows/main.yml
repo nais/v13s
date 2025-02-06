@@ -14,6 +14,8 @@ jobs:
   go_version:
     outputs:
       go_version: ${{ steps.go_version.outputs.GO_VERSION }}
+    permissions:
+      contents: read
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
@@ -24,6 +26,8 @@ jobs:
   tests:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     needs: go_version
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
