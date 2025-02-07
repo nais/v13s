@@ -15,8 +15,7 @@ $$;
 
 -- +goose StatementEnd
 -- extensions
-CREATE
-EXTENSION fuzzystrmatch;
+CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 
 -- tables
 CREATE TABLE workloads
