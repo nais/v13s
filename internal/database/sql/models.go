@@ -15,7 +15,7 @@ type ImageState string
 const (
 	ImageStateInitialized ImageState = "initialized"
 	ImageStateUpdated     ImageState = "updated"
-	ImageStateQueued      ImageState = "queued"
+	ImageStateUntracked   ImageState = "untracked"
 	ImageStateFailed      ImageState = "failed"
 	ImageStateResync      ImageState = "resync"
 	ImageStateOutdated    ImageState = "outdated"
@@ -60,7 +60,7 @@ func (e ImageState) Valid() bool {
 	switch e {
 	case ImageStateInitialized,
 		ImageStateUpdated,
-		ImageStateQueued,
+		ImageStateUntracked,
 		ImageStateFailed,
 		ImageStateResync,
 		ImageStateOutdated:
@@ -73,7 +73,7 @@ func AllImageStateValues() []ImageState {
 	return []ImageState{
 		ImageStateInitialized,
 		ImageStateUpdated,
-		ImageStateQueued,
+		ImageStateUntracked,
 		ImageStateFailed,
 		ImageStateResync,
 		ImageStateOutdated,

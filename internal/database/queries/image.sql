@@ -23,10 +23,20 @@ SET
 WHERE name = @name AND tag = @tag
 ;
 
+-- name: MarkImagesAsUntracked :exec
+UPDATE images
+SET
+    state = 'untracked',
+    updated_at = NOW()
+WHERE state = ANY(@included_states::image_state[])
+;
+
+
 -- name: MarkImagesForResync :exec
 UPDATE images
 SET
     state = 'resync',
     updated_at = NOW()
 WHERE updated_at < @threshold_time
-  AND state != 'resync';
+  AND state != 'resync'
+  AND state != ANY(@excluded_states::image_state[]);

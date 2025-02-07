@@ -13,6 +13,8 @@ import (
 
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
+	DefaultMarkForResyncInterval        = 60 * 60 // 1 hour
+	DefaultMarkUntrackedInterval        = 3 * time.Minute
 )
 
 type Updater struct {
@@ -32,26 +34,44 @@ func NewUpdater(db sql.Querier, source dependencytrack.Client, updateInterval ti
 }
 
 // TODO: create a state/log table and log errors? maybe successfull and failed runs?
-func (u *Updater) Run(ctx context.Context) error {
-	ticker := time.NewTicker(u.updateInterval)
+func (u *Updater) Run(ctx context.Context) {
+	go runAtInterval(ctx, u.updateInterval, "mark and resync images", func() {
+		if err := u.MarkForResync(ctx); err != nil {
+			log.WithError(err).Error("Failed to mark images for resync")
+			return
+		}
+		log.Info("resyncing images")
+		if err := u.ResyncImages(ctx); err != nil {
+			log.WithError(err).Error("Failed to resync images")
+		}
+	})
+
+	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", func() {
+		if err := u.db.MarkImagesAsUntracked(ctx, []sql.ImageState{
+			sql.ImageStateResync,
+			sql.ImageStateInitialized,
+		}); err != nil {
+			log.WithError(err).Error("Failed to mark images as untracked")
+		}
+	})
+}
+
+func runAtInterval(ctx context.Context, interval time.Duration, name string, job func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("Updater stopped")
-			return ctx.Err()
+			log.Info("job stopped")
+			return
 		case <-ticker.C:
-			log.Info("Starting scheduled resync")
-
-			if err := u.MarkForResync(ctx); err != nil {
-				log.WithError(err).Error("Failed to mark images for resync")
-				continue
-			}
-
-			if err := u.ResyncImages(ctx); err != nil {
-				log.WithError(err).Error("Failed to resync images")
-			}
+			// TODO: set as debug
+			log.Infof("running scheduled job '%s' at interval %v", name, interval)
+			job()
 		}
 	}
 }
@@ -76,7 +96,9 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 	}()
 }
 
+// ResyncImages Resync images that have state 'initialized' or 'resync'
 func (u *Updater) ResyncImages(ctx context.Context) error {
+	//TODO: send in states as parameter, and not use values in sql
 	images, err := u.db.GetImagesScheduledForSync(ctx)
 	if err != nil {
 		return err
@@ -89,11 +111,21 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	return nil
 }
 
+// MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'
 func (u *Updater) MarkForResync(ctx context.Context) error {
-	err := u.db.MarkImagesForResync(ctx,
-		pgtype.Timestamptz{
-			Time:  time.Now().Add(-u.resyncImagesOlderThanMinutes * time.Minute),
-			Valid: true,
+	//TODO: send in states as parameter, and not use values in sql
+	err := u.db.MarkImagesForResync(
+		ctx,
+		sql.MarkImagesForResyncParams{
+			ThresholdTime: pgtype.Timestamptz{
+				Time:  time.Now().Add(-u.resyncImagesOlderThanMinutes * time.Minute),
+				Valid: true,
+			},
+			ExcludedStates: []sql.ImageState{
+				sql.ImageStateResync,
+				sql.ImageStateUntracked,
+				sql.ImageStateFailed,
+			},
 		})
 	if err != nil {
 		return err

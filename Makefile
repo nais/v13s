@@ -64,3 +64,13 @@ generate-mocks:
 
 refresh-db:
 	docker compose down -v
+
+# make connect-db I=v13s-d94dc8a5 P=nais-management-7178 S=v13s-sa
+connect-db:
+	@CONNECTION_NAME=$$(gcloud sql instances describe $(I) \
+	  --format="get(connectionName)" \
+	  --project $(P)) && \
+	cloud-sql-proxy $$CONNECTION_NAME \
+	    --auto-iam-authn \
+	    --impersonate-service-account="$(S)@$(P).iam.gserviceaccount.com"
+

@@ -34,7 +34,7 @@ CREATE TABLE workloads
 )
 ;
 
-CREATE TYPE image_state AS ENUM ('initialized','updated','queued', 'failed', 'resync', 'outdated');
+CREATE TYPE image_state AS ENUM ('initialized', 'updated', 'untracked', 'failed', 'resync', 'outdated');
 
 -- TODO: consider adding the workload to the image table instead of the other way around
 CREATE TABLE images

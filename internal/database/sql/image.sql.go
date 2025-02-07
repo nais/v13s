@@ -86,6 +86,19 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 	return items, nil
 }
 
+const markImagesAsUntracked = `-- name: MarkImagesAsUntracked :exec
+UPDATE images
+SET
+    state = 'untracked',
+    updated_at = NOW()
+WHERE state = ANY($1::image_state[])
+`
+
+func (q *Queries) MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error {
+	_, err := q.db.Exec(ctx, markImagesAsUntracked, includedStates)
+	return err
+}
+
 const markImagesForResync = `-- name: MarkImagesForResync :exec
 UPDATE images
 SET
@@ -93,10 +106,16 @@ SET
     updated_at = NOW()
 WHERE updated_at < $1
   AND state != 'resync'
+  AND state != ANY($2::image_state[])
 `
 
-func (q *Queries) MarkImagesForResync(ctx context.Context, thresholdTime pgtype.Timestamptz) error {
-	_, err := q.db.Exec(ctx, markImagesForResync, thresholdTime)
+type MarkImagesForResyncParams struct {
+	ThresholdTime  pgtype.Timestamptz
+	ExcludedStates []ImageState
+}
+
+func (q *Queries) MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error {
+	_, err := q.db.Exec(ctx, markImagesForResync, arg.ThresholdTime, arg.ExcludedStates)
 	return err
 }
 

@@ -79,14 +79,9 @@ func main() {
 	}
 
 	u := updater.NewUpdater(db, dpClient, c.UpdateInterval)
+	u.Run(ctx)
 
 	grpcServer := createGrpcServer(ctx, c, db, u)
-
-	go func() {
-		if err := u.Run(ctx); err != nil {
-			log.Fatalf("Updater failed: %v", err)
-		}
-	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

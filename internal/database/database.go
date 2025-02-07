@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"regexp"
 	"time"
 
@@ -54,21 +55,20 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 		}),
 	)
 
-	// TODO: Add custom types
-	//config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-	//	t, err := conn.LoadType(ctx, "slug") // slug type
-	//	if err != nil {
-	//		return fmt.Errorf("failed to load type: %w", err)
-	//	}
-	//	conn.TypeMap().RegisterType(t)
-	//
-	//	t, err = conn.LoadType(ctx, "_slug") // array of slug type
-	//	if err != nil {
-	//		return fmt.Errorf("failed to load type: %w", err)
-	//	}
-	//	conn.TypeMap().RegisterType(t)
-	//	return nil
-	//}
+	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		t, err := conn.LoadType(ctx, "image_state") // image_state type
+		if err != nil {
+			return fmt.Errorf("failed to load type: %w", err)
+		}
+		conn.TypeMap().RegisterType(t)
+
+		t, err = conn.LoadType(ctx, "_image_state") // array of slug type
+		if err != nil {
+			return fmt.Errorf("failed to load type: %w", err)
+		}
+		conn.TypeMap().RegisterType(t)
+		return nil
+	}
 
 	conn, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {

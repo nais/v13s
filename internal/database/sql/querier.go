@@ -4,8 +4,6 @@ package sql
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -25,7 +23,8 @@ type Querier interface {
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, arg ListSuppressedVulnerabilitiesForImageParams) ([]*SuppressedVulnerability, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
-	MarkImagesForResync(ctx context.Context, thresholdTime pgtype.Timestamptz) error
+	MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error
+	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	ResetDatabase(ctx context.Context) error
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
