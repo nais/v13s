@@ -57,14 +57,10 @@ func (u *Updater) Run(ctx context.Context) error {
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
-	errCh := make(chan error, 1)
-
-	/*ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()*/
-
-	go func(ctx context.Context, imageName, imageTag string) {
-		defer close(errCh) // Close channel after execution
+func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
+	go func() {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
 		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
 			log.Errorf("processing image %s:%s failed: %v", imageName, imageTag, err)
@@ -76,23 +72,8 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) er
 			}); dbErr != nil {
 				log.Errorf("failed to update image state to failed: %v", dbErr)
 			}
-
-			errCh <- err
 		}
-	}(ctx, imageName, imageTag)
-
-	// Handle error if needed (non-blocking)
-	select {
-	/*
-		case <-ctx.Done():
-			log.Info("Context done")
-			return nil*/
-	case err := <-errCh:
-		log.Errorf("processing image %s:%s failed: %v", imageName, imageTag, err)
-		return fmt.Errorf("processing image %s:%s: %w", imageName, imageTag, err)
-	default:
-		return nil
-	}
+	}()
 }
 
 func (u *Updater) ResyncImages(ctx context.Context) error {
@@ -102,10 +83,7 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	}
 
 	for _, image := range images {
-		err = u.QueueImage(ctx, image.Name, image.Tag)
-		if err != nil {
-			log.Errorf("failed to queue image %s:%s for resync: %v", image.Name, image.Tag, err)
-		}
+		u.QueueImage(ctx, image.Name, image.Tag)
 	}
 
 	return nil

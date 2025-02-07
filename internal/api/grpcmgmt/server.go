@@ -11,14 +11,16 @@ var _ management.ManagementServer = (*Server)(nil)
 
 type Server struct {
 	management.UnimplementedManagementServer
-	db      sql.Querier
-	updater *updater.Updater
+	db        sql.Querier
+	updater   *updater.Updater
+	parentCtx context.Context
 }
 
-func NewServer(db sql.Querier, updater *updater.Updater) *Server {
+func NewServer(parentCtx context.Context, db sql.Querier, updater *updater.Updater) *Server {
 	return &Server{
-		db:      db,
-		updater: updater,
+		parentCtx: parentCtx,
+		db:        db,
+		updater:   updater,
 	}
 }
 
@@ -53,10 +55,7 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		return nil, err
 	}
 
-	err = s.updater.QueueImage(ctx, request.ImageName, request.ImageTag)
-	if err != nil {
-		return nil, err
-	}
+	s.updater.QueueImage(s.parentCtx, request.ImageName, request.ImageTag)
 
 	return &management.RegisterWorkloadResponse{}, nil
 }

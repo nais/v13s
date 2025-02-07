@@ -80,7 +80,7 @@ func main() {
 
 	u := updater.NewUpdater(db, dpClient, c.UpdateInterval)
 
-	grpcServer := createGrpcServer(c, db, u)
+	grpcServer := createGrpcServer(ctx, c, db, u)
 
 	go func() {
 		if err := u.Run(ctx); err != nil {
@@ -106,14 +106,14 @@ func main() {
 	grpcServer.GracefulStop()
 }
 
-func createGrpcServer(cfg config, db sql.Querier, u *updater.Updater) *grpc.Server {
+func createGrpcServer(parentCtx context.Context, cfg config, db sql.Querier, u *updater.Updater) *grpc.Server {
 	serverOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AutorizedServiceAccounts)),
 	}
 	grpcServer := grpc.NewServer(serverOpts...)
 
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
-	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(db, u))
+	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, db, u))
 
 	return grpcServer
 }
