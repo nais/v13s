@@ -101,8 +101,7 @@ func (q *Queries) MarkImagesAsUntracked(ctx context.Context, includedStates []Im
 
 const markImagesForResync = `-- name: MarkImagesForResync :exec
 UPDATE images
-SET
-    state = 'resync',
+SET state      = 'resync',
     updated_at = NOW()
 WHERE updated_at < $1
   AND state != 'resync'
@@ -135,5 +134,34 @@ type UpdateImageStateParams struct {
 
 func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error {
 	_, err := q.db.Exec(ctx, updateImageState, arg.State, arg.Name, arg.Tag)
+	return err
+}
+
+const updateImageSyncStatus = `-- name: UpdateImageSyncStatus :exec
+INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)
+VALUES ($1, $2, $3, $4, $5) ON CONFLICT (image_name, image_tag) DO
+UPDATE
+    SET
+        status_code = $3,
+    reason = $4,
+    updated_at = NOW()
+`
+
+type UpdateImageSyncStatusParams struct {
+	ImageName  string
+	ImageTag   string
+	StatusCode string
+	Reason     string
+	Source     string
+}
+
+func (q *Queries) UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error {
+	_, err := q.db.Exec(ctx, updateImageSyncStatus,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.StatusCode,
+		arg.Reason,
+		arg.Source,
+	)
 	return err
 }

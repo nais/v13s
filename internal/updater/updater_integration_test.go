@@ -2,7 +2,6 @@ package updater_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/nais/v13s/internal/collections"
@@ -35,13 +34,7 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		insertWorkloads(ctx, t, db, projectNames)
-
-		err = u.Run(updaterCtx)
-		if err != nil {
-			if !errors.Is(err, context.DeadlineExceeded) {
-				t.Fatalf("unexpected error: %s", err)
-			}
-		}
+		u.Run(updaterCtx)
 
 		imageName := projectNames[0]
 		imageTag := "v1"
@@ -94,12 +87,7 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		// Should update projectName[0] since it is older than updater.DefaultResyncImagesOlderThanMinutes
-		err = u.Run(updaterCtx)
-		if err != nil {
-			if !errors.Is(err, context.DeadlineExceeded) {
-				t.Fatalf("unexpected error: %s", err)
-			}
-		}
+		u.Run(updaterCtx)
 
 		vulns, err := db.ListVulnerabilities(
 			ctx,

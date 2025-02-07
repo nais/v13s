@@ -92,6 +92,16 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 			}); dbErr != nil {
 				log.Errorf("failed to update image state to failed: %v", dbErr)
 			}
+			err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
+				ImageName:  imageName,
+				ImageTag:   imageTag,
+				StatusCode: "GenericError",
+				Reason:     err.Error(),
+				Source:     "dependencytrack",
+			})
+			if err != nil {
+				log.Errorf("failed to update image sync status: %v", err)
+			}
 		}
 	}()
 }
@@ -141,7 +151,31 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 		return fmt.Errorf("getting project: %w", err)
 	}
 
-	if p == nil || p.Metrics == nil {
+	if p == nil {
+		err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
+			ImageName:  imageName,
+			ImageTag:   imageTag,
+			StatusCode: "NotFound",
+			Reason:     "project not found",
+			Source:     "dependencytrack",
+		})
+		if err != nil {
+			log.Errorf("failed to update image sync status: %v", err)
+		}
+		return nil
+	}
+
+	if p.Metrics == nil {
+		err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
+			ImageName:  imageName,
+			ImageTag:   imageTag,
+			StatusCode: "NotFound",
+			Reason:     "metrics not found",
+			Source:     "dependencytrack",
+		})
+		if err != nil {
+			log.Errorf("failed to update image sync status: %v", err)
+		}
 		return nil
 	}
 

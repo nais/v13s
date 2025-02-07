@@ -31,12 +31,20 @@ SET
 WHERE state = ANY(@included_states::image_state[])
 ;
 
-
 -- name: MarkImagesForResync :exec
 UPDATE images
-SET
-    state = 'resync',
+SET state      = 'resync',
     updated_at = NOW()
 WHERE updated_at < @threshold_time
   AND state != 'resync'
   AND state != ANY(@excluded_states::image_state[]);
+
+-- name: UpdateImageSyncStatus :exec
+INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)
+VALUES (@image_name, @image_tag, @status_code, @reason, @source) ON CONFLICT (image_name, image_tag) DO
+UPDATE
+    SET
+        status_code = @status_code,
+    reason = @reason,
+    updated_at = NOW()
+;
