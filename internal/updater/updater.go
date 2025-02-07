@@ -60,7 +60,10 @@ func (u *Updater) Run(ctx context.Context) error {
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
 	errCh := make(chan error, 1)
 
-	go func() {
+	/*ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()*/
+
+	go func(ctx context.Context, imageName, imageTag string) {
 		defer close(errCh) // Close channel after execution
 		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
@@ -76,11 +79,16 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) er
 
 			errCh <- err
 		}
-	}()
+	}(ctx, imageName, imageTag)
 
 	// Handle error if needed (non-blocking)
 	select {
+	/*
+		case <-ctx.Done():
+			log.Info("Context done")
+			return nil*/
 	case err := <-errCh:
+		log.Errorf("processing image %s:%s failed: %v", imageName, imageTag, err)
 		return fmt.Errorf("processing image %s:%s: %w", imageName, imageTag, err)
 	default:
 		return nil
