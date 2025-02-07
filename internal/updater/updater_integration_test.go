@@ -27,7 +27,8 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
-	u := updater.NewUpdater(db, dpTrack, 200*time.Millisecond)
+	updateInterval := 200 * time.Millisecond
+	u := updater.NewUpdater(db, dpTrack, updateInterval)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
@@ -35,6 +36,7 @@ func TestUpdater(t *testing.T) {
 
 		insertWorkloads(ctx, t, db, projectNames)
 		u.Run(updaterCtx)
+		time.Sleep(2 * updateInterval)
 
 		imageName := projectNames[0]
 		imageTag := "v1"
@@ -88,6 +90,7 @@ func TestUpdater(t *testing.T) {
 
 		// Should update projectName[0] since it is older than updater.DefaultResyncImagesOlderThanMinutes
 		u.Run(updaterCtx)
+		time.Sleep(2 * updateInterval)
 
 		vulns, err := db.ListVulnerabilities(
 			ctx,
