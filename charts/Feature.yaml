@@ -1,7 +1,6 @@
 environmentKinds:
   - management
 values:
-
   ingress.host:
     displayName: Ingress host
     config:
@@ -21,6 +20,17 @@ values:
 
   auth.serviceAccounts:
     displayName: Authorized service accounts
+    computed:
+      template: |
+        {{ with $root := . }}
+        {{  if and (eq $root.Tenant.Name "dev-nais") (eq .Kind "management") }}
+        - "{{.Management.slsa_verde_service_account}}"
+        - "{{.Management.nais_api_serviceaccount_email }}"
+        {{ range $cluster := .Envs }}
+        - "{{ $cluster.slsa_verde_service_account }}"
+        {{ end }}       
+        {{ end }}
+        {{ end}}
     config:
       type: string_array
 
@@ -31,14 +41,13 @@ values:
       secret: true
     required: true
 
-  
   dependencytrack.url:
     displayName: dependencytrack URL
     computed:
       template: "http://dependencytrack-backend:8080"
     config:
       type: string
-  
+
   database.instance:
     displayName: Cloud SQL instance name
     description: The name of the Cloud SQL instance
