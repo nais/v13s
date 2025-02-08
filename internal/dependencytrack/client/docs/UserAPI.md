@@ -179,12 +179,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-    "time"
 	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(time.Now()) // ManagedUser |  (optional)
+	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -376,12 +375,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-    "time"
 	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(time.Now()) // ManagedUser |  (optional)
+	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -891,12 +889,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-    "time"
 	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(time.Now()) // ManagedUser |  (optional)
+	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
@@ -956,12 +953,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-    "time"
 	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(time.Now()) // ManagedUser |  (optional)
+	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)

@@ -375,6 +375,17 @@ auth := context.WithValue(
 r, err := client.Service.Operation(auth, args)
 ```
 
+### Bearer
+
+- **Type**: HTTP Bearer token authentication
+
+Example
+
+```go
+auth := context.WithValue(context.Background(), client.ContextAccessToken, "BEARER_TOKEN_STRING")
+r, err := client.Service.Operation(auth, args)
+```
+
 
 ## Documentation for Utility Methods
 

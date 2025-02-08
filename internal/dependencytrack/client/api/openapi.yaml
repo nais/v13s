@@ -3958,6 +3958,7 @@ paths:
           description: The UUID of the mapping could not be found
       security:
       - X-Api-Key: []
+      - Bearer: []
       summary: Returns a list of teams associated with the specified group
       tags:
       - oidc
@@ -12738,9 +12739,9 @@ components:
       type: object
     ApiKey:
       example:
-        lastUsed: 2000-01-23T04:56:07.000+00:00
+        lastUsed: 6
         maskedKey: maskedKey
-        created: 2000-01-23T04:56:07.000+00:00
+        created: 0
         comment: comment
         key: key
       properties:
@@ -12754,11 +12755,11 @@ components:
           minLength: 0
           type: string
         created:
-          format: date-time
-          type: string
+          format: int64
+          type: integer
         lastUsed:
-          format: date-time
-          type: string
+          format: int64
+          type: integer
         maskedKey:
           type: string
       required:
@@ -12816,7 +12817,7 @@ components:
         forcePasswordChange: true
         newPassword: newPassword
         confirmPassword: confirmPassword
-        lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+        lastPasswordChange: 1
         fullname: fullname
         email: email
         suspended: true
@@ -12828,8 +12829,8 @@ components:
           pattern: "[\\P{Cc}]+"
           type: string
         lastPasswordChange:
-          format: date-time
-          type: string
+          format: int64
+          type: integer
         fullname:
           maxLength: 255
           minLength: 0
@@ -13210,7 +13211,7 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
@@ -13227,21 +13228,21 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
             username: username
           name: name
           apiKeys:
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
           uuid: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -13323,7 +13324,7 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
@@ -13340,21 +13341,21 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
             username: username
           name: name
           apiKeys:
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
           uuid: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -13596,7 +13597,7 @@ components:
           forcePasswordChange: true
           newPassword: newPassword
           confirmPassword: confirmPassword
-          lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+          lastPasswordChange: 1
           fullname: fullname
           email: email
           suspended: true
@@ -13613,21 +13614,21 @@ components:
           forcePasswordChange: true
           newPassword: newPassword
           confirmPassword: confirmPassword
-          lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+          lastPasswordChange: 1
           fullname: fullname
           email: email
           suspended: true
           username: username
         name: name
         apiKeys:
-        - lastUsed: 2000-01-23T04:56:07.000+00:00
+        - lastUsed: 6
           maskedKey: maskedKey
-          created: 2000-01-23T04:56:07.000+00:00
+          created: 0
           comment: comment
           key: key
-        - lastUsed: 2000-01-23T04:56:07.000+00:00
+        - lastUsed: 6
           maskedKey: maskedKey
-          created: 2000-01-23T04:56:07.000+00:00
+          created: 0
           comment: comment
           key: key
         uuid: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -13764,7 +13765,7 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
@@ -13781,21 +13782,21 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
             username: username
           name: name
           apiKeys:
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
           uuid: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -13877,7 +13878,7 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
@@ -13894,21 +13895,21 @@ components:
             forcePasswordChange: true
             newPassword: newPassword
             confirmPassword: confirmPassword
-            lastPasswordChange: 2000-01-23T04:56:07.000+00:00
+            lastPasswordChange: 1
             fullname: fullname
             email: email
             suspended: true
             username: username
           name: name
           apiKeys:
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
-          - lastUsed: 2000-01-23T04:56:07.000+00:00
+          - lastUsed: 6
             maskedKey: maskedKey
-            created: 2000-01-23T04:56:07.000+00:00
+            created: 0
             comment: comment
             key: key
           uuid: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -16580,4 +16581,8 @@ components:
       in: header
       name: X-Api-Key
       type: apiKey
+    Bearer:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http
 x-original-swagger-version: "2.0"

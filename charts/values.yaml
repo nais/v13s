@@ -14,7 +14,8 @@ ingress:
   host: ""
 dependencytrack:
   url:
-  apikey:
+  username:
+  password:
 database:
   instance:
   public_ip:

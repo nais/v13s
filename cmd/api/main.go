@@ -31,6 +31,9 @@ type config struct {
 	ListenAddr               string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
 	DependencytrackUrl       string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
 	DependencytrackApiKey    string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
+	dependencytrackTeam      string        `envconfig:"DEPENDENCYTRACK_TEAM" required:"true"`
+	dependencytrackUsername  string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
+	dependencytrackPassword  string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
 	DatabaseUrl              string        `envconfig:"DATABASE_URL" required:"true"`
 	UpdateInterval           time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 	RequiredAudience         string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
@@ -72,7 +75,9 @@ func main() {
 
 	dpClient, err := dependencytrack.NewClient(
 		c.DependencytrackUrl,
-		c.DependencytrackApiKey,
+		c.dependencytrackTeam,
+		c.dependencytrackUsername,
+		c.dependencytrackPassword,
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
