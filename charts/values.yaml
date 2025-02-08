@@ -13,7 +13,7 @@ ingress:
   className: nais-ingress
   host: ""
 dependencytrack:
-  url: http://dependencytrack-backend:8080/api
+  url:
   apikey:
 database:
   instance:

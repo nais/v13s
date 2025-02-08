@@ -44,7 +44,7 @@ values:
   dependencytrack.url:
     displayName: dependencytrack URL
     computed:
-      template: "http://dependencytrack-backend:8080"
+      template: "http://dependencytrack-backend:8080/api"
     config:
       type: string
 
