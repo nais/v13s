@@ -15,6 +15,7 @@ ingress:
 dependencytrack:
   url:
   username: v13s
+  team: Administrators
   password:
 database:
   instance:
