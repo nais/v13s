@@ -14,7 +14,7 @@ ingress:
   host: ""
 dependencytrack:
   url:
-  username:
+  username: v13s
   password:
 database:
   instance:

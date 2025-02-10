@@ -36,9 +36,8 @@ values:
 
   dependencytrack.username:
     displayName: dependencytrack username
-    computed:
-      template: |
-        {{ .Env.v13s_dependencytrack_username | quote }}
+    config:
+      type: string
 
   dependencytrack.password:
     displayName: dependencytrack password
