@@ -3,7 +3,7 @@ module github.com/nais/v13s
 go 1.23.5
 
 require (
-	cloud.google.com/go/auth v0.13.0
+	cloud.google.com/go/auth v0.14.1
 	github.com/exaring/otelpgx v0.9.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
@@ -17,14 +17,14 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/vektra/mockery/v2 v2.52.1
 	golang.org/x/oauth2 v0.25.0
-	google.golang.org/api v0.215.0
+	google.golang.org/api v0.220.0
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.4
 )
 
 require (
 	cel.dev/expr v0.19.2 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/cel-go v0.23.2 // indirect
-	github.com/google/s2a-go v0.1.8 // indirect
+	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
