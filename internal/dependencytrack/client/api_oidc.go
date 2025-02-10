@@ -20,12 +20,141 @@ import (
 )
 
 
+type OidcAPI interface {
+
+	/*
+	AddMapping2 Adds a mapping
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiAddMapping2Request
+	*/
+	AddMapping2(ctx context.Context) ApiAddMapping2Request
+
+	// AddMapping2Execute executes the request
+	//  @return MappedOidcGroup
+	AddMapping2Execute(r ApiAddMapping2Request) (*MappedOidcGroup, *http.Response, error)
+
+	/*
+	CreateGroup Creates group
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateGroupRequest
+	*/
+	CreateGroup(ctx context.Context) ApiCreateGroupRequest
+
+	// CreateGroupExecute executes the request
+	//  @return OidcGroup
+	CreateGroupExecute(r ApiCreateGroupRequest) (*OidcGroup, *http.Response, error)
+
+	/*
+	DeleteGroup Deletes a group
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the group to delete
+	@return ApiDeleteGroupRequest
+	*/
+	DeleteGroup(ctx context.Context, uuid string) ApiDeleteGroupRequest
+
+	// DeleteGroupExecute executes the request
+	DeleteGroupExecute(r ApiDeleteGroupRequest) (*http.Response, error)
+
+	/*
+	DeleteMapping2 Deletes a mapping
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param groupUuid The UUID of the group to delete a mapping for
+	@param teamUuid The UUID of the team to delete a mapping for
+	@return ApiDeleteMapping2Request
+	*/
+	DeleteMapping2(ctx context.Context, groupUuid string, teamUuid string) ApiDeleteMapping2Request
+
+	// DeleteMapping2Execute executes the request
+	DeleteMapping2Execute(r ApiDeleteMapping2Request) (*http.Response, error)
+
+	/*
+	DeleteMappingByUuid Deletes a mapping
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the mapping to delete
+	@return ApiDeleteMappingByUuidRequest
+	*/
+	DeleteMappingByUuid(ctx context.Context, uuid string) ApiDeleteMappingByUuidRequest
+
+	// DeleteMappingByUuidExecute executes the request
+	DeleteMappingByUuidExecute(r ApiDeleteMappingByUuidRequest) (*http.Response, error)
+
+	/*
+	IsAvailable Indicates if OpenID Connect is available for this application
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiIsAvailableRequest
+	*/
+	IsAvailable(ctx context.Context) ApiIsAvailableRequest
+
+	// IsAvailableExecute executes the request
+	//  @return bool
+	IsAvailableExecute(r ApiIsAvailableRequest) (bool, *http.Response, error)
+
+	/*
+	RetrieveGroups Returns a list of all groups
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiRetrieveGroupsRequest
+	*/
+	RetrieveGroups(ctx context.Context) ApiRetrieveGroupsRequest
+
+	// RetrieveGroupsExecute executes the request
+	//  @return []OidcGroup
+	RetrieveGroupsExecute(r ApiRetrieveGroupsRequest) ([]OidcGroup, *http.Response, error)
+
+	/*
+	RetrieveTeamsMappedToGroup Returns a list of teams associated with the specified group
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the mapping to retrieve the team for
+	@return ApiRetrieveTeamsMappedToGroupRequest
+	*/
+	RetrieveTeamsMappedToGroup(ctx context.Context, uuid string) ApiRetrieveTeamsMappedToGroupRequest
+
+	// RetrieveTeamsMappedToGroupExecute executes the request
+	//  @return []Team
+	RetrieveTeamsMappedToGroupExecute(r ApiRetrieveTeamsMappedToGroupRequest) ([]Team, *http.Response, error)
+
+	/*
+	UpdateGroup Updates group
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateGroupRequest
+	*/
+	UpdateGroup(ctx context.Context) ApiUpdateGroupRequest
+
+	// UpdateGroupExecute executes the request
+	//  @return OidcGroup
+	UpdateGroupExecute(r ApiUpdateGroupRequest) (*OidcGroup, *http.Response, error)
+}
+
 // OidcAPIService OidcAPI service
 type OidcAPIService service
 
 type ApiAddMapping2Request struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	body *MappedOidcGroupRequest
 }
 
@@ -146,7 +275,7 @@ func (a *OidcAPIService) AddMapping2Execute(r ApiAddMapping2Request) (*MappedOid
 
 type ApiCreateGroupRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	body *OidcGroup
 }
 
@@ -267,7 +396,7 @@ func (a *OidcAPIService) CreateGroupExecute(r ApiCreateGroupRequest) (*OidcGroup
 
 type ApiDeleteGroupRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	uuid string
 }
 
@@ -373,7 +502,7 @@ func (a *OidcAPIService) DeleteGroupExecute(r ApiDeleteGroupRequest) (*http.Resp
 
 type ApiDeleteMapping2Request struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	groupUuid string
 	teamUuid string
 }
@@ -483,7 +612,7 @@ func (a *OidcAPIService) DeleteMapping2Execute(r ApiDeleteMapping2Request) (*htt
 
 type ApiDeleteMappingByUuidRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	uuid string
 }
 
@@ -589,7 +718,7 @@ func (a *OidcAPIService) DeleteMappingByUuidExecute(r ApiDeleteMappingByUuidRequ
 
 type ApiIsAvailableRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 }
 
 func (r ApiIsAvailableRequest) Execute() (bool, *http.Response, error) {
@@ -700,7 +829,7 @@ func (a *OidcAPIService) IsAvailableExecute(r ApiIsAvailableRequest) (bool, *htt
 
 type ApiRetrieveGroupsRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 }
 
 func (r ApiRetrieveGroupsRequest) Execute() ([]OidcGroup, *http.Response, error) {
@@ -813,7 +942,7 @@ func (a *OidcAPIService) RetrieveGroupsExecute(r ApiRetrieveGroupsRequest) ([]Oi
 
 type ApiRetrieveTeamsMappedToGroupRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	uuid string
 }
 
@@ -930,7 +1059,7 @@ func (a *OidcAPIService) RetrieveTeamsMappedToGroupExecute(r ApiRetrieveTeamsMap
 
 type ApiUpdateGroupRequest struct {
 	ctx context.Context
-	ApiService *OidcAPIService
+	ApiService OidcAPI
 	body *OidcGroup
 }
 

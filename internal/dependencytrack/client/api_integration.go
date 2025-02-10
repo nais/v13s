@@ -19,12 +19,43 @@ import (
 )
 
 
+type IntegrationAPI interface {
+
+	/*
+	GetAllEcosystems Returns a list of all ecosystems in OSV
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllEcosystemsRequest
+	*/
+	GetAllEcosystems(ctx context.Context) ApiGetAllEcosystemsRequest
+
+	// GetAllEcosystemsExecute executes the request
+	//  @return []string
+	GetAllEcosystemsExecute(r ApiGetAllEcosystemsRequest) ([]string, *http.Response, error)
+
+	/*
+	GetInactiveEcosystems Returns a list of available inactive ecosystems in OSV to be selected by user
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetInactiveEcosystemsRequest
+	*/
+	GetInactiveEcosystems(ctx context.Context) ApiGetInactiveEcosystemsRequest
+
+	// GetInactiveEcosystemsExecute executes the request
+	//  @return []string
+	GetInactiveEcosystemsExecute(r ApiGetInactiveEcosystemsRequest) ([]string, *http.Response, error)
+}
+
 // IntegrationAPIService IntegrationAPI service
 type IntegrationAPIService service
 
 type ApiGetAllEcosystemsRequest struct {
 	ctx context.Context
-	ApiService *IntegrationAPIService
+	ApiService IntegrationAPI
 }
 
 func (r ApiGetAllEcosystemsRequest) Execute() ([]string, *http.Response, error) {
@@ -137,7 +168,7 @@ func (a *IntegrationAPIService) GetAllEcosystemsExecute(r ApiGetAllEcosystemsReq
 
 type ApiGetInactiveEcosystemsRequest struct {
 	ctx context.Context
-	ApiService *IntegrationAPIService
+	ApiService IntegrationAPI
 }
 
 func (r ApiGetInactiveEcosystemsRequest) Execute() ([]string, *http.Response, error) {

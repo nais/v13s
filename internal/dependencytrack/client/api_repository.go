@@ -20,12 +20,98 @@ import (
 )
 
 
+type RepositoryAPI interface {
+
+	/*
+	CreateRepository Creates a new repository
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateRepositoryRequest
+	*/
+	CreateRepository(ctx context.Context) ApiCreateRepositoryRequest
+
+	// CreateRepositoryExecute executes the request
+	//  @return Repository
+	CreateRepositoryExecute(r ApiCreateRepositoryRequest) (*Repository, *http.Response, error)
+
+	/*
+	DeleteRepository Deletes a repository
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the repository to delete
+	@return ApiDeleteRepositoryRequest
+	*/
+	DeleteRepository(ctx context.Context, uuid string) ApiDeleteRepositoryRequest
+
+	// DeleteRepositoryExecute executes the request
+	DeleteRepositoryExecute(r ApiDeleteRepositoryRequest) (*http.Response, error)
+
+	/*
+	GetRepositories Returns a list of all repositories
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetRepositoriesRequest
+	*/
+	GetRepositories(ctx context.Context) ApiGetRepositoriesRequest
+
+	// GetRepositoriesExecute executes the request
+	//  @return []Repository
+	GetRepositoriesExecute(r ApiGetRepositoriesRequest) ([]Repository, *http.Response, error)
+
+	/*
+	GetRepositoriesByType Returns repositories that support the specific type
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param type_ The type of repositories to retrieve
+	@return ApiGetRepositoriesByTypeRequest
+	*/
+	GetRepositoriesByType(ctx context.Context, type_ string) ApiGetRepositoriesByTypeRequest
+
+	// GetRepositoriesByTypeExecute executes the request
+	//  @return []Repository
+	GetRepositoriesByTypeExecute(r ApiGetRepositoriesByTypeRequest) ([]Repository, *http.Response, error)
+
+	/*
+	GetRepositoryMetaComponent Attempts to resolve the latest version of the component available in the configured repositories
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetRepositoryMetaComponentRequest
+	*/
+	GetRepositoryMetaComponent(ctx context.Context) ApiGetRepositoryMetaComponentRequest
+
+	// GetRepositoryMetaComponentExecute executes the request
+	//  @return RepositoryMetaComponent
+	GetRepositoryMetaComponentExecute(r ApiGetRepositoryMetaComponentRequest) (*RepositoryMetaComponent, *http.Response, error)
+
+	/*
+	UpdateRepository Updates a repository
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateRepositoryRequest
+	*/
+	UpdateRepository(ctx context.Context) ApiUpdateRepositoryRequest
+
+	// UpdateRepositoryExecute executes the request
+	//  @return Repository
+	UpdateRepositoryExecute(r ApiUpdateRepositoryRequest) (*Repository, *http.Response, error)
+}
+
 // RepositoryAPIService RepositoryAPI service
 type RepositoryAPIService service
 
 type ApiCreateRepositoryRequest struct {
 	ctx context.Context
-	ApiService *RepositoryAPIService
+	ApiService RepositoryAPI
 	body *Repository
 }
 
@@ -146,7 +232,7 @@ func (a *RepositoryAPIService) CreateRepositoryExecute(r ApiCreateRepositoryRequ
 
 type ApiDeleteRepositoryRequest struct {
 	ctx context.Context
-	ApiService *RepositoryAPIService
+	ApiService RepositoryAPI
 	uuid string
 }
 
@@ -252,7 +338,7 @@ func (a *RepositoryAPIService) DeleteRepositoryExecute(r ApiDeleteRepositoryRequ
 
 type ApiGetRepositoriesRequest struct {
 	ctx context.Context
-	ApiService *RepositoryAPIService
+	ApiService RepositoryAPI
 	pageNumber *interface{}
 	pageSize *interface{}
 	offset *interface{}
@@ -431,7 +517,7 @@ func (a *RepositoryAPIService) GetRepositoriesExecute(r ApiGetRepositoriesReques
 
 type ApiGetRepositoriesByTypeRequest struct {
 	ctx context.Context
-	ApiService *RepositoryAPIService
+	ApiService RepositoryAPI
 	type_ string
 	pageNumber *interface{}
 	pageSize *interface{}
@@ -614,7 +700,7 @@ func (a *RepositoryAPIService) GetRepositoriesByTypeExecute(r ApiGetRepositories
 
 type ApiGetRepositoryMetaComponentRequest struct {
 	ctx context.Context
-	ApiService *RepositoryAPIService
+	ApiService RepositoryAPI
 	purl *string
 }
 
@@ -736,7 +822,7 @@ func (a *RepositoryAPIService) GetRepositoryMetaComponentExecute(r ApiGetReposit
 
 type ApiUpdateRepositoryRequest struct {
 	ctx context.Context
-	ApiService *RepositoryAPIService
+	ApiService RepositoryAPI
 	body *Repository
 }
 

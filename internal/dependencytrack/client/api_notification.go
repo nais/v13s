@@ -20,12 +20,216 @@ import (
 )
 
 
+type NotificationAPI interface {
+
+	/*
+	AddProjectToRule Adds a project to a notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param ruleUuid The UUID of the rule to add a project to
+	@param projectUuid The UUID of the project to add to the rule
+	@return ApiAddProjectToRuleRequest
+	*/
+	AddProjectToRule(ctx context.Context, ruleUuid string, projectUuid string) ApiAddProjectToRuleRequest
+
+	// AddProjectToRuleExecute executes the request
+	//  @return NotificationRule
+	AddProjectToRuleExecute(r ApiAddProjectToRuleRequest) (*NotificationRule, *http.Response, error)
+
+	/*
+	AddTeamToRule Adds a team to a notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param ruleUuid The UUID of the rule to add a team to
+	@param teamUuid The UUID of the team to add to the rule
+	@return ApiAddTeamToRuleRequest
+	*/
+	AddTeamToRule(ctx context.Context, ruleUuid string, teamUuid string) ApiAddTeamToRuleRequest
+
+	// AddTeamToRuleExecute executes the request
+	//  @return NotificationRule
+	AddTeamToRuleExecute(r ApiAddTeamToRuleRequest) (*NotificationRule, *http.Response, error)
+
+	/*
+	CreateNotificationPublisher Creates a new notification publisher
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateNotificationPublisherRequest
+	*/
+	CreateNotificationPublisher(ctx context.Context) ApiCreateNotificationPublisherRequest
+
+	// CreateNotificationPublisherExecute executes the request
+	//  @return NotificationPublisher
+	CreateNotificationPublisherExecute(r ApiCreateNotificationPublisherRequest) (*NotificationPublisher, *http.Response, error)
+
+	/*
+	CreateNotificationRule Creates a new notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateNotificationRuleRequest
+	*/
+	CreateNotificationRule(ctx context.Context) ApiCreateNotificationRuleRequest
+
+	// CreateNotificationRuleExecute executes the request
+	//  @return NotificationRule
+	CreateNotificationRuleExecute(r ApiCreateNotificationRuleRequest) (*NotificationRule, *http.Response, error)
+
+	/*
+	DeleteNotificationPublisher Deletes a notification publisher and all related notification rules
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param notificationPublisherUuid The UUID of the notification publisher to delete
+	@return ApiDeleteNotificationPublisherRequest
+	*/
+	DeleteNotificationPublisher(ctx context.Context, notificationPublisherUuid string) ApiDeleteNotificationPublisherRequest
+
+	// DeleteNotificationPublisherExecute executes the request
+	DeleteNotificationPublisherExecute(r ApiDeleteNotificationPublisherRequest) (*http.Response, error)
+
+	/*
+	DeleteNotificationRule Deletes a notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiDeleteNotificationRuleRequest
+	*/
+	DeleteNotificationRule(ctx context.Context) ApiDeleteNotificationRuleRequest
+
+	// DeleteNotificationRuleExecute executes the request
+	DeleteNotificationRuleExecute(r ApiDeleteNotificationRuleRequest) (*http.Response, error)
+
+	/*
+	GetAllNotificationPublishers Returns a list of all notification publishers
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllNotificationPublishersRequest
+	*/
+	GetAllNotificationPublishers(ctx context.Context) ApiGetAllNotificationPublishersRequest
+
+	// GetAllNotificationPublishersExecute executes the request
+	//  @return []NotificationPublisher
+	GetAllNotificationPublishersExecute(r ApiGetAllNotificationPublishersRequest) ([]NotificationPublisher, *http.Response, error)
+
+	/*
+	GetAllNotificationRules Returns a list of all notification rules
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllNotificationRulesRequest
+	*/
+	GetAllNotificationRules(ctx context.Context) ApiGetAllNotificationRulesRequest
+
+	// GetAllNotificationRulesExecute executes the request
+	//  @return []NotificationRule
+	GetAllNotificationRulesExecute(r ApiGetAllNotificationRulesRequest) ([]NotificationRule, *http.Response, error)
+
+	/*
+	RemoveProjectFromRule Removes a project from a notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param ruleUuid The UUID of the rule to remove the project from
+	@param projectUuid The UUID of the project to remove from the rule
+	@return ApiRemoveProjectFromRuleRequest
+	*/
+	RemoveProjectFromRule(ctx context.Context, ruleUuid string, projectUuid string) ApiRemoveProjectFromRuleRequest
+
+	// RemoveProjectFromRuleExecute executes the request
+	//  @return NotificationRule
+	RemoveProjectFromRuleExecute(r ApiRemoveProjectFromRuleRequest) (*NotificationRule, *http.Response, error)
+
+	/*
+	RemoveTeamFromRule Removes a team from a notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param ruleUuid The UUID of the rule to remove the project from
+	@param teamUuid The UUID of the project to remove from the rule
+	@return ApiRemoveTeamFromRuleRequest
+	*/
+	RemoveTeamFromRule(ctx context.Context, ruleUuid string, teamUuid string) ApiRemoveTeamFromRuleRequest
+
+	// RemoveTeamFromRuleExecute executes the request
+	//  @return NotificationRule
+	RemoveTeamFromRuleExecute(r ApiRemoveTeamFromRuleRequest) (*NotificationRule, *http.Response, error)
+
+	/*
+	RestoreDefaultTemplates Restore the default notification publisher templates using the ones in the solution classpath
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiRestoreDefaultTemplatesRequest
+	*/
+	RestoreDefaultTemplates(ctx context.Context) ApiRestoreDefaultTemplatesRequest
+
+	// RestoreDefaultTemplatesExecute executes the request
+	RestoreDefaultTemplatesExecute(r ApiRestoreDefaultTemplatesRequest) (*http.Response, error)
+
+	/*
+	TestSmtpPublisherConfig Dispatches a SMTP notification test
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiTestSmtpPublisherConfigRequest
+	*/
+	TestSmtpPublisherConfig(ctx context.Context) ApiTestSmtpPublisherConfigRequest
+
+	// TestSmtpPublisherConfigExecute executes the request
+	TestSmtpPublisherConfigExecute(r ApiTestSmtpPublisherConfigRequest) (*http.Response, error)
+
+	/*
+	UpdateNotificationPublisher Updates a notification publisher
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateNotificationPublisherRequest
+	*/
+	UpdateNotificationPublisher(ctx context.Context) ApiUpdateNotificationPublisherRequest
+
+	// UpdateNotificationPublisherExecute executes the request
+	//  @return NotificationRule
+	UpdateNotificationPublisherExecute(r ApiUpdateNotificationPublisherRequest) (*NotificationRule, *http.Response, error)
+
+	/*
+	UpdateNotificationRule Updates a notification rule
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateNotificationRuleRequest
+	*/
+	UpdateNotificationRule(ctx context.Context) ApiUpdateNotificationRuleRequest
+
+	// UpdateNotificationRuleExecute executes the request
+	//  @return NotificationRule
+	UpdateNotificationRuleExecute(r ApiUpdateNotificationRuleRequest) (*NotificationRule, *http.Response, error)
+}
+
 // NotificationAPIService NotificationAPI service
 type NotificationAPIService service
 
 type ApiAddProjectToRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	ruleUuid string
 	projectUuid string
 }
@@ -146,7 +350,7 @@ func (a *NotificationAPIService) AddProjectToRuleExecute(r ApiAddProjectToRuleRe
 
 type ApiAddTeamToRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	ruleUuid string
 	teamUuid string
 }
@@ -267,7 +471,7 @@ func (a *NotificationAPIService) AddTeamToRuleExecute(r ApiAddTeamToRuleRequest)
 
 type ApiCreateNotificationPublisherRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	body *NotificationPublisher
 }
 
@@ -388,7 +592,7 @@ func (a *NotificationAPIService) CreateNotificationPublisherExecute(r ApiCreateN
 
 type ApiCreateNotificationRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	body *NotificationRule
 }
 
@@ -509,7 +713,7 @@ func (a *NotificationAPIService) CreateNotificationRuleExecute(r ApiCreateNotifi
 
 type ApiDeleteNotificationPublisherRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	notificationPublisherUuid string
 }
 
@@ -615,7 +819,7 @@ func (a *NotificationAPIService) DeleteNotificationPublisherExecute(r ApiDeleteN
 
 type ApiDeleteNotificationRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	body *NotificationRule
 }
 
@@ -725,7 +929,7 @@ func (a *NotificationAPIService) DeleteNotificationRuleExecute(r ApiDeleteNotifi
 
 type ApiGetAllNotificationPublishersRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 }
 
 func (r ApiGetAllNotificationPublishersRequest) Execute() ([]NotificationPublisher, *http.Response, error) {
@@ -838,7 +1042,7 @@ func (a *NotificationAPIService) GetAllNotificationPublishersExecute(r ApiGetAll
 
 type ApiGetAllNotificationRulesRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	pageNumber *interface{}
 	pageSize *interface{}
 	offset *interface{}
@@ -1017,7 +1221,7 @@ func (a *NotificationAPIService) GetAllNotificationRulesExecute(r ApiGetAllNotif
 
 type ApiRemoveProjectFromRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	ruleUuid string
 	projectUuid string
 }
@@ -1138,7 +1342,7 @@ func (a *NotificationAPIService) RemoveProjectFromRuleExecute(r ApiRemoveProject
 
 type ApiRemoveTeamFromRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	ruleUuid string
 	teamUuid string
 }
@@ -1259,7 +1463,7 @@ func (a *NotificationAPIService) RemoveTeamFromRuleExecute(r ApiRemoveTeamFromRu
 
 type ApiRestoreDefaultTemplatesRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 }
 
 func (r ApiRestoreDefaultTemplatesRequest) Execute() (*http.Response, error) {
@@ -1361,7 +1565,7 @@ func (a *NotificationAPIService) RestoreDefaultTemplatesExecute(r ApiRestoreDefa
 
 type ApiTestSmtpPublisherConfigRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	destination *string
 }
 
@@ -1472,7 +1676,7 @@ func (a *NotificationAPIService) TestSmtpPublisherConfigExecute(r ApiTestSmtpPub
 
 type ApiUpdateNotificationPublisherRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	body *NotificationPublisher
 }
 
@@ -1593,7 +1797,7 @@ func (a *NotificationAPIService) UpdateNotificationPublisherExecute(r ApiUpdateN
 
 type ApiUpdateNotificationRuleRequest struct {
 	ctx context.Context
-	ApiService *NotificationAPIService
+	ApiService NotificationAPI
 	body *NotificationRule
 }
 

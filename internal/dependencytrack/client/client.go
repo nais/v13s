@@ -49,75 +49,75 @@ type APIClient struct {
 
 	// API Services
 
-	AclAPI *AclAPIService
+	AclAPI AclAPI
 
-	AnalysisAPI *AnalysisAPIService
+	AnalysisAPI AnalysisAPI
 
-	BadgeAPI *BadgeAPIService
+	BadgeAPI BadgeAPI
 
-	BomAPI *BomAPIService
+	BomAPI BomAPI
 
-	CalculatorAPI *CalculatorAPIService
+	CalculatorAPI CalculatorAPI
 
-	ComponentAPI *ComponentAPIService
+	ComponentAPI ComponentAPI
 
-	ComponentPropertyAPI *ComponentPropertyAPIService
+	ComponentPropertyAPI ComponentPropertyAPI
 
-	ConfigPropertyAPI *ConfigPropertyAPIService
+	ConfigPropertyAPI ConfigPropertyAPI
 
-	CweAPI *CweAPIService
+	CweAPI CweAPI
 
-	DependencyGraphAPI *DependencyGraphAPIService
+	DependencyGraphAPI DependencyGraphAPI
 
-	EventAPI *EventAPIService
+	EventAPI EventAPI
 
-	FindingAPI *FindingAPIService
+	FindingAPI FindingAPI
 
-	IntegrationAPI *IntegrationAPIService
+	IntegrationAPI IntegrationAPI
 
-	LdapAPI *LdapAPIService
+	LdapAPI LdapAPI
 
-	LicenseAPI *LicenseAPIService
+	LicenseAPI LicenseAPI
 
-	LicenseGroupAPI *LicenseGroupAPIService
+	LicenseGroupAPI LicenseGroupAPI
 
-	MetricsAPI *MetricsAPIService
+	MetricsAPI MetricsAPI
 
-	NotificationAPI *NotificationAPIService
+	NotificationAPI NotificationAPI
 
-	OidcAPI *OidcAPIService
+	OidcAPI OidcAPI
 
-	PermissionAPI *PermissionAPIService
+	PermissionAPI PermissionAPI
 
-	PolicyAPI *PolicyAPIService
+	PolicyAPI PolicyAPI
 
-	PolicyConditionAPI *PolicyConditionAPIService
+	PolicyConditionAPI PolicyConditionAPI
 
-	ProjectAPI *ProjectAPIService
+	ProjectAPI ProjectAPI
 
-	ProjectPropertyAPI *ProjectPropertyAPIService
+	ProjectPropertyAPI ProjectPropertyAPI
 
-	RepositoryAPI *RepositoryAPIService
+	RepositoryAPI RepositoryAPI
 
-	SearchAPI *SearchAPIService
+	SearchAPI SearchAPI
 
-	ServiceAPI *ServiceAPIService
+	ServiceAPI ServiceAPI
 
-	TagAPI *TagAPIService
+	TagAPI TagAPI
 
-	TeamAPI *TeamAPIService
+	TeamAPI TeamAPI
 
-	UserAPI *UserAPIService
+	UserAPI UserAPI
 
-	VersionAPI *VersionAPIService
+	VersionAPI VersionAPI
 
-	VexAPI *VexAPIService
+	VexAPI VexAPI
 
-	ViolationAPI *ViolationAPIService
+	ViolationAPI ViolationAPI
 
-	ViolationanalysisAPI *ViolationanalysisAPIService
+	ViolationanalysisAPI ViolationanalysisAPI
 
-	VulnerabilityAPI *VulnerabilityAPIService
+	VulnerabilityAPI VulnerabilityAPI
 }
 
 type service struct {

@@ -20,12 +20,40 @@ import (
 )
 
 
+type CweAPI interface {
+
+	/*
+	GetCwe Returns a specific CWE
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param cweId The CWE ID of the CWE to retrieve
+	@return ApiGetCweRequest
+	*/
+	GetCwe(ctx context.Context, cweId int32) ApiGetCweRequest
+
+	// GetCweExecute executes the request
+	//  @return Cwe
+	GetCweExecute(r ApiGetCweRequest) (*Cwe, *http.Response, error)
+
+	/*
+	GetCwes Returns a list of all CWEs
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetCwesRequest
+	*/
+	GetCwes(ctx context.Context) ApiGetCwesRequest
+
+	// GetCwesExecute executes the request
+	//  @return []Cwe
+	GetCwesExecute(r ApiGetCwesRequest) ([]Cwe, *http.Response, error)
+}
+
 // CweAPIService CweAPI service
 type CweAPIService service
 
 type ApiGetCweRequest struct {
 	ctx context.Context
-	ApiService *CweAPIService
+	ApiService CweAPI
 	cweId int32
 }
 
@@ -140,7 +168,7 @@ func (a *CweAPIService) GetCweExecute(r ApiGetCweRequest) (*Cwe, *http.Response,
 
 type ApiGetCwesRequest struct {
 	ctx context.Context
-	ApiService *CweAPIService
+	ApiService CweAPI
 	pageNumber *interface{}
 	pageSize *interface{}
 	offset *interface{}

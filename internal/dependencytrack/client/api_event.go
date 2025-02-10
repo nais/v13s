@@ -20,12 +20,39 @@ import (
 )
 
 
+type EventAPI interface {
+
+	/*
+	IsTokenBeingProcessed1 Determines if there are any tasks associated with the token that are being processed, or in the queue to be processed.
+
+	<p>
+  This endpoint is intended to be used in conjunction with other API calls which return a token for asynchronous tasks.
+  The token can then be queried using this endpoint to determine if the task is complete:
+  <ul>
+    <li>A value of <code>true</code> indicates processing is occurring.</li>
+    <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
+  </ul>
+  However, a value of <code>false</code> also does not confirm the token is valid,
+  only that no processing is associated with the specified token.
+</p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the token to query
+	@return ApiIsTokenBeingProcessed1Request
+	*/
+	IsTokenBeingProcessed1(ctx context.Context, uuid string) ApiIsTokenBeingProcessed1Request
+
+	// IsTokenBeingProcessed1Execute executes the request
+	//  @return IsTokenBeingProcessedResponse
+	IsTokenBeingProcessed1Execute(r ApiIsTokenBeingProcessed1Request) (*IsTokenBeingProcessedResponse, *http.Response, error)
+}
+
 // EventAPIService EventAPI service
 type EventAPIService service
 
 type ApiIsTokenBeingProcessed1Request struct {
 	ctx context.Context
-	ApiService *EventAPIService
+	ApiService EventAPI
 	uuid string
 }
 

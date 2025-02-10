@@ -20,12 +20,59 @@ import (
 )
 
 
+type AclAPI interface {
+
+	/*
+	AddMapping Adds an ACL mapping
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiAddMappingRequest
+	*/
+	AddMapping(ctx context.Context) ApiAddMappingRequest
+
+	// AddMappingExecute executes the request
+	//  @return AclMappingRequest
+	AddMappingExecute(r ApiAddMappingRequest) (*AclMappingRequest, *http.Response, error)
+
+	/*
+	DeleteMapping Removes an ACL mapping
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param teamUuid The UUID of the team to delete the mapping for
+	@param projectUuid The UUID of the project to delete the mapping for
+	@return ApiDeleteMappingRequest
+	*/
+	DeleteMapping(ctx context.Context, teamUuid string, projectUuid string) ApiDeleteMappingRequest
+
+	// DeleteMappingExecute executes the request
+	DeleteMappingExecute(r ApiDeleteMappingRequest) (*http.Response, error)
+
+	/*
+	RetrieveProjects Returns the projects assigned to the specified team
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the team to retrieve mappings for
+	@return ApiRetrieveProjectsRequest
+	*/
+	RetrieveProjects(ctx context.Context, uuid string) ApiRetrieveProjectsRequest
+
+	// RetrieveProjectsExecute executes the request
+	//  @return []string
+	RetrieveProjectsExecute(r ApiRetrieveProjectsRequest) ([]string, *http.Response, error)
+}
+
 // AclAPIService AclAPI service
 type AclAPIService service
 
 type ApiAddMappingRequest struct {
 	ctx context.Context
-	ApiService *AclAPIService
+	ApiService AclAPI
 	body *AclMappingRequest
 }
 
@@ -146,7 +193,7 @@ func (a *AclAPIService) AddMappingExecute(r ApiAddMappingRequest) (*AclMappingRe
 
 type ApiDeleteMappingRequest struct {
 	ctx context.Context
-	ApiService *AclAPIService
+	ApiService AclAPI
 	teamUuid string
 	projectUuid string
 }
@@ -256,7 +303,7 @@ func (a *AclAPIService) DeleteMappingExecute(r ApiDeleteMappingRequest) (*http.R
 
 type ApiRetrieveProjectsRequest struct {
 	ctx context.Context
-	ApiService *AclAPIService
+	ApiService AclAPI
 	uuid string
 	excludeInactive *bool
 	onlyRoot *bool

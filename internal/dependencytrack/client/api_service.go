@@ -20,12 +20,88 @@ import (
 )
 
 
+type ServiceAPI interface {
+
+	/*
+	CreateService Creates a new service
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiCreateServiceRequest
+	*/
+	CreateService(ctx context.Context, uuid string) ApiCreateServiceRequest
+
+	// CreateServiceExecute executes the request
+	//  @return ServiceComponent
+	CreateServiceExecute(r ApiCreateServiceRequest) (*ServiceComponent, *http.Response, error)
+
+	/*
+	DeleteService Deletes a service
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the service to delete
+	@return ApiDeleteServiceRequest
+	*/
+	DeleteService(ctx context.Context, uuid string) ApiDeleteServiceRequest
+
+	// DeleteServiceExecute executes the request
+	DeleteServiceExecute(r ApiDeleteServiceRequest) (*http.Response, error)
+
+	/*
+	GetAllServices Returns a list of all services for a given project
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetAllServicesRequest
+	*/
+	GetAllServices(ctx context.Context, uuid string) ApiGetAllServicesRequest
+
+	// GetAllServicesExecute executes the request
+	//  @return []ServiceComponent
+	GetAllServicesExecute(r ApiGetAllServicesRequest) ([]ServiceComponent, *http.Response, error)
+
+	/*
+	GetServiceByUuid Returns a specific service
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the service to retrieve
+	@return ApiGetServiceByUuidRequest
+	*/
+	GetServiceByUuid(ctx context.Context, uuid string) ApiGetServiceByUuidRequest
+
+	// GetServiceByUuidExecute executes the request
+	//  @return ServiceComponent
+	GetServiceByUuidExecute(r ApiGetServiceByUuidRequest) (*ServiceComponent, *http.Response, error)
+
+	/*
+	UpdateService Updates a service
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateServiceRequest
+	*/
+	UpdateService(ctx context.Context) ApiUpdateServiceRequest
+
+	// UpdateServiceExecute executes the request
+	//  @return ServiceComponent
+	UpdateServiceExecute(r ApiUpdateServiceRequest) (*ServiceComponent, *http.Response, error)
+}
+
 // ServiceAPIService ServiceAPI service
 type ServiceAPIService service
 
 type ApiCreateServiceRequest struct {
 	ctx context.Context
-	ApiService *ServiceAPIService
+	ApiService ServiceAPI
 	uuid string
 	body *ServiceComponent
 }
@@ -150,7 +226,7 @@ func (a *ServiceAPIService) CreateServiceExecute(r ApiCreateServiceRequest) (*Se
 
 type ApiDeleteServiceRequest struct {
 	ctx context.Context
-	ApiService *ServiceAPIService
+	ApiService ServiceAPI
 	uuid string
 }
 
@@ -256,7 +332,7 @@ func (a *ServiceAPIService) DeleteServiceExecute(r ApiDeleteServiceRequest) (*ht
 
 type ApiGetAllServicesRequest struct {
 	ctx context.Context
-	ApiService *ServiceAPIService
+	ApiService ServiceAPI
 	uuid string
 	pageNumber *interface{}
 	pageSize *interface{}
@@ -439,7 +515,7 @@ func (a *ServiceAPIService) GetAllServicesExecute(r ApiGetAllServicesRequest) ([
 
 type ApiGetServiceByUuidRequest struct {
 	ctx context.Context
-	ApiService *ServiceAPIService
+	ApiService ServiceAPI
 	uuid string
 }
 
@@ -556,7 +632,7 @@ func (a *ServiceAPIService) GetServiceByUuidExecute(r ApiGetServiceByUuidRequest
 
 type ApiUpdateServiceRequest struct {
 	ctx context.Context
-	ApiService *ServiceAPIService
+	ApiService ServiceAPI
 	body *ServiceComponent
 }
 

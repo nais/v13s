@@ -20,12 +20,69 @@ import (
 )
 
 
+type BadgeAPI interface {
+
+	/*
+	GetProjectPolicyViolationsBadge Returns a policy violations badge for a specific project
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve a badge for
+	@return ApiGetProjectPolicyViolationsBadgeRequest
+	*/
+	GetProjectPolicyViolationsBadge(ctx context.Context, uuid string) ApiGetProjectPolicyViolationsBadgeRequest
+
+	// GetProjectPolicyViolationsBadgeExecute executes the request
+	//  @return string
+	GetProjectPolicyViolationsBadgeExecute(r ApiGetProjectPolicyViolationsBadgeRequest) (string, *http.Response, error)
+
+	/*
+	GetProjectPolicyViolationsBadge1 Returns a policy violations badge for a specific project
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name The name of the project to query on
+	@param version The version of the project to query on
+	@return ApiGetProjectPolicyViolationsBadge1Request
+	*/
+	GetProjectPolicyViolationsBadge1(ctx context.Context, name string, version string) ApiGetProjectPolicyViolationsBadge1Request
+
+	// GetProjectPolicyViolationsBadge1Execute executes the request
+	//  @return string
+	GetProjectPolicyViolationsBadge1Execute(r ApiGetProjectPolicyViolationsBadge1Request) (string, *http.Response, error)
+
+	/*
+	GetProjectVulnerabilitiesBadge Returns current metrics for a specific project
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name The name of the project to query on
+	@param version The version of the project to query on
+	@return ApiGetProjectVulnerabilitiesBadgeRequest
+	*/
+	GetProjectVulnerabilitiesBadge(ctx context.Context, name string, version string) ApiGetProjectVulnerabilitiesBadgeRequest
+
+	// GetProjectVulnerabilitiesBadgeExecute executes the request
+	//  @return ProjectMetrics
+	GetProjectVulnerabilitiesBadgeExecute(r ApiGetProjectVulnerabilitiesBadgeRequest) (*ProjectMetrics, *http.Response, error)
+
+	/*
+	GetProjectVulnerabilitiesBadge1 Returns current metrics for a specific project
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve metrics for
+	@return ApiGetProjectVulnerabilitiesBadge1Request
+	*/
+	GetProjectVulnerabilitiesBadge1(ctx context.Context, uuid string) ApiGetProjectVulnerabilitiesBadge1Request
+
+	// GetProjectVulnerabilitiesBadge1Execute executes the request
+	//  @return ProjectMetrics
+	GetProjectVulnerabilitiesBadge1Execute(r ApiGetProjectVulnerabilitiesBadge1Request) (*ProjectMetrics, *http.Response, error)
+}
+
 // BadgeAPIService BadgeAPI service
 type BadgeAPIService service
 
 type ApiGetProjectPolicyViolationsBadgeRequest struct {
 	ctx context.Context
-	ApiService *BadgeAPIService
+	ApiService BadgeAPI
 	uuid string
 }
 
@@ -126,7 +183,7 @@ func (a *BadgeAPIService) GetProjectPolicyViolationsBadgeExecute(r ApiGetProject
 
 type ApiGetProjectPolicyViolationsBadge1Request struct {
 	ctx context.Context
-	ApiService *BadgeAPIService
+	ApiService BadgeAPI
 	name string
 	version string
 }
@@ -231,7 +288,7 @@ func (a *BadgeAPIService) GetProjectPolicyViolationsBadge1Execute(r ApiGetProjec
 
 type ApiGetProjectVulnerabilitiesBadgeRequest struct {
 	ctx context.Context
-	ApiService *BadgeAPIService
+	ApiService BadgeAPI
 	name string
 	version string
 }
@@ -336,7 +393,7 @@ func (a *BadgeAPIService) GetProjectVulnerabilitiesBadgeExecute(r ApiGetProjectV
 
 type ApiGetProjectVulnerabilitiesBadge1Request struct {
 	ctx context.Context
-	ApiService *BadgeAPIService
+	ApiService BadgeAPI
 	uuid string
 }
 

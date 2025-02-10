@@ -20,12 +20,212 @@ import (
 )
 
 
+type MetricsAPI interface {
+
+	/*
+	GetComponentCurrentMetrics Returns current metrics for a specific component
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to retrieve metrics for
+	@return ApiGetComponentCurrentMetricsRequest
+	*/
+	GetComponentCurrentMetrics(ctx context.Context, uuid string) ApiGetComponentCurrentMetricsRequest
+
+	// GetComponentCurrentMetricsExecute executes the request
+	//  @return DependencyMetrics
+	GetComponentCurrentMetricsExecute(r ApiGetComponentCurrentMetricsRequest) (*DependencyMetrics, *http.Response, error)
+
+	/*
+	GetComponentMetricsSince Returns historical metrics for a specific component from a specific date
+
+	<p>Date format must be <code>YYYYMMDD</code></p>
+<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to retrieve metrics for
+	@param date The start date to retrieve metrics for
+	@return ApiGetComponentMetricsSinceRequest
+	*/
+	GetComponentMetricsSince(ctx context.Context, uuid string, date string) ApiGetComponentMetricsSinceRequest
+
+	// GetComponentMetricsSinceExecute executes the request
+	//  @return []DependencyMetrics
+	GetComponentMetricsSinceExecute(r ApiGetComponentMetricsSinceRequest) ([]DependencyMetrics, *http.Response, error)
+
+	/*
+	GetComponentMetricsXDays Returns X days of historical metrics for a specific component
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to retrieve metrics for
+	@param days The number of days back to retrieve metrics for
+	@return ApiGetComponentMetricsXDaysRequest
+	*/
+	GetComponentMetricsXDays(ctx context.Context, uuid string, days int32) ApiGetComponentMetricsXDaysRequest
+
+	// GetComponentMetricsXDaysExecute executes the request
+	//  @return []DependencyMetrics
+	GetComponentMetricsXDaysExecute(r ApiGetComponentMetricsXDaysRequest) ([]DependencyMetrics, *http.Response, error)
+
+	/*
+	GetPortfolioCurrentMetrics Returns current metrics for the entire portfolio
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetPortfolioCurrentMetricsRequest
+	*/
+	GetPortfolioCurrentMetrics(ctx context.Context) ApiGetPortfolioCurrentMetricsRequest
+
+	// GetPortfolioCurrentMetricsExecute executes the request
+	//  @return PortfolioMetrics
+	GetPortfolioCurrentMetricsExecute(r ApiGetPortfolioCurrentMetricsRequest) (*PortfolioMetrics, *http.Response, error)
+
+	/*
+	GetPortfolioMetricsSince Returns historical metrics for the entire portfolio from a specific date
+
+	<p>Date format must be <code>YYYYMMDD</code></p>
+<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param date The start date to retrieve metrics for
+	@return ApiGetPortfolioMetricsSinceRequest
+	*/
+	GetPortfolioMetricsSince(ctx context.Context, date string) ApiGetPortfolioMetricsSinceRequest
+
+	// GetPortfolioMetricsSinceExecute executes the request
+	//  @return []PortfolioMetrics
+	GetPortfolioMetricsSinceExecute(r ApiGetPortfolioMetricsSinceRequest) ([]PortfolioMetrics, *http.Response, error)
+
+	/*
+	GetPortfolioMetricsXDays Returns X days of historical metrics for the entire portfolio
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param days The number of days back to retrieve metrics for
+	@return ApiGetPortfolioMetricsXDaysRequest
+	*/
+	GetPortfolioMetricsXDays(ctx context.Context, days int32) ApiGetPortfolioMetricsXDaysRequest
+
+	// GetPortfolioMetricsXDaysExecute executes the request
+	//  @return []PortfolioMetrics
+	GetPortfolioMetricsXDaysExecute(r ApiGetPortfolioMetricsXDaysRequest) ([]PortfolioMetrics, *http.Response, error)
+
+	/*
+	GetProjectCurrentMetrics Returns current metrics for a specific project
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve metrics for
+	@return ApiGetProjectCurrentMetricsRequest
+	*/
+	GetProjectCurrentMetrics(ctx context.Context, uuid string) ApiGetProjectCurrentMetricsRequest
+
+	// GetProjectCurrentMetricsExecute executes the request
+	//  @return ProjectMetrics
+	GetProjectCurrentMetricsExecute(r ApiGetProjectCurrentMetricsRequest) (*ProjectMetrics, *http.Response, error)
+
+	/*
+	GetProjectMetricsSince Returns historical metrics for a specific project from a specific date
+
+	<p>Date format must be <code>YYYYMMDD</code></p>
+<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve metrics for
+	@param date The start date to retrieve metrics for
+	@return ApiGetProjectMetricsSinceRequest
+	*/
+	GetProjectMetricsSince(ctx context.Context, uuid string, date string) ApiGetProjectMetricsSinceRequest
+
+	// GetProjectMetricsSinceExecute executes the request
+	//  @return []ProjectMetrics
+	GetProjectMetricsSinceExecute(r ApiGetProjectMetricsSinceRequest) ([]ProjectMetrics, *http.Response, error)
+
+	/*
+	GetProjectMetricsXDays Returns X days of historical metrics for a specific project
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve metrics for
+	@param days The number of days back to retrieve metrics for
+	@return ApiGetProjectMetricsXDaysRequest
+	*/
+	GetProjectMetricsXDays(ctx context.Context, uuid string, days int32) ApiGetProjectMetricsXDaysRequest
+
+	// GetProjectMetricsXDaysExecute executes the request
+	//  @return []ProjectMetrics
+	GetProjectMetricsXDaysExecute(r ApiGetProjectMetricsXDaysRequest) ([]ProjectMetrics, *http.Response, error)
+
+	/*
+	GetVulnerabilityMetrics Returns the sum of all vulnerabilities in the database by year and month
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetVulnerabilityMetricsRequest
+	*/
+	GetVulnerabilityMetrics(ctx context.Context) ApiGetVulnerabilityMetricsRequest
+
+	// GetVulnerabilityMetricsExecute executes the request
+	//  @return []VulnerabilityMetrics
+	GetVulnerabilityMetricsExecute(r ApiGetVulnerabilityMetricsRequest) ([]VulnerabilityMetrics, *http.Response, error)
+
+	/*
+	RefreshComponentMetrics Requests a refresh of a specific components metrics
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to refresh metrics on
+	@return ApiRefreshComponentMetricsRequest
+	*/
+	RefreshComponentMetrics(ctx context.Context, uuid string) ApiRefreshComponentMetricsRequest
+
+	// RefreshComponentMetricsExecute executes the request
+	RefreshComponentMetricsExecute(r ApiRefreshComponentMetricsRequest) (*http.Response, error)
+
+	/*
+	RefreshPortfolioMetrics Requests a refresh of the portfolio metrics
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiRefreshPortfolioMetricsRequest
+	*/
+	RefreshPortfolioMetrics(ctx context.Context) ApiRefreshPortfolioMetricsRequest
+
+	// RefreshPortfolioMetricsExecute executes the request
+	//  @return PortfolioMetrics
+	RefreshPortfolioMetricsExecute(r ApiRefreshPortfolioMetricsRequest) (*PortfolioMetrics, *http.Response, error)
+
+	/*
+	RefreshProjectMetrics Requests a refresh of a specific projects metrics
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to refresh metrics on
+	@return ApiRefreshProjectMetricsRequest
+	*/
+	RefreshProjectMetrics(ctx context.Context, uuid string) ApiRefreshProjectMetricsRequest
+
+	// RefreshProjectMetricsExecute executes the request
+	RefreshProjectMetricsExecute(r ApiRefreshProjectMetricsRequest) (*http.Response, error)
+}
+
 // MetricsAPIService MetricsAPI service
 type MetricsAPIService service
 
 type ApiGetComponentCurrentMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 }
 
@@ -142,7 +342,7 @@ func (a *MetricsAPIService) GetComponentCurrentMetricsExecute(r ApiGetComponentC
 
 type ApiGetComponentMetricsSinceRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 	date string
 }
@@ -264,7 +464,7 @@ func (a *MetricsAPIService) GetComponentMetricsSinceExecute(r ApiGetComponentMet
 
 type ApiGetComponentMetricsXDaysRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 	days int32
 }
@@ -385,7 +585,7 @@ func (a *MetricsAPIService) GetComponentMetricsXDaysExecute(r ApiGetComponentMet
 
 type ApiGetPortfolioCurrentMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 }
 
 func (r ApiGetPortfolioCurrentMetricsRequest) Execute() (*PortfolioMetrics, *http.Response, error) {
@@ -498,7 +698,7 @@ func (a *MetricsAPIService) GetPortfolioCurrentMetricsExecute(r ApiGetPortfolioC
 
 type ApiGetPortfolioMetricsSinceRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	date string
 }
 
@@ -616,7 +816,7 @@ func (a *MetricsAPIService) GetPortfolioMetricsSinceExecute(r ApiGetPortfolioMet
 
 type ApiGetPortfolioMetricsXDaysRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	days int32
 }
 
@@ -733,7 +933,7 @@ func (a *MetricsAPIService) GetPortfolioMetricsXDaysExecute(r ApiGetPortfolioMet
 
 type ApiGetProjectCurrentMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 }
 
@@ -850,7 +1050,7 @@ func (a *MetricsAPIService) GetProjectCurrentMetricsExecute(r ApiGetProjectCurre
 
 type ApiGetProjectMetricsSinceRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 	date string
 }
@@ -972,7 +1172,7 @@ func (a *MetricsAPIService) GetProjectMetricsSinceExecute(r ApiGetProjectMetrics
 
 type ApiGetProjectMetricsXDaysRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 	days int32
 }
@@ -1093,7 +1293,7 @@ func (a *MetricsAPIService) GetProjectMetricsXDaysExecute(r ApiGetProjectMetrics
 
 type ApiGetVulnerabilityMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 }
 
 func (r ApiGetVulnerabilityMetricsRequest) Execute() ([]VulnerabilityMetrics, *http.Response, error) {
@@ -1206,7 +1406,7 @@ func (a *MetricsAPIService) GetVulnerabilityMetricsExecute(r ApiGetVulnerability
 
 type ApiRefreshComponentMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 }
 
@@ -1312,7 +1512,7 @@ func (a *MetricsAPIService) RefreshComponentMetricsExecute(r ApiRefreshComponent
 
 type ApiRefreshPortfolioMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 }
 
 func (r ApiRefreshPortfolioMetricsRequest) Execute() (*PortfolioMetrics, *http.Response, error) {
@@ -1425,7 +1625,7 @@ func (a *MetricsAPIService) RefreshPortfolioMetricsExecute(r ApiRefreshPortfolio
 
 type ApiRefreshProjectMetricsRequest struct {
 	ctx context.Context
-	ApiService *MetricsAPIService
+	ApiService MetricsAPI
 	uuid string
 }
 

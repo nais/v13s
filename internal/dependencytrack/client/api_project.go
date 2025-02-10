@@ -20,12 +20,223 @@ import (
 )
 
 
+type ProjectAPI interface {
+
+	/*
+	CloneProject Clones a project
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCloneProjectRequest
+	*/
+	CloneProject(ctx context.Context) ApiCloneProjectRequest
+
+	// CloneProjectExecute executes the request
+	//  @return Project
+	CloneProjectExecute(r ApiCloneProjectRequest) (*Project, *http.Response, error)
+
+	/*
+	CreateProject Creates a new project
+
+	<p>If a parent project exists, <code>parent.uuid</code> is required</p>
+<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateProjectRequest
+	*/
+	CreateProject(ctx context.Context) ApiCreateProjectRequest
+
+	// CreateProjectExecute executes the request
+	//  @return Project
+	CreateProjectExecute(r ApiCreateProjectRequest) (*Project, *http.Response, error)
+
+	/*
+	DeleteProject Deletes a project
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to delete
+	@return ApiDeleteProjectRequest
+	*/
+	DeleteProject(ctx context.Context, uuid string) ApiDeleteProjectRequest
+
+	// DeleteProjectExecute executes the request
+	DeleteProjectExecute(r ApiDeleteProjectRequest) (*http.Response, error)
+
+	/*
+	GetChildrenProjects Returns a list of all children for a project
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to get the children from
+	@return ApiGetChildrenProjectsRequest
+	*/
+	GetChildrenProjects(ctx context.Context, uuid string) ApiGetChildrenProjectsRequest
+
+	// GetChildrenProjectsExecute executes the request
+	//  @return []Project
+	GetChildrenProjectsExecute(r ApiGetChildrenProjectsRequest) ([]Project, *http.Response, error)
+
+	/*
+	GetChildrenProjectsByClassifier Returns a list of all children for a project by classifier
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param classifier The classifier to query on
+	@param uuid The UUID of the project to get the children from
+	@return ApiGetChildrenProjectsByClassifierRequest
+	*/
+	GetChildrenProjectsByClassifier(ctx context.Context, classifier string, uuid string) ApiGetChildrenProjectsByClassifierRequest
+
+	// GetChildrenProjectsByClassifierExecute executes the request
+	//  @return []Project
+	GetChildrenProjectsByClassifierExecute(r ApiGetChildrenProjectsByClassifierRequest) ([]Project, *http.Response, error)
+
+	/*
+	GetChildrenProjectsByTag Returns a list of all children for a project by tag
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param tag The tag to query on
+	@param uuid The UUID of the project to get the children from
+	@return ApiGetChildrenProjectsByTagRequest
+	*/
+	GetChildrenProjectsByTag(ctx context.Context, tag string, uuid string) ApiGetChildrenProjectsByTagRequest
+
+	// GetChildrenProjectsByTagExecute executes the request
+	//  @return []Project
+	GetChildrenProjectsByTagExecute(r ApiGetChildrenProjectsByTagRequest) ([]Project, *http.Response, error)
+
+	/*
+	GetProject Returns a specific project
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve
+	@return ApiGetProjectRequest
+	*/
+	GetProject(ctx context.Context, uuid string) ApiGetProjectRequest
+
+	// GetProjectExecute executes the request
+	//  @return Project
+	GetProjectExecute(r ApiGetProjectRequest) (*Project, *http.Response, error)
+
+	/*
+	GetProjectByNameAndVersion Returns a specific project by its name and version
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetProjectByNameAndVersionRequest
+	*/
+	GetProjectByNameAndVersion(ctx context.Context) ApiGetProjectByNameAndVersionRequest
+
+	// GetProjectByNameAndVersionExecute executes the request
+	//  @return Project
+	GetProjectByNameAndVersionExecute(r ApiGetProjectByNameAndVersionRequest) (*Project, *http.Response, error)
+
+	/*
+	GetProjects Returns a list of all projects
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetProjectsRequest
+	*/
+	GetProjects(ctx context.Context) ApiGetProjectsRequest
+
+	// GetProjectsExecute executes the request
+	//  @return []Project
+	GetProjectsExecute(r ApiGetProjectsRequest) ([]Project, *http.Response, error)
+
+	/*
+	GetProjectsByClassifier Returns a list of all projects by classifier
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param classifier The classifier to query on
+	@return ApiGetProjectsByClassifierRequest
+	*/
+	GetProjectsByClassifier(ctx context.Context, classifier string) ApiGetProjectsByClassifierRequest
+
+	// GetProjectsByClassifierExecute executes the request
+	//  @return []Project
+	GetProjectsByClassifierExecute(r ApiGetProjectsByClassifierRequest) ([]Project, *http.Response, error)
+
+	/*
+	GetProjectsByTag Returns a list of all projects by tag
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param tag The tag to query on
+	@return ApiGetProjectsByTagRequest
+	*/
+	GetProjectsByTag(ctx context.Context, tag string) ApiGetProjectsByTagRequest
+
+	// GetProjectsByTagExecute executes the request
+	//  @return []Project
+	GetProjectsByTagExecute(r ApiGetProjectsByTagRequest) ([]Project, *http.Response, error)
+
+	/*
+	GetProjectsWithoutDescendantsOf Returns a list of all projects without the descendants of the selected project
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project which descendants will be excluded
+	@return ApiGetProjectsWithoutDescendantsOfRequest
+	*/
+	GetProjectsWithoutDescendantsOf(ctx context.Context, uuid string) ApiGetProjectsWithoutDescendantsOfRequest
+
+	// GetProjectsWithoutDescendantsOfExecute executes the request
+	//  @return []Project
+	GetProjectsWithoutDescendantsOfExecute(r ApiGetProjectsWithoutDescendantsOfRequest) ([]Project, *http.Response, error)
+
+	/*
+	PatchProject Partially updates a project
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to modify
+	@return ApiPatchProjectRequest
+	*/
+	PatchProject(ctx context.Context, uuid string) ApiPatchProjectRequest
+
+	// PatchProjectExecute executes the request
+	//  @return Project
+	PatchProjectExecute(r ApiPatchProjectRequest) (*Project, *http.Response, error)
+
+	/*
+	UpdateProject Updates a project
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateProjectRequest
+	*/
+	UpdateProject(ctx context.Context) ApiUpdateProjectRequest
+
+	// UpdateProjectExecute executes the request
+	//  @return Project
+	UpdateProjectExecute(r ApiUpdateProjectRequest) (*Project, *http.Response, error)
+}
+
 // ProjectAPIService ProjectAPI service
 type ProjectAPIService service
 
 type ApiCloneProjectRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	body *CloneProjectRequest
 }
 
@@ -146,7 +357,7 @@ func (a *ProjectAPIService) CloneProjectExecute(r ApiCloneProjectRequest) (*Proj
 
 type ApiCreateProjectRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	body *Project
 }
 
@@ -269,7 +480,7 @@ func (a *ProjectAPIService) CreateProjectExecute(r ApiCreateProjectRequest) (*Pr
 
 type ApiDeleteProjectRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	uuid string
 }
 
@@ -375,7 +586,7 @@ func (a *ProjectAPIService) DeleteProjectExecute(r ApiDeleteProjectRequest) (*ht
 
 type ApiGetChildrenProjectsRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	uuid string
 	excludeInactive *bool
 	pageNumber *interface{}
@@ -568,7 +779,7 @@ func (a *ProjectAPIService) GetChildrenProjectsExecute(r ApiGetChildrenProjectsR
 
 type ApiGetChildrenProjectsByClassifierRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	classifier string
 	uuid string
 	excludeInactive *bool
@@ -765,7 +976,7 @@ func (a *ProjectAPIService) GetChildrenProjectsByClassifierExecute(r ApiGetChild
 
 type ApiGetChildrenProjectsByTagRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	tag string
 	uuid string
 	excludeInactive *bool
@@ -962,7 +1173,7 @@ func (a *ProjectAPIService) GetChildrenProjectsByTagExecute(r ApiGetChildrenProj
 
 type ApiGetProjectRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	uuid string
 }
 
@@ -1079,7 +1290,7 @@ func (a *ProjectAPIService) GetProjectExecute(r ApiGetProjectRequest) (*Project,
 
 type ApiGetProjectByNameAndVersionRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	name *string
 	version *string
 }
@@ -1214,7 +1425,7 @@ func (a *ProjectAPIService) GetProjectByNameAndVersionExecute(r ApiGetProjectByN
 
 type ApiGetProjectsRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	name *string
 	excludeInactive *bool
 	onlyRoot *bool
@@ -1433,7 +1644,7 @@ func (a *ProjectAPIService) GetProjectsExecute(r ApiGetProjectsRequest) ([]Proje
 
 type ApiGetProjectsByClassifierRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	classifier string
 	excludeInactive *bool
 	onlyRoot *bool
@@ -1636,7 +1847,7 @@ func (a *ProjectAPIService) GetProjectsByClassifierExecute(r ApiGetProjectsByCla
 
 type ApiGetProjectsByTagRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	tag string
 	excludeInactive *bool
 	onlyRoot *bool
@@ -1839,7 +2050,7 @@ func (a *ProjectAPIService) GetProjectsByTagExecute(r ApiGetProjectsByTagRequest
 
 type ApiGetProjectsWithoutDescendantsOfRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	uuid string
 	name *string
 	excludeInactive *bool
@@ -2042,7 +2253,7 @@ func (a *ProjectAPIService) GetProjectsWithoutDescendantsOfExecute(r ApiGetProje
 
 type ApiPatchProjectRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	uuid string
 	body *Project
 }
@@ -2167,7 +2378,7 @@ func (a *ProjectAPIService) PatchProjectExecute(r ApiPatchProjectRequest) (*Proj
 
 type ApiUpdateProjectRequest struct {
 	ctx context.Context
-	ApiService *ProjectAPIService
+	ApiService ProjectAPI
 	body *Project
 }
 

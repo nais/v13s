@@ -47,6 +47,7 @@ generate_dp_track:
         --global-property apiTests=false,modelTests=false \
         --package-name client \
         --additional-properties=withGoMod=false \
+        --additional-properties=generateInterfaces=true \
         --additional-properties=packageName=client || { \
 			echo "Error: openapi-generator is not installed or failed to execute."; \
 			echo "Please visit https://openapi-generator.tech/docs/installation/ for installation instructions."; \
