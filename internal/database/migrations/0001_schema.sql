@@ -87,6 +87,7 @@ CREATE TABLE vulnerabilities
     image_tag  TEXT                                               NOT NULL,
     package    TEXT                                               NOT NULL,
     cve_id     TEXT                                               NOT NULL,
+    source     TEXT                                               NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
     CONSTRAINT image_name_tag_cve_id_package UNIQUE (image_name, image_tag, cve_id, package)

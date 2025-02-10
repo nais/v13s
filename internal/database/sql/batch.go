@@ -26,12 +26,11 @@ VALUES ($1,
         $4,
         $5)
 ON CONFLICT (cve_id)
-    DO
-        UPDATE
+    DO UPDATE
     SET cve_title = $2,
-        cve_desc = $3,
-        cve_link = $4,
-        severity = $5
+        cve_desc  = $3,
+        cve_link  = $4,
+        severity  = $5
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -87,14 +86,16 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
 INSERT INTO vulnerabilities(image_name,
-                                  image_tag,
-                                  package,
-                                  cve_id)
+                            image_tag,
+                            package,
+                            cve_id,
+                            source)
 
 VALUES ($1,
         $2,
         $3,
-        $4)
+        $4,
+        $5)
 ON CONFLICT DO NOTHING
 `
 
@@ -109,6 +110,7 @@ type BatchUpsertVulnerabilitiesParams struct {
 	ImageTag  string
 	Package   string
 	CveID     string
+	Source    string
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -119,6 +121,7 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.ImageTag,
 			a.Package,
 			a.CveID,
+			a.Source,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

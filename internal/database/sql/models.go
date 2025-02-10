@@ -184,6 +184,7 @@ type Vulnerability struct {
 	ImageTag  string
 	Package   string
 	CveID     string
+	Source    string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

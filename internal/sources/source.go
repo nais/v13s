@@ -6,6 +6,7 @@ import (
 )
 
 type Source interface {
+	Name() string
 	SuppressVulnerability(ctx context.Context, vulnerability *Vulnerability) error
 	GetSuppressedVulnerabilitiesForImage(ctx context.Context, image string) ([]*Vulnerability, error)
 	GetVulnerabilites(ctx context.Context, id string, includeSuppressed bool) ([]*Vulnerability, error)

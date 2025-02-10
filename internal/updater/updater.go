@@ -248,6 +248,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 			ImageTag:  tag,
 			Package:   f.Package,
 			CveID:     f.Cve.Id,
+			Source:    u.source.Name(),
 		})
 	}
 

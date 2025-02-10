@@ -19,10 +19,14 @@ FROM vulnerabilities v
                        AND v.package = sv.package
                        AND v.cve_id = sv.cve_id
 WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
-   AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
-   AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
-   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
-   AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+  AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
+  AND (CASE
+           WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT
+           ELSE TRUE END)
+  AND (CASE
+           WHEN $4::TEXT is not null THEN w.name = $4::TEXT
+           ELSE TRUE END)
+  AND ($5::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
 `
 
 type CountVulnerabilitiesParams struct {
@@ -47,7 +51,9 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 }
 
 const getCve = `-- name: GetCve :one
-SELECT cve_id, cve_title, cve_desc, cve_link, severity, created_at, updated_at FROM cve WHERE cve_id = $1
+SELECT cve_id, cve_title, cve_desc, cve_link, severity, created_at, updated_at
+FROM cve
+WHERE cve_id = $1
 `
 
 func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
@@ -66,7 +72,11 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 }
 
 const getSuppressedVulnerability = `-- name: GetSuppressedVulnerability :one
-SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1 AND package = $2 AND cve_id = $3
+SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at
+FROM suppressed_vulnerabilities
+WHERE image_name = $1
+  AND package = $2
+  AND cve_id = $3
 `
 
 type GetSuppressedVulnerabilityParams struct {
@@ -93,7 +103,12 @@ func (q *Queries) GetSuppressedVulnerability(ctx context.Context, arg GetSuppres
 }
 
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cve_id, created_at, updated_at FROM vulnerabilities WHERE image_name = $1 AND image_tag = $2 AND package = $3 AND cve_id = $4
+SELECT id, image_name, image_tag, package, cve_id, source, created_at, updated_at
+FROM vulnerabilities
+WHERE image_name = $1
+  AND image_tag = $2
+  AND package = $3
+  AND cve_id = $4
 `
 
 type GetVulnerabilityParams struct {
@@ -117,6 +132,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.ImageTag,
 		&i.Package,
 		&i.CveID,
+		&i.Source,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -124,12 +140,11 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 }
 
 const listSuppressedVulnerabilitiesForImage = `-- name: ListSuppressedVulnerabilitiesForImage :many
-SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at FROM suppressed_vulnerabilities WHERE image_name = $1
+SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at
+FROM suppressed_vulnerabilities
+WHERE image_name = $1
 ORDER BY updated_at DESC
-LIMIT
-    $3
-OFFSET
-    $2
+LIMIT $3 OFFSET $2
 `
 
 type ListSuppressedVulnerabilitiesForImageParams struct {
@@ -169,24 +184,23 @@ func (q *Queries) ListSuppressedVulnerabilitiesForImage(ctx context.Context, arg
 }
 
 const listVulnerabilities = `-- name: ListVulnerabilities :many
-SELECT
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    v.image_name,
-    v.image_tag,
-    v.package,
-    v.cve_id,
-    v.created_at,
-    v.updated_at,
-    c.cve_title,
-    c.cve_desc,
-    c.cve_link,
-    c.severity,
-    COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
-    sv.reason_text
+SELECT w.name                         AS workload_name,
+       w.workload_type,
+       w.namespace,
+       w.cluster,
+       v.image_name,
+       v.image_tag,
+       v.package,
+       v.cve_id,
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       sv.reason,
+       sv.reason_text
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
@@ -195,17 +209,20 @@ FROM vulnerabilities v
                        AND v.package = sv.package
                        AND v.cve_id = sv.cve_id
 WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
-   AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
-   AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
-   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
-   AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
-   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
-   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+  AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
+  AND (CASE
+           WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT
+           ELSE TRUE END)
+  AND (CASE
+           WHEN $4::TEXT is not null THEN w.name = $4::TEXT
+           ELSE TRUE END)
+  AND (CASE
+           WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT
+           ELSE TRUE END)
+  AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
+  AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY (w.cluster, w.namespace, w.name, v.id) ASC
-LIMIT
-    $9
-OFFSET
-    $8
+LIMIT $9 OFFSET $8
 `
 
 type ListVulnerabilitiesParams struct {
@@ -300,11 +317,12 @@ VALUES ($1,
         $3,
         $4,
         $5,
-        $6) ON CONFLICT
-ON CONSTRAINT image_name_package_cve_id DO UPDATE
-SET suppressed = $4,
-    reason = $5,
-    reason_text = $6
+        $6)
+ON CONFLICT
+    ON CONSTRAINT image_name_package_cve_id DO UPDATE
+    SET suppressed  = $4,
+        reason      = $5,
+        reason_text = $6
 `
 
 type SuppressVulnerabilityParams struct {

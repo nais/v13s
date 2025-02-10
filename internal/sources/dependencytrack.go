@@ -7,12 +7,18 @@ import (
 	"github.com/nais/v13s/internal/dependencytrack/client"
 )
 
+var ErrNoMetrics = fmt.Errorf("no metrics found")
+var ErrNoProject = fmt.Errorf("no project found")
+
+const DependencytrackSourceName = "dependencytrack"
+
 type dependencytrackSource struct {
 	client dependencytrack.Client
 }
 
-var ErrNoMetrics = fmt.Errorf("no metrics found")
-var ErrNoProject = fmt.Errorf("no project found")
+func (d *dependencytrackSource) Name() string {
+	return DependencytrackSourceName
+}
 
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {
 	p, err := d.client.GetProject(ctx, imageName, imageTag)
