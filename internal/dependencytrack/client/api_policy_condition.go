@@ -20,12 +20,58 @@ import (
 )
 
 
+type PolicyConditionAPI interface {
+
+	/*
+	CreatePolicyCondition Creates a new policy condition
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy
+	@return ApiCreatePolicyConditionRequest
+	*/
+	CreatePolicyCondition(ctx context.Context, uuid string) ApiCreatePolicyConditionRequest
+
+	// CreatePolicyConditionExecute executes the request
+	//  @return PolicyCondition
+	CreatePolicyConditionExecute(r ApiCreatePolicyConditionRequest) (*PolicyCondition, *http.Response, error)
+
+	/*
+	DeletePolicyCondition Deletes a policy condition
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy condition to delete
+	@return ApiDeletePolicyConditionRequest
+	*/
+	DeletePolicyCondition(ctx context.Context, uuid string) ApiDeletePolicyConditionRequest
+
+	// DeletePolicyConditionExecute executes the request
+	DeletePolicyConditionExecute(r ApiDeletePolicyConditionRequest) (*http.Response, error)
+
+	/*
+	UpdatePolicyCondition Updates a policy condition
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdatePolicyConditionRequest
+	*/
+	UpdatePolicyCondition(ctx context.Context) ApiUpdatePolicyConditionRequest
+
+	// UpdatePolicyConditionExecute executes the request
+	//  @return PolicyCondition
+	UpdatePolicyConditionExecute(r ApiUpdatePolicyConditionRequest) (*PolicyCondition, *http.Response, error)
+}
+
 // PolicyConditionAPIService PolicyConditionAPI service
 type PolicyConditionAPIService service
 
 type ApiCreatePolicyConditionRequest struct {
 	ctx context.Context
-	ApiService *PolicyConditionAPIService
+	ApiService PolicyConditionAPI
 	uuid string
 	body *PolicyCondition
 }
@@ -150,7 +196,7 @@ func (a *PolicyConditionAPIService) CreatePolicyConditionExecute(r ApiCreatePoli
 
 type ApiDeletePolicyConditionRequest struct {
 	ctx context.Context
-	ApiService *PolicyConditionAPIService
+	ApiService PolicyConditionAPI
 	uuid string
 }
 
@@ -256,7 +302,7 @@ func (a *PolicyConditionAPIService) DeletePolicyConditionExecute(r ApiDeletePoli
 
 type ApiUpdatePolicyConditionRequest struct {
 	ctx context.Context
-	ApiService *PolicyConditionAPIService
+	ApiService PolicyConditionAPI
 	body *PolicyCondition
 }
 

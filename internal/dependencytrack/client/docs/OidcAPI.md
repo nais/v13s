@@ -533,7 +533,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[X-Api-Key](../README.md#X-Api-Key), [Bearer](../README.md#Bearer)
 
 ### HTTP request headers
 

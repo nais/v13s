@@ -19,12 +19,57 @@ import (
 )
 
 
+type ConfigPropertyAPI interface {
+
+	/*
+	GetConfigProperties Returns a list of all ConfigProperties for the specified groupName
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetConfigPropertiesRequest
+	*/
+	GetConfigProperties(ctx context.Context) ApiGetConfigPropertiesRequest
+
+	// GetConfigPropertiesExecute executes the request
+	//  @return []ConfigProperty
+	GetConfigPropertiesExecute(r ApiGetConfigPropertiesRequest) ([]ConfigProperty, *http.Response, error)
+
+	/*
+	UpdateConfigProperty Updates an array of config properties
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateConfigPropertyRequest
+	*/
+	UpdateConfigProperty(ctx context.Context) ApiUpdateConfigPropertyRequest
+
+	// UpdateConfigPropertyExecute executes the request
+	//  @return []ConfigProperty
+	UpdateConfigPropertyExecute(r ApiUpdateConfigPropertyRequest) ([]ConfigProperty, *http.Response, error)
+
+	/*
+	UpdateConfigProperty1 Updates a config property
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateConfigProperty1Request
+	*/
+	UpdateConfigProperty1(ctx context.Context) ApiUpdateConfigProperty1Request
+
+	// UpdateConfigProperty1Execute executes the request
+	//  @return ConfigProperty
+	UpdateConfigProperty1Execute(r ApiUpdateConfigProperty1Request) (*ConfigProperty, *http.Response, error)
+}
+
 // ConfigPropertyAPIService ConfigPropertyAPI service
 type ConfigPropertyAPIService service
 
 type ApiGetConfigPropertiesRequest struct {
 	ctx context.Context
-	ApiService *ConfigPropertyAPIService
+	ApiService ConfigPropertyAPI
 }
 
 func (r ApiGetConfigPropertiesRequest) Execute() ([]ConfigProperty, *http.Response, error) {
@@ -137,7 +182,7 @@ func (a *ConfigPropertyAPIService) GetConfigPropertiesExecute(r ApiGetConfigProp
 
 type ApiUpdateConfigPropertyRequest struct {
 	ctx context.Context
-	ApiService *ConfigPropertyAPIService
+	ApiService ConfigPropertyAPI
 	body *[]ConfigProperty
 }
 
@@ -258,7 +303,7 @@ func (a *ConfigPropertyAPIService) UpdateConfigPropertyExecute(r ApiUpdateConfig
 
 type ApiUpdateConfigProperty1Request struct {
 	ctx context.Context
-	ApiService *ConfigPropertyAPIService
+	ApiService ConfigPropertyAPI
 	body *ConfigProperty
 }
 

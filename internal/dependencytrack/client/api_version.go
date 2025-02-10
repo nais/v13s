@@ -19,12 +19,29 @@ import (
 )
 
 
+type VersionAPI interface {
+
+	/*
+	GetVersion Returns application version information
+
+	Returns a simple json object containing the name of the application and the version
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetVersionRequest
+	*/
+	GetVersion(ctx context.Context) ApiGetVersionRequest
+
+	// GetVersionExecute executes the request
+	//  @return About
+	GetVersionExecute(r ApiGetVersionRequest) (*About, *http.Response, error)
+}
+
 // VersionAPIService VersionAPI service
 type VersionAPIService service
 
 type ApiGetVersionRequest struct {
 	ctx context.Context
-	ApiService *VersionAPIService
+	ApiService VersionAPI
 }
 
 func (r ApiGetVersionRequest) Execute() (*About, *http.Response, error) {

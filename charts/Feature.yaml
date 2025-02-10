@@ -34,12 +34,17 @@ values:
     config:
       type: string_array
 
-  dependencytrack.apikey:
-    displayName: dependencytrack API key
-    config:
-      type: string
-      secret: true
-    required: true
+  dependencytrack.username:
+    displayName: dependencytrack username
+    computed:
+      template: |
+        {{ .Env.v13s_dependencytrack_username | quote }}
+
+  dependencytrack.password:
+    displayName: dependencytrack password
+    computed:
+      template: |
+        {{ .Env.v13s_dependencytrack_password | quote }}
 
   dependencytrack.url:
     displayName: dependencytrack URL

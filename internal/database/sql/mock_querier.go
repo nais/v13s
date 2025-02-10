@@ -5,7 +5,6 @@ package sql
 import (
 	context "context"
 
-	pgtype "github.com/jackc/pgx/v5/pgtype"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -931,17 +930,64 @@ func (_c *MockQuerier_ListVulnerabilitySummaries_Call) RunAndReturn(run func(con
 	return _c
 }
 
-// MarkImagesForResync provides a mock function with given fields: ctx, thresholdTime
-func (_m *MockQuerier) MarkImagesForResync(ctx context.Context, thresholdTime pgtype.Timestamptz) error {
-	ret := _m.Called(ctx, thresholdTime)
+// MarkImagesAsUntracked provides a mock function with given fields: ctx, includedStates
+func (_m *MockQuerier) MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error {
+	ret := _m.Called(ctx, includedStates)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkImagesAsUntracked")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []ImageState) error); ok {
+		r0 = rf(ctx, includedStates)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_MarkImagesAsUntracked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkImagesAsUntracked'
+type MockQuerier_MarkImagesAsUntracked_Call struct {
+	*mock.Call
+}
+
+// MarkImagesAsUntracked is a helper method to define mock.On call
+//   - ctx context.Context
+//   - includedStates []ImageState
+func (_e *MockQuerier_Expecter) MarkImagesAsUntracked(ctx interface{}, includedStates interface{}) *MockQuerier_MarkImagesAsUntracked_Call {
+	return &MockQuerier_MarkImagesAsUntracked_Call{Call: _e.mock.On("MarkImagesAsUntracked", ctx, includedStates)}
+}
+
+func (_c *MockQuerier_MarkImagesAsUntracked_Call) Run(run func(ctx context.Context, includedStates []ImageState)) *MockQuerier_MarkImagesAsUntracked_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]ImageState))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_MarkImagesAsUntracked_Call) Return(_a0 error) *MockQuerier_MarkImagesAsUntracked_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_MarkImagesAsUntracked_Call) RunAndReturn(run func(context.Context, []ImageState) error) *MockQuerier_MarkImagesAsUntracked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkImagesForResync provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error {
+	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkImagesForResync")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) error); ok {
-		r0 = rf(ctx, thresholdTime)
+	if rf, ok := ret.Get(0).(func(context.Context, MarkImagesForResyncParams) error); ok {
+		r0 = rf(ctx, arg)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -956,14 +1002,14 @@ type MockQuerier_MarkImagesForResync_Call struct {
 
 // MarkImagesForResync is a helper method to define mock.On call
 //   - ctx context.Context
-//   - thresholdTime pgtype.Timestamptz
-func (_e *MockQuerier_Expecter) MarkImagesForResync(ctx interface{}, thresholdTime interface{}) *MockQuerier_MarkImagesForResync_Call {
-	return &MockQuerier_MarkImagesForResync_Call{Call: _e.mock.On("MarkImagesForResync", ctx, thresholdTime)}
+//   - arg MarkImagesForResyncParams
+func (_e *MockQuerier_Expecter) MarkImagesForResync(ctx interface{}, arg interface{}) *MockQuerier_MarkImagesForResync_Call {
+	return &MockQuerier_MarkImagesForResync_Call{Call: _e.mock.On("MarkImagesForResync", ctx, arg)}
 }
 
-func (_c *MockQuerier_MarkImagesForResync_Call) Run(run func(ctx context.Context, thresholdTime pgtype.Timestamptz)) *MockQuerier_MarkImagesForResync_Call {
+func (_c *MockQuerier_MarkImagesForResync_Call) Run(run func(ctx context.Context, arg MarkImagesForResyncParams)) *MockQuerier_MarkImagesForResync_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(pgtype.Timestamptz))
+		run(args[0].(context.Context), args[1].(MarkImagesForResyncParams))
 	})
 	return _c
 }
@@ -973,7 +1019,7 @@ func (_c *MockQuerier_MarkImagesForResync_Call) Return(_a0 error) *MockQuerier_M
 	return _c
 }
 
-func (_c *MockQuerier_MarkImagesForResync_Call) RunAndReturn(run func(context.Context, pgtype.Timestamptz) error) *MockQuerier_MarkImagesForResync_Call {
+func (_c *MockQuerier_MarkImagesForResync_Call) RunAndReturn(run func(context.Context, MarkImagesForResyncParams) error) *MockQuerier_MarkImagesForResync_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1114,6 +1160,53 @@ func (_c *MockQuerier_UpdateImageState_Call) Return(_a0 error) *MockQuerier_Upda
 }
 
 func (_c *MockQuerier_UpdateImageState_Call) RunAndReturn(run func(context.Context, UpdateImageStateParams) error) *MockQuerier_UpdateImageState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateImageSyncStatus provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateImageSyncStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, UpdateImageSyncStatusParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpdateImageSyncStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateImageSyncStatus'
+type MockQuerier_UpdateImageSyncStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateImageSyncStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg UpdateImageSyncStatusParams
+func (_e *MockQuerier_Expecter) UpdateImageSyncStatus(ctx interface{}, arg interface{}) *MockQuerier_UpdateImageSyncStatus_Call {
+	return &MockQuerier_UpdateImageSyncStatus_Call{Call: _e.mock.On("UpdateImageSyncStatus", ctx, arg)}
+}
+
+func (_c *MockQuerier_UpdateImageSyncStatus_Call) Run(run func(ctx context.Context, arg UpdateImageSyncStatusParams)) *MockQuerier_UpdateImageSyncStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(UpdateImageSyncStatusParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateImageSyncStatus_Call) Return(_a0 error) *MockQuerier_UpdateImageSyncStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateImageSyncStatus_Call) RunAndReturn(run func(context.Context, UpdateImageSyncStatusParams) error) *MockQuerier_UpdateImageSyncStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

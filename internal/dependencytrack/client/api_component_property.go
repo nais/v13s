@@ -20,12 +20,61 @@ import (
 )
 
 
+type ComponentPropertyAPI interface {
+
+	/*
+	CreateProperty Creates a new component property
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to create a property for
+	@return ApiCreatePropertyRequest
+	*/
+	CreateProperty(ctx context.Context, uuid string) ApiCreatePropertyRequest
+
+	// CreatePropertyExecute executes the request
+	//  @return ComponentProperty
+	CreatePropertyExecute(r ApiCreatePropertyRequest) (*ComponentProperty, *http.Response, error)
+
+	/*
+	DeleteProperty Deletes a config property
+
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to delete a property from
+	@param propertyUuid The UUID of the component property to delete
+	@return ApiDeletePropertyRequest
+	*/
+	DeleteProperty(ctx context.Context, uuid string, propertyUuid string) ApiDeletePropertyRequest
+
+	// DeletePropertyExecute executes the request
+	//  @return ComponentProperty
+	DeletePropertyExecute(r ApiDeletePropertyRequest) (*ComponentProperty, *http.Response, error)
+
+	/*
+	GetProperties Returns a list of all ComponentProperties for the specified component
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to retrieve properties for
+	@return ApiGetPropertiesRequest
+	*/
+	GetProperties(ctx context.Context, uuid string) ApiGetPropertiesRequest
+
+	// GetPropertiesExecute executes the request
+	//  @return []ComponentProperty
+	GetPropertiesExecute(r ApiGetPropertiesRequest) ([]ComponentProperty, *http.Response, error)
+}
+
 // ComponentPropertyAPIService ComponentPropertyAPI service
 type ComponentPropertyAPIService service
 
 type ApiCreatePropertyRequest struct {
 	ctx context.Context
-	ApiService *ComponentPropertyAPIService
+	ApiService ComponentPropertyAPI
 	uuid string
 	body *ComponentProperty
 }
@@ -150,7 +199,7 @@ func (a *ComponentPropertyAPIService) CreatePropertyExecute(r ApiCreatePropertyR
 
 type ApiDeletePropertyRequest struct {
 	ctx context.Context
-	ApiService *ComponentPropertyAPIService
+	ApiService ComponentPropertyAPI
 	uuid string
 	propertyUuid string
 }
@@ -271,7 +320,7 @@ func (a *ComponentPropertyAPIService) DeletePropertyExecute(r ApiDeletePropertyR
 
 type ApiGetPropertiesRequest struct {
 	ctx context.Context
-	ApiService *ComponentPropertyAPIService
+	ApiService ComponentPropertyAPI
 	uuid string
 }
 

@@ -19,12 +19,39 @@ import (
 )
 
 
+type CalculatorAPI interface {
+
+	/*
+	GetCvssScores Returns the CVSS base score, impact sub-score and exploitability sub-score
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetCvssScoresRequest
+	*/
+	GetCvssScores(ctx context.Context) ApiGetCvssScoresRequest
+
+	// GetCvssScoresExecute executes the request
+	//  @return Score
+	GetCvssScoresExecute(r ApiGetCvssScoresRequest) (*Score, *http.Response, error)
+
+	/*
+	GetOwaspRRScores Returns the OWASP Risk Rating likelihood score, technical impact score and business impact score
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetOwaspRRScoresRequest
+	*/
+	GetOwaspRRScores(ctx context.Context) ApiGetOwaspRRScoresRequest
+
+	// GetOwaspRRScoresExecute executes the request
+	//  @return Score
+	GetOwaspRRScoresExecute(r ApiGetOwaspRRScoresRequest) (*Score, *http.Response, error)
+}
+
 // CalculatorAPIService CalculatorAPI service
 type CalculatorAPIService service
 
 type ApiGetCvssScoresRequest struct {
 	ctx context.Context
-	ApiService *CalculatorAPIService
+	ApiService CalculatorAPI
 	vector *string
 }
 
@@ -146,7 +173,7 @@ func (a *CalculatorAPIService) GetCvssScoresExecute(r ApiGetCvssScoresRequest) (
 
 type ApiGetOwaspRRScoresRequest struct {
 	ctx context.Context
-	ApiService *CalculatorAPIService
+	ApiService CalculatorAPI
 	vector *string
 }
 

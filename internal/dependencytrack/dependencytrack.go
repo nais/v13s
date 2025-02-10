@@ -3,12 +3,12 @@ package dependencytrack
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/dependencytrack/auth"
 	"github.com/nais/v13s/internal/dependencytrack/client"
 	"io"
+	"net/url"
 	"strings"
 )
-
-const ClientXApiKeyHeader = "X-Api-Key"
 
 var _ Client = &dependencyTrackClient{}
 
@@ -21,6 +21,7 @@ type Client interface {
 
 type dependencyTrackClient struct {
 	client *client.APIClient
+	auth   auth.Auth
 }
 
 type Vulnerability struct {
@@ -32,34 +33,51 @@ type Vulnerability struct {
 	Title        string `json:"title"`
 }
 
-func setupConfig(url, apiKey string) *client.Configuration {
-	cfg := client.NewConfiguration()
-	cfg.AddDefaultHeader(ClientXApiKeyHeader, apiKey)
-	cfg.Scheme = "http"
-	if strings.HasPrefix(url, "https") {
-		cfg.Scheme = "https"
-	}
-	cfg.Servers = client.ServerConfigurations{
-		{
-			URL: url,
-		},
-	}
-	return cfg
-}
-
-func NewClient(url, apiKey string) (Client, error) {
+func NewClient(url string, team auth.Team, username auth.Username, password auth.Password) (Client, error) {
 	if url == "" {
 		return nil, fmt.Errorf("NewClient: URL cannot be empty")
 	}
-	if apiKey == "" {
-		return nil, fmt.Errorf("NewClient: API key cannot be empty")
+
+	clientConfig := setupConfig(url)
+	apiClient := client.NewAPIClient(clientConfig)
+	userPasSource := auth.NewUsernamePasswordSource(username, password, apiClient)
+	return &dependencyTrackClient{
+		client: apiClient,
+		auth:   auth.NewApiKeySource(team, userPasSource, apiClient),
+	}, nil
+}
+
+func setupConfig(rawURL string) *client.Configuration {
+	cfg := client.NewConfiguration()
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		cfg.Scheme = "https"
+	} else {
+		cfg.Scheme = parsedURL.Scheme
+		if cfg.Scheme == "" {
+			cfg.Scheme = "https"
+		}
 	}
 
-	return &dependencyTrackClient{client.NewAPIClient(setupConfig(url, apiKey))}, nil
+	cfg.Servers = client.ServerConfigurations{{URL: rawURL}}
+	return cfg
+}
+
+func (c *dependencyTrackClient) getAPIKeyContext(ctx context.Context) (context.Context, error) {
+	apiKeyCtx, err := c.auth.ContextHeaders(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+	return apiKeyCtx, nil
 }
 
 func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
-	p, _, err := c.client.FindingAPI.GetFindingsByProject(ctx, uuid).
+	apiKeyCtx, err := c.getAPIKeyContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	findings, _, err := c.client.FindingAPI.GetFindingsByProject(apiKeyCtx, uuid).
 		Suppressed(suppressed).
 		Execute()
 
@@ -67,21 +85,21 @@ func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid string, su
 		return nil, fmt.Errorf("failed to get findings for project %s: %w", uuid, err)
 	}
 
-	return p, nil
+	return findings, nil
 }
 
 func (c *dependencyTrackClient) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
 	var allProjects []client.Project
 
 	for {
-		p, err := callFunc(ctx, offset)
+		projects, err := callFunc(ctx, offset)
 		if err != nil {
 			return nil, err
 		}
 
-		allProjects = append(allProjects, p...)
+		allProjects = append(allProjects, projects...)
 
-		if len(p) < int(limit) {
+		if len(projects) < int(limit) {
 			break
 		}
 
@@ -92,18 +110,28 @@ func (c *dependencyTrackClient) paginateProjects(ctx context.Context, limit, off
 }
 
 func (c *dependencyTrackClient) GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error) {
-	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
+	apiKeyCtx, err := c.getAPIKeyContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.paginateProjects(apiKeyCtx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
-		p, _, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
+		projects, _, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
 			PageSize(limit).
 			PageNumber(pageNumber).
 			Execute()
-		return p, err
+		return projects, err
 	})
 }
 
 func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version string) (*client.Project, error) {
-	p, resp, err := c.client.ProjectAPI.GetProjectByNameAndVersion(ctx).
+	apiKeyCtx, err := c.getAPIKeyContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	project, resp, err := c.client.ProjectAPI.GetProjectByNameAndVersion(apiKeyCtx).
 		Name(name).
 		Version(version).
 		Execute()
@@ -121,16 +149,21 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 		return nil, fmt.Errorf("project not found: %s", string(body))
 	}
 
-	return p, err
+	return project, err
 }
 
 func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
-	return c.paginateProjects(ctx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
+	apiKeyCtx, err := c.getAPIKeyContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.paginateProjects(apiKeyCtx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 		pageNumber := (offset / limit) + 1
-		p, _, err := c.client.ProjectAPI.GetProjects(ctx).
+		projects, _, err := c.client.ProjectAPI.GetProjects(ctx).
 			PageSize(limit).
 			PageNumber(pageNumber).
 			Execute()
-		return p, err
+		return projects, err
 	})
 }

@@ -20,12 +20,59 @@ import (
 )
 
 
+type ViolationAPI interface {
+
+	/*
+	GetViolations Returns a list of all policy violations for the entire portfolio
+
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetViolationsRequest
+	*/
+	GetViolations(ctx context.Context) ApiGetViolationsRequest
+
+	// GetViolationsExecute executes the request
+	//  @return []PolicyViolation
+	GetViolationsExecute(r ApiGetViolationsRequest) ([]PolicyViolation, *http.Response, error)
+
+	/*
+	GetViolationsByComponent Returns a list of all policy violations for a specific component
+
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component
+	@return ApiGetViolationsByComponentRequest
+	*/
+	GetViolationsByComponent(ctx context.Context, uuid string) ApiGetViolationsByComponentRequest
+
+	// GetViolationsByComponentExecute executes the request
+	//  @return []PolicyViolation
+	GetViolationsByComponentExecute(r ApiGetViolationsByComponentRequest) ([]PolicyViolation, *http.Response, error)
+
+	/*
+	GetViolationsByProject Returns a list of all policy violations for a specific project
+
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetViolationsByProjectRequest
+	*/
+	GetViolationsByProject(ctx context.Context, uuid string) ApiGetViolationsByProjectRequest
+
+	// GetViolationsByProjectExecute executes the request
+	//  @return []PolicyViolation
+	GetViolationsByProjectExecute(r ApiGetViolationsByProjectRequest) ([]PolicyViolation, *http.Response, error)
+}
+
 // ViolationAPIService ViolationAPI service
 type ViolationAPIService service
 
 type ApiGetViolationsRequest struct {
 	ctx context.Context
-	ApiService *ViolationAPIService
+	ApiService ViolationAPI
 	suppressed *bool
 	pageNumber *interface{}
 	pageSize *interface{}
@@ -214,7 +261,7 @@ func (a *ViolationAPIService) GetViolationsExecute(r ApiGetViolationsRequest) ([
 
 type ApiGetViolationsByComponentRequest struct {
 	ctx context.Context
-	ApiService *ViolationAPIService
+	ApiService ViolationAPI
 	uuid string
 	suppressed *bool
 	pageNumber *interface{}
@@ -407,7 +454,7 @@ func (a *ViolationAPIService) GetViolationsByComponentExecute(r ApiGetViolations
 
 type ApiGetViolationsByProjectRequest struct {
 	ctx context.Context
-	ApiService *ViolationAPIService
+	ApiService ViolationAPI
 	uuid string
 	suppressed *bool
 	pageNumber *interface{}

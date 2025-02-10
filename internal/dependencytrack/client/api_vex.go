@@ -20,12 +20,79 @@ import (
 )
 
 
+type VexAPI interface {
+
+	/*
+	ExportProjectAsCycloneDx1 Returns a VEX for a project in CycloneDX format
+
+	<p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to export
+	@return ApiExportProjectAsCycloneDx1Request
+	*/
+	ExportProjectAsCycloneDx1(ctx context.Context, uuid string) ApiExportProjectAsCycloneDx1Request
+
+	// ExportProjectAsCycloneDx1Execute executes the request
+	//  @return string
+	ExportProjectAsCycloneDx1Execute(r ApiExportProjectAsCycloneDx1Request) (string, *http.Response, error)
+
+	/*
+	UploadVex Upload a supported VEX document
+
+	<p>
+  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
+</p>
+<p>
+  The VEX will be validated against the CycloneDX schema. If schema validation fails,
+  a response with problem details in RFC 9457 format will be returned. In this case,
+  the response's content type will be <code>application/problem+json</code>.
+</p>
+<p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUploadVexRequest
+	*/
+	UploadVex(ctx context.Context) ApiUploadVexRequest
+
+	// UploadVexExecute executes the request
+	UploadVexExecute(r ApiUploadVexRequest) (*http.Response, error)
+
+	/*
+	UploadVex1 Upload a supported VEX document
+
+	<p>
+  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
+</p>
+<p>
+  The VEX will be validated against the CycloneDX schema. If schema validation fails,
+  a response with problem details in RFC 9457 format will be returned. In this case,
+  the response's content type will be <code>application/problem+json</code>.
+</p>
+<p>
+  The maximum allowed length of the <code>vex</code> value is 20'000'000 characters.
+  When uploading large VEX files, the <code>POST</code> endpoint is preferred,
+  as it does not have this limit.
+</p>
+<p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUploadVex1Request
+	*/
+	UploadVex1(ctx context.Context) ApiUploadVex1Request
+
+	// UploadVex1Execute executes the request
+	UploadVex1Execute(r ApiUploadVex1Request) (*http.Response, error)
+}
+
 // VexAPIService VexAPI service
 type VexAPIService service
 
 type ApiExportProjectAsCycloneDx1Request struct {
 	ctx context.Context
-	ApiService *VexAPIService
+	ApiService VexAPI
 	uuid string
 	download *bool
 }
@@ -152,7 +219,7 @@ func (a *VexAPIService) ExportProjectAsCycloneDx1Execute(r ApiExportProjectAsCyc
 
 type ApiUploadVexRequest struct {
 	ctx context.Context
-	ApiService *VexAPIService
+	ApiService VexAPI
 	project *string
 	projectName *string
 	projectVersion *string
@@ -310,7 +377,7 @@ func (a *VexAPIService) UploadVexExecute(r ApiUploadVexRequest) (*http.Response,
 
 type ApiUploadVex1Request struct {
 	ctx context.Context
-	ApiService *VexAPIService
+	ApiService VexAPI
 	body *VexSubmitRequest
 }
 

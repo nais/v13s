@@ -6,8 +6,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Key** | **string** |  | 
 **Comment** | Pointer to **string** |  | [optional] 
-**Created** | Pointer to **time.Time** |  | [optional] 
-**LastUsed** | Pointer to **time.Time** |  | [optional] 
+**Created** | Pointer to **int64** |  | [optional] 
+**LastUsed** | Pointer to **int64** |  | [optional] 
 **MaskedKey** | Pointer to **string** |  | [optional] 
 
 ## Methods
@@ -76,20 +76,20 @@ HasComment returns a boolean if a field has been set.
 
 ### GetCreated
 
-`func (o *ApiKey) GetCreated() time.Time`
+`func (o *ApiKey) GetCreated() int64`
 
 GetCreated returns the Created field if non-nil, zero value otherwise.
 
 ### GetCreatedOk
 
-`func (o *ApiKey) GetCreatedOk() (*time.Time, bool)`
+`func (o *ApiKey) GetCreatedOk() (*int64, bool)`
 
 GetCreatedOk returns a tuple with the Created field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetCreated
 
-`func (o *ApiKey) SetCreated(v time.Time)`
+`func (o *ApiKey) SetCreated(v int64)`
 
 SetCreated sets Created field to given value.
 
@@ -101,20 +101,20 @@ HasCreated returns a boolean if a field has been set.
 
 ### GetLastUsed
 
-`func (o *ApiKey) GetLastUsed() time.Time`
+`func (o *ApiKey) GetLastUsed() int64`
 
 GetLastUsed returns the LastUsed field if non-nil, zero value otherwise.
 
 ### GetLastUsedOk
 
-`func (o *ApiKey) GetLastUsedOk() (*time.Time, bool)`
+`func (o *ApiKey) GetLastUsedOk() (*int64, bool)`
 
 GetLastUsedOk returns a tuple with the LastUsed field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastUsed
 
-`func (o *ApiKey) SetLastUsed(v time.Time)`
+`func (o *ApiKey) SetLastUsed(v int64)`
 
 SetLastUsed sets LastUsed field to given value.
 

@@ -12,7 +12,6 @@ package client
 
 import (
 	"encoding/json"
-	"time"
 	"bytes"
 	"fmt"
 )
@@ -23,7 +22,7 @@ var _ MappedNullable = &ManagedUser{}
 // ManagedUser struct for ManagedUser
 type ManagedUser struct {
 	Username *string `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	LastPasswordChange time.Time `json:"lastPasswordChange"`
+	LastPasswordChange int64 `json:"lastPasswordChange"`
 	Fullname *string `json:"fullname,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
 	Email *string `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
 	Suspended *bool `json:"suspended,omitempty"`
@@ -41,7 +40,7 @@ type _ManagedUser ManagedUser
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewManagedUser(lastPasswordChange time.Time) *ManagedUser {
+func NewManagedUser(lastPasswordChange int64) *ManagedUser {
 	this := ManagedUser{}
 	this.LastPasswordChange = lastPasswordChange
 	return &this
@@ -88,9 +87,9 @@ func (o *ManagedUser) SetUsername(v string) {
 }
 
 // GetLastPasswordChange returns the LastPasswordChange field value
-func (o *ManagedUser) GetLastPasswordChange() time.Time {
+func (o *ManagedUser) GetLastPasswordChange() int64 {
 	if o == nil {
-		var ret time.Time
+		var ret int64
 		return ret
 	}
 
@@ -99,7 +98,7 @@ func (o *ManagedUser) GetLastPasswordChange() time.Time {
 
 // GetLastPasswordChangeOk returns a tuple with the LastPasswordChange field value
 // and a boolean to check if the value has been set.
-func (o *ManagedUser) GetLastPasswordChangeOk() (*time.Time, bool) {
+func (o *ManagedUser) GetLastPasswordChangeOk() (*int64, bool) {
 	if o == nil {
 		return nil, false
 	}
@@ -107,7 +106,7 @@ func (o *ManagedUser) GetLastPasswordChangeOk() (*time.Time, bool) {
 }
 
 // SetLastPasswordChange sets field value
-func (o *ManagedUser) SetLastPasswordChange(v time.Time) {
+func (o *ManagedUser) SetLastPasswordChange(v int64) {
 	o.LastPasswordChange = v
 }
 

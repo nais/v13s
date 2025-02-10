@@ -20,12 +20,30 @@ import (
 )
 
 
+type TagAPI interface {
+
+	/*
+	GetTags Returns a list of all tags associated with a given policy
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param policyUuid The UUID of the policy
+	@return ApiGetTagsRequest
+	*/
+	GetTags(ctx context.Context, policyUuid string) ApiGetTagsRequest
+
+	// GetTagsExecute executes the request
+	//  @return []Tag
+	GetTagsExecute(r ApiGetTagsRequest) ([]Tag, *http.Response, error)
+}
+
 // TagAPIService TagAPI service
 type TagAPIService service
 
 type ApiGetTagsRequest struct {
 	ctx context.Context
-	ApiService *TagAPIService
+	ApiService TagAPI
 	policyUuid string
 }
 

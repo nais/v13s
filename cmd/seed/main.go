@@ -25,7 +25,9 @@ func main() {
 
 	dpClient, err := dependencytrack.NewClient(
 		os.Getenv("V13S_DEPENDENCYTRACK_URL"),
-		os.Getenv("V13S_DEPENDENCYTRACK_API_KEY"),
+		os.Getenv("V13S_DEPENDENCYTRACK_TEAM"),
+		os.Getenv("V13S_DEPENDENCYTRACK_USERNAME"),
+		os.Getenv("V13S_DEPENDENCYTRACK_PASSWORD"),
 	)
 	if err != nil {
 		panic(err)

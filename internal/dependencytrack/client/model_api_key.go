@@ -12,7 +12,6 @@ package client
 
 import (
 	"encoding/json"
-	"time"
 	"bytes"
 	"fmt"
 )
@@ -24,8 +23,8 @@ var _ MappedNullable = &ApiKey{}
 type ApiKey struct {
 	Key string `json:"key" validate:"regexp=^[a-zA-Z_0-9]*$"`
 	Comment *string `json:"comment,omitempty"`
-	Created *time.Time `json:"created,omitempty"`
-	LastUsed *time.Time `json:"lastUsed,omitempty"`
+	Created *int64 `json:"created,omitempty"`
+	LastUsed *int64 `json:"lastUsed,omitempty"`
 	MaskedKey *string `json:"maskedKey,omitempty"`
 }
 
@@ -106,9 +105,9 @@ func (o *ApiKey) SetComment(v string) {
 }
 
 // GetCreated returns the Created field value if set, zero value otherwise.
-func (o *ApiKey) GetCreated() time.Time {
+func (o *ApiKey) GetCreated() int64 {
 	if o == nil || IsNil(o.Created) {
-		var ret time.Time
+		var ret int64
 		return ret
 	}
 	return *o.Created
@@ -116,7 +115,7 @@ func (o *ApiKey) GetCreated() time.Time {
 
 // GetCreatedOk returns a tuple with the Created field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *ApiKey) GetCreatedOk() (*time.Time, bool) {
+func (o *ApiKey) GetCreatedOk() (*int64, bool) {
 	if o == nil || IsNil(o.Created) {
 		return nil, false
 	}
@@ -132,15 +131,15 @@ func (o *ApiKey) HasCreated() bool {
 	return false
 }
 
-// SetCreated gets a reference to the given time.Time and assigns it to the Created field.
-func (o *ApiKey) SetCreated(v time.Time) {
+// SetCreated gets a reference to the given int64 and assigns it to the Created field.
+func (o *ApiKey) SetCreated(v int64) {
 	o.Created = &v
 }
 
 // GetLastUsed returns the LastUsed field value if set, zero value otherwise.
-func (o *ApiKey) GetLastUsed() time.Time {
+func (o *ApiKey) GetLastUsed() int64 {
 	if o == nil || IsNil(o.LastUsed) {
-		var ret time.Time
+		var ret int64
 		return ret
 	}
 	return *o.LastUsed
@@ -148,7 +147,7 @@ func (o *ApiKey) GetLastUsed() time.Time {
 
 // GetLastUsedOk returns a tuple with the LastUsed field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *ApiKey) GetLastUsedOk() (*time.Time, bool) {
+func (o *ApiKey) GetLastUsedOk() (*int64, bool) {
 	if o == nil || IsNil(o.LastUsed) {
 		return nil, false
 	}
@@ -164,8 +163,8 @@ func (o *ApiKey) HasLastUsed() bool {
 	return false
 }
 
-// SetLastUsed gets a reference to the given time.Time and assigns it to the LastUsed field.
-func (o *ApiKey) SetLastUsed(v time.Time) {
+// SetLastUsed gets a reference to the given int64 and assigns it to the LastUsed field.
+func (o *ApiKey) SetLastUsed(v int64) {
 	o.LastUsed = &v
 }
 

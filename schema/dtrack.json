@@ -5376,6 +5376,9 @@
         "security": [
           {
             "X-Api-Key": []
+          },
+          {
+            "Bearer": []
           }
         ]
       }
@@ -13747,12 +13750,12 @@
             "type": "string"
           },
           "created": {
-            "type": "string",
-            "format": "date-time"
+            "format": "int64",
+            "type": "integer"
           },
           "lastUsed": {
-            "type": "string",
-            "format": "date-time"
+            "format": "int64",
+            "type": "integer"
           },
           "maskedKey": {
             "type": "string"
@@ -13807,8 +13810,8 @@
             "type": "string"
           },
           "lastPasswordChange": {
-            "type": "string",
-            "format": "date-time"
+            "format": "int64",
+            "type": "integer"
           },
           "fullname": {
             "maxLength": 255,
@@ -14522,6 +14525,11 @@
         "type": "apiKey",
         "name": "X-Api-Key",
         "in": "header"
+      },
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   },

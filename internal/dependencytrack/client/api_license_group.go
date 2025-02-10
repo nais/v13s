@@ -20,12 +20,118 @@ import (
 )
 
 
+type LicenseGroupAPI interface {
+
+	/*
+	AddLicenseToLicenseGroup Adds the license to the specified license group.
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid A valid license group
+	@param licenseUuid A valid license
+	@return ApiAddLicenseToLicenseGroupRequest
+	*/
+	AddLicenseToLicenseGroup(ctx context.Context, uuid string, licenseUuid string) ApiAddLicenseToLicenseGroupRequest
+
+	// AddLicenseToLicenseGroupExecute executes the request
+	//  @return LicenseGroup
+	AddLicenseToLicenseGroupExecute(r ApiAddLicenseToLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
+
+	/*
+	CreateLicenseGroup Creates a new license group
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateLicenseGroupRequest
+	*/
+	CreateLicenseGroup(ctx context.Context) ApiCreateLicenseGroupRequest
+
+	// CreateLicenseGroupExecute executes the request
+	//  @return LicenseGroup
+	CreateLicenseGroupExecute(r ApiCreateLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
+
+	/*
+	DeleteLicenseGroup Deletes a license group
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the license group to delete
+	@return ApiDeleteLicenseGroupRequest
+	*/
+	DeleteLicenseGroup(ctx context.Context, uuid string) ApiDeleteLicenseGroupRequest
+
+	// DeleteLicenseGroupExecute executes the request
+	DeleteLicenseGroupExecute(r ApiDeleteLicenseGroupRequest) (*http.Response, error)
+
+	/*
+	GetLicenseGroup Returns a specific license group
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the license group to retrieve
+	@return ApiGetLicenseGroupRequest
+	*/
+	GetLicenseGroup(ctx context.Context, uuid string) ApiGetLicenseGroupRequest
+
+	// GetLicenseGroupExecute executes the request
+	//  @return License
+	GetLicenseGroupExecute(r ApiGetLicenseGroupRequest) (*License, *http.Response, error)
+
+	/*
+	GetLicenseGroups Returns a list of all license groups
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetLicenseGroupsRequest
+	*/
+	GetLicenseGroups(ctx context.Context) ApiGetLicenseGroupsRequest
+
+	// GetLicenseGroupsExecute executes the request
+	//  @return []LicenseGroup
+	GetLicenseGroupsExecute(r ApiGetLicenseGroupsRequest) ([]LicenseGroup, *http.Response, error)
+
+	/*
+	RemoveLicenseFromLicenseGroup Removes the license from the license group.
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid A valid license group
+	@param licenseUuid A valid license
+	@return ApiRemoveLicenseFromLicenseGroupRequest
+	*/
+	RemoveLicenseFromLicenseGroup(ctx context.Context, uuid string, licenseUuid string) ApiRemoveLicenseFromLicenseGroupRequest
+
+	// RemoveLicenseFromLicenseGroupExecute executes the request
+	//  @return LicenseGroup
+	RemoveLicenseFromLicenseGroupExecute(r ApiRemoveLicenseFromLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
+
+	/*
+	UpdateLicenseGroup Updates a license group
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateLicenseGroupRequest
+	*/
+	UpdateLicenseGroup(ctx context.Context) ApiUpdateLicenseGroupRequest
+
+	// UpdateLicenseGroupExecute executes the request
+	//  @return LicenseGroup
+	UpdateLicenseGroupExecute(r ApiUpdateLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
+}
+
 // LicenseGroupAPIService LicenseGroupAPI service
 type LicenseGroupAPIService service
 
 type ApiAddLicenseToLicenseGroupRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	uuid string
 	licenseUuid string
 }
@@ -146,7 +252,7 @@ func (a *LicenseGroupAPIService) AddLicenseToLicenseGroupExecute(r ApiAddLicense
 
 type ApiCreateLicenseGroupRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	body *LicenseGroup
 }
 
@@ -267,7 +373,7 @@ func (a *LicenseGroupAPIService) CreateLicenseGroupExecute(r ApiCreateLicenseGro
 
 type ApiDeleteLicenseGroupRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	uuid string
 }
 
@@ -373,7 +479,7 @@ func (a *LicenseGroupAPIService) DeleteLicenseGroupExecute(r ApiDeleteLicenseGro
 
 type ApiGetLicenseGroupRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	uuid string
 }
 
@@ -490,7 +596,7 @@ func (a *LicenseGroupAPIService) GetLicenseGroupExecute(r ApiGetLicenseGroupRequ
 
 type ApiGetLicenseGroupsRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	pageNumber *interface{}
 	pageSize *interface{}
 	offset *interface{}
@@ -669,7 +775,7 @@ func (a *LicenseGroupAPIService) GetLicenseGroupsExecute(r ApiGetLicenseGroupsRe
 
 type ApiRemoveLicenseFromLicenseGroupRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	uuid string
 	licenseUuid string
 }
@@ -790,7 +896,7 @@ func (a *LicenseGroupAPIService) RemoveLicenseFromLicenseGroupExecute(r ApiRemov
 
 type ApiUpdateLicenseGroupRequest struct {
 	ctx context.Context
-	ApiService *LicenseGroupAPIService
+	ApiService LicenseGroupAPI
 	body *LicenseGroup
 }
 

@@ -19,12 +19,43 @@ import (
 )
 
 
+type AnalysisAPI interface {
+
+	/*
+	RetrieveAnalysis Retrieves an analysis trail
+
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiRetrieveAnalysisRequest
+	*/
+	RetrieveAnalysis(ctx context.Context) ApiRetrieveAnalysisRequest
+
+	// RetrieveAnalysisExecute executes the request
+	//  @return Analysis
+	RetrieveAnalysisExecute(r ApiRetrieveAnalysisRequest) (*Analysis, *http.Response, error)
+
+	/*
+	UpdateAnalysis Records an analysis decision
+
+	<p>Requires permission <strong>VULNERABILITY_ANALYSIS</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateAnalysisRequest
+	*/
+	UpdateAnalysis(ctx context.Context) ApiUpdateAnalysisRequest
+
+	// UpdateAnalysisExecute executes the request
+	//  @return Analysis
+	UpdateAnalysisExecute(r ApiUpdateAnalysisRequest) (*Analysis, *http.Response, error)
+}
+
 // AnalysisAPIService AnalysisAPI service
 type AnalysisAPIService service
 
 type ApiRetrieveAnalysisRequest struct {
 	ctx context.Context
-	ApiService *AnalysisAPIService
+	ApiService AnalysisAPI
 	component *string
 	vulnerability *string
 	project *string
@@ -169,7 +200,7 @@ func (a *AnalysisAPIService) RetrieveAnalysisExecute(r ApiRetrieveAnalysisReques
 
 type ApiUpdateAnalysisRequest struct {
 	ctx context.Context
-	ApiService *AnalysisAPIService
+	ApiService AnalysisAPI
 	body *AnalysisRequest
 }
 

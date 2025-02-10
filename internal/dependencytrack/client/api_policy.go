@@ -20,12 +20,150 @@ import (
 )
 
 
+type PolicyAPI interface {
+
+	/*
+	AddProjectToPolicy Adds a project to a policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param policyUuid The UUID of the policy to add a project to
+	@param projectUuid The UUID of the project to add to the rule
+	@return ApiAddProjectToPolicyRequest
+	*/
+	AddProjectToPolicy(ctx context.Context, policyUuid string, projectUuid string) ApiAddProjectToPolicyRequest
+
+	// AddProjectToPolicyExecute executes the request
+	//  @return Policy
+	AddProjectToPolicyExecute(r ApiAddProjectToPolicyRequest) (*Policy, *http.Response, error)
+
+	/*
+	AddTagToPolicy Adds a tag to a policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param policyUuid The UUID of the policy to add a project to
+	@param tagName The name of the tag to add to the rule
+	@return ApiAddTagToPolicyRequest
+	*/
+	AddTagToPolicy(ctx context.Context, policyUuid string, tagName string) ApiAddTagToPolicyRequest
+
+	// AddTagToPolicyExecute executes the request
+	//  @return Policy
+	AddTagToPolicyExecute(r ApiAddTagToPolicyRequest) (*Policy, *http.Response, error)
+
+	/*
+	CreatePolicy Creates a new policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreatePolicyRequest
+	*/
+	CreatePolicy(ctx context.Context) ApiCreatePolicyRequest
+
+	// CreatePolicyExecute executes the request
+	//  @return Policy
+	CreatePolicyExecute(r ApiCreatePolicyRequest) (*Policy, *http.Response, error)
+
+	/*
+	DeletePolicy Deletes a policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy to delete
+	@return ApiDeletePolicyRequest
+	*/
+	DeletePolicy(ctx context.Context, uuid string) ApiDeletePolicyRequest
+
+	// DeletePolicyExecute executes the request
+	DeletePolicyExecute(r ApiDeletePolicyRequest) (*http.Response, error)
+
+	/*
+	GetPolicies Returns a list of all policies
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetPoliciesRequest
+	*/
+	GetPolicies(ctx context.Context) ApiGetPoliciesRequest
+
+	// GetPoliciesExecute executes the request
+	//  @return []Policy
+	GetPoliciesExecute(r ApiGetPoliciesRequest) ([]Policy, *http.Response, error)
+
+	/*
+	GetPolicy Returns a specific policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy to retrieve
+	@return ApiGetPolicyRequest
+	*/
+	GetPolicy(ctx context.Context, uuid string) ApiGetPolicyRequest
+
+	// GetPolicyExecute executes the request
+	//  @return Policy
+	GetPolicyExecute(r ApiGetPolicyRequest) (*Policy, *http.Response, error)
+
+	/*
+	RemoveProjectFromPolicy Removes a project from a policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param policyUuid The UUID of the policy to remove the project from
+	@param projectUuid The UUID of the project to remove from the policy
+	@return ApiRemoveProjectFromPolicyRequest
+	*/
+	RemoveProjectFromPolicy(ctx context.Context, policyUuid string, projectUuid string) ApiRemoveProjectFromPolicyRequest
+
+	// RemoveProjectFromPolicyExecute executes the request
+	//  @return Policy
+	RemoveProjectFromPolicyExecute(r ApiRemoveProjectFromPolicyRequest) (*Policy, *http.Response, error)
+
+	/*
+	RemoveTagFromPolicy Removes a tag from a policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param policyUuid The UUID of the policy to remove the tag from
+	@param tagName The name of the tag to remove from the policy
+	@return ApiRemoveTagFromPolicyRequest
+	*/
+	RemoveTagFromPolicy(ctx context.Context, policyUuid string, tagName string) ApiRemoveTagFromPolicyRequest
+
+	// RemoveTagFromPolicyExecute executes the request
+	//  @return Policy
+	RemoveTagFromPolicyExecute(r ApiRemoveTagFromPolicyRequest) (*Policy, *http.Response, error)
+
+	/*
+	UpdatePolicy Updates a policy
+
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdatePolicyRequest
+	*/
+	UpdatePolicy(ctx context.Context) ApiUpdatePolicyRequest
+
+	// UpdatePolicyExecute executes the request
+	//  @return Policy
+	UpdatePolicyExecute(r ApiUpdatePolicyRequest) (*Policy, *http.Response, error)
+}
+
 // PolicyAPIService PolicyAPI service
 type PolicyAPIService service
 
 type ApiAddProjectToPolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	policyUuid string
 	projectUuid string
 }
@@ -146,7 +284,7 @@ func (a *PolicyAPIService) AddProjectToPolicyExecute(r ApiAddProjectToPolicyRequ
 
 type ApiAddTagToPolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	policyUuid string
 	tagName string
 }
@@ -267,7 +405,7 @@ func (a *PolicyAPIService) AddTagToPolicyExecute(r ApiAddTagToPolicyRequest) (*P
 
 type ApiCreatePolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	body *Policy
 }
 
@@ -388,7 +526,7 @@ func (a *PolicyAPIService) CreatePolicyExecute(r ApiCreatePolicyRequest) (*Polic
 
 type ApiDeletePolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	uuid string
 }
 
@@ -494,7 +632,7 @@ func (a *PolicyAPIService) DeletePolicyExecute(r ApiDeletePolicyRequest) (*http.
 
 type ApiGetPoliciesRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	pageNumber *interface{}
 	pageSize *interface{}
 	offset *interface{}
@@ -673,7 +811,7 @@ func (a *PolicyAPIService) GetPoliciesExecute(r ApiGetPoliciesRequest) ([]Policy
 
 type ApiGetPolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	uuid string
 }
 
@@ -790,7 +928,7 @@ func (a *PolicyAPIService) GetPolicyExecute(r ApiGetPolicyRequest) (*Policy, *ht
 
 type ApiRemoveProjectFromPolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	policyUuid string
 	projectUuid string
 }
@@ -911,7 +1049,7 @@ func (a *PolicyAPIService) RemoveProjectFromPolicyExecute(r ApiRemoveProjectFrom
 
 type ApiRemoveTagFromPolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	policyUuid string
 	tagName string
 }
@@ -1032,7 +1170,7 @@ func (a *PolicyAPIService) RemoveTagFromPolicyExecute(r ApiRemoveTagFromPolicyRe
 
 type ApiUpdatePolicyRequest struct {
 	ctx context.Context
-	ApiService *PolicyAPIService
+	ApiService PolicyAPI
 	body *Policy
 }
 

@@ -20,12 +20,126 @@ import (
 )
 
 
+type SearchAPI interface {
+
+	/*
+	AggregateSearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiAggregateSearchRequest
+	*/
+	AggregateSearch(ctx context.Context) ApiAggregateSearchRequest
+
+	// AggregateSearchExecute executes the request
+	//  @return SearchResult
+	AggregateSearchExecute(r ApiAggregateSearchRequest) (*SearchResult, *http.Response, error)
+
+	/*
+	ComponentSearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiComponentSearchRequest
+	*/
+	ComponentSearch(ctx context.Context) ApiComponentSearchRequest
+
+	// ComponentSearchExecute executes the request
+	//  @return SearchResult
+	ComponentSearchExecute(r ApiComponentSearchRequest) (*SearchResult, *http.Response, error)
+
+	/*
+	LicenseSearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiLicenseSearchRequest
+	*/
+	LicenseSearch(ctx context.Context) ApiLicenseSearchRequest
+
+	// LicenseSearchExecute executes the request
+	//  @return SearchResult
+	LicenseSearchExecute(r ApiLicenseSearchRequest) (*SearchResult, *http.Response, error)
+
+	/*
+	ProjectSearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiProjectSearchRequest
+	*/
+	ProjectSearch(ctx context.Context) ApiProjectSearchRequest
+
+	// ProjectSearchExecute executes the request
+	//  @return SearchResult
+	ProjectSearchExecute(r ApiProjectSearchRequest) (*SearchResult, *http.Response, error)
+
+	/*
+	Reindex Rebuild lucene indexes for search operations
+
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiReindexRequest
+	*/
+	Reindex(ctx context.Context) ApiReindexRequest
+
+	// ReindexExecute executes the request
+	ReindexExecute(r ApiReindexRequest) (*http.Response, error)
+
+	/*
+	ServiceSearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiServiceSearchRequest
+	*/
+	ServiceSearch(ctx context.Context) ApiServiceSearchRequest
+
+	// ServiceSearchExecute executes the request
+	//  @return SearchResult
+	ServiceSearchExecute(r ApiServiceSearchRequest) (*SearchResult, *http.Response, error)
+
+	/*
+	VulnerabilitySearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiVulnerabilitySearchRequest
+	*/
+	VulnerabilitySearch(ctx context.Context) ApiVulnerabilitySearchRequest
+
+	// VulnerabilitySearchExecute executes the request
+	//  @return SearchResult
+	VulnerabilitySearchExecute(r ApiVulnerabilitySearchRequest) (*SearchResult, *http.Response, error)
+
+	/*
+	VulnerableSoftwareSearch Processes and returns search results
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiVulnerableSoftwareSearchRequest
+	*/
+	VulnerableSoftwareSearch(ctx context.Context) ApiVulnerableSoftwareSearchRequest
+
+	// VulnerableSoftwareSearchExecute executes the request
+	//  @return SearchResult
+	VulnerableSoftwareSearchExecute(r ApiVulnerableSoftwareSearchRequest) (*SearchResult, *http.Response, error)
+}
+
 // SearchAPIService SearchAPI service
 type SearchAPIService service
 
 type ApiAggregateSearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 }
 
@@ -147,7 +261,7 @@ func (a *SearchAPIService) AggregateSearchExecute(r ApiAggregateSearchRequest) (
 
 type ApiComponentSearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 }
 
@@ -269,7 +383,7 @@ func (a *SearchAPIService) ComponentSearchExecute(r ApiComponentSearchRequest) (
 
 type ApiLicenseSearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 }
 
@@ -391,7 +505,7 @@ func (a *SearchAPIService) LicenseSearchExecute(r ApiLicenseSearchRequest) (*Sea
 
 type ApiProjectSearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 }
 
@@ -513,7 +627,7 @@ func (a *SearchAPIService) ProjectSearchExecute(r ApiProjectSearchRequest) (*Sea
 
 type ApiReindexRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	type_ *[]string
 }
 
@@ -632,7 +746,7 @@ func (a *SearchAPIService) ReindexExecute(r ApiReindexRequest) (*http.Response, 
 
 type ApiServiceSearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 }
 
@@ -754,7 +868,7 @@ func (a *SearchAPIService) ServiceSearchExecute(r ApiServiceSearchRequest) (*Sea
 
 type ApiVulnerabilitySearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 }
 
@@ -876,7 +990,7 @@ func (a *SearchAPIService) VulnerabilitySearchExecute(r ApiVulnerabilitySearchRe
 
 type ApiVulnerableSoftwareSearchRequest struct {
 	ctx context.Context
-	ApiService *SearchAPIService
+	ApiService SearchAPI
 	query *string
 	cpe *string
 }

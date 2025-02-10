@@ -20,12 +20,93 @@ import (
 )
 
 
+type PermissionAPI interface {
+
+	/*
+	AddPermissionToTeam Adds the permission to the specified team.
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid A valid team uuid
+	@param permission A valid permission
+	@return ApiAddPermissionToTeamRequest
+	*/
+	AddPermissionToTeam(ctx context.Context, uuid string, permission string) ApiAddPermissionToTeamRequest
+
+	// AddPermissionToTeamExecute executes the request
+	//  @return Team
+	AddPermissionToTeamExecute(r ApiAddPermissionToTeamRequest) (*Team, *http.Response, error)
+
+	/*
+	AddPermissionToUser Adds the permission to the specified username.
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param username A valid username
+	@param permission A valid permission
+	@return ApiAddPermissionToUserRequest
+	*/
+	AddPermissionToUser(ctx context.Context, username string, permission string) ApiAddPermissionToUserRequest
+
+	// AddPermissionToUserExecute executes the request
+	//  @return UserPrincipal
+	AddPermissionToUserExecute(r ApiAddPermissionToUserRequest) (*UserPrincipal, *http.Response, error)
+
+	/*
+	GetAllPermissions Returns a list of all permissions
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllPermissionsRequest
+	*/
+	GetAllPermissions(ctx context.Context) ApiGetAllPermissionsRequest
+
+	// GetAllPermissionsExecute executes the request
+	//  @return []Permission
+	GetAllPermissionsExecute(r ApiGetAllPermissionsRequest) ([]Permission, *http.Response, error)
+
+	/*
+	RemovePermissionFromTeam Removes the permission from the team.
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid A valid team uuid
+	@param permission A valid permission
+	@return ApiRemovePermissionFromTeamRequest
+	*/
+	RemovePermissionFromTeam(ctx context.Context, uuid string, permission string) ApiRemovePermissionFromTeamRequest
+
+	// RemovePermissionFromTeamExecute executes the request
+	//  @return Team
+	RemovePermissionFromTeamExecute(r ApiRemovePermissionFromTeamRequest) (*Team, *http.Response, error)
+
+	/*
+	RemovePermissionFromUser Removes the permission from the user.
+
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param username A valid username
+	@param permission A valid permission
+	@return ApiRemovePermissionFromUserRequest
+	*/
+	RemovePermissionFromUser(ctx context.Context, username string, permission string) ApiRemovePermissionFromUserRequest
+
+	// RemovePermissionFromUserExecute executes the request
+	//  @return UserPrincipal
+	RemovePermissionFromUserExecute(r ApiRemovePermissionFromUserRequest) (*UserPrincipal, *http.Response, error)
+}
+
 // PermissionAPIService PermissionAPI service
 type PermissionAPIService service
 
 type ApiAddPermissionToTeamRequest struct {
 	ctx context.Context
-	ApiService *PermissionAPIService
+	ApiService PermissionAPI
 	uuid string
 	permission string
 }
@@ -146,7 +227,7 @@ func (a *PermissionAPIService) AddPermissionToTeamExecute(r ApiAddPermissionToTe
 
 type ApiAddPermissionToUserRequest struct {
 	ctx context.Context
-	ApiService *PermissionAPIService
+	ApiService PermissionAPI
 	username string
 	permission string
 }
@@ -267,7 +348,7 @@ func (a *PermissionAPIService) AddPermissionToUserExecute(r ApiAddPermissionToUs
 
 type ApiGetAllPermissionsRequest struct {
 	ctx context.Context
-	ApiService *PermissionAPIService
+	ApiService PermissionAPI
 }
 
 func (r ApiGetAllPermissionsRequest) Execute() ([]Permission, *http.Response, error) {
@@ -380,7 +461,7 @@ func (a *PermissionAPIService) GetAllPermissionsExecute(r ApiGetAllPermissionsRe
 
 type ApiRemovePermissionFromTeamRequest struct {
 	ctx context.Context
-	ApiService *PermissionAPIService
+	ApiService PermissionAPI
 	uuid string
 	permission string
 }
@@ -501,7 +582,7 @@ func (a *PermissionAPIService) RemovePermissionFromTeamExecute(r ApiRemovePermis
 
 type ApiRemovePermissionFromUserRequest struct {
 	ctx context.Context
-	ApiService *PermissionAPIService
+	ApiService PermissionAPI
 	username string
 	permission string
 }

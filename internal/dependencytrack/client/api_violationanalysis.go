@@ -19,12 +19,43 @@ import (
 )
 
 
+type ViolationanalysisAPI interface {
+
+	/*
+	RetrieveAnalysis1 Retrieves a violation analysis trail
+
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiRetrieveAnalysis1Request
+	*/
+	RetrieveAnalysis1(ctx context.Context) ApiRetrieveAnalysis1Request
+
+	// RetrieveAnalysis1Execute executes the request
+	//  @return ViolationAnalysis
+	RetrieveAnalysis1Execute(r ApiRetrieveAnalysis1Request) (*ViolationAnalysis, *http.Response, error)
+
+	/*
+	UpdateAnalysis1 Records a violation analysis decision
+
+	<p>Requires permission <strong>POLICY_VIOLATION_ANALYSIS</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateAnalysis1Request
+	*/
+	UpdateAnalysis1(ctx context.Context) ApiUpdateAnalysis1Request
+
+	// UpdateAnalysis1Execute executes the request
+	//  @return ViolationAnalysis
+	UpdateAnalysis1Execute(r ApiUpdateAnalysis1Request) (*ViolationAnalysis, *http.Response, error)
+}
+
 // ViolationanalysisAPIService ViolationanalysisAPI service
 type ViolationanalysisAPIService service
 
 type ApiRetrieveAnalysis1Request struct {
 	ctx context.Context
-	ApiService *ViolationanalysisAPIService
+	ApiService ViolationanalysisAPI
 	component *string
 	policyViolation *string
 }
@@ -159,7 +190,7 @@ func (a *ViolationanalysisAPIService) RetrieveAnalysis1Execute(r ApiRetrieveAnal
 
 type ApiUpdateAnalysis1Request struct {
 	ctx context.Context
-	ApiService *ViolationanalysisAPIService
+	ApiService ViolationanalysisAPI
 	body *ViolationAnalysisRequest
 }
 

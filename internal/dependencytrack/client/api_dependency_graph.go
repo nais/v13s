@@ -20,12 +20,45 @@ import (
 )
 
 
+type DependencyGraphAPI interface {
+
+	/*
+	GetComponentsAndServicesByComponentUuid Returns a list of specific components and services from component UUID
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component
+	@return ApiGetComponentsAndServicesByComponentUuidRequest
+	*/
+	GetComponentsAndServicesByComponentUuid(ctx context.Context, uuid string) ApiGetComponentsAndServicesByComponentUuidRequest
+
+	// GetComponentsAndServicesByComponentUuidExecute executes the request
+	//  @return []DependencyGraphResponse
+	GetComponentsAndServicesByComponentUuidExecute(r ApiGetComponentsAndServicesByComponentUuidRequest) ([]DependencyGraphResponse, *http.Response, error)
+
+	/*
+	GetComponentsAndServicesByProjectUuid Returns a list of specific components and services from project UUID
+
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetComponentsAndServicesByProjectUuidRequest
+	*/
+	GetComponentsAndServicesByProjectUuid(ctx context.Context, uuid string) ApiGetComponentsAndServicesByProjectUuidRequest
+
+	// GetComponentsAndServicesByProjectUuidExecute executes the request
+	//  @return []DependencyGraphResponse
+	GetComponentsAndServicesByProjectUuidExecute(r ApiGetComponentsAndServicesByProjectUuidRequest) ([]DependencyGraphResponse, *http.Response, error)
+}
+
 // DependencyGraphAPIService DependencyGraphAPI service
 type DependencyGraphAPIService service
 
 type ApiGetComponentsAndServicesByComponentUuidRequest struct {
 	ctx context.Context
-	ApiService *DependencyGraphAPIService
+	ApiService DependencyGraphAPI
 	uuid string
 }
 
@@ -142,7 +175,7 @@ func (a *DependencyGraphAPIService) GetComponentsAndServicesByComponentUuidExecu
 
 type ApiGetComponentsAndServicesByProjectUuidRequest struct {
 	ctx context.Context
-	ApiService *DependencyGraphAPIService
+	ApiService DependencyGraphAPI
 	uuid string
 }
 

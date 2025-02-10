@@ -20,12 +20,87 @@ import (
 )
 
 
+type FindingAPI interface {
+
+	/*
+	AnalyzeProject Triggers Vulnerability Analysis on a specific project
+
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to analyze
+	@return ApiAnalyzeProjectRequest
+	*/
+	AnalyzeProject(ctx context.Context, uuid string) ApiAnalyzeProjectRequest
+
+	// AnalyzeProjectExecute executes the request
+	//  @return Project
+	AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*Project, *http.Response, error)
+
+	/*
+	ExportFindingsByProject Returns the findings for the specified project as FPF
+
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiExportFindingsByProjectRequest
+	*/
+	ExportFindingsByProject(ctx context.Context, uuid string) ApiExportFindingsByProjectRequest
+
+	// ExportFindingsByProjectExecute executes the request
+	ExportFindingsByProjectExecute(r ApiExportFindingsByProjectRequest) (*http.Response, error)
+
+	/*
+	GetAllFindings Returns a list of all findings
+
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllFindingsRequest
+	*/
+	GetAllFindings(ctx context.Context) ApiGetAllFindingsRequest
+
+	// GetAllFindingsExecute executes the request
+	//  @return []Finding
+	GetAllFindingsExecute(r ApiGetAllFindingsRequest) ([]Finding, *http.Response, error)
+
+	/*
+	GetAllFindings1 Returns a list of all findings grouped by vulnerability
+
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllFindings1Request
+	*/
+	GetAllFindings1(ctx context.Context) ApiGetAllFindings1Request
+
+	// GetAllFindings1Execute executes the request
+	//  @return []GroupedFinding
+	GetAllFindings1Execute(r ApiGetAllFindings1Request) ([]GroupedFinding, *http.Response, error)
+
+	/*
+	GetFindingsByProject Returns a list of all findings for a specific project or generates SARIF file if Accept: application/sarif+json header is provided
+
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetFindingsByProjectRequest
+	*/
+	GetFindingsByProject(ctx context.Context, uuid string) ApiGetFindingsByProjectRequest
+
+	// GetFindingsByProjectExecute executes the request
+	//  @return []Finding
+	GetFindingsByProjectExecute(r ApiGetFindingsByProjectRequest) ([]Finding, *http.Response, error)
+}
+
 // FindingAPIService FindingAPI service
 type FindingAPIService service
 
 type ApiAnalyzeProjectRequest struct {
 	ctx context.Context
-	ApiService *FindingAPIService
+	ApiService FindingAPI
 	uuid string
 }
 
@@ -142,7 +217,7 @@ func (a *FindingAPIService) AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*
 
 type ApiExportFindingsByProjectRequest struct {
 	ctx context.Context
-	ApiService *FindingAPIService
+	ApiService FindingAPI
 	uuid string
 }
 
@@ -248,7 +323,7 @@ func (a *FindingAPIService) ExportFindingsByProjectExecute(r ApiExportFindingsBy
 
 type ApiGetAllFindingsRequest struct {
 	ctx context.Context
-	ApiService *FindingAPIService
+	ApiService FindingAPI
 	showInactive *bool
 	showSuppressed *bool
 	severity *string
@@ -511,7 +586,7 @@ func (a *FindingAPIService) GetAllFindingsExecute(r ApiGetAllFindingsRequest) ([
 
 type ApiGetAllFindings1Request struct {
 	ctx context.Context
-	ApiService *FindingAPIService
+	ApiService FindingAPI
 	showInactive *bool
 	severity *string
 	publishDateFrom *string
@@ -744,7 +819,7 @@ func (a *FindingAPIService) GetAllFindings1Execute(r ApiGetAllFindings1Request) 
 
 type ApiGetFindingsByProjectRequest struct {
 	ctx context.Context
-	ApiService *FindingAPIService
+	ApiService FindingAPI
 	uuid string
 	suppressed *bool
 	source *string
