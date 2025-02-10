@@ -6,6 +6,7 @@ import (
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -30,10 +31,9 @@ import (
 type config struct {
 	ListenAddr               string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
 	DependencytrackUrl       string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
-	DependencytrackApiKey    string        `envconfig:"DEPENDENCYTRACK_API_KEY" required:"true"`
-	dependencytrackTeam      string        `envconfig:"DEPENDENCYTRACK_TEAM" required:"true"`
-	dependencytrackUsername  string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
-	dependencytrackPassword  string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
+	DependencytrackTeam      string        `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
+	DependencytrackUsername  string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
+	DependencytrackPassword  string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
 	DatabaseUrl              string        `envconfig:"DATABASE_URL" required:"true"`
 	UpdateInterval           time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 	RequiredAudience         string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
@@ -75,15 +75,16 @@ func main() {
 
 	dpClient, err := dependencytrack.NewClient(
 		c.DependencytrackUrl,
-		c.dependencytrackTeam,
-		c.dependencytrackUsername,
-		c.dependencytrackPassword,
+		c.DependencytrackTeam,
+		c.DependencytrackUsername,
+		c.DependencytrackPassword,
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	u := updater.NewUpdater(db, dpClient, c.UpdateInterval)
+	source := sources.NewDependencytrackSource(dpClient)
+	u := updater.NewUpdater(db, source, c.UpdateInterval)
 	u.Run(ctx)
 
 	grpcServer := createGrpcServer(ctx, c, db, u)

@@ -2,11 +2,11 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/dependencytrack"
-	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/nais/v13s/internal/sources"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -19,12 +19,12 @@ const (
 
 type Updater struct {
 	db                           sql.Querier
-	source                       dependencytrack.Client
+	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	updateInterval               time.Duration
 }
 
-func NewUpdater(db sql.Querier, source dependencytrack.Client, updateInterval time.Duration) *Updater {
+func NewUpdater(db sql.Querier, source sources.Source, updateInterval time.Duration) *Updater {
 	return &Updater{
 		db:                           db,
 		source:                       source,
@@ -143,65 +143,56 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
-// TODO: go routines and interval
 // TODO: use transactions to ensure consistency
 func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string) error {
-	p, err := u.source.GetProject(ctx, imageName, imageTag)
+	summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
 	if err != nil {
-		return fmt.Errorf("getting project: %w", err)
-	}
-
-	if p == nil {
-		err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			StatusCode: "NotFound",
-			Reason:     "project not found",
-			Source:     "dependencytrack",
-		})
-		if err != nil {
-			log.Errorf("failed to update image sync status: %v", err)
+		if errors.Is(err, sources.ErrNoProject) {
+			err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
+				ImageName:  imageName,
+				ImageTag:   imageTag,
+				StatusCode: "NotFound",
+				Reason:     "project not found",
+				Source:     "dependencytrack",
+			})
+			if err != nil {
+				log.Errorf("failed to update image sync status: %v", err)
+			}
+			return nil
 		}
-		return nil
-	}
-
-	if p.Metrics == nil {
-		err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			StatusCode: "NotFound",
-			Reason:     "metrics not found",
-			Source:     "dependencytrack",
-		})
-		if err != nil {
-			log.Errorf("failed to update image sync status: %v", err)
+		if errors.Is(err, sources.ErrNoMetrics) {
+			err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
+				ImageName:  imageName,
+				ImageTag:   imageTag,
+				StatusCode: "NotFound",
+				Reason:     "metrics not found",
+				Source:     "dependencytrack",
+			})
+			if err != nil {
+				log.Errorf("failed to update image sync status: %v", err)
+			}
+			return nil
 		}
-		return nil
+		return fmt.Errorf("getting summary: %w", err)
 	}
 
-	summary := sql.UpsertVulnerabilitySummaryParams{
-		ImageName: imageName,
-		ImageTag:  imageTag,
-		Critical:  p.Metrics.Critical,
-		High:      p.Metrics.High,
-		Medium:    p.Metrics.Medium,
-		Low:       p.Metrics.Low,
+	summaryParams := sql.UpsertVulnerabilitySummaryParams{
+		ImageName:  imageName,
+		ImageTag:   imageTag,
+		Critical:   summary.Critical,
+		High:       summary.High,
+		Medium:     summary.Medium,
+		Low:        summary.Low,
+		Unassigned: summary.Unassigned,
+		RiskScore:  summary.RiskScore,
 	}
 
-	if p.Metrics.Unassigned != nil {
-		summary.Unassigned = *p.Metrics.Unassigned
-	}
-
-	if p.Metrics.InheritedRiskScore != nil {
-		summary.RiskScore = int32(*p.Metrics.InheritedRiskScore)
-	}
-
-	err = u.db.UpsertVulnerabilitySummary(ctx, summary)
+	err = u.db.UpsertVulnerabilitySummary(ctx, summaryParams)
 	if err != nil {
 		return err
 	}
 
-	_, err = u.updateVulnerabilities(ctx, *p)
+	_, err = u.updateVulnerabilities(ctx, imageName, imageTag, summary)
 	if err != nil {
 		return err
 	}
@@ -219,36 +210,49 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 	return nil
 }
 
+func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, imageName string) error {
+	suppressed, err := u.db.ListSuppressedVulnerabilitiesForImage(ctx, sql.ListSuppressedVulnerabilitiesForImageParams{
+		ImageName: "test",
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, s := range suppressed {
+		//invoke dependencytrack api and suppress
+		log.Infof("checking if suppressed vulnerability %v is still suppressed", s)
+	}
+	return nil
+}
+
 // TODO: use transactions to ensure consistency
-func (u *Updater) updateVulnerabilities(ctx context.Context, project client.Project) (any, error) {
-	findings, err := u.source.GetFindings(ctx, project.Uuid, true)
+func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag string, summary *sources.VulnerabilitySummary) (any, error) {
+	// TODO: handle suppressed vulnerabilities
+	findings, err := u.source.GetVulnerabilites(ctx, summary.Id, true)
 	if err != nil {
 		return nil, err
 	}
-	CveParams := make([]sql.BatchUpsertCveParams, 0)
+	cveParams := make([]sql.BatchUpsertCveParams, 0)
 	vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+
 	for _, f := range findings {
-		v, Cve, err := u.parseFinding(*project.Name, *project.Version, f)
-		if err != nil {
-			return nil, err
-		}
-		CveParams = append(CveParams, sql.BatchUpsertCveParams{
-			CveID:    Cve.CveID,
-			CveTitle: Cve.CveTitle,
-			CveDesc:  Cve.CveDesc,
-			CveLink:  Cve.CveLink,
-			Severity: Cve.Severity,
+		cveParams = append(cveParams, sql.BatchUpsertCveParams{
+			CveID:    f.Cve.Id,
+			CveTitle: f.Cve.Title,
+			CveDesc:  f.Cve.Description,
+			CveLink:  f.Cve.Link,
+			Severity: f.Cve.Severity.ToInt32(),
 		})
 		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName: v.ImageName,
-			ImageTag:  v.ImageTag,
-			Package:   v.Package,
-			CveID:     v.CveID,
+			ImageName: name,
+			ImageTag:  tag,
+			Package:   f.Package,
+			CveID:     f.Cve.Id,
 		})
 	}
 
 	// TODO: how to handle errors here?
-	_, errors := u.upsertBatchCve(ctx, CveParams)
+	_, errors := u.upsertBatchCve(ctx, cveParams)
 	if errors > 0 {
 		return nil, fmt.Errorf("upserting Cves, num errors: %d", errors)
 	}

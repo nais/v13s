@@ -8,6 +8,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func TestUpdater(t *testing.T) {
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
 	updateInterval := 200 * time.Millisecond
-	u := updater.NewUpdater(db, dpTrack, updateInterval)
+	u := updater.NewUpdater(db, sources.NewDependencytrackSource(dpTrack), updateInterval)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
