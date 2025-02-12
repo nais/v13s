@@ -10,6 +10,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"strings"
 )
 
 var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
@@ -243,5 +244,82 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
+	}, nil
+}
+
+func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesForImageRequest) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+
+	vulnz, err := s.db.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
+		ImageName:         request.GetImageName(),
+		ImageTag:          request.GetImageTag(),
+		IncludeSuppressed: &request.IncludeSuppressed,
+		Offset:            offset,
+		Limit:             limit,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
+	}
+
+	total, err := s.db.CountVulnerabilitiesForImage(ctx, sql.CountVulnerabilitiesForImageParams{
+		ImageName:         request.GetImageName(),
+		ImageTag:          request.GetImageTag(),
+		IncludeSuppressed: &request.IncludeSuppressed,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to count vulnerabilities for image: %w", err)
+	}
+
+	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
+		severity := vulnerabilities.Severity_UNASSIGNED
+
+		switch row.Severity {
+		case 1:
+			severity = vulnerabilities.Severity_UNASSIGNED
+		case 2:
+			severity = vulnerabilities.Severity_LOW
+		case 3:
+			severity = vulnerabilities.Severity_MEDIUM
+		case 4:
+			severity = vulnerabilities.Severity_HIGH
+		case 5:
+			severity = vulnerabilities.Severity_CRITICAL
+		}
+
+		suppressReason := row.Reason.VulnerabilitySuppressReason
+		if !suppressReason.Valid() {
+			suppressReason = sql.VulnerabilitySuppressReasonNotSet
+		}
+
+		suppressReasonStr := strings.ToUpper(string(suppressReason))
+
+		return &vulnerabilities.Vulnerability{
+			Package:           row.Package,
+			Suppressed:        &row.Suppressed,
+			SuppressedReason:  &suppressReasonStr,
+			SuppressedDetails: row.ReasonText,
+			Cve: &vulnerabilities.Cve{
+				Id:          row.CveID,
+				Title:       row.CveTitle,
+				Description: row.CveDesc,
+				Link:        row.CveLink,
+				Severity:    severity,
+			},
+		}
+	})
+
+	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
+		Nodes:    nodes,
+		PageInfo: pageInfo,
 	}, nil
 }

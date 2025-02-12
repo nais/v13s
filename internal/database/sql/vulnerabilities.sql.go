@@ -50,6 +50,33 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
+const countVulnerabilitiesForImage = `-- name: CountVulnerabilitiesForImage :one
+SELECT COUNT(*) AS total
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.image_name = $1
+    AND v.image_tag = $2
+    AND ($3::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+`
+
+type CountVulnerabilitiesForImageParams struct {
+	ImageName         string
+	ImageTag          string
+	IncludeSuppressed *bool
+}
+
+func (q *Queries) CountVulnerabilitiesForImage(ctx context.Context, arg CountVulnerabilitiesForImageParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countVulnerabilitiesForImage, arg.ImageName, arg.ImageTag, arg.IncludeSuppressed)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const generateVulnerabilitySummaryForImage = `-- name: GenerateVulnerabilitySummaryForImage :one
 SELECT COUNT(*) AS total,
        SUM(CASE WHEN c.severity = 5 THEN 1 ELSE 0 END) AS critical,
@@ -331,6 +358,97 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.WorkloadType,
 			&i.Namespace,
 			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.Package,
+			&i.CveID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CveTitle,
+			&i.CveDesc,
+			&i.CveLink,
+			&i.Severity,
+			&i.Suppressed,
+			&i.Reason,
+			&i.ReasonText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
+SELECT v.image_name,
+       v.image_tag,
+       v.package,
+       v.cve_id,
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       sv.reason,
+       sv.reason_text
+FROM vulnerabilities v
+        JOIN cve c ON v.cve_id = c.cve_id
+        LEFT JOIN suppressed_vulnerabilities sv
+                ON v.image_name = sv.image_name
+                    AND v.package = sv.package
+                    AND v.cve_id = sv.cve_id
+WHERE v.image_name = $1
+    AND v.image_tag = $2
+    AND ($3::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+ORDER BY (c.severity, v.id) ASC
+    LIMIT $5 OFFSET $4
+`
+
+type ListVulnerabilitiesForImageParams struct {
+	ImageName         string
+	ImageTag          string
+	IncludeSuppressed *bool
+	Offset            int32
+	Limit             int32
+}
+
+type ListVulnerabilitiesForImageRow struct {
+	ImageName  string
+	ImageTag   string
+	Package    string
+	CveID      string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	CveTitle   string
+	CveDesc    string
+	CveLink    string
+	Severity   int32
+	Suppressed bool
+	Reason     NullVulnerabilitySuppressReason
+	ReasonText *string
+}
+
+func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
+	rows, err := q.db.Query(ctx, listVulnerabilitiesForImage,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.IncludeSuppressed,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListVulnerabilitiesForImageRow{}
+	for rows.Next() {
+		var i ListVulnerabilitiesForImageRow
+		if err := rows.Scan(
 			&i.ImageName,
 			&i.ImageTag,
 			&i.Package,

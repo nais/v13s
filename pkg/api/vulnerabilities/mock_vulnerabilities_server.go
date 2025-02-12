@@ -80,6 +80,65 @@ func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummary_Call) RunAndReturn(r
 	return _c
 }
 
+// GetVulnerabilitySummaryForImage provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) GetVulnerabilitySummaryForImage(_a0 context.Context, _a1 *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerabilitySummaryForImage")
+	}
+
+	var r0 *GetVulnerabilitySummaryForImageResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *GetVulnerabilitySummaryForImageRequest) *GetVulnerabilitySummaryForImageResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*GetVulnerabilitySummaryForImageResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *GetVulnerabilitySummaryForImageRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerabilitySummaryForImage'
+type MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call struct {
+	*mock.Call
+}
+
+// GetVulnerabilitySummaryForImage is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *GetVulnerabilitySummaryForImageRequest
+func (_e *MockVulnerabilitiesServer_Expecter) GetVulnerabilitySummaryForImage(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call {
+	return &MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call{Call: _e.mock.On("GetVulnerabilitySummaryForImage", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call) Run(run func(_a0 context.Context, _a1 *GetVulnerabilitySummaryForImageRequest)) *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*GetVulnerabilitySummaryForImageRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call) Return(_a0 *GetVulnerabilitySummaryForImageResponse, _a1 error) *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call) RunAndReturn(run func(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error)) *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListVulnerabilities provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) ListVulnerabilities(_a0 context.Context, _a1 *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error) {
 	ret := _m.Called(_a0, _a1)
@@ -135,6 +194,65 @@ func (_c *MockVulnerabilitiesServer_ListVulnerabilities_Call) Return(_a0 *ListVu
 }
 
 func (_c *MockVulnerabilitiesServer_ListVulnerabilities_Call) RunAndReturn(run func(context.Context, *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error)) *MockVulnerabilitiesServer_ListVulnerabilities_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListVulnerabilitiesForImage provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListVulnerabilitiesForImage(_a0 context.Context, _a1 *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListVulnerabilitiesForImage")
+	}
+
+	var r0 *ListVulnerabilitiesForImageResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *ListVulnerabilitiesForImageRequest) *ListVulnerabilitiesForImageResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ListVulnerabilitiesForImageResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *ListVulnerabilitiesForImageRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListVulnerabilitiesForImage'
+type MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call struct {
+	*mock.Call
+}
+
+// ListVulnerabilitiesForImage is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *ListVulnerabilitiesForImageRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListVulnerabilitiesForImage(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call {
+	return &MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call{Call: _e.mock.On("ListVulnerabilitiesForImage", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call) Run(run func(_a0 context.Context, _a1 *ListVulnerabilitiesForImageRequest)) *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*ListVulnerabilitiesForImageRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call) Return(_a0 *ListVulnerabilitiesForImageResponse, _a1 error) *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error)) *MockVulnerabilitiesServer_ListVulnerabilitiesForImage_Call {
 	_c.Call.Return(run)
 	return _c
 }
