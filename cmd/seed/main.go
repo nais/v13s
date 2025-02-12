@@ -39,7 +39,9 @@ func main() {
 		panic(err)
 	}
 
-	createNaisApiTestdata(ctx, db)
+	images := createNaisApiWorkloads(ctx, db, "dev", "devteam")
+	createNaisApiWorkloads(ctx, db, "superprod", "devteam")
+	createVulnData(ctx, db, images)
 }
 
 func seedFromDependencyTrack(ctx context.Context, db sql.Querier) {
@@ -100,29 +102,11 @@ func seedFromDependencyTrack(ctx context.Context, db sql.Querier) {
 	}
 }
 
-func createNaisApiTestdata(ctx context.Context, db sql.Querier) {
-	for chicken := 1; chicken < 9; chicken++ {
-		if err := db.CreateImage(ctx, sql.CreateImageParams{
-			Name:     "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
-			Tag:      "1",
-			Metadata: map[string]string{},
-		}); err != nil {
-			panic(err)
-		}
-
-		_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
-			Cluster:      "dev",
-			Namespace:    "devteam",
-			WorkloadType: "app",
-			Name:         "nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
-			ImageName:    "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
-			ImageTag:     "1",
-		})
-		if err != nil {
-			panic(err)
-		}
-
-		batch := generateVulnerabilities(chicken, "ghcr.io/nais/nais-deploy-chicken-"+fmt.Sprintf("%d", chicken), "1")
+func createVulnData(ctx context.Context, db sql.Querier, images []string) {
+	chicken := 1
+	for _, image := range images {
+		batch := generateVulnerabilities(chicken, image, "1")
+		chicken++
 
 		db.BatchUpsertCve(ctx, batch.cve).Exec(func(i int, err error) {
 			if err != nil {
@@ -137,7 +121,7 @@ func createNaisApiTestdata(ctx context.Context, db sql.Querier) {
 		})
 
 		sumRow, err := db.GenerateVulnerabilitySummaryForImage(ctx, sql.GenerateVulnerabilitySummaryForImageParams{
-			ImageName: "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageName: image,
 			ImageTag:  "1",
 		})
 		if err != nil {
@@ -145,7 +129,7 @@ func createNaisApiTestdata(ctx context.Context, db sql.Querier) {
 		}
 
 		summary := sql.CreateVulnerabilitySummaryParams{
-			ImageName:  "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageName:  image,
 			ImageTag:   "1",
 			Critical:   int32(sumRow.Critical),
 			High:       int32(sumRow.High),
@@ -160,6 +144,35 @@ func createNaisApiTestdata(ctx context.Context, db sql.Querier) {
 			panic(fmt.Errorf("summary error: %v", err))
 		}
 	}
+
+}
+
+func createNaisApiWorkloads(ctx context.Context, db sql.Querier, cluster, namespace string) []string {
+	images := make([]string, 0)
+	for chicken := 1; chicken < 9; chicken++ {
+		name := "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken)
+		images = append(images, name)
+		if err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     name,
+			Tag:      "1",
+			Metadata: map[string]string{},
+		}); err != nil {
+			panic(err)
+		}
+
+		_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+			Cluster:      cluster,
+			Namespace:    namespace,
+			WorkloadType: "app",
+			Name:         "nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageName:    name,
+			ImageTag:     "1",
+		})
+		if err != nil {
+			panic(err)
+		}
+	}
+	return images
 }
 
 type BatchVulnerabilities struct {
