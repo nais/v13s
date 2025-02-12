@@ -50,6 +50,56 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
+const generateVulnerabilitySummaryForImage = `-- name: GenerateVulnerabilitySummaryForImage :one
+SELECT COUNT(*) AS total,
+       SUM(CASE WHEN c.severity = 5 THEN 1 ELSE 0 END) AS critical,
+       SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END) AS high,
+       SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END) AS medium,
+       SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END) AS low,
+       SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END) AS unassigned,
+       -- 10*critical + 5*high + 3*medium + 1*low + 5*unassigned
+         10 * SUM(CASE WHEN c.severity = 5 THEN 1 ELSE 0 END) +
+            5 * SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END) +
+            3 * SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END) +
+            1 * SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END) +
+            5 * SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END) AS risk_score
+
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+WHERE v.image_name = $1
+    AND v.image_tag = $2
+`
+
+type GenerateVulnerabilitySummaryForImageParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+type GenerateVulnerabilitySummaryForImageRow struct {
+	Total      int64
+	Critical   int64
+	High       int64
+	Medium     int64
+	Low        int64
+	Unassigned int64
+	RiskScore  int32
+}
+
+func (q *Queries) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error) {
+	row := q.db.QueryRow(ctx, generateVulnerabilitySummaryForImage, arg.ImageName, arg.ImageTag)
+	var i GenerateVulnerabilitySummaryForImageRow
+	err := row.Scan(
+		&i.Total,
+		&i.Critical,
+		&i.High,
+		&i.Medium,
+		&i.Low,
+		&i.Unassigned,
+		&i.RiskScore,
+	)
+	return &i, err
+}
+
 const getCve = `-- name: GetCve :one
 SELECT cve_id, cve_title, cve_desc, cve_link, severity, created_at, updated_at
 FROM cve

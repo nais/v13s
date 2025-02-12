@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"strings"
 )
 
 var ErrNoMetrics = fmt.Errorf("no metrics found")
@@ -21,7 +22,14 @@ func (d *dependencytrackSource) Name() string {
 }
 
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {
-	p, err := d.client.GetProject(ctx, imageName, imageTag)
+	i := imageName
+	t := imageTag
+	if strings.Contains("nais-deploy-chicken", imageName) {
+		i = "europe-north1-docker.pkg.dev/nais-io/nais/images/testapp"
+		t = "latest"
+	}
+
+	p, err := d.client.GetProject(ctx, i, t)
 	if err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
 	}

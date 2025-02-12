@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package v13s.api.protobuf;
+
 option go_package = "./pkg/api/vulnerabilities/management";
 
 service Management{

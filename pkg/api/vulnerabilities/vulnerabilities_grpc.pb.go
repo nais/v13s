@@ -7,6 +7,8 @@
 // - protoc             v5.29.3
 // source: vulnerabilities.proto
 
+//package nais.io.v13s.v1;
+
 package vulnerabilities
 
 import (
@@ -22,9 +24,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Vulnerabilities_ListVulnerabilities_FullMethodName        = "/Vulnerabilities/ListVulnerabilities"
-	Vulnerabilities_ListVulnerabilitySummaries_FullMethodName = "/Vulnerabilities/ListVulnerabilitySummaries"
-	Vulnerabilities_GetVulnerabilitySummary_FullMethodName    = "/Vulnerabilities/GetVulnerabilitySummary"
+	Vulnerabilities_ListVulnerabilities_FullMethodName             = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilities"
+	Vulnerabilities_ListVulnerabilitySummaries_FullMethodName      = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitySummaries"
+	Vulnerabilities_GetVulnerabilitySummary_FullMethodName         = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
+	Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryForImage"
 )
 
 // VulnerabilitiesClient is the client API for Vulnerabilities service.
@@ -45,6 +48,7 @@ type VulnerabilitiesClient interface {
 	// Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
 	// Supplying all filters will give the summary for that specific workload
 	GetVulnerabilitySummary(ctx context.Context, in *GetVulnerabilitySummaryRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryResponse, error)
+	GetVulnerabilitySummaryForImage(ctx context.Context, in *GetVulnerabilitySummaryForImageRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryForImageResponse, error)
 }
 
 type vulnerabilitiesClient struct {
@@ -85,6 +89,16 @@ func (c *vulnerabilitiesClient) GetVulnerabilitySummary(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *vulnerabilitiesClient) GetVulnerabilitySummaryForImage(ctx context.Context, in *GetVulnerabilitySummaryForImageRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryForImageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVulnerabilitySummaryForImageResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VulnerabilitiesServer is the server API for Vulnerabilities service.
 // All implementations must embed UnimplementedVulnerabilitiesServer
 // for forward compatibility.
@@ -103,6 +117,7 @@ type VulnerabilitiesServer interface {
 	// Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
 	// Supplying all filters will give the summary for that specific workload
 	GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error)
+	GetVulnerabilitySummaryForImage(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error)
 	mustEmbedUnimplementedVulnerabilitiesServer()
 }
 
@@ -121,6 +136,9 @@ func (UnimplementedVulnerabilitiesServer) ListVulnerabilitySummaries(context.Con
 }
 func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummary not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummaryForImage(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummaryForImage not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) mustEmbedUnimplementedVulnerabilitiesServer() {}
 func (UnimplementedVulnerabilitiesServer) testEmbeddedByValue()                         {}
@@ -197,11 +215,29 @@ func _Vulnerabilities_GetVulnerabilitySummary_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Vulnerabilities_GetVulnerabilitySummaryForImage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVulnerabilitySummaryForImageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).GetVulnerabilitySummaryForImage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).GetVulnerabilitySummaryForImage(ctx, req.(*GetVulnerabilitySummaryForImageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Vulnerabilities_ServiceDesc is the grpc.ServiceDesc for Vulnerabilities service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Vulnerabilities",
+	ServiceName: "v13s.api.protobuf.Vulnerabilities",
 	HandlerType: (*VulnerabilitiesServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -215,6 +251,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVulnerabilitySummary",
 			Handler:    _Vulnerabilities_GetVulnerabilitySummary_Handler,
+		},
+		{
+			MethodName: "GetVulnerabilitySummaryForImage",
+			Handler:    _Vulnerabilities_GetVulnerabilitySummaryForImage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

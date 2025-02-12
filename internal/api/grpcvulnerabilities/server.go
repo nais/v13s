@@ -2,14 +2,14 @@ package grpcvulnerabilities
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/api/grpcpagination"
-	"github.com/nais/v13s/internal/database/sql"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
-
 	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
@@ -172,20 +172,76 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		return nil, err
 	}
 
-	var summary = vulnerabilities.Summary{
-		Critical:    sum.CriticalVulnerabilities,
-		High:        sum.HighVulnerabilities,
-		Medium:      sum.MediumVulnerabilities,
-		Low:         sum.LowVulnerabilities,
-		Unassigned:  sum.UnassignedVulnerabilities,
-		RiskScore:   sum.TotalRiskScore,
-		LastUpdated: timestamppb.New(time.Now()),
+	summary := &vulnerabilities.Summary{}
+	if sum != nil {
+		summary.Critical = sum.CriticalVulnerabilities
+		summary.High = sum.HighVulnerabilities
+		summary.Medium = sum.MediumVulnerabilities
+		summary.Low = sum.LowVulnerabilities
+		summary.Unassigned = sum.UnassignedVulnerabilities
+		summary.RiskScore = sum.TotalRiskScore
+		summary.HasSbom = true
 	}
 
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               request.Filter,
-		VulnerabilitySummary: &summary,
+		VulnerabilitySummary: summary,
 		WorkloadCount:        sum.WorkloadCount,
 	}
 	return response, nil
+}
+
+func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryForImageRequest) (*vulnerabilities.GetVulnerabilitySummaryForImageResponse, error) {
+	summary, err := s.db.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
+		ImageName: request.ImageName,
+		ImageTag:  request.ImageTag,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
+				VulnerabilitySummary: &vulnerabilities.Summary{},
+				WorkloadRef:          make([]*vulnerabilities.Workload, 0),
+			}, nil
+		}
+
+		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
+	}
+	workloads, err := s.db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+		ImageName: request.ImageName,
+		ImageTag:  request.ImageTag,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workloads by image: %w", err)
+	}
+
+	refs := make([]*vulnerabilities.Workload, 0)
+	for _, w := range workloads {
+		refs = append(refs, &vulnerabilities.Workload{
+			Cluster:   w.Cluster,
+			Namespace: w.Namespace,
+			Name:      w.Name,
+			Type:      w.WorkloadType,
+			ImageName: w.ImageName,
+			ImageTag:  w.ImageTag,
+		})
+	}
+
+	vulnSummary := &vulnerabilities.Summary{}
+	if summary != nil {
+		vulnSummary = &vulnerabilities.Summary{
+			Critical:    summary.Critical,
+			High:        summary.High,
+			Medium:      summary.Medium,
+			Low:         summary.Low,
+			Unassigned:  summary.Unassigned,
+			RiskScore:   summary.RiskScore,
+			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
+			HasSbom:     true,
+		}
+	}
+
+	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
+		VulnerabilitySummary: vulnSummary,
+		WorkloadRef:          refs,
+	}, nil
 }

@@ -49,6 +49,50 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 	return &i, err
 }
 
+const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+FROM workloads
+WHERE image_name = $1
+  AND image_tag = $2
+ORDER BY
+    (name, cluster, updated_at) DESC
+`
+
+type ListWorkloadsByImageParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error) {
+	rows, err := q.db.Query(ctx, listWorkloadsByImage, arg.ImageName, arg.ImageTag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Workload{}
+	for rows.Next() {
+		var i Workload
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateWorkload = `-- name: UpdateWorkload :one
 UPDATE workloads
 SET

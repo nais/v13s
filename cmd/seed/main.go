@@ -23,6 +23,26 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 
+	log.Infof("initializing database")
+
+	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:4002/v13s?sslmode=disable", log.WithField("component", "database"))
+	if err != nil {
+		panic(err)
+	}
+	defer pool.Close()
+
+	db := sql.New(pool)
+
+	log.Infof("reseting database")
+	err = db.ResetDatabase(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	createNaisApiTestdata(ctx, db)
+}
+
+func seedFromDependencyTrack(ctx context.Context, db sql.Querier) {
 	dpClient, err := dependencytrack.NewClient(
 		os.Getenv("V13S_DEPENDENCYTRACK_URL"),
 		os.Getenv("V13S_DEPENDENCYTRACK_TEAM"),
@@ -34,22 +54,6 @@ func main() {
 	}
 
 	projects, err := dpClient.GetProjectsByTag(ctx, "team:nais-system", 10, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Infof("initializing database")
-
-	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", log.WithField("component", "database"))
-	if err != nil {
-		panic(err)
-	}
-	defer pool.Close()
-
-	db := sql.New(pool)
-
-	log.Infof("reseting database")
-	err = db.ResetDatabase(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -94,6 +98,109 @@ func main() {
 		}
 		log.Infof("created vulnerability summary: %v", res)
 	}
+}
+
+func createNaisApiTestdata(ctx context.Context, db sql.Querier) {
+	for chicken := 1; chicken < 9; chicken++ {
+		if err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			Tag:      "1",
+			Metadata: map[string]string{},
+		}); err != nil {
+			panic(err)
+		}
+
+		_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+			Cluster:      "dev",
+			Namespace:    "devteam",
+			WorkloadType: "app",
+			Name:         "nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageName:    "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageTag:     "1",
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		batch := generateVulnerabilities(chicken, "ghcr.io/nais/nais-deploy-chicken-"+fmt.Sprintf("%d", chicken), "1")
+
+		db.BatchUpsertCve(ctx, batch.cve).Exec(func(i int, err error) {
+			if err != nil {
+				panic(err)
+			}
+		})
+
+		db.BatchUpsertVulnerabilities(ctx, batch.vuln).Exec(func(i int, err error) {
+			if err != nil {
+				panic(err)
+			}
+		})
+
+		sumRow, err := db.GenerateVulnerabilitySummaryForImage(ctx, sql.GenerateVulnerabilitySummaryForImageParams{
+			ImageName: "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageTag:  "1",
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		summary := sql.CreateVulnerabilitySummaryParams{
+			ImageName:  "ghcr.io/nais/nais-deploy-chicken-" + fmt.Sprintf("%d", chicken),
+			ImageTag:   "1",
+			Critical:   int32(sumRow.Critical),
+			High:       int32(sumRow.High),
+			Medium:     int32(sumRow.Medium),
+			Low:        int32(sumRow.Low),
+			Unassigned: int32(sumRow.Unassigned),
+			RiskScore:  sumRow.RiskScore,
+		}
+
+		_, err = db.CreateVulnerabilitySummary(ctx, summary)
+		if err != nil {
+			panic(fmt.Errorf("summary error: %v", err))
+		}
+	}
+}
+
+type BatchVulnerabilities struct {
+	vuln []sql.BatchUpsertVulnerabilitiesParams
+	cve  []sql.BatchUpsertCveParams
+}
+
+// generateVulnerabilities creates a different number of vulnerabilities per workload
+func generateVulnerabilities(chicken int, imageName string, imageTag string) BatchVulnerabilities {
+	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+	cves := make([]sql.BatchUpsertCveParams, 0)
+
+	for j := 1; j <= chicken; j++ {
+		for s := 1; s <= 5; s++ {
+			v, c := createVulnerability(s, fmt.Sprintf("CWE-%d-%d-%d", chicken, j, s), imageName, imageTag)
+			vulns = append(vulns, v)
+			cves = append(cves, c)
+		}
+	}
+
+	return BatchVulnerabilities{
+		vuln: vulns,
+		cve:  cves,
+	}
+}
+
+// createVulnerability generates a predictable vulnerability instance
+func createVulnerability(severity int, cveID string, imageName string, imageTag string) (sql.BatchUpsertVulnerabilitiesParams, sql.BatchUpsertCveParams) {
+	return sql.BatchUpsertVulnerabilitiesParams{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Package:   fmt.Sprintf("package-%s", cveID),
+			Source:    "seed",
+			CveID:     cveID,
+		}, sql.BatchUpsertCveParams{
+			CveID:    cveID,
+			CveTitle: "Title for " + cveID,
+			CveDesc:  "description for " + cveID,
+			CveLink:  "https://example.com/" + cveID,
+			Severity: int32(severity),
+		}
 }
 
 func toCreateWorkloadParams(p client.Project, image sql.CreateImageParams) []*sql.CreateWorkloadParams {

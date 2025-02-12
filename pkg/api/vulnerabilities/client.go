@@ -12,6 +12,7 @@ type Client interface {
 	Close() error
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
+	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
 	management.ManagementClient
 }
@@ -22,6 +23,13 @@ type client struct {
 	c    VulnerabilitiesClient
 	m    management.ManagementClient
 	conn *grpc.ClientConn
+}
+
+func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error) {
+	return c.c.GetVulnerabilitySummaryForImage(ctx, &GetVulnerabilitySummaryForImageRequest{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
 }
 
 func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWorkloadRequest, opts ...grpc.CallOption) (*management.RegisterWorkloadResponse, error) {

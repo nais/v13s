@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Management_RegisterWorkload_FullMethodName = "/Management/RegisterWorkload"
+	Management_RegisterWorkload_FullMethodName = "/v13s.api.protobuf.Management/RegisterWorkload"
 )
 
 // ManagementClient is the client API for Management service.
@@ -108,7 +108,7 @@ func _Management_RegisterWorkload_Handler(srv interface{}, ctx context.Context, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Management_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Management",
+	ServiceName: "v13s.api.protobuf.Management",
 	HandlerType: (*ManagementServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

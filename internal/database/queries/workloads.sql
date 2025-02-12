@@ -44,3 +44,11 @@ WHERE
 RETURNING
     *
 ;
+
+-- name: ListWorkloadsByImage :many
+SELECT *
+FROM workloads
+WHERE image_name = @image_name
+  AND image_tag = @image_tag
+ORDER BY
+    (name, cluster, updated_at) DESC;

@@ -3,11 +3,13 @@
 syntax = "proto3";
 
 //package nais.io.v13s.v1;
+package v13s.api.protobuf;
 
 option go_package = "./pkg/api/vulnerabilities";
 
 import "google/protobuf/timestamp.proto";
-import "pagination.proto";
+// TODO: fix this import conflict in api or here
+import "v13s.pagination.proto";
 
 //consider adding this at a later stage - https://github.com/grpc-ecosystem/grpc-gateway
 //import "google/api/annotations.proto";
@@ -30,10 +32,22 @@ service Vulnerabilities {
   // Supplying all filters will give the summary for that specific workload
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
 
+  rpc GetVulnerabilitySummaryForImage(GetVulnerabilitySummaryForImageRequest) returns (GetVulnerabilitySummaryForImageResponse);
+
   // Used on image details page in console, could also include summary and list of vulnerabilities
   // TODO: implement the commented out rpcs
   //rpc GetImageVulnerabilityDetails()
   //rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
+}
+
+message GetVulnerabilitySummaryForImageRequest {
+  string image_name = 1;
+  string image_tag = 2;
+}
+
+message GetVulnerabilitySummaryForImageResponse {
+  Summary vulnerability_summary = 1;
+  repeated Workload workloadRef = 2;
 }
 
 message Filter {
@@ -85,7 +99,8 @@ message Summary {
   int32 low = 4;
   int32 unassigned = 5;
   int32 riskScore = 6;
-  optional google.protobuf.Timestamp last_updated = 7;
+  bool hasSbom = 7;
+  optional google.protobuf.Timestamp last_updated = 8;
 }
 
 message GetVulnerabilitySummaryResponse {

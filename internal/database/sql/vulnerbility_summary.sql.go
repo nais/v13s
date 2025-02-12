@@ -113,6 +113,36 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 	return &i, err
 }
 
+const getVulnerabilitySummaryForImage = `-- name: GetVulnerabilitySummaryForImage :one
+SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at FROM vulnerability_summary
+WHERE image_name = $1
+  AND image_tag = $2
+`
+
+type GetVulnerabilitySummaryForImageParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error) {
+	row := q.db.QueryRow(ctx, getVulnerabilitySummaryForImage, arg.ImageName, arg.ImageTag)
+	var i VulnerabilitySummary
+	err := row.Scan(
+		&i.ID,
+		&i.ImageName,
+		&i.ImageTag,
+		&i.Critical,
+		&i.High,
+		&i.Medium,
+		&i.Low,
+		&i.Unassigned,
+		&i.RiskScore,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const listAllVulnerabilitySummaries = `-- name: ListAllVulnerabilitySummaries :many
 SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at FROM vulnerability_summary
 ORDER BY
@@ -195,11 +225,13 @@ WHERE
   AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
   AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
+  AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
+  AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
 ORDER BY w.updated_at DESC
 LIMIT
-    $6
+    $8
 OFFSET
-    $5
+    $7
 `
 
 type ListVulnerabilitySummariesParams struct {
@@ -207,6 +239,8 @@ type ListVulnerabilitySummariesParams struct {
 	Namespace    *string
 	WorkloadType *string
 	WorkloadName *string
+	ImageName    *string
+	ImageTag     *string
 	Offset       int32
 	Limit        int32
 }
@@ -237,6 +271,8 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.Namespace,
 		arg.WorkloadType,
 		arg.WorkloadName,
+		arg.ImageName,
+		arg.ImageTag,
 		arg.Offset,
 		arg.Limit,
 	)

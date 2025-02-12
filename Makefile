@@ -33,8 +33,8 @@ generate: generate-proto generate_dp_track generate-sql generate-mocks
 
 generate-proto:
 	protoc \
-		-I pkg/api/vulnerabilities/schema/ \
-		./pkg/api/vulnerabilities/schema/*.proto \
+		-I pkg/api/vulnerabilities/schemas/ \
+		./pkg/api/vulnerabilities/schemas/*.proto \
 		--go_out=. \
 		--go-grpc_out=.
 
