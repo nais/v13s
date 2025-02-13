@@ -121,7 +121,7 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 
 	if vulnData["title"] != nil {
 		title = vulnData["title"].(string)
-		if title == "" {
+		if title == "" && vulnData["cweName"] != nil {
 			title = vulnData["cweName"].(string)
 		}
 	}
