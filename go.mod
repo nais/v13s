@@ -5,7 +5,7 @@ go 1.24
 require (
 	cloud.google.com/go/auth v0.14.1
 	github.com/exaring/otelpgx v0.9.0
-	github.com/fatih/color v1.14.1
+	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/joho/godotenv v1.5.1
@@ -18,6 +18,7 @@ require (
 	github.com/sqlc-dev/sqlc v1.28.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
+	github.com/urfave/cli/v3 v3.0.0-beta1
 	github.com/vektra/mockery/v2 v2.52.2
 	golang.org/x/oauth2 v0.26.0
 	google.golang.org/api v0.221.0
