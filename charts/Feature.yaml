@@ -18,6 +18,8 @@ values:
     config:
       type: string
 
+
+ # TODO: onprem special case, add accounts, old gcp also get added
   auth.serviceAccounts:
     displayName: Authorized service accounts
     computed:
