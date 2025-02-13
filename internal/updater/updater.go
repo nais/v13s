@@ -258,6 +258,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 		for _, e := range errs {
 			log.Errorf("error upserting vulnerabilities for %s: %v", name, e)
 		}
+		return nil, fmt.Errorf("upserting vulnerabilities, num errors: %d", len(errs))
 	}
 
 	return nil, nil
