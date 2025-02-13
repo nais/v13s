@@ -23,13 +23,11 @@ values:
     computed:
       template: |
         {{ with $root := . }}
-        {{- if and (eq $root.Tenant.Name "dev-nais") (eq .Kind "management") }}
         - "{{.Management.slsa_verde_service_account}}"
         - "{{.Management.nais_api_serviceaccount_email }}"
         {{- range $cluster := .Envs }}
         - "{{ $cluster.slsa_verde_service_account }}"
         {{- end }}       
-        {{- end }}
         {{ end}}
     config:
       type: string_array
