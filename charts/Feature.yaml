@@ -28,7 +28,7 @@ values:
         {{- range $cluster := .Envs }}
         - "{{ $cluster.slsa_verde_service_account }}"
         {{- end }}       
-        {{ end}}
+        {{- end}}
     config:
       type: string_array
 
