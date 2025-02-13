@@ -4,6 +4,9 @@ GO_PACKAGES := $(shell go list ./... | grep -v $(IGNORED_PATH))
 build:
 	go build -o bin/api ./cmd/api
 
+build-cli:
+	go build -o bin/vulnz ./cmd/cli
+
 test:
 	go test -cover ./...
 
