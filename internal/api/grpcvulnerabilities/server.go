@@ -53,6 +53,20 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
+		severity := vulnerabilities.Severity_UNASSIGNED
+
+		switch row.Severity {
+		case 1:
+			severity = vulnerabilities.Severity_UNASSIGNED
+		case 2:
+			severity = vulnerabilities.Severity_LOW
+		case 3:
+			severity = vulnerabilities.Severity_MEDIUM
+		case 4:
+			severity = vulnerabilities.Severity_HIGH
+		case 5:
+			severity = vulnerabilities.Severity_CRITICAL
+		}
 		return &vulnerabilities.Finding{
 			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
@@ -70,7 +84,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 					Title:       row.CveTitle,
 					Description: row.CveDesc,
 					Link:        row.CveLink,
-					Severity:    vulnerabilities.Severity(row.Severity),
+					Severity:    severity,
 				},
 			},
 		}
