@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 var (
@@ -19,18 +20,21 @@ INSERT INTO cve(cve_id,
                 cve_title,
                 cve_desc,
                 cve_link,
-                severity)
+                severity,
+                refs)
 VALUES ($1,
         $2,
         $3,
         $4,
-        $5)
+        $5,
+        $6)
 ON CONFLICT (cve_id)
     DO UPDATE
     SET cve_title = $2,
         cve_desc  = $3,
         cve_link  = $4,
-        severity  = $5
+        severity  = $5,
+        refs      = $6
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -45,6 +49,7 @@ type BatchUpsertCveParams struct {
 	CveDesc  string
 	CveLink  string
 	Severity int32
+	Refs     typeext.MapStringString
 }
 
 func (q *Queries) BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults {
@@ -56,6 +61,7 @@ func (q *Queries) BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams
 			a.CveDesc,
 			a.CveLink,
 			a.Severity,
+			a.Refs,
 		}
 		batch.Queue(batchUpsertCve, vals...)
 	}
@@ -89,13 +95,15 @@ INSERT INTO vulnerabilities(image_name,
                             image_tag,
                             package,
                             cve_id,
-                            source)
+                            source,
+                            latest_version)
 
 VALUES ($1,
         $2,
         $3,
         $4,
-        $5)
+        $5,
+        $6)
 ON CONFLICT DO NOTHING
 `
 
@@ -106,11 +114,12 @@ type BatchUpsertVulnerabilitiesBatchResults struct {
 }
 
 type BatchUpsertVulnerabilitiesParams struct {
-	ImageName string
-	ImageTag  string
-	Package   string
-	CveID     string
-	Source    string
+	ImageName     string
+	ImageTag      string
+	Package       string
+	CveID         string
+	Source        string
+	LatestVersion string
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -122,6 +131,7 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.Package,
 			a.CveID,
 			a.Source,
+			a.LatestVersion,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

@@ -202,17 +202,19 @@ func generateVulnerabilities(chicken int, imageName string, imageTag string) Bat
 // createVulnerability generates a predictable vulnerability instance
 func createVulnerability(severity int, cveID string, imageName string, imageTag string) (sql.BatchUpsertVulnerabilitiesParams, sql.BatchUpsertCveParams) {
 	return sql.BatchUpsertVulnerabilitiesParams{
-			ImageName: imageName,
-			ImageTag:  imageTag,
-			Package:   fmt.Sprintf("package-%s", cveID),
-			Source:    "seed",
-			CveID:     cveID,
+			ImageName:     imageName,
+			ImageTag:      imageTag,
+			Package:       fmt.Sprintf("package-%s", cveID),
+			Source:        "seed",
+			CveID:         cveID,
+			LatestVersion: "2",
 		}, sql.BatchUpsertCveParams{
 			CveID:    cveID,
 			CveTitle: "Title for " + cveID,
 			CveDesc:  "description for " + cveID,
 			CveLink:  "https://example.com/" + cveID,
 			Severity: int32(severity),
+			Refs:     map[string]string{},
 		}
 }
 

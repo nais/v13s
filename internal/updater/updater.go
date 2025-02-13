@@ -242,13 +242,15 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 			CveDesc:  f.Cve.Description,
 			CveLink:  f.Cve.Link,
 			Severity: f.Cve.Severity.ToInt32(),
+			Refs:     f.Cve.References,
 		})
 		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName: name,
-			ImageTag:  tag,
-			Package:   f.Package,
-			CveID:     f.Cve.Id,
-			Source:    u.source.Name(),
+			ImageName:     name,
+			ImageTag:      tag,
+			Package:       f.Package,
+			CveID:         f.Cve.Id,
+			Source:        u.source.Name(),
+			LatestVersion: f.LatestVersion,
 		})
 	}
 

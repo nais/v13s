@@ -56,12 +56,14 @@ type Cve struct {
 	Title       string
 	Link        string
 	Severity    Severity
+	References  map[string]string
 }
 
 type Vulnerability struct {
-	Package    string
-	Suppressed bool
-	Cve        *Cve
+	Package       string
+	Suppressed    bool
+	Cve           *Cve
+	LatestVersion string
 }
 
 type VulnerabilitySummary struct {

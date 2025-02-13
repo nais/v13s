@@ -318,12 +318,14 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 			Suppressed:        &row.Suppressed,
 			SuppressedReason:  &suppressReasonStr,
 			SuppressedDetails: row.ReasonText,
+			LatestVersion:     row.LatestVersion,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
 				Description: row.CveDesc,
 				Link:        row.CveLink,
 				Severity:    severity,
+				References:  row.Refs,
 			},
 		}
 	})

@@ -34,6 +34,11 @@ sql:
               import: "github.com/nais/v13s/internal/database/typeext"
               package: "typeext"
               type: "MapStringString"
+          - column: "cve.refs"
+            go_type:
+              import: "github.com/nais/v13s/internal/database/typeext"
+              package: "typeext"
+              type: "MapStringString"
 #
 #  - <<: *default_domain
 #    name: "Service accounts SQL"

@@ -24,15 +24,6 @@ type dependencyTrackClient struct {
 	auth   auth.Auth
 }
 
-type Vulnerability struct {
-	UUID         string `json:"uuid"`
-	VulnId       string `json:"vulnId"`
-	Severity     string `json:"severity"`
-	SeverityRank int    `json:"severityRank"`
-	Source       string `json:"source"`
-	Title        string `json:"title"`
-}
-
 func NewClient(url string, team auth.Team, username auth.Username, password auth.Password) (Client, error) {
 	if url == "" {
 		return nil, fmt.Errorf("NewClient: URL cannot be empty")

@@ -82,14 +82,15 @@ CREATE TABLE vulnerability_summary
 -- TODO: consider adding a type for severity
 CREATE TABLE vulnerabilities
 (
-    id         UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
-    image_name TEXT                                               NOT NULL,
-    image_tag  TEXT                                               NOT NULL,
-    package    TEXT                                               NOT NULL,
-    cve_id     TEXT                                               NOT NULL,
-    source     TEXT                                               NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    id             UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
+    image_name     TEXT                                               NOT NULL,
+    image_tag      TEXT                                               NOT NULL,
+    package        TEXT                                               NOT NULL,
+    cve_id         TEXT                                               NOT NULL,
+    source         TEXT                                               NOT NULL,
+    latest_version TEXT                                               NOT NULL,
+    created_at     TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
     CONSTRAINT image_name_tag_cve_id_package UNIQUE (image_name, image_tag, cve_id, package)
 )
 ;
@@ -120,6 +121,7 @@ CREATE TABLE cve
     cve_desc   TEXT                                               NOT NULL,
     cve_link   TEXT                                               NOT NULL,
     severity   INT                                                NOT NULL,
+    refs       JSONB                                              NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL
 )

@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 const countVulnerabilities = `-- name: CountVulnerabilities :one
@@ -128,7 +129,7 @@ func (q *Queries) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg 
 }
 
 const getCve = `-- name: GetCve :one
-SELECT cve_id, cve_title, cve_desc, cve_link, severity, created_at, updated_at
+SELECT cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at
 FROM cve
 WHERE cve_id = $1
 `
@@ -142,6 +143,7 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.CveDesc,
 		&i.CveLink,
 		&i.Severity,
+		&i.Refs,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -180,7 +182,7 @@ func (q *Queries) GetSuppressedVulnerability(ctx context.Context, arg GetSuppres
 }
 
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cve_id, source, created_at, updated_at
+SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at
 FROM vulnerabilities
 WHERE image_name = $1
   AND image_tag = $2
@@ -210,6 +212,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.Package,
 		&i.CveID,
 		&i.Source,
+		&i.LatestVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -387,12 +390,14 @@ SELECT v.image_name,
        v.image_tag,
        v.package,
        v.cve_id,
+       v.latest_version,
        v.created_at,
        v.updated_at,
        c.cve_title,
        c.cve_desc,
        c.cve_link,
        c.severity,
+       c.refs,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
        sv.reason_text
@@ -418,19 +423,21 @@ type ListVulnerabilitiesForImageParams struct {
 }
 
 type ListVulnerabilitiesForImageRow struct {
-	ImageName  string
-	ImageTag   string
-	Package    string
-	CveID      string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
-	CveTitle   string
-	CveDesc    string
-	CveLink    string
-	Severity   int32
-	Suppressed bool
-	Reason     NullVulnerabilitySuppressReason
-	ReasonText *string
+	ImageName     string
+	ImageTag      string
+	Package       string
+	CveID         string
+	LatestVersion string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	Refs          typeext.MapStringString
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
@@ -453,12 +460,14 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.ImageTag,
 			&i.Package,
 			&i.CveID,
+			&i.LatestVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CveTitle,
 			&i.CveDesc,
 			&i.CveLink,
 			&i.Severity,
+			&i.Refs,
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,

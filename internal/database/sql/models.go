@@ -153,6 +153,7 @@ type Cve struct {
 	CveDesc   string
 	CveLink   string
 	Severity  int32
+	Refs      typeext.MapStringString
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }
@@ -179,14 +180,15 @@ type SuppressedVulnerability struct {
 }
 
 type Vulnerability struct {
-	ID        pgtype.UUID
-	ImageName string
-	ImageTag  string
-	Package   string
-	CveID     string
-	Source    string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID            pgtype.UUID
+	ImageName     string
+	ImageTag      string
+	Package       string
+	CveID         string
+	Source        string
+	LatestVersion string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }
 
 type VulnerabilitySummary struct {

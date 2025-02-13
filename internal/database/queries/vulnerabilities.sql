@@ -3,13 +3,15 @@ INSERT INTO vulnerabilities(image_name,
                             image_tag,
                             package,
                             cve_id,
-                            source)
+                            source,
+                            latest_version)
 
 VALUES (@image_name,
         @image_tag,
         @package,
         @cve_id,
-        @source)
+        @source,
+        @latest_version)
 ON CONFLICT DO NOTHING
 ;
 
@@ -18,18 +20,21 @@ INSERT INTO cve(cve_id,
                 cve_title,
                 cve_desc,
                 cve_link,
-                severity)
+                severity,
+                refs)
 VALUES (@cve_id,
         @cve_title,
         @cve_desc,
         @cve_link,
-        @severity)
+        @severity,
+        @refs)
 ON CONFLICT (cve_id)
     DO UPDATE
     SET cve_title = @cve_title,
         cve_desc  = @cve_desc,
         cve_link  = @cve_link,
-        severity  = @severity
+        severity  = @severity,
+        refs      = @refs
 ;
 
 -- name: GetCve :one
@@ -99,12 +104,14 @@ SELECT v.image_name,
        v.image_tag,
        v.package,
        v.cve_id,
+       v.latest_version,
        v.created_at,
        v.updated_at,
        c.cve_title,
        c.cve_desc,
        c.cve_link,
        c.severity,
+       c.refs,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
        sv.reason_text

@@ -100,32 +100,65 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 		severity = SeverityUnassigned
 	}
 
+	var vulnId string
+	if vulnData["vulnId"] != nil {
+		vulnId = vulnData["vulnId"].(string)
+	}
+
 	var link string
 	switch vulnData["source"].(string) {
 	case "NVD":
-		link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vulnData["vulnId"].(string))
+		link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vulnId)
 	case "GITHUB":
-		link = fmt.Sprintf("https://github.com/advisories/%s", vulnData["vulnId"].(string))
+		link = fmt.Sprintf("https://github.com/advisories/%s", vulnId)
+	case "UBUNTU":
+		link = fmt.Sprintf("https://ubuntu.com/security/CVE-%s", vulnId)
 	}
 
 	suppressed := analysis["isSuppressed"].(bool)
-	title := "unknown"
+	title := ""
 	desc := "unknown"
+
 	if vulnData["title"] != nil {
 		title = vulnData["title"].(string)
+		if title == "" {
+			title = vulnData["cweName"].(string)
+		}
 	}
+
 	if vulnData["description"] != nil {
 		desc = vulnData["description"].(string)
 	}
+
+	purl := ""
+	if component["purl"] != nil {
+		purl = component["purl"].(string)
+	}
+
+	componentLatestVersion := ""
+	if component["latestVersion"] != nil {
+		componentLatestVersion = component["latestVersion"].(string)
+	}
+
+	references := map[string]string{}
+	if vulnData["aliases"] != nil {
+		aliases := vulnData["aliases"].([]map[string]interface{})
+		for _, alias := range aliases {
+			references[alias["cveId"].(string)] = alias["ghsaId"].(string)
+		}
+	}
+
 	return &Vulnerability{
-		Package:    component["purl"].(string),
-		Suppressed: suppressed,
+		Package:       purl,
+		Suppressed:    suppressed,
+		LatestVersion: componentLatestVersion,
 		Cve: &Cve{
-			Id:          vulnData["vulnId"].(string),
+			Id:          vulnId,
 			Description: desc,
 			Title:       title,
 			Link:        link,
-			Severity:    Severity(severity),
+			Severity:    severity,
+			References:  references,
 		},
 	}, nil
 }
