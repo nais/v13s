@@ -246,12 +246,14 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 				CveDesc:  cve.CveDesc,
 				CveLink:  cve.CveLink,
 				Severity: cve.Severity,
+				Refs:     map[string]string{},
 			})
 			vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
-				ImageName: v.ImageName,
-				ImageTag:  v.ImageTag,
-				Package:   v.Package,
-				CveID:     v.CveID,
+				ImageName:     v.ImageName,
+				ImageTag:      v.ImageTag,
+				Package:       v.Package,
+				CveID:         v.CveID,
+				LatestVersion: "2",
 			})
 		}
 
