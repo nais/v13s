@@ -58,22 +58,27 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 }
 
 const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
+WITH filtered_workloads AS (
+    SELECT w.id, w.image_name, w.image_tag
+    FROM workloads w
+    WHERE
+        ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
+      AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
+      AND ($3::TEXT IS NULL OR w.workload_type = $3::TEXT)
+      AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+)
 SELECT
-    CAST(COUNT(w.id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN fw.id END) AS INT4) AS workload_with_sbom,
     CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical_vulnerabilities,
     CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high_vulnerabilities,
     CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium_vulnerabilities,
     CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low_vulnerabilities,
     CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned_vulnerabilities,
     CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS total_risk_score
-FROM workloads w
+FROM filtered_workloads fw
          LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
-WHERE
-    (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
-  AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
-  AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.workload_type = $3::TEXT ELSE TRUE END)
-  AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.name = $4::TEXT ELSE TRUE END)
+                   ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag
 `
 
 type GetVulnerabilitySummaryParams struct {
@@ -85,6 +90,7 @@ type GetVulnerabilitySummaryParams struct {
 
 type GetVulnerabilitySummaryRow struct {
 	WorkloadCount             int32
+	WorkloadWithSbom          int32
 	CriticalVulnerabilities   int32
 	HighVulnerabilities       int32
 	MediumVulnerabilities     int32
@@ -103,6 +109,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 	var i GetVulnerabilitySummaryRow
 	err := row.Scan(
 		&i.WorkloadCount,
+		&i.WorkloadWithSbom,
 		&i.CriticalVulnerabilities,
 		&i.HighVulnerabilities,
 		&i.MediumVulnerabilities,

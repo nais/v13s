@@ -173,21 +173,31 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		return nil, err
 	}
 
-	summary := &vulnerabilities.Summary{}
-	if sum != nil {
-		summary.Critical = sum.CriticalVulnerabilities
-		summary.High = sum.HighVulnerabilities
-		summary.Medium = sum.MediumVulnerabilities
-		summary.Low = sum.LowVulnerabilities
-		summary.Unassigned = sum.UnassignedVulnerabilities
-		summary.RiskScore = sum.TotalRiskScore
-		summary.HasSbom = true
+	if sum == nil {
+		sum = &sql.GetVulnerabilitySummaryRow{}
+	}
+
+	summary := &vulnerabilities.Summary{
+		Critical:   sum.CriticalVulnerabilities,
+		High:       sum.HighVulnerabilities,
+		Medium:     sum.MediumVulnerabilities,
+		Low:        sum.LowVulnerabilities,
+		Unassigned: sum.UnassignedVulnerabilities,
+		RiskScore:  sum.TotalRiskScore,
+		HasSbom:    true,
+	}
+
+	var coverage float32
+	if sum.WorkloadCount > 0 && sum.WorkloadWithSbom > 0 {
+		coverage = float32(sum.WorkloadWithSbom) / float32(sum.WorkloadCount) * 100
 	}
 
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               request.Filter,
 		VulnerabilitySummary: summary,
 		WorkloadCount:        sum.WorkloadCount,
+		SbomCount:            sum.WorkloadWithSbom,
+		Coverage:             coverage,
 	}
 	return response, nil
 }

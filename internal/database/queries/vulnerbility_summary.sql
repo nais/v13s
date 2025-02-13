@@ -103,22 +103,27 @@ OFFSET
 ;
 
 -- name: GetVulnerabilitySummary :one
+WITH filtered_workloads AS (
+    SELECT w.id, w.image_name, w.image_tag
+    FROM workloads w
+    WHERE
+        (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
+      AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
+      AND (sqlc.narg('workload_type')::TEXT IS NULL OR w.workload_type = sqlc.narg('workload_type')::TEXT)
+      AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
+)
 SELECT
-    CAST(COUNT(w.id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN fw.id END) AS INT4) AS workload_with_sbom,
     CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical_vulnerabilities,
     CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high_vulnerabilities,
     CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium_vulnerabilities,
     CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low_vulnerabilities,
     CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned_vulnerabilities,
     CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS total_risk_score
-FROM workloads w
+FROM filtered_workloads fw
          LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
-WHERE
-    (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END);
+                   ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag;
 
 -- name: GetVulnerabilitySummaryForImage :one
 SELECT * FROM vulnerability_summary
