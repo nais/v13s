@@ -253,65 +253,49 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 	}
 
 	// TODO: how to handle errors here?
-	_, errors := u.upsertBatchCve(ctx, cveParams)
-	if errors > 0 {
-		return nil, fmt.Errorf("upserting Cves, num errors: %d", errors)
-	}
-
-	_, errors = u.upsertBatchVulnerabilities(ctx, vulnParams)
-	if errors > 0 {
-		return nil, fmt.Errorf("upserting Cves, num errors: %d", errors)
+	errs := u.batchVulns(ctx, vulnParams, cveParams)
+	if len(errs) > 0 {
+		for _, e := range errs {
+			log.Errorf("error upserting vulnerabilities for %s: %v", name, e)
+		}
 	}
 
 	return nil, nil
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) upsertBatchVulnerabilities(ctx context.Context, batch []sql.BatchUpsertVulnerabilitiesParams) (upserted, errors int) {
-	if len(batch) == 0 {
-		return
-	}
-
+func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVulnerabilitiesParams, cveParams []sql.BatchUpsertCveParams) []error {
 	start := time.Now()
-	var batchErr error
-
-	u.db.BatchUpsertVulnerabilities(ctx, batch).Exec(func(i int, err error) {
+	errs := make([]error, 0)
+	numErrs := 0
+	u.db.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) {
 		if err != nil {
-			batchErr = err
-			errors++
+			errs = append(errs, err)
+			numErrs++
+		}
+	})
+	upserted := len(cveParams) - numErrs
+	log.WithFields(log.Fields{
+		"duration":   time.Since(start),
+		"num_rows":   upserted,
+		"num_errors": numErrs,
+	}).Infof("upserted batch of CVEs")
+
+	start = time.Now()
+	numErrs = 0
+	u.db.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) {
+		if err != nil {
+			errs = append(errs, err)
+			numErrs++
 		}
 	})
 
-	upserted += len(batch) - errors
-	log.WithError(batchErr).WithFields(log.Fields{
+	upserted = len(cveParams) - numErrs
+	log.WithFields(log.Fields{
 		"duration":   time.Since(start),
 		"num_rows":   upserted,
-		"num_errors": errors,
+		"num_errors": numErrs,
 	}).Infof("upserted batch of vulnerabilities")
-	return
-}
 
-// TODO: use transactions to ensure consistency
-func (u *Updater) upsertBatchCve(ctx context.Context, batch []sql.BatchUpsertCveParams) (upserted, errors int) {
-	if len(batch) == 0 {
-		return
-	}
-
-	start := time.Now()
-	var batchErr error
-
-	u.db.BatchUpsertCve(ctx, batch).Exec(func(i int, err error) {
-		if err != nil {
-			batchErr = err
-			errors++
-		}
-	})
-
-	upserted += len(batch) - errors
-	log.WithError(batchErr).WithFields(log.Fields{
-		"duration":   time.Since(start),
-		"num_rows":   upserted,
-		"num_errors": errors,
-	}).Infof("upserted batch of Cves")
-	return
+	return errs
 }
