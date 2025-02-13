@@ -15,6 +15,7 @@ const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
 	DefaultMarkForResyncInterval        = 60 * 60 // 1 hour
 	DefaultMarkUntrackedInterval        = 3 * time.Minute
+	StatusCodeNotFound                  = "NotFound"
 )
 
 type Updater struct {
@@ -83,8 +84,7 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 		defer cancel()
 		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
-			log.Errorf("processing image %s:%s failed: %v", imageName, imageTag, err)
-
+			log.Errorf("processing image %s:%s failed", imageName, imageTag)
 			if dbErr := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
@@ -97,7 +97,7 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 				ImageTag:   imageTag,
 				StatusCode: "GenericError",
 				Reason:     err.Error(),
-				Source:     "dependencytrack",
+				Source:     u.source.Name(),
 			})
 			if err != nil {
 				log.Errorf("failed to update image sync status: %v", err)
@@ -151,9 +151,9 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 			err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
 				ImageName:  imageName,
 				ImageTag:   imageTag,
-				StatusCode: "NotFound",
+				StatusCode: StatusCodeNotFound,
 				Reason:     "project not found",
-				Source:     "dependencytrack",
+				Source:     u.source.Name(),
 			})
 			if err != nil {
 				log.Errorf("failed to update image sync status: %v", err)
@@ -164,9 +164,9 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 			err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
 				ImageName:  imageName,
 				ImageTag:   imageTag,
-				StatusCode: "NotFound",
+				StatusCode: StatusCodeNotFound,
 				Reason:     "metrics not found",
-				Source:     "dependencytrack",
+				Source:     u.source.Name(),
 			})
 			if err != nil {
 				log.Errorf("failed to update image sync status: %v", err)

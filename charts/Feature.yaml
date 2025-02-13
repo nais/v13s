@@ -24,13 +24,13 @@ values:
     displayName: Authorized service accounts
     computed:
       template: |
-        {{ with $root := . }}
-        - "{{.Management.slsa_verde_service_account}}"
-        - "{{.Management.nais_api_serviceaccount_email }}"
+        - "{{ .Management.slsa_verde_service_account }}"
+        - "{{ .Management.nais_api_serviceaccount_email }}"
         {{- range $cluster := .Envs }}
+        {{- if not (or (eq $cluster.name "dev-fss") (eq $cluster.name "dev-gcp") (eq $cluster.name "prod-gcp") (eq $cluster.name "prod-fss") (eq $cluster.name "ci")) }}
         - "{{ $cluster.slsa_verde_service_account }}"
-        {{- end }}       
-        {{- end}}
+        {{- end }}
+        {{- end }}
     config:
       type: string_array
 

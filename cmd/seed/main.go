@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/v13s/internal/database/typeext"
+	"math"
 	"os"
 	"strings"
 
@@ -131,11 +132,11 @@ func createVulnData(ctx context.Context, db sql.Querier, images []string) {
 		summary := sql.CreateVulnerabilitySummaryParams{
 			ImageName:  image,
 			ImageTag:   "1",
-			Critical:   int32(sumRow.Critical),
-			High:       int32(sumRow.High),
-			Medium:     int32(sumRow.Medium),
-			Low:        int32(sumRow.Low),
-			Unassigned: int32(sumRow.Unassigned),
+			Critical:   safeInt32(sumRow.Critical),
+			High:       safeInt32(sumRow.High),
+			Medium:     safeInt32(sumRow.Medium),
+			Low:        safeInt32(sumRow.Low),
+			Unassigned: safeInt32(sumRow.Unassigned),
 			RiskScore:  sumRow.RiskScore,
 		}
 
@@ -144,7 +145,13 @@ func createVulnData(ctx context.Context, db sql.Querier, images []string) {
 			panic(fmt.Errorf("summary error: %v", err))
 		}
 	}
+}
 
+func safeInt32(value int64) int32 {
+	if value > math.MaxInt32 || value < math.MinInt32 {
+		panic(fmt.Errorf("integer overflow: (%d) is out of int32 range", value))
+	}
+	return int32(value)
 }
 
 func createNaisApiWorkloads(ctx context.Context, db sql.Querier, cluster, namespace string) []string {
@@ -201,6 +208,13 @@ func generateVulnerabilities(chicken int, imageName string, imageTag string) Bat
 
 // createVulnerability generates a predictable vulnerability instance
 func createVulnerability(severity int, cveID string, imageName string, imageTag string) (sql.BatchUpsertVulnerabilitiesParams, sql.BatchUpsertCveParams) {
+	safeInt := func(value int) int32 {
+		if value > math.MaxInt32 || value < math.MinInt32 {
+			panic(fmt.Errorf("integer overflow: (%d) is out of int32 range", value))
+		}
+		return int32(value)
+	}
+
 	return sql.BatchUpsertVulnerabilitiesParams{
 			ImageName:     imageName,
 			ImageTag:      imageTag,
@@ -213,7 +227,7 @@ func createVulnerability(severity int, cveID string, imageName string, imageTag 
 			CveTitle: "Title for " + cveID,
 			CveDesc:  "description for " + cveID,
 			CveLink:  "https://example.com/" + cveID,
-			Severity: int32(severity),
+			Severity: safeInt(severity),
 			Refs:     map[string]string{},
 		}
 }
