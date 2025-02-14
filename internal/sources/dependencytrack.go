@@ -87,66 +87,77 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 	}
 
 	var severity Severity
-	switch vulnData["severity"].(string) {
-	case "CRITICAL":
-		severity = SeverityCritical
-	case "HIGH":
-		severity = SeverityHigh
-	case "MEDIUM":
-		severity = SeverityMedium
-	case "LOW":
-		severity = SeverityLow
-	default:
+	if severityStr, ok := vulnData["severity"].(string); ok {
+		switch severityStr {
+		case "CRITICAL":
+			severity = SeverityCritical
+		case "HIGH":
+			severity = SeverityHigh
+		case "MEDIUM":
+			severity = SeverityMedium
+		case "LOW":
+			severity = SeverityLow
+		default:
+			severity = SeverityUnassigned
+		}
+	} else {
+		// default to unassigned if severity is missing or it is not a known value
 		severity = SeverityUnassigned
 	}
 
 	var vulnId string
-	if vulnData["vulnId"] != nil {
-		vulnId = vulnData["vulnId"].(string)
+	if v, ok := vulnData["vulnId"].(string); ok {
+		vulnId = v
 	}
 
 	var link string
-	switch vulnData["source"].(string) {
-	case "NVD":
-		link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vulnId)
-	case "GITHUB":
-		link = fmt.Sprintf("https://github.com/advisories/%s", vulnId)
-	case "UBUNTU":
-		link = fmt.Sprintf("https://ubuntu.com/security/CVE-%s", vulnId)
-	}
-
-	suppressed := analysis["isSuppressed"].(bool)
-	title := ""
-	desc := "unknown"
-
-	if vulnData["title"] != nil {
-		title = vulnData["title"].(string)
-		if title == "" && vulnData["cweName"] != nil {
-			title = vulnData["cweName"].(string)
+	if source, ok := vulnData["source"].(string); ok {
+		switch source {
+		case "NVD":
+			link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vulnId)
+		case "GITHUB":
+			link = fmt.Sprintf("https://github.com/advisories/%s", vulnId)
+		case "UBUNTU":
+			link = fmt.Sprintf("https://ubuntu.com/security/CVE-%s", vulnId)
 		}
 	}
 
-	if vulnData["description"] != nil {
-		desc = vulnData["description"].(string)
+	suppressed := false
+	if s, ok := analysis["isSuppressed"].(bool); ok {
+		suppressed = s
+	}
+
+	title := ""
+	if t, ok := vulnData["title"].(string); ok && t != "" {
+		title = t
+	} else if cwe, ok := vulnData["cweName"].(string); ok {
+		title = cwe
+	}
+
+	desc := "unknown"
+	if d, ok := vulnData["description"].(string); ok {
+		desc = d
 	}
 
 	purl := ""
-	if component["purl"] != nil {
-		purl = component["purl"].(string)
+	if p, ok := component["purl"].(string); ok {
+		purl = p
 	}
 
 	componentLatestVersion := ""
-	if component["latestVersion"] != nil {
-		componentLatestVersion = component["latestVersion"].(string)
+	if lv, ok := component["latestVersion"].(string); ok {
+		componentLatestVersion = lv
 	}
 
 	references := map[string]string{}
-	if vulnData["aliases"] != nil {
-		aliases := vulnData["aliases"].([]interface{})
+	if aliases, ok := vulnData["aliases"].([]interface{}); ok {
 		for _, a := range aliases {
-			alias := a.(map[string]interface{})
-			if alias["cveId"] != nil && alias["ghsaId"] != nil {
-				references[alias["cveId"].(string)] = alias["ghsaId"].(string)
+			if alias, ok := a.(map[string]interface{}); ok {
+				if cveId, ok := alias["cveId"].(string); ok {
+					if ghsaId, ok := alias["ghsaId"].(string); ok {
+						references[cveId] = ghsaId
+					}
+				}
 			}
 		}
 	}
