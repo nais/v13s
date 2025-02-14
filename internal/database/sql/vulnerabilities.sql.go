@@ -301,8 +301,8 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
            ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY (w.cluster, w.namespace, w.name, v.id) ASC
-LIMIT $9 OFFSET $8
+ORDER BY $8, v.id ASC
+LIMIT $10 OFFSET $9
 `
 
 type ListVulnerabilitiesParams struct {
@@ -313,6 +313,7 @@ type ListVulnerabilitiesParams struct {
 	ImageName         *string
 	ImageTag          *string
 	IncludeSuppressed *bool
+	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
 }
@@ -346,6 +347,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
+		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
 	)

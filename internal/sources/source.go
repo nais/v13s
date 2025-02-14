@@ -31,15 +31,15 @@ type Severity string
 func (s Severity) ToInt32() int32 {
 	switch s {
 	case SeverityCritical:
-		return 5
+		return 0
 	case SeverityHigh:
-		return 4
-	case SeverityMedium:
-		return 3
-	case SeverityLow:
-		return 2
-	case SeverityUnassigned:
 		return 1
+	case SeverityMedium:
+		return 2
+	case SeverityLow:
+		return 3
+	case SeverityUnassigned:
+		return 4
 	}
 	return -1
 }

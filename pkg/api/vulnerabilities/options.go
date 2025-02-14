@@ -10,6 +10,8 @@ type Option interface {
 	apply(*options)
 }
 
+const DefaultLimit = 50
+
 type options struct {
 	filter      *Filter
 	callOptions []grpc.CallOption
@@ -114,6 +116,9 @@ func applyOptions(opts ...Option) *options {
 	}
 	if o.filter == nil {
 		o.filter = &Filter{}
+	}
+	if o.limit == 0 {
+		o.limit = DefaultLimit
 	}
 	return o
 }

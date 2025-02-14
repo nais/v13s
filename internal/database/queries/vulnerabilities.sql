@@ -180,9 +180,8 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
            ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY (w.cluster, w.namespace, w.name, v.id) ASC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
-;
+ORDER BY sqlc.arg('order_by'), v.id ASC
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: ListSuppressedVulnerabilitiesForImage :many
 SELECT *

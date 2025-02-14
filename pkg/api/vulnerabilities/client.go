@@ -13,7 +13,7 @@ type Client interface {
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
-	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, includeSuppressed bool) (*ListVulnerabilitiesForImageResponse, error)
+	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
 	management.ManagementClient
 }
@@ -26,12 +26,15 @@ type client struct {
 	conn *grpc.ClientConn
 }
 
-func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, includeSuppressed bool) (*ListVulnerabilitiesForImageResponse, error) {
+func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error) {
+	o := applyOptions(opts...)
 	return c.c.ListVulnerabilitiesForImage(ctx, &ListVulnerabilitiesForImageRequest{
 		ImageName:         imageName,
 		ImageTag:          imageTag,
-		IncludeSuppressed: includeSuppressed,
-	})
+		IncludeSuppressed: o.suppressed,
+		Limit:             o.limit,
+		Offset:            o.offset,
+	}, o.callOptions...)
 }
 
 func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error) {

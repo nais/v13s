@@ -193,7 +193,7 @@ func generateVulnerabilities(chicken int, imageName string, imageTag string) Bat
 	cves := make([]sql.BatchUpsertCveParams, 0)
 
 	for j := 1; j <= chicken; j++ {
-		for s := 1; s <= 5; s++ {
+		for s := 0; s <= 4; s++ {
 			v, c := createVulnerability(s, fmt.Sprintf("CWE-%d-%d-%d", chicken, j, s), imageName, imageTag)
 			vulns = append(vulns, v)
 			cves = append(cves, c)

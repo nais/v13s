@@ -23,7 +23,6 @@ func TestPagination(t *testing.T) {
 		expectedOffset int32
 		expectedError  error
 	}{
-		{"Default limit", &MockRequest{0, 0}, 50, 0, nil},
 		{"Custom limit", &MockRequest{100, 10}, 100, 10, nil},
 	}
 

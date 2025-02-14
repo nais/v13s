@@ -11,10 +11,6 @@ type Paginatable interface {
 
 func Pagination(r Paginatable) (limit int32, offset int32, err error) {
 	limit = r.GetLimit()
-	if limit == 0 {
-		limit = 50
-	}
-
 	return limit, r.GetOffset(), nil
 }
 

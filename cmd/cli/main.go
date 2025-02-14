@@ -20,8 +20,8 @@ import (
 )
 
 func main() {
-	//url := "localhost:50051"
-	url := "vulnerabilities.nav.cloud.nais.io"
+	url := "localhost:50051"
+	//url := "vulnerabilities.nav.cloud.nais.io"
 	ctx := context.Background()
 	c, err := createClient(url, ctx)
 	if err != nil {
@@ -45,12 +45,21 @@ func main() {
 						Name:    "image",
 						Aliases: []string{"v"},
 						Usage:   "list vulnerabilities for image",
+						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:        "limit",
+								Aliases:     []string{"l"},
+								Value:       30,
+								Usage:       "limit number of results",
+								Destination: &limit,
+							},
+						},
 						Action: func(ctx context.Context, cmd *cli.Command) error {
 							if cmd.Args().Len() == 0 {
 								return fmt.Errorf("missing image name")
 							}
 							parts := strings.Split(cmd.Args().First(), ":")
-							resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], false)
+							resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], vulnerabilities.Limit(int32(limit)))
 							if err != nil {
 								return err
 							}

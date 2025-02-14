@@ -95,6 +95,24 @@ message ListVulnerabilitiesRequest {
   optional bool suppressed = 2;
   int32 limit = 3;
   int32 offset = 4;
+  optional OrderBy order_by = 5;
+}
+
+enum Direction {
+  ASC = 0;
+  DESC = 1;
+}
+
+enum OrderByField {
+  SEVERITY = 0;
+  CLUSTER = 1;
+  NAMESPACE = 2;
+  WORKLOAD = 3;
+}
+
+message OrderBy {
+  OrderByField field = 1;
+  Direction direction = 2;
 }
 
 message ListVulnerabilitiesResponse {

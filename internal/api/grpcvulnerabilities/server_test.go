@@ -48,6 +48,17 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		assert.Equal(t, 96, len(resp.Nodes))
 	})
 
+	t.Run("list vulnerabilities for every cluster with default limit", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(
+			ctx,
+		)
+		assert.NoError(t, err)
+		// equals all rows in vulnerabilities table in db
+		// 24 workloads * 4 vulns per workload = 96
+		// returns first 50 rows because of default limit
+		assert.Equal(t, 50, len(resp.Nodes))
+	})
+
 	t.Run("list all vulnerabilities for cluster-1", func(t *testing.T) {
 		resp, err := client.ListVulnerabilities(
 			ctx,

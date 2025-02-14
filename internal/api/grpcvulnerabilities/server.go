@@ -45,6 +45,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		ImageName:         request.Filter.ImageName,
 		ImageTag:          request.Filter.ImageTag,
 		IncludeSuppressed: request.Suppressed,
+		OrderBy:           sanitizeOrderBy(request.OrderBy),
 		Limit:             limit,
 		Offset:            offset,
 	})
@@ -53,20 +54,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
-		severity := vulnerabilities.Severity_UNASSIGNED
 
-		switch row.Severity {
-		case 1:
-			severity = vulnerabilities.Severity_UNASSIGNED
-		case 2:
-			severity = vulnerabilities.Severity_LOW
-		case 3:
-			severity = vulnerabilities.Severity_MEDIUM
-		case 4:
-			severity = vulnerabilities.Severity_HIGH
-		case 5:
-			severity = vulnerabilities.Severity_CRITICAL
-		}
 		return &vulnerabilities.Finding{
 			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
@@ -84,7 +72,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 					Title:       row.CveTitle,
 					Description: row.CveDesc,
 					Link:        row.CveLink,
-					Severity:    severity,
+					Severity:    vulnerabilities.Severity(row.Severity),
 				},
 			},
 		}
@@ -112,6 +100,33 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		Nodes:    vulnz,
 		PageInfo: pageInfo,
 	}, nil
+}
+
+func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy) string {
+	if orderBy == nil {
+		orderBy = &vulnerabilities.OrderBy{
+			Field:     vulnerabilities.OrderByField_SEVERITY,
+			Direction: vulnerabilities.Direction_ASC,
+		}
+	}
+
+	direction := map[vulnerabilities.Direction]string{
+		vulnerabilities.Direction_ASC:  "ASC",
+		vulnerabilities.Direction_DESC: "DESC",
+	}[orderBy.Direction]
+
+	validFields := map[vulnerabilities.OrderByField]bool{
+		vulnerabilities.OrderByField_SEVERITY:  true,
+		vulnerabilities.OrderByField_CLUSTER:   true,
+		vulnerabilities.OrderByField_NAMESPACE: true,
+		vulnerabilities.OrderByField_WORKLOAD:  true,
+	}
+
+	field := "severity" // Default field
+	if validFields[orderBy.Field] {
+		field = strings.ToLower(orderBy.Field.String())
+	}
+	return fmt.Sprintf("(%s, cluster, namespace, workload) %s", field, direction)
 }
 
 // TODO: do we want image_name and image_tag as filter aswell? must update sql query
@@ -305,20 +320,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
-		severity := vulnerabilities.Severity_UNASSIGNED
-
-		switch row.Severity {
-		case 1:
-			severity = vulnerabilities.Severity_UNASSIGNED
-		case 2:
-			severity = vulnerabilities.Severity_LOW
-		case 3:
-			severity = vulnerabilities.Severity_MEDIUM
-		case 4:
-			severity = vulnerabilities.Severity_HIGH
-		case 5:
-			severity = vulnerabilities.Severity_CRITICAL
-		}
 
 		suppressReason := row.Reason.VulnerabilitySuppressReason
 		if !suppressReason.Valid() {
@@ -338,7 +339,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 				Title:       row.CveTitle,
 				Description: row.CveDesc,
 				Link:        row.CveLink,
-				Severity:    severity,
+				Severity:    vulnerabilities.Severity(row.Severity),
 				References:  row.Refs,
 			},
 		}
