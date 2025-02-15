@@ -161,12 +161,12 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Type:      row.WorkloadType,
 			},
 			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    *row.Critical,
-				High:        *row.High,
-				Medium:      *row.Medium,
-				Low:         *row.Low,
-				Unassigned:  *row.Unassigned,
-				RiskScore:   *row.RiskScore,
+				Critical:    safeInt(row.Critical),
+				High:        safeInt(row.High),
+				Medium:      safeInt(row.Medium),
+				Low:         safeInt(row.Low),
+				Unassigned:  safeInt(row.Unassigned),
+				RiskScore:   safeInt(row.RiskScore),
 				LastUpdated: timestamppb.New(row.VulnerabilityUpdatedAt.Time),
 			},
 		}
@@ -182,6 +182,13 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		PageInfo:          pageInfo,
 	}
 	return response, nil
+}
+
+func safeInt(val *int32) int32 {
+	if val == nil {
+		return 0
+	}
+	return *val
 }
 
 // TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
@@ -292,6 +299,9 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
+	fmt.Println("limit", limit)
+	fmt.Println("offset", offset)
+
 	vulnz, err := s.db.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
 		ImageName:         request.GetImageName(),
 		ImageTag:          request.GetImageTag(),
@@ -314,6 +324,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, fmt.Errorf("failed to count vulnerabilities for image: %w", err)
 	}
 
+	fmt.Println("total", total)
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
 		return nil, err

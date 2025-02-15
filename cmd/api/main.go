@@ -29,15 +29,15 @@ import (
 )
 
 type config struct {
-	ListenAddr               string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	DependencytrackUrl       string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
-	DependencytrackTeam      string        `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
-	DependencytrackUsername  string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
-	DependencytrackPassword  string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
-	DatabaseUrl              string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval           time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
-	RequiredAudience         string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
-	AutorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
+	ListenAddr                string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	DependencytrackUrl        string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
+	DependencytrackTeam       string        `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
+	DependencytrackUsername   string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
+	DependencytrackPassword   string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
+	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
+	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
+	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
+	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
 }
 
 // handle env vars better
@@ -109,7 +109,7 @@ func main() {
 
 func createGrpcServer(parentCtx context.Context, cfg config, db sql.Querier, u *updater.Updater) *grpc.Server {
 	serverOpts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AutorizedServiceAccounts)),
+		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts)),
 	}
 	grpcServer := grpc.NewServer(serverOpts...)
 
