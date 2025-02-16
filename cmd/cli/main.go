@@ -212,13 +212,14 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		tbl := table.New("workload", "Image", "Cluster", "Namespace", "Sbom", "Critical", "High", "Medium", "Low", "Unassigned")
+		tbl := table.New("Workload", "Cluster", "Namespace", "Sbom", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.WorkloadSummaries {
 			tbl.AddRow(
 				n.Workload.GetName(),
-				n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
+				// kills the layout
+				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
 				n.GetVulnerabilitySummary().GetHasSbom(),
@@ -227,6 +228,7 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 				n.GetVulnerabilitySummary().GetMedium(),
 				n.GetVulnerabilitySummary().GetLow(),
 				n.GetVulnerabilitySummary().GetUnassigned(),
+				n.GetVulnerabilitySummary().GetRiskScore(),
 			)
 		}
 

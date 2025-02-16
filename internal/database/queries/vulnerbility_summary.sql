@@ -84,7 +84,8 @@ SELECT
     w.created_at AS workload_created_at,
     w.updated_at AS workload_updated_at,
     v.created_at AS vulnerability_created_at,
-    v.updated_at AS vulnerability_updated_at
+    v.updated_at AS vulnerability_updated_at,
+    CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
 FROM workloads w
          LEFT JOIN vulnerability_summary v
                    ON w.image_name = v.image_name AND w.image_tag = v.image_tag

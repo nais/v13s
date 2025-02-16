@@ -170,6 +170,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Unassigned:  safeInt(row.Unassigned),
 				RiskScore:   safeInt(row.RiskScore),
 				LastUpdated: timestamppb.New(row.VulnerabilityUpdatedAt.Time),
+				HasSbom:     row.HasSbom,
 			},
 		}
 	})
