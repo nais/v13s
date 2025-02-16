@@ -96,7 +96,7 @@ WHERE
   AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_name')::TEXT is not null THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
-ORDER BY (v.critical, v.risk_score, w.updated_at) DESC
+ORDER BY v.critical DESC NULLS LAST, v.risk_score DESC NULLS LAST, w.updated_at DESC
 LIMIT
     sqlc.arg('limit')
 OFFSET
