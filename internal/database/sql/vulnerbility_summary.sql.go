@@ -234,7 +234,7 @@ WHERE
   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
   AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
-ORDER BY w.updated_at DESC
+ORDER BY (v.critical, v.risk_score, w.updated_at) DESC
 LIMIT
     $8
 OFFSET

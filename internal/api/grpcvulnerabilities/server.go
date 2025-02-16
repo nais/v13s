@@ -159,6 +159,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
 			},
 			VulnerabilitySummary: &vulnerabilities.Summary{
 				Critical:    safeInt(row.Critical),
@@ -299,9 +301,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	fmt.Println("limit", limit)
-	fmt.Println("offset", offset)
-
 	vulnz, err := s.db.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
 		ImageName:         request.GetImageName(),
 		ImageTag:          request.GetImageTag(),
@@ -324,7 +323,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, fmt.Errorf("failed to count vulnerabilities for image: %w", err)
 	}
 
-	fmt.Println("total", total)
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
 		return nil, err
