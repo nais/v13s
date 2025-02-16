@@ -77,6 +77,9 @@ func main() {
 								return fmt.Errorf("missing image name")
 							}
 							parts := strings.Split(cmd.Args().First(), ":")
+							if len(parts) != 2 {
+								return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+							}
 							resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], vulnerabilities.Limit(int32(limit)))
 							if err != nil {
 								return err
@@ -268,7 +271,11 @@ func listVulnz(ctx context.Context, c vulnerabilities.Client, limit int, filters
 		limit = 30
 	}
 	for {
-		filters = append(filters, vulnerabilities.Limit(int32(limit)), vulnerabilities.Offset(int32(offset)))
+		filters = append(
+			filters,
+			vulnerabilities.Limit(int32(limit)),
+			vulnerabilities.Offset(int32(offset)),
+		)
 		start := time.Now()
 		resp, err := c.ListVulnerabilities(ctx, filters...)
 		if err != nil {
@@ -288,8 +295,8 @@ func listVulnz(ctx context.Context, c vulnerabilities.Client, limit int, filters
 			image := fmt.Sprintf(".../%s:%s", parts[len(parts)-1], w.ImageTag)
 			tbl.AddRow(
 				v.GetPackage(),
-				v.Cve.Id,
-				v.Cve.Severity,
+				v.GetCve().GetId(),
+				v.GetCve().GetSeverity(),
 				image,
 				w.Name,
 				w.Type,

@@ -106,27 +106,28 @@ func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy) string {
 	if orderBy == nil {
 		orderBy = &vulnerabilities.OrderBy{
 			Field:     vulnerabilities.OrderByField_SEVERITY,
-			Direction: vulnerabilities.Direction_ASC,
+			Direction: vulnerabilities.Direction_DESC,
 		}
 	}
 
-	direction := map[vulnerabilities.Direction]string{
-		vulnerabilities.Direction_ASC:  "ASC",
-		vulnerabilities.Direction_DESC: "DESC",
-	}[orderBy.Direction]
-
-	validFields := map[vulnerabilities.OrderByField]bool{
-		vulnerabilities.OrderByField_SEVERITY:  true,
-		vulnerabilities.OrderByField_CLUSTER:   true,
-		vulnerabilities.OrderByField_NAMESPACE: true,
-		vulnerabilities.OrderByField_WORKLOAD:  true,
+	fieldMap := map[vulnerabilities.OrderByField]string{
+		vulnerabilities.OrderByField_SEVERITY:  "severity",
+		vulnerabilities.OrderByField_CLUSTER:   "cluster",
+		vulnerabilities.OrderByField_NAMESPACE: "namespace",
+		vulnerabilities.OrderByField_WORKLOAD:  "workload",
 	}
 
-	field := "severity" // Default field
-	if validFields[orderBy.Field] {
-		field = strings.ToLower(orderBy.Field.String())
+	field, exists := fieldMap[orderBy.Field]
+	if !exists {
+		field = "severity"
 	}
-	return fmt.Sprintf("(%s, cluster, namespace, workload) %s", field, direction)
+
+	direction := "ASC"
+	if orderBy.Direction == vulnerabilities.Direction_DESC {
+		direction = "DESC"
+	}
+
+	return fmt.Sprintf("%s %s, cluster ASC, namespace ASC, workload ASC", field, direction)
 }
 
 // TODO: do we want image_name and image_tag as filter aswell? must update sql query
