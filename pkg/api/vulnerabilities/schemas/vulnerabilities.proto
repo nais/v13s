@@ -39,8 +39,20 @@ service Vulnerabilities {
   // Used on image details page in console, could also include summary and list of vulnerabilities
   // TODO: implement the commented out rpcs
   //rpc GetImageVulnerabilityDetails()
-  //rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
+
+  rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
 }
+
+message Filter {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+  optional string image_name = 5;
+  optional string image_tag = 6;
+}
+
+
 
 message ListVulnerabilitiesForImageRequest {
   string image_name = 1;
@@ -65,20 +77,6 @@ message GetVulnerabilitySummaryForImageResponse {
   repeated Workload workloadRef = 2;
 }
 
-message Filter {
-  optional string cluster = 1;
-  optional string namespace = 2;
-  optional string workload = 3;
-  optional string workload_type = 4;
-  optional string image_name = 5;
-  optional string image_tag = 6;
-}
-
-message WorkloadSummary {
-  Workload workload = 1;
-  Summary vulnerability_summary = 2;
-}
-
 message ListVulnerabilitySummariesRequest {
   Filter filter = 1;
   int32 limit = 2;
@@ -90,12 +88,47 @@ message ListVulnerabilitySummariesResponse {
   PageInfo page_info = 2;
 }
 
+message WorkloadSummary {
+  Workload workload = 1;
+  Summary vulnerability_summary = 2;
+}
+
 message ListVulnerabilitiesRequest {
   Filter filter = 1;
   optional bool suppressed = 2;
   int32 limit = 3;
   int32 offset = 4;
   optional OrderBy order_by = 5;
+}
+
+message ListVulnerabilitiesResponse {
+  Filter filter = 1;
+  repeated Finding nodes = 2;
+  PageInfo page_info = 3;
+}
+
+message SuppressVulnerabilityRequest {
+  string cve_id = 1;
+  string workload_cluster = 2;
+  string workload_namespace = 3;
+  string workload_name = 4;
+  string workload_type = 5;
+  string image_name = 6;
+  string image_tag = 7;
+  string SuppressState = 8;
+  string reason = 9;
+  string suppressed_by = 10;
+}
+
+message SuppressVulnerabilityResponse {
+  string cve_id = 1;
+  string workload_cluster = 2;
+  string workload_namespace = 3;
+  string workload_name = 4;
+  string workload_type = 5;
+  string image_name = 6;
+  string image_tag = 7;
+  string reason = 8;
 }
 
 enum Direction {
@@ -115,14 +148,16 @@ message OrderBy {
   Direction direction = 2;
 }
 
-message ListVulnerabilitiesResponse {
-  Filter filter = 1;
-  repeated Finding nodes = 2;
-  PageInfo page_info = 3;
-}
-
 message GetVulnerabilitySummaryRequest {
   Filter filter = 1;
+}
+
+message GetVulnerabilitySummaryResponse {
+  Filter filter = 1;
+  optional Summary vulnerability_summary = 2;
+  int32 sbom_count = 3;
+  int32 workload_count = 4;
+  float coverage = 5;
 }
 
 message Summary {
@@ -134,14 +169,6 @@ message Summary {
   int32 riskScore = 6;
   bool hasSbom = 7;
   optional google.protobuf.Timestamp last_updated = 8;
-}
-
-message GetVulnerabilitySummaryResponse {
-  Filter filter = 1;
-  optional Summary vulnerability_summary = 2;
-  int32 sbom_count = 3;
-  int32 workload_count = 4;
-  float coverage = 5;
 }
 
 message Workload {

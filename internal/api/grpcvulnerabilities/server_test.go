@@ -194,7 +194,7 @@ func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) 
 // startGrpcServer initializes an in-memory gRPC server
 func startGrpcServer(db sql.Querier) (*grpc.Server, vulnerabilities.Client, func()) {
 	lis := bufconn.Listen(1024 * 1024)
-	server := grpcvulnerabilities.NewServer(db)
+	server := grpcvulnerabilities.NewServer(db, nil)
 	grpcServer := grpc.NewServer()
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, server)
 

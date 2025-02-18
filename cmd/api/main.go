@@ -6,11 +6,12 @@ import (
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/logger"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
-	"google.golang.org/grpc/grpclog"
+	"github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"os/signal"
@@ -20,12 +21,17 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 
 	"github.com/nais/v13s/internal/database"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"google.golang.org/grpc"
+)
+
+const (
+	exitCodeSuccess = iota
+	exitCodeLoggerError
+	exitCodeRunError
 )
 
 type config struct {
@@ -38,10 +44,17 @@ type config struct {
 	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
 	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
+	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
+	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
 }
 
 // handle env vars better
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	log := logrus.StandardLogger()
+
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("No .env file found")
@@ -50,22 +63,28 @@ func main() {
 	var c config
 	err = envconfig.Process("V13S", &c)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.WithError(err).Errorf("error when processing configuration")
 	}
 
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stderr))
+	appLogger := setupLogger(log, c.LogFormat, c.LogLevel)
+	err = run(ctx, c, appLogger)
+	if err != nil {
+		appLogger.WithError(err).Errorf("error in run()")
+		os.Exit(exitCodeRunError)
+	}
 
+	os.Exit(exitCodeSuccess)
+}
+
+func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 	listener, err := net.Listen("tcp", c.ListenAddr)
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.WithError(err).Fatalf("Failed to listen on %s", c.ListenAddr)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	log.Info("Initializing database")
 
-	pool, err := database.New(ctx, c.DatabaseUrl, log.WithField("component", "database"))
+	pool, err := database.New(ctx, c.DatabaseUrl, log.WithField("subsystem", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
@@ -83,11 +102,11 @@ func main() {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	source := sources.NewDependencytrackSource(dpClient)
-	u := updater.NewUpdater(db, source, c.UpdateInterval)
+	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
+	u := updater.NewUpdater(db, source, c.UpdateInterval, log.WithField("subsystem", "updater"))
 	u.Run(ctx)
 
-	grpcServer := createGrpcServer(ctx, c, db, u)
+	grpcServer := createGrpcServer(ctx, c, db, u, log)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -105,16 +124,27 @@ func main() {
 	}
 
 	grpcServer.GracefulStop()
+	return nil
 }
 
-func createGrpcServer(parentCtx context.Context, cfg config, db sql.Querier, u *updater.Updater) *grpc.Server {
+func setupLogger(log *logrus.Logger, logFormat, logLevel string) logrus.FieldLogger {
+	appLogger, err := logger.New(logFormat, logLevel)
+	if err != nil {
+		log.WithError(err).Errorf("error when creating application logger")
+		os.Exit(exitCodeLoggerError)
+	}
+
+	return appLogger
+}
+
+func createGrpcServer(parentCtx context.Context, cfg config, db sql.Querier, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
 	serverOpts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts)),
+		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, field.WithField("subsystem", "auth"))),
 	}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db))
-	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, db, u))
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db, field.WithField("subsystem", "vulnerabilities")))
+	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, db, u, field.WithField("subsystem", "management")))
 
 	return grpcServer
 }

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -23,41 +24,47 @@ type Updater struct {
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	updateInterval               time.Duration
+	log                          *logrus.Entry
 }
 
-func NewUpdater(db sql.Querier, source sources.Source, updateInterval time.Duration) *Updater {
+func NewUpdater(db sql.Querier, source sources.Source, updateInterval time.Duration, log *log.Entry) *Updater {
+	if log == nil {
+		log = logrus.NewEntry(logrus.StandardLogger())
+	}
+
 	return &Updater{
 		db:                           db,
 		source:                       source,
 		resyncImagesOlderThanMinutes: DefaultResyncImagesOlderThanMinutes,
 		updateInterval:               updateInterval,
+		log:                          log,
 	}
 }
 
 // TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
-	go runAtInterval(ctx, u.updateInterval, "mark and resync images", func() {
+	go runAtInterval(ctx, u.updateInterval, "mark and resync images", u.log, func() {
 		if err := u.MarkForResync(ctx); err != nil {
-			log.WithError(err).Error("Failed to mark images for resync")
+			u.log.WithError(err).Error("Failed to mark images for resync")
 			return
 		}
-		log.Info("resyncing images")
+		u.log.Info("resyncing images")
 		if err := u.ResyncImages(ctx); err != nil {
-			log.WithError(err).Error("Failed to resync images")
+			u.log.WithError(err).Error("Failed to resync images")
 		}
 	})
 
-	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", func() {
+	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
 		if err := u.db.MarkImagesAsUntracked(ctx, []sql.ImageState{
 			sql.ImageStateResync,
 			sql.ImageStateInitialized,
 		}); err != nil {
-			log.WithError(err).Error("Failed to mark images as untracked")
+			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
 }
 
-func runAtInterval(ctx context.Context, interval time.Duration, name string, job func()) {
+func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -80,17 +87,17 @@ func runAtInterval(ctx context.Context, interval time.Duration, name string, job
 // TODO: use transactions to ensure consistency
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 	go func() {
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
-			log.Errorf("processing image %s:%s failed", imageName, imageTag)
+			u.log.Errorf("processing image %s:%s failed", imageName, imageTag)
 			if dbErr := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
 			}); dbErr != nil {
-				log.Errorf("failed to update image state to failed: %v", dbErr)
+				u.log.Errorf("failed to update image state to failed: %v", dbErr)
 			}
 			err := u.db.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
 				ImageName:  imageName,
@@ -100,7 +107,7 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 				Source:     u.source.Name(),
 			})
 			if err != nil {
-				log.Errorf("failed to update image sync status: %v", err)
+				u.log.Errorf("failed to update image sync status: %v", err)
 			}
 		}
 	}()
@@ -156,7 +163,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 				Source:     u.source.Name(),
 			})
 			if err != nil {
-				log.Errorf("failed to update image sync status: %v", err)
+				u.log.Errorf("failed to update image sync status: %v", err)
 			}
 			return nil
 		}
@@ -169,7 +176,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 				Source:     u.source.Name(),
 			})
 			if err != nil {
-				log.Errorf("failed to update image sync status: %v", err)
+				u.log.Errorf("failed to update image sync status: %v", err)
 			}
 			return nil
 		}
@@ -212,7 +219,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 
 func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, imageName string) error {
 	suppressed, err := u.db.ListSuppressedVulnerabilitiesForImage(ctx, sql.ListSuppressedVulnerabilitiesForImageParams{
-		ImageName: "test",
+		ImageName: imageName,
 	})
 	if err != nil {
 		return err
@@ -220,7 +227,7 @@ func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, imageNa
 
 	for _, s := range suppressed {
 		//invoke dependencytrack api and suppress
-		log.Infof("checking if suppressed vulnerability %v is still suppressed", s)
+		u.log.Infof("checking if suppressed vulnerability %v is still suppressed", s)
 	}
 	return nil
 }
@@ -255,10 +262,10 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 	}
 
 	// TODO: how to handle errors here?
-	errs := u.batchVulns(ctx, vulnParams, cveParams)
+	errs := u.batchVulns(ctx, vulnParams, cveParams, name)
 	if len(errs) > 0 {
 		for _, e := range errs {
-			log.Errorf("error upserting vulnerabilities for %s: %v", name, e)
+			u.log.Errorf("error upserting vulnerabilities for %s: %v", name, e)
 		}
 		return nil, fmt.Errorf("upserting vulnerabilities, num errors: %d", len(errs))
 	}
@@ -267,7 +274,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVulnerabilitiesParams, cveParams []sql.BatchUpsertCveParams) []error {
+func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVulnerabilitiesParams, cveParams []sql.BatchUpsertCveParams, name string) []error {
 	start := time.Now()
 	errs := make([]error, 0)
 	numErrs := 0
@@ -278,11 +285,12 @@ func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVu
 		}
 	})
 	upserted := len(cveParams) - numErrs
-	log.WithFields(log.Fields{
+	u.log.WithFields(log.Fields{
 		"duration":   time.Since(start),
 		"num_rows":   upserted,
 		"num_errors": numErrs,
-	}).Infof("upserted batch of CVEs")
+		"image":      name,
+	}).Debug("upserted batch of CVEs")
 
 	start = time.Now()
 	numErrs = 0
@@ -294,11 +302,12 @@ func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVu
 	})
 
 	upserted = len(cveParams) - numErrs
-	log.WithFields(log.Fields{
+	u.log.WithFields(log.Fields{
 		"duration":   time.Since(start),
 		"num_rows":   upserted,
 		"num_errors": numErrs,
-	}).Infof("upserted batch of vulnerabilities")
+		"image":      name,
+	}).Debug("upserted batch of vulnerabilities")
 
 	return errs
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"github.com/sirupsen/logrus"
 )
 
 var _ management.ManagementServer = (*Server)(nil)
@@ -14,13 +15,15 @@ type Server struct {
 	db        sql.Querier
 	updater   *updater.Updater
 	parentCtx context.Context
+	log       *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, db sql.Querier, updater *updater.Updater) *Server {
+func NewServer(parentCtx context.Context, db sql.Querier, updater *updater.Updater, field *logrus.Entry) *Server {
 	return &Server{
 		parentCtx: parentCtx,
 		db:        db,
 		updater:   updater,
+		log:       field,
 	}
 }
 

@@ -3,7 +3,6 @@ package auth
 import (
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"context"
-	"fmt"
 	"github.com/nais/v13s/internal/collections"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -21,12 +20,14 @@ var (
 type googleIDTokenValidator struct {
 	audience                  string
 	authorizedServiceAccounts []string
+	log                       *log.Entry
 }
 
-func TokenInterceptor(audience string, authorizedServiceAccounts []string) grpc.UnaryServerInterceptor {
+func TokenInterceptor(audience string, authorizedServiceAccounts []string, field *log.Entry) grpc.UnaryServerInterceptor {
 	g := &googleIDTokenValidator{
 		audience:                  audience,
 		authorizedServiceAccounts: authorizedServiceAccounts,
+		log:                       field,
 	}
 	return g.ensureValidToken
 }
@@ -49,26 +50,37 @@ func (g *googleIDTokenValidator) ensureValidToken(ctx context.Context, req any, 
 
 func (g *googleIDTokenValidator) valid(ctx context.Context, authorization []string) error {
 	if len(authorization) < 1 {
+		g.log.Warn("Missing authorization token")
 		return ErrMissingToken
 	}
-	token := strings.TrimPrefix(authorization[0], "Bearer ")
 
+	token := strings.TrimPrefix(authorization[0], "Bearer ")
 	payload, err := idtoken.Validate(ctx, token, g.audience)
 	if err != nil {
-		log.Errorf("Failed to validate token: %v", err)
+		g.log.Errorf("failed to validate token: %v", err)
 		return status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
-	fmt.Printf("payload: %v\n", payload)
 
-	if !collections.AnyMatch(g.authorizedServiceAccounts, func(s string) bool {
+	email, ok := payload.Claims["email"].(string)
+	if !ok {
+		g.log.Error("missing or invalid email claim in token")
+		return status.Errorf(codes.Unauthenticated, "invalid token payload")
+	}
+
+	g.log.Debugf("token validated successfully for email: %s", email)
+
+	authorized := collections.AnyMatch(g.authorizedServiceAccounts, func(s string) bool {
 		if !strings.HasSuffix(s, ".iam.gserviceaccount.com") {
 			s = s + ".iam.gserviceaccount.com"
 		}
-		return s == payload.Claims["email"]
-	}) {
+		return s == email
+	})
+
+	if !authorized {
+		g.log.Warnf("unauthorized service account: %s", email)
 		return status.Errorf(codes.PermissionDenied, "unauthorized service account")
 	}
 
-	log.Debugf("Valid token for service account: %s", payload.Claims["email"])
+	g.log.Debugf("valid token for authorized service account: %s", email)
 	return nil
 }

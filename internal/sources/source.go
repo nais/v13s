@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 	"github.com/nais/v13s/internal/dependencytrack"
+	"github.com/sirupsen/logrus"
 )
 
 type Source interface {
@@ -13,8 +14,12 @@ type Source interface {
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 }
 
-func NewDependencytrackSource(client dependencytrack.Client) Source {
-	return &dependencytrackSource{client: client}
+func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
+	if log == nil {
+		log = logrus.NewEntry(logrus.StandardLogger())
+	}
+
+	return &dependencytrackSource{client: client, log: log}
 }
 
 type Workload struct {

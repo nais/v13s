@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nais/v13s/internal/dependencytrack"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -15,6 +16,7 @@ const DependencytrackSourceName = "dependencytrack"
 
 type dependencytrackSource struct {
 	client dependencytrack.Client
+	log    *logrus.Entry
 }
 
 func (d *dependencytrackSource) Name() string {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
-
 	"google.golang.org/grpc"
 )
 
@@ -15,6 +14,7 @@ type Client interface {
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
+	SuppressVulnerability(ctx context.Context, imageName, imageTag, cveId, suppressState, reason, suppressedBy string, opts ...Option) error
 	management.ManagementClient
 }
 
@@ -24,6 +24,23 @@ type client struct {
 	c    VulnerabilitiesClient
 	m    management.ManagementClient
 	conn *grpc.ClientConn
+}
+
+func (c *client) SuppressVulnerability(ctx context.Context, imageName, imageTag, cveId, suppressState, reason, suppressedBy string, opts ...Option) error {
+	//o := applyOptions(opts...)
+	_, err := c.c.SuppressVulnerability(ctx, &SuppressVulnerabilityRequest{
+		SuppressState:     suppressState,
+		CveId:             cveId,
+		WorkloadCluster:   "",
+		WorkloadNamespace: "",
+		WorkloadName:      "",
+		WorkloadType:      "",
+		ImageName:         imageName,
+		ImageTag:          imageTag,
+		Reason:            reason,
+		SuppressedBy:      suppressedBy,
+	})
+	return err
 }
 
 func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error) {

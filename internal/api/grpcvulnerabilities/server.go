@@ -9,6 +9,7 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
 )
@@ -17,12 +18,18 @@ var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
 
 type Server struct {
 	vulnerabilities.UnimplementedVulnerabilitiesServer
-	db sql.Querier
+	db  sql.Querier
+	log logrus.FieldLogger
 }
 
-func NewServer(db sql.Querier) *Server {
+func NewServer(db sql.Querier, field *logrus.Entry) *Server {
+	if field == nil {
+		field = logrus.NewEntry(logrus.StandardLogger())
+	}
+
 	return &Server{
-		db: db,
+		db:  db,
+		log: field,
 	}
 }
 
