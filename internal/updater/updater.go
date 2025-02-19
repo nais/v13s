@@ -108,7 +108,6 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 			}
 
 			err = u.handleSyncError(ctx, imageName, imageTag, SyncErrorStatusCodeGenericError, err)
-
 			if err != nil {
 				u.log.Errorf("failed to update image sync status: %v", err)
 			}
@@ -195,40 +194,33 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 }
 
 func (u *Updater) handleSyncError(ctx context.Context, imageName, imageTag, statusCode string, err error) error {
-	var insertErr error
+	updateSyncParams := sql.UpdateImageSyncStatusParams{
+		ImageName:  imageName,
+		ImageTag:   imageTag,
+		StatusCode: statusCode,
+		Source:     u.source.Name(),
+	}
+
 	switch {
 	case errors.Is(err, sources.ErrNoProject):
-		insertErr = u.queries.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			StatusCode: statusCode,
-			Reason:     fmt.Sprintf("no project found: %s", err.Error()),
-			Source:     u.source.Name(),
-		})
+		updateSyncParams.Reason = "no project found"
 	case errors.Is(err, sources.ErrNoMetrics):
-		insertErr = u.queries.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			StatusCode: statusCode,
-			Reason:     fmt.Sprintf("no metrics found: %s", err.Error()),
-			Source:     u.source.Name(),
-		})
+		updateSyncParams.Reason = "no metrics found"
 	default:
-		err = u.queries.UpdateImageSyncStatus(ctx, sql.UpdateImageSyncStatusParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			StatusCode: statusCode,
-			Reason:     err.Error(),
-			Source:     u.source.Name(),
-		})
-		return nil
+		updateSyncParams.Reason = err.Error()
+		u.log.Errorf("orginal error status: %v", err)
 	}
 
-	if insertErr != nil {
-		u.log.Errorf("failed to update image sync status: %v", err)
+	// Use a new context with a timeout to avoid failing due to an expired parent context
+	newCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if insertErr := u.queries.UpdateImageSyncStatus(newCtx, updateSyncParams); insertErr != nil {
+		u.log.Errorf("failed to update image sync status: %v", insertErr)
+		return fmt.Errorf("updating image sync status: %w", insertErr)
 	}
 
-	return fmt.Errorf("getting summary: %w", err)
+	return nil
 }
 
 func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, imageName string) error {
