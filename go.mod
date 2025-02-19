@@ -22,7 +22,6 @@ require (
 	github.com/urfave/cli/v3 v3.0.0-beta1
 	github.com/vektra/mockery/v2 v2.52.2
 	golang.org/x/oauth2 v0.26.0
-	golang.org/x/sync v0.11.0
 	google.golang.org/api v0.221.0
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.5
@@ -156,6 +155,7 @@ require (
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect

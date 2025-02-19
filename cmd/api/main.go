@@ -94,7 +94,7 @@ func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 		c.DependencytrackTeam,
 		c.DependencytrackUsername,
 		c.DependencytrackPassword,
-		log.WithField("dependencytrack", "client"),
+		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)

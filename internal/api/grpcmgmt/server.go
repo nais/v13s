@@ -7,7 +7,6 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 )
 
 var _ management.ManagementServer = (*Server)(nil)
@@ -35,28 +34,24 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		metadata = request.Metadata.Labels
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	if err := s.querier.CreateImage(ctx, sql.CreateImageParams{
+		Name:     request.ImageName,
+		Tag:      request.ImageTag,
+		Metadata: metadata,
+	}); err != nil {
+		s.log.WithError(err).Error("Failed to create image")
+		return nil, err
+	}
 
-	g.Go(func() error {
-		return s.querier.CreateImage(ctx, sql.CreateImageParams{
-			Name:     request.ImageName,
-			Tag:      request.ImageTag,
-			Metadata: metadata,
-		})
-	})
-
-	g.Go(func() error {
-		return s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
-			Name:         request.Workload,
-			WorkloadType: request.WorkloadType,
-			Namespace:    request.Namespace,
-			Cluster:      request.Cluster,
-			ImageName:    request.ImageName,
-			ImageTag:     request.ImageTag,
-		})
-	})
-
-	if err := g.Wait(); err != nil {
+	if err := s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         request.Workload,
+		WorkloadType: request.WorkloadType,
+		Namespace:    request.Namespace,
+		Cluster:      request.Cluster,
+		ImageName:    request.ImageName,
+		ImageTag:     request.ImageTag,
+	}); err != nil {
+		s.log.WithError(err).Error("Failed to upsert workload")
 		return nil, err
 	}
 

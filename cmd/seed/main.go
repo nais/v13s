@@ -51,7 +51,7 @@ func seedFromDependencyTrack(ctx context.Context, db sql.Querier) {
 		os.Getenv("V13S_DEPENDENCYTRACK_TEAM"),
 		os.Getenv("V13S_DEPENDENCYTRACK_USERNAME"),
 		os.Getenv("V13S_DEPENDENCYTRACK_PASSWORD"),
-		log.WithField("dependencytrack", "client"),
+		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {
 		panic(err)
