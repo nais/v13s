@@ -7,6 +7,7 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var _ management.ManagementServer = (*Server)(nil)
@@ -28,34 +29,34 @@ func NewServer(parentCtx context.Context, pool *pgxpool.Pool, updater *updater.U
 	}
 }
 
-// TODO: consider doing some of the updates async with go routines and return a response immediately
 func (s *Server) RegisterWorkload(ctx context.Context, request *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
 	metadata := map[string]string{}
 	if request.Metadata != nil {
 		metadata = request.Metadata.Labels
 	}
 
-	err := s.querier.CreateImage(ctx, sql.CreateImageParams{
-		Name:     request.ImageName,
-		Tag:      request.ImageTag,
-		Metadata: metadata,
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return s.querier.CreateImage(ctx, sql.CreateImageParams{
+			Name:     request.ImageName,
+			Tag:      request.ImageTag,
+			Metadata: metadata,
+		})
 	})
 
-	if err != nil {
-		return nil, err
-	}
+	g.Go(func() error {
+		return s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         request.Workload,
+			WorkloadType: request.WorkloadType,
+			Namespace:    request.Namespace,
+			Cluster:      request.Cluster,
+			ImageName:    request.ImageName,
+			ImageTag:     request.ImageTag,
+		})
+	})
 
-	w := sql.UpsertWorkloadParams{
-		Name:         request.Workload,
-		WorkloadType: request.WorkloadType,
-		Namespace:    request.Namespace,
-		Cluster:      request.Cluster,
-		ImageName:    request.ImageName,
-		ImageTag:     request.ImageTag,
-	}
-
-	err = s.querier.UpsertWorkload(ctx, w)
-	if err != nil {
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 

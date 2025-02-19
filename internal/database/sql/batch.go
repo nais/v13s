@@ -30,11 +30,14 @@ VALUES ($1,
         $6)
 ON CONFLICT (cve_id)
     DO UPDATE
-    SET cve_title = $2,
-        cve_desc  = $3,
-        cve_link  = $4,
-        severity  = $5,
-        refs      = $6
+    SET cve_title = EXCLUDED.cve_title,
+        cve_desc  = EXCLUDED.cve_desc,
+        cve_link  = EXCLUDED.cve_link,
+        severity  = EXCLUDED.severity,
+        refs      = EXCLUDED.refs
+WHERE (cve.cve_title, cve.cve_desc, cve.cve_link, cve.severity, cve.refs)
+        IS DISTINCT FROM
+        (EXCLUDED.cve_title, EXCLUDED.cve_desc, EXCLUDED.cve_link, EXCLUDED.severity, EXCLUDED.refs)
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -97,14 +100,16 @@ INSERT INTO vulnerabilities(image_name,
                             cve_id,
                             source,
                             latest_version)
-
 VALUES ($1,
         $2,
         $3,
         $4,
         $5,
         $6)
-ON CONFLICT DO NOTHING
+ON CONFLICT (image_name, image_tag, package, cve_id)
+DO UPDATE
+    SET latest_version = EXCLUDED.latest_version
+    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
 `
 
 type BatchUpsertVulnerabilitiesBatchResults struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nais/v13s/internal/dependencytrack/auth"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net/url"
 	"strings"
@@ -22,19 +23,21 @@ type Client interface {
 type dependencyTrackClient struct {
 	client *client.APIClient
 	auth   auth.Auth
+	log    *logrus.Entry
 }
 
-func NewClient(url string, team auth.Team, username auth.Username, password auth.Password) (Client, error) {
+func NewClient(url string, team auth.Team, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
 	if url == "" {
 		return nil, fmt.Errorf("NewClient: URL cannot be empty")
 	}
 
 	clientConfig := setupConfig(url)
 	apiClient := client.NewAPIClient(clientConfig)
-	userPasSource := auth.NewUsernamePasswordSource(username, password, apiClient)
+	userPasSource := auth.NewUsernamePasswordSource(username, password, apiClient, log)
 	return &dependencyTrackClient{
 		client: apiClient,
-		auth:   auth.NewApiKeySource(team, userPasSource, apiClient),
+		auth:   auth.NewApiKeySource(team, userPasSource, apiClient, log),
+		log:    log,
 	}, nil
 }
 

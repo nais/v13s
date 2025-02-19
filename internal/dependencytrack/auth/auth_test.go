@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -29,7 +30,7 @@ func TestUsernamePasswordSource_ContextHeaders(t *testing.T) {
 	mockUserAPI.On("ValidateCredentialsExecute", mock.Anything).Return(
 		string(token), nil, nil).Once()
 
-	authSource := NewUsernamePasswordSource("user", "password", mockClient)
+	authSource := NewUsernamePasswordSource("user", "password", mockClient, nil)
 
 	ctx := context.Background()
 	bearerCtx, err := authSource.ContextHeaders(ctx)
@@ -59,7 +60,7 @@ func TestApiKeySource_ContextHeaders(t *testing.T) {
 	mockUserAPI.On("ValidateCredentialsExecute", mock.Anything).Return(
 		string(token), nil, nil).Once()
 
-	authSource := NewUsernamePasswordSource("user", "password", mockClient)
+	authSource := NewUsernamePasswordSource("user", "password", mockClient, logrus.NewEntry(logrus.New()))
 
 	mockTeamAPI.On("GetTeams", mock.Anything).Return(client.ApiGetTeamsRequest{
 		ApiService: mockTeamAPI,
@@ -76,7 +77,7 @@ func TestApiKeySource_ContextHeaders(t *testing.T) {
 		nil,
 	).Once()
 
-	apiSource := NewApiKeySource("teamName", authSource, mockClient)
+	apiSource := NewApiKeySource("teamName", authSource, mockClient, logrus.NewEntry(logrus.New()))
 
 	ctx := context.Background()
 	teamsCtx, err := apiSource.ContextHeaders(ctx)

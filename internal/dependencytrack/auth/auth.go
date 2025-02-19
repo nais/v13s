@@ -33,13 +33,15 @@ type usernamePasswordSource struct {
 	accessToken string
 	lock        sync.Mutex
 	client      *client.APIClient
+	log         *logrus.Entry
 }
 
-func NewUsernamePasswordSource(username Username, password Password, c *client.APIClient) Auth {
+func NewUsernamePasswordSource(username Username, password Password, c *client.APIClient, log *logrus.Entry) Auth {
 	return &usernamePasswordSource{
 		username: username,
 		password: password,
 		client:   c,
+		log:      log,
 	}
 }
 
@@ -77,7 +79,7 @@ func (c *usernamePasswordSource) login(ctx context.Context) (string, error) {
 		Password(c.password).
 		Execute()
 	if err != nil {
-		logrus.Printf("fail: %v", resp)
+		c.log.Errorf("failed to validate credentials: %v", resp)
 		return "", fmt.Errorf("failed to validate credentials: %w", err)
 	}
 
@@ -100,13 +102,15 @@ type apiKeySource struct {
 	source   Auth
 	client   *client.APIClient
 	lock     sync.Mutex
+	log      *logrus.Entry
 }
 
-func NewApiKeySource(team Team, u Auth, c *client.APIClient) Auth {
+func NewApiKeySource(team Team, u Auth, c *client.APIClient, log *logrus.Entry) Auth {
 	return &apiKeySource{
 		team:   team,
 		source: u,
 		client: c,
+		log:    log,
 	}
 }
 
@@ -124,7 +128,7 @@ func (c *apiKeySource) refreshApiKey(ctx context.Context) (string, error) {
 	defer c.lock.Unlock()
 
 	if c.apiKey == "" {
-		logrus.Debug("Fetching API key")
+		c.log.Info("API key refreshed")
 		key, err := c.getApiKey(ctx)
 		if err != nil {
 			return "", err

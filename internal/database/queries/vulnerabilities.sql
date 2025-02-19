@@ -5,15 +5,16 @@ INSERT INTO vulnerabilities(image_name,
                             cve_id,
                             source,
                             latest_version)
-
 VALUES (@image_name,
         @image_tag,
         @package,
         @cve_id,
         @source,
         @latest_version)
-ON CONFLICT DO NOTHING
-;
+ON CONFLICT (image_name, image_tag, package, cve_id)
+DO UPDATE
+    SET latest_version = EXCLUDED.latest_version
+    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version;
 
 -- name: BatchUpsertCve :batchexec
 INSERT INTO cve(cve_id,
@@ -30,12 +31,15 @@ VALUES (@cve_id,
         @refs)
 ON CONFLICT (cve_id)
     DO UPDATE
-    SET cve_title = @cve_title,
-        cve_desc  = @cve_desc,
-        cve_link  = @cve_link,
-        severity  = @severity,
-        refs      = @refs
-;
+    SET cve_title = EXCLUDED.cve_title,
+        cve_desc  = EXCLUDED.cve_desc,
+        cve_link  = EXCLUDED.cve_link,
+        severity  = EXCLUDED.severity,
+        refs      = EXCLUDED.refs
+WHERE (cve.cve_title, cve.cve_desc, cve.cve_link, cve.severity, cve.refs)
+        IS DISTINCT FROM
+        (EXCLUDED.cve_title, EXCLUDED.cve_desc, EXCLUDED.cve_link, EXCLUDED.severity, EXCLUDED.refs);
+
 
 -- name: GetCve :one
 SELECT *
