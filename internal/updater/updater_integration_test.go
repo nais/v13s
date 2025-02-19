@@ -29,7 +29,7 @@ func TestUpdater(t *testing.T) {
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
 	updateInterval := 200 * time.Millisecond
-	u := updater.NewUpdater(db, sources.NewDependencytrackSource(dpTrack, nil), updateInterval, nil)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, nil), updateInterval, nil)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))

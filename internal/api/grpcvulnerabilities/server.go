@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -18,18 +19,18 @@ var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
 
 type Server struct {
 	vulnerabilities.UnimplementedVulnerabilitiesServer
-	db  sql.Querier
-	log logrus.FieldLogger
+	querier sql.Querier
+	log     logrus.FieldLogger
 }
 
-func NewServer(db sql.Querier, field *logrus.Entry) *Server {
+func NewServer(pool *pgxpool.Pool, field *logrus.Entry) *Server {
 	if field == nil {
 		field = logrus.NewEntry(logrus.StandardLogger())
 	}
 
 	return &Server{
-		db:  db,
-		log: field,
+		querier: sql.New(pool),
+		log:     field,
 	}
 }
 
@@ -44,7 +45,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	v, err := s.db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.Filter.Cluster,
 		Namespace:         request.Filter.Namespace,
 		WorkloadType:      request.Filter.WorkloadType,
@@ -85,7 +86,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		}
 	})
 
-	total, err := s.db.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
+	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
 		Cluster:           request.Filter.Cluster,
 		Namespace:         request.Filter.Namespace,
 		WorkloadType:      request.Filter.WorkloadType,
@@ -148,7 +149,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	summaries, err := s.db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
+	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:      request.Filter.Cluster,
 		Namespace:    request.Filter.Namespace,
 		WorkloadType: request.Filter.WorkloadType,
@@ -209,7 +210,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	sum, err := s.db.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
+	sum, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:      request.Filter.Cluster,
 		Namespace:    request.Filter.Namespace,
 		WorkloadType: request.Filter.WorkloadType,
@@ -250,7 +251,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 }
 
 func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryForImageRequest) (*vulnerabilities.GetVulnerabilitySummaryForImageResponse, error) {
-	summary, err := s.db.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
+	summary, err := s.querier.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
@@ -264,7 +265,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 	}
-	workloads, err := s.db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
@@ -310,7 +311,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	vulnz, err := s.db.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
+	vulnz, err := s.querier.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
 		ImageName:         request.GetImageName(),
 		ImageTag:          request.GetImageTag(),
 		IncludeSuppressed: &request.IncludeSuppressed,
@@ -322,7 +323,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
 
-	total, err := s.db.CountVulnerabilitiesForImage(ctx, sql.CountVulnerabilitiesForImageParams{
+	total, err := s.querier.CountVulnerabilitiesForImage(ctx, sql.CountVulnerabilitiesForImageParams{
 		ImageName:         request.GetImageName(),
 		ImageTag:          request.GetImageTag(),
 		IncludeSuppressed: &request.IncludeSuppressed,

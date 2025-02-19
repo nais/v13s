@@ -55,7 +55,7 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 	}, nil
 }
 
-func (d *dependencytrackSource) GetVulnerabilites(ctx context.Context, id string, includeSuppressed bool) ([]*Vulnerability, error) {
+func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, id string, includeSuppressed bool) ([]*Vulnerability, error) {
 	findings, err := d.client.GetFindings(ctx, id, includeSuppressed)
 	if err != nil {
 		return nil, err

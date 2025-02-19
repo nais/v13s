@@ -2,6 +2,7 @@ package grpcmgmt
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -12,16 +13,16 @@ var _ management.ManagementServer = (*Server)(nil)
 
 type Server struct {
 	management.UnimplementedManagementServer
-	db        sql.Querier
+	querier   sql.Querier
 	updater   *updater.Updater
 	parentCtx context.Context
 	log       *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, db sql.Querier, updater *updater.Updater, field *logrus.Entry) *Server {
+func NewServer(parentCtx context.Context, pool *pgxpool.Pool, updater *updater.Updater, field *logrus.Entry) *Server {
 	return &Server{
 		parentCtx: parentCtx,
-		db:        db,
+		querier:   sql.New(pool),
 		updater:   updater,
 		log:       field,
 	}
@@ -34,7 +35,7 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		metadata = request.Metadata.Labels
 	}
 
-	err := s.db.CreateImage(ctx, sql.CreateImageParams{
+	err := s.querier.CreateImage(ctx, sql.CreateImageParams{
 		Name:     request.ImageName,
 		Tag:      request.ImageTag,
 		Metadata: metadata,
@@ -53,7 +54,7 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		ImageTag:     request.ImageTag,
 	}
 
-	err = s.db.UpsertWorkload(ctx, w)
+	err = s.querier.UpsertWorkload(ctx, w)
 	if err != nil {
 		return nil, err
 	}

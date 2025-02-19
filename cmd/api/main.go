@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
@@ -17,8 +18,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/nais/v13s/internal/database/sql"
 
 	"github.com/nais/v13s/internal/database"
 
@@ -90,8 +89,6 @@ func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 	}
 	defer pool.Close()
 
-	db := sql.New(pool)
-
 	dpClient, err := dependencytrack.NewClient(
 		c.DependencytrackUrl,
 		c.DependencytrackTeam,
@@ -103,10 +100,10 @@ func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 	}
 
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
-	u := updater.NewUpdater(db, source, c.UpdateInterval, log.WithField("subsystem", "updater"))
+	u := updater.NewUpdater(pool, source, c.UpdateInterval, log.WithField("subsystem", "updater"))
 	u.Run(ctx)
 
-	grpcServer := createGrpcServer(ctx, c, db, u, log)
+	grpcServer := createGrpcServer(ctx, c, pool, u, log)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -137,14 +134,14 @@ func setupLogger(log *logrus.Logger, logFormat, logLevel string) logrus.FieldLog
 	return appLogger
 }
 
-func createGrpcServer(parentCtx context.Context, cfg config, db sql.Querier, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
+func createGrpcServer(parentCtx context.Context, cfg config, pool *pgxpool.Pool, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
 	serverOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, field.WithField("subsystem", "auth"))),
 	}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(db, field.WithField("subsystem", "vulnerabilities")))
-	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, db, u, field.WithField("subsystem", "management")))
+	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(pool, field.WithField("subsystem", "vulnerabilities")))
+	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, pool, u, field.WithField("subsystem", "management")))
 
 	return grpcServer
 }

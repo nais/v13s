@@ -4,6 +4,7 @@ package grpcvulnerabilities_test
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -24,7 +25,7 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 	defer pool.Close()
 	db := sql.New(pool)
 
-	_, client, cleanup := startGrpcServer(db)
+	_, client, cleanup := startGrpcServer(pool)
 	defer cleanup()
 
 	err := db.ResetDatabase(ctx)
@@ -192,7 +193,7 @@ func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) 
 }
 
 // startGrpcServer initializes an in-memory gRPC server
-func startGrpcServer(db sql.Querier) (*grpc.Server, vulnerabilities.Client, func()) {
+func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, func()) {
 	lis := bufconn.Listen(1024 * 1024)
 	server := grpcvulnerabilities.NewServer(db, nil)
 	grpcServer := grpc.NewServer()

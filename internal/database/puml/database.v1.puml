@@ -18,6 +18,18 @@ entity images {
     primary_key(name) TEXT
     primary_key(tag) TEXT
     metadata JSONB
+    state ENUM('initialized', 'updated', 'untracked', 'failed', 'resync', 'outdated')
+    created_at TIMESTAMP
+    updated_at TIMESTAMP
+}
+
+entity image_sync_status {
+    primary_key(id) UUID
+    image_name TEXT
+    image_tag TEXT
+    status_code TEXT
+    reason TEXT
+    source TEXT
     created_at TIMESTAMP
     updated_at TIMESTAMP
 }
@@ -41,7 +53,9 @@ entity vulnerabilities {
     image_name TEXT
     image_tag TEXT
     package TEXT
-    cwe_id TEXT
+    cve_id TEXT
+    source TEXT
+    latest_version TEXT
     created_at TIMESTAMP
     updated_at TIMESTAMP
 }
@@ -50,27 +64,44 @@ entity suppressed_vulnerabilities {
     primary_key(id) UUID
     image_name TEXT
     package TEXT
-    cwe_id TEXT
+    cve_id TEXT
     suppressed BOOLEAN
+    reason ENUM('in_triage', 'resolved', 'false_positive', 'not_affected', 'not_set')
+    reason_text TEXT
     created_at TIMESTAMP
     updated_at TIMESTAMP
 }
 
-entity cwe {
-    primary_key(cwe_id) TEXT
-    cwe_title TEXT
-    cwe_desc TEXT
-    cwe_link TEXT
+entity cve {
+    primary_key(cve_id) TEXT
+    cve_title TEXT
+    cve_desc TEXT
+    cve_link TEXT
     severity INT
+    refs JSONB
     created_at TIMESTAMP
     updated_at TIMESTAMP
 }
 
-' Adjusting layout to make it more vertical
+' Adjusting layout for clarity
 workloads ||--|{ images : "uses"
+image_sync_status ||--|| images : "tracks"
 vulnerability_summary ||--|| images : "analyzes"
 vulnerabilities ||--|| images : "scans"
-vulnerabilities }|--|| cwe : "linked to"
-suppressed_vulnerabilities }|--|| cwe : "related to"
+vulnerabilities }|--|| cve : "linked to"
+suppressed_vulnerabilities }|--|| cve : "related to"
+
+note right of workloads
+  UNIQUE (name, workload_type, namespace, cluster)
+end note
+
+note right of vulnerabilities
+  UNIQUE (image_name, image_tag, cve_id, package)
+  FOREIGN KEY (cve_id) REFERENCES cve (ON DELETE CASCADE)
+end note
+
+note right of suppressed_vulnerabilities
+  UNIQUE (image_name, package, cve_id)
+end note
 
 @enduml

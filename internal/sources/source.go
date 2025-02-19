@@ -10,11 +10,11 @@ type Source interface {
 	Name() string
 	SuppressVulnerability(ctx context.Context, vulnerability *Vulnerability) error
 	GetSuppressedVulnerabilitiesForImage(ctx context.Context, image string) ([]*Vulnerability, error)
-	GetVulnerabilites(ctx context.Context, id string, includeSuppressed bool) ([]*Vulnerability, error)
+	GetVulnerabilities(ctx context.Context, id string, includeSuppressed bool) ([]*Vulnerability, error)
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 }
 
-func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
+func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) *dependencytrackSource {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
