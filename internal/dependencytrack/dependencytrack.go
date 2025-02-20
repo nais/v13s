@@ -65,6 +65,9 @@ func (c *dependencyTrackClient) getAPIKeyContext(ctx context.Context) (context.C
 	return apiKeyCtx, nil
 }
 
+// Is this function lacking pagination for all findings in a project or do we not need it?
+// https://github.com/DependencyTrack/dependency-track/issues/3811
+// https://github.com/DependencyTrack/dependency-track/issues/4677
 func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
 	apiKeyCtx, err := c.getAPIKeyContext(ctx)
 	if err != nil {

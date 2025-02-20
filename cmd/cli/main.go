@@ -171,6 +171,58 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:    "get",
+				Aliases: []string{"g"},
+				Usage:   "vulnerability statistics",
+				Commands: []*cli.Command{
+					{
+						Name:    "coverage",
+						Aliases: []string{"c"},
+						Usage:   "get sbom coverage for filter",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:        "env",
+								Aliases:     []string{"e"},
+								Value:       "",
+								Usage:       "cluster name",
+								Destination: &cluster,
+							},
+							&cli.StringFlag{
+								Name:        "team",
+								Aliases:     []string{"t"},
+								Value:       "",
+								Usage:       "team name",
+								Destination: &namespace,
+							},
+						},
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							filters := parseFilters(cmd, cluster, namespace)
+							resp, err := c.GetSbomCoverageSummary(ctx, filters...)
+							if err != nil {
+								return err
+							}
+
+							headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+							columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+							tbl := table.New("Workloads", "SBOM", "No SBOM", "Coverage")
+							tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+							tbl.AddRow(
+								resp.GetWorkloadCount(),
+								resp.GetSbomCount(),
+								resp.GetNoSbomCount(),
+								resp.GetSbomCoveragePercentage(),
+							)
+
+							tbl.Print()
+
+							return nil
+						},
+					},
+				},
+			},
 		},
 	}
 

@@ -15,6 +15,7 @@ type Client interface {
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
 	SuppressVulnerability(ctx context.Context, imageName, imageTag, cveId, suppressState, reason, suppressedBy string, opts ...Option) error
+	GetSbomCoverageSummary(ctx context.Context, opts ...Option) (*GetSbomCoverageSummaryResponse, error)
 	management.ManagementClient
 }
 
@@ -24,6 +25,13 @@ type client struct {
 	c    VulnerabilitiesClient
 	m    management.ManagementClient
 	conn *grpc.ClientConn
+}
+
+func (c *client) GetSbomCoverageSummary(ctx context.Context, opts ...Option) (*GetSbomCoverageSummaryResponse, error) {
+	o := applyOptions(opts...)
+	return c.c.GetSbomCoverageSummary(ctx, &GetSbomCoverageSummaryRequest{
+		Filter: o.filter,
+	})
 }
 
 func (c *client) SuppressVulnerability(ctx context.Context, imageName, imageTag, cveId, suppressState, reason, suppressedBy string, opts ...Option) error {

@@ -41,6 +41,8 @@ service Vulnerabilities {
   //rpc GetImageVulnerabilityDetails()
 
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
+
+  rpc GetSbomCoverageSummary(GetSbomCoverageSummaryRequest) returns (GetSbomCoverageSummaryResponse);
 }
 
 message Filter {
@@ -52,7 +54,17 @@ message Filter {
   optional string image_tag = 6;
 }
 
+message GetSbomCoverageSummaryRequest {
+  Filter filter = 1;
+}
 
+message GetSbomCoverageSummaryResponse {
+  Filter filter = 1;
+  int32 sbom_count = 2;
+  int32 no_sbom_count = 3;
+  int32 workload_count = 4;
+  int32 sbom_coverage_percentage = 5;
+}
 
 message ListVulnerabilitiesForImageRequest {
   string image_name = 1;

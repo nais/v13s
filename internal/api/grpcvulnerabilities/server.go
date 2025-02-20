@@ -41,17 +41,17 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, err
 	}
 
-	if request.Filter == nil {
+	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
 	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
-		Cluster:           request.Filter.Cluster,
-		Namespace:         request.Filter.Namespace,
-		WorkloadType:      request.Filter.WorkloadType,
-		WorkloadName:      request.Filter.Workload,
-		ImageName:         request.Filter.ImageName,
-		ImageTag:          request.Filter.ImageTag,
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadType:      request.GetFilter().WorkloadType,
+		WorkloadName:      request.GetFilter().Workload,
+		ImageName:         request.GetFilter().ImageName,
+		ImageTag:          request.GetFilter().ImageTag,
 		IncludeSuppressed: request.Suppressed,
 		OrderBy:           sanitizeOrderBy(request.OrderBy),
 		Limit:             limit,
@@ -87,10 +87,10 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	})
 
 	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
-		Cluster:           request.Filter.Cluster,
-		Namespace:         request.Filter.Namespace,
-		WorkloadType:      request.Filter.WorkloadType,
-		WorkloadName:      request.Filter.Workload,
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadType:      request.GetFilter().WorkloadType,
+		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.Suppressed,
 	})
 
@@ -104,7 +104,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesResponse{
-		Filter:   request.Filter,
+		Filter:   request.GetFilter(),
 		Nodes:    vulnz,
 		PageInfo: pageInfo,
 	}, nil
@@ -145,15 +145,15 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		return nil, err
 	}
 
-	if request.Filter == nil {
+	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
-		Cluster:      request.Filter.Cluster,
-		Namespace:    request.Filter.Namespace,
-		WorkloadType: request.Filter.WorkloadType,
-		WorkloadName: request.Filter.Workload,
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().WorkloadType,
+		WorkloadName: request.GetFilter().Workload,
 		Limit:        limit,
 		Offset:       offset,
 	})
@@ -206,15 +206,15 @@ func safeInt(val *int32) int32 {
 // TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
-	if request.Filter == nil {
+	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
 	sum, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
-		Cluster:      request.Filter.Cluster,
-		Namespace:    request.Filter.Namespace,
-		WorkloadType: request.Filter.WorkloadType,
-		WorkloadName: request.Filter.Workload,
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().WorkloadType,
+		WorkloadName: request.GetFilter().Workload,
 	})
 
 	if err != nil {
@@ -241,7 +241,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
-		Filter:               request.Filter,
+		Filter:               request.GetFilter(),
 		VulnerabilitySummary: summary,
 		WorkloadCount:        sum.WorkloadCount,
 		SbomCount:            sum.WorkloadWithSbom,
@@ -367,5 +367,26 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
+	}, nil
+}
+
+func (s *Server) GetSbomCoverageSummary(ctx context.Context, request *vulnerabilities.GetSbomCoverageSummaryRequest) (*vulnerabilities.GetSbomCoverageSummaryResponse, error) {
+	arg := sql.GetSbomCoverageSummaryParams{
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().WorkloadType,
+	}
+	summary, err := s.querier.GetSbomCoverageSummary(ctx, arg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sbom coverage summary: %w", err)
+	}
+
+	fmt.Printf("%T\n", summary.SbomCoveragePercentage)
+
+	return &vulnerabilities.GetSbomCoverageSummaryResponse{
+		WorkloadCount:          summary.TotalWorkloads,
+		SbomCount:              summary.SbomCount,
+		NoSbomCount:            summary.NoSbomCount,
+		SbomCoveragePercentage: summary.SbomCoveragePercentage,
 	}, nil
 }

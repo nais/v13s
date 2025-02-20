@@ -18,6 +18,7 @@ type Querier interface {
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
+	GetSbomCoverageSummary(ctx context.Context, arg GetSbomCoverageSummaryParams) (*GetSbomCoverageSummaryRow, error)
 	GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)

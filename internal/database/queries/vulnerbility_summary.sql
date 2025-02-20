@@ -130,3 +130,29 @@ FROM filtered_workloads fw
 SELECT * FROM vulnerability_summary
 WHERE image_name = @image_name
   AND image_tag = @image_tag;
+
+-- name: GetSbomCoverageSummary :one
+SELECT
+    w.cluster,
+    COUNT(CASE WHEN v.image_name IS NOT NULL THEN 1 END)::INT AS sbom_count,
+    COUNT(CASE WHEN v.image_name IS NULL THEN 1 END)::INT AS no_sbom_count,
+    COUNT(*)::INT AS total_workloads,
+        ROUND(
+            CASE
+                WHEN COUNT(*) = 0 THEN 0  -- Prevent division by zero
+                ELSE 100.0 * COUNT(CASE WHEN v.image_name IS NOT NULL THEN 1 END) / COUNT(*)
+                END,
+                2
+            )::INT AS sbom_coverage_percentage
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name
+                       AND w.image_tag = v.image_tag
+WHERE
+    (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+GROUP BY w.cluster
+ORDER BY w.cluster;
+
+
