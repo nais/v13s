@@ -27,7 +27,7 @@ values:
         - "{{ .Management.slsa_verde_service_account }}"
         - "{{ .Management.nais_api_serviceaccount_email }}"
         {{- range $cluster := .Envs }}
-        {{- if not (or (eq $cluster.name "dev-fss") (eq $cluster.name "dev-gcp") (eq $cluster.name "prod-gcp") (eq $cluster.name "prod-fss") (eq $cluster.name "ci-fss")) }}
+        {{- if not (or (eq $cluster.name "dev-gcp") (eq $cluster.name "prod-gcp") (eq $cluster.name "ci-fss")) }}
         - "{{ $cluster.slsa_verde_service_account }}"
         {{- end }}
         {{- end }}
