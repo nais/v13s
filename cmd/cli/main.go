@@ -50,9 +50,16 @@ func main() {
 
 	var cluster string
 	var namespace string
+	var workload string
 	var limit int64
 
 	cmd := &cli.Command{
+		Name:  "v13s",
+		Usage: "vulnerability analysis tool",
+		Description: "v13s is a vulnerability analysis tool that provides insights into vulnerabilities in your workloads." +
+			" It can list vulnerabilities for images, workloads, clusters, and namespaces." +
+			" the tool does not include in the statistics namespaces listed her: " +
+			"https://github.com/nais/slsa-verde/blob/ec79032d569517091f504be4581a11889b91da7d/cmd/slsa-verde/main.go#L245",
 		Commands: []*cli.Command{
 			{
 				Name:    "list",
@@ -73,99 +80,37 @@ func main() {
 							},
 						},
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							if cmd.Args().Len() == 0 {
-								return fmt.Errorf("missing image name")
-							}
-							parts := strings.Split(cmd.Args().First(), ":")
-							if len(parts) != 2 {
-								return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
-							}
-							resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], vulnerabilities.Limit(int32(limit)))
-							if err != nil {
-								return err
-							}
-							headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-							columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-							tbl := table.New("Package", "CVE", "Title", "Severity")
-							tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-							for _, n := range resp.GetNodes() {
-								tbl.AddRow(
-									n.GetPackage(),
-									n.Cve.Id,
-									n.Cve.Title,
-									n.Cve.Severity,
-								)
-							}
-
-							tbl.Print()
-
-							return nil
+							return listVulnerabilities(ctx, cmd, c, limit)
 						},
 					},
 					{
 						Name:    "all",
 						Aliases: []string{"a"},
 						Usage:   "list all vulnerabilities with optional filters",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:        "env",
-								Aliases:     []string{"e"},
-								Value:       "",
-								Usage:       "cluster name",
-								Destination: &cluster,
-							},
-							&cli.StringFlag{
-								Name:        "team",
-								Aliases:     []string{"t"},
-								Value:       "",
-								Usage:       "team name",
-								Destination: &namespace,
-							},
-							&cli.IntFlag{
-								Name:        "limit",
-								Aliases:     []string{"l"},
-								Value:       30,
-								Usage:       "limit number of results",
-								Destination: &limit,
-							},
-						},
+						Flags: append(commonFlags(&cluster, &namespace, &workload), &cli.IntFlag{
+							Name:        "limit",
+							Aliases:     []string{"l"},
+							Value:       30,
+							Usage:       "limit number of results",
+							Destination: &limit,
+						}),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseFilters(cmd, cluster, namespace)
+							filters := parseFilters(cmd, cluster, namespace, workload)
 							return listVulnz(ctx, c, int(limit), filters...)
 						},
-					},
-					{
+					}, {
 						Name:    "summary",
 						Aliases: []string{"s"},
-						Usage:   "list vulnerability summaries",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:        "env",
-								Aliases:     []string{"e"},
-								Value:       "",
-								Usage:       "cluster name",
-								Destination: &cluster,
-							},
-							&cli.StringFlag{
-								Name:        "team",
-								Aliases:     []string{"t"},
-								Value:       "",
-								Usage:       "team name",
-								Destination: &namespace,
-							},
-							&cli.IntFlag{
-								Name:        "limit",
-								Aliases:     []string{"l"},
-								Value:       30,
-								Usage:       "limit number of results",
-								Destination: &limit,
-							},
-						},
+						Usage:   "list vulnerability summary for filter",
+						Flags: append(commonFlags(&cluster, &namespace, &workload), &cli.IntFlag{
+							Name:        "limit",
+							Aliases:     []string{"l"},
+							Value:       30,
+							Usage:       "limit number of results",
+							Destination: &limit,
+						}),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							fmt.Println("list summaries", cmd.Args().First())
-							filters := parseFilters(cmd, cluster, namespace)
+							filters := parseFilters(cmd, cluster, namespace, workload)
 							return listSummaries(ctx, c, int(limit), filters...)
 						},
 					},
@@ -180,45 +125,26 @@ func main() {
 						Name:    "coverage",
 						Aliases: []string{"c"},
 						Usage:   "get sbom coverage for filter",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:        "env",
-								Aliases:     []string{"e"},
-								Value:       "",
-								Usage:       "cluster name",
-								Destination: &cluster,
-							},
-							&cli.StringFlag{
-								Name:        "team",
-								Aliases:     []string{"t"},
-								Value:       "",
-								Usage:       "team name",
-								Destination: &namespace,
-							},
-						},
+						Flags:   commonFlags(&cluster, &namespace, &workload),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseFilters(cmd, cluster, namespace)
-							resp, err := c.GetSbomCoverageSummary(ctx, filters...)
-							if err != nil {
-								return err
-							}
-
-							headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-							columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-							tbl := table.New("Workloads", "SBOM", "No SBOM", "Coverage")
-							tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-							tbl.AddRow(
-								resp.GetWorkloadCount(),
-								resp.GetSbomCount(),
-								resp.GetNoSbomCount(),
-								resp.GetSbomCoveragePercentage(),
-							)
-
-							tbl.Print()
-
-							return nil
+							filters := parseFilters(cmd, cluster, namespace, workload)
+							return coverageSummary(ctx, c, filters)
+						},
+					},
+					{
+						Name:    "summary",
+						Aliases: []string{"s"},
+						Usage:   "get vulnerability summary for filter",
+						Flags: append(commonFlags(&cluster, &namespace, &workload), &cli.IntFlag{
+							Name:        "limit",
+							Aliases:     []string{"l"},
+							Value:       30,
+							Usage:       "limit number of results",
+							Destination: &limit,
+						}),
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							filters := parseFilters(cmd, cluster, namespace, workload)
+							return getSummary(ctx, c, filters)
 						},
 					},
 				},
@@ -231,7 +157,124 @@ func main() {
 	}
 }
 
-func parseFilters(cmd *cli.Command, cluster string, namespace string) []vulnerabilities.Option {
+func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, limit int64) error {
+	if cmd.Args().Len() == 0 {
+		return fmt.Errorf("missing image name")
+	}
+	parts := strings.Split(cmd.Args().First(), ":")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	}
+	start := time.Now()
+	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], vulnerabilities.Limit(int32(limit)))
+	if err != nil {
+		return err
+	}
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("Package", "CVE", "Title", "Severity")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, n := range resp.GetNodes() {
+		tbl.AddRow(
+			n.GetPackage(),
+			n.Cve.Id,
+			n.Cve.Title,
+			n.Cve.Severity,
+		)
+	}
+
+	tbl.Print()
+	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
+
+	return nil
+}
+
+func coverageSummary(ctx context.Context, c vulnerabilities.Client, filters []vulnerabilities.Option) error {
+	start := time.Now()
+	resp, err := c.GetSbomCoverageSummary(ctx, filters...)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("Workloads", "SBOM", "No SBOM", "Coverage")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	tbl.AddRow(
+		resp.GetWorkloadCount(),
+		resp.GetSbomCount(),
+		resp.GetNoSbomCount(),
+		resp.GetSbomCoveragePercentage(),
+	)
+
+	tbl.Print()
+	fmt.Println("\nFetched coverage in", time.Since(start).Seconds(), "seconds")
+
+	return nil
+}
+
+func getSummary(ctx context.Context, c vulnerabilities.Client, filters []vulnerabilities.Option) error {
+	start := time.Now()
+	resp, err := c.GetVulnerabilitySummary(ctx, filters...)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("Workload Count", "SBOM Count", "Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Coverage")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	tbl.AddRow(
+		resp.GetWorkloadCount(),
+		resp.GetSbomCount(),
+		resp.GetVulnerabilitySummary().GetCritical(),
+		resp.GetVulnerabilitySummary().GetHigh(),
+		resp.GetVulnerabilitySummary().GetMedium(),
+		resp.GetVulnerabilitySummary().GetLow(),
+		resp.GetVulnerabilitySummary().GetUnassigned(),
+		resp.GetVulnerabilitySummary().GetRiskScore(),
+		resp.GetCoverage(),
+	)
+
+	tbl.Print()
+	fmt.Println("\nFetched summary in", time.Since(start).Seconds(), "seconds")
+
+	return nil
+}
+
+func commonFlags(cluster, namespace, workload *string) []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:        "env",
+			Aliases:     []string{"e"},
+			Value:       "",
+			Usage:       "cluster name",
+			Destination: cluster,
+		},
+		&cli.StringFlag{
+			Name:        "team",
+			Aliases:     []string{"t"},
+			Value:       "",
+			Usage:       "team name",
+			Destination: namespace,
+		},
+		&cli.StringFlag{
+			Name:        "workload",
+			Aliases:     []string{"w"},
+			Value:       "",
+			Usage:       "workload name",
+			Destination: workload,
+		},
+	}
+}
+
+func parseFilters(cmd *cli.Command, cluster, namespace, workload string) []vulnerabilities.Option {
 	filters := make([]vulnerabilities.Option, 0)
 	if cmd.Args().Len() > 0 {
 		arg := cmd.Args().First()
@@ -247,6 +290,9 @@ func parseFilters(cmd *cli.Command, cluster string, namespace string) []vulnerab
 	}
 	if namespace != "" {
 		filters = append(filters, vulnerabilities.NamespaceFilter(namespace))
+	}
+	if workload != "" {
+		filters = append(filters, vulnerabilities.WorkloadFilter(workload))
 	}
 	return filters
 }
@@ -267,17 +313,16 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		tbl := table.New("Workload", "Cluster", "Namespace", "Sbom", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore")
+		tbl := table.New("Workload", "Cluster", "Namespace", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.WorkloadSummaries {
 			tbl.AddRow(
-				n.Workload.GetName(),
 				// kills the layout
 				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
+				n.Workload.GetName(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
-				n.GetVulnerabilitySummary().GetHasSbom(),
 				n.GetVulnerabilitySummary().GetCritical(),
 				n.GetVulnerabilitySummary().GetHigh(),
 				n.GetVulnerabilitySummary().GetMedium(),

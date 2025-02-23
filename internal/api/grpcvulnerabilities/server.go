@@ -24,10 +24,6 @@ type Server struct {
 }
 
 func NewServer(pool *pgxpool.Pool, field *logrus.Entry) *Server {
-	if field == nil {
-		field = logrus.NewEntry(logrus.StandardLogger())
-	}
-
 	return &Server{
 		querier: sql.New(pool),
 		log:     field,
@@ -171,6 +167,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				ImageName: row.ImageName,
 				ImageTag:  row.ImageTag,
 			},
+			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
 			VulnerabilitySummary: &vulnerabilities.Summary{
 				Critical:    safeInt(row.Critical),
 				High:        safeInt(row.High),
@@ -389,4 +386,106 @@ func (s *Server) GetSbomCoverageSummary(ctx context.Context, request *vulnerabil
 		NoSbomCount:            summary.NoSbomCount,
 		SbomCoveragePercentage: summary.SbomCoveragePercentage,
 	}, nil
+}
+
+func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
+	suppressedVuln := request.GetSuppressedVulnerability()
+	_, err := s.querier.GetSuppressedVulnerability(ctx, sql.GetSuppressedVulnerabilityParams{
+		ImageName: suppressedVuln.GetImageName(),
+		Package:   suppressedVuln.GetPackage(),
+		CveID:     suppressedVuln.GetCveId(),
+	})
+
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("failed to get suppressed vulnerability: %w", err)
+		}
+	}
+
+	supErr := s.querier.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+		ImageName:    suppressedVuln.GetImageName(),
+		CveID:        suppressedVuln.GetCveId(),
+		Package:      suppressedVuln.GetPackage(),
+		SuppressedBy: suppressedVuln.GetSuppressedBy(),
+		Suppressed:   suppressedVuln.GetSuppress(),
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(suppressedVuln.GetState().String())),
+		ReasonText:   suppressedVuln.GetReason(),
+	})
+	if supErr != nil {
+		return nil, fmt.Errorf("failed to suppress vulnerability: %w", supErr)
+	}
+	return &vulnerabilities.SuppressVulnerabilityResponse{
+		CveId:      suppressedVuln.GetCveId(),
+		Suppressed: suppressedVuln.GetSuppress(),
+	}, nil
+}
+
+func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vulnerabilities.ListSuppressedVulnerabilitiesRequest) (*vulnerabilities.ListSuppressedVulnerabilitiesResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+
+	filter := request.GetFilter()
+	suppressed, err := s.querier.ListSuppressedVulnerabilities(ctx, sql.ListSuppressedVulnerabilitiesParams{
+		Cluster:   filter.Cluster,
+		Namespace: filter.Namespace,
+		ImageName: filter.ImageName,
+		ImageTag:  filter.ImageTag,
+		Offset:    offset,
+		Limit:     limit,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("list suppressed vulnerabilities: %w", err)
+	}
+
+	total, err := s.querier.CountSuppressedVulnerabilities(ctx, sql.CountSuppressedVulnerabilitiesParams{
+		Cluster:      filter.Cluster,
+		Namespace:    filter.Namespace,
+		WorkloadType: filter.WorkloadType,
+		WorkloadName: filter.Workload,
+		ImageName:    filter.ImageName,
+		ImageTag:     filter.ImageTag,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("count suppressed vulnerabilities: %w", err)
+	}
+
+	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := collections.Map(suppressed, func(row *sql.ListSuppressedVulnerabilitiesRow) *vulnerabilities.SuppressedVulnerability {
+		return &vulnerabilities.SuppressedVulnerability{
+			ImageName:    row.ImageName,
+			CveId:        row.CveID,
+			Package:      row.Package,
+			State:        suppressState(row.Reason),
+			Reason:       &row.ReasonText,
+			SuppressedBy: &row.SuppressedBy,
+			Suppress:     &row.Suppressed,
+		}
+	})
+
+	return &vulnerabilities.ListSuppressedVulnerabilitiesResponse{
+		Nodes:    nodes,
+		PageInfo: pageInfo,
+	}, nil
+}
+
+func suppressState(state sql.VulnerabilitySuppressReason) vulnerabilities.SuppressState {
+	switch state {
+	case sql.VulnerabilitySuppressReasonFalsePositive:
+		return vulnerabilities.SuppressState_FALSE_POSITIVE
+	case sql.VulnerabilitySuppressReasonResolved:
+		return vulnerabilities.SuppressState_RESOLVED
+	case sql.VulnerabilitySuppressReasonNotAffected:
+		return vulnerabilities.SuppressState_NOT_AFFECTED
+	case sql.VulnerabilitySuppressReasonInTriage:
+		return vulnerabilities.SuppressState_IN_TRIAGE
+	default:
+		return vulnerabilities.SuppressState_NOT_SET
+	}
 }

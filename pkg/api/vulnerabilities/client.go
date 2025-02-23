@@ -14,7 +14,8 @@ type Client interface {
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
-	SuppressVulnerability(ctx context.Context, imageName, imageTag, cveId, suppressState, reason, suppressedBy string, opts ...Option) error
+	SuppressVulnerability(ctx context.Context, imageName, cveId, packaged, reason, suppressedBy string, state SuppressState, suppress bool) error
+	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	GetSbomCoverageSummary(ctx context.Context, opts ...Option) (*GetSbomCoverageSummaryResponse, error)
 	management.ManagementClient
 }
@@ -34,21 +35,28 @@ func (c *client) GetSbomCoverageSummary(ctx context.Context, opts ...Option) (*G
 	})
 }
 
-func (c *client) SuppressVulnerability(ctx context.Context, imageName, imageTag, cveId, suppressState, reason, suppressedBy string, opts ...Option) error {
-	//o := applyOptions(opts...)
+func (c *client) SuppressVulnerability(ctx context.Context, imageName, cveId, packaged, reason, suppressedBy string, state SuppressState, suppress bool) error {
 	_, err := c.c.SuppressVulnerability(ctx, &SuppressVulnerabilityRequest{
-		SuppressState:     suppressState,
-		CveId:             cveId,
-		WorkloadCluster:   "",
-		WorkloadNamespace: "",
-		WorkloadName:      "",
-		WorkloadType:      "",
-		ImageName:         imageName,
-		ImageTag:          imageTag,
-		Reason:            reason,
-		SuppressedBy:      suppressedBy,
+		SuppressedVulnerability: &SuppressedVulnerability{
+			ImageName:    imageName,
+			State:        state,
+			Package:      packaged,
+			CveId:        cveId,
+			Reason:       &reason,
+			SuppressedBy: &suppressedBy,
+			Suppress:     &suppress,
+		},
 	})
 	return err
+}
+
+func (c *client) ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error) {
+	o := applyOptions(opts...)
+	return c.c.ListSuppressedVulnerabilities(ctx, &ListSuppressedVulnerabilitiesRequest{
+		Filter: o.filter,
+		Limit:  o.limit,
+		Offset: o.offset,
+	})
 }
 
 func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error) {

@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 **Purl** | Pointer to **string** |  | [optional] 
 **SwidTagId** | Pointer to **string** |  | [optional] 
 **DirectDependencies** | Pointer to **string** |  | [optional] 
-**Uuid** | **string** |  | 
+**Uuid** | Pointer to **string** |  | [optional] 
 **Parent** | Pointer to [**Project**](Project.md) |  | [optional] 
 **Children** | Pointer to [**[]Project**](Project.md) |  | [optional] 
 **Properties** | Pointer to [**[]ProjectProperty**](ProjectProperty.md) |  | [optional] 
@@ -36,7 +36,7 @@ Name | Type | Description | Notes
 
 ### NewProject
 
-`func NewProject(uuid string, ) *Project`
+`func NewProject() *Project`
 
 NewProject instantiates a new Project object
 This constructor will assign default values to properties that have it defined,
@@ -395,6 +395,11 @@ and a boolean to check if the value has been set.
 
 SetUuid sets Uuid field to given value.
 
+### HasUuid
+
+`func (o *Project) HasUuid() bool`
+
+HasUuid returns a boolean if a field has been set.
 
 ### GetParent
 
