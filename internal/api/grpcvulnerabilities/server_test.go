@@ -10,6 +10,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -195,7 +196,7 @@ func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) 
 // startGrpcServer initializes an in-memory gRPC server
 func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, func()) {
 	lis := bufconn.Listen(1024 * 1024)
-	server := grpcvulnerabilities.NewServer(db, nil)
+	server := grpcvulnerabilities.NewServer(db, logrus.NewEntry(logrus.StandardLogger()))
 	grpcServer := grpc.NewServer()
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, server)
 

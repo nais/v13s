@@ -168,15 +168,16 @@ type Image struct {
 }
 
 type SuppressedVulnerability struct {
-	ID         pgtype.UUID
-	ImageName  string
-	Package    string
-	CveID      string
-	Suppressed bool
-	Reason     VulnerabilitySuppressReason
-	ReasonText string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID           pgtype.UUID
+	ImageName    string
+	Package      string
+	CveID        string
+	Suppressed   bool
+	Reason       VulnerabilitySuppressReason
+	ReasonText   string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	SuppressedBy string
 }
 
 type Vulnerability struct {

@@ -23,9 +23,70 @@ func (_m *MockClient) EXPECT() *MockClient_Expecter {
 	return &MockClient_Expecter{mock: &_m.Mock}
 }
 
-// GetFindings provides a mock function with given fields: ctx, uuid, suppressed
-func (_m *MockClient) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
-	ret := _m.Called(ctx, uuid, suppressed)
+// GetAnalysisTrailForImage provides a mock function with given fields: ctx, projectId, componentId, vulnerabilityId
+func (_m *MockClient) GetAnalysisTrailForImage(ctx context.Context, projectId string, componentId string, vulnerabilityId string) (*client.Analysis, error) {
+	ret := _m.Called(ctx, projectId, componentId, vulnerabilityId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAnalysisTrailForImage")
+	}
+
+	var r0 *client.Analysis
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (*client.Analysis, error)); ok {
+		return rf(ctx, projectId, componentId, vulnerabilityId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *client.Analysis); ok {
+		r0 = rf(ctx, projectId, componentId, vulnerabilityId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.Analysis)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = rf(ctx, projectId, componentId, vulnerabilityId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_GetAnalysisTrailForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAnalysisTrailForImage'
+type MockClient_GetAnalysisTrailForImage_Call struct {
+	*mock.Call
+}
+
+// GetAnalysisTrailForImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - projectId string
+//   - componentId string
+//   - vulnerabilityId string
+func (_e *MockClient_Expecter) GetAnalysisTrailForImage(ctx interface{}, projectId interface{}, componentId interface{}, vulnerabilityId interface{}) *MockClient_GetAnalysisTrailForImage_Call {
+	return &MockClient_GetAnalysisTrailForImage_Call{Call: _e.mock.On("GetAnalysisTrailForImage", ctx, projectId, componentId, vulnerabilityId)}
+}
+
+func (_c *MockClient_GetAnalysisTrailForImage_Call) Run(run func(ctx context.Context, projectId string, componentId string, vulnerabilityId string)) *MockClient_GetAnalysisTrailForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_GetAnalysisTrailForImage_Call) Return(_a0 *client.Analysis, _a1 error) *MockClient_GetAnalysisTrailForImage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_GetAnalysisTrailForImage_Call) RunAndReturn(run func(context.Context, string, string, string) (*client.Analysis, error)) *MockClient_GetAnalysisTrailForImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetFindings provides a mock function with given fields: ctx, uuid, vulnerabilityId, suppressed
+func (_m *MockClient) GetFindings(ctx context.Context, uuid string, vulnerabilityId string, suppressed bool) ([]client.Finding, error) {
+	ret := _m.Called(ctx, uuid, vulnerabilityId, suppressed)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetFindings")
@@ -33,19 +94,19 @@ func (_m *MockClient) GetFindings(ctx context.Context, uuid string, suppressed b
 
 	var r0 []client.Finding
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool) ([]client.Finding, error)); ok {
-		return rf(ctx, uuid, suppressed)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) ([]client.Finding, error)); ok {
+		return rf(ctx, uuid, vulnerabilityId, suppressed)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool) []client.Finding); ok {
-		r0 = rf(ctx, uuid, suppressed)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) []client.Finding); ok {
+		r0 = rf(ctx, uuid, vulnerabilityId, suppressed)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]client.Finding)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, bool) error); ok {
-		r1 = rf(ctx, uuid, suppressed)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) error); ok {
+		r1 = rf(ctx, uuid, vulnerabilityId, suppressed)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -61,14 +122,15 @@ type MockClient_GetFindings_Call struct {
 // GetFindings is a helper method to define mock.On call
 //   - ctx context.Context
 //   - uuid string
+//   - vulnerabilityId string
 //   - suppressed bool
-func (_e *MockClient_Expecter) GetFindings(ctx interface{}, uuid interface{}, suppressed interface{}) *MockClient_GetFindings_Call {
-	return &MockClient_GetFindings_Call{Call: _e.mock.On("GetFindings", ctx, uuid, suppressed)}
+func (_e *MockClient_Expecter) GetFindings(ctx interface{}, uuid interface{}, vulnerabilityId interface{}, suppressed interface{}) *MockClient_GetFindings_Call {
+	return &MockClient_GetFindings_Call{Call: _e.mock.On("GetFindings", ctx, uuid, vulnerabilityId, suppressed)}
 }
 
-func (_c *MockClient_GetFindings_Call) Run(run func(ctx context.Context, uuid string, suppressed bool)) *MockClient_GetFindings_Call {
+func (_c *MockClient_GetFindings_Call) Run(run func(ctx context.Context, uuid string, vulnerabilityId string, suppressed bool)) *MockClient_GetFindings_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bool))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(bool))
 	})
 	return _c
 }
@@ -78,7 +140,7 @@ func (_c *MockClient_GetFindings_Call) Return(_a0 []client.Finding, _a1 error) *
 	return _c
 }
 
-func (_c *MockClient_GetFindings_Call) RunAndReturn(run func(context.Context, string, bool) ([]client.Finding, error)) *MockClient_GetFindings_Call {
+func (_c *MockClient_GetFindings_Call) RunAndReturn(run func(context.Context, string, string, bool) ([]client.Finding, error)) *MockClient_GetFindings_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -260,6 +322,59 @@ func (_c *MockClient_GetProjectsByTag_Call) Return(_a0 []client.Project, _a1 err
 }
 
 func (_c *MockClient_GetProjectsByTag_Call) RunAndReturn(run func(context.Context, string, int32, int32) ([]client.Project, error)) *MockClient_GetProjectsByTag_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateFinding provides a mock function with given fields: ctx, suppressedBy, reason, projectId, componentId, vulnerabilityId, state, suppressed
+func (_m *MockClient) UpdateFinding(ctx context.Context, suppressedBy string, reason string, projectId string, componentId string, vulnerabilityId string, state string, suppressed bool) error {
+	ret := _m.Called(ctx, suppressedBy, reason, projectId, componentId, vulnerabilityId, state, suppressed)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateFinding")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, string, string, bool) error); ok {
+		r0 = rf(ctx, suppressedBy, reason, projectId, componentId, vulnerabilityId, state, suppressed)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_UpdateFinding_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateFinding'
+type MockClient_UpdateFinding_Call struct {
+	*mock.Call
+}
+
+// UpdateFinding is a helper method to define mock.On call
+//   - ctx context.Context
+//   - suppressedBy string
+//   - reason string
+//   - projectId string
+//   - componentId string
+//   - vulnerabilityId string
+//   - state string
+//   - suppressed bool
+func (_e *MockClient_Expecter) UpdateFinding(ctx interface{}, suppressedBy interface{}, reason interface{}, projectId interface{}, componentId interface{}, vulnerabilityId interface{}, state interface{}, suppressed interface{}) *MockClient_UpdateFinding_Call {
+	return &MockClient_UpdateFinding_Call{Call: _e.mock.On("UpdateFinding", ctx, suppressedBy, reason, projectId, componentId, vulnerabilityId, state, suppressed)}
+}
+
+func (_c *MockClient_UpdateFinding_Call) Run(run func(ctx context.Context, suppressedBy string, reason string, projectId string, componentId string, vulnerabilityId string, state string, suppressed bool)) *MockClient_UpdateFinding_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(string), args[6].(string), args[7].(bool))
+	})
+	return _c
+}
+
+func (_c *MockClient_UpdateFinding_Call) Return(_a0 error) *MockClient_UpdateFinding_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_UpdateFinding_Call) RunAndReturn(run func(context.Context, string, string, string, string, string, string, bool) error) *MockClient_UpdateFinding_Call {
 	_c.Call.Return(run)
 	return _c
 }

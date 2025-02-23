@@ -21,6 +21,65 @@ func (_m *MockVulnerabilitiesServer) EXPECT() *MockVulnerabilitiesServer_Expecte
 	return &MockVulnerabilitiesServer_Expecter{mock: &_m.Mock}
 }
 
+// GetSbomCoverageSummary provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) GetSbomCoverageSummary(_a0 context.Context, _a1 *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSbomCoverageSummary")
+	}
+
+	var r0 *GetSbomCoverageSummaryResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *GetSbomCoverageSummaryRequest) *GetSbomCoverageSummaryResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*GetSbomCoverageSummaryResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *GetSbomCoverageSummaryRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_GetSbomCoverageSummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSbomCoverageSummary'
+type MockVulnerabilitiesServer_GetSbomCoverageSummary_Call struct {
+	*mock.Call
+}
+
+// GetSbomCoverageSummary is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *GetSbomCoverageSummaryRequest
+func (_e *MockVulnerabilitiesServer_Expecter) GetSbomCoverageSummary(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call {
+	return &MockVulnerabilitiesServer_GetSbomCoverageSummary_Call{Call: _e.mock.On("GetSbomCoverageSummary", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call) Run(run func(_a0 context.Context, _a1 *GetSbomCoverageSummaryRequest)) *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*GetSbomCoverageSummaryRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call) Return(_a0 *GetSbomCoverageSummaryResponse, _a1 error) *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call) RunAndReturn(run func(context.Context, *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error)) *MockVulnerabilitiesServer_GetSbomCoverageSummary_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVulnerabilitySummary provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) GetVulnerabilitySummary(_a0 context.Context, _a1 *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error) {
 	ret := _m.Called(_a0, _a1)
@@ -312,6 +371,65 @@ func (_c *MockVulnerabilitiesServer_ListVulnerabilitySummaries_Call) Return(_a0 
 }
 
 func (_c *MockVulnerabilitiesServer_ListVulnerabilitySummaries_Call) RunAndReturn(run func(context.Context, *ListVulnerabilitySummariesRequest) (*ListVulnerabilitySummariesResponse, error)) *MockVulnerabilitiesServer_ListVulnerabilitySummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SuppressVulnerability provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) SuppressVulnerability(_a0 context.Context, _a1 *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SuppressVulnerability")
+	}
+
+	var r0 *SuppressVulnerabilityResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *SuppressVulnerabilityRequest) *SuppressVulnerabilityResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*SuppressVulnerabilityResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *SuppressVulnerabilityRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_SuppressVulnerability_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SuppressVulnerability'
+type MockVulnerabilitiesServer_SuppressVulnerability_Call struct {
+	*mock.Call
+}
+
+// SuppressVulnerability is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *SuppressVulnerabilityRequest
+func (_e *MockVulnerabilitiesServer_Expecter) SuppressVulnerability(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_SuppressVulnerability_Call {
+	return &MockVulnerabilitiesServer_SuppressVulnerability_Call{Call: _e.mock.On("SuppressVulnerability", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_SuppressVulnerability_Call) Run(run func(_a0 context.Context, _a1 *SuppressVulnerabilityRequest)) *MockVulnerabilitiesServer_SuppressVulnerability_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*SuppressVulnerabilityRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_SuppressVulnerability_Call) Return(_a0 *SuppressVulnerabilityResponse, _a1 error) *MockVulnerabilitiesServer_SuppressVulnerability_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_SuppressVulnerability_Call) RunAndReturn(run func(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)) *MockVulnerabilitiesServer_SuppressVulnerability_Call {
 	_c.Call.Return(run)
 	return _c
 }

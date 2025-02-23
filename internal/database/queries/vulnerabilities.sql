@@ -14,7 +14,8 @@ VALUES (@image_name,
 ON CONFLICT (image_name, image_tag, package, cve_id)
 DO UPDATE
     SET latest_version = EXCLUDED.latest_version
-    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version;
+    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
+;
 
 -- name: BatchUpsertCve :batchexec
 INSERT INTO cve(cve_id,
@@ -38,13 +39,15 @@ ON CONFLICT (cve_id)
         refs      = EXCLUDED.refs
 WHERE (cve.cve_title, cve.cve_desc, cve.cve_link, cve.severity, cve.refs)
         IS DISTINCT FROM
-        (EXCLUDED.cve_title, EXCLUDED.cve_desc, EXCLUDED.cve_link, EXCLUDED.severity, EXCLUDED.refs);
+        (EXCLUDED.cve_title, EXCLUDED.cve_desc, EXCLUDED.cve_link, EXCLUDED.severity, EXCLUDED.refs)
+;
 
 
 -- name: GetCve :one
 SELECT *
 FROM cve
-WHERE cve_id = @cve_id;
+WHERE cve_id = @cve_id
+;
 
 
 -- name: GetVulnerability :one
@@ -53,7 +56,8 @@ FROM vulnerabilities
 WHERE image_name = @image_name
   AND image_tag = @image_tag
   AND package = @package
-  AND cve_id = @cve_id;
+  AND cve_id = @cve_id
+;
 
 
 -- name: SuppressVulnerability :exec
@@ -61,19 +65,22 @@ INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,
                                        cve_id,
                                        suppressed,
+                                       suppressed_by,
                                        reason,
                                        reason_text)
 VALUES (@image_name,
         @package,
         @cve_id,
         @suppressed,
+        @suppressed_by,
         @reason,
-        @reason_text)
-ON CONFLICT
-    ON CONSTRAINT image_name_package_cve_id DO UPDATE
-    SET suppressed  = @suppressed,
-        reason      = @reason,
-        reason_text = @reason_text
+        @reason_text) ON CONFLICT
+ON CONSTRAINT image_name_package_cve_id DO
+UPDATE
+    SET suppressed = @suppressed,
+    suppressed_by = @suppressed_by,
+    reason = @reason,
+    reason_text = @reason_text
 ;
 
 -- name: GetSuppressedVulnerability :one
@@ -81,7 +88,51 @@ SELECT *
 FROM suppressed_vulnerabilities
 WHERE image_name = @image_name
   AND package = @package
-  AND cve_id = @cve_id;
+  AND cve_id = @cve_id
+;
+
+-- name: ListAllSuppressedVulnerabilities :many
+SELECT *
+FROM suppressed_vulnerabilities
+ORDER BY updated_at DESC
+;
+
+-- name: ListSuppressedVulnerabilities :many
+SELECT DISTINCT sv.*, v.*, c.*, w.cluster, w.namespace
+FROM suppressed_vulnerabilities sv
+         JOIN vulnerabilities v
+              ON sv.image_name = v.image_name
+                  AND sv.package = v.package
+                  AND sv.cve_id = v.cve_id
+         JOIN cve c ON v.cve_id = c.cve_id
+         JOIN (
+    SELECT DISTINCT image_name, image_tag, cluster, namespace
+    FROM workloads
+) w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+WHERE (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+ORDER BY sv.updated_at DESC
+    LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
+;
+
+-- name: CountSuppressedVulnerabilities :one
+SELECT COUNT(*) AS total
+FROM suppressed_vulnerabilities sv
+         JOIN vulnerabilities v
+              ON sv.image_name = v.image_name
+                  AND sv.package = v.package
+                  AND sv.cve_id = v.cve_id
+         JOIN cve c ON v.cve_id = c.cve_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT is not null THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+;
 
 -- name: CountVulnerabilities :one
 SELECT COUNT(*) AS total
@@ -185,7 +236,8 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
   AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY sqlc.arg('order_by'), v.id ASC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
+;
 
 -- name: ListSuppressedVulnerabilitiesForImage :many
 SELECT *
@@ -212,4 +264,5 @@ SELECT COUNT(*) AS total,
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
 WHERE v.image_name = @image_name
-    AND v.image_tag = @image_tag;
+    AND v.image_tag = @image_tag
+;

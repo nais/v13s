@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -29,7 +30,7 @@ func TestUpdater(t *testing.T) {
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
 	updateInterval := 200 * time.Millisecond
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, nil), updateInterval, nil)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, logrus.NewEntry(logrus.StandardLogger())), updateInterval, logrus.NewEntry(logrus.StandardLogger()))
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
@@ -137,11 +138,21 @@ type MockDtrack struct {
 	findings map[string][]client.Finding
 }
 
+func (m MockDtrack) UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId string, state string, suppressed bool) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*client.Analysis, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m MockDtrack) AddFinding(projectName string, vulnName string) {
 	u := ""
 	for _, p := range m.projects {
 		if *p.Name == projectName {
-			u = p.Uuid
+			u = *p.Uuid
 		}
 	}
 	findings := m.findings[u]
@@ -163,9 +174,9 @@ func (m MockDtrack) AddFinding(projectName string, vulnName string) {
 	m.findings[u] = findings
 }
 
-func (m MockDtrack) GetFindings(ctx context.Context, uuid string, suppressed bool) ([]client.Finding, error) {
+func (m MockDtrack) GetFindings(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]client.Finding, error) {
 	for _, p := range m.projects {
-		if p.Uuid == uuid {
+		if *p.Uuid == uuid {
 			return m.findings[uuid], nil
 		}
 	}
@@ -209,7 +220,7 @@ func NewMock(projectNames []string) *MockDtrack {
 		projects = append(projects, &client.Project{
 			Name:    &p,
 			Version: &version,
-			Uuid:    id,
+			Uuid:    &id,
 			Metrics: &client.ProjectMetrics{
 				Critical:           critical,
 				High:               high,

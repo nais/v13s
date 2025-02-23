@@ -8620,10 +8620,10 @@ components:
         analysisJustification: CODE_NOT_PRESENT
         analysisComments:
         - comment: comment
-          timestamp: 2000-01-23T04:56:07.000+00:00
+          timestamp: 0
           commenter: commenter
         - comment: comment
-          timestamp: 2000-01-23T04:56:07.000+00:00
+          timestamp: 0
           commenter: commenter
       properties:
         analysisState:
@@ -8674,12 +8674,12 @@ components:
     AnalysisComment:
       example:
         comment: comment
-        timestamp: 2000-01-23T04:56:07.000+00:00
+        timestamp: 0
         commenter: commenter
       properties:
         timestamp:
-          format: date-time
-          type: string
+          format: int64
+          type: integer
         comment:
           type: string
         commenter:
@@ -9089,8 +9089,6 @@ components:
           $ref: '#/components/schemas/ProjectMetrics'
         bomRef:
           type: string
-      required:
-      - uuid
       type: object
     ProjectMetadata:
       example:

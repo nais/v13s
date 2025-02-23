@@ -11658,8 +11658,8 @@
         "type": "object",
         "properties": {
           "timestamp": {
-            "type": "string",
-            "format": "date-time"
+            "format": "int64",
+            "type": "integer"
           },
           "comment": {
             "type": "string"
@@ -11841,7 +11841,6 @@
       },
       "Project": {
         "required": [
-          "uuid"
         ],
         "type": "object",
         "properties": {

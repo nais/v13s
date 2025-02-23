@@ -16,6 +16,7 @@ import (
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
 	DefaultMarkUntrackedInterval        = 3 * time.Minute
+	DefaultMaintainSuppressedInterval   = 30 * time.Second
 	SyncErrorStatusCodeNotFound         = "NotFound"
 	SyncErrorStatusCodeGenericError     = "GenericError"
 )
@@ -72,6 +73,20 @@ func (u *Updater) Run(ctx context.Context) {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
+
+	go runAtInterval(ctx, DefaultMaintainSuppressedInterval, "maintain suppressed vulnerabilities", u.log, func() {
+		suppressedVuln, err := u.querier.ListAllSuppressedVulnerabilities(ctx)
+		if err != nil {
+			u.log.WithError(err).Error("Failed to list suppressed vulnerabilities")
+			return
+		}
+
+		for _, v := range suppressedVuln {
+			if err := u.maintainSuppressedVulnerabilities(ctx, v); err != nil {
+				u.log.WithError(err).Error("Failed to maintain suppressed vulnerabilities")
+			}
+		}
+	})
 }
 
 func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {
@@ -110,6 +125,9 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 				Tag:   imageTag,
 			}); dbErr != nil {
 				u.log.Errorf("failed to update image state to failed: %v", dbErr)
+			}
+			if syncErr := u.handleSyncError(ctx, imageName, imageTag, SyncErrorStatusCodeGenericError, err); syncErr != nil {
+				u.log.Errorf("failed to update image sync status: %v", syncErr)
 			}
 		}
 	}()
@@ -228,25 +246,40 @@ func (u *Updater) handleSyncError(ctx context.Context, imageName, imageTag, stat
 	return nil
 }
 
-func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, imageName string) error {
-	suppressed, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, sql.ListSuppressedVulnerabilitiesForImageParams{
-		ImageName: imageName,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, s := range suppressed {
-		// invoke dependencytrack api and suppress
-		u.log.Infof("checking if suppressed vulnerability %v is still suppressed", s)
+func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, sVuln *sql.SuppressedVulnerability) error {
+	if err := u.source.SuppressVulnerability(ctx, &sources.SuppressedVulnerability{
+		CveId:        sVuln.CveID,
+		ImageName:    sVuln.ImageName,
+		SuppressedBy: sVuln.SuppressedBy,
+		Reason:       sVuln.ReasonText,
+		State:        vulnerabilitySuppressReasonToState(sVuln.Reason),
+		Suppressed:   sVuln.Suppressed,
+	}); err != nil {
+		u.log.Errorf("failed to suppress %s for image %s: %v", sVuln.CveID, sVuln.ImageName, err)
 	}
 	return nil
+}
+
+func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
+	switch reason {
+	case sql.VulnerabilitySuppressReasonFalsePositive:
+		return "FALSE_POSITIVE"
+	case sql.VulnerabilitySuppressReasonInTriage:
+		return "IN_TRIAGE"
+	case sql.VulnerabilitySuppressReasonNotAffected:
+		return "NOT_AFFECTED"
+	case sql.VulnerabilitySuppressReasonResolved:
+		return "RESOLVED"
+	default:
+		return "NOT_SET"
+	}
 }
 
 // TODO: use transactions to ensure consistency
 func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag string, summary *sources.VulnerabilitySummary) (any, error) {
 	// TODO: handle suppressed vulnerabilities
-	findings, err := u.source.GetVulnerabilities(ctx, summary.Id, true)
+	// Empty vulnid means all vulnerabilities
+	findings, err := u.source.GetVulnerabilities(ctx, summary.Id, "", true)
 	if err != nil {
 		return nil, err
 	}
