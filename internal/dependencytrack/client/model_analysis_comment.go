@@ -12,7 +12,6 @@ package client
 
 import (
 	"encoding/json"
-	"time"
 	"bytes"
 	"fmt"
 )
@@ -22,7 +21,7 @@ var _ MappedNullable = &AnalysisComment{}
 
 // AnalysisComment struct for AnalysisComment
 type AnalysisComment struct {
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp int64 `json:"timestamp"`
 	Comment string `json:"comment"`
 	Commenter *string `json:"commenter,omitempty"`
 }
@@ -33,7 +32,7 @@ type _AnalysisComment AnalysisComment
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewAnalysisComment(timestamp time.Time, comment string) *AnalysisComment {
+func NewAnalysisComment(timestamp int64, comment string) *AnalysisComment {
 	this := AnalysisComment{}
 	this.Timestamp = timestamp
 	this.Comment = comment
@@ -49,9 +48,9 @@ func NewAnalysisCommentWithDefaults() *AnalysisComment {
 }
 
 // GetTimestamp returns the Timestamp field value
-func (o *AnalysisComment) GetTimestamp() time.Time {
+func (o *AnalysisComment) GetTimestamp() int64 {
 	if o == nil {
-		var ret time.Time
+		var ret int64
 		return ret
 	}
 
@@ -60,7 +59,7 @@ func (o *AnalysisComment) GetTimestamp() time.Time {
 
 // GetTimestampOk returns a tuple with the Timestamp field value
 // and a boolean to check if the value has been set.
-func (o *AnalysisComment) GetTimestampOk() (*time.Time, bool) {
+func (o *AnalysisComment) GetTimestampOk() (*int64, bool) {
 	if o == nil {
 		return nil, false
 	}
@@ -68,7 +67,7 @@ func (o *AnalysisComment) GetTimestampOk() (*time.Time, bool) {
 }
 
 // SetTimestamp sets field value
-func (o *AnalysisComment) SetTimestamp(v time.Time) {
+func (o *AnalysisComment) SetTimestamp(v int64) {
 	o.Timestamp = v
 }
 

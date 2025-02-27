@@ -15,9 +15,9 @@ func TestGetFindings(t *testing.T) {
 	uuid := "test-uuid"
 	var sampleFindings []client.Finding
 
-	mockClient.On("GetFindings", ctx, uuid, false).Return(sampleFindings, nil)
+	mockClient.On("GetFindings", ctx, uuid, "", false).Return(sampleFindings, nil)
 
-	findings, err := mockClient.GetFindings(ctx, uuid, false)
+	findings, err := mockClient.GetFindings(ctx, uuid, "", false)
 
 	assert.NoError(t, err)
 	assert.Equal(t, sampleFindings, findings)

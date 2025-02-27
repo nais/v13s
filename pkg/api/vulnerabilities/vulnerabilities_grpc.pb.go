@@ -30,6 +30,7 @@ const (
 	Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryForImage"
 	Vulnerabilities_ListVulnerabilitiesForImage_FullMethodName     = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitiesForImage"
 	Vulnerabilities_SuppressVulnerability_FullMethodName           = "/v13s.api.protobuf.Vulnerabilities/SuppressVulnerability"
+	Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName   = "/v13s.api.protobuf.Vulnerabilities/ListSuppressedVulnerabilities"
 	Vulnerabilities_GetSbomCoverageSummary_FullMethodName          = "/v13s.api.protobuf.Vulnerabilities/GetSbomCoverageSummary"
 )
 
@@ -54,6 +55,7 @@ type VulnerabilitiesClient interface {
 	GetVulnerabilitySummaryForImage(ctx context.Context, in *GetVulnerabilitySummaryForImageRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryForImageResponse, error)
 	ListVulnerabilitiesForImage(ctx context.Context, in *ListVulnerabilitiesForImageRequest, opts ...grpc.CallOption) (*ListVulnerabilitiesForImageResponse, error)
 	SuppressVulnerability(ctx context.Context, in *SuppressVulnerabilityRequest, opts ...grpc.CallOption) (*SuppressVulnerabilityResponse, error)
+	ListSuppressedVulnerabilities(ctx context.Context, in *ListSuppressedVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListSuppressedVulnerabilitiesResponse, error)
 	GetSbomCoverageSummary(ctx context.Context, in *GetSbomCoverageSummaryRequest, opts ...grpc.CallOption) (*GetSbomCoverageSummaryResponse, error)
 }
 
@@ -125,6 +127,16 @@ func (c *vulnerabilitiesClient) SuppressVulnerability(ctx context.Context, in *S
 	return out, nil
 }
 
+func (c *vulnerabilitiesClient) ListSuppressedVulnerabilities(ctx context.Context, in *ListSuppressedVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListSuppressedVulnerabilitiesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSuppressedVulnerabilitiesResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vulnerabilitiesClient) GetSbomCoverageSummary(ctx context.Context, in *GetSbomCoverageSummaryRequest, opts ...grpc.CallOption) (*GetSbomCoverageSummaryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSbomCoverageSummaryResponse)
@@ -156,6 +168,7 @@ type VulnerabilitiesServer interface {
 	GetVulnerabilitySummaryForImage(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error)
 	ListVulnerabilitiesForImage(context.Context, *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error)
 	SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)
+	ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)
 	GetSbomCoverageSummary(context.Context, *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error)
 	mustEmbedUnimplementedVulnerabilitiesServer()
 }
@@ -184,6 +197,9 @@ func (UnimplementedVulnerabilitiesServer) ListVulnerabilitiesForImage(context.Co
 }
 func (UnimplementedVulnerabilitiesServer) SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SuppressVulnerability not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSuppressedVulnerabilities not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) GetSbomCoverageSummary(context.Context, *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSbomCoverageSummary not implemented")
@@ -317,6 +333,24 @@ func _Vulnerabilities_SuppressVulnerability_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Vulnerabilities_ListSuppressedVulnerabilities_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSuppressedVulnerabilitiesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).ListSuppressedVulnerabilities(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).ListSuppressedVulnerabilities(ctx, req.(*ListSuppressedVulnerabilitiesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Vulnerabilities_GetSbomCoverageSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetSbomCoverageSummaryRequest)
 	if err := dec(in); err != nil {
@@ -365,6 +399,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SuppressVulnerability",
 			Handler:    _Vulnerabilities_SuppressVulnerability_Handler,
+		},
+		{
+			MethodName: "ListSuppressedVulnerabilities",
+			Handler:    _Vulnerabilities_ListSuppressedVulnerabilities_Handler,
 		},
 		{
 			MethodName: "GetSbomCoverageSummary",

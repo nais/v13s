@@ -28,7 +28,7 @@ func main() {
 		cred := credentials.NewTLS(tlsOpts)
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(cred))
 	}
-	creds, err := auth.PerRPCGoogleIDToken(ctx, "v13s-sa@nais-management-7178.iam.gserviceaccount.com", "vulnz")
+	creds, err := auth.PerRPCGoogleIDToken(ctx, "slsa-verde@nais-management-233d.iam.gserviceaccount.com", "v13s")
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -45,6 +45,34 @@ func main() {
 	defer c.Close()
 
 	listVulnz(c)
+
+	err = c.SuppressVulnerability(
+		ctx,
+		"europe-north1-docker.pkg.dev/nais-io/nais/images/dataproduct-apps",
+		"CVE-2020-25658",
+		"pkg:pypi/rsa@4.9",
+		"Not in my code doe",
+		"johnDoe@ali.com",
+		vulnerabilities.SuppressState_NOT_AFFECTED,
+		true,
+	)
+	if err != nil {
+		fmt.Println("YOLO")
+		panic(err)
+	}
+
+	sup, err := c.ListSuppressedVulnerabilities(
+		ctx,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("number of suppressed vulnerabilities: %v\n", len(sup.Nodes))
+	for _, w := range sup.Nodes {
+		fmt.Printf("workload: %v\n", w.CveId)
+	}
+
 	//workloadManagement(c)
 	/*
 		listVulnz(c)

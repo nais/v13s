@@ -8,17 +8,13 @@ import (
 
 type Source interface {
 	Name() string
-	SuppressVulnerability(ctx context.Context, vulnerability *Vulnerability) error
+	SuppressVulnerability(ctx context.Context, suppressedVulnerability *SuppressedVulnerability) error
 	GetSuppressedVulnerabilitiesForImage(ctx context.Context, image string) ([]*Vulnerability, error)
-	GetVulnerabilities(ctx context.Context, id string, includeSuppressed bool) ([]*Vulnerability, error)
+	GetVulnerabilities(ctx context.Context, id, vulnId string, includeSuppressed bool) ([]*Vulnerability, error)
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 }
 
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) *dependencytrackSource {
-	if log == nil {
-		log = logrus.NewEntry(logrus.StandardLogger())
-	}
-
 	return &dependencytrackSource{client: client, log: log}
 }
 
@@ -84,4 +80,14 @@ type VulnerabilitySummary struct {
 type Findings struct {
 	WorkloadRef     *Workload
 	Vulnerabilities []*Vulnerability
+}
+
+type SuppressedVulnerability struct {
+	ImageName    string
+	CveId        string
+	Package      string
+	SuppressedBy string
+	Reason       string
+	State        string
+	Suppressed   bool
 }
