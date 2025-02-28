@@ -185,6 +185,19 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 		vulnId = v
 	}
 
+	var projectId string
+	if p, ok := component["project"].(string); ok {
+		projectId = p
+	}
+	var componentId string
+	if c, ok := component["uuid"].(string); ok {
+		componentId = c
+	}
+	var vulnerabilityUuid string
+	if v, ok := vulnData["uuid"].(string); ok {
+		vulnerabilityUuid = v
+	}
+
 	var link string
 	if source, ok := vulnData["source"].(string); ok {
 		switch source {
@@ -252,9 +265,9 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 			References:  references,
 		},
 		Metadata: &dependencytrackVulnMetadata{
-			projectId:         "todo",
-			componentId:       "todo",
-			vulnerabilityUuid: "todo",
+			projectId:         projectId,
+			componentId:       componentId,
+			vulnerabilityUuid: vulnerabilityUuid,
 		},
 	}, nil
 }
