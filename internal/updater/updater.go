@@ -15,12 +15,10 @@ import (
 
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
-	DefaultMarkUntrackedInterval        = 3 * time.Minute
+	DefaultMarkUntrackedInterval        = 10 * time.Minute
 	SyncErrorStatusCodeNotFound         = "NotFound"
 	SyncErrorStatusCodeGenericError     = "GenericError"
 )
-
-var imageProcessingSem = make(chan struct{}, 10)
 
 type Updater struct {
 	db                           *pgxpool.Pool
