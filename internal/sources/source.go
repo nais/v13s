@@ -2,20 +2,15 @@ package sources
 
 import (
 	"context"
-	"github.com/nais/v13s/internal/dependencytrack"
-	"github.com/sirupsen/logrus"
 )
 
 type Source interface {
 	Name() string
 	SuppressVulnerability(ctx context.Context, suppressedVulnerability *SuppressedVulnerability) error
-	GetSuppressedVulnerabilitiesForImage(ctx context.Context, image string) ([]*Vulnerability, error)
-	GetVulnerabilities(ctx context.Context, id, vulnId string, includeSuppressed bool) ([]*Vulnerability, error)
+	GetVulnerabilites(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
+	// TODO: add includeSuppressed bool
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
-}
-
-func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) *dependencytrackSource {
-	return &dependencytrackSource{client: client, log: log}
+	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
 }
 
 type Workload struct {
@@ -65,6 +60,13 @@ type Vulnerability struct {
 	Suppressed    bool
 	Cve           *Cve
 	LatestVersion string
+	Metadata      VulnerabilityMetadata
+}
+
+type VulnerabilityMetadata interface {
+	/*GetProjectId() string
+	GetComponentId() string
+	GetVulnerabilityId() string*/
 }
 
 type VulnerabilitySummary struct {
@@ -84,10 +86,12 @@ type Findings struct {
 
 type SuppressedVulnerability struct {
 	ImageName    string
+	ImageTag     string
 	CveId        string
 	Package      string
 	SuppressedBy string
 	Reason       string
 	State        string
 	Suppressed   bool
+	Metadata     VulnerabilityMetadata
 }

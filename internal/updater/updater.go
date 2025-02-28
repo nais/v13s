@@ -16,7 +16,6 @@ import (
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
 	DefaultMarkUntrackedInterval        = 3 * time.Minute
-	DefaultMaintainSuppressedInterval   = 30 * time.Second
 	SyncErrorStatusCodeNotFound         = "NotFound"
 	SyncErrorStatusCodeGenericError     = "GenericError"
 )
@@ -74,19 +73,6 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 	})
 
-	go runAtInterval(ctx, DefaultMaintainSuppressedInterval, "maintain suppressed vulnerabilities", u.log, func() {
-		suppressedVuln, err := u.querier.ListAllSuppressedVulnerabilities(ctx)
-		if err != nil {
-			u.log.WithError(err).Error("Failed to list suppressed vulnerabilities")
-			return
-		}
-
-		for _, v := range suppressedVuln {
-			if err := u.maintainSuppressedVulnerabilities(ctx, v); err != nil {
-				u.log.WithError(err).Error("Failed to maintain suppressed vulnerabilities")
-			}
-		}
-	})
 }
 
 func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {
@@ -180,6 +166,11 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 
 	querier := u.querier.WithTx(tx)
 
+	_, err = u.updateVulnerabilities(ctx, imageName, imageTag)
+	if err != nil {
+		return err
+	}
+
 	summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
 	if err != nil {
 		return u.handleSyncError(ctx, imageName, imageTag, SyncErrorStatusCodeNotFound, err)
@@ -195,11 +186,6 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 		Unassigned: summary.Unassigned,
 		RiskScore:  summary.RiskScore,
 	})
-	if err != nil {
-		return err
-	}
-
-	_, err = u.updateVulnerabilities(ctx, imageName, imageTag, summary)
 	if err != nil {
 		return err
 	}
@@ -246,20 +232,6 @@ func (u *Updater) handleSyncError(ctx context.Context, imageName, imageTag, stat
 	return nil
 }
 
-func (u *Updater) maintainSuppressedVulnerabilities(ctx context.Context, sVuln *sql.SuppressedVulnerability) error {
-	if err := u.source.SuppressVulnerability(ctx, &sources.SuppressedVulnerability{
-		CveId:        sVuln.CveID,
-		ImageName:    sVuln.ImageName,
-		SuppressedBy: sVuln.SuppressedBy,
-		Reason:       sVuln.ReasonText,
-		State:        vulnerabilitySuppressReasonToState(sVuln.Reason),
-		Suppressed:   sVuln.Suppressed,
-	}); err != nil {
-		u.log.Errorf("failed to suppress %s for image %s: %v", sVuln.CveID, sVuln.ImageName, err)
-	}
-	return nil
-}
-
 func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
 	switch reason {
 	case sql.VulnerabilitySuppressReasonFalsePositive:
@@ -276,13 +248,48 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag string, summary *sources.VulnerabilitySummary) (any, error) {
-	// TODO: handle suppressed vulnerabilities
-	// Empty vulnid means all vulnerabilities
-	findings, err := u.source.GetVulnerabilities(ctx, summary.Id, "", true)
+func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag string) (any, error) {
+	findings, err := u.source.GetVulnerabilites(ctx, name, tag, true)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: handle pagination or create separate query that returns all.
+	//sync suppressed vulnerabilities
+	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, sql.ListSuppressedVulnerabilitiesForImageParams{
+		ImageName: name,
+		Offset:    0,
+		Limit:     1000,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	filteredFindings := make([]*sources.SuppressedVulnerability, 0)
+	for _, s := range suppressedVulns {
+		for _, f := range findings {
+			if f.Cve.Id == s.CveID && f.Package == s.Package && s.Suppressed != f.Suppressed {
+				filteredFindings = append(filteredFindings, &sources.SuppressedVulnerability{
+					ImageName:    name,
+					ImageTag:     tag,
+					CveId:        f.Cve.Id,
+					Package:      f.Package,
+					Suppressed:   s.Suppressed,
+					Reason:       s.ReasonText,
+					SuppressedBy: s.SuppressedBy,
+					State:        vulnerabilitySuppressReasonToState(s.Reason),
+					Metadata:     f.Metadata,
+				})
+			}
+		}
+	}
+
+	// TODO: this can potentially by done in a go routine, maybe inside the function, we do not really "care" if it fails
+	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredFindings)
+	if err != nil {
+		return nil, err
+	}
+
 	cveParams := make([]sql.BatchUpsertCveParams, 0)
 	vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 
