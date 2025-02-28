@@ -1,0 +1,47 @@
+{
+  "component": {
+    "uuid": "5b009251-5efd-4703-8579-49af6cd3d0c6",
+    "name": "cryptography",
+    "version": "43.0.1",
+    "purl": "pkg:pypi/cryptography@43.0.1",
+    "project": "17170e88-cfcb-4900-b3fb-5b0be0a071a5",
+    "latestVersion": "44.0.1"
+  },
+  "vulnerability": {
+    "uuid": "6fa86367-6014-427e-8300-69269c16025b",
+    "source": "GITHUB",
+    "vulnId": "GHSA-79v4-65xg-pq4g",
+    "title": "Vulnerable OpenSSL included in cryptography wheels",
+    "severity": "LOW",
+    "severityRank": 3,
+    "cweId": 392,
+    "cweName": "Missing Report of Error Condition",
+    "cwes": [
+      {
+        "cweId": 392,
+        "name": "Missing Report of Error Condition"
+      },
+      {
+        "cweId": 1395,
+        "name": "Dependency on Vulnerable Third-Party Component"
+      }
+    ],
+    "aliases": [
+      {
+        "cveId": "CVE-2024-12797",
+        "ghsaId": "GHSA-79v4-65xg-pq4g"
+      }
+    ],
+    "description": "a loooong description",
+    "recommendation": null
+  },
+  "analysis": {
+    "state": "NOT_AFFECTED",
+    "isSuppressed": true
+  },
+  "attribution": {
+    "analyzerIdentity": "INTERNAL_ANALYZER",
+    "attributedOn": 1740715375412
+  },
+  "matrix": "17170e88-cfcb-4900-b3fb-5b0be0a071a5:5b009251-5efd-4703-8579-49af6cd3d0c6:6fa86367-6014-427e-8300-69269c16025b"
+}
