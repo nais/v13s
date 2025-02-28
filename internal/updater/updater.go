@@ -97,19 +97,19 @@ func runAtInterval(ctx context.Context, interval time.Duration, name string, log
 
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 	go func() {
-		ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+		ctxTimeout, cancel := context.WithTimeout(ctx, 3*time.Minute)
 		defer cancel()
-		err := u.updateForImage(ctx, imageName, imageTag)
+		err := u.updateForImage(ctxTimeout, imageName, imageTag)
 		if err != nil {
 			u.log.Errorf("processing image %s:%s failed", imageName, imageTag)
-			if dbErr := u.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			if dbErr := u.querier.UpdateImageState(ctxTimeout, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
 			}); dbErr != nil {
 				u.log.Errorf("failed to update image state to failed: %v", dbErr)
 			}
-			if syncErr := u.handleSyncError(ctx, imageName, imageTag, SyncErrorStatusCodeGenericError, err); syncErr != nil {
+			if syncErr := u.handleSyncError(ctxTimeout, imageName, imageTag, SyncErrorStatusCodeGenericError, err); syncErr != nil {
 				u.log.Errorf("failed to update image sync status: %v", syncErr)
 			}
 		}
@@ -223,11 +223,7 @@ func (u *Updater) handleSyncError(ctx context.Context, imageName, imageTag, stat
 		u.log.Errorf("orginal error status: %v", err)
 	}
 
-	// Use a new context with a timeout to avoid failing due to an expired parent context
-	newCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if insertErr := u.querier.UpdateImageSyncStatus(newCtx, updateSyncParams); insertErr != nil {
+	if insertErr := u.querier.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {
 		u.log.Errorf("failed to update image sync status: %v", insertErr)
 		return fmt.Errorf("updating image sync status: %w", insertErr)
 	}
