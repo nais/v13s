@@ -138,6 +138,11 @@ type MockDtrack struct {
 	findings map[string][]client.Finding
 }
 
+func (m MockDtrack) TriggerAnalysis(ctx context.Context, uuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m MockDtrack) UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId string, state string, suppressed bool) error {
 	//TODO implement me
 	panic("implement me")

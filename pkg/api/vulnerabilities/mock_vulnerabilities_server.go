@@ -198,6 +198,65 @@ func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryForImage_Call) RunAnd
 	return _c
 }
 
+// ListSuppressedVulnerabilities provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListSuppressedVulnerabilities(_a0 context.Context, _a1 *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListSuppressedVulnerabilities")
+	}
+
+	var r0 *ListSuppressedVulnerabilitiesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *ListSuppressedVulnerabilitiesRequest) *ListSuppressedVulnerabilitiesResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ListSuppressedVulnerabilitiesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *ListSuppressedVulnerabilitiesRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSuppressedVulnerabilities'
+type MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call struct {
+	*mock.Call
+}
+
+// ListSuppressedVulnerabilities is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *ListSuppressedVulnerabilitiesRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListSuppressedVulnerabilities(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call {
+	return &MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call{Call: _e.mock.On("ListSuppressedVulnerabilities", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call) Run(run func(_a0 context.Context, _a1 *ListSuppressedVulnerabilitiesRequest)) *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*ListSuppressedVulnerabilitiesRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call) Return(_a0 *ListSuppressedVulnerabilitiesResponse, _a1 error) *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)) *MockVulnerabilitiesServer_ListSuppressedVulnerabilities_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListVulnerabilities provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) ListVulnerabilities(_a0 context.Context, _a1 *ListVulnerabilitiesRequest) (*ListVulnerabilitiesResponse, error) {
 	ret := _m.Called(_a0, _a1)

@@ -21,6 +21,7 @@ type Client interface {
 	GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error)
 	UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId, state string, suppressed bool) error
 	GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*client.Analysis, error)
+	TriggerAnalysis(ctx context.Context, uuid string) error
 }
 
 type dependencyTrackClient struct {
@@ -189,7 +190,7 @@ func (c *dependencyTrackClient) UpdateFinding(
 			Suppressed:            &suppressed,
 		}
 
-		analysis, resp, err := c.client.AnalysisAPI.UpdateAnalysis(apiKeyCtx).
+		_, resp, err := c.client.AnalysisAPI.UpdateAnalysis(apiKeyCtx).
 			Body(analysisRequest).
 			Execute()
 
@@ -197,23 +198,19 @@ func (c *dependencyTrackClient) UpdateFinding(
 			return fmt.Errorf("failed to update finding: %v details: %s", err, parseErrorResponseBody(resp))
 		}
 
-		if err = c.triggerAnalysis(apiKeyCtx, projectId); err != nil {
-			return fmt.Errorf("failed to trigger analysis: %w details: %s", err, parseErrorResponseBody(resp))
-		}
-
-		fmt.Println(analysis)
-
 		return nil
 	})
 }
 
-func (c *dependencyTrackClient) triggerAnalysis(ctx context.Context, uuid string) error {
+func (c *dependencyTrackClient) TriggerAnalysis(ctx context.Context, uuid string) error {
 	// Fire and forget
-	_, _, err := c.client.FindingAPI.AnalyzeProject(ctx, uuid).Execute()
-	if err != nil {
-		return fmt.Errorf("failed to trigger analysis: %w", err)
-	}
-	return nil
+	return c.withAuthContext(ctx, func(apiKeyCtx context.Context) error {
+		_, _, err := c.client.FindingAPI.AnalyzeProject(apiKeyCtx, uuid).Execute()
+		if err != nil {
+			return fmt.Errorf("failed to trigger analysis: %w", err)
+		}
+		return nil
+	})
 }
 
 func (c *dependencyTrackClient) GetAnalysisTrailForImage(

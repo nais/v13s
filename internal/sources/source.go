@@ -7,7 +7,7 @@ import (
 type Source interface {
 	Name() string
 	SuppressVulnerability(ctx context.Context, suppressedVulnerability *SuppressedVulnerability) error
-	GetVulnerabilites(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
+	GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
 	// TODO: add includeSuppressed bool
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error

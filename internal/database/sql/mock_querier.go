@@ -119,6 +119,63 @@ func (_c *MockQuerier_BatchUpsertVulnerabilities_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// CountSuppressedVulnerabilities provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountSuppressedVulnerabilities")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, CountSuppressedVulnerabilitiesParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, CountSuppressedVulnerabilitiesParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, CountSuppressedVulnerabilitiesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_CountSuppressedVulnerabilities_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountSuppressedVulnerabilities'
+type MockQuerier_CountSuppressedVulnerabilities_Call struct {
+	*mock.Call
+}
+
+// CountSuppressedVulnerabilities is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg CountSuppressedVulnerabilitiesParams
+func (_e *MockQuerier_Expecter) CountSuppressedVulnerabilities(ctx interface{}, arg interface{}) *MockQuerier_CountSuppressedVulnerabilities_Call {
+	return &MockQuerier_CountSuppressedVulnerabilities_Call{Call: _e.mock.On("CountSuppressedVulnerabilities", ctx, arg)}
+}
+
+func (_c *MockQuerier_CountSuppressedVulnerabilities_Call) Run(run func(ctx context.Context, arg CountSuppressedVulnerabilitiesParams)) *MockQuerier_CountSuppressedVulnerabilities_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(CountSuppressedVulnerabilitiesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountSuppressedVulnerabilities_Call) Return(_a0 int64, _a1 error) *MockQuerier_CountSuppressedVulnerabilities_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_CountSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context, CountSuppressedVulnerabilitiesParams) (int64, error)) *MockQuerier_CountSuppressedVulnerabilities_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
@@ -928,6 +985,64 @@ func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) RunAndReturn(run fun
 	return _c
 }
 
+// ListAllSuppressedVulnerabilities provides a mock function with given fields: ctx
+func (_m *MockQuerier) ListAllSuppressedVulnerabilities(ctx context.Context) ([]*SuppressedVulnerability, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListAllSuppressedVulnerabilities")
+	}
+
+	var r0 []*SuppressedVulnerability
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*SuppressedVulnerability, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*SuppressedVulnerability); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*SuppressedVulnerability)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListAllSuppressedVulnerabilities_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListAllSuppressedVulnerabilities'
+type MockQuerier_ListAllSuppressedVulnerabilities_Call struct {
+	*mock.Call
+}
+
+// ListAllSuppressedVulnerabilities is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) ListAllSuppressedVulnerabilities(ctx interface{}) *MockQuerier_ListAllSuppressedVulnerabilities_Call {
+	return &MockQuerier_ListAllSuppressedVulnerabilities_Call{Call: _e.mock.On("ListAllSuppressedVulnerabilities", ctx)}
+}
+
+func (_c *MockQuerier_ListAllSuppressedVulnerabilities_Call) Run(run func(ctx context.Context)) *MockQuerier_ListAllSuppressedVulnerabilities_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListAllSuppressedVulnerabilities_Call) Return(_a0 []*SuppressedVulnerability, _a1 error) *MockQuerier_ListAllSuppressedVulnerabilities_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListAllSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context) ([]*SuppressedVulnerability, error)) *MockQuerier_ListAllSuppressedVulnerabilities_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListAllVulnerabilitySummaries provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListAllVulnerabilitySummaries(ctx context.Context, arg ListAllVulnerabilitySummariesParams) ([]*VulnerabilitySummary, error) {
 	ret := _m.Called(ctx, arg)
@@ -987,29 +1102,29 @@ func (_c *MockQuerier_ListAllVulnerabilitySummaries_Call) RunAndReturn(run func(
 	return _c
 }
 
-// ListSuppressedVulnerabilities provides a mock function with given fields: ctx
-func (_m *MockQuerier) ListSuppressedVulnerabilities(ctx context.Context) ([]*SuppressedVulnerability, error) {
-	ret := _m.Called(ctx)
+// ListSuppressedVulnerabilities provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error) {
+	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListSuppressedVulnerabilities")
 	}
 
-	var r0 []*SuppressedVulnerability
+	var r0 []*ListSuppressedVulnerabilitiesRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]*SuppressedVulnerability, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)); ok {
+		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []*SuppressedVulnerability); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, ListSuppressedVulnerabilitiesParams) []*ListSuppressedVulnerabilitiesRow); ok {
+		r0 = rf(ctx, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*SuppressedVulnerability)
+			r0 = ret.Get(0).([]*ListSuppressedVulnerabilitiesRow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, ListSuppressedVulnerabilitiesParams) error); ok {
+		r1 = rf(ctx, arg)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1024,30 +1139,31 @@ type MockQuerier_ListSuppressedVulnerabilities_Call struct {
 
 // ListSuppressedVulnerabilities is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockQuerier_Expecter) ListSuppressedVulnerabilities(ctx interface{}) *MockQuerier_ListSuppressedVulnerabilities_Call {
-	return &MockQuerier_ListSuppressedVulnerabilities_Call{Call: _e.mock.On("ListSuppressedVulnerabilities", ctx)}
+//   - arg ListSuppressedVulnerabilitiesParams
+func (_e *MockQuerier_Expecter) ListSuppressedVulnerabilities(ctx interface{}, arg interface{}) *MockQuerier_ListSuppressedVulnerabilities_Call {
+	return &MockQuerier_ListSuppressedVulnerabilities_Call{Call: _e.mock.On("ListSuppressedVulnerabilities", ctx, arg)}
 }
 
-func (_c *MockQuerier_ListSuppressedVulnerabilities_Call) Run(run func(ctx context.Context)) *MockQuerier_ListSuppressedVulnerabilities_Call {
+func (_c *MockQuerier_ListSuppressedVulnerabilities_Call) Run(run func(ctx context.Context, arg ListSuppressedVulnerabilitiesParams)) *MockQuerier_ListSuppressedVulnerabilities_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(ListSuppressedVulnerabilitiesParams))
 	})
 	return _c
 }
 
-func (_c *MockQuerier_ListSuppressedVulnerabilities_Call) Return(_a0 []*SuppressedVulnerability, _a1 error) *MockQuerier_ListSuppressedVulnerabilities_Call {
+func (_c *MockQuerier_ListSuppressedVulnerabilities_Call) Return(_a0 []*ListSuppressedVulnerabilitiesRow, _a1 error) *MockQuerier_ListSuppressedVulnerabilities_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_ListSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context) ([]*SuppressedVulnerability, error)) *MockQuerier_ListSuppressedVulnerabilities_Call {
+func (_c *MockQuerier_ListSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context, ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)) *MockQuerier_ListSuppressedVulnerabilities_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ListSuppressedVulnerabilitiesForImage provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) ListSuppressedVulnerabilitiesForImage(ctx context.Context, arg ListSuppressedVulnerabilitiesForImageParams) ([]*SuppressedVulnerability, error) {
-	ret := _m.Called(ctx, arg)
+// ListSuppressedVulnerabilitiesForImage provides a mock function with given fields: ctx, imageName
+func (_m *MockQuerier) ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error) {
+	ret := _m.Called(ctx, imageName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListSuppressedVulnerabilitiesForImage")
@@ -1055,19 +1171,19 @@ func (_m *MockQuerier) ListSuppressedVulnerabilitiesForImage(ctx context.Context
 
 	var r0 []*SuppressedVulnerability
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, ListSuppressedVulnerabilitiesForImageParams) ([]*SuppressedVulnerability, error)); ok {
-		return rf(ctx, arg)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*SuppressedVulnerability, error)); ok {
+		return rf(ctx, imageName)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ListSuppressedVulnerabilitiesForImageParams) []*SuppressedVulnerability); ok {
-		r0 = rf(ctx, arg)
+	if rf, ok := ret.Get(0).(func(context.Context, string) []*SuppressedVulnerability); ok {
+		r0 = rf(ctx, imageName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*SuppressedVulnerability)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, ListSuppressedVulnerabilitiesForImageParams) error); ok {
-		r1 = rf(ctx, arg)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, imageName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1082,14 +1198,14 @@ type MockQuerier_ListSuppressedVulnerabilitiesForImage_Call struct {
 
 // ListSuppressedVulnerabilitiesForImage is a helper method to define mock.On call
 //   - ctx context.Context
-//   - arg ListSuppressedVulnerabilitiesForImageParams
-func (_e *MockQuerier_Expecter) ListSuppressedVulnerabilitiesForImage(ctx interface{}, arg interface{}) *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call {
-	return &MockQuerier_ListSuppressedVulnerabilitiesForImage_Call{Call: _e.mock.On("ListSuppressedVulnerabilitiesForImage", ctx, arg)}
+//   - imageName string
+func (_e *MockQuerier_Expecter) ListSuppressedVulnerabilitiesForImage(ctx interface{}, imageName interface{}) *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call {
+	return &MockQuerier_ListSuppressedVulnerabilitiesForImage_Call{Call: _e.mock.On("ListSuppressedVulnerabilitiesForImage", ctx, imageName)}
 }
 
-func (_c *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call) Run(run func(ctx context.Context, arg ListSuppressedVulnerabilitiesForImageParams)) *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call {
+func (_c *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call) Run(run func(ctx context.Context, imageName string)) *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(ListSuppressedVulnerabilitiesForImageParams))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -1099,7 +1215,7 @@ func (_c *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call) Return(_a0 []*
 	return _c
 }
 
-func (_c *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, ListSuppressedVulnerabilitiesForImageParams) ([]*SuppressedVulnerability, error)) *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call {
+func (_c *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, string) ([]*SuppressedVulnerability, error)) *MockQuerier_ListSuppressedVulnerabilitiesForImage_Call {
 	_c.Call.Return(run)
 	return _c
 }

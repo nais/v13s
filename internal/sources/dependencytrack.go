@@ -29,7 +29,7 @@ type VulnerabilityMatch struct {
 }
 
 // TODO: add a cache? maybe for projects only?
-func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) *dependencytrackSource {
+func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
 	return &dependencytrackSource{
 		client: client,
 		log:    log,
@@ -40,7 +40,7 @@ func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
 }
 
-func (d *dependencytrackSource) GetVulnerabilites(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
+func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
 	p, err := d.client.GetProject(ctx, imageName, imageTag)
 	if err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
@@ -67,6 +67,7 @@ func (d *dependencytrackSource) GetVulnerabilites(ctx context.Context, imageName
 }
 
 func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
+	projectId := ""
 	for _, v := range suppressed {
 		var metadata *dependencytrackVulnMetadata
 		if m, ok := v.Metadata.(*dependencytrackVulnMetadata); ok {
@@ -76,6 +77,8 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 			d.log.Warnf("missing metadata for suppressed vulnerability, CveId '%s', Package '%s'", v.CveId, v.Package)
 			continue
 		}
+
+		projectId = metadata.projectId
 
 		an, err := d.client.GetAnalysisTrailForImage(ctx, metadata.projectId, metadata.componentId, metadata.vulnerabilityUuid)
 		if err != nil {
@@ -110,6 +113,14 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 			return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
 		}
 	}
+
+	if projectId != "" {
+		err := d.client.TriggerAnalysis(ctx, projectId)
+		if err != nil {
+			return fmt.Errorf("triggering analysis for project %s: %w", projectId, err)
+		}
+	}
+
 	return nil
 }
 

@@ -326,6 +326,53 @@ func (_c *MockClient_GetProjectsByTag_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// TriggerAnalysis provides a mock function with given fields: ctx, uuid
+func (_m *MockClient) TriggerAnalysis(ctx context.Context, uuid string) error {
+	ret := _m.Called(ctx, uuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TriggerAnalysis")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, uuid)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_TriggerAnalysis_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TriggerAnalysis'
+type MockClient_TriggerAnalysis_Call struct {
+	*mock.Call
+}
+
+// TriggerAnalysis is a helper method to define mock.On call
+//   - ctx context.Context
+//   - uuid string
+func (_e *MockClient_Expecter) TriggerAnalysis(ctx interface{}, uuid interface{}) *MockClient_TriggerAnalysis_Call {
+	return &MockClient_TriggerAnalysis_Call{Call: _e.mock.On("TriggerAnalysis", ctx, uuid)}
+}
+
+func (_c *MockClient_TriggerAnalysis_Call) Run(run func(ctx context.Context, uuid string)) *MockClient_TriggerAnalysis_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_TriggerAnalysis_Call) Return(_a0 error) *MockClient_TriggerAnalysis_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_TriggerAnalysis_Call) RunAndReturn(run func(context.Context, string) error) *MockClient_TriggerAnalysis_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateFinding provides a mock function with given fields: ctx, suppressedBy, reason, projectId, componentId, vulnerabilityId, state, suppressed
 func (_m *MockClient) UpdateFinding(ctx context.Context, suppressedBy string, reason string, projectId string, componentId string, vulnerabilityId string, state string, suppressed bool) error {
 	ret := _m.Called(ctx, suppressedBy, reason, projectId, componentId, vulnerabilityId, state, suppressed)

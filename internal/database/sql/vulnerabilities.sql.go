@@ -420,17 +420,10 @@ SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created
 FROM suppressed_vulnerabilities
 WHERE image_name = $1
 ORDER BY updated_at DESC
-LIMIT $3 OFFSET $2
 `
 
-type ListSuppressedVulnerabilitiesForImageParams struct {
-	ImageName string
-	Offset    int32
-	Limit     int32
-}
-
-func (q *Queries) ListSuppressedVulnerabilitiesForImage(ctx context.Context, arg ListSuppressedVulnerabilitiesForImageParams) ([]*SuppressedVulnerability, error) {
-	rows, err := q.db.Query(ctx, listSuppressedVulnerabilitiesForImage, arg.ImageName, arg.Offset, arg.Limit)
+func (q *Queries) ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error) {
+	rows, err := q.db.Query(ctx, listSuppressedVulnerabilitiesForImage, imageName)
 	if err != nil {
 		return nil, err
 	}

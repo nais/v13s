@@ -97,10 +97,7 @@ func runAtInterval(ctx context.Context, interval time.Duration, name string, log
 
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 	go func() {
-		imageProcessingSem <- struct{}{}
-		defer func() { <-imageProcessingSem }()
-
-		ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+		ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 		defer cancel()
 		err := u.updateForImage(ctx, imageName, imageTag)
 		if err != nil {
@@ -248,19 +245,14 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag string) (any, error) {
-	findings, err := u.source.GetVulnerabilites(ctx, name, tag, true)
+func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, imageTag string) (any, error) {
+	findings, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: handle pagination or create separate query that returns all.
-	//sync suppressed vulnerabilities
-	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, sql.ListSuppressedVulnerabilitiesForImageParams{
-		ImageName: name,
-		Offset:    0,
-		Limit:     1000,
-	})
+	// sync suppressed vulnerabilities
+	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}
@@ -270,8 +262,8 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 		for _, f := range findings {
 			if f.Cve.Id == s.CveID && f.Package == s.Package && s.Suppressed != f.Suppressed {
 				filteredFindings = append(filteredFindings, &sources.SuppressedVulnerability{
-					ImageName:    name,
-					ImageTag:     tag,
+					ImageName:    imageName,
+					ImageTag:     imageTag,
 					CveId:        f.Cve.Id,
 					Package:      f.Package,
 					Suppressed:   s.Suppressed,
@@ -284,7 +276,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 		}
 	}
 
-	// TODO: this can potentially by done in a go routine, maybe inside the function, we do not really "care" if it fails
+	// TODO: We have to wait for the analysis to be done before we can update summary
 	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredFindings)
 	if err != nil {
 		return nil, err
@@ -303,8 +295,8 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 			Refs:     f.Cve.References,
 		})
 		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     name,
-			ImageTag:      tag,
+			ImageName:     imageName,
+			ImageTag:      imageTag,
 			Package:       f.Package,
 			CveID:         f.Cve.Id,
 			Source:        u.source.Name(),
@@ -313,10 +305,10 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, name string, tag st
 	}
 
 	// TODO: how to handle errors here?
-	errs := u.batchVulns(ctx, vulnParams, cveParams, name)
+	errs := u.batchVulns(ctx, vulnParams, cveParams, imageName)
 	if len(errs) > 0 {
 		for _, e := range errs {
-			u.log.Errorf("error upserting vulnerabilities for %s: %v", name, e)
+			u.log.Errorf("error upserting vulnerabilities for %s: %v", imageName, e)
 		}
 		return nil, fmt.Errorf("upserting vulnerabilities, num errors: %d", len(errs))
 	}

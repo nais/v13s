@@ -244,7 +244,6 @@ SELECT *
 FROM suppressed_vulnerabilities
 WHERE image_name = @image_name
 ORDER BY updated_at DESC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ;
 
 -- name: GenerateVulnerabilitySummaryForImage :one
