@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/containerd/log"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
@@ -99,7 +100,7 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 	g.SetLimit(10) // limit to 10 concurrent goroutines
 
 	g.Go(func() error {
-		ctxTimeout, cancel := context.WithTimeout(ctx, 3*time.Minute)
+		ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
 		defer cancel()
 		err := u.updateForImage(ctxTimeout, imageName, imageTag)
 		if err != nil {
@@ -167,7 +168,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 	querier := u.querier.WithTx(tx)
 
 	u.log.Debug("update image")
-	err = u.updateVulnerabilities(ctx, imageName, imageTag)
+	err = u.updateVulnerabilities(ctx, tx, imageName, imageTag)
 	if err != nil {
 		return err
 	}
@@ -254,7 +255,7 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 }
 
 // TODO: use transactions to ensure consistency
-func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, imageTag string) error {
+func (u *Updater) updateVulnerabilities(ctx context.Context, tx pgx.Tx, imageName string, imageTag string) error {
 	u.log.Debug("update vulnerabilities for image:", imageName)
 	findings, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
@@ -321,7 +322,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, i
 
 	// TODO: how to handle errors here?
 	u.log.Debug("batch upserting vulnerabilities")
-	errs := u.batchVulns(ctx, vulnParams, cveParams, imageName)
+	errs := u.batchVulns(ctx, tx, vulnParams, cveParams, imageName)
 	if len(errs) > 0 {
 		for _, e := range errs {
 			u.log.Errorf("error upserting vulnerabilities for %s: %v", imageName, e)
@@ -334,19 +335,12 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, i
 
 // TODO: use transactions to ensure consistency
 // Still have problems with large batch sizes, eg. dolly or pim
-func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVulnerabilitiesParams, cveParams []sql.BatchUpsertCveParams, name string) []error {
+func (u *Updater) batchVulns(ctx context.Context, tx pgx.Tx, vulnParams []sql.BatchUpsertVulnerabilitiesParams, cveParams []sql.BatchUpsertCveParams, name string) []error {
 	start := time.Now()
 	errs := make([]error, 0)
-
-	tx, err := u.db.Begin(ctx)
-	if err != nil {
-		return []error{err}
-	}
-	defer tx.Rollback(ctx)
-
+	numErrs := 0
 	querier := u.querier.WithTx(tx)
 
-	numErrs := 0
 	querier.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) {
 		if err != nil {
 			errs = append(errs, err)
@@ -376,17 +370,6 @@ func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVu
 		"num_errors": numErrs,
 		"image":      name,
 	}).Debug("upserted batch of vulnerabilities")
-
-	if len(errs) == 0 {
-		if err := tx.Commit(ctx); err != nil {
-			return []error{err}
-		}
-	} else {
-		err := tx.Rollback(ctx)
-		if err != nil {
-			return nil
-		}
-	}
 
 	return errs
 }
