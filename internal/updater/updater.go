@@ -10,6 +10,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"time"
 )
 
@@ -94,7 +95,10 @@ func runAtInterval(ctx context.Context, interval time.Duration, name string, log
 }
 
 func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
-	go func() {
+	var g errgroup.Group
+	g.SetLimit(10) // limit to 10 concurrent goroutines
+
+	g.Go(func() error {
 		ctxTimeout, cancel := context.WithTimeout(ctx, 3*time.Minute)
 		defer cancel()
 		err := u.updateForImage(ctxTimeout, imageName, imageTag)
@@ -111,7 +115,8 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 				u.log.Errorf("failed to update image sync status: %v", syncErr)
 			}
 		}
-	}()
+		return err
+	})
 }
 
 // ResyncImages Resync images that have state 'initialized' or 'resync'
