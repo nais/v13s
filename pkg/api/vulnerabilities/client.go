@@ -81,6 +81,10 @@ func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWo
 	return c.m.RegisterWorkload(ctx, in, opts...)
 }
 
+func (c *client) TriggerSync(ctx context.Context, in *management.TriggerSyncRequest, opts ...grpc.CallOption) (*management.TriggerSyncResponse, error) {
+	return c.m.TriggerSync(ctx, in, opts...)
+}
+
 func NewClient(target string, opts ...grpc.DialOption) (Client, error) {
 	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {

@@ -19,6 +19,15 @@ type Server struct {
 	log       *logrus.Entry
 }
 
+func (s *Server) TriggerSync(_ context.Context, _ *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
+	err := s.updater.ResyncImages(s.parentCtx)
+	if err != nil {
+		s.log.WithError(err).Error("Failed to resync images")
+		return nil, err
+	}
+	return &management.TriggerSyncResponse{}, nil
+}
+
 func NewServer(parentCtx context.Context, pool *pgxpool.Pool, updater *updater.Updater, field *logrus.Entry) *Server {
 	return &Server{
 		parentCtx: parentCtx,
