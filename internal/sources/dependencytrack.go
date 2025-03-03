@@ -67,6 +67,7 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 }
 
 func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
+	d.log.Debug("maintaining suppressed vulnerabilities")
 	projectId := ""
 	for _, v := range suppressed {
 		var metadata *dependencytrackVulnMetadata
@@ -84,6 +85,7 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 		if err != nil {
 			return err
 		}
+		d.log.Debug("analysis trail for vulnerability found")
 
 		if an == nil {
 			d.log.Warnf("no analysis trail found for vulnerability %s in project %s", v.CveId, metadata.projectId)
@@ -121,6 +123,8 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 		}
 	}
 
+	d.log.Debug("suppressed vulnerabilities maintained")
+
 	return nil
 }
 
@@ -136,6 +140,7 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 	if err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
 	}
+	d.log.Debug("got project", t)
 
 	if p == nil {
 		return nil, ErrNoProject

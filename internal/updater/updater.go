@@ -166,6 +166,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 
 	querier := u.querier.WithTx(tx)
 
+	u.log.Debug("update image")
 	err = u.updateVulnerabilities(ctx, imageName, imageTag)
 	if err != nil {
 		return err
@@ -182,6 +183,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 		}
 	}
 
+	u.log.Debug("Got summary", summary)
 	err = querier.UpsertVulnerabilitySummary(ctx, sql.UpsertVulnerabilitySummaryParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,
@@ -195,6 +197,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 	if err != nil {
 		return err
 	}
+	u.log.Debug("upserted vulnerability summary")
 
 	err = querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateUpdated,
@@ -205,6 +208,7 @@ func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string
 		return err
 	}
 
+	u.log.Debug("updated image state")
 	return tx.Commit(ctx) // Only commit if no errors
 }
 
@@ -251,6 +255,7 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 
 // TODO: use transactions to ensure consistency
 func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, imageTag string) error {
+	u.log.Debug("update vulnerabilities for image:", imageName)
 	findings, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		if errors.Is(err, sources.ErrNoProject) {
@@ -259,12 +264,14 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, i
 		return err
 	}
 
+	u.log.Debug("Got findings", len(findings))
 	// sync suppressed vulnerabilities
 	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
 	if err != nil {
 		return err
 	}
 
+	u.log.Debug("Got suppressed vulnerabilities", len(suppressedVulns))
 	filteredFindings := make([]*sources.SuppressedVulnerability, 0)
 	for _, s := range suppressedVulns {
 		for _, f := range findings {
@@ -313,6 +320,7 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, i
 	}
 
 	// TODO: how to handle errors here?
+	u.log.Debug("batch upserting vulnerabilities")
 	errs := u.batchVulns(ctx, vulnParams, cveParams, imageName)
 	if len(errs) > 0 {
 		for _, e := range errs {
