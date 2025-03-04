@@ -80,11 +80,19 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 		return err
 	}
 
-	for _, image := range images {
-		u.QueueImage(ctx, image.Name, image.Tag)
+	var g errgroup.Group
+	g.SetLimit(10) // limit to 10 concurrent goroutines
+
+	// TODO: batch images  to avoid too many concurrent requests
+	for _, img := range images {
+		image := img
+		g.Go(func() error {
+			return u.QueueImage(ctx, image.Name, image.Tag)
+		})
+
 	}
 
-	return nil
+	return g.Wait()
 }
 
 // MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'
@@ -109,47 +117,41 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
-func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
-	var g errgroup.Group
-	g.SetLimit(10) // limit to 10 concurrent goroutines
-
+func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
 	ctx = NewDbContext(ctx, u.querier, u.log)
 	querier := db(ctx).querier
+	ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
+	defer cancel()
 
-	g.Go(func() error {
-		ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
-		defer cancel()
+	return SyncImage(ctxTimeout, imageName, imageTag, u.source.Name(), func(ctx context.Context) error {
+		u.log.Debug("update image")
+		err := u.updateVulnerabilities(ctx, imageName, imageTag)
+		if err != nil {
+			return err
+		}
 
-		return SyncImage(ctxTimeout, imageName, imageTag, u.source.Name(), func(ctx context.Context) error {
-			u.log.Debug("update image")
-			err := u.updateVulnerabilities(ctx, imageName, imageTag)
-			if err != nil {
-				return err
-			}
+		summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
+		if err != nil {
+			return err
+		}
 
-			summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
-			if err != nil {
-				return err
-			}
-
-			u.log.Debug("Got summary", summary)
-			err = querier.UpsertVulnerabilitySummary(ctx, sql.UpsertVulnerabilitySummaryParams{
-				ImageName:  imageName,
-				ImageTag:   imageTag,
-				Critical:   summary.Critical,
-				High:       summary.High,
-				Medium:     summary.Medium,
-				Low:        summary.Low,
-				Unassigned: summary.Unassigned,
-				RiskScore:  summary.RiskScore,
-			})
-			if err != nil {
-				return err
-			}
-			u.log.Debug("upserted vulnerability summary")
-
-			return nil
+		u.log.Debug("Got summary", summary)
+		err = querier.UpsertVulnerabilitySummary(ctx, sql.UpsertVulnerabilitySummaryParams{
+			ImageName:  imageName,
+			ImageTag:   imageTag,
+			Critical:   summary.Critical,
+			High:       summary.High,
+			Medium:     summary.Medium,
+			Low:        summary.Low,
+			Unassigned: summary.Unassigned,
+			RiskScore:  summary.RiskScore,
 		})
+		if err != nil {
+			return err
+		}
+		u.log.Debug("upserted vulnerability summary")
+
+		return nil
 	})
 }
 
