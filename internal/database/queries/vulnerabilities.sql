@@ -1,4 +1,39 @@
+-- name: BatchUpsertCve :batchexec
+INSERT INTO cve(cve_id,
+                cve_title,
+                cve_desc,
+                cve_link,
+                severity,
+                refs)
+VALUES (@cve_id,
+        @cve_title,
+        @cve_desc,
+        @cve_link,
+        @severity,
+        @refs)
+    ON CONFLICT (cve_id)
+    DO UPDATE
+               SET cve_title = EXCLUDED.cve_title,
+               cve_desc  = EXCLUDED.cve_desc,
+               cve_link  = EXCLUDED.cve_link,
+               severity  = EXCLUDED.severity,
+               refs      = EXCLUDED.refs
+       WHERE NOT (
+           cve.cve_title = EXCLUDED.cve_title
+         AND cve.cve_desc = EXCLUDED.cve_desc
+         AND cve.cve_link = EXCLUDED.cve_link
+         AND cve.severity = EXCLUDED.severity
+         AND cve.refs = EXCLUDED.refs
+           )
+    RETURNING cve_id
+;
+
 -- name: BatchUpsertVulnerabilities :batchexec
+WITH locked_cve AS (
+    SELECT cve_id FROM cve
+    WHERE cve_id = @cve_id
+    FOR UPDATE
+)
 INSERT INTO vulnerabilities(image_name,
                             image_tag,
                             package,
@@ -17,30 +52,6 @@ DO UPDATE
     WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
 ;
 
--- name: BatchUpsertCve :batchexec
-INSERT INTO cve(cve_id,
-                cve_title,
-                cve_desc,
-                cve_link,
-                severity,
-                refs)
-VALUES (@cve_id,
-        @cve_title,
-        @cve_desc,
-        @cve_link,
-        @severity,
-        @refs)
-ON CONFLICT (cve_id)
-    DO UPDATE
-    SET cve_title = EXCLUDED.cve_title,
-        cve_desc  = EXCLUDED.cve_desc,
-        cve_link  = EXCLUDED.cve_link,
-        severity  = EXCLUDED.severity,
-        refs      = EXCLUDED.refs
-WHERE (cve.cve_title, cve.cve_desc, cve.cve_link, cve.severity, cve.refs)
-        IS DISTINCT FROM
-        (EXCLUDED.cve_title, EXCLUDED.cve_desc, EXCLUDED.cve_link, EXCLUDED.severity, EXCLUDED.refs)
-;
 
 
 -- name: GetCve :one

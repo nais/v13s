@@ -28,16 +28,21 @@ VALUES ($1,
         $4,
         $5,
         $6)
-ON CONFLICT (cve_id)
+    ON CONFLICT (cve_id)
     DO UPDATE
-    SET cve_title = EXCLUDED.cve_title,
-        cve_desc  = EXCLUDED.cve_desc,
-        cve_link  = EXCLUDED.cve_link,
-        severity  = EXCLUDED.severity,
-        refs      = EXCLUDED.refs
-WHERE (cve.cve_title, cve.cve_desc, cve.cve_link, cve.severity, cve.refs)
-        IS DISTINCT FROM
-        (EXCLUDED.cve_title, EXCLUDED.cve_desc, EXCLUDED.cve_link, EXCLUDED.severity, EXCLUDED.refs)
+               SET cve_title = EXCLUDED.cve_title,
+               cve_desc  = EXCLUDED.cve_desc,
+               cve_link  = EXCLUDED.cve_link,
+               severity  = EXCLUDED.severity,
+               refs      = EXCLUDED.refs
+       WHERE NOT (
+           cve.cve_title = EXCLUDED.cve_title
+         AND cve.cve_desc = EXCLUDED.cve_desc
+         AND cve.cve_link = EXCLUDED.cve_link
+         AND cve.severity = EXCLUDED.severity
+         AND cve.refs = EXCLUDED.refs
+           )
+    RETURNING cve_id
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -94,6 +99,11 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 }
 
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
+WITH locked_cve AS (
+    SELECT cve_id FROM cve
+    WHERE cve_id = $4
+    FOR UPDATE
+)
 INSERT INTO vulnerabilities(image_name,
                             image_tag,
                             package,
