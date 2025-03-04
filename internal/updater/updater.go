@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -71,52 +70,6 @@ func (u *Updater) Run(ctx context.Context) {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
-
-}
-
-func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info("job stopped")
-			return
-		case <-ticker.C:
-			// TODO: set as debug
-			log.Infof("running scheduled job '%s' at interval %v", name, interval)
-			job()
-		}
-	}
-}
-
-func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
-	var g errgroup.Group
-	g.SetLimit(10) // limit to 10 concurrent goroutines
-
-	g.Go(func() error {
-		ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
-		defer cancel()
-		err := u.updateForImage(ctxTimeout, imageName, imageTag)
-		if err != nil {
-			u.log.Errorf("processing image %s:%s failed", imageName, imageTag)
-			if dbErr := u.querier.UpdateImageState(ctxTimeout, sql.UpdateImageStateParams{
-				State: sql.ImageStateFailed,
-				Name:  imageName,
-				Tag:   imageTag,
-			}); dbErr != nil {
-				u.log.Errorf("failed to update image state to failed: %v", dbErr)
-			}
-			if syncErr := u.handleSyncError(ctxTimeout, imageName, imageTag, SyncErrorStatusCodeGenericError, err); syncErr != nil {
-				u.log.Errorf("failed to update image sync status: %v", syncErr)
-			}
-		}
-		return err
-	})
 }
 
 // ResyncImages Resync images that have state 'initialized' or 'resync'
@@ -156,80 +109,48 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
-// TODO: use transactions to ensure consistency
-func (u *Updater) updateForImage(ctx context.Context, imageName, imageTag string) error {
-	querier := u.querier
+func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
+	var g errgroup.Group
+	g.SetLimit(10) // limit to 10 concurrent goroutines
 
-	u.log.Debug("update image")
-	err := u.updateVulnerabilities(ctx, imageName, imageTag)
-	if err != nil {
-		return err
-	}
+	g.Go(func() error {
+		ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
+		defer cancel()
 
-	summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
-	if err != nil {
-		if errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
-			err = u.handleSyncError(ctx, imageName, imageTag, SyncErrorStatusCodeNotFound, err)
+		ctxTimeout = NewDbContext(ctxTimeout, u.db, u.log)
+		querier := db(ctx).querier
+
+		return SyncImage(ctxTimeout, imageName, imageTag, u.source.Name(), func(ctx context.Context) error {
+			u.log.Debug("update image")
+			err := u.updateVulnerabilities(ctx, imageName, imageTag)
 			if err != nil {
-				return fmt.Errorf("handling sync error: %w", err)
+				return err
 			}
+
+			summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
+			if err != nil {
+				return err
+			}
+
+			u.log.Debug("Got summary", summary)
+			err = querier.UpsertVulnerabilitySummary(ctx, sql.UpsertVulnerabilitySummaryParams{
+				ImageName:  imageName,
+				ImageTag:   imageTag,
+				Critical:   summary.Critical,
+				High:       summary.High,
+				Medium:     summary.Medium,
+				Low:        summary.Low,
+				Unassigned: summary.Unassigned,
+				RiskScore:  summary.RiskScore,
+			})
+			if err != nil {
+				return err
+			}
+			u.log.Debug("upserted vulnerability summary")
+
 			return nil
-		}
-	}
-
-	u.log.Debug("Got summary", summary)
-	err = querier.UpsertVulnerabilitySummary(ctx, sql.UpsertVulnerabilitySummaryParams{
-		ImageName:  imageName,
-		ImageTag:   imageTag,
-		Critical:   summary.Critical,
-		High:       summary.High,
-		Medium:     summary.Medium,
-		Low:        summary.Low,
-		Unassigned: summary.Unassigned,
-		RiskScore:  summary.RiskScore,
+		})
 	})
-	if err != nil {
-		return err
-	}
-	u.log.Debug("upserted vulnerability summary")
-
-	err = querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-		State: sql.ImageStateUpdated,
-		Name:  imageName,
-		Tag:   imageTag,
-	})
-	if err != nil {
-		return err
-	}
-
-	u.log.Debug("updated image state")
-	return nil
-}
-
-func (u *Updater) handleSyncError(ctx context.Context, imageName, imageTag, statusCode string, err error) error {
-	updateSyncParams := sql.UpdateImageSyncStatusParams{
-		ImageName:  imageName,
-		ImageTag:   imageTag,
-		StatusCode: statusCode,
-		Source:     u.source.Name(),
-	}
-
-	switch {
-	case errors.Is(err, sources.ErrNoProject):
-		updateSyncParams.Reason = "no project found"
-	case errors.Is(err, sources.ErrNoMetrics):
-		updateSyncParams.Reason = "no metrics found"
-	default:
-		updateSyncParams.Reason = err.Error()
-		u.log.Errorf("orginal error status: %v", err)
-	}
-
-	if insertErr := u.querier.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {
-		u.log.Errorf("failed to update image sync status: %v", insertErr)
-		return fmt.Errorf("updating image sync status: %w", insertErr)
-	}
-
-	return nil
 }
 
 func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
@@ -252,9 +173,6 @@ func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, i
 	u.log.Debug("update vulnerabilities for image:", imageName)
 	findings, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
-		if errors.Is(err, sources.ErrNoProject) {
-			return nil
-		}
 		return err
 	}
 
@@ -367,4 +285,24 @@ func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVu
 	}).Debug("upserted batch of vulnerabilities")
 
 	return errs
+}
+
+func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("job stopped")
+			return
+		case <-ticker.C:
+			// TODO: set as debug
+			log.Infof("running scheduled job '%s' at interval %v", name, interval)
+			job()
+		}
+	}
 }

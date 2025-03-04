@@ -64,7 +64,11 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		return nil, err
 	}
 
-	s.updater.QueueImage(s.parentCtx, request.ImageName, request.ImageTag)
+	// TODO: we need to do something here, it gets invoked a lot of times within a short period of time
+	// have some checks if image needs updating.. maybe just set state initialized and let the updater handle it
+	// need something so that new images get updated almost at once
+
+	//s.updater.QueueImage(s.parentCtx, request.ImageName, request.ImageTag)
 
 	return &management.RegisterWorkloadResponse{}, nil
 }
