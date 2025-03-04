@@ -31,9 +31,18 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 	if err != nil {
 		err = handleError(ctx, imageName, imageTag, source, err)
 		if err != nil {
-			d.log.Errorf("failed to handle error: %v", err)
-			return fmt.Errorf("handling error: %w", err)
+			err = d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				Name:  imageName,
+				Tag:   imageTag,
+				State: sql.ImageStateFailed,
+			})
+			if err != nil {
+				d.log.Errorf("failed to update image state: %v", err)
+				return fmt.Errorf("updating image state: %w", err)
+			}
+			return nil
 		}
+		return nil
 	}
 
 	err = d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
@@ -49,6 +58,11 @@ func db(ctx context.Context) *database {
 	return ctx.Value(dbKey).(*database)
 }
 
+type SyncResult struct {
+	err     error
+	updated bool
+}
+
 func handleError(ctx context.Context, imageName, imageTag string, source string, err error) error {
 	d := db(ctx)
 	updateSyncParams := sql.UpdateImageSyncStatusParams{
@@ -57,33 +71,17 @@ func handleError(ctx context.Context, imageName, imageTag string, source string,
 		Source:    source,
 	}
 
-	markAsFailed := false
-
-	switch {
-	case errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics):
-		updateSyncParams.Reason = err.Error()
-		updateSyncParams.StatusCode = SyncErrorStatusCodeNotFound
-	default:
-		updateSyncParams.Reason = err.Error()
-		d.log.Errorf("orginal error status: %v", err)
-		markAsFailed = true
+	if err == nil || errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
+		return nil
 	}
+
+	updateSyncParams.Reason = err.Error()
+	d.log.Debugf("orginal error status: %v", err)
 
 	if insertErr := d.querier.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {
 		d.log.Errorf("failed to update image sync status: %v", insertErr)
 		return fmt.Errorf("updating image sync status: %w", insertErr)
 	}
 
-	if markAsFailed {
-		err = db(ctx).querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-			Name:  imageName,
-			Tag:   imageTag,
-			State: sql.ImageStateFailed,
-		})
-		if err != nil {
-			d.log.Errorf("failed to update image state: %v", err)
-			return fmt.Errorf("updating image state: %w", err)
-		}
-	}
-	return nil
+	return err
 }
