@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
@@ -19,9 +18,9 @@ type ctxKey int
 
 const dbKey ctxKey = iota
 
-func NewDbContext(ctx context.Context, dbConn *pgxpool.Pool, log *logrus.Entry) context.Context {
+func NewDbContext(ctx context.Context, querier sql.Querier, log *logrus.Entry) context.Context {
 	return context.WithValue(ctx, dbKey, &database{
-		querier: sql.New(dbConn),
+		querier: querier,
 		log:     log,
 	})
 }

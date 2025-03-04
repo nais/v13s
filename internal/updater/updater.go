@@ -113,12 +113,12 @@ func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) {
 	var g errgroup.Group
 	g.SetLimit(10) // limit to 10 concurrent goroutines
 
+	ctx = NewDbContext(ctx, u.querier, u.log)
+	querier := db(ctx).querier
+
 	g.Go(func() error {
 		ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
 		defer cancel()
-
-		ctxTimeout = NewDbContext(ctxTimeout, u.db, u.log)
-		querier := db(ctx).querier
 
 		return SyncImage(ctxTimeout, imageName, imageTag, u.source.Name(), func(ctx context.Context) error {
 			u.log.Debug("update image")
