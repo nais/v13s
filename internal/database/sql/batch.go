@@ -223,3 +223,87 @@ func (b *BatchUpsertVulnerabilitiesBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }
+
+const batchUpsertVulnerabilitySummary = `-- name: BatchUpsertVulnerabilitySummary :batchexec
+INSERT INTO vulnerability_summary(image_name,
+                                  image_tag,
+                                  critical,
+                                  high,
+                                  medium,
+                                  low,
+                                  unassigned,
+                                  risk_score)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8) ON CONFLICT
+ON CONSTRAINT image_name_tag DO
+UPDATE
+    SET critical = $3,
+    high = $4,
+    medium = $5,
+    low = $6,
+    unassigned = $7,
+    risk_score = $8
+`
+
+type BatchUpsertVulnerabilitySummaryBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BatchUpsertVulnerabilitySummaryParams struct {
+	ImageName  string
+	ImageTag   string
+	Critical   int32
+	High       int32
+	Medium     int32
+	Low        int32
+	Unassigned int32
+	RiskScore  int32
+}
+
+func (q *Queries) BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.ImageName,
+			a.ImageTag,
+			a.Critical,
+			a.High,
+			a.Medium,
+			a.Low,
+			a.Unassigned,
+			a.RiskScore,
+		}
+		batch.Queue(batchUpsertVulnerabilitySummary, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BatchUpsertVulnerabilitySummaryBatchResults{br, len(arg), false}
+}
+
+func (b *BatchUpsertVulnerabilitySummaryBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BatchUpsertVulnerabilitySummaryBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}

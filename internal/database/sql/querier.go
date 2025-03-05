@@ -10,6 +10,7 @@ type Querier interface {
 	BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
+	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CountVulnerabilitiesForImage(ctx context.Context, arg CountVulnerabilitiesForImageParams) (int64, error)
@@ -41,7 +42,6 @@ type Querier interface {
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error)
-	UpsertVulnerabilitySummary(ctx context.Context, arg UpsertVulnerabilitySummaryParams) error
 	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error
 }
 

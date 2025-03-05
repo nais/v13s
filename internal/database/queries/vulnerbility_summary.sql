@@ -1,4 +1,4 @@
--- name: UpsertVulnerabilitySummary :exec
+-- name: BatchUpsertVulnerabilitySummary :batchexec
 INSERT INTO vulnerability_summary(image_name,
                                   image_tag,
                                   critical,

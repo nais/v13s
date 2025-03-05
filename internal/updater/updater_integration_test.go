@@ -17,6 +17,7 @@ import (
 	"time"
 )
 
+// TODO: add tests for VulnerabilitySummary upserted too
 func TestUpdater(t *testing.T) {
 	ctx := context.Background()
 

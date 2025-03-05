@@ -21,6 +21,55 @@ func (_m *MockQuerier) EXPECT() *MockQuerier_Expecter {
 	return &MockQuerier_Expecter{mock: &_m.Mock}
 }
 
+// BatchUpdateImageState provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BatchUpdateImageState")
+	}
+
+	var r0 *BatchUpdateImageStateBatchResults
+	if rf, ok := ret.Get(0).(func(context.Context, []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BatchUpdateImageStateBatchResults)
+		}
+	}
+
+	return r0
+}
+
+// MockQuerier_BatchUpdateImageState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BatchUpdateImageState'
+type MockQuerier_BatchUpdateImageState_Call struct {
+	*mock.Call
+}
+
+// BatchUpdateImageState is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg []BatchUpdateImageStateParams
+func (_e *MockQuerier_Expecter) BatchUpdateImageState(ctx interface{}, arg interface{}) *MockQuerier_BatchUpdateImageState_Call {
+	return &MockQuerier_BatchUpdateImageState_Call{Call: _e.mock.On("BatchUpdateImageState", ctx, arg)}
+}
+
+func (_c *MockQuerier_BatchUpdateImageState_Call) Run(run func(ctx context.Context, arg []BatchUpdateImageStateParams)) *MockQuerier_BatchUpdateImageState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]BatchUpdateImageStateParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BatchUpdateImageState_Call) Return(_a0 *BatchUpdateImageStateBatchResults) *MockQuerier_BatchUpdateImageState_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_BatchUpdateImageState_Call) RunAndReturn(run func(context.Context, []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults) *MockQuerier_BatchUpdateImageState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BatchUpsertCve provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults {
 	ret := _m.Called(ctx, arg)
@@ -115,6 +164,55 @@ func (_c *MockQuerier_BatchUpsertVulnerabilities_Call) Return(_a0 *BatchUpsertVu
 }
 
 func (_c *MockQuerier_BatchUpsertVulnerabilities_Call) RunAndReturn(run func(context.Context, []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults) *MockQuerier_BatchUpsertVulnerabilities_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// BatchUpsertVulnerabilitySummary provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BatchUpsertVulnerabilitySummary")
+	}
+
+	var r0 *BatchUpsertVulnerabilitySummaryBatchResults
+	if rf, ok := ret.Get(0).(func(context.Context, []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BatchUpsertVulnerabilitySummaryBatchResults)
+		}
+	}
+
+	return r0
+}
+
+// MockQuerier_BatchUpsertVulnerabilitySummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BatchUpsertVulnerabilitySummary'
+type MockQuerier_BatchUpsertVulnerabilitySummary_Call struct {
+	*mock.Call
+}
+
+// BatchUpsertVulnerabilitySummary is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg []BatchUpsertVulnerabilitySummaryParams
+func (_e *MockQuerier_Expecter) BatchUpsertVulnerabilitySummary(ctx interface{}, arg interface{}) *MockQuerier_BatchUpsertVulnerabilitySummary_Call {
+	return &MockQuerier_BatchUpsertVulnerabilitySummary_Call{Call: _e.mock.On("BatchUpsertVulnerabilitySummary", ctx, arg)}
+}
+
+func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) Run(run func(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams)) *MockQuerier_BatchUpsertVulnerabilitySummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]BatchUpsertVulnerabilitySummaryParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) Return(_a0 *BatchUpsertVulnerabilitySummaryBatchResults) *MockQuerier_BatchUpsertVulnerabilitySummary_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) RunAndReturn(run func(context.Context, []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults) *MockQuerier_BatchUpsertVulnerabilitySummary_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1851,53 +1949,6 @@ func (_c *MockQuerier_UpdateWorkload_Call) Return(_a0 *Workload, _a1 error) *Moc
 }
 
 func (_c *MockQuerier_UpdateWorkload_Call) RunAndReturn(run func(context.Context, UpdateWorkloadParams) (*Workload, error)) *MockQuerier_UpdateWorkload_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpsertVulnerabilitySummary provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) UpsertVulnerabilitySummary(ctx context.Context, arg UpsertVulnerabilitySummaryParams) error {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpsertVulnerabilitySummary")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, UpsertVulnerabilitySummaryParams) error); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockQuerier_UpsertVulnerabilitySummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertVulnerabilitySummary'
-type MockQuerier_UpsertVulnerabilitySummary_Call struct {
-	*mock.Call
-}
-
-// UpsertVulnerabilitySummary is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg UpsertVulnerabilitySummaryParams
-func (_e *MockQuerier_Expecter) UpsertVulnerabilitySummary(ctx interface{}, arg interface{}) *MockQuerier_UpsertVulnerabilitySummary_Call {
-	return &MockQuerier_UpsertVulnerabilitySummary_Call{Call: _e.mock.On("UpsertVulnerabilitySummary", ctx, arg)}
-}
-
-func (_c *MockQuerier_UpsertVulnerabilitySummary_Call) Run(run func(ctx context.Context, arg UpsertVulnerabilitySummaryParams)) *MockQuerier_UpsertVulnerabilitySummary_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(UpsertVulnerabilitySummaryParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_UpsertVulnerabilitySummary_Call) Return(_a0 error) *MockQuerier_UpsertVulnerabilitySummary_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockQuerier_UpsertVulnerabilitySummary_Call) RunAndReturn(run func(context.Context, UpsertVulnerabilitySummaryParams) error) *MockQuerier_UpsertVulnerabilitySummary_Call {
 	_c.Call.Return(run)
 	return _c
 }

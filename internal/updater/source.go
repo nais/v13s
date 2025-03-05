@@ -18,7 +18,7 @@ type ImageVulnerabilityData struct {
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
 	var g errgroup.Group
-	g.SetLimit(limit) // limit to 10 concurrent goroutines
+	g.SetLimit(limit) // limit concurrent goroutines
 
 	for _, img := range images {
 		image := img
@@ -140,4 +140,17 @@ func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVul
 		})
 	}
 	return params
+}
+
+func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpsertVulnerabilitySummaryParams {
+	return sql.BatchUpsertVulnerabilitySummaryParams{
+		ImageName:  i.ImageName,
+		ImageTag:   i.ImageTag,
+		Critical:   i.Summary.Critical,
+		High:       i.Summary.High,
+		Medium:     i.Summary.Medium,
+		Low:        i.Summary.Low,
+		Unassigned: i.Summary.Unassigned,
+		RiskScore:  i.Summary.RiskScore,
+	}
 }
