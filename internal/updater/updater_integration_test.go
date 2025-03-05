@@ -30,7 +30,9 @@ func TestUpdater(t *testing.T) {
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
 	updateInterval := 200 * time.Millisecond
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, logrus.NewEntry(logrus.StandardLogger())), updateInterval, logrus.NewEntry(logrus.StandardLogger()))
+	log := logrus.NewEntry(logrus.StandardLogger())
+	logrus.SetLevel(logrus.DebugLevel)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, log), updateInterval, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))

@@ -23,6 +23,14 @@ SET
 WHERE name = @name AND tag = @tag
 ;
 
+-- name: BatchUpdateImageState :batchexec
+UPDATE images
+SET
+    state = @state,
+    updated_at = NOW()
+WHERE name = @name AND tag = @tag
+;
+
 -- name: MarkImagesAsUntracked :exec
 UPDATE images
 SET

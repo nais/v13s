@@ -6,18 +6,16 @@ import (
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"time"
 )
 
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
 	DefaultMarkUntrackedInterval        = 10 * time.Minute
-	SyncErrorStatusCodeNotFound         = "NotFound"
-	SyncErrorStatusCodeGenericError     = "GenericError"
 )
 
 type Updater struct {
@@ -80,19 +78,41 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 		return err
 	}
 
-	var g errgroup.Group
-	g.SetLimit(10) // limit to 10 concurrent goroutines
+	ctx = NewDbContext(ctx, u.querier, u.log)
 
-	// TODO: batch images  to avoid too many concurrent requests
-	for _, img := range images {
-		image := img
-		g.Go(func() error {
-			return u.QueueImage(ctx, image.Name, image.Tag)
-		})
+	//errchan := make(chan error)
+	//defer close(errchan)
+	done := make(chan bool)
+	defer close(done)
 
+	batchCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+	defer cancel()
+
+	ch := make(chan *ImageVulnerabilityData, 100)
+
+	go func() {
+
+		if err = u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
+			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
+			//errchan <- err
+			done <- false
+		} else {
+			done <- true
+		}
+	}()
+
+	// will block until limit is reached
+	err = u.FetchVulnerabilityDataForImages(ctx, images, 10, ch)
+	if err != nil {
+		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
+		return err
 	}
 
-	return g.Wait()
+	close(ch)
+	updateSuccess := <-done
+
+	fmt.Printf("updateSuccess: %v\n", updateSuccess)
+	return nil
 }
 
 // MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'
@@ -117,176 +137,86 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
-func (u *Updater) QueueImage(ctx context.Context, imageName, imageTag string) error {
-	ctx = NewDbContext(ctx, u.querier, u.log)
-	querier := db(ctx).querier
-	ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
-	defer cancel()
+func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVulnerabilityData) error {
+	var numUpserted, numErrors int
+	start := time.Now()
 
-	return SyncImage(ctxTimeout, imageName, imageTag, u.source.Name(), func(ctx context.Context) error {
-		u.log.Debug("update image")
-		err := u.updateVulnerabilities(ctx, imageName, imageTag)
+	for {
+		batch, err := collections.ReadChannel(ctx, ch, 100)
 		if err != nil {
 			return err
 		}
 
-		summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
-		if err != nil {
-			return err
+		if len(batch) == 0 {
+			break
 		}
 
-		u.log.Debug("Got summary", summary)
-		err = querier.UpsertVulnerabilitySummary(ctx, sql.UpsertVulnerabilitySummaryParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			Critical:   summary.Critical,
-			High:       summary.High,
-			Medium:     summary.Medium,
-			Low:        summary.Low,
-			Unassigned: summary.Unassigned,
-			RiskScore:  summary.RiskScore,
-		})
-		if err != nil {
-			return err
-		}
-		u.log.Debug("upserted vulnerability summary")
-
-		return nil
-	})
-}
-
-func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
-	switch reason {
-	case sql.VulnerabilitySuppressReasonFalsePositive:
-		return "FALSE_POSITIVE"
-	case sql.VulnerabilitySuppressReasonInTriage:
-		return "IN_TRIAGE"
-	case sql.VulnerabilitySuppressReasonNotAffected:
-		return "NOT_AFFECTED"
-	case sql.VulnerabilitySuppressReasonResolved:
-		return "RESOLVED"
-	default:
-		return "NOT_SET"
-	}
-}
-
-// TODO: use transactions to ensure consistency
-func (u *Updater) updateVulnerabilities(ctx context.Context, imageName string, imageTag string) error {
-	u.log.Debug("update vulnerabilities for image:", imageName)
-	findings, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
-	if err != nil {
-		return err
+		batchUpserts, batchErrors := u.upsertBatch(ctx, batch)
+		numUpserted += batchUpserts
+		numErrors += batchErrors
 	}
 
-	u.log.Debug("Got findings", len(findings))
-	// sync suppressed vulnerabilities
-	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
-	if err != nil {
-		return err
-	}
-
-	u.log.Debug("Got suppressed vulnerabilities", len(suppressedVulns))
-	filteredFindings := make([]*sources.SuppressedVulnerability, 0)
-	for _, s := range suppressedVulns {
-		for _, f := range findings {
-			if f.Cve.Id == s.CveID && f.Package == s.Package && s.Suppressed != f.Suppressed {
-				filteredFindings = append(filteredFindings, &sources.SuppressedVulnerability{
-					ImageName:    imageName,
-					ImageTag:     imageTag,
-					CveId:        f.Cve.Id,
-					Package:      f.Package,
-					Suppressed:   s.Suppressed,
-					Reason:       s.ReasonText,
-					SuppressedBy: s.SuppressedBy,
-					State:        vulnerabilitySuppressReasonToState(s.Reason),
-					Metadata:     f.Metadata,
-				})
-			}
-		}
-	}
-
-	// TODO: We have to wait for the analysis to be done before we can update summary
-	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredFindings)
-	if err != nil {
-		return err
-	}
-
-	cveParams := make([]sql.BatchUpsertCveParams, 0)
-	vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-
-	for _, f := range findings {
-		cveParams = append(cveParams, sql.BatchUpsertCveParams{
-			CveID:    f.Cve.Id,
-			CveTitle: f.Cve.Title,
-			CveDesc:  f.Cve.Description,
-			CveLink:  f.Cve.Link,
-			Severity: f.Cve.Severity.ToInt32(),
-			Refs:     f.Cve.References,
-		})
-		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     imageName,
-			ImageTag:      imageTag,
-			Package:       f.Package,
-			CveID:         f.Cve.Id,
-			Source:        u.source.Name(),
-			LatestVersion: f.LatestVersion,
-		})
-	}
-
-	// TODO: how to handle errors here?
-	u.log.Debug("batch upserting vulnerabilities")
-	errs := u.batchVulns(ctx, vulnParams, cveParams, imageName)
-	if len(errs) > 0 {
-		for _, e := range errs {
-			u.log.Errorf("error upserting vulnerabilities for %s: %v", imageName, e)
-		}
-		return fmt.Errorf("upserting vulnerabilities, num errors: %d", len(errs))
-	}
-
+	u.log.WithFields(logrus.Fields{
+		"duration":   time.Since(start),
+		"num_rows":   numUpserted,
+		"num_errors": numErrors,
+	}).Infof("vulnerability data has been updated")
 	return nil
 }
 
-// TODO: use transactions to ensure consistency
-// Still have problems with large batch sizes, eg. dolly or pim
-func (u *Updater) batchVulns(ctx context.Context, vulnParams []sql.BatchUpsertVulnerabilitiesParams, cveParams []sql.BatchUpsertCveParams, name string) []error {
+func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityData) (upserted, errors int) {
+	if len(batch) == 0 {
+		return
+	}
+
+	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
+	cves := make([]sql.BatchUpsertCveParams, 0)
+	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+
+	for _, i := range batch {
+		cves = append(cves, i.ToCveSqlParams()...)
+		vulns = append(vulns, i.ToVulnerabilitySqlParams()...)
+		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
+			State: sql.ImageStateUpdated,
+			Name:  i.ImageName,
+			Tag:   i.ImageTag,
+		})
+	}
+
 	start := time.Now()
-	errs := make([]error, 0)
-	numErrs := 0
-	querier := u.querier
-
-	querier.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) {
+	var batchErr error
+	u.querier.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
 		if err != nil {
-			errs = append(errs, err)
-			u.log.Debug("error upserting cve", err)
-			numErrs++
+			u.log.WithError(err).Debug("failed to batch upsert cves")
+			batchErr = err
+			errors++
 		}
 	})
-	upserted := len(cveParams) - numErrs
-	u.log.WithFields(log.Fields{
-		"duration":   time.Since(start),
-		"num_rows":   upserted,
-		"num_errors": numErrs,
-		"image":      name,
-	}).Debug("upserted batch of CVEs")
-
-	start = time.Now()
-	numErrs = 0
-	querier.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) {
+	u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec(func(i int, err error) {
 		if err != nil {
-			errs = append(errs, err)
-			u.log.Debug("error upserting vulnz", err)
-			numErrs++
+			u.log.WithError(err).Debug("failed to batch upsert vulnerabilities")
+			batchErr = err
+			errors++
 		}
 	})
-	upserted = len(vulnParams) - numErrs
-	u.log.WithFields(log.Fields{
+
+	if errors == 0 {
+		u.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
+			if err != nil {
+				u.log.WithError(err).Debug("failed to batch update image state")
+				batchErr = err
+				errors++
+			}
+		})
+	}
+
+	upserted += len(cves) + len(vulns) - errors
+	u.log.WithError(batchErr).WithFields(logrus.Fields{
 		"duration":   time.Since(start),
 		"num_rows":   upserted,
-		"num_errors": numErrs,
-		"image":      name,
-	}).Debug("upserted batch of vulnerabilities")
-
-	return errs
+		"num_errors": errors,
+	}).Infof("upserted batch")
+	return
 }
 
 func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {

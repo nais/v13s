@@ -25,15 +25,9 @@ VALUES (@cve_id,
          AND cve.severity = EXCLUDED.severity
          AND cve.refs = EXCLUDED.refs
            )
-    RETURNING cve_id
 ;
 
 -- name: BatchUpsertVulnerabilities :batchexec
-WITH locked_cve AS (
-    SELECT cve_id FROM cve
-    WHERE cve_id = @cve_id
-    FOR UPDATE
-)
 INSERT INTO vulnerabilities(image_name,
                             image_tag,
                             package,

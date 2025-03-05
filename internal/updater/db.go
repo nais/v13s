@@ -9,6 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	SyncErrorStatusCodeGenericError = "GenericError"
+)
+
 type database struct {
 	querier sql.Querier
 	log     *logrus.Entry
@@ -25,6 +29,7 @@ func NewDbContext(ctx context.Context, querier sql.Querier, log *logrus.Entry) c
 	})
 }
 
+// SyncImage runs the provided function and updates the image state in the database based on the result, it should only return an error if the image state update failed.
 func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(ctx context.Context) error) error {
 	d := db(ctx)
 	err := f(ctx)
@@ -45,11 +50,11 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 		return nil
 	}
 
-	err = d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	/*err = d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		Name:  imageName,
 		Tag:   imageTag,
 		State: sql.ImageStateUpdated,
-	})
+	})*/
 
 	return err
 }
@@ -76,6 +81,7 @@ func handleError(ctx context.Context, imageName, imageTag string, source string,
 	}
 
 	updateSyncParams.Reason = err.Error()
+	updateSyncParams.StatusCode = SyncErrorStatusCodeGenericError
 	d.log.Debugf("orginal error status: %v", err)
 
 	if insertErr := d.querier.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {

@@ -15,6 +15,61 @@ var (
 	ErrBatchAlreadyClosed = errors.New("batch already closed")
 )
 
+const batchUpdateImageState = `-- name: BatchUpdateImageState :batchexec
+UPDATE images
+SET
+    state = $1,
+    updated_at = NOW()
+WHERE name = $2 AND tag = $3
+`
+
+type BatchUpdateImageStateBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BatchUpdateImageStateParams struct {
+	State ImageState
+	Name  string
+	Tag   string
+}
+
+func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.State,
+			a.Name,
+			a.Tag,
+		}
+		batch.Queue(batchUpdateImageState, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BatchUpdateImageStateBatchResults{br, len(arg), false}
+}
+
+func (b *BatchUpdateImageStateBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BatchUpdateImageStateBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const batchUpsertCve = `-- name: BatchUpsertCve :batchexec
 INSERT INTO cve(cve_id,
                 cve_title,
@@ -42,7 +97,6 @@ VALUES ($1,
          AND cve.severity = EXCLUDED.severity
          AND cve.refs = EXCLUDED.refs
            )
-    RETURNING cve_id
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -99,11 +153,6 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 }
 
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
-WITH locked_cve AS (
-    SELECT cve_id FROM cve
-    WHERE cve_id = $4
-    FOR UPDATE
-)
 INSERT INTO vulnerabilities(image_name,
                             image_tag,
                             package,

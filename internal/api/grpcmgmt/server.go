@@ -20,11 +20,13 @@ type Server struct {
 }
 
 func (s *Server) TriggerSync(_ context.Context, _ *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
-	err := s.updater.ResyncImages(s.parentCtx)
-	if err != nil {
-		s.log.WithError(err).Error("Failed to resync images")
-		return nil, err
-	}
+	go func() {
+		err := s.updater.ResyncImages(s.parentCtx)
+		if err != nil {
+			s.log.WithError(err).Error("Failed to resync images")
+		}
+	}()
+
 	return &management.TriggerSyncResponse{}, nil
 }
 
