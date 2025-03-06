@@ -11,15 +11,42 @@ type Option interface {
 	apply(*options)
 }
 
+type OrderByField string
+
+const (
+	OrderBySeverity   OrderByField = "severity"
+	OrderByCluster    OrderByField = "cluster"
+	OrderByNamespace  OrderByField = "namespace"
+	OrderByWorkload   OrderByField = "workload"
+	OrderByCritical   OrderByField = "critical"
+	OrderByHigh       OrderByField = "high"
+	OrderByMedium     OrderByField = "medium"
+	OrderByLow        OrderByField = "low"
+	OrderByUnassigned OrderByField = "unassigned"
+	OrderByRiskScore  OrderByField = "risk_score"
+)
+
+func (o OrderByField) String() string {
+	return string(o)
+}
+
+func (o OrderByField) IsValid() bool {
+	switch o {
+	case OrderBySeverity, OrderByCluster, OrderByNamespace, OrderByWorkload:
+		return true
+	}
+	return false
+}
+
 const DefaultLimit = 50
 
 type options struct {
-	filter      *Filter
-	callOptions []grpc.CallOption
-	suppressed  bool
-	limit       int32
-	offset      int32
-	orderBy     *OrderBy
+	filter            *Filter
+	callOptions       []grpc.CallOption
+	includeSuppressed bool
+	limit             int32
+	offset            int32
+	orderBy           *OrderBy
 }
 
 type funcOption struct {
@@ -92,9 +119,9 @@ func ImageFilter(name, tag string) Option {
 	})
 }
 
-func Suppressed() Option {
+func IncludeSuppressed() Option {
 	return newFuncOption(func(o *options) {
-		o.suppressed = true
+		o.includeSuppressed = true
 	})
 }
 
@@ -109,15 +136,6 @@ func Offset(offset int32) Option {
 		o.offset = offset
 	})
 }
-
-type OrderByField string
-
-const (
-	OrderBySeverity  OrderByField = "severity"
-	OrderByCluster   OrderByField = "cluster"
-	OrderByNamespace OrderByField = "namespace"
-	OrderByWorkload  OrderByField = "workload"
-)
 
 func Order(field OrderByField, direction Direction) Option {
 	fmt.Println(field)

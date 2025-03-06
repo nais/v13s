@@ -313,8 +313,17 @@ WHERE (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
   AND (CASE WHEN $3::TEXT IS NOT NULL THEN v.image_name = $3::TEXT ELSE TRUE END)
   AND (CASE WHEN $4::TEXT IS NOT NULL THEN v.image_tag = $4::TEXT ELSE TRUE END)
-ORDER BY sv.updated_at DESC
-    LIMIT $6 OFFSET $5
+ORDER BY
+    CASE WHEN $5 = 'severity_asc' THEN c.severity END ASC,
+    CASE WHEN $5 = 'severity_desc' THEN c.severity END DESC,
+    CASE WHEN $5 = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN $5 = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN $5 = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN $5 = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN $5 = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN $5 = 'cluster_desc' THEN cluster END DESC,
+    v.id ASC
+    LIMIT $7 OFFSET $6
 `
 
 type ListSuppressedVulnerabilitiesParams struct {
@@ -322,6 +331,7 @@ type ListSuppressedVulnerabilitiesParams struct {
 	Namespace *string
 	ImageName *string
 	ImageTag  *string
+	OrderBy   interface{}
 	Offset    int32
 	Limit     int32
 }
@@ -364,6 +374,7 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 		arg.Namespace,
 		arg.ImageName,
 		arg.ImageTag,
+		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
 	)
@@ -491,12 +502,16 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
            ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
-            CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
-            CASE WHEN $8 = 'workload' THEN w.name END ASC,
-            CASE WHEN $8 = 'namespace' THEN namespace END ASC,
-            CASE WHEN $8 = 'cluster' THEN cluster END ASC,
-            v.id ASC
+ORDER BY
+    CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
+    CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
+    CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
+    v.id ASC
 LIMIT $10 OFFSET $9
 `
 
@@ -607,14 +622,18 @@ FROM vulnerabilities v
 WHERE v.image_name = $1
     AND v.image_tag = $2
     AND ($3::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY (c.severity, v.id) ASC
-    LIMIT $5 OFFSET $4
+ORDER BY
+    CASE WHEN $4 = 'severity_asc' THEN c.severity END ASC,
+    CASE WHEN $4 = 'severity_desc' THEN c.severity END DESC,
+    v.id ASC
+    LIMIT $6 OFFSET $5
 `
 
 type ListVulnerabilitiesForImageParams struct {
 	ImageName         string
 	ImageTag          string
 	IncludeSuppressed *bool
+	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
 }
@@ -642,6 +661,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
+		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
 	)

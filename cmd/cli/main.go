@@ -23,9 +23,17 @@ import (
 )
 
 type config struct {
-	VulnerabilitiesUrl     string `envconfig:"VULNERABILITIES_URL" required:"true"`
+	VulnerabilitiesUrl     string `envconfig:"VULNERABILITIES_URL" required:"false" default:"localhost:50051"`
 	ServiceAccount         string `envconfig:"SERVICE_ACCOUNT" required:"true"`
 	ServiceAccountAudience string `envconfig:"SERVICE_ACCOUNT_AUDIENCE" required:"true"`
+}
+
+type options struct {
+	cluster   string
+	namespace string
+	workload  string
+	limit     int64
+	order     string
 }
 
 func main() {
@@ -49,11 +57,7 @@ func main() {
 
 	defer c.Close()
 
-	var cluster string
-	var namespace string
-	var workload string
-	var limit int64
-	var order string
+	opts := &options{}
 
 	cmd := &cli.Command{
 		Name:  "v13s",
@@ -72,55 +76,26 @@ func main() {
 						Name:    "image",
 						Aliases: []string{"v"},
 						Usage:   "list vulnerabilities for image",
-						Flags: []cli.Flag{
-							&cli.IntFlag{
-								Name:        "limit",
-								Aliases:     []string{"l"},
-								Value:       30,
-								Usage:       "limit number of results",
-								Destination: &limit,
-							},
-						},
+						Flags:   commonFlags(opts, "cluster", "namespace", "workload"),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							return listVulnerabilities(ctx, cmd, c, limit)
+							return listVulnerabilities(ctx, cmd, c, opts)
 						},
 					},
 					{
 						Name:    "all",
 						Aliases: []string{"a"},
 						Usage:   "list all vulnerabilities with optional filters",
-						Flags: append(commonFlags(&cluster, &namespace, &workload), &cli.IntFlag{
-							Name:        "limit",
-							Aliases:     []string{"l"},
-							Value:       30,
-							Usage:       "limit number of results",
-							Destination: &limit,
-						},
-							&cli.StringFlag{
-								Name:        "order",
-								Aliases:     []string{"o"},
-								Usage:       "Order by field",
-								Destination: &order,
-							},
-						),
+						Flags:   commonFlags(opts),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseOptions(cmd, cluster, namespace, workload, order)
-							return listVulnz(ctx, c, int(limit), filters...)
+							return listVulnz(ctx, cmd, c, opts)
 						},
 					}, {
 						Name:    "summary",
 						Aliases: []string{"s"},
 						Usage:   "list vulnerability summary for filter",
-						Flags: append(commonFlags(&cluster, &namespace, &workload), &cli.IntFlag{
-							Name:        "limit",
-							Aliases:     []string{"l"},
-							Value:       30,
-							Usage:       "limit number of results",
-							Destination: &limit,
-						}),
+						Flags:   commonFlags(opts),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseOptions(cmd, cluster, namespace, workload, "")
-							return listSummaries(ctx, c, int(limit), filters...)
+							return listSummaries(ctx, cmd, c, opts)
 						},
 					},
 				},
@@ -134,26 +109,18 @@ func main() {
 						Name:    "coverage",
 						Aliases: []string{"c"},
 						Usage:   "get sbom coverage for filter",
-						Flags:   commonFlags(&cluster, &namespace, &workload),
+						Flags:   commonFlags(opts),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseOptions(cmd, cluster, namespace, workload, "")
-							return coverageSummary(ctx, c, filters)
+							return coverageSummary(ctx, cmd, c, opts)
 						},
 					},
 					{
 						Name:    "summary",
 						Aliases: []string{"s"},
 						Usage:   "get vulnerability summary for filter",
-						Flags: append(commonFlags(&cluster, &namespace, &workload), &cli.IntFlag{
-							Name:        "limit",
-							Aliases:     []string{"l"},
-							Value:       30,
-							Usage:       "limit number of results",
-							Destination: &limit,
-						}),
+						Flags:   commonFlags(opts),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseOptions(cmd, cluster, namespace, workload, "")
-							return getSummary(ctx, c, filters)
+							return getSummary(ctx, cmd, c, opts)
 						},
 					},
 				},
@@ -182,7 +149,8 @@ func main() {
 	}
 }
 
-func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, limit int64) error {
+func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image name")
 	}
@@ -191,7 +159,7 @@ func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilitie
 		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
 	}
 	start := time.Now()
-	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], vulnerabilities.Limit(int32(limit)))
+	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
 	if err != nil {
 		return err
 	}
@@ -216,9 +184,10 @@ func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilitie
 	return nil
 }
 
-func coverageSummary(ctx context.Context, c vulnerabilities.Client, filters []vulnerabilities.Option) error {
+func coverageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
 	start := time.Now()
-	resp, err := c.GetVulnerabilitySummary(ctx, filters...)
+	resp, err := c.GetVulnerabilitySummary(ctx, opts...)
 	if err != nil {
 		return err
 	}
@@ -242,9 +211,10 @@ func coverageSummary(ctx context.Context, c vulnerabilities.Client, filters []vu
 	return nil
 }
 
-func getSummary(ctx context.Context, c vulnerabilities.Client, filters []vulnerabilities.Option) error {
+func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
 	start := time.Now()
-	resp, err := c.GetVulnerabilitySummary(ctx, filters...)
+	resp, err := c.GetVulnerabilitySummary(ctx, opts...)
 	if err != nil {
 		return err
 	}
@@ -273,76 +243,12 @@ func getSummary(ctx context.Context, c vulnerabilities.Client, filters []vulnera
 	return nil
 }
 
-func commonFlags(cluster, namespace, workload *string) []cli.Flag {
-	return []cli.Flag{
-		&cli.StringFlag{
-			Name:        "env",
-			Aliases:     []string{"e"},
-			Value:       "",
-			Usage:       "cluster name",
-			Destination: cluster,
-		},
-		&cli.StringFlag{
-			Name:        "team",
-			Aliases:     []string{"t"},
-			Value:       "",
-			Usage:       "team name",
-			Destination: namespace,
-		},
-		&cli.StringFlag{
-			Name:        "workload",
-			Aliases:     []string{"w"},
-			Value:       "",
-			Usage:       "workload name",
-			Destination: workload,
-		},
-	}
-}
-
-func parseOptions(cmd *cli.Command, cluster, namespace, workload, order string) []vulnerabilities.Option {
-	options := make([]vulnerabilities.Option, 0)
-	if cmd.Args().Len() > 0 {
-		arg := cmd.Args().First()
-		if strings.Contains(arg, ":") && strings.Contains(arg, "/") {
-			parts := strings.Split(arg, ":")
-			options = append(options, vulnerabilities.ImageFilter(parts[0], parts[1]))
-		} else {
-			options = append(options, vulnerabilities.WorkloadFilter(arg))
-		}
-	}
-	if cluster != "" {
-		options = append(options, vulnerabilities.ClusterFilter(cluster))
-	}
-	if namespace != "" {
-		options = append(options, vulnerabilities.NamespaceFilter(namespace))
-	}
-	if workload != "" {
-		options = append(options, vulnerabilities.WorkloadFilter(workload))
-	}
-	if order != "" {
-		direction := vulnerabilities.Direction_ASC
-		if strings.Contains(order, ":") {
-			parts := strings.Split(order, ":")
-			order = parts[0]
-			if parts[1] == "desc" {
-				direction = vulnerabilities.Direction_DESC
-			}
-		}
-		options = append(options, vulnerabilities.Order(vulnerabilities.OrderByField(order), direction))
-	}
-	return options
-}
-
-func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, filters ...vulnerabilities.Option) error {
-	offset := 0
-	if limit <= 0 {
-		limit = 30
-	}
+func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
 	for {
-		filters = append(filters, vulnerabilities.Limit(int32(limit)), vulnerabilities.Offset(int32(offset)))
-		fmt.Println(filters)
+		//opts = append(opts, vulnerabilities.Limit(int32(limit)), vulnerabilities.Offset(int32(offset)))
 		start := time.Now()
-		resp, err := c.ListVulnerabilitySummaries(ctx, filters...)
+		resp, err := c.ListVulnerabilitySummaries(ctx, opts...)
 		if err != nil {
 			return err
 		}
@@ -371,7 +277,8 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 		}
 
 		tbl.Print()
-		numFetched := offset + limit
+		offset := 0
+		numFetched := offset + int(o.limit)
 		if numFetched > int(resp.PageInfo.TotalCount) {
 			numFetched = int(resp.PageInfo.TotalCount)
 		}
@@ -392,7 +299,7 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 		if input == "q" {
 			break
 		} else if input == "n" {
-			offset += limit
+			offset += int(o.limit)
 		} else {
 			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
 		}
@@ -400,19 +307,11 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 	return nil
 }
 
-func listVulnz(ctx context.Context, c vulnerabilities.Client, limit int, filters ...vulnerabilities.Option) error {
-	offset := 0
-	if limit <= 0 {
-		limit = 30
-	}
+func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
 	for {
-		filters = append(
-			filters,
-			vulnerabilities.Limit(int32(limit)),
-			vulnerabilities.Offset(int32(offset)),
-		)
 		start := time.Now()
-		resp, err := c.ListVulnerabilities(ctx, filters...)
+		resp, err := c.ListVulnerabilities(ctx, opts...)
 		if err != nil {
 			return err
 		}
@@ -441,7 +340,8 @@ func listVulnz(ctx context.Context, c vulnerabilities.Client, limit int, filters
 		}
 
 		tbl.Print()
-		numFetched := offset + limit
+		offset := 0
+		numFetched := offset + int(o.limit)
 		if numFetched > int(resp.PageInfo.TotalCount) {
 			numFetched = int(resp.PageInfo.TotalCount)
 		}
@@ -462,7 +362,7 @@ func listVulnz(ctx context.Context, c vulnerabilities.Client, limit int, filters
 		if input == "q" {
 			break
 		} else if input == "n" {
-			offset += limit
+			offset += int(o.limit)
 		} else {
 			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
 		}
@@ -490,4 +390,98 @@ func createClient(cfg config, ctx context.Context) (vulnerabilities.Client, erro
 		cfg.VulnerabilitiesUrl,
 		dialOptions...,
 	)
+}
+
+func parseOptions(cmd *cli.Command, o *options) []vulnerabilities.Option {
+	opts := make([]vulnerabilities.Option, 0)
+	if cmd.Args().Len() > 0 {
+		arg := cmd.Args().First()
+		if strings.Contains(arg, ":") && strings.Contains(arg, "/") {
+			parts := strings.Split(arg, ":")
+			opts = append(opts, vulnerabilities.ImageFilter(parts[0], parts[1]))
+		} else {
+			opts = append(opts, vulnerabilities.WorkloadFilter(arg))
+		}
+	}
+	if o.cluster != "" {
+		opts = append(opts, vulnerabilities.ClusterFilter(o.cluster))
+	}
+	if o.namespace != "" {
+		opts = append(opts, vulnerabilities.NamespaceFilter(o.namespace))
+	}
+	if o.workload != "" {
+		opts = append(opts, vulnerabilities.WorkloadFilter(o.workload))
+	}
+	if o.limit > 0 {
+		opts = append(opts, vulnerabilities.Limit(int32(o.limit)))
+	} else {
+		opts = append(opts, vulnerabilities.Limit(30))
+	}
+
+	if o.order != "" {
+		direction := vulnerabilities.Direction_ASC
+		if strings.Contains(o.order, ":") {
+			parts := strings.Split(o.order, ":")
+			o.order = parts[0]
+			if parts[1] == "desc" {
+				direction = vulnerabilities.Direction_DESC
+			}
+		}
+		opts = append(opts, vulnerabilities.Order(vulnerabilities.OrderByField(o.order), direction))
+	}
+	return opts
+}
+
+func commonFlags(opts *options, excludes ...string) []cli.Flag {
+	flags := make([]cli.Flag, 0)
+	cFlags := []cli.Flag{
+		&cli.StringFlag{
+			Name:        "cluster",
+			Aliases:     []string{"c"},
+			Value:       "",
+			Usage:       "cluster name",
+			Destination: &opts.cluster,
+		},
+		&cli.StringFlag{
+			Name:        "namespace",
+			Aliases:     []string{"n"},
+			Value:       "",
+			Usage:       "namespace",
+			Destination: &opts.namespace,
+		},
+		&cli.StringFlag{
+			Name:        "workload",
+			Aliases:     []string{"w"},
+			Value:       "",
+			Usage:       "workload name",
+			Destination: &opts.workload,
+		},
+		&cli.IntFlag{
+			Name:        "limit",
+			Aliases:     []string{"l"},
+			Value:       30,
+			Usage:       "limit number of results",
+			Destination: &opts.limit,
+		},
+		&cli.StringFlag{
+			Name:        "order",
+			Aliases:     []string{"o"},
+			Value:       "",
+			Usage:       "order by field, use 'field:desc' for descending order",
+			Destination: &opts.order,
+		},
+	}
+	for _, f := range cFlags {
+		exclude := false
+		for _, e := range excludes {
+			if f.String() == e {
+				exclude = true
+				break
+			}
+		}
+		if !exclude {
+			flags = append(flags, f)
+		}
+	}
+	return flags
 }

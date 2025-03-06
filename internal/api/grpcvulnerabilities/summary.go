@@ -12,6 +12,66 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// TODO: do we want image_name and image_tag as filter aswell? must update sql query
+func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.GetFilter() == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().WorkloadType,
+		WorkloadName: request.GetFilter().Workload,
+		OrderBy:      sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+		Limit:        limit,
+		Offset:       offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
+	}
+
+	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+		return &vulnerabilities.WorkloadSummary{
+			Workload: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
+			},
+			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
+			VulnerabilitySummary: &vulnerabilities.Summary{
+				Critical:    safeInt(row.Critical),
+				High:        safeInt(row.High),
+				Medium:      safeInt(row.Medium),
+				Low:         safeInt(row.Low),
+				Unassigned:  safeInt(row.Unassigned),
+				RiskScore:   safeInt(row.RiskScore),
+				LastUpdated: timestamppb.New(row.VulnerabilityUpdatedAt.Time),
+				HasSbom:     row.HasSbom,
+			},
+		}
+	})
+
+	pageInfo, err := grpcpagination.PageInfo(request, len(ws))
+	if err != nil {
+		return nil, err
+	}
+
+	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
+		WorkloadSummaries: ws,
+		PageInfo:          pageInfo,
+	}
+	return response, nil
+}
+
 // TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
@@ -112,67 +172,4 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
 	}, nil
-}
-
-// TODO: do we want image_name and image_tag as filter aswell? must update sql query
-func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
-	limit, offset, err := grpcpagination.Pagination(request)
-	if err != nil {
-		return nil, err
-	}
-
-	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
-	}
-
-	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().WorkloadType,
-		WorkloadName: request.GetFilter().Workload,
-		OrderBy:      sanitizeOrderBy(request.OrderBy),
-		Limit:        limit,
-		Offset:       offset,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
-	}
-
-	for _, summary := range summaries {
-		fmt.Println(summary.WorkloadName)
-	}
-	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
-		return &vulnerabilities.WorkloadSummary{
-			Workload: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				Type:      row.WorkloadType,
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
-			},
-			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
-			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.VulnerabilityUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			},
-		}
-	})
-
-	pageInfo, err := grpcpagination.PageInfo(request, len(ws))
-	if err != nil {
-		return nil, err
-	}
-
-	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
-		WorkloadSummaries: ws,
-		PageInfo:          pageInfo,
-	}
-	return response, nil
 }

@@ -96,7 +96,26 @@ WHERE
   AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_name')::TEXT is not null THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
-ORDER BY sqlc.arg('order_by'), v.id ASC
+ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'critical_asc' THEN v.critical END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'critical_desc' THEN v.critical END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'high_asc' THEN v.high END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'high_desc' THEN v.high END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'medium_asc' THEN v.medium END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'medium_desc' THEN v.medium END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'low_asc' THEN v.low END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'low_desc' THEN v.low END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'unassigned_asc' THEN v.unassigned END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'unassigned_desc' THEN v.unassigned END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'risk_score_asc' THEN v.risk_score END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'risk_score_desc' THEN v.risk_score END DESC,
+ v.id ASC
 LIMIT
     sqlc.arg('limit')
 OFFSET

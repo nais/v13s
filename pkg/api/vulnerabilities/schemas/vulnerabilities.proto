@@ -22,6 +22,8 @@ service Vulnerabilities {
   // List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
   // Example: only supplying a namespace will return all workloads in that namespace across all clusters
   rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
+  rpc ListVulnerabilitiesForImage(ListVulnerabilitiesForImageRequest) returns (ListVulnerabilitiesForImageResponse);
+  rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
 
   // Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Examples:
@@ -34,24 +36,11 @@ service Vulnerabilities {
 
   rpc GetVulnerabilitySummaryForImage(GetVulnerabilitySummaryForImageRequest) returns (GetVulnerabilitySummaryForImageResponse);
 
-  rpc ListVulnerabilitiesForImage(ListVulnerabilitiesForImageRequest) returns (ListVulnerabilitiesForImageResponse);
-
   // Used on image details page in console, could also include summary and list of vulnerabilities
   // TODO: implement the commented out rpcs
   //rpc GetImageVulnerabilityDetails()
 
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
-
-  rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
-}
-
-message Filter {
-  optional string cluster = 1;
-  optional string namespace = 2;
-  optional string workload = 3;
-  optional string workload_type = 4;
-  optional string image_name = 5;
-  optional string image_tag = 6;
 }
 
 message ListVulnerabilitiesForImageRequest {
@@ -60,21 +49,12 @@ message ListVulnerabilitiesForImageRequest {
   bool include_suppressed = 3;
   int32 limit = 4;
   int32 offset = 5;
+  optional OrderBy order_by = 6;
 }
 
 message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
-}
-
-message GetVulnerabilitySummaryForImageRequest {
-  string image_name = 1;
-  string image_tag = 2;
-}
-
-message GetVulnerabilitySummaryForImageResponse {
-  Summary vulnerability_summary = 1;
-  repeated Workload workloadRef = 2;
 }
 
 message ListVulnerabilitySummariesRequest {
@@ -89,14 +69,9 @@ message ListVulnerabilitySummariesResponse {
   PageInfo page_info = 2;
 }
 
-message WorkloadSummary {
-  Workload workload = 1;
-  Summary vulnerability_summary = 2;
-}
-
 message ListVulnerabilitiesRequest {
   Filter filter = 1;
-  optional bool suppressed = 2;
+  optional bool include_suppressed = 2;
   int32 limit = 3;
   int32 offset = 4;
   optional OrderBy order_by = 5;
@@ -108,8 +83,52 @@ message ListVulnerabilitiesResponse {
   PageInfo page_info = 3;
 }
 
+message ListSuppressedVulnerabilitiesRequest {
+  Filter filter = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  optional OrderBy order_by = 4;
+}
+
+message ListSuppressedVulnerabilitiesResponse {
+  repeated SuppressedVulnerability nodes = 1;
+  PageInfo page_info = 2;
+}
+
+message GetVulnerabilitySummaryForImageRequest {
+  string image_name = 1;
+  string image_tag = 2;
+}
+
+message GetVulnerabilitySummaryForImageResponse {
+  Summary vulnerability_summary = 1;
+  repeated Workload workloadRef = 2;
+}
+
+message GetVulnerabilitySummaryRequest {
+  Filter filter = 1;
+}
+
+message GetVulnerabilitySummaryResponse {
+  Filter filter = 1;
+  optional Summary vulnerability_summary = 2;
+  int32 sbom_count = 3;
+  int32 workload_count = 4;
+  float coverage = 5;
+}
+
 message SuppressVulnerabilityRequest {
   SuppressedVulnerability suppressed_vulnerability = 1;
+}
+
+message SuppressedVulnerability {
+  string image_name = 1;
+  string cve_id = 2;
+  string package = 3;
+  SuppressState state = 4;
+  optional string reason = 5;
+  optional string suppressed_by = 6;
+  optional bool suppress = 7;
 }
 
 enum SuppressState {
@@ -125,25 +144,13 @@ message SuppressVulnerabilityResponse {
   bool suppressed = 2;
 }
 
-message ListSuppressedVulnerabilitiesRequest {
-  Filter filter = 1;
-  int32 limit = 2;
-  int32 offset = 3;
-}
-
-message ListSuppressedVulnerabilitiesResponse {
-  repeated SuppressedVulnerability nodes = 1;
-  PageInfo page_info = 2;
-}
-
-message SuppressedVulnerability {
-  string image_name = 1;
-  string cve_id = 2;
-  string package = 3;
-  SuppressState state = 4;
-  optional string reason = 5;
-  optional string suppressed_by = 6;
-  optional bool suppress = 7;
+message Filter {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+  optional string image_name = 5;
+  optional string image_tag = 6;
 }
 
 enum Direction {
@@ -156,16 +163,9 @@ message OrderBy {
   Direction direction = 2;
 }
 
-message GetVulnerabilitySummaryRequest {
-  Filter filter = 1;
-}
-
-message GetVulnerabilitySummaryResponse {
-  Filter filter = 1;
-  optional Summary vulnerability_summary = 2;
-  int32 sbom_count = 3;
-  int32 workload_count = 4;
-  float coverage = 5;
+message WorkloadSummary {
+  Workload workload = 1;
+  Summary vulnerability_summary = 2;
 }
 
 message Summary {

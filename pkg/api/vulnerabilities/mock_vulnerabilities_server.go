@@ -21,7 +21,7 @@ func (_m *MockVulnerabilitiesServer) EXPECT() *MockVulnerabilitiesServer_Expecte
 	return &MockVulnerabilitiesServer_Expecter{mock: &_m.Mock}
 }
 
-// GetVulnerabilitySummary provides a mock function with given fields: _a0, _a1:
+// GetVulnerabilitySummary provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) GetVulnerabilitySummary(_a0 context.Context, _a1 *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error) {
 	ret := _m.Called(_a0, _a1)
 

@@ -235,7 +235,26 @@ WHERE
   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
   AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
-ORDER BY $7, v.id ASC
+ORDER BY
+    CASE WHEN $7 = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN $7 = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN $7 = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN $7 = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN $7 = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN $7 = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN $7 = 'critical_asc' THEN v.critical END ASC,
+    CASE WHEN $7 = 'critical_desc' THEN v.critical END DESC,
+    CASE WHEN $7 = 'high_asc' THEN v.high END ASC,
+    CASE WHEN $7 = 'high_desc' THEN v.high END DESC,
+    CASE WHEN $7 = 'medium_asc' THEN v.medium END ASC,
+    CASE WHEN $7 = 'medium_desc' THEN v.medium END DESC,
+    CASE WHEN $7 = 'low_asc' THEN v.low END ASC,
+    CASE WHEN $7 = 'low_desc' THEN v.low END DESC,
+    CASE WHEN $7 = 'unassigned_asc' THEN v.unassigned END ASC,
+    CASE WHEN $7 = 'unassigned_desc' THEN v.unassigned END DESC,
+    CASE WHEN $7 = 'risk_score_asc' THEN v.risk_score END ASC,
+    CASE WHEN $7 = 'risk_score_desc' THEN v.risk_score END DESC,
+ v.id ASC
 LIMIT
     $9
 OFFSET

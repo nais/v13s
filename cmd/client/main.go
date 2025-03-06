@@ -106,7 +106,7 @@ func listVulnz(c vulnerabilities.Client) {
 	resp, err := c.ListVulnerabilities(
 		context.Background(),
 		//vulnerabilities.ClusterFilter("dev-gcp"),
-		vulnerabilities.Suppressed(),
+		vulnerabilities.IncludeSuppressed(),
 	)
 	if err != nil {
 		panic(err)

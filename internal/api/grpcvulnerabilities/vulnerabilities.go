@@ -30,8 +30,8 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
-		IncludeSuppressed: request.Suppressed,
-		OrderBy:           sanitizeOrderBy(request.OrderBy),
+		IncludeSuppressed: request.IncludeSuppressed,
+		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Limit:             limit,
 		Offset:            offset,
 	})
@@ -69,7 +69,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		Namespace:         request.GetFilter().Namespace,
 		WorkloadType:      request.GetFilter().WorkloadType,
 		WorkloadName:      request.GetFilter().Workload,
-		IncludeSuppressed: request.Suppressed,
+		IncludeSuppressed: request.IncludeSuppressed,
 	})
 
 	if err != nil {
@@ -88,41 +88,6 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}, nil
 }
 
-func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy) string {
-	if orderBy == nil {
-		orderBy = &vulnerabilities.OrderBy{
-			Field:     string(vulnerabilities.OrderBySeverity),
-			Direction: vulnerabilities.Direction_DESC,
-		}
-	}
-
-	direction := "asc"
-	if orderBy.Direction == vulnerabilities.Direction_DESC {
-		direction = "desc"
-	}
-
-	fieldMap := map[vulnerabilities.OrderByField]string{
-		vulnerabilities.OrderBySeverity:  fmt.Sprintf("severity_%s", direction),
-		vulnerabilities.OrderByCluster:   "cluster",
-		vulnerabilities.OrderByNamespace: "namespace",
-		vulnerabilities.OrderByWorkload:  "workload",
-	}
-
-	field, exists := fieldMap[vulnerabilities.OrderByField(orderBy.Field)]
-	if !exists {
-		field = "severity_asc"
-	}
-
-	return fmt.Sprintf("%s", field)
-}
-
-func safeInt(val *int32) int32 {
-	if val == nil {
-		return 0
-	}
-	return *val
-}
-
 func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesForImageRequest) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -135,6 +100,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		IncludeSuppressed: &request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
+		OrderBy:           sanitizeOrderBy(request.OrderBy, ""),
 	})
 
 	if err != nil {
@@ -188,38 +154,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}, nil
 }
 
-func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
-	suppressedVuln := request.GetSuppressedVulnerability()
-	_, err := s.querier.GetSuppressedVulnerability(ctx, sql.GetSuppressedVulnerabilityParams{
-		ImageName: suppressedVuln.GetImageName(),
-		Package:   suppressedVuln.GetPackage(),
-		CveID:     suppressedVuln.GetCveId(),
-	})
-
-	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("failed to get suppressed vulnerability: %w", err)
-		}
-	}
-
-	supErr := s.querier.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
-		ImageName:    suppressedVuln.GetImageName(),
-		CveID:        suppressedVuln.GetCveId(),
-		Package:      suppressedVuln.GetPackage(),
-		SuppressedBy: suppressedVuln.GetSuppressedBy(),
-		Suppressed:   suppressedVuln.GetSuppress(),
-		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(suppressedVuln.GetState().String())),
-		ReasonText:   suppressedVuln.GetReason(),
-	})
-	if supErr != nil {
-		return nil, fmt.Errorf("failed to suppress vulnerability: %w", supErr)
-	}
-	return &vulnerabilities.SuppressVulnerabilityResponse{
-		CveId:      suppressedVuln.GetCveId(),
-		Suppressed: suppressedVuln.GetSuppress(),
-	}, nil
-}
-
 func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vulnerabilities.ListSuppressedVulnerabilitiesRequest) (*vulnerabilities.ListSuppressedVulnerabilitiesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -234,6 +168,7 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 		ImageTag:  filter.ImageTag,
 		Offset:    offset,
 		Limit:     limit,
+		OrderBy:   sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 	})
 
 	if err != nil {
@@ -273,6 +208,65 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 		Nodes:    nodes,
 		PageInfo: pageInfo,
 	}, nil
+}
+
+func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
+	suppressedVuln := request.GetSuppressedVulnerability()
+	_, err := s.querier.GetSuppressedVulnerability(ctx, sql.GetSuppressedVulnerabilityParams{
+		ImageName: suppressedVuln.GetImageName(),
+		Package:   suppressedVuln.GetPackage(),
+		CveID:     suppressedVuln.GetCveId(),
+	})
+
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("failed to get suppressed vulnerability: %w", err)
+		}
+	}
+
+	supErr := s.querier.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+		ImageName:    suppressedVuln.GetImageName(),
+		CveID:        suppressedVuln.GetCveId(),
+		Package:      suppressedVuln.GetPackage(),
+		SuppressedBy: suppressedVuln.GetSuppressedBy(),
+		Suppressed:   suppressedVuln.GetSuppress(),
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(suppressedVuln.GetState().String())),
+		ReasonText:   suppressedVuln.GetReason(),
+	})
+	if supErr != nil {
+		return nil, fmt.Errorf("failed to suppress vulnerability: %w", supErr)
+	}
+	return &vulnerabilities.SuppressVulnerabilityResponse{
+		CveId:      suppressedVuln.GetCveId(),
+		Suppressed: suppressedVuln.GetSuppress(),
+	}, nil
+}
+
+func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilities.OrderByField) string {
+	if orderBy == nil {
+		orderBy = &vulnerabilities.OrderBy{
+			Field:     string(defaultOrder),
+			Direction: vulnerabilities.Direction_DESC,
+		}
+	}
+
+	direction := "asc"
+	if orderBy.Direction == vulnerabilities.Direction_DESC {
+		direction = "desc"
+	}
+	field := vulnerabilities.OrderByField(orderBy.Field)
+	if !field.IsValid() {
+		field = defaultOrder
+	}
+
+	return fmt.Sprintf("%s_%s", field.String(), direction)
+}
+
+func safeInt(val *int32) int32 {
+	if val == nil {
+		return 0
+	}
+	return *val
 }
 
 func suppressState(state sql.VulnerabilitySuppressReason) vulnerabilities.SuppressState {
