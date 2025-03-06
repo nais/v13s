@@ -1,7 +1,6 @@
 package vulnerabilities
 
 import (
-	"fmt"
 	"google.golang.org/grpc"
 )
 
@@ -138,7 +137,6 @@ func Offset(offset int32) Option {
 }
 
 func Order(field OrderByField, direction Direction) Option {
-	fmt.Println(field)
 	return newFuncOption(func(o *options) {
 		o.orderBy = &OrderBy{
 			Field:     string(field),

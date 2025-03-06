@@ -100,7 +100,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		IncludeSuppressed: &request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
-		OrderBy:           sanitizeOrderBy(request.OrderBy, ""),
+		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 	})
 
 	if err != nil {
@@ -246,7 +246,7 @@ func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 	if orderBy == nil {
 		orderBy = &vulnerabilities.OrderBy{
 			Field:     string(defaultOrder),
-			Direction: vulnerabilities.Direction_DESC,
+			Direction: vulnerabilities.Direction_ASC,
 		}
 	}
 
