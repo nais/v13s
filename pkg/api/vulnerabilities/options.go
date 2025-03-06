@@ -1,6 +1,7 @@
 package vulnerabilities
 
 import (
+	"fmt"
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +19,7 @@ type options struct {
 	suppressed  bool
 	limit       int32
 	offset      int32
-	// sorting..
+	orderBy     *OrderBy
 }
 
 type funcOption struct {
@@ -106,6 +107,25 @@ func Limit(limit int32) Option {
 func Offset(offset int32) Option {
 	return newFuncOption(func(o *options) {
 		o.offset = offset
+	})
+}
+
+type OrderByField string
+
+const (
+	OrderBySeverity  OrderByField = "severity"
+	OrderByCluster   OrderByField = "cluster"
+	OrderByNamespace OrderByField = "namespace"
+	OrderByWorkload  OrderByField = "workload"
+)
+
+func Order(field OrderByField, direction Direction) Option {
+	fmt.Println(field)
+	return newFuncOption(func(o *options) {
+		o.orderBy = &OrderBy{
+			Field:     string(field),
+			Direction: direction,
+		}
 	})
 }
 

@@ -788,65 +788,6 @@ func (_c *MockQuerier_GetImagesScheduledForSync_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// GetSbomCoverageSummary provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) GetSbomCoverageSummary(ctx context.Context, arg GetSbomCoverageSummaryParams) (*GetSbomCoverageSummaryRow, error) {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSbomCoverageSummary")
-	}
-
-	var r0 *GetSbomCoverageSummaryRow
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, GetSbomCoverageSummaryParams) (*GetSbomCoverageSummaryRow, error)); ok {
-		return rf(ctx, arg)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, GetSbomCoverageSummaryParams) *GetSbomCoverageSummaryRow); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*GetSbomCoverageSummaryRow)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, GetSbomCoverageSummaryParams) error); ok {
-		r1 = rf(ctx, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_GetSbomCoverageSummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSbomCoverageSummary'
-type MockQuerier_GetSbomCoverageSummary_Call struct {
-	*mock.Call
-}
-
-// GetSbomCoverageSummary is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg GetSbomCoverageSummaryParams
-func (_e *MockQuerier_Expecter) GetSbomCoverageSummary(ctx interface{}, arg interface{}) *MockQuerier_GetSbomCoverageSummary_Call {
-	return &MockQuerier_GetSbomCoverageSummary_Call{Call: _e.mock.On("GetSbomCoverageSummary", ctx, arg)}
-}
-
-func (_c *MockQuerier_GetSbomCoverageSummary_Call) Run(run func(ctx context.Context, arg GetSbomCoverageSummaryParams)) *MockQuerier_GetSbomCoverageSummary_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(GetSbomCoverageSummaryParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GetSbomCoverageSummary_Call) Return(_a0 *GetSbomCoverageSummaryRow, _a1 error) *MockQuerier_GetSbomCoverageSummary_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_GetSbomCoverageSummary_Call) RunAndReturn(run func(context.Context, GetSbomCoverageSummaryParams) (*GetSbomCoverageSummaryRow, error)) *MockQuerier_GetSbomCoverageSummary_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetSuppressedVulnerability provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error) {
 	ret := _m.Called(ctx, arg)

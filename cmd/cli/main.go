@@ -53,6 +53,7 @@ func main() {
 	var namespace string
 	var workload string
 	var limit int64
+	var order string
 
 	cmd := &cli.Command{
 		Name:  "v13s",
@@ -94,9 +95,16 @@ func main() {
 							Value:       30,
 							Usage:       "limit number of results",
 							Destination: &limit,
-						}),
+						},
+							&cli.StringFlag{
+								Name:        "order",
+								Aliases:     []string{"o"},
+								Usage:       "Order by field",
+								Destination: &order,
+							},
+						),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseFilters(cmd, cluster, namespace, workload)
+							filters := parseOptions(cmd, cluster, namespace, workload, order)
 							return listVulnz(ctx, c, int(limit), filters...)
 						},
 					}, {
@@ -111,7 +119,7 @@ func main() {
 							Destination: &limit,
 						}),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseFilters(cmd, cluster, namespace, workload)
+							filters := parseOptions(cmd, cluster, namespace, workload, "")
 							return listSummaries(ctx, c, int(limit), filters...)
 						},
 					},
@@ -128,7 +136,7 @@ func main() {
 						Usage:   "get sbom coverage for filter",
 						Flags:   commonFlags(&cluster, &namespace, &workload),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseFilters(cmd, cluster, namespace, workload)
+							filters := parseOptions(cmd, cluster, namespace, workload, "")
 							return coverageSummary(ctx, c, filters)
 						},
 					},
@@ -144,7 +152,7 @@ func main() {
 							Destination: &limit,
 						}),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							filters := parseFilters(cmd, cluster, namespace, workload)
+							filters := parseOptions(cmd, cluster, namespace, workload, "")
 							return getSummary(ctx, c, filters)
 						},
 					},
@@ -210,7 +218,7 @@ func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilitie
 
 func coverageSummary(ctx context.Context, c vulnerabilities.Client, filters []vulnerabilities.Option) error {
 	start := time.Now()
-	resp, err := c.GetSbomCoverageSummary(ctx, filters...)
+	resp, err := c.GetVulnerabilitySummary(ctx, filters...)
 	if err != nil {
 		return err
 	}
@@ -224,8 +232,8 @@ func coverageSummary(ctx context.Context, c vulnerabilities.Client, filters []vu
 	tbl.AddRow(
 		resp.GetWorkloadCount(),
 		resp.GetSbomCount(),
-		resp.GetNoSbomCount(),
-		resp.GetSbomCoveragePercentage(),
+		resp.GetWorkloadCount()-resp.GetSbomCount(),
+		resp.GetCoverage(),
 	)
 
 	tbl.Print()
@@ -291,27 +299,38 @@ func commonFlags(cluster, namespace, workload *string) []cli.Flag {
 	}
 }
 
-func parseFilters(cmd *cli.Command, cluster, namespace, workload string) []vulnerabilities.Option {
-	filters := make([]vulnerabilities.Option, 0)
+func parseOptions(cmd *cli.Command, cluster, namespace, workload, order string) []vulnerabilities.Option {
+	options := make([]vulnerabilities.Option, 0)
 	if cmd.Args().Len() > 0 {
 		arg := cmd.Args().First()
 		if strings.Contains(arg, ":") && strings.Contains(arg, "/") {
 			parts := strings.Split(arg, ":")
-			filters = append(filters, vulnerabilities.ImageFilter(parts[0], parts[1]))
+			options = append(options, vulnerabilities.ImageFilter(parts[0], parts[1]))
 		} else {
-			filters = append(filters, vulnerabilities.WorkloadFilter(arg))
+			options = append(options, vulnerabilities.WorkloadFilter(arg))
 		}
 	}
 	if cluster != "" {
-		filters = append(filters, vulnerabilities.ClusterFilter(cluster))
+		options = append(options, vulnerabilities.ClusterFilter(cluster))
 	}
 	if namespace != "" {
-		filters = append(filters, vulnerabilities.NamespaceFilter(namespace))
+		options = append(options, vulnerabilities.NamespaceFilter(namespace))
 	}
 	if workload != "" {
-		filters = append(filters, vulnerabilities.WorkloadFilter(workload))
+		options = append(options, vulnerabilities.WorkloadFilter(workload))
 	}
-	return filters
+	if order != "" {
+		direction := vulnerabilities.Direction_ASC
+		if strings.Contains(order, ":") {
+			parts := strings.Split(order, ":")
+			order = parts[0]
+			if parts[1] == "desc" {
+				direction = vulnerabilities.Direction_DESC
+			}
+		}
+		options = append(options, vulnerabilities.Order(vulnerabilities.OrderByField(order), direction))
+	}
+	return options
 }
 
 func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, filters ...vulnerabilities.Option) error {
@@ -321,6 +340,7 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 	}
 	for {
 		filters = append(filters, vulnerabilities.Limit(int32(limit)), vulnerabilities.Offset(int32(offset)))
+		fmt.Println(filters)
 		start := time.Now()
 		resp, err := c.ListVulnerabilitySummaries(ctx, filters...)
 		if err != nil {
@@ -330,7 +350,7 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		tbl := table.New("Workload", "Cluster", "Namespace", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore")
+		tbl := table.New("Workload", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.WorkloadSummaries {
@@ -340,6 +360,7 @@ func listSummaries(ctx context.Context, c vulnerabilities.Client, limit int, fil
 				n.Workload.GetName(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
+				n.GetVulnerabilitySummary().GetHasSbom(),
 				n.GetVulnerabilitySummary().GetCritical(),
 				n.GetVulnerabilitySummary().GetHigh(),
 				n.GetVulnerabilitySummary().GetMedium(),

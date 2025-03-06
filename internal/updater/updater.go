@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
-	DefaultMarkUntrackedInterval        = 10 * time.Minute
+	DefaultMarkUntrackedInterval        = 20 * time.Minute
 )
 
 type Updater struct {

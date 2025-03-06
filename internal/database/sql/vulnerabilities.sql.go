@@ -467,7 +467,7 @@ SELECT w.name                         AS workload_name,
        c.cve_title,
        c.cve_desc,
        c.cve_link,
-       c.severity,
+       c.severity AS severity,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
        sv.reason_text
@@ -491,7 +491,12 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
            ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY $8, v.id ASC
+ORDER BY CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
+            CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
+            CASE WHEN $8 = 'workload' THEN w.name END ASC,
+            CASE WHEN $8 = 'namespace' THEN namespace END ASC,
+            CASE WHEN $8 = 'cluster' THEN cluster END ASC,
+            v.id ASC
 LIMIT $10 OFFSET $9
 `
 

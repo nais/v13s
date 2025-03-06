@@ -16,7 +16,6 @@ type Client interface {
 	ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error)
 	SuppressVulnerability(ctx context.Context, imageName, cveId, packaged, reason, suppressedBy string, state SuppressState, suppress bool) error
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
-	GetSbomCoverageSummary(ctx context.Context, opts ...Option) (*GetSbomCoverageSummaryResponse, error)
 	management.ManagementClient
 }
 
@@ -26,13 +25,6 @@ type client struct {
 	c    VulnerabilitiesClient
 	m    management.ManagementClient
 	conn *grpc.ClientConn
-}
-
-func (c *client) GetSbomCoverageSummary(ctx context.Context, opts ...Option) (*GetSbomCoverageSummaryResponse, error) {
-	o := applyOptions(opts...)
-	return c.c.GetSbomCoverageSummary(ctx, &GetSbomCoverageSummaryRequest{
-		Filter: o.filter,
-	})
 }
 
 func (c *client) SuppressVulnerability(ctx context.Context, imageName, cveId, packaged, reason, suppressedBy string, state SuppressState, suppress bool) error {
@@ -104,10 +96,12 @@ func (c *client) Close() error {
 func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 
+	fmt.Println(o.orderBy)
 	return c.c.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
-		Filter: o.filter,
-		Limit:  o.limit,
-		Offset: o.offset,
+		Filter:  o.filter,
+		Limit:   o.limit,
+		Offset:  o.offset,
+		OrderBy: o.orderBy,
 	}, o.callOptions...)
 }
 
@@ -130,6 +124,7 @@ func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*List
 			Filter:     o.filter,
 			Limit:      o.limit,
 			Offset:     o.offset,
+			OrderBy:    o.orderBy,
 			Suppressed: &o.suppressed,
 		},
 	)

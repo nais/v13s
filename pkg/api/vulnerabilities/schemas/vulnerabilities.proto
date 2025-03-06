@@ -43,8 +43,6 @@ service Vulnerabilities {
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
 
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
-
-  rpc GetSbomCoverageSummary(GetSbomCoverageSummaryRequest) returns (GetSbomCoverageSummaryResponse);
 }
 
 message Filter {
@@ -54,18 +52,6 @@ message Filter {
   optional string workload_type = 4;
   optional string image_name = 5;
   optional string image_tag = 6;
-}
-
-message GetSbomCoverageSummaryRequest {
-  Filter filter = 1;
-}
-
-message GetSbomCoverageSummaryResponse {
-  Filter filter = 1;
-  int32 sbom_count = 2;
-  int32 no_sbom_count = 3;
-  int32 workload_count = 4;
-  int32 sbom_coverage_percentage = 5;
 }
 
 message ListVulnerabilitiesForImageRequest {
@@ -95,6 +81,7 @@ message ListVulnerabilitySummariesRequest {
   Filter filter = 1;
   int32 limit = 2;
   int32 offset = 3;
+  optional OrderBy order_by = 4;
 }
 
 message ListVulnerabilitySummariesResponse {
@@ -164,15 +151,8 @@ enum Direction {
   DESC = 1;
 }
 
-enum OrderByField {
-  SEVERITY = 0;
-  CLUSTER = 1;
-  NAMESPACE = 2;
-  WORKLOAD = 3;
-}
-
 message OrderBy {
-  OrderByField field = 1;
+  string field = 1;
   Direction direction = 2;
 }
 

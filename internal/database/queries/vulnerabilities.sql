@@ -216,7 +216,7 @@ SELECT w.name                         AS workload_name,
        c.cve_title,
        c.cve_desc,
        c.cve_link,
-       c.severity,
+       c.severity AS severity,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
        sv.reason_text
@@ -240,7 +240,12 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
            ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY sqlc.arg('order_by'), v.id ASC
+ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN c.severity END ASC,
+            CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
+            CASE WHEN sqlc.narg('order_by') = 'workload' THEN w.name END ASC,
+            CASE WHEN sqlc.narg('order_by') = 'namespace' THEN namespace END ASC,
+            CASE WHEN sqlc.narg('order_by') = 'cluster' THEN cluster END ASC,
+            v.id ASC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ;
 

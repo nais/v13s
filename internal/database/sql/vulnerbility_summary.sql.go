@@ -57,58 +57,6 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 	return &i, err
 }
 
-const getSbomCoverageSummary = `-- name: GetSbomCoverageSummary :one
-SELECT
-    w.cluster,
-    COUNT(CASE WHEN v.image_name IS NOT NULL THEN 1 END)::INT AS sbom_count,
-    COUNT(CASE WHEN v.image_name IS NULL THEN 1 END)::INT AS no_sbom_count,
-    COUNT(*)::INT AS total_workloads,
-        ROUND(
-            CASE
-                WHEN COUNT(*) = 0 THEN 0  -- Prevent division by zero
-                ELSE 100.0 * COUNT(CASE WHEN v.image_name IS NOT NULL THEN 1 END) / COUNT(*)
-                END,
-                2
-            )::INT AS sbom_coverage_percentage
-FROM workloads w
-         LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name
-                       AND w.image_tag = v.image_tag
-WHERE
-    (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
-  AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
-  AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.workload_type = $3::TEXT ELSE TRUE END)
-GROUP BY w.cluster
-ORDER BY w.cluster
-`
-
-type GetSbomCoverageSummaryParams struct {
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-}
-
-type GetSbomCoverageSummaryRow struct {
-	Cluster                string
-	SbomCount              int32
-	NoSbomCount            int32
-	TotalWorkloads         int32
-	SbomCoveragePercentage int32
-}
-
-func (q *Queries) GetSbomCoverageSummary(ctx context.Context, arg GetSbomCoverageSummaryParams) (*GetSbomCoverageSummaryRow, error) {
-	row := q.db.QueryRow(ctx, getSbomCoverageSummary, arg.Cluster, arg.Namespace, arg.WorkloadType)
-	var i GetSbomCoverageSummaryRow
-	err := row.Scan(
-		&i.Cluster,
-		&i.SbomCount,
-		&i.NoSbomCount,
-		&i.TotalWorkloads,
-		&i.SbomCoveragePercentage,
-	)
-	return &i, err
-}
-
 const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT w.id, w.image_name, w.image_tag
@@ -287,11 +235,11 @@ WHERE
   AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
   AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
-ORDER BY v.critical DESC NULLS LAST, v.risk_score DESC NULLS LAST, w.updated_at DESC
+ORDER BY $7, v.id ASC
 LIMIT
-    $8
+    $9
 OFFSET
-    $7
+    $8
 `
 
 type ListVulnerabilitySummariesParams struct {
@@ -301,6 +249,7 @@ type ListVulnerabilitySummariesParams struct {
 	WorkloadName *string
 	ImageName    *string
 	ImageTag     *string
+	OrderBy      interface{}
 	Offset       int32
 	Limit        int32
 }
@@ -334,6 +283,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.WorkloadName,
 		arg.ImageName,
 		arg.ImageTag,
+		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
 	)

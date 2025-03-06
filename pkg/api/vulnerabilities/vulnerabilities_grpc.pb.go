@@ -31,7 +31,6 @@ const (
 	Vulnerabilities_ListVulnerabilitiesForImage_FullMethodName     = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitiesForImage"
 	Vulnerabilities_SuppressVulnerability_FullMethodName           = "/v13s.api.protobuf.Vulnerabilities/SuppressVulnerability"
 	Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName   = "/v13s.api.protobuf.Vulnerabilities/ListSuppressedVulnerabilities"
-	Vulnerabilities_GetSbomCoverageSummary_FullMethodName          = "/v13s.api.protobuf.Vulnerabilities/GetSbomCoverageSummary"
 )
 
 // VulnerabilitiesClient is the client API for Vulnerabilities service.
@@ -56,7 +55,6 @@ type VulnerabilitiesClient interface {
 	ListVulnerabilitiesForImage(ctx context.Context, in *ListVulnerabilitiesForImageRequest, opts ...grpc.CallOption) (*ListVulnerabilitiesForImageResponse, error)
 	SuppressVulnerability(ctx context.Context, in *SuppressVulnerabilityRequest, opts ...grpc.CallOption) (*SuppressVulnerabilityResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, in *ListSuppressedVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListSuppressedVulnerabilitiesResponse, error)
-	GetSbomCoverageSummary(ctx context.Context, in *GetSbomCoverageSummaryRequest, opts ...grpc.CallOption) (*GetSbomCoverageSummaryResponse, error)
 }
 
 type vulnerabilitiesClient struct {
@@ -137,16 +135,6 @@ func (c *vulnerabilitiesClient) ListSuppressedVulnerabilities(ctx context.Contex
 	return out, nil
 }
 
-func (c *vulnerabilitiesClient) GetSbomCoverageSummary(ctx context.Context, in *GetSbomCoverageSummaryRequest, opts ...grpc.CallOption) (*GetSbomCoverageSummaryResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetSbomCoverageSummaryResponse)
-	err := c.cc.Invoke(ctx, Vulnerabilities_GetSbomCoverageSummary_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // VulnerabilitiesServer is the server API for Vulnerabilities service.
 // All implementations must embed UnimplementedVulnerabilitiesServer
 // for forward compatibility.
@@ -169,7 +157,6 @@ type VulnerabilitiesServer interface {
 	ListVulnerabilitiesForImage(context.Context, *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error)
 	SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)
 	ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)
-	GetSbomCoverageSummary(context.Context, *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error)
 	mustEmbedUnimplementedVulnerabilitiesServer()
 }
 
@@ -200,9 +187,6 @@ func (UnimplementedVulnerabilitiesServer) SuppressVulnerability(context.Context,
 }
 func (UnimplementedVulnerabilitiesServer) ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSuppressedVulnerabilities not implemented")
-}
-func (UnimplementedVulnerabilitiesServer) GetSbomCoverageSummary(context.Context, *GetSbomCoverageSummaryRequest) (*GetSbomCoverageSummaryResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSbomCoverageSummary not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) mustEmbedUnimplementedVulnerabilitiesServer() {}
 func (UnimplementedVulnerabilitiesServer) testEmbeddedByValue()                         {}
@@ -351,24 +335,6 @@ func _Vulnerabilities_ListSuppressedVulnerabilities_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Vulnerabilities_GetSbomCoverageSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSbomCoverageSummaryRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(VulnerabilitiesServer).GetSbomCoverageSummary(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Vulnerabilities_GetSbomCoverageSummary_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).GetSbomCoverageSummary(ctx, req.(*GetSbomCoverageSummaryRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Vulnerabilities_ServiceDesc is the grpc.ServiceDesc for Vulnerabilities service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -403,10 +369,6 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSuppressedVulnerabilities",
 			Handler:    _Vulnerabilities_ListSuppressedVulnerabilities_Handler,
-		},
-		{
-			MethodName: "GetSbomCoverageSummary",
-			Handler:    _Vulnerabilities_GetSbomCoverageSummary_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

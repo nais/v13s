@@ -5,7 +5,7 @@ image:
   cloudsql_proxy: gcr.io/cloudsql-docker/gce-proxy:1.33.16
 serviceAccountEmail:
 serviceAccountName: v13s-sa
-updateInterval: 1h
+updateInterval: 5m
 auth:
   audience: "v13s"
   serviceAccounts: []
