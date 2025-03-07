@@ -18,7 +18,7 @@ fmt:
 
 staticcheck:
 	@echo "Running staticcheck..."
-	go run honnef.co/go/tools/cmd/staticcheck@latest $(GO_PACKAGES)
+	go run honnef.co/go/tools/cmd/staticcheck@latest -f=stylish  $(GO_PACKAGES)
 
 vulncheck:
 	@echo "Running vulncheck..."

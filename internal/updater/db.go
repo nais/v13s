@@ -63,11 +63,6 @@ func db(ctx context.Context) *database {
 	return ctx.Value(dbKey).(*database)
 }
 
-type SyncResult struct {
-	err     error
-	updated bool
-}
-
 func handleError(ctx context.Context, imageName, imageTag string, source string, err error) error {
 	d := db(ctx)
 	updateSyncParams := sql.UpdateImageSyncStatusParams{

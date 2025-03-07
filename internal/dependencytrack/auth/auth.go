@@ -49,15 +49,21 @@ func (c *usernamePasswordSource) ContextHeaders(ctx context.Context) (context.Co
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if t, expired, err := c.checkAccessToken(); err != nil {
+	t, expired, err := c.checkAccessToken()
+	if err != nil {
 		return nil, err
-	} else if expired {
+	}
+
+	if expired {
 		t, err = c.login(ctx)
 		if err != nil {
 			return nil, err
 		}
 		c.accessToken = t
+	} else {
+		c.accessToken = t
 	}
+
 	return context.WithValue(ctx, client.ContextAccessToken, c.accessToken), nil
 }
 

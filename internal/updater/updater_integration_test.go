@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
@@ -139,6 +140,21 @@ var _ dependencytrack.Client = (*MockDtrack)(nil)
 type MockDtrack struct {
 	projects []*client.Project
 	findings map[string][]client.Finding
+}
+
+func (m MockDtrack) CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *dependencytrack.WorkloadRef) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m MockDtrack) TriggerAnalysis(ctx context.Context, uuid string) error {

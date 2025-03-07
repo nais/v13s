@@ -406,18 +406,6 @@ func (d *dependencytrackSource) getComponentId(finding client.Finding) (string, 
 	return componentId, nil
 }
 
-func withRetry[T any](retries int, f func() (T, error)) (T, error) {
-	var err error
-	var result T
-	for i := 0; i < retries; i++ {
-		result, err = f()
-		if err == nil {
-			break
-		}
-	}
-	return result, err
-}
-
 func (d *dependencytrackSource) checkAndLogUpdates(an *client.Analysis, v *SuppressedVulnerability, projectId string) bool {
 	needsUpdate := false
 	if *an.IsSuppressed != v.Suppressed {

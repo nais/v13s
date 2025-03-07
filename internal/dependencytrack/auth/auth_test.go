@@ -27,6 +27,7 @@ func TestUsernamePasswordSource_ContextHeaders(t *testing.T) {
 	j := jwt.New()
 	ser := jwt.NewSerializer()
 	token, err := ser.Serialize(j)
+	assert.NoError(t, err)
 	mockUserAPI.On("ValidateCredentialsExecute", mock.Anything).Return(
 		string(token), nil, nil).Once()
 
@@ -57,6 +58,7 @@ func TestApiKeySource_ContextHeaders(t *testing.T) {
 	j := jwt.New()
 	ser := jwt.NewSerializer()
 	token, err := ser.Serialize(j)
+	assert.NoError(t, err)
 	mockUserAPI.On("ValidateCredentialsExecute", mock.Anything).Return(
 		string(token), nil, nil).Once()
 
