@@ -16,6 +16,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -136,11 +137,12 @@ func setupLogger(log *logrus.Logger, logFormat, logLevel string) logrus.FieldLog
 }
 
 func createGrpcServer(parentCtx context.Context, cfg config, pool *pgxpool.Pool, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
-	serverOpts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, field.WithField("subsystem", "auth"))),
+	serverOpts := make([]grpc.ServerOption, 0)
+	if !strings.HasPrefix(cfg.ListenAddr, "http://localhost") {
+		serverOpts = append(serverOpts, grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, field.WithField("subsystem", "auth"))))
 	}
-	grpcServer := grpc.NewServer(serverOpts...)
 
+	grpcServer := grpc.NewServer(serverOpts...)
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(pool, field.WithField("subsystem", "vulnerabilities")))
 	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, pool, u, field.WithField("subsystem", "management")))
 

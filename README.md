@@ -23,3 +23,15 @@ users can import the package with a specific version.
 * Should we create a new row for each workload or do a update? If we do create we have a history of all workloads and
   images tags. If we do a update we only have the latest image tag for each workload. We still have the history of all
   images tags in the image table.
+
+## Commando
+
+This requires that both trivy and cosing is installed
+
+```shell
+  trivy image --format cyclonedx --output vuln-nginx.json localhost:4004/vuln-nginx:1.4.2
+```
+
+```shell
+  cosign attest --predicate vuln-nginx.json --type cyclonedx localhost:4004/vuln-nginx:1.4.2  
+```

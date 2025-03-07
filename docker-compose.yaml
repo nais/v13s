@@ -65,6 +65,40 @@ services:
       - "9020:8080"
     restart: unless-stopped
 
+  bootstrap:
+    platform: linux/amd64
+    image: europe-north1-docker.pkg.dev/nais-io/nais/images/dependencytrack-bootstrap:latest
+    environment:
+      - BASE_URL=http://dtrack-apiserver:8080/
+      - DEFAULT_ADMIN_PASSWORD=admin
+      - ADMIN_PASSWORD=yolo
+      - TRIVY_API_TOKEN=my-token
+      - USERS_FILE=users.yaml
+      - TRIVY_BASE_URL=http://trivy:4005
+    depends_on:
+      dtrack-apiserver:
+        condition: service_healthy
+    volumes:
+      - ./users.yaml:/app/users.yaml
+
+  registry:
+    image: registry:latest
+    ports:
+      - '4004:5000'
+
+  trivy:
+    image: aquasec/trivy:0.55.0
+    command:
+      - server
+      - --listen
+      - :4005
+      - --token
+      - my-token
+    volumes:
+      - "trivy-cache:/root/.cache/trivy"
+    restart: unless-stopped
+
 volumes:
   pgdata:
   dependency-track:
+  trivy-cache: { }

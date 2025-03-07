@@ -1,0 +1,5 @@
+users:
+  - username: console
+    password: "todo"
+  - username: slsa-verde
+    password: "todos"
