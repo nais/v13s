@@ -25,7 +25,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/urfave/cli/v3 v3.0.0-beta1
 	github.com/vektra/mockery/v2 v2.52.2
-	golang.org/x/oauth2 v0.26.0
+	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.11.0
 	google.golang.org/api v0.221.0
 	google.golang.org/grpc v1.70.0
