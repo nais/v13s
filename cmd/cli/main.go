@@ -78,7 +78,7 @@ func main() {
 						Usage:   "list vulnerabilities for image",
 						Flags:   commonFlags(opts, "cluster", "namespace", "workload"),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
-							return listVulnerabilities(ctx, cmd, c, opts)
+							return listVulnerabilitiesForImage(ctx, cmd, c, opts)
 						},
 					},
 					{
@@ -149,7 +149,7 @@ func main() {
 	}
 }
 
-func listVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
 	opts := parseOptions(cmd, o)
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image name")
@@ -244,9 +244,12 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 }
 
 func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
-	opts := parseOptions(cmd, o)
+	offset := 0
 	for {
 		//opts = append(opts, vulnerabilities.Limit(int32(limit)), vulnerabilities.Offset(int32(offset)))
+		opts := parseOptions(cmd, o)
+		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+
 		start := time.Now()
 		resp, err := c.ListVulnerabilitySummaries(ctx, opts...)
 		if err != nil {
@@ -277,7 +280,6 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		}
 
 		tbl.Print()
-		offset := 0
 		numFetched := offset + int(o.limit)
 		if numFetched > int(resp.PageInfo.TotalCount) {
 			numFetched = int(resp.PageInfo.TotalCount)
@@ -308,9 +310,11 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 }
 
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
-	opts := parseOptions(cmd, o)
+	offset := 0
 	for {
 		start := time.Now()
+		opts := parseOptions(cmd, o)
+		opts = append(opts, vulnerabilities.Offset(int32(offset)))
 		resp, err := c.ListVulnerabilities(ctx, opts...)
 		if err != nil {
 			return err
@@ -340,7 +344,6 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 		}
 
 		tbl.Print()
-		offset := 0
 		numFetched := offset + int(o.limit)
 		if numFetched > int(resp.PageInfo.TotalCount) {
 			numFetched = int(resp.PageInfo.TotalCount)

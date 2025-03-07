@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/typeext"
 	"math"
 	"os"
@@ -43,6 +44,49 @@ func main() {
 	images := createNaisApiWorkloads(ctx, db, "dev", "devteam")
 	createNaisApiWorkloads(ctx, db, "superprod", "devteam")
 	createVulnData(ctx, db, images)
+
+	err = uploadSboms(ctx, "")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func uploadSboms(ctx context.Context, images ...string) error {
+	c, err := dependencytrack.NewClient(
+		"http://localhost:9010/api",
+		"Administrators",
+		"admin",
+		"yolo",
+		log.WithField("subsystem", "dp-client"),
+	)
+	if err != nil {
+		return err
+	}
+
+	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "cosign-verifier"), "navikt", "nais")
+	if err != nil {
+		return err
+	}
+
+	for _, image := range images {
+		parts := strings.Split(image, ":")
+		ref := &dependencytrack.WorkloadRef{
+			Cluster:   "dev",
+			Namespace: "devteam",
+			Type:      "app",
+			Name:      "nais-deploy-chicken-1",
+		}
+		att, err := verifier.GetAttestation(ctx, image)
+		if err != nil {
+			return err
+		}
+		err = c.CreateProjectWithSbom(ctx, parts[0], parts[1], att, ref)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func seedFromDependencyTrack(ctx context.Context, db sql.Querier) {

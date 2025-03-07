@@ -7,6 +7,8 @@ import (
 
 	client "github.com/nais/v13s/internal/dependencytrack/client"
 
+	in_toto "github.com/in-toto/in-toto-golang/in_toto"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -21,6 +23,117 @@ type MockClient_Expecter struct {
 
 func (_m *MockClient) EXPECT() *MockClient_Expecter {
 	return &MockClient_Expecter{mock: &_m.Mock}
+}
+
+// CreateProject provides a mock function with given fields: ctx, name, version, tags
+func (_m *MockClient) CreateProject(ctx context.Context, name string, version string, tags []string) (*client.Project, error) {
+	ret := _m.Called(ctx, name, version, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateProject")
+	}
+
+	var r0 *client.Project
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []string) (*client.Project, error)); ok {
+		return rf(ctx, name, version, tags)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []string) *client.Project); ok {
+		r0 = rf(ctx, name, version, tags)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.Project)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, []string) error); ok {
+		r1 = rf(ctx, name, version, tags)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_CreateProject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateProject'
+type MockClient_CreateProject_Call struct {
+	*mock.Call
+}
+
+// CreateProject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - version string
+//   - tags []string
+func (_e *MockClient_Expecter) CreateProject(ctx interface{}, name interface{}, version interface{}, tags interface{}) *MockClient_CreateProject_Call {
+	return &MockClient_CreateProject_Call{Call: _e.mock.On("CreateProject", ctx, name, version, tags)}
+}
+
+func (_c *MockClient_CreateProject_Call) Run(run func(ctx context.Context, name string, version string, tags []string)) *MockClient_CreateProject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]string))
+	})
+	return _c
+}
+
+func (_c *MockClient_CreateProject_Call) Return(_a0 *client.Project, _a1 error) *MockClient_CreateProject_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_CreateProject_Call) RunAndReturn(run func(context.Context, string, string, []string) (*client.Project, error)) *MockClient_CreateProject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateProjectWithSbom provides a mock function with given fields: ctx, imageName, imageTag, sbom, workloadRef
+func (_m *MockClient) CreateProjectWithSbom(ctx context.Context, imageName string, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error {
+	ret := _m.Called(ctx, imageName, imageTag, sbom, workloadRef)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateProjectWithSbom")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, *in_toto.CycloneDXStatement, *WorkloadRef) error); ok {
+		r0 = rf(ctx, imageName, imageTag, sbom, workloadRef)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_CreateProjectWithSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateProjectWithSbom'
+type MockClient_CreateProjectWithSbom_Call struct {
+	*mock.Call
+}
+
+// CreateProjectWithSbom is a helper method to define mock.On call
+//   - ctx context.Context
+//   - imageName string
+//   - imageTag string
+//   - sbom *in_toto.CycloneDXStatement
+//   - workloadRef *WorkloadRef
+func (_e *MockClient_Expecter) CreateProjectWithSbom(ctx interface{}, imageName interface{}, imageTag interface{}, sbom interface{}, workloadRef interface{}) *MockClient_CreateProjectWithSbom_Call {
+	return &MockClient_CreateProjectWithSbom_Call{Call: _e.mock.On("CreateProjectWithSbom", ctx, imageName, imageTag, sbom, workloadRef)}
+}
+
+func (_c *MockClient_CreateProjectWithSbom_Call) Run(run func(ctx context.Context, imageName string, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef)) *MockClient_CreateProjectWithSbom_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(*in_toto.CycloneDXStatement), args[4].(*WorkloadRef))
+	})
+	return _c
+}
+
+func (_c *MockClient_CreateProjectWithSbom_Call) Return(_a0 error) *MockClient_CreateProjectWithSbom_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_CreateProjectWithSbom_Call) RunAndReturn(run func(context.Context, string, string, *in_toto.CycloneDXStatement, *WorkloadRef) error) *MockClient_CreateProjectWithSbom_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetAnalysisTrailForImage provides a mock function with given fields: ctx, projectId, componentId, vulnerabilityId
@@ -422,6 +535,54 @@ func (_c *MockClient_UpdateFinding_Call) Return(_a0 error) *MockClient_UpdateFin
 }
 
 func (_c *MockClient_UpdateFinding_Call) RunAndReturn(run func(context.Context, string, string, string, string, string, string, bool) error) *MockClient_UpdateFinding_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UploadSbom provides a mock function with given fields: ctx, projectId, sbom
+func (_m *MockClient) UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
+	ret := _m.Called(ctx, projectId, sbom)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UploadSbom")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, *in_toto.CycloneDXStatement) error); ok {
+		r0 = rf(ctx, projectId, sbom)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClient_UploadSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadSbom'
+type MockClient_UploadSbom_Call struct {
+	*mock.Call
+}
+
+// UploadSbom is a helper method to define mock.On call
+//   - ctx context.Context
+//   - projectId string
+//   - sbom *in_toto.CycloneDXStatement
+func (_e *MockClient_Expecter) UploadSbom(ctx interface{}, projectId interface{}, sbom interface{}) *MockClient_UploadSbom_Call {
+	return &MockClient_UploadSbom_Call{Call: _e.mock.On("UploadSbom", ctx, projectId, sbom)}
+}
+
+func (_c *MockClient_UploadSbom_Call) Run(run func(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement)) *MockClient_UploadSbom_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(*in_toto.CycloneDXStatement))
+	})
+	return _c
+}
+
+func (_c *MockClient_UploadSbom_Call) Return(_a0 error) *MockClient_UploadSbom_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClient_UploadSbom_Call) RunAndReturn(run func(context.Context, string, *in_toto.CycloneDXStatement) error) *MockClient_UploadSbom_Call {
 	_c.Call.Return(run)
 	return _c
 }

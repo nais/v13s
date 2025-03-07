@@ -2,7 +2,9 @@ package dependencytrack
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/dependencytrack/auth"
 	"github.com/nais/v13s/internal/dependencytrack/client"
 	"github.com/sirupsen/logrus"
@@ -22,12 +24,22 @@ type Client interface {
 	UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId, state string, suppressed bool) error
 	GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*client.Analysis, error)
 	TriggerAnalysis(ctx context.Context, uuid string) error
+	CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error)
+	UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error
+	CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error
 }
 
 type dependencyTrackClient struct {
 	client *client.APIClient
 	auth   auth.Auth
 	log    *logrus.Entry
+}
+
+type WorkloadRef struct {
+	Cluster   string
+	Namespace string
+	Type      string
+	Name      string
 }
 
 func NewClient(url string, team auth.Team, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
@@ -59,6 +71,76 @@ func setupConfig(rawURL string) *client.Configuration {
 
 	cfg.Servers = client.ServerConfigurations{{URL: rawURL}}
 	return cfg
+}
+
+// TODO: handle update of existing project, right now we cant upload sbom if project exists
+func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error {
+	tags := []string{
+		fmt.Sprintf("cluster:%s", workloadRef.Cluster),
+		fmt.Sprintf("namespace:%s", workloadRef.Namespace),
+		fmt.Sprintf("workload:%s", workloadRef.Cluster+"|"+workloadRef.Namespace+"|"+workloadRef.Type+"|"+workloadRef.Name),
+		fmt.Sprintf("image:%s", imageName+":"+imageTag),
+	}
+
+	p, err := c.CreateProject(ctx, imageName, imageTag, tags)
+	if err != nil {
+		// TODO: Check if project already exists, implement proper error in CreateProject
+		c.log.Errorf("create project: %v", err)
+		return nil
+	}
+
+	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+		return err
+	}
+
+	if err = c.TriggerAnalysis(ctx, *p.Uuid); err != nil {
+		c.log.Warnf("trigger analysis: %v", err)
+	}
+	return nil
+}
+
+func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error) {
+	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
+		active := true
+		classifier := "APPLICATION"
+		t := make([]client.Tag, 0)
+		for _, tag := range tags {
+			t = append(t, client.Tag{
+				Name: &tag,
+			})
+		}
+		req := c.client.ProjectAPI.CreateProject(apiKeyCtx).Body(client.Project{
+			Name:       &name,
+			Active:     &active,
+			Classifier: &classifier,
+			Version:    &version,
+			Tags:       t,
+			Parent:     nil,
+		})
+
+		project, resp, err := req.Execute()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create project: %w, details: %s", err, parseErrorResponseBody(resp))
+		}
+
+		return project, nil
+	})
+}
+
+func (c *dependencyTrackClient) UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
+	b, err := json.Marshal(sbom.Predicate)
+	if err != nil {
+		return fmt.Errorf("failed to marshal sbom: %w", err)
+	}
+
+	return c.withAuthContext(ctx, func(apiKeyCtx context.Context) error {
+		req := c.client.BomAPI.UploadBom(apiKeyCtx).Bom(string(b)).Project(projectId).AutoCreate(false)
+		_, resp, err := req.Execute()
+		if err != nil {
+			return fmt.Errorf("failed to upload sbom: %w details: %s", err, parseErrorResponseBody(resp))
+		}
+		return nil
+	})
 }
 
 // Is this function lacking pagination for all findings in a project or do we not need it?
