@@ -5,3 +5,4 @@ bin/
 /internal/dependencytrack/client/go.mo
 .env
 /charts/values.dev-nais.yaml
+/local/registry-data/

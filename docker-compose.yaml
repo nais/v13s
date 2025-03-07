@@ -79,12 +79,14 @@ services:
       dtrack-apiserver:
         condition: service_healthy
     volumes:
-      - ./users.yaml:/app/users.yaml
+      - ./local/users.yaml:/app/users.yaml
 
   registry:
     image: registry:latest
     ports:
       - '4004:5000'
+    volumes:
+      - ./local/registry-data:/var/lib/registry
 
   trivy:
     image: aquasec/trivy:0.55.0

@@ -45,7 +45,7 @@ func main() {
 	createNaisApiWorkloads(ctx, db, "superprod", "devteam")
 	createVulnData(ctx, db, images)
 
-	err = uploadSboms(ctx, "localhost:4004/vuln-nginx:1.4.2")
+	err = uploadSboms(ctx, "localhost:4004/vulhub-nginx:1.4.2")
 	if err != nil {
 		panic(err)
 	}
