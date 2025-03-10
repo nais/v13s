@@ -503,15 +503,15 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
-    CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
-    v.id ASC
+   CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
+   CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
+   CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
+   CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
+   CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
+   CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
+   CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
+   CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
+    w.name, w.workload_type, w.namespace, w.cluster, v.id DESC
 LIMIT $10 OFFSET $9
 `
 

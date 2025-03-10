@@ -14,6 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lestrrat-go/jwx/v2 v2.1.4
+	github.com/nais/v13s/pkg/api v0.0.0-00010101000000-000000000000
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/pressly/goose/v3 v3.24.1
 	github.com/rodaine/table v1.3.0
@@ -25,9 +26,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/urfave/cli/v3 v3.0.0-beta1
 	github.com/vektra/mockery/v2 v2.53.0
-	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.12.0
-	google.golang.org/api v0.224.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.5
 )
@@ -270,11 +269,13 @@ require (
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
+	google.golang.org/api v0.224.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250127172529-29210b9bc287 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -297,3 +298,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+replace github.com/nais/v13s/pkg/api => ./pkg/api
