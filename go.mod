@@ -25,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/urfave/cli/v3 v3.0.0-beta1
-	github.com/vektra/mockery/v2 v2.53.0
+	github.com/vektra/mockery/v2 v2.53.1
 	golang.org/x/sync v0.12.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.5
