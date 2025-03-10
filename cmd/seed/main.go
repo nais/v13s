@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/typeext"
 	"math"
@@ -45,7 +47,7 @@ func main() {
 	createNaisApiWorkloads(ctx, db, "superprod", "devteam")
 	createVulnData(ctx, db, images)
 
-	err = uploadSboms(ctx, "localhost:4004/vulhub-nginx:1.4.2")
+	err = seedDependencyTrack(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -86,6 +88,49 @@ func uploadSboms(ctx context.Context, images ...string) error {
 		}
 	}
 
+	return nil
+}
+
+func seedDependencyTrack(ctx context.Context) error {
+	c, err := dependencytrack.NewClient(
+		"http://localhost:9010/api",
+		"Administrators",
+		"admin",
+		"yolo",
+		log.WithField("subsystem", "dp-client"),
+	)
+	if err != nil {
+		return err
+	}
+
+	b, err := os.ReadFile("local/vuln-nginx.json")
+	if err != nil {
+		return err
+	}
+
+	att := &in_toto.CycloneDXStatement{}
+
+	var predicate any
+	err = json.Unmarshal(b, &predicate)
+	if err != nil {
+		return err
+	}
+
+	att.Predicate = predicate
+
+	imgPrefix := "ghcr.io/nais/nais-deploy-chicken-%d"
+	for i := 1; i < 9; i++ {
+		ref := &dependencytrack.WorkloadRef{
+			Cluster:   "dev",
+			Namespace: "devteam",
+			Type:      "app",
+			Name:      fmt.Sprintf("nais-deploy-chicken-%d", i),
+		}
+		err = c.CreateProjectWithSbom(ctx, fmt.Sprintf(imgPrefix, i), "1", att, ref)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -35,7 +35,7 @@ const (
 )
 
 type config struct {
-	ListenAddr                string        `envonfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
 	DependencytrackUrl        string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
 	DependencytrackTeam       string        `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
 	DependencytrackUsername   string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
@@ -138,7 +138,8 @@ func setupLogger(log *logrus.Logger, logFormat, logLevel string) logrus.FieldLog
 
 func createGrpcServer(parentCtx context.Context, cfg config, pool *pgxpool.Pool, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
 	serverOpts := make([]grpc.ServerOption, 0)
-	if !strings.HasPrefix(cfg.ListenAddr, "http://localhost") {
+
+	if !strings.HasPrefix(cfg.ListenAddr, "localhost") {
 		serverOpts = append(serverOpts, grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, field.WithField("subsystem", "auth"))))
 	}
 

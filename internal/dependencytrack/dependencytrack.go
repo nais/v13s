@@ -73,7 +73,6 @@ func setupConfig(rawURL string) *client.Configuration {
 	return cfg
 }
 
-// TODO: handle update of existing project, right now we cant upload sbom if project exists
 func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error {
 	tags := []string{
 		fmt.Sprintf("cluster:%s", workloadRef.Cluster),
@@ -84,9 +83,17 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, image
 
 	p, err := c.CreateProject(ctx, imageName, imageTag, tags)
 	if err != nil {
-		// TODO: Check if project already exists, implement proper error in CreateProject
-		c.log.Errorf("create project: %v", err)
-		return nil
+		if !strings.Contains(err.Error(), "project already exists.") {
+			c.log.Errorf("create project: %v", err)
+			return err
+		}
+	}
+
+	if p == nil {
+		p, err = c.GetProject(ctx, imageName, imageTag)
+		if err != nil {
+			return fmt.Errorf("failed to get project: %w", err)
+		}
 	}
 
 	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
@@ -120,6 +127,9 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 
 		project, resp, err := req.Execute()
 		if err != nil {
+			if resp != nil && resp.StatusCode == http.StatusConflict {
+				return nil, fmt.Errorf("project already exists.")
+			}
 			return nil, fmt.Errorf("failed to create project: %w, details: %s", err, parseErrorResponseBody(resp))
 		}
 

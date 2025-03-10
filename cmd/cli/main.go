@@ -382,12 +382,12 @@ func createClient(cfg config, ctx context.Context) (vulnerabilities.Client, erro
 		tlsOpts := &tls.Config{}
 		cred := credentials.NewTLS(tlsOpts)
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(cred))
+		creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccount, cfg.ServiceAccountAudience)
+		if err != nil {
+			return nil, err
+		}
+		dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(creds))
 	}
-	creds, err := auth.PerRPCGoogleIDToken(ctx, cfg.ServiceAccount, cfg.ServiceAccountAudience)
-	if err != nil {
-		return nil, err
-	}
-	dialOptions = append(dialOptions, grpc.WithPerRPCCredentials(creds))
 
 	return vulnerabilities.NewClient(
 		cfg.VulnerabilitiesUrl,

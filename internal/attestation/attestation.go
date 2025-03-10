@@ -65,7 +65,7 @@ func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.C
 	if err != nil {
 		return nil, fmt.Errorf("get payload: %v", err)
 	}
-	statement, err := parseEnvelope(env)
+	statement, err := ParseEnvelope(env)
 	if err != nil {
 		return nil, fmt.Errorf("parse payload: %v", err)
 	}
@@ -137,7 +137,7 @@ func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign
 	return co, nil
 }
 
-func parseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
+func ParseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
 	env := ssldsse.Envelope{}
 	err := json.Unmarshal(dsseEnvelope, &env)
 	if err != nil {
