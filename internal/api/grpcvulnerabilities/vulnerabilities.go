@@ -253,7 +253,7 @@ func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 	if orderBy.Direction == vulnerabilities.Direction_DESC {
 		direction = "desc"
 	}
-	field := vulnerabilities.OrderByField(orderBy.Field)
+	field := vulnerabilities.OrderByField(strings.ToLower(orderBy.Field))
 	if !field.IsValid() {
 		field = defaultOrder
 	}
