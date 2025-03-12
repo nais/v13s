@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	cloud.google.com/go/auth v0.15.0
 	github.com/containerd/log v0.1.0
+	github.com/emicklei/pgtalk v1.8.3
 	github.com/exaring/otelpgx v0.9.0
 	github.com/fatih/color v1.18.0
 	github.com/google/go-containerregistry v0.20.3

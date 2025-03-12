@@ -46,14 +46,11 @@ DO UPDATE
     WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
 ;
 
-
-
 -- name: GetCve :one
 SELECT *
 FROM cve
 WHERE cve_id = @cve_id
 ;
-
 
 -- name: GetVulnerability :one
 SELECT *
@@ -64,6 +61,16 @@ WHERE image_name = @image_name
   AND cve_id = @cve_id
 ;
 
+-- name: GetVulnerabilityById :one
+SELECT v.image_name,
+       v.image_tag,
+       v.package,
+       v.cve_id,
+       v.source
+FROM vulnerabilities v
+    JOIN cve c ON v.cve_id = c.cve_id
+WHERE v.id = @id
+;
 
 -- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
@@ -169,7 +176,8 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
 ;
 
 -- name: ListVulnerabilitiesForImage :many
-SELECT v.image_name,
+SELECT v.id,
+       v.image_name,
        v.image_tag,
        v.package,
        v.cve_id,
@@ -215,7 +223,8 @@ WHERE v.image_name = @image_name
 ;
 
 -- name: ListVulnerabilities :many
-SELECT w.name                         AS workload_name,
+SELECT v.id,
+       w.name                         AS workload_name,
        w.workload_type,
        w.namespace,
        w.cluster,

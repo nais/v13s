@@ -260,6 +260,38 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 	return &i, err
 }
 
+const getVulnerabilityById = `-- name: GetVulnerabilityById :one
+SELECT v.image_name,
+       v.image_tag,
+       v.package,
+       v.cve_id,
+       v.source
+FROM vulnerabilities v
+    JOIN cve c ON v.cve_id = c.cve_id
+WHERE v.id = $1
+`
+
+type GetVulnerabilityByIdRow struct {
+	ImageName string
+	ImageTag  string
+	Package   string
+	CveID     string
+	Source    string
+}
+
+func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
+	row := q.db.QueryRow(ctx, getVulnerabilityById, id)
+	var i GetVulnerabilityByIdRow
+	err := row.Scan(
+		&i.ImageName,
+		&i.ImageTag,
+		&i.Package,
+		&i.CveID,
+		&i.Source,
+	)
+	return &i, err
+}
+
 const listAllSuppressedVulnerabilities = `-- name: ListAllSuppressedVulnerabilities :many
 SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at, suppressed_by
 FROM suppressed_vulnerabilities
@@ -465,7 +497,8 @@ func (q *Queries) ListSuppressedVulnerabilitiesForImage(ctx context.Context, ima
 }
 
 const listVulnerabilities = `-- name: ListVulnerabilities :many
-SELECT w.name                         AS workload_name,
+SELECT v.id,
+       w.name                         AS workload_name,
        w.workload_type,
        w.namespace,
        w.cluster,
@@ -503,15 +536,15 @@ WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
-   CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
-   CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
-   CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
-   CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
-   CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
-   CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
-   CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
-   CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
-    w.name, w.workload_type, w.namespace, w.cluster, v.id DESC
+    CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
+    CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
+    CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
+    v.id ASC
 LIMIT $10 OFFSET $9
 `
 
@@ -529,6 +562,7 @@ type ListVulnerabilitiesParams struct {
 }
 
 type ListVulnerabilitiesRow struct {
+	ID           pgtype.UUID
 	WorkloadName string
 	WorkloadType string
 	Namespace    string
@@ -569,6 +603,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 	for rows.Next() {
 		var i ListVulnerabilitiesRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.WorkloadName,
 			&i.WorkloadType,
 			&i.Namespace,
@@ -598,7 +633,8 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 }
 
 const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
-SELECT v.image_name,
+SELECT v.id,
+       v.image_name,
        v.image_tag,
        v.package,
        v.cve_id,
@@ -639,6 +675,7 @@ type ListVulnerabilitiesForImageParams struct {
 }
 
 type ListVulnerabilitiesForImageRow struct {
+	ID            pgtype.UUID
 	ImageName     string
 	ImageTag      string
 	Package       string
@@ -673,6 +710,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 	for rows.Next() {
 		var i ListVulnerabilitiesForImageRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.ImageName,
 			&i.ImageTag,
 			&i.Package,

@@ -4,6 +4,8 @@ package sql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -23,6 +25,7 @@ type Querier interface {
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
+	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
 	ListAllSuppressedVulnerabilities(ctx context.Context) ([]*SuppressedVulnerability, error)

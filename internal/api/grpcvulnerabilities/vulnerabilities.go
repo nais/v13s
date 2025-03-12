@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/emicklei/pgtalk/convert"
 	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
@@ -51,6 +52,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				ImageTag:  row.ImageTag,
 			},
 			Vulnerability: &vulnerabilities.Vulnerability{
+				Id:         row.ID.String(),
 				Package:    row.Package,
 				Suppressed: &row.Suppressed,
 				Cve: &vulnerabilities.Cve{
@@ -132,6 +134,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		suppressReasonStr := strings.ToUpper(string(suppressReason))
 
 		return &vulnerabilities.Vulnerability{
+			Id:                row.ID.String(),
 			Package:           row.Package,
 			Suppressed:        &row.Suppressed,
 			SuppressedReason:  &suppressReasonStr,
@@ -211,34 +214,30 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 }
 
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
-	suppressedVuln := request.GetSuppressedVulnerability()
-	_, err := s.querier.GetSuppressedVulnerability(ctx, sql.GetSuppressedVulnerabilityParams{
-		ImageName: suppressedVuln.GetImageName(),
-		Package:   suppressedVuln.GetPackage(),
-		CveID:     suppressedVuln.GetCveId(),
-	})
-
+	uuid := convert.StringToUUID(request.Id)
+	vuln, err := s.querier.GetVulnerabilityById(ctx, uuid)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("failed to get suppressed vulnerability: %w", err)
+			return nil, fmt.Errorf("get suppressed vulnerability: %w", err)
 		}
 	}
 
 	supErr := s.querier.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
-		ImageName:    suppressedVuln.GetImageName(),
-		CveID:        suppressedVuln.GetCveId(),
-		Package:      suppressedVuln.GetPackage(),
-		SuppressedBy: suppressedVuln.GetSuppressedBy(),
-		Suppressed:   suppressedVuln.GetSuppress(),
-		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(suppressedVuln.GetState().String())),
-		ReasonText:   suppressedVuln.GetReason(),
+		ImageName:    vuln.ImageName,
+		CveID:        vuln.CveID,
+		Package:      vuln.Package,
+		SuppressedBy: request.GetSuppressedBy(),
+		Suppressed:   request.GetSuppress(),
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
+		ReasonText:   request.GetReason(),
 	})
 	if supErr != nil {
-		return nil, fmt.Errorf("failed to suppress vulnerability: %w", supErr)
+		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
 	}
+
 	return &vulnerabilities.SuppressVulnerabilityResponse{
-		CveId:      suppressedVuln.GetCveId(),
-		Suppressed: suppressedVuln.GetSuppress(),
+		CveId:      vuln.CveID,
+		Suppressed: request.GetSuppress(),
 	}, nil
 }
 

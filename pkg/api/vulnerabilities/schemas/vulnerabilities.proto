@@ -118,7 +118,11 @@ message GetVulnerabilitySummaryResponse {
 }
 
 message SuppressVulnerabilityRequest {
-  SuppressedVulnerability suppressed_vulnerability = 1;
+  string id = 1;
+  SuppressState state = 2;
+  optional string reason = 3;
+  optional string suppressed_by = 4;
+  optional bool suppress = 5;
 }
 
 message SuppressedVulnerability {
@@ -207,12 +211,13 @@ message Cve {
 
 // TODO: should it be grouped by package like now or Cve?
 message Vulnerability {
-  string package = 1;
-  Cve cve = 2;
-  string latest_version = 3;
-  optional bool suppressed = 4;
-  optional string suppressed_reason = 5;
-  optional string suppressed_details = 6;
+  string id = 1;
+  string package = 2;
+  Cve cve = 3;
+  string latest_version = 4;
+  optional bool suppressed = 5;
+  optional string suppressed_reason = 6;
+  optional string suppressed_details = 7;
 }
 
 message Finding {

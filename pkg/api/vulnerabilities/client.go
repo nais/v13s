@@ -15,7 +15,7 @@ type Client interface {
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
-	SuppressVulnerability(ctx context.Context, imageName, cveId, packaged, reason, suppressedBy string, state SuppressState, suppress bool) error
+	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
 	management.ManagementClient
 }
 
@@ -107,17 +107,13 @@ func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName,
 	})
 }
 
-func (c *client) SuppressVulnerability(ctx context.Context, imageName, cveId, packaged, reason, suppressedBy string, state SuppressState, suppress bool) error {
+func (c *client) SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error {
 	_, err := c.c.SuppressVulnerability(ctx, &SuppressVulnerabilityRequest{
-		SuppressedVulnerability: &SuppressedVulnerability{
-			ImageName:    imageName,
-			State:        state,
-			Package:      packaged,
-			CveId:        cveId,
-			Reason:       &reason,
-			SuppressedBy: &suppressedBy,
-			Suppress:     &suppress,
-		},
+		Id:           id,
+		Reason:       &reason,
+		SuppressedBy: &suppressedBy,
+		State:        state,
+		Suppress:     &suppress,
 	})
 	return err
 }
