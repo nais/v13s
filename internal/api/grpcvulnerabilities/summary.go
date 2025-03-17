@@ -38,6 +38,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		return &vulnerabilities.WorkloadSummary{
+			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
 				Namespace: row.Namespace,

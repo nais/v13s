@@ -261,33 +261,73 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 }
 
 const getVulnerabilityById = `-- name: GetVulnerabilityById :one
-SELECT v.image_name,
+SELECT v.id,
+       v.image_name,
        v.image_tag,
        v.package,
+       v.latest_version,
+       v.source,
        v.cve_id,
-       v.source
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity AS severity,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       c.refs,
+       sv.reason,
+       sv.reason_text
 FROM vulnerabilities v
     JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN suppressed_vulnerabilities sv
+              ON v.image_name = sv.image_name
+                  AND v.package = sv.package
+                  AND v.cve_id = sv.cve_id
 WHERE v.id = $1
 `
 
 type GetVulnerabilityByIdRow struct {
-	ImageName string
-	ImageTag  string
-	Package   string
-	CveID     string
-	Source    string
+	ID            pgtype.UUID
+	ImageName     string
+	ImageTag      string
+	Package       string
+	LatestVersion string
+	Source        string
+	CveID         string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	Suppressed    bool
+	Refs          typeext.MapStringString
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
 }
 
 func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerabilityById, id)
 	var i GetVulnerabilityByIdRow
 	err := row.Scan(
+		&i.ID,
 		&i.ImageName,
 		&i.ImageTag,
 		&i.Package,
-		&i.CveID,
+		&i.LatestVersion,
 		&i.Source,
+		&i.CveID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CveTitle,
+		&i.CveDesc,
+		&i.CveLink,
+		&i.Severity,
+		&i.Suppressed,
+		&i.Refs,
+		&i.Reason,
+		&i.ReasonText,
 	)
 	return &i, err
 }

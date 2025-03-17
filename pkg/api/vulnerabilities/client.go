@@ -15,6 +15,7 @@ type Client interface {
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
+	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
 	management.ManagementClient
 }
@@ -104,6 +105,12 @@ func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName,
 	return c.c.GetVulnerabilitySummaryForImage(ctx, &GetVulnerabilitySummaryForImageRequest{
 		ImageName: imageName,
 		ImageTag:  imageTag,
+	})
+}
+
+func (c *client) GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error) {
+	return c.c.GetVulnerabilityById(ctx, &GetVulnerabilityByIdRequest{
+		Id: id,
 	})
 }
 

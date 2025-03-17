@@ -213,6 +213,41 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 	}, nil
 }
 
+func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilities.GetVulnerabilityByIdRequest) (*vulnerabilities.GetVulnerabilityByIdResponse, error) {
+	uuid := convert.StringToUUID(request.Id)
+	row, err := s.querier.GetVulnerabilityById(ctx, uuid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("vulnerability not found")
+		}
+		return nil, fmt.Errorf("get vulnerability by id: %w", err)
+	}
+	suppressReason := row.Reason.VulnerabilitySuppressReason
+	if !suppressReason.Valid() {
+		suppressReason = sql.VulnerabilitySuppressReasonNotSet
+	}
+
+	suppressReasonStr := strings.ToUpper(string(suppressReason))
+	return &vulnerabilities.GetVulnerabilityByIdResponse{
+		Vulnerability: &vulnerabilities.Vulnerability{
+			Id:                row.ID.String(),
+			Package:           row.Package,
+			Suppressed:        &row.Suppressed,
+			SuppressedReason:  &suppressReasonStr,
+			SuppressedDetails: row.ReasonText,
+			LatestVersion:     row.LatestVersion,
+			Cve: &vulnerabilities.Cve{
+				Id:          row.CveID,
+				Title:       row.CveTitle,
+				Description: row.CveDesc,
+				Link:        row.CveLink,
+				Severity:    vulnerabilities.Severity(row.Severity),
+				References:  row.Refs,
+			},
+		},
+	}, nil
+}
+
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
 	uuid := convert.StringToUUID(request.Id)
 	vuln, err := s.querier.GetVulnerabilityById(ctx, uuid)

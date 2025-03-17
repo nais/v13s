@@ -41,6 +41,7 @@ service Vulnerabilities {
   //rpc GetImageVulnerabilityDetails()
 
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
+  rpc GetVulnerabilityById(GetVulnerabilityByIdRequest) returns (GetVulnerabilityByIdResponse);
 }
 
 message ListVulnerabilitiesForImageRequest {
@@ -117,6 +118,14 @@ message GetVulnerabilitySummaryResponse {
   float coverage = 5;
 }
 
+message GetVulnerabilityByIdRequest{
+  string id = 1;
+}
+
+message GetVulnerabilityByIdResponse{
+  Vulnerability vulnerability = 1;
+}
+
 message SuppressVulnerabilityRequest {
   string id = 1;
   SuppressState state = 2;
@@ -168,8 +177,9 @@ message OrderBy {
 }
 
 message WorkloadSummary {
-  Workload workload = 1;
-  Summary vulnerability_summary = 2;
+  string id = 1;
+  Workload workload = 2;
+  Summary vulnerability_summary = 3;
 }
 
 message Summary {

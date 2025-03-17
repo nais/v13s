@@ -31,6 +31,7 @@ const (
 	Vulnerabilities_GetVulnerabilitySummary_FullMethodName         = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
 	Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryForImage"
 	Vulnerabilities_SuppressVulnerability_FullMethodName           = "/v13s.api.protobuf.Vulnerabilities/SuppressVulnerability"
+	Vulnerabilities_GetVulnerabilityById_FullMethodName            = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilityById"
 )
 
 // VulnerabilitiesClient is the client API for Vulnerabilities service.
@@ -55,6 +56,7 @@ type VulnerabilitiesClient interface {
 	GetVulnerabilitySummary(ctx context.Context, in *GetVulnerabilitySummaryRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, in *GetVulnerabilitySummaryForImageRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryForImageResponse, error)
 	SuppressVulnerability(ctx context.Context, in *SuppressVulnerabilityRequest, opts ...grpc.CallOption) (*SuppressVulnerabilityResponse, error)
+	GetVulnerabilityById(ctx context.Context, in *GetVulnerabilityByIdRequest, opts ...grpc.CallOption) (*GetVulnerabilityByIdResponse, error)
 }
 
 type vulnerabilitiesClient struct {
@@ -135,6 +137,16 @@ func (c *vulnerabilitiesClient) SuppressVulnerability(ctx context.Context, in *S
 	return out, nil
 }
 
+func (c *vulnerabilitiesClient) GetVulnerabilityById(ctx context.Context, in *GetVulnerabilityByIdRequest, opts ...grpc.CallOption) (*GetVulnerabilityByIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVulnerabilityByIdResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_GetVulnerabilityById_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VulnerabilitiesServer is the server API for Vulnerabilities service.
 // All implementations must embed UnimplementedVulnerabilitiesServer
 // for forward compatibility.
@@ -157,6 +169,7 @@ type VulnerabilitiesServer interface {
 	GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error)
 	SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)
+	GetVulnerabilityById(context.Context, *GetVulnerabilityByIdRequest) (*GetVulnerabilityByIdResponse, error)
 	mustEmbedUnimplementedVulnerabilitiesServer()
 }
 
@@ -187,6 +200,9 @@ func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummaryForImage(contex
 }
 func (UnimplementedVulnerabilitiesServer) SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SuppressVulnerability not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) GetVulnerabilityById(context.Context, *GetVulnerabilityByIdRequest) (*GetVulnerabilityByIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilityById not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) mustEmbedUnimplementedVulnerabilitiesServer() {}
 func (UnimplementedVulnerabilitiesServer) testEmbeddedByValue()                         {}
@@ -335,6 +351,24 @@ func _Vulnerabilities_SuppressVulnerability_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Vulnerabilities_GetVulnerabilityById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVulnerabilityByIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).GetVulnerabilityById(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_GetVulnerabilityById_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).GetVulnerabilityById(ctx, req.(*GetVulnerabilityByIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Vulnerabilities_ServiceDesc is the grpc.ServiceDesc for Vulnerabilities service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -369,6 +403,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SuppressVulnerability",
 			Handler:    _Vulnerabilities_SuppressVulnerability_Handler,
+		},
+		{
+			MethodName: "GetVulnerabilityById",
+			Handler:    _Vulnerabilities_GetVulnerabilityById_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
