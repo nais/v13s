@@ -220,7 +220,15 @@ WHERE v.image_name = @image_name
 ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN c.severity END ASC,
     CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
-    v.id ASC
+    CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN v.package END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN v.package END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN v.cve_id END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN v.cve_id END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN COALESCE(sv.suppressed, FALSE) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'suppressed_desc' THEN COALESCE(sv.suppressed, FALSE) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'reason_asc' THEN sv.reason END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'reason_desc' THEN sv.reason END DESC,
+    c.severity, v.id ASC
     LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ;
 

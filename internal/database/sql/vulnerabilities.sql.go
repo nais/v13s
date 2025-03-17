@@ -701,7 +701,15 @@ WHERE v.image_name = $1
 ORDER BY
     CASE WHEN $4 = 'severity_asc' THEN c.severity END ASC,
     CASE WHEN $4 = 'severity_desc' THEN c.severity END DESC,
-    v.id ASC
+    CASE WHEN $4 = 'package_asc' THEN v.package END ASC,
+    CASE WHEN $4 = 'package_desc' THEN v.package END DESC,
+    CASE WHEN $4 = 'cve_id_asc' THEN v.cve_id END ASC,
+    CASE WHEN $4 = 'cve_id_desc' THEN v.cve_id END DESC,
+    CASE WHEN $4 = 'suppressed_asc' THEN COALESCE(sv.suppressed, FALSE) END ASC,
+    CASE WHEN $4 = 'suppressed_desc' THEN COALESCE(sv.suppressed, FALSE) END DESC,
+    CASE WHEN $4 = 'reason_asc' THEN sv.reason END ASC,
+    CASE WHEN $4 = 'reason_desc' THEN sv.reason END DESC,
+    c.severity, v.id ASC
     LIMIT $6 OFFSET $5
 `
 

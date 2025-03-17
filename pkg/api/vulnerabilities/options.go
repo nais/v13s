@@ -14,6 +14,10 @@ type OrderByField string
 
 const (
 	OrderBySeverity   OrderByField = "severity"
+	OrderByPackage    OrderByField = "package"
+	OrderByCveId      OrderByField = "cve_id"
+	OrderBySuppressed OrderByField = "suppressed"
+	OrderByReason     OrderByField = "reason"
 	OrderByCluster    OrderByField = "cluster"
 	OrderByNamespace  OrderByField = "namespace"
 	OrderByWorkload   OrderByField = "workload"
@@ -25,16 +29,33 @@ const (
 	OrderByRiskScore  OrderByField = "risk_score"
 )
 
+// Map of valid fields
+var validOrderByFields = map[OrderByField]struct{}{
+	OrderBySeverity:   {},
+	OrderByPackage:    {},
+	OrderByCveId:      {},
+	OrderBySuppressed: {},
+	OrderByReason:     {},
+	OrderByCluster:    {},
+	OrderByNamespace:  {},
+	OrderByWorkload:   {},
+	OrderByCritical:   {},
+	OrderByHigh:       {},
+	OrderByMedium:     {},
+	OrderByLow:        {},
+	OrderByUnassigned: {},
+	OrderByRiskScore:  {},
+}
+
+// String method for OrderByField
 func (o OrderByField) String() string {
 	return string(o)
 }
 
+// IsValid method using a map for efficient lookup
 func (o OrderByField) IsValid() bool {
-	switch o {
-	case OrderBySeverity, OrderByCluster, OrderByNamespace, OrderByWorkload:
-		return true
-	}
-	return false
+	_, exists := validOrderByFields[o]
+	return exists
 }
 
 const DefaultLimit = 50

@@ -67,8 +67,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	}
 
 	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
-		WorkloadSummaries: ws,
-		PageInfo:          pageInfo,
+		Nodes:    ws,
+		PageInfo: pageInfo,
 	}
 	return response, nil
 }

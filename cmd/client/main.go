@@ -46,21 +46,6 @@ func main() {
 
 	listVulnz(c)
 
-	err = c.SuppressVulnerability(
-		ctx,
-		"europe-north1-docker.pkg.dev/nais-io/nais/images/dataproduct-apps",
-		"CVE-2020-25658",
-		"pkg:pypi/rsa@4.9",
-		"Not in my code doe",
-		"johnDoe@ali.com",
-		vulnerabilities.SuppressState_NOT_AFFECTED,
-		true,
-	)
-	if err != nil {
-		fmt.Println("YOLO")
-		panic(err)
-	}
-
 	sup, err := c.ListSuppressedVulnerabilities(
 		ctx,
 	)
@@ -165,7 +150,7 @@ func handle(resp *vulnerabilities.ListVulnerabilitySummariesResponse, err error)
 	if err != nil {
 		panic(err)
 	}
-	for _, w := range resp.WorkloadSummaries {
+	for _, w := range resp.Nodes {
 		fmt.Printf("workload: %v\n", w.Workload)
 		fmt.Printf("summary: %v\n", w.VulnerabilitySummary)
 	}
