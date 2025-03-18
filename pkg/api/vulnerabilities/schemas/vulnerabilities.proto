@@ -228,6 +228,7 @@ message Vulnerability {
   optional bool suppressed = 5;
   optional string suppressed_reason = 6;
   optional string suppressed_details = 7;
+  optional string suppressed_by = 8;
 }
 
 message Finding {

@@ -235,6 +235,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 			Suppressed:        &row.Suppressed,
 			SuppressedReason:  &suppressReasonStr,
 			SuppressedDetails: row.ReasonText,
+			SuppressedBy:      row.SuppressedBy,
 			LatestVersion:     row.LatestVersion,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,

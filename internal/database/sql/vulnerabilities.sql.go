@@ -277,7 +277,8 @@ SELECT v.id,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        c.refs,
        sv.reason,
-       sv.reason_text
+       sv.reason_text,
+       sv.suppressed_by
 FROM vulnerabilities v
     JOIN cve c ON v.cve_id = c.cve_id
     LEFT JOIN suppressed_vulnerabilities sv
@@ -305,6 +306,7 @@ type GetVulnerabilityByIdRow struct {
 	Refs          typeext.MapStringString
 	Reason        NullVulnerabilitySuppressReason
 	ReasonText    *string
+	SuppressedBy  *string
 }
 
 func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
@@ -328,6 +330,7 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.Refs,
 		&i.Reason,
 		&i.ReasonText,
+		&i.SuppressedBy,
 	)
 	return &i, err
 }

@@ -5,6 +5,7 @@ package sql
 import (
 	context "context"
 
+	pgtype "github.com/jackc/pgx/v5/pgtype"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -902,6 +903,65 @@ func (_c *MockQuerier_GetVulnerability_Call) Return(_a0 *Vulnerability, _a1 erro
 }
 
 func (_c *MockQuerier_GetVulnerability_Call) RunAndReturn(run func(context.Context, GetVulnerabilityParams) (*Vulnerability, error)) *MockQuerier_GetVulnerability_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetVulnerabilityById provides a mock function with given fields: ctx, id
+func (_m *MockQuerier) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerabilityById")
+	}
+
+	var r0 *GetVulnerabilityByIdRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.UUID) (*GetVulnerabilityByIdRow, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.UUID) *GetVulnerabilityByIdRow); ok {
+		r0 = rf(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*GetVulnerabilityByIdRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, pgtype.UUID) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetVulnerabilityById_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerabilityById'
+type MockQuerier_GetVulnerabilityById_Call struct {
+	*mock.Call
+}
+
+// GetVulnerabilityById is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id pgtype.UUID
+func (_e *MockQuerier_Expecter) GetVulnerabilityById(ctx interface{}, id interface{}) *MockQuerier_GetVulnerabilityById_Call {
+	return &MockQuerier_GetVulnerabilityById_Call{Call: _e.mock.On("GetVulnerabilityById", ctx, id)}
+}
+
+func (_c *MockQuerier_GetVulnerabilityById_Call) Run(run func(ctx context.Context, id pgtype.UUID)) *MockQuerier_GetVulnerabilityById_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(pgtype.UUID))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilityById_Call) Return(_a0 *GetVulnerabilityByIdRow, _a1 error) *MockQuerier_GetVulnerabilityById_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilityById_Call) RunAndReturn(run func(context.Context, pgtype.UUID) (*GetVulnerabilityByIdRow, error)) *MockQuerier_GetVulnerabilityById_Call {
 	_c.Call.Return(run)
 	return _c
 }

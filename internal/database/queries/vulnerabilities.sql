@@ -78,7 +78,8 @@ SELECT v.id,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        c.refs,
        sv.reason,
-       sv.reason_text
+       sv.reason_text,
+       sv.suppressed_by
 FROM vulnerabilities v
     JOIN cve c ON v.cve_id = c.cve_id
     LEFT JOIN suppressed_vulnerabilities sv
