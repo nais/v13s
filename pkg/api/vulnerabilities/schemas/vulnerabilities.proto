@@ -225,10 +225,15 @@ message Vulnerability {
   string package = 2;
   Cve cve = 3;
   string latest_version = 4;
-  optional bool suppressed = 5;
-  optional string suppressed_reason = 6;
-  optional string suppressed_details = 7;
-  optional string suppressed_by = 8;
+  optional Suppression suppression = 5;
+}
+
+message Suppression {
+  bool suppressed = 1;
+  SuppressState suppressed_reason = 2;
+  string suppressed_by = 3;
+  string suppressed_details = 4;
+  google.protobuf.Timestamp last_updated = 5;
 }
 
 message Finding {

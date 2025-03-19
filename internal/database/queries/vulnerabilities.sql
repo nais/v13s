@@ -79,7 +79,8 @@ SELECT v.id,
        c.refs,
        sv.reason,
        sv.reason_text,
-       sv.suppressed_by
+       sv.suppressed_by,
+       sv.updated_at as suppressed_at
 FROM vulnerabilities v
     JOIN cve c ON v.cve_id = c.cve_id
     LEFT JOIN suppressed_vulnerabilities sv
@@ -208,7 +209,9 @@ SELECT v.id,
        c.refs,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
-       sv.reason_text
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at as suppressed_at
 FROM vulnerabilities v
         JOIN cve c ON v.cve_id = c.cve_id
         LEFT JOIN suppressed_vulnerabilities sv
@@ -265,7 +268,9 @@ SELECT v.id,
        c.severity AS severity,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
-       sv.reason_text
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at as suppressed_at
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag

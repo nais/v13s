@@ -278,7 +278,8 @@ SELECT v.id,
        c.refs,
        sv.reason,
        sv.reason_text,
-       sv.suppressed_by
+       sv.suppressed_by,
+       sv.updated_at as suppressed_at
 FROM vulnerabilities v
     JOIN cve c ON v.cve_id = c.cve_id
     LEFT JOIN suppressed_vulnerabilities sv
@@ -307,6 +308,7 @@ type GetVulnerabilityByIdRow struct {
 	Reason        NullVulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
@@ -331,6 +333,7 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.Reason,
 		&i.ReasonText,
 		&i.SuppressedBy,
+		&i.SuppressedAt,
 	)
 	return &i, err
 }
@@ -557,7 +560,9 @@ SELECT v.id,
        c.severity AS severity,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
-       sv.reason_text
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at as suppressed_at
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
@@ -623,6 +628,8 @@ type ListVulnerabilitiesRow struct {
 	Suppressed   bool
 	Reason       NullVulnerabilitySuppressReason
 	ReasonText   *string
+	SuppressedBy *string
+	SuppressedAt pgtype.Timestamptz
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -664,6 +671,8 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,
+			&i.SuppressedBy,
+			&i.SuppressedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -691,7 +700,9 @@ SELECT v.id,
        c.refs,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
-       sv.reason_text
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at as suppressed_at
 FROM vulnerabilities v
         JOIN cve c ON v.cve_id = c.cve_id
         LEFT JOIN suppressed_vulnerabilities sv
@@ -742,6 +753,8 @@ type ListVulnerabilitiesForImageRow struct {
 	Suppressed    bool
 	Reason        NullVulnerabilitySuppressReason
 	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
@@ -777,6 +790,8 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,
+			&i.SuppressedBy,
+			&i.SuppressedAt,
 		); err != nil {
 			return nil, err
 		}

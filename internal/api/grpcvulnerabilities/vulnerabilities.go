@@ -10,7 +10,9 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
+	"time"
 )
 
 // TODO: add input validation for request, especially for filter values
@@ -52,9 +54,15 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				ImageTag:  row.ImageTag,
 			},
 			Vulnerability: &vulnerabilities.Vulnerability{
-				Id:         row.ID.String(),
-				Package:    row.Package,
-				Suppressed: &row.Suppressed,
+				Id:      row.ID.String(),
+				Package: row.Package,
+				Suppression: toSuppression(
+					row.Suppressed,
+					row.Reason.VulnerabilitySuppressReason,
+					row.ReasonText,
+					row.SuppressedBy,
+					row.SuppressedAt.Time,
+				),
 				Cve: &vulnerabilities.Cve{
 					Id:          row.CveID,
 					Title:       row.CveTitle,
@@ -126,20 +134,17 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 
 	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
 
-		suppressReason := row.Reason.VulnerabilitySuppressReason
-		if !suppressReason.Valid() {
-			suppressReason = sql.VulnerabilitySuppressReasonNotSet
-		}
-
-		suppressReasonStr := strings.ToUpper(string(suppressReason))
-
 		return &vulnerabilities.Vulnerability{
-			Id:                row.ID.String(),
-			Package:           row.Package,
-			Suppressed:        &row.Suppressed,
-			SuppressedReason:  &suppressReasonStr,
-			SuppressedDetails: row.ReasonText,
-			LatestVersion:     row.LatestVersion,
+			Id:      row.ID.String(),
+			Package: row.Package,
+			Suppression: toSuppression(
+				row.Suppressed,
+				row.Reason.VulnerabilitySuppressReason,
+				row.ReasonText,
+				row.SuppressedBy,
+				row.SuppressedAt.Time,
+			),
+			LatestVersion: row.LatestVersion,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
@@ -222,21 +227,13 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 		}
 		return nil, fmt.Errorf("get vulnerability by id: %w", err)
 	}
-	suppressReason := row.Reason.VulnerabilitySuppressReason
-	if !suppressReason.Valid() {
-		suppressReason = sql.VulnerabilitySuppressReasonNotSet
-	}
 
-	suppressReasonStr := strings.ToUpper(string(suppressReason))
 	return &vulnerabilities.GetVulnerabilityByIdResponse{
 		Vulnerability: &vulnerabilities.Vulnerability{
-			Id:                row.ID.String(),
-			Package:           row.Package,
-			Suppressed:        &row.Suppressed,
-			SuppressedReason:  &suppressReasonStr,
-			SuppressedDetails: row.ReasonText,
-			SuppressedBy:      row.SuppressedBy,
-			LatestVersion:     row.LatestVersion,
+			Id:            row.ID.String(),
+			Package:       row.Package,
+			Suppression:   toSuppression(row.Suppressed, row.Reason.VulnerabilitySuppressReason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
+			LatestVersion: row.LatestVersion,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
@@ -302,6 +299,35 @@ func safeInt(val *int32) int32 {
 		return 0
 	}
 	return *val
+}
+
+func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAt time.Time) *vulnerabilities.Suppression {
+	var suppression *vulnerabilities.Suppression
+	if suppressReason.Valid() {
+		suppressReasonStr := strings.ToUpper(string(suppressReason))
+		time := suppressedAt
+
+		reason := vulnerabilities.SuppressState_NOT_SET
+		if val, ok := vulnerabilities.SuppressState_value[suppressReasonStr]; ok {
+			reason = vulnerabilities.SuppressState(val)
+		}
+
+		suppression = &vulnerabilities.Suppression{
+			SuppressedReason:  reason,
+			SuppressedDetails: str(reasonText, ""),
+			Suppressed:        suppressed,
+			SuppressedBy:      str(suppressedBy, ""),
+			LastUpdated:       timestamppb.New(time),
+		}
+	}
+	return suppression
+}
+
+func str(s *string, def string) string {
+	if s == nil {
+		return def
+	}
+	return *s
 }
 
 func suppressState(state sql.VulnerabilitySuppressReason) vulnerabilities.SuppressState {
