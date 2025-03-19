@@ -12,6 +12,13 @@ type Option interface {
 
 type OrderByField string
 
+type WorkLoadType string
+
+const (
+	WorkloadTypeApp WorkLoadType = "app"
+	WorkloadTypeJob WorkLoadType = "job"
+)
+
 const (
 	OrderBySeverity   OrderByField = "severity"
 	OrderByPackage    OrderByField = "package"
@@ -178,4 +185,20 @@ func applyOptions(opts ...Option) *options {
 		o.limit = DefaultLimit
 	}
 	return o
+}
+
+func (f *Filter) FuzzyWorkloadType() *string {
+	if f.WorkloadType == nil {
+		return nil
+	}
+	app := string(WorkloadTypeApp)
+	job := string(WorkloadTypeJob)
+
+	switch *f.WorkloadType {
+	case "app", "APP", "application", "Application", "APPLICATION":
+		return &app
+	case "job", "Job", "JOB", "Naisjob", "NAISJOB", "NaisJob":
+		return &job
+	}
+	return f.WorkloadType
 }

@@ -29,7 +29,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
-		WorkloadType:      request.GetFilter().WorkloadType,
+		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
@@ -77,7 +77,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
-		WorkloadType:      request.GetFilter().WorkloadType,
+		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
 	})
@@ -186,7 +186,7 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 	total, err := s.querier.CountSuppressedVulnerabilities(ctx, sql.CountSuppressedVulnerabilitiesParams{
 		Cluster:      filter.Cluster,
 		Namespace:    filter.Namespace,
-		WorkloadType: filter.WorkloadType,
+		WorkloadType: filter.FuzzyWorkloadType(),
 		WorkloadName: filter.Workload,
 		ImageName:    filter.ImageName,
 		ImageTag:     filter.ImageTag,
