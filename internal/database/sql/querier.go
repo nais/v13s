@@ -16,6 +16,8 @@ type Querier interface {
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CountVulnerabilitiesForImage(ctx context.Context, arg CountVulnerabilitiesForImageParams) (int64, error)
+	CountVulnerabilitySummaries(ctx context.Context, arg CountVulnerabilitySummariesParams) (int64, error)
+	CountVulnerabilitySummaryHistory(ctx context.Context, arg CountVulnerabilitySummaryHistoryParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
@@ -35,6 +37,7 @@ type Querier interface {
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
+	ListVulnerabilitySummaryHistory(ctx context.Context, arg ListVulnerabilitySummaryHistoryParams) ([]*ListVulnerabilitySummaryHistoryRow, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
 	MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error

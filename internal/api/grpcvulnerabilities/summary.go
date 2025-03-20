@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -12,7 +13,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// TODO: do we want image_name and image_tag as filter aswell? must update sql query
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -55,18 +55,98 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Low:         safeInt(row.Low),
 				Unassigned:  safeInt(row.Unassigned),
 				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.VulnerabilityUpdatedAt.Time),
+				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			},
 		}
 	})
 
-	pageInfo, err := grpcpagination.PageInfo(request, len(ws))
+	total, err := s.querier.CountVulnerabilitySummaries(ctx, sql.CountVulnerabilitySummariesParams{
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().FuzzyWorkloadType(),
+		WorkloadName: request.GetFilter().Workload,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to count summaries: %w", err)
+	}
+
+	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	if err != nil {
+		return nil, err
+	}
+	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
+		Nodes:    ws,
+		PageInfo: pageInfo,
+	}
+	return response, nil
+}
+
+func (s *Server) ListVulnerabilitySummaryHistory(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummaryHistoryRequest) (*vulnerabilities.ListVulnerabilitySummaryHistoryResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
 	}
 
-	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
+	if request.GetFilter() == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	summaries, err := s.querier.ListVulnerabilitySummaryHistory(ctx, sql.ListVulnerabilitySummaryHistoryParams{
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().WorkloadType,
+		WorkloadName: request.GetFilter().Workload,
+		OrderBy:      sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+		Limit:        limit,
+		Offset:       offset,
+		From:         pgtype.Timestamptz{Time: request.From.AsTime(), Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
+	}
+
+	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummaryHistoryRow) *vulnerabilities.WorkloadSummary {
+		return &vulnerabilities.WorkloadSummary{
+			Id: row.ID.String(),
+			Workload: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
+			},
+			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
+			VulnerabilitySummary: &vulnerabilities.Summary{
+				Critical:    safeInt(row.Critical),
+				High:        safeInt(row.High),
+				Medium:      safeInt(row.Medium),
+				Low:         safeInt(row.Low),
+				Unassigned:  safeInt(row.Unassigned),
+				RiskScore:   safeInt(row.RiskScore),
+				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
+				HasSbom:     row.HasSbom,
+			},
+		}
+	})
+
+	total, err := s.querier.CountVulnerabilitySummaryHistory(ctx, sql.CountVulnerabilitySummaryHistoryParams{
+		Cluster:      request.GetFilter().Cluster,
+		Namespace:    request.GetFilter().Namespace,
+		WorkloadType: request.GetFilter().FuzzyWorkloadType(),
+		WorkloadName: request.GetFilter().Workload,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to count summaries: %w", err)
+	}
+
+	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	if err != nil {
+		return nil, err
+	}
+
+	response := &vulnerabilities.ListVulnerabilitySummaryHistoryResponse{
 		Nodes:    ws,
 		PageInfo: pageInfo,
 	}

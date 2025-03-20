@@ -83,8 +83,8 @@ SELECT
     v.risk_score,
     w.created_at AS workload_created_at,
     w.updated_at AS workload_updated_at,
-    v.created_at AS vulnerability_created_at,
-    v.updated_at AS vulnerability_updated_at,
+    v.created_at AS summary_created_at,
+    v.updated_at AS summary_updated_at,
     CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
 FROM workloads w
          LEFT JOIN vulnerability_summary v
@@ -120,6 +120,91 @@ LIMIT
     sqlc.arg('limit')
 OFFSET
     sqlc.arg('offset')
+;
+
+-- name: CountVulnerabilitySummaries :one
+SELECT COUNT(*) AS total
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+WHERE
+    (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT is not null THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+;
+
+-- name: ListVulnerabilitySummaryHistory :many
+SELECT
+    w.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    v.critical,
+    v.high,
+    v.medium,
+    v.low,
+    v.unassigned,
+    v.risk_score,
+    w.created_at AS workload_created_at,
+    w.updated_at AS workload_updated_at,
+    v.created_at AS summary_created_at,
+    v.updated_at AS summary_updated_at,
+    CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name
+WHERE
+  v.updated_at > sqlc.arg('from')::TIMESTAMP WITH TIME ZONE
+  AND (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT is not null THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'critical_asc' THEN v.critical END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'critical_desc' THEN v.critical END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'high_asc' THEN v.high END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'high_desc' THEN v.high END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'medium_asc' THEN v.medium END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'medium_desc' THEN v.medium END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'low_asc' THEN v.low END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'low_desc' THEN v.low END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'unassigned_asc' THEN v.unassigned END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'unassigned_desc' THEN v.unassigned END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'risk_score_asc' THEN v.risk_score END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'risk_score_desc' THEN v.risk_score END DESC,
+    v.updated_at DESC, v.id DESC
+    LIMIT
+    sqlc.arg('limit')
+OFFSET
+    sqlc.arg('offset')
+;
+
+-- name: CountVulnerabilitySummaryHistory :one
+SELECT COUNT(*) AS total
+FROM workloads w
+         LEFT JOIN vulnerability_summary v
+                   ON w.image_name = v.image_name
+WHERE
+    (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT is not null THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_tag')::TEXT is not null THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
 ;
 
 -- name: GetVulnerabilitySummary :one

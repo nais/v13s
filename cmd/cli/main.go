@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,6 +35,7 @@ type options struct {
 	workload  string
 	limit     int64
 	order     string
+	since     string
 }
 
 func main() {
@@ -89,13 +91,23 @@ func main() {
 						Action: func(ctx context.Context, cmd *cli.Command) error {
 							return listVulnz(ctx, cmd, c, opts)
 						},
-					}, {
+					},
+					{
 						Name:    "summary",
 						Aliases: []string{"s"},
 						Usage:   "list vulnerability summary for filter",
 						Flags:   commonFlags(opts),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
 							return listSummaries(ctx, cmd, c, opts)
+						},
+					},
+					{
+						Name:    "history",
+						Aliases: []string{"h"},
+						Usage:   "list vulnerability summary history for filter",
+						Flags:   commonFlags(opts),
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							return listSummaryHistory(ctx, cmd, c, opts)
 						},
 					},
 				},
@@ -309,6 +321,107 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 	return nil
 }
 
+// convertDuration converts a duration string with Y (years), M (months), W (weeks), D (days) into hours (h).
+func convertDuration(duration string) (string, error) {
+	multipliers := map[string]int{
+		"Y": 365 * 24, // 1 year = 8760 hours
+		"M": 30 * 24,  // 1 month = 30 days = 30 * 24 hours
+		"W": 7 * 24,   // 1 week = 7 days = 7 * 24 hours
+		"D": 24,       // 1 day = 24 hours
+	}
+
+	for unit, multiplier := range multipliers {
+		if strings.HasSuffix(duration, unit) {
+			trimmed, _ := strings.CutSuffix(duration, unit)
+			num, err := strconv.Atoi(trimmed)
+			if err != nil {
+				return "", fmt.Errorf("invalid duration: %s", duration)
+			}
+			return strconv.Itoa(num*multiplier) + "h", nil
+		}
+	}
+
+	// If no recognized suffix, return as-is
+	return duration, nil
+}
+
+func listSummaryHistory(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	offset := 0
+	s, err := convertDuration(o.since)
+	if err != nil {
+		return err
+	}
+	duration, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("invalid duration: %s", o.since)
+	}
+	// Compute past timestamp
+	sinceTime := time.Now().Add(-duration)
+
+	for {
+		opts := parseOptions(cmd, o)
+		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+
+		start := time.Now()
+		resp, err := c.ListVulnerabilitySummaryHistory(ctx, sinceTime, opts...)
+		if err != nil {
+			return err
+		}
+
+		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+		columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+		tbl := table.New("Workload", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore", "LastUpdated")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+		for _, n := range resp.GetNodes() {
+			tbl.AddRow(
+				// kills the layout
+				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
+				n.Workload.GetName(),
+				n.Workload.GetCluster(),
+				n.Workload.GetNamespace(),
+				n.GetVulnerabilitySummary().GetHasSbom(),
+				n.GetVulnerabilitySummary().GetCritical(),
+				n.GetVulnerabilitySummary().GetHigh(),
+				n.GetVulnerabilitySummary().GetMedium(),
+				n.GetVulnerabilitySummary().GetLow(),
+				n.GetVulnerabilitySummary().GetUnassigned(),
+				n.GetVulnerabilitySummary().GetRiskScore(),
+				n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339),
+			)
+		}
+
+		tbl.Print()
+		numFetched := offset + int(o.limit)
+		if numFetched > int(resp.PageInfo.TotalCount) {
+			numFetched = int(resp.PageInfo.TotalCount)
+		}
+		fmt.Printf("Fetched %d of total '%d' summaries in %f seconds.\n", numFetched, resp.PageInfo.TotalCount, time.Since(start).Seconds())
+
+		// Check if there is another page
+		if !resp.GetPageInfo().GetHasNextPage() {
+			fmt.Printf("No more pages available.\n")
+			break
+		}
+
+		// Ask user for input to continue pagination
+		fmt.Println("Press 'n' for next page, 'q' to quit:")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "q" {
+			break
+		} else if input == "n" {
+			offset += int(o.limit)
+		} else {
+			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
+		}
+	}
+	return nil
+}
+
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
 	offset := 0
 	for {
@@ -472,6 +585,13 @@ func commonFlags(opts *options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "order by field, use 'field:desc' for descending order",
 			Destination: &opts.order,
+		},
+		&cli.StringFlag{
+			Name:        "since",
+			Aliases:     []string{"s"},
+			Value:       "24h",
+			Usage:       "Specify a relative time (e.g. '1Y' for last year, '1M' for last month, '2D' for last 2 days, '12h' for last 12 hours, '30m' for last 30 minutes)",
+			Destination: &opts.since,
 		},
 	}
 	for _, f := range cFlags {

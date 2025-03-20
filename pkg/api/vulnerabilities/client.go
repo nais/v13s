@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
 type Client interface {
@@ -13,6 +15,7 @@ type Client interface {
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
+	ListVulnerabilitySummaryHistory(ctx context.Context, from time.Time, opts ...Option) (*ListVulnerabilitySummaryHistoryResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
@@ -23,7 +26,7 @@ type Client interface {
 var _ Client = &client{}
 
 type client struct {
-	c    VulnerabilitiesClient
+	v    VulnerabilitiesClient
 	m    management.ManagementClient
 	conn *grpc.ClientConn
 }
@@ -34,7 +37,7 @@ func NewClient(target string, opts ...grpc.DialOption) (Client, error) {
 		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
 	return &client{
-		c:    NewVulnerabilitiesClient(conn),
+		v:    NewVulnerabilitiesClient(conn),
 		m:    management.NewManagementClient(conn),
 		conn: conn,
 	}, nil
@@ -46,7 +49,7 @@ func (c *client) Close() error {
 
 func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*ListVulnerabilitiesResponse, error) {
 	o := applyOptions(opts...)
-	return c.c.ListVulnerabilities(
+	return c.v.ListVulnerabilities(
 		ctx,
 		&ListVulnerabilitiesRequest{
 			Filter:            o.filter,
@@ -60,7 +63,7 @@ func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*List
 
 func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error) {
 	o := applyOptions(opts...)
-	return c.c.ListVulnerabilitiesForImage(ctx, &ListVulnerabilitiesForImageRequest{
+	return c.v.ListVulnerabilitiesForImage(ctx, &ListVulnerabilitiesForImageRequest{
 		ImageName:         imageName,
 		ImageTag:          imageTag,
 		IncludeSuppressed: o.includeSuppressed,
@@ -72,7 +75,7 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 
 func (c *client) ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error) {
 	o := applyOptions(opts...)
-	return c.c.ListSuppressedVulnerabilities(ctx, &ListSuppressedVulnerabilitiesRequest{
+	return c.v.ListSuppressedVulnerabilities(ctx, &ListSuppressedVulnerabilitiesRequest{
 		Filter:  o.filter,
 		Limit:   o.limit,
 		Offset:  o.offset,
@@ -82,7 +85,7 @@ func (c *client) ListSuppressedVulnerabilities(ctx context.Context, opts ...Opti
 
 func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
-	return c.c.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
+	return c.v.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
 		Filter:  o.filter,
 		Limit:   o.limit,
 		Offset:  o.offset,
@@ -90,10 +93,21 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 	}, o.callOptions...)
 }
 
+func (c *client) ListVulnerabilitySummaryHistory(ctx context.Context, from time.Time, opts ...Option) (*ListVulnerabilitySummaryHistoryResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.ListVulnerabilitySummaryHistory(ctx, &ListVulnerabilitySummaryHistoryRequest{
+		Filter:  o.filter,
+		Limit:   o.limit,
+		Offset:  o.offset,
+		OrderBy: o.orderBy,
+		From:    timestamppb.New(from),
+	})
+}
+
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
 	o := applyOptions(opts...)
 
-	return c.c.GetVulnerabilitySummary(
+	return c.v.GetVulnerabilitySummary(
 		ctx,
 		&GetVulnerabilitySummaryRequest{
 			Filter: o.filter,
@@ -102,20 +116,20 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 }
 
 func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error) {
-	return c.c.GetVulnerabilitySummaryForImage(ctx, &GetVulnerabilitySummaryForImageRequest{
+	return c.v.GetVulnerabilitySummaryForImage(ctx, &GetVulnerabilitySummaryForImageRequest{
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	})
 }
 
 func (c *client) GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error) {
-	return c.c.GetVulnerabilityById(ctx, &GetVulnerabilityByIdRequest{
+	return c.v.GetVulnerabilityById(ctx, &GetVulnerabilityByIdRequest{
 		Id: id,
 	})
 }
 
 func (c *client) SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error {
-	_, err := c.c.SuppressVulnerability(ctx, &SuppressVulnerabilityRequest{
+	_, err := c.v.SuppressVulnerability(ctx, &SuppressVulnerabilityRequest{
 		Id:           id,
 		Reason:       &reason,
 		SuppressedBy: &suppressedBy,

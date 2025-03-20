@@ -22,6 +22,7 @@ service Vulnerabilities {
   // List all workloads with their vulnerability summaries for the given filters: cluster, namespace, workload, workload_type
   // Example: only supplying a namespace will return all workloads in that namespace across all clusters
   rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
+  rpc ListVulnerabilitySummaryHistory(ListVulnerabilitySummaryHistoryRequest) returns (ListVulnerabilitySummaryHistoryResponse);
   rpc ListVulnerabilitiesForImage(ListVulnerabilitiesForImageRequest) returns (ListVulnerabilitiesForImageResponse);
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
 
@@ -66,6 +67,19 @@ message ListVulnerabilitySummariesRequest {
 }
 
 message ListVulnerabilitySummariesResponse {
+  repeated WorkloadSummary nodes = 1;
+  PageInfo page_info = 2;
+}
+
+message ListVulnerabilitySummaryHistoryRequest{
+  Filter filter = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  google.protobuf.Timestamp from = 4;
+  optional OrderBy order_by = 5;
+}
+
+message ListVulnerabilitySummaryHistoryResponse{
   repeated WorkloadSummary nodes = 1;
   PageInfo page_info = 2;
 }
