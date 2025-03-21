@@ -19,7 +19,8 @@ VALUES (
         UPDATE
     SET
         image_name = @image_name,
-        image_tag = @image_tag
+        image_tag = @image_tag,
+        updated_at = NOW()
 ;
 
 -- name: CreateWorkload :one
@@ -35,7 +36,8 @@ RETURNING
 UPDATE workloads
 SET
     image_name = @image_name,
-    image_tag = @image_tag
+    image_tag = @image_tag,
+    updated_at = NOW()
 WHERE
     cluster = @cluster AND
     namespace = @namespace AND

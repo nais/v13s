@@ -374,7 +374,8 @@ SET
     medium = COALESCE($3, medium),
     low = COALESCE($4, low),
     unassigned = COALESCE($5, unassigned),
-    risk_score = COALESCE($6, risk_score)
+    risk_score = COALESCE($6, risk_score),
+    updated_at = NOW()
 WHERE
     vulnerability_summary.id = $7
 RETURNING

@@ -248,7 +248,8 @@ UPDATE
     medium = $5,
     low = $6,
     unassigned = $7,
-    risk_score = $8
+    risk_score = $8,
+    updated_at = NOW()
 `
 
 type BatchUpsertVulnerabilitySummaryBatchResults struct {

@@ -97,7 +97,8 @@ const updateWorkload = `-- name: UpdateWorkload :one
 UPDATE workloads
 SET
     image_name = $1,
-    image_tag = $2
+    image_tag = $2,
+    updated_at = NOW()
 WHERE
     cluster = $3 AND
     namespace = $4 AND
@@ -161,7 +162,8 @@ VALUES (
         UPDATE
     SET
         image_name = $5,
-        image_tag = $6
+        image_tag = $6,
+        updated_at = NOW()
 `
 
 type UpsertWorkloadParams struct {

@@ -22,7 +22,8 @@ UPDATE
     medium = @medium,
     low = @low,
     unassigned = @unassigned,
-    risk_score = @risk_score
+    risk_score = @risk_score,
+    updated_at = NOW()
 ;
 
 -- name: CreateVulnerabilitySummary :one
@@ -42,7 +43,8 @@ SET
     medium = COALESCE(sqlc.narg(medium), medium),
     low = COALESCE(sqlc.narg(low), low),
     unassigned = COALESCE(sqlc.narg(unassigned), unassigned),
-    risk_score = COALESCE(sqlc.narg(risk_score), risk_score)
+    risk_score = COALESCE(sqlc.narg(risk_score), risk_score),
+    updated_at = NOW()
 WHERE
     vulnerability_summary.id = @id
 RETURNING
