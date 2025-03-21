@@ -23,20 +23,40 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	since := pgtype.Timestamptz{}
+	if request.GetSince() != nil {
+		since.Time = request.GetSince().AsTime()
+		since.Valid = true
+	}
+
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:      request.GetFilter().Cluster,
 		Namespace:    request.GetFilter().Namespace,
 		WorkloadType: request.GetFilter().WorkloadType,
 		WorkloadName: request.GetFilter().Workload,
+		ImageName:    request.GetFilter().ImageName,
+		ImageTag:     request.GetFilter().ImageTag,
 		OrderBy:      sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:        limit,
 		Offset:       offset,
+		Since:        since,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 	}
 
+	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+		total = int(row.TotalCount)
+		// if a workload does not have a sbom, the image name and tag will be nil from vulnerabilities_summary
+		imageName := row.CurrentImageName
+		if row.ImageName != nil {
+			imageName = *row.ImageName
+		}
+		imageTag := row.CurrentImageTag
+		if row.ImageTag != nil {
+			imageTag = *row.ImageTag
+		}
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
@@ -44,8 +64,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
+				ImageName: imageName,
+				ImageTag:  imageTag,
 			},
 			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
 			VulnerabilitySummary: &vulnerabilities.Summary{
@@ -60,93 +80,12 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			},
 		}
 	})
-
-	total, err := s.querier.CountVulnerabilitySummaries(ctx, sql.CountVulnerabilitySummariesParams{
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().FuzzyWorkloadType(),
-		WorkloadName: request.GetFilter().Workload,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to count summaries: %w", err)
-	}
 
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
 		return nil, err
 	}
 	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
-		Nodes:    ws,
-		PageInfo: pageInfo,
-	}
-	return response, nil
-}
-
-func (s *Server) ListVulnerabilitySummaryHistory(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummaryHistoryRequest) (*vulnerabilities.ListVulnerabilitySummaryHistoryResponse, error) {
-	limit, offset, err := grpcpagination.Pagination(request)
-	if err != nil {
-		return nil, err
-	}
-
-	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
-	}
-
-	summaries, err := s.querier.ListVulnerabilitySummaryHistory(ctx, sql.ListVulnerabilitySummaryHistoryParams{
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().WorkloadType,
-		WorkloadName: request.GetFilter().Workload,
-		OrderBy:      sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
-		Limit:        limit,
-		Offset:       offset,
-		From:         pgtype.Timestamptz{Time: request.From.AsTime(), Valid: true},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
-	}
-
-	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummaryHistoryRow) *vulnerabilities.WorkloadSummary {
-		return &vulnerabilities.WorkloadSummary{
-			Id: row.ID.String(),
-			Workload: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				Type:      row.WorkloadType,
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
-			},
-			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
-			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			},
-		}
-	})
-
-	total, err := s.querier.CountVulnerabilitySummaryHistory(ctx, sql.CountVulnerabilitySummaryHistoryParams{
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().FuzzyWorkloadType(),
-		WorkloadName: request.GetFilter().Workload,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to count summaries: %w", err)
-	}
-
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
-	if err != nil {
-		return nil, err
-	}
-
-	response := &vulnerabilities.ListVulnerabilitySummaryHistoryResponse{
 		Nodes:    ws,
 		PageInfo: pageInfo,
 	}

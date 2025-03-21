@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
 )
 
 type Client interface {
@@ -15,7 +13,6 @@ type Client interface {
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
-	ListVulnerabilitySummaryHistory(ctx context.Context, from time.Time, opts ...Option) (*ListVulnerabilitySummaryHistoryResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
@@ -90,18 +87,8 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 		Limit:   o.limit,
 		Offset:  o.offset,
 		OrderBy: o.orderBy,
+		Since:   o.since,
 	}, o.callOptions...)
-}
-
-func (c *client) ListVulnerabilitySummaryHistory(ctx context.Context, from time.Time, opts ...Option) (*ListVulnerabilitySummaryHistoryResponse, error) {
-	o := applyOptions(opts...)
-	return c.v.ListVulnerabilitySummaryHistory(ctx, &ListVulnerabilitySummaryHistoryRequest{
-		Filter:  o.filter,
-		Limit:   o.limit,
-		Offset:  o.offset,
-		OrderBy: o.orderBy,
-		From:    timestamppb.New(from),
-	})
 }
 
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {

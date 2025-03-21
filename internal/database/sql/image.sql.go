@@ -138,6 +138,7 @@ func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStatePara
 }
 
 const updateImageSyncStatus = `-- name: UpdateImageSyncStatus :exec
+
 INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)
 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (image_name, image_tag) DO
 UPDATE
@@ -155,6 +156,7 @@ type UpdateImageSyncStatusParams struct {
 	Source     string
 }
 
+// TODO: make sure image and tag is present in the workloads table to avoid resyncing images that are not used by any workload
 func (q *Queries) UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error {
 	_, err := q.db.Exec(ctx, updateImageSyncStatus,
 		arg.ImageName,

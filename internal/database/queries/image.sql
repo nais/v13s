@@ -47,6 +47,8 @@ WHERE updated_at < @threshold_time
   AND state != 'resync'
   AND state != ANY(@excluded_states::image_state[]);
 
+-- TODO: make sure image and tag is present in the workloads table to avoid resyncing images that are not used by any workload
+
 -- name: UpdateImageSyncStatus :exec
 INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)
 VALUES (@image_name, @image_tag, @status_code, @reason, @source) ON CONFLICT (image_name, image_tag) DO

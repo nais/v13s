@@ -101,15 +101,6 @@ func main() {
 							return listSummaries(ctx, cmd, c, opts)
 						},
 					},
-					{
-						Name:    "history",
-						Aliases: []string{"h"},
-						Usage:   "list vulnerability summary history for filter",
-						Flags:   commonFlags(opts),
-						Action: func(ctx context.Context, cmd *cli.Command) error {
-							return listSummaryHistory(ctx, cmd, c, opts)
-						},
-					},
 				},
 			},
 			{
@@ -258,7 +249,6 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
 	offset := 0
 	for {
-		//opts = append(opts, vulnerabilities.Limit(int32(limit)), vulnerabilities.Offset(int32(offset)))
 		opts := parseOptions(cmd, o)
 		opts = append(opts, vulnerabilities.Offset(int32(offset)))
 
@@ -271,11 +261,16 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		tbl := table.New("Workload", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore")
+		headers := []any{"Workload", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		if o.since != "" {
+			headers = append(headers, "ImageTag")
+			headers = append(headers, "Last Updated")
+		}
+		tbl := table.New(headers...)
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
-			tbl.AddRow(
+			vals := []any{
 				// kills the layout
 				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
 				n.Workload.GetName(),
@@ -288,6 +283,13 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.GetVulnerabilitySummary().GetLow(),
 				n.GetVulnerabilitySummary().GetUnassigned(),
 				n.GetVulnerabilitySummary().GetRiskScore(),
+			}
+			if o.since != "" {
+				vals = append(vals, n.Workload.GetImageTag())
+				vals = append(vals, n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339))
+			}
+			tbl.AddRow(
+				vals...,
 			)
 		}
 
@@ -343,83 +345,6 @@ func convertDuration(duration string) (string, error) {
 
 	// If no recognized suffix, return as-is
 	return duration, nil
-}
-
-func listSummaryHistory(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
-	offset := 0
-	s, err := convertDuration(o.since)
-	if err != nil {
-		return err
-	}
-	duration, err := time.ParseDuration(s)
-	if err != nil {
-		return fmt.Errorf("invalid duration: %s", o.since)
-	}
-	// Compute past timestamp
-	sinceTime := time.Now().Add(-duration)
-
-	for {
-		opts := parseOptions(cmd, o)
-		opts = append(opts, vulnerabilities.Offset(int32(offset)))
-
-		start := time.Now()
-		resp, err := c.ListVulnerabilitySummaryHistory(ctx, sinceTime, opts...)
-		if err != nil {
-			return err
-		}
-
-		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-		columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-		tbl := table.New("Workload", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore", "LastUpdated")
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-		for _, n := range resp.GetNodes() {
-			tbl.AddRow(
-				// kills the layout
-				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
-				n.Workload.GetName(),
-				n.Workload.GetCluster(),
-				n.Workload.GetNamespace(),
-				n.GetVulnerabilitySummary().GetHasSbom(),
-				n.GetVulnerabilitySummary().GetCritical(),
-				n.GetVulnerabilitySummary().GetHigh(),
-				n.GetVulnerabilitySummary().GetMedium(),
-				n.GetVulnerabilitySummary().GetLow(),
-				n.GetVulnerabilitySummary().GetUnassigned(),
-				n.GetVulnerabilitySummary().GetRiskScore(),
-				n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339),
-			)
-		}
-
-		tbl.Print()
-		numFetched := offset + int(o.limit)
-		if numFetched > int(resp.PageInfo.TotalCount) {
-			numFetched = int(resp.PageInfo.TotalCount)
-		}
-		fmt.Printf("Fetched %d of total '%d' summaries in %f seconds.\n", numFetched, resp.PageInfo.TotalCount, time.Since(start).Seconds())
-
-		// Check if there is another page
-		if !resp.GetPageInfo().GetHasNextPage() {
-			fmt.Printf("No more pages available.\n")
-			break
-		}
-
-		// Ask user for input to continue pagination
-		fmt.Println("Press 'n' for next page, 'q' to quit:")
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		if input == "q" {
-			break
-		} else if input == "n" {
-			offset += int(o.limit)
-		} else {
-			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
-		}
-	}
-	return nil
 }
 
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
@@ -545,6 +470,19 @@ func parseOptions(cmd *cli.Command, o *options) []vulnerabilities.Option {
 		}
 		opts = append(opts, vulnerabilities.Order(vulnerabilities.OrderByField(o.order), direction))
 	}
+
+	if o.since != "" {
+		s, err := convertDuration(o.since)
+		if err != nil {
+			log.Fatalf("invalid duration: %s", o.since)
+		}
+		duration, err := time.ParseDuration(s)
+		if err != nil {
+			log.Fatalf("invalid duration: %s", o.since)
+		}
+		sinceTime := time.Now().Add(-duration)
+		opts = append(opts, vulnerabilities.Since(sinceTime))
+	}
 	return opts
 }
 
@@ -589,7 +527,7 @@ func commonFlags(opts *options, excludes ...string) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "since",
 			Aliases:     []string{"s"},
-			Value:       "24h",
+			Value:       "",
 			Usage:       "Specify a relative time (e.g. '1Y' for last year, '1M' for last month, '2D' for last 2 days, '12h' for last 12 hours, '30m' for last 30 minutes)",
 			Destination: &opts.since,
 		},

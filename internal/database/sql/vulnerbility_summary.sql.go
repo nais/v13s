@@ -9,80 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countVulnerabilitySummaries = `-- name: CountVulnerabilitySummaries :one
-SELECT COUNT(*) AS total
-FROM workloads w
-         LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
-WHERE
-    (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
-  AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
-  AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
-  AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
-  AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
-  AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
-`
-
-type CountVulnerabilitySummariesParams struct {
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-	WorkloadName *string
-	ImageName    *string
-	ImageTag     *string
-}
-
-func (q *Queries) CountVulnerabilitySummaries(ctx context.Context, arg CountVulnerabilitySummariesParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countVulnerabilitySummaries,
-		arg.Cluster,
-		arg.Namespace,
-		arg.WorkloadType,
-		arg.WorkloadName,
-		arg.ImageName,
-		arg.ImageTag,
-	)
-	var total int64
-	err := row.Scan(&total)
-	return total, err
-}
-
-const countVulnerabilitySummaryHistory = `-- name: CountVulnerabilitySummaryHistory :one
-SELECT COUNT(*) AS total
-FROM workloads w
-         LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name
-WHERE
-    (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
-  AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
-  AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
-  AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
-  AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
-  AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
-`
-
-type CountVulnerabilitySummaryHistoryParams struct {
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-	WorkloadName *string
-	ImageName    *string
-	ImageTag     *string
-}
-
-func (q *Queries) CountVulnerabilitySummaryHistory(ctx context.Context, arg CountVulnerabilitySummaryHistoryParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countVulnerabilitySummaryHistory,
-		arg.Cluster,
-		arg.Namespace,
-		arg.WorkloadType,
-		arg.WorkloadName,
-		arg.ImageName,
-		arg.ImageTag,
-	)
-	var total int64
-	err := row.Scan(&total)
-	return total, err
-}
-
 const createVulnerabilitySummary = `-- name: CreateVulnerabilitySummary :one
 INSERT INTO
     vulnerability_summary (image_name, image_tag, critical, high, medium, low, unassigned, risk_score)
@@ -280,71 +206,87 @@ func (q *Queries) ListAllVulnerabilitySummaries(ctx context.Context, arg ListAll
 }
 
 const listVulnerabilitySummaries = `-- name: ListVulnerabilitySummaries :many
-SELECT
-    w.id,
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    w.image_name,
-    w.image_tag,
-    v.critical,
-    v.high,
-    v.medium,
-    v.low,
-    v.unassigned,
-    v.risk_score,
-    w.created_at AS workload_created_at,
-    w.updated_at AS workload_updated_at,
-    v.created_at AS summary_created_at,
-    v.updated_at AS summary_updated_at,
-    CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
-FROM workloads w
-         LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name AND w.image_tag = v.image_tag
-WHERE
-    (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
-  AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
-  AND (CASE WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT ELSE TRUE END)
-  AND (CASE WHEN $4::TEXT is not null THEN w.name = $4::TEXT ELSE TRUE END)
-  AND (CASE WHEN $5::TEXT is not null THEN v.image_name = $5::TEXT ELSE TRUE END)
-  AND (CASE WHEN $6::TEXT is not null THEN v.image_tag = $6::TEXT ELSE TRUE END)
+WITH filtered_workloads AS (
+    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+    FROM workloads w
+    WHERE
+        ($4::TEXT IS NULL OR w.cluster = $4::TEXT)
+      AND ($5::TEXT IS NULL OR w.namespace = $5::TEXT)
+      AND ($6::TEXT IS NULL OR w.workload_type = $6::TEXT)
+      AND ($7::TEXT IS NULL OR w.name = $7::TEXT)
+)
+   , vulnerability_data AS (
+    SELECT
+        v.id,
+        w.name AS workload_name,
+        w.workload_type,
+        w.namespace,
+        w.cluster,
+        w.image_name as current_image_name,
+        w.image_tag as current_image_tag,
+        v.image_name,
+        v.image_tag,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.risk_score,
+        w.created_at AS workload_created_at,
+        w.updated_at AS workload_updated_at,
+        v.created_at AS summary_created_at,
+        v.updated_at AS summary_updated_at,
+        CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
+    FROM filtered_workloads w
+             LEFT JOIN vulnerability_summary v
+                       ON w.image_name = v.image_name
+                           AND (
+                              -- If no since join on image_tag, if since is set ignore image_tag
+                              CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN w.image_tag = v.image_tag ELSE TRUE END
+                              )
+    WHERE
+        ($9::TEXT IS NULL OR v.image_name = $9::TEXT)
+      AND ($10::TEXT IS NULL OR v.image_tag = $10::TEXT)
+      AND ($8::TIMESTAMP WITH TIME ZONE IS NULL OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
+)
+SELECT id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom,
+       (SELECT COUNT(*) FROM vulnerability_data) AS total_count
+FROM vulnerability_data
 ORDER BY
-    CASE WHEN $7 = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN $7 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $7 = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN $7 = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN $7 = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN $7 = 'cluster_desc' THEN cluster END DESC,
-    CASE WHEN $7 = 'critical_asc' THEN v.critical END ASC,
-    CASE WHEN $7 = 'critical_desc' THEN v.critical END DESC,
-    CASE WHEN $7 = 'high_asc' THEN v.high END ASC,
-    CASE WHEN $7 = 'high_desc' THEN v.high END DESC,
-    CASE WHEN $7 = 'medium_asc' THEN v.medium END ASC,
-    CASE WHEN $7 = 'medium_desc' THEN v.medium END DESC,
-    CASE WHEN $7 = 'low_asc' THEN v.low END ASC,
-    CASE WHEN $7 = 'low_desc' THEN v.low END DESC,
-    CASE WHEN $7 = 'unassigned_asc' THEN v.unassigned END ASC,
-    CASE WHEN $7 = 'unassigned_desc' THEN v.unassigned END DESC,
-    CASE WHEN $7 = 'risk_score_asc' THEN v.risk_score END ASC,
-    CASE WHEN $7 = 'risk_score_desc' THEN v.risk_score END DESC,
- v.id ASC
-LIMIT
-    $9
-OFFSET
-    $8
+    CASE WHEN $1 = 'workload_asc' THEN workload_name END ASC,
+    CASE WHEN $1 = 'workload_desc' THEN workload_name END DESC,
+    CASE WHEN $1 = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN $1 = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN $1 = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN $1 = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN $1 = 'critical_asc' THEN COALESCE(critical, 999999) END ASC,
+    CASE WHEN $1 = 'critical_desc' THEN COALESCE(critical, -1) END DESC,
+    CASE WHEN $1 = 'high_asc' THEN COALESCE(high, 999999) END ASC,
+    CASE WHEN $1 = 'high_desc' THEN COALESCE(high, -1) END DESC,
+    CASE WHEN $1 = 'medium_asc' THEN COALESCE(medium, 999999) END ASC,
+    CASE WHEN $1 = 'medium_desc' THEN COALESCE(medium, -1) END DESC,
+    CASE WHEN $1 = 'low_asc' THEN COALESCE(low, 999999) END ASC,
+    CASE WHEN $1 = 'low_desc' THEN COALESCE(low, -1) END DESC,
+    CASE WHEN $1 = 'unassigned_asc' THEN COALESCE(unassigned, 999999) END ASC,
+    CASE WHEN $1 = 'unassigned_desc' THEN COALESCE(unassigned, -1) END DESC,
+    CASE WHEN $1 = 'risk_score_asc' THEN COALESCE(risk_score, 999999) END ASC,
+    CASE WHEN $1 = 'risk_score_desc' THEN COALESCE(risk_score, -1) END DESC,
+    summary_updated_at ASC, id DESC
+    LIMIT $3
+OFFSET $2
 `
 
 type ListVulnerabilitySummariesParams struct {
+	OrderBy      interface{}
+	Offset       int32
+	Limit        int32
 	Cluster      *string
 	Namespace    *string
 	WorkloadType *string
 	WorkloadName *string
+	Since        pgtype.Timestamptz
 	ImageName    *string
 	ImageTag     *string
-	OrderBy      interface{}
-	Offset       int32
-	Limit        int32
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -353,8 +295,10 @@ type ListVulnerabilitySummariesRow struct {
 	WorkloadType      string
 	Namespace         string
 	Cluster           string
-	ImageName         string
-	ImageTag          string
+	CurrentImageName  string
+	CurrentImageTag   string
+	ImageName         *string
+	ImageTag          *string
 	Critical          *int32
 	High              *int32
 	Medium            *int32
@@ -366,19 +310,21 @@ type ListVulnerabilitySummariesRow struct {
 	SummaryCreatedAt  pgtype.Timestamptz
 	SummaryUpdatedAt  pgtype.Timestamptz
 	HasSbom           bool
+	TotalCount        int64
 }
 
 func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilitySummaries,
+		arg.OrderBy,
+		arg.Offset,
+		arg.Limit,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadType,
 		arg.WorkloadName,
+		arg.Since,
 		arg.ImageName,
 		arg.ImageTag,
-		arg.OrderBy,
-		arg.Offset,
-		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -393,6 +339,8 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.WorkloadType,
 			&i.Namespace,
 			&i.Cluster,
+			&i.CurrentImageName,
+			&i.CurrentImageTag,
 			&i.ImageName,
 			&i.ImageTag,
 			&i.Critical,
@@ -406,147 +354,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.SummaryCreatedAt,
 			&i.SummaryUpdatedAt,
 			&i.HasSbom,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listVulnerabilitySummaryHistory = `-- name: ListVulnerabilitySummaryHistory :many
-SELECT
-    w.id,
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    w.image_name,
-    w.image_tag,
-    v.critical,
-    v.high,
-    v.medium,
-    v.low,
-    v.unassigned,
-    v.risk_score,
-    w.created_at AS workload_created_at,
-    w.updated_at AS workload_updated_at,
-    v.created_at AS summary_created_at,
-    v.updated_at AS summary_updated_at,
-    CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
-FROM workloads w
-         LEFT JOIN vulnerability_summary v
-                   ON w.image_name = v.image_name
-WHERE
-  v.updated_at > $1::TIMESTAMP WITH TIME ZONE
-  AND (CASE WHEN $2::TEXT is not null THEN w.cluster = $2::TEXT ELSE TRUE END)
-  AND (CASE WHEN $3::TEXT is not null THEN w.namespace = $3::TEXT ELSE TRUE END)
-  AND (CASE WHEN $4::TEXT is not null THEN w.workload_type = $4::TEXT ELSE TRUE END)
-  AND (CASE WHEN $5::TEXT is not null THEN w.name = $5::TEXT ELSE TRUE END)
-  AND (CASE WHEN $6::TEXT is not null THEN v.image_name = $6::TEXT ELSE TRUE END)
-  AND (CASE WHEN $7::TEXT is not null THEN v.image_tag = $7::TEXT ELSE TRUE END)
-ORDER BY
-    CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
-    CASE WHEN $8 = 'critical_asc' THEN v.critical END ASC,
-    CASE WHEN $8 = 'critical_desc' THEN v.critical END DESC,
-    CASE WHEN $8 = 'high_asc' THEN v.high END ASC,
-    CASE WHEN $8 = 'high_desc' THEN v.high END DESC,
-    CASE WHEN $8 = 'medium_asc' THEN v.medium END ASC,
-    CASE WHEN $8 = 'medium_desc' THEN v.medium END DESC,
-    CASE WHEN $8 = 'low_asc' THEN v.low END ASC,
-    CASE WHEN $8 = 'low_desc' THEN v.low END DESC,
-    CASE WHEN $8 = 'unassigned_asc' THEN v.unassigned END ASC,
-    CASE WHEN $8 = 'unassigned_desc' THEN v.unassigned END DESC,
-    CASE WHEN $8 = 'risk_score_asc' THEN v.risk_score END ASC,
-    CASE WHEN $8 = 'risk_score_desc' THEN v.risk_score END DESC,
-    v.updated_at DESC, v.id DESC
-    LIMIT
-    $10
-OFFSET
-    $9
-`
-
-type ListVulnerabilitySummaryHistoryParams struct {
-	From         pgtype.Timestamptz
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-	WorkloadName *string
-	ImageName    *string
-	ImageTag     *string
-	OrderBy      interface{}
-	Offset       int32
-	Limit        int32
-}
-
-type ListVulnerabilitySummaryHistoryRow struct {
-	ID                pgtype.UUID
-	WorkloadName      string
-	WorkloadType      string
-	Namespace         string
-	Cluster           string
-	ImageName         string
-	ImageTag          string
-	Critical          *int32
-	High              *int32
-	Medium            *int32
-	Low               *int32
-	Unassigned        *int32
-	RiskScore         *int32
-	WorkloadCreatedAt pgtype.Timestamptz
-	WorkloadUpdatedAt pgtype.Timestamptz
-	SummaryCreatedAt  pgtype.Timestamptz
-	SummaryUpdatedAt  pgtype.Timestamptz
-	HasSbom           bool
-}
-
-func (q *Queries) ListVulnerabilitySummaryHistory(ctx context.Context, arg ListVulnerabilitySummaryHistoryParams) ([]*ListVulnerabilitySummaryHistoryRow, error) {
-	rows, err := q.db.Query(ctx, listVulnerabilitySummaryHistory,
-		arg.From,
-		arg.Cluster,
-		arg.Namespace,
-		arg.WorkloadType,
-		arg.WorkloadName,
-		arg.ImageName,
-		arg.ImageTag,
-		arg.OrderBy,
-		arg.Offset,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*ListVulnerabilitySummaryHistoryRow{}
-	for rows.Next() {
-		var i ListVulnerabilitySummaryHistoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkloadName,
-			&i.WorkloadType,
-			&i.Namespace,
-			&i.Cluster,
-			&i.ImageName,
-			&i.ImageTag,
-			&i.Critical,
-			&i.High,
-			&i.Medium,
-			&i.Low,
-			&i.Unassigned,
-			&i.RiskScore,
-			&i.WorkloadCreatedAt,
-			&i.WorkloadUpdatedAt,
-			&i.SummaryCreatedAt,
-			&i.SummaryUpdatedAt,
-			&i.HasSbom,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}

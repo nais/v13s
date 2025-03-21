@@ -2,6 +2,8 @@ package vulnerabilities
 
 import (
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
 var _ Option = (*funcOption)(nil)
@@ -74,6 +76,7 @@ type options struct {
 	limit             int32
 	offset            int32
 	orderBy           *OrderBy
+	since             *timestamppb.Timestamp
 }
 
 type funcOption struct {
@@ -170,6 +173,12 @@ func Order(field OrderByField, direction Direction) Option {
 			Field:     string(field),
 			Direction: direction,
 		}
+	})
+}
+
+func Since(t time.Time) Option {
+	return newFuncOption(func(o *options) {
+		o.since = timestamppb.New(t)
 	})
 }
 
