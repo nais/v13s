@@ -5,13 +5,13 @@ go 1.24.0
 require (
 	cloud.google.com/go/auth v0.15.0
 	github.com/containerd/log v0.1.0
-	github.com/emicklei/pgtalk v1.8.3
+	github.com/emicklei/pgtalk v1.9.2
 	github.com/exaring/otelpgx v0.9.0
 	github.com/fatih/color v1.18.0
 	github.com/google/go-containerregistry v0.20.3
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.3
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lestrrat-go/jwx/v2 v2.1.4
