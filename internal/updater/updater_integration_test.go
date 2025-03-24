@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/dependencytrack"
@@ -44,27 +45,28 @@ func TestUpdater(t *testing.T) {
 		u.Run(updaterCtx)
 		time.Sleep(2 * updateInterval)
 
-		imageName := projectNames[0]
-		imageTag := "v1"
+		for _, p := range projectNames {
+			imageName := p
+			imageTag := "v1"
 
-		image, err := db.GetImage(ctx, sql.GetImageParams{
-			Name: imageName,
-			Tag:  imageTag,
-		})
-		assert.NoError(t, err)
-		assert.Equal(t, sql.ImageStateUpdated, image.State)
+			image, err := db.GetImage(ctx, sql.GetImageParams{
+				Name: imageName,
+				Tag:  imageTag,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, sql.ImageStateUpdated, image.State)
 
-		vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
-			ImageName: &imageName,
-			ImageTag:  &imageTag,
-			Limit:     100,
-		})
-		assert.NoError(t, err)
-		assert.Len(t, vulns, 4)
-		assert.True(t, collections.AnyMatch(vulns, func(r *sql.ListVulnerabilitiesRow) bool {
-			return r.ImageName == imageName && r.ImageTag == imageTag && r.CveID == fmt.Sprintf("CVE-%s-0", imageName)
-		}))
-
+			vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+				ImageName: &imageName,
+				ImageTag:  &imageTag,
+				Limit:     100,
+			})
+			assert.NoError(t, err)
+			assert.Len(t, vulns, 4)
+			assert.True(t, collections.AnyMatch(vulns, func(r *sql.ListVulnerabilitiesRow) bool {
+				return r.ImageName == imageName && r.ImageTag == imageTag && r.CveID == fmt.Sprintf("CVE-%s-0", imageName)
+			}))
+		}
 	})
 
 	t.Run("images older than interval should be marked with resync and vulnerabilities updated", func(t *testing.T) {
@@ -111,6 +113,70 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateUpdated, images.State)
+	})
+
+	t.Run("images not in use by any workload should not be marked for resync", func(t *testing.T) {
+		insertWorkloads(ctx, t, db, projectNames)
+		_, err := pool.Exec(
+			ctx,
+			"UPDATE images SET state = $1 WHERE state = $2;",
+			sql.ImageStateUpdated,
+			sql.ImageStateInitialized,
+		)
+		assert.NoError(t, err)
+
+		for _, p := range projectNames {
+			imageLastUpdated := time.Now().Add(-(time.Hour * 24))
+			imageName := p
+			imageVersion := "v1"
+			_, err = pool.Exec(
+				ctx,
+				"UPDATE images SET updated_at = $1 WHERE name = $2 AND tag=$3;",
+				imageLastUpdated,
+				imageName,
+				imageVersion,
+			)
+			assert.NoError(t, err)
+
+			_, err = pool.Exec(
+				ctx,
+				"INSERT into images (name, tag, state) VALUES ($1, $2, $3);",
+				imageName,
+				"old",
+				"updated",
+			)
+			assert.NoError(t, err)
+
+			err = db.MarkImagesForResync(ctx, sql.MarkImagesForResyncParams{
+				ThresholdTime: pgtype.Timestamptz{
+					Time:  time.Now().Add(-12 * time.Hour),
+					Valid: true,
+				},
+				ExcludedStates: []sql.ImageState{
+					sql.ImageStateResync,
+					sql.ImageStateUntracked,
+					sql.ImageStateFailed,
+				},
+			})
+			assert.NoError(t, err)
+
+			image, err := db.GetImage(ctx, sql.GetImageParams{
+				Name: imageName,
+				Tag:  "old",
+			})
+
+			assert.NoError(t, err)
+			// Should not be marked for resync
+			assert.Equal(t, sql.ImageStateUpdated, image.State)
+
+			image, err = db.GetImage(ctx, sql.GetImageParams{
+				Name: imageName,
+				Tag:  imageVersion,
+			})
+			assert.NoError(t, err)
+			// Should be marked for resync
+			assert.Equal(t, sql.ImageStateResync, image.State)
+		}
 	})
 }
 

@@ -43,9 +43,12 @@ WHERE state = ANY(@included_states::image_state[])
 UPDATE images
 SET state      = 'resync',
     updated_at = NOW()
-WHERE updated_at < @threshold_time
-  AND state != 'resync'
-  AND state != ANY(@excluded_states::image_state[]);
+FROM workloads w
+WHERE images.name = w.image_name
+  AND images.tag = w.image_tag
+  AND images.updated_at < @threshold_time
+  AND images.state != 'resync'
+  AND images.state != ANY(@excluded_states::image_state[]);
 
 -- TODO: make sure image and tag is present in the workloads table to avoid resyncing images that are not used by any workload
 

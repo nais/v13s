@@ -10,6 +10,10 @@ build-cli:
 test:
 	go test -cover ./...
 
+test-coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
+
 check: fmt vulncheck deadcode gosec staticcheck
 
 fmt:

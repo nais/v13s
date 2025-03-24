@@ -103,9 +103,12 @@ const markImagesForResync = `-- name: MarkImagesForResync :exec
 UPDATE images
 SET state      = 'resync',
     updated_at = NOW()
-WHERE updated_at < $1
-  AND state != 'resync'
-  AND state != ANY($2::image_state[])
+FROM workloads w
+WHERE images.name = w.image_name
+  AND images.tag = w.image_tag
+  AND images.updated_at < $1
+  AND images.state != 'resync'
+  AND images.state != ANY($2::image_state[])
 `
 
 type MarkImagesForResyncParams struct {
