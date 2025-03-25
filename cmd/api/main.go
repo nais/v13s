@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/logger"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
@@ -18,13 +19,8 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
-	"github.com/nais/v13s/internal/database"
-
-	"github.com/joho/godotenv"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/nais/v13s/internal/sources/dependencytrack"
+	"github.com/nais/v13s/internal/dependencytrack"
 	"google.golang.org/grpc"
 )
 
@@ -32,21 +28,8 @@ const (
 	exitCodeSuccess = iota
 	exitCodeLoggerError
 	exitCodeRunError
+	exitCodeConfigError
 )
-
-type config struct {
-	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	DependencytrackUrl        string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
-	DependencytrackTeam       string        `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
-	DependencytrackUsername   string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
-	DependencytrackPassword   string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
-	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
-	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
-	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
-	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
-	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
-}
 
 // handle env vars better
 func main() {
@@ -55,19 +38,14 @@ func main() {
 
 	log := logrus.StandardLogger()
 
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("No .env file found")
-	}
-
-	var c config
-	err = envconfig.Process("V13S", &c)
+	cfg, err := config.NewConfig()
 	if err != nil {
 		log.WithError(err).Errorf("error when processing configuration")
+		os.Exit(exitCodeConfigError)
 	}
 
-	appLogger := setupLogger(log, c.LogFormat, c.LogLevel)
-	err = run(ctx, c, appLogger)
+	appLogger := setupLogger(log, cfg.LogFormat, cfg.LogLevel)
+	err = run(ctx, cfg, appLogger)
 	if err != nil {
 		appLogger.WithError(err).Errorf("error in run()")
 		os.Exit(exitCodeRunError)
@@ -76,25 +54,25 @@ func main() {
 	os.Exit(exitCodeSuccess)
 }
 
-func run(ctx context.Context, c config, log logrus.FieldLogger) error {
-	listener, err := net.Listen("tcp", c.ListenAddr)
+func run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error {
+	listener, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
-		log.WithError(err).Fatalf("Failed to listen on %s", c.ListenAddr)
+		log.WithError(err).Fatalf("Failed to listen on %s", cfg.ListenAddr)
 	}
 
 	log.Info("Initializing database")
 
-	pool, err := database.New(ctx, c.DatabaseUrl, log.WithField("subsystem", "database"))
+	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
 	defer pool.Close()
 
 	dpClient, err := dependencytrack.NewClient(
-		c.DependencytrackUrl,
-		c.DependencytrackTeam,
-		c.DependencytrackUsername,
-		c.DependencytrackPassword,
+		cfg.DependencyTrack.Url,
+		cfg.DependencyTrack.Team,
+		cfg.DependencyTrack.Username,
+		cfg.DependencyTrack.Password,
 		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {
@@ -102,15 +80,39 @@ func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 	}
 
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
-	u := updater.NewUpdater(
-		pool,
-		source,
-		c.UpdateInterval,
-		log.WithField("subsystem", "updater"),
-	)
+	u := updater.NewUpdater(pool, source, cfg.UpdateInterval, log.WithField("subsystem", "updater"))
 	u.Run(ctx)
 
-	grpcServer := createGrpcServer(ctx, c, pool, u, log)
+	/*
+		clusterConfig, err := kubernetes.CreateClusterConfigMap(cfg.Tenant, cfg.K8s.Clusters, cfg.K8s.StaticClusters)
+		if err != nil {
+			return fmt.Errorf("creating cluster config map: %w", err)
+		}
+
+		if cfg.K8s.UseKubeConfig && os.Getenv("KUBECONFIG") != "" {
+			envConfig := os.Getenv("KUBECONFIG")
+			kubeConfig, err := clientcmd.BuildConfigFromFlags("", envConfig)
+			if err != nil {
+				return fmt.Errorf("building kubeconfig from flags: %w", err)
+			}
+			log.Infof("starting with kubeconfig: %s", envConfig)
+			watcherMgr, err := watcher.NewManager(clusterConfig, log.WithField("subsystem", "k8s_watcher"))
+			if err != nil {
+				return fmt.Errorf("create k8s watcher manager: %w", err)
+			}
+
+		} else {
+			watcherMgr, err := watcher.NewManager(clusterConfig, log.WithField("subsystem", "k8s_watcher"))
+			if err != nil {
+				return fmt.Errorf("create k8s watcher manager: %w", err)
+			}
+			mgmtWatcher, err := watcher.NewManager(kubernetes.ClusterConfigMap{"management": nil}, log.WithField("subsystem", "k8s_watcher"))
+			if err != nil {
+				return fmt.Errorf("create k8s watcher manager for management: %w", err)
+			}
+		}*/
+
+	grpcServer := createGrpcServer(ctx, cfg, pool, u, log)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -141,7 +143,7 @@ func setupLogger(log *logrus.Logger, logFormat, logLevel string) logrus.FieldLog
 	return appLogger
 }
 
-func createGrpcServer(parentCtx context.Context, cfg config, pool *pgxpool.Pool, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
+func createGrpcServer(parentCtx context.Context, cfg *config.Config, pool *pgxpool.Pool, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
 	serverOpts := make([]grpc.ServerOption, 0)
 
 	if !strings.HasPrefix(cfg.ListenAddr, "localhost") {
