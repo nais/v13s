@@ -3,6 +3,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/kubernetes"
+	"github.com/nais/v13s/internal/manager"
 	"net"
 	"os/signal"
 	"strings"
@@ -68,7 +72,24 @@ func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
+	clusterConfig, err := config.CreateClusterConfigMap(
+		"nav",
+		[]string{"dev"},
+		[]config.StaticCluster{},
+	)
+	if err != nil {
+		log.Fatalf("Failed to create cluster config map: %v", err)
+	}
+
+	watcherMgr, err := kubernetes.NewManager(clusterConfig, log)
+	if err != nil {
+		log.Fatalf("Failed to create watcher manager: %v", err)
+	}
+
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
+	ctx = manager.NewContext(ctx, sql.New(pool), source, log.WithField("subsystem", "manager"))
+	_ = kubernetes.NewWorkloadWatcher(ctx, watcherMgr, log.WithField("subsystem", "workload_watcher"))
+
 	u := updater.NewUpdater(
 		pool,
 		source,
