@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestDatabaseQueries(t *testing.T) {
+func TestMarkImagesAsUnused(t *testing.T) {
 	ctx := context.Background()
 
 	pool := test.GetPool(ctx, t, true)
@@ -20,23 +20,8 @@ func TestDatabaseQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("TestMarkUnusedImages", func(t *testing.T) {
-		err = db.CreateImage(ctx, sql.CreateImageParams{
-			Name:     "testimage1",
-			Tag:      "v1",
-			Metadata: map[string]string{},
-		})
-		assert.NoError(t, err)
-
-		_, err = db.CreateWorkload(ctx, sql.CreateWorkloadParams{
-			Name:         "testworkload1",
-			WorkloadType: "application",
-			Namespace:    "testnamspace1",
-			Cluster:      "testcluster1",
-			ImageName:    "testimage1",
-			ImageTag:     "v1",
-		})
-		assert.NoError(t, err)
+	t.Run("image used by workload should not be marked as unused", func(t *testing.T) {
+		createTestdata(t, db, "testimage1", "v1", true)
 
 		err = db.MarkUnusedImages(ctx,
 			[]sql.ImageState{
@@ -52,38 +37,23 @@ func TestDatabaseQueries(t *testing.T) {
 		assert.NotEqual(t, sql.ImageStateUnused, image.State)
 	})
 
-	t.Run("Resync state is not changed after UpdateImageState", func(t *testing.T) {
+	t.Run("image with resync state should not be marked as unused", func(t *testing.T) {
+		createTestdata(t, db, "testimage2", "v1", true)
 
-		err = db.CreateImage(ctx, sql.CreateImageParams{
-			Name:     "testimage2",
-			Tag:      "v1",
-			Metadata: map[string]string{},
-		})
-		assert.NoError(t, err)
-
-		image2, err := db.GetImage(ctx, sql.GetImageParams{
+		image, err := db.GetImage(ctx, sql.GetImageParams{
 			Name: "testimage2",
 			Tag:  "v1",
 		})
 		assert.NoError(t, err)
 
-		_, err = db.CreateWorkload(ctx, sql.CreateWorkloadParams{
-			Name:         "testworkload2",
-			WorkloadType: "application",
-			Namespace:    "testnamspace1",
-			Cluster:      "testcluster1",
-			ImageName:    "testimage2",
-			ImageTag:     "v1",
+		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  image.Name,
+			Tag:   image.Tag,
+			State: sql.ImageStateResync,
 		})
 		assert.NoError(t, err)
 
-		db.UpdateImageState(ctx, sql.UpdateImageStateParams{
-			Name:  image2.Name,
-			Tag:   image2.Tag,
-			State: sql.ImageStateResync,
-		})
-
-		image2, err = db.GetImage(ctx, sql.GetImageParams{
+		image, err = db.GetImage(ctx, sql.GetImageParams{
 			Name: "testimage2",
 			Tag:  "v1",
 		})
@@ -94,13 +64,10 @@ func TestDatabaseQueries(t *testing.T) {
 				sql.ImageStateFailed,
 			})
 		assert.NoError(t, err)
-
-		assert.NoError(t, err)
-		assert.Equal(t, sql.ImageStateResync, image2.State)
-
+		assert.Equal(t, sql.ImageStateResync, image.State)
 	})
 
-	t.Run("Image without workload", func(t *testing.T) {
+	t.Run("image without workload should be marked as unused", func(t *testing.T) {
 
 		err = db.CreateImage(ctx, sql.CreateImageParams{
 			Name:     "testimage",
@@ -123,7 +90,29 @@ func TestDatabaseQueries(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateUnused, image.State)
-
 	})
 
+}
+
+func createTestdata(t *testing.T, db sql.Querier, image_name, image_tag string, createWorkload bool) {
+	ctx := context.Background()
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     image_name,
+		Tag:      image_tag,
+		Metadata: map[string]string{},
+	})
+	assert.NoError(t, err)
+
+	if !createWorkload {
+		return
+	}
+	_, err = db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         image_name,
+		WorkloadType: "application",
+		Namespace:    "testnamespace1",
+		Cluster:      "testcluster1",
+		ImageName:    image_name,
+		ImageTag:     image_tag,
+	})
+	assert.NoError(t, err)
 }
