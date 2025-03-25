@@ -39,6 +39,14 @@ SET
 WHERE state = ANY(@included_states::image_state[])
 ;
 
+-- name: MarkUnusedImages :exec
+UPDATE images
+SET state      = 'unused',
+    updated_at = NOW()
+WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
+  AND images.state != 'unused'
+  AND images.state != ANY(@excluded_states::image_state[]);
+
 -- name: MarkImagesForResync :exec
 UPDATE images
 SET state      = 'resync',
@@ -50,7 +58,6 @@ WHERE images.name = w.image_name
   AND images.state != 'resync'
   AND images.state != ANY(@excluded_states::image_state[]);
 
--- TODO: make sure image and tag is present in the workloads table to avoid resyncing images that are not used by any workload
 
 -- name: UpdateImageSyncStatus :exec
 INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)

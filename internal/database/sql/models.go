@@ -19,6 +19,7 @@ const (
 	ImageStateFailed      ImageState = "failed"
 	ImageStateResync      ImageState = "resync"
 	ImageStateOutdated    ImageState = "outdated"
+	ImageStateUnused      ImageState = "unused"
 )
 
 func (e *ImageState) Scan(src interface{}) error {
@@ -63,7 +64,8 @@ func (e ImageState) Valid() bool {
 		ImageStateUntracked,
 		ImageStateFailed,
 		ImageStateResync,
-		ImageStateOutdated:
+		ImageStateOutdated,
+		ImageStateUnused:
 		return true
 	}
 	return false
@@ -77,6 +79,7 @@ func AllImageStateValues() []ImageState {
 		ImageStateFailed,
 		ImageStateResync,
 		ImageStateOutdated,
+		ImageStateUnused,
 	}
 }
 

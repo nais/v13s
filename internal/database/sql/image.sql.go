@@ -121,6 +121,20 @@ func (q *Queries) MarkImagesForResync(ctx context.Context, arg MarkImagesForResy
 	return err
 }
 
+const markUnusedImages = `-- name: MarkUnusedImages :exec
+UPDATE images
+SET state      = 'unused',
+    updated_at = NOW()
+WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
+  AND images.state != 'unused'
+  AND images.state != ANY($1::image_state[])
+`
+
+func (q *Queries) MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error {
+	_, err := q.db.Exec(ctx, markUnusedImages, excludedStates)
+	return err
+}
+
 const updateImageState = `-- name: UpdateImageState :exec
 UPDATE images
 SET
@@ -159,7 +173,6 @@ type UpdateImageSyncStatusParams struct {
 	Source     string
 }
 
-// TODO: make sure image and tag is present in the workloads table to avoid resyncing images that are not used by any workload
 func (q *Queries) UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error {
 	_, err := q.db.Exec(ctx, updateImageSyncStatus,
 		arg.ImageName,

@@ -38,10 +38,10 @@ type Querier interface {
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
 	MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
+	MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error
 	ResetDatabase(ctx context.Context) error
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
-	// TODO: make sure image and tag is present in the workloads table to avoid resyncing images that are not used by any workload
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error)
