@@ -50,6 +50,10 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval time.D
 // TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
 	go runAtInterval(ctx, u.updateInterval, "mark and resync images", u.log, func() {
+		if err := u.MarkUnusedImages(ctx); err != nil {
+			u.log.WithError(err).Error("Failed to mark images as unused")
+			return
+		}
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
 			return
@@ -112,6 +116,18 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	updateSuccess := <-done
 
 	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
+	return nil
+}
+
+func (u *Updater) MarkUnusedImages(ctx context.Context) error {
+	err := u.querier.MarkUnusedImages(ctx, []sql.ImageState{
+		sql.ImageStateResync,
+		sql.ImageStateFailed,
+		sql.ImageStateInitialized,
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
