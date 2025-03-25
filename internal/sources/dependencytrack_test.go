@@ -3,7 +3,7 @@ package sources
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"

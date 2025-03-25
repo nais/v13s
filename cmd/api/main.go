@@ -24,7 +24,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/nais/v13s/internal/dependencytrack"
+	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"google.golang.org/grpc"
 )
 

@@ -15,9 +15,9 @@ packages:
   github.com/nais/v13s/internal/database/sql:
     interfaces:
       Querier:
-  github.com/nais/v13s/internal/dependencytrack:
+  github.com/nais/v13s/internal/sources/dependencytrack:
     interfaces:
       Client:
-  github.com/nais/v13s/internal/dependencytrack/client:
+  github.com/nais/v13s/internal/sources/dependencytrack/client:
     config:
       include-regex: ".*API"

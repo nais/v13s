@@ -1649,6 +1649,53 @@ func (_c *MockQuerier_MarkImagesForResync_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// MarkUnusedImages provides a mock function with given fields: ctx, excludedStates
+func (_m *MockQuerier) MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error {
+	ret := _m.Called(ctx, excludedStates)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkUnusedImages")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []ImageState) error); ok {
+		r0 = rf(ctx, excludedStates)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_MarkUnusedImages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkUnusedImages'
+type MockQuerier_MarkUnusedImages_Call struct {
+	*mock.Call
+}
+
+// MarkUnusedImages is a helper method to define mock.On call
+//   - ctx context.Context
+//   - excludedStates []ImageState
+func (_e *MockQuerier_Expecter) MarkUnusedImages(ctx interface{}, excludedStates interface{}) *MockQuerier_MarkUnusedImages_Call {
+	return &MockQuerier_MarkUnusedImages_Call{Call: _e.mock.On("MarkUnusedImages", ctx, excludedStates)}
+}
+
+func (_c *MockQuerier_MarkUnusedImages_Call) Run(run func(ctx context.Context, excludedStates []ImageState)) *MockQuerier_MarkUnusedImages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]ImageState))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_MarkUnusedImages_Call) Return(_a0 error) *MockQuerier_MarkUnusedImages_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_MarkUnusedImages_Call) RunAndReturn(run func(context.Context, []ImageState) error) *MockQuerier_MarkUnusedImages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ResetDatabase provides a mock function with given fields: ctx
 func (_m *MockQuerier) ResetDatabase(ctx context.Context) error {
 	ret := _m.Called(ctx)

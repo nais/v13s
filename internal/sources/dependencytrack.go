@@ -3,8 +3,8 @@ package sources
 import (
 	"context"
 	"fmt"
-	"github.com/nais/v13s/internal/dependencytrack"
-	"github.com/nais/v13s/internal/dependencytrack/client"
+	"github.com/nais/v13s/internal/sources/dependencytrack"
+	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/sirupsen/logrus"
 	"strings"
 )
