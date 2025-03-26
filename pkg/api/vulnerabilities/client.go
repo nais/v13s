@@ -49,11 +49,11 @@ func (c *client) ListVulnerabilities(ctx context.Context, opts ...Option) (*List
 	return c.v.ListVulnerabilities(
 		ctx,
 		&ListVulnerabilitiesRequest{
-			Filter:            o.filter,
-			IncludeSuppressed: &o.includeSuppressed,
-			Limit:             o.limit,
-			Offset:            o.offset,
-			OrderBy:           o.orderBy,
+			Filter:            o.Filter,
+			IncludeSuppressed: &o.IncludeSuppressed,
+			Limit:             o.Limit,
+			Offset:            o.Offset,
+			OrderBy:           o.OrderBy,
 		},
 	)
 }
@@ -63,32 +63,32 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 	return c.v.ListVulnerabilitiesForImage(ctx, &ListVulnerabilitiesForImageRequest{
 		ImageName:         imageName,
 		ImageTag:          imageTag,
-		IncludeSuppressed: o.includeSuppressed,
-		Limit:             o.limit,
-		Offset:            o.offset,
-		OrderBy:           o.orderBy,
-	}, o.callOptions...)
+		IncludeSuppressed: o.IncludeSuppressed,
+		Limit:             o.Limit,
+		Offset:            o.Offset,
+		OrderBy:           o.OrderBy,
+	}, o.CallOptions...)
 }
 
 func (c *client) ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListSuppressedVulnerabilities(ctx, &ListSuppressedVulnerabilitiesRequest{
-		Filter:  o.filter,
-		Limit:   o.limit,
-		Offset:  o.offset,
-		OrderBy: o.orderBy,
+		Filter:  o.Filter,
+		Limit:   o.Limit,
+		Offset:  o.Offset,
+		OrderBy: o.OrderBy,
 	})
 }
 
 func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
-		Filter:  o.filter,
-		Limit:   o.limit,
-		Offset:  o.offset,
-		OrderBy: o.orderBy,
-		Since:   o.since,
-	}, o.callOptions...)
+		Filter:  o.Filter,
+		Limit:   o.Limit,
+		Offset:  o.Offset,
+		OrderBy: o.OrderBy,
+		Since:   o.Since,
+	}, o.CallOptions...)
 }
 
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
@@ -97,7 +97,7 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 	return c.v.GetVulnerabilitySummary(
 		ctx,
 		&GetVulnerabilitySummaryRequest{
-			Filter: o.filter,
+			Filter: o.Filter,
 		},
 	)
 }

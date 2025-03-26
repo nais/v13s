@@ -9,7 +9,7 @@ import (
 var _ Option = (*funcOption)(nil)
 
 type Option interface {
-	apply(*options)
+	Apply(*Options)
 }
 
 type OrderByField string
@@ -69,107 +69,139 @@ func (o OrderByField) IsValid() bool {
 
 const DefaultLimit = 50
 
-type options struct {
-	filter            *Filter
-	callOptions       []grpc.CallOption
-	includeSuppressed bool
-	limit             int32
-	offset            int32
-	orderBy           *OrderBy
-	since             *timestamppb.Timestamp
+type Options struct {
+	Filter            *Filter
+	CallOptions       []grpc.CallOption
+	IncludeSuppressed bool
+	Limit             int32
+	Offset            int32
+	OrderBy           *OrderBy
+	Since             *timestamppb.Timestamp
 }
 
 type funcOption struct {
-	f func(options *options)
+	f func(options *Options)
 }
 
-func newFuncOption(f func(o *options)) *funcOption {
+func newFuncOption(f func(o *Options)) *funcOption {
 	return &funcOption{
 		f: f,
 	}
 }
 
-func (fo *funcOption) apply(o *options) {
+func (fo *funcOption) Apply(o *Options) {
 	fo.f(o)
 }
 
-// TODO: document the options
+func GetOptions(opts ...Option) *Options {
+	return applyOptions(opts...)
+}
+
+func GetFilter(opts ...Option) *Filter {
+	return applyOptions(opts...).Filter
+}
+
+func GetCallOptions(opts ...Option) []grpc.CallOption {
+	return applyOptions(opts...).CallOptions
+}
+
+func GetIncludeSuppressed(opts ...Option) bool {
+	return applyOptions(opts...).IncludeSuppressed
+}
+
+func GetLimit(opts ...Option) int32 {
+	return applyOptions(opts...).Limit
+}
+
+func GetOffset(opts ...Option) int32 {
+	return applyOptions(opts...).Offset
+}
+
+func GetOrderBy(opts ...Option) *OrderBy {
+	return applyOptions(opts...).OrderBy
+}
+
+func GetSince(opts ...Option) *timestamppb.Timestamp {
+	return applyOptions(opts...).Since
+}
+
+// TODO: document the Options
 func CallOptions(opts ...grpc.CallOption) Option {
-	return newFuncOption(func(o *options) {
-		o.callOptions = opts
+	return newFuncOption(func(o *Options) {
+		o.CallOptions = opts
 	})
 }
 
-// TODO: document the options
+// TODO: document the Options
 func ClusterFilter(name string) Option {
-	return newFuncOption(func(o *options) {
-		if o.filter == nil {
-			o.filter = &Filter{}
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
 		}
-		o.filter.Cluster = &name
+		o.Filter.Cluster = &name
 	})
 }
 
-// TODO: document the options
+// TODO: document the Options
 func NamespaceFilter(name string) Option {
-	return newFuncOption(func(o *options) {
-		if o.filter == nil {
-			o.filter = &Filter{}
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
 		}
-		o.filter.Namespace = &name
+		o.Filter.Namespace = &name
 	})
 }
 
-// TODO: document the options
+// TODO: document the Options
 func WorkloadTypeFilter(name string) Option {
-	return newFuncOption(func(o *options) {
-		if o.filter == nil {
-			o.filter = &Filter{}
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
 		}
-		o.filter.WorkloadType = &name
+		o.Filter.WorkloadType = &name
 	})
 }
 
 func WorkloadFilter(name string) Option {
-	return newFuncOption(func(o *options) {
-		if o.filter == nil {
-			o.filter = &Filter{}
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
 		}
-		o.filter.Workload = &name
+		o.Filter.Workload = &name
 	})
 }
 
 func ImageFilter(name, tag string) Option {
-	return newFuncOption(func(o *options) {
-		if o.filter == nil {
-			o.filter = &Filter{}
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
 		}
-		o.filter.ImageName = &name
-		o.filter.ImageTag = &tag
+		o.Filter.ImageName = &name
+		o.Filter.ImageTag = &tag
 	})
 }
 
 func IncludeSuppressed() Option {
-	return newFuncOption(func(o *options) {
-		o.includeSuppressed = true
+	return newFuncOption(func(o *Options) {
+		o.IncludeSuppressed = true
 	})
 }
 
 func Limit(limit int32) Option {
-	return newFuncOption(func(o *options) {
-		o.limit = limit
+	return newFuncOption(func(o *Options) {
+		o.Limit = limit
 	})
 }
 
 func Offset(offset int32) Option {
-	return newFuncOption(func(o *options) {
-		o.offset = offset
+	return newFuncOption(func(o *Options) {
+		o.Offset = offset
 	})
 }
 
 func Order(field OrderByField, direction Direction) Option {
-	return newFuncOption(func(o *options) {
-		o.orderBy = &OrderBy{
+	return newFuncOption(func(o *Options) {
+		o.OrderBy = &OrderBy{
 			Field:     string(field),
 			Direction: direction,
 		}
@@ -177,21 +209,21 @@ func Order(field OrderByField, direction Direction) Option {
 }
 
 func Since(t time.Time) Option {
-	return newFuncOption(func(o *options) {
-		o.since = timestamppb.New(t)
+	return newFuncOption(func(o *Options) {
+		o.Since = timestamppb.New(t)
 	})
 }
 
-func applyOptions(opts ...Option) *options {
-	o := &options{}
+func applyOptions(opts ...Option) *Options {
+	o := &Options{}
 	for _, opt := range opts {
-		opt.apply(o)
+		opt.Apply(o)
 	}
-	if o.filter == nil {
-		o.filter = &Filter{}
+	if o.Filter == nil {
+		o.Filter = &Filter{}
 	}
-	if o.limit == 0 {
-		o.limit = DefaultLimit
+	if o.Limit == 0 {
+		o.Limit = DefaultLimit
 	}
 	return o
 }
