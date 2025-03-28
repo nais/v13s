@@ -10,6 +10,7 @@ import (
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/logger"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -20,7 +21,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/nais/v13s/internal/dependencytrack"
 	"google.golang.org/grpc"
 )
 
