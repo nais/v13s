@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultResyncImagesOlderThanMinutes = 60 * 12 // 12 hours
+	DefaultResyncImagesOlderThanMinutes = 60 * 12 * time.Minute // 12 hours
 	DefaultMarkUntrackedInterval        = 20 * time.Minute
 )
 
