@@ -106,8 +106,8 @@ func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 		pool,
 		source,
 		c.UpdateInterval,
-		updater.DefaultMarkUntrackedInterval,
 		updater.DefaultResyncImagesOlderThanMinutes,
+		updater.DefaultMarkUntrackedInterval,
 		log.WithField("subsystem", "updater"),
 	)
 	u.Run(ctx)
