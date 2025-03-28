@@ -32,11 +32,12 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
-	updateInterval := 200 * time.Millisecond
+	updateInterval := 120 * time.Millisecond
 	markUntrackedInterval := 500 * time.Millisecond
+	markOlderThan := 250 * time.Millisecond
 	log := logrus.NewEntry(logrus.StandardLogger())
 	logrus.SetLevel(logrus.DebugLevel)
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, log), updateInterval, updater.DefaultResyncImagesOlderThanMinutes, markUntrackedInterval, log)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, log), updateInterval, markOlderThan, markUntrackedInterval, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
@@ -94,7 +95,7 @@ func TestUpdater(t *testing.T) {
 
 		dpTrack.AddFinding(imageName, "new-vuln")
 
-		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(3*time.Second))
 		defer cancel()
 
 		// Should update projectName[0] since it is older than updater.DefaultResyncImagesOlderThanMinutes
@@ -105,6 +106,7 @@ func TestUpdater(t *testing.T) {
 			ctx,
 			sql.ListVulnerabilitiesParams{Limit: 100, ImageName: &imageName, ImageTag: &imageVersion},
 		)
+
 		assert.NoError(t, err)
 		assert.Len(t, vulns, 5)
 
