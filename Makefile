@@ -1,4 +1,4 @@
-IGNORED_PATH := "internal/dependencytrack/client"
+IGNORED_PATH := "internal/sources/dependencytrack/client"
 GO_PACKAGES := $(shell go list ./... | grep -v $(IGNORED_PATH))
 
 build:
