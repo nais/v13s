@@ -189,9 +189,10 @@ message Summary {
   int32 medium = 3;
   int32 low = 4;
   int32 unassigned = 5;
-  int32 riskScore = 6;
-  bool hasSbom = 7;
-  optional google.protobuf.Timestamp last_updated = 8;
+  int32 total = 6;
+  int32 riskScore = 7;
+  bool hasSbom = 8;
+  optional google.protobuf.Timestamp last_updated = 9;
 }
 
 message Workload {

@@ -102,7 +102,14 @@ func run(ctx context.Context, c config, log logrus.FieldLogger) error {
 	}
 
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
-	u := updater.NewUpdater(pool, source, c.UpdateInterval, log.WithField("subsystem", "updater"))
+	u := updater.NewUpdater(
+		pool,
+		source,
+		c.UpdateInterval,
+		updater.DefaultMarkUntrackedInterval,
+		updater.DefaultResyncImagesOlderThanMinutes,
+		log.WithField("subsystem", "updater"),
+	)
 	u.Run(ctx)
 
 	grpcServer := createGrpcServer(ctx, c, pool, u, log)

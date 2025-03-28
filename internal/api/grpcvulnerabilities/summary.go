@@ -74,6 +74,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Medium:      safeInt(row.Medium),
 				Low:         safeInt(row.Low),
 				Unassigned:  safeInt(row.Unassigned),
+				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
 				RiskScore:   safeInt(row.RiskScore),
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
@@ -99,7 +100,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	sum, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
+	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:      request.GetFilter().Cluster,
 		Namespace:    request.GetFilter().Namespace,
 		WorkloadType: request.GetFilter().WorkloadType,
@@ -110,30 +111,31 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		return nil, err
 	}
 
-	if sum == nil {
-		sum = &sql.GetVulnerabilitySummaryRow{}
+	if row == nil {
+		row = &sql.GetVulnerabilitySummaryRow{}
 	}
 
 	summary := &vulnerabilities.Summary{
-		Critical:   sum.CriticalVulnerabilities,
-		High:       sum.HighVulnerabilities,
-		Medium:     sum.MediumVulnerabilities,
-		Low:        sum.LowVulnerabilities,
-		Unassigned: sum.UnassignedVulnerabilities,
-		RiskScore:  sum.TotalRiskScore,
+		Critical:   row.Critical,
+		High:       row.High,
+		Medium:     row.Medium,
+		Low:        row.Low,
+		Unassigned: row.Unassigned,
+		Total:      row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+		RiskScore:  row.RiskScore,
 		HasSbom:    true,
 	}
 
 	var coverage float32
-	if sum.WorkloadCount > 0 && sum.WorkloadWithSbom > 0 {
-		coverage = float32(sum.WorkloadWithSbom) / float32(sum.WorkloadCount) * 100
+	if row.WorkloadCount > 0 && row.WorkloadWithSbom > 0 {
+		coverage = float32(row.WorkloadWithSbom) / float32(row.WorkloadCount) * 100
 	}
 
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
 		Filter:               request.GetFilter(),
 		VulnerabilitySummary: summary,
-		WorkloadCount:        sum.WorkloadCount,
-		SbomCount:            sum.WorkloadWithSbom,
+		WorkloadCount:        row.WorkloadCount,
+		SbomCount:            row.WorkloadWithSbom,
 		Coverage:             coverage,
 	}
 	return response, nil
@@ -182,6 +184,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			Medium:      summary.Medium,
 			Low:         summary.Low,
 			Unassigned:  summary.Unassigned,
+			Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
 			RiskScore:   summary.RiskScore,
 			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
 			HasSbom:     true,

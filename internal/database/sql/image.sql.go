@@ -155,7 +155,6 @@ func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStatePara
 }
 
 const updateImageSyncStatus = `-- name: UpdateImageSyncStatus :exec
-
 INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)
 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (image_name, image_tag) DO
 UPDATE

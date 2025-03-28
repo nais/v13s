@@ -70,12 +70,12 @@ WITH filtered_workloads AS (
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
     CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN fw.id END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical_vulnerabilities,
-    CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high_vulnerabilities,
-    CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium_vulnerabilities,
-    CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low_vulnerabilities,
-    CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned_vulnerabilities,
-    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS total_risk_score
+    CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS risk_score
 FROM filtered_workloads fw
          LEFT JOIN vulnerability_summary v
                    ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag
@@ -89,14 +89,14 @@ type GetVulnerabilitySummaryParams struct {
 }
 
 type GetVulnerabilitySummaryRow struct {
-	WorkloadCount             int32
-	WorkloadWithSbom          int32
-	CriticalVulnerabilities   int32
-	HighVulnerabilities       int32
-	MediumVulnerabilities     int32
-	LowVulnerabilities        int32
-	UnassignedVulnerabilities int32
-	TotalRiskScore            int32
+	WorkloadCount    int32
+	WorkloadWithSbom int32
+	Critical         int32
+	High             int32
+	Medium           int32
+	Low              int32
+	Unassigned       int32
+	RiskScore        int32
 }
 
 func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
@@ -110,12 +110,12 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 	err := row.Scan(
 		&i.WorkloadCount,
 		&i.WorkloadWithSbom,
-		&i.CriticalVulnerabilities,
-		&i.HighVulnerabilities,
-		&i.MediumVulnerabilities,
-		&i.LowVulnerabilities,
-		&i.UnassignedVulnerabilities,
-		&i.TotalRiskScore,
+		&i.Critical,
+		&i.High,
+		&i.Medium,
+		&i.Low,
+		&i.Unassigned,
+		&i.RiskScore,
 	)
 	return &i, err
 }

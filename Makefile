@@ -50,7 +50,7 @@ generate_dp_track:
 	@openapi-generator generate \
         -i schema/dtrack.json \
         -g go \
-        -o internal/dependencytrack/client \
+        -o internal/sources/dependencytrack/client \
         --global-property apiTests=false,modelTests=false \
         --package-name client \
         --additional-properties=withGoMod=false \

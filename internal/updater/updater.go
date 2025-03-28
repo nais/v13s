@@ -24,30 +24,27 @@ type Updater struct {
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	updateInterval               time.Duration
+	defaultMarkUntrackedInterval time.Duration
 	log                          *logrus.Entry
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval time.Duration, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval, resyncImagesOlderThanMinutes, defaultMarkUntrackedInterval time.Duration, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
-	}
-
-	_, err := pool.Exec(context.Background(), "SET statement_timeout = '5min'")
-	if err != nil {
-		log.WithError(err).Error("Failed to set statement_timeout")
 	}
 
 	return &Updater{
 		db:                           pool,
 		querier:                      sql.New(pool),
 		source:                       source,
-		resyncImagesOlderThanMinutes: DefaultResyncImagesOlderThanMinutes,
+		resyncImagesOlderThanMinutes: resyncImagesOlderThanMinutes,
+		defaultMarkUntrackedInterval: defaultMarkUntrackedInterval,
 		updateInterval:               updateInterval,
 		log:                          log,
 	}
 }
 
-// TODO: create a state/log table and log errors? maybe successfull and failed runs?
+// Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
 	go runAtInterval(ctx, u.updateInterval, "mark and resync images", u.log, func() {
 		if err := u.MarkUnusedImages(ctx); err != nil {
@@ -64,11 +61,8 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 	})
 
-	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
-		if err := u.querier.MarkImagesAsUntracked(ctx, []sql.ImageState{
-			sql.ImageStateResync,
-			sql.ImageStateInitialized,
-		}); err != nil {
+	go runAtInterval(ctx, u.defaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
+		if err := u.MarkImagesAsUntracked(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
@@ -123,6 +117,17 @@ func (u *Updater) MarkUnusedImages(ctx context.Context) error {
 	err := u.querier.MarkUnusedImages(ctx, []sql.ImageState{
 		sql.ImageStateResync,
 		sql.ImageStateFailed,
+		sql.ImageStateInitialized,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
+	err := u.querier.MarkImagesAsUntracked(ctx, []sql.ImageState{
+		sql.ImageStateResync,
 		sql.ImageStateInitialized,
 	})
 	if err != nil {

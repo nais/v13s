@@ -150,10 +150,10 @@ func (c *apiKeySource) getApiKey(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	if c.teamUuid == "" {
-		return c.fetchTeamApiKey(bearerCtx)
+	if c.teamUuid != "" {
+		return c.fetchTeamApiKeyByUuid(bearerCtx)
 	}
-	return c.fetchTeamApiKeyByUuid(bearerCtx)
+	return c.fetchTeamApiKey(bearerCtx)
 }
 
 func (c *apiKeySource) fetchTeamApiKey(ctx context.Context) (string, error) {
