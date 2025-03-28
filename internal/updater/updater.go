@@ -24,11 +24,10 @@ type Updater struct {
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	updateInterval               time.Duration
-	defaultMarkUntrackedInterval time.Duration
 	log                          *logrus.Entry
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval, resyncImagesOlderThanMinutes, defaultMarkUntrackedInterval time.Duration, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval time.Duration, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -37,8 +36,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval, resyn
 		db:                           pool,
 		querier:                      sql.New(pool),
 		source:                       source,
-		resyncImagesOlderThanMinutes: resyncImagesOlderThanMinutes,
-		defaultMarkUntrackedInterval: defaultMarkUntrackedInterval,
+		resyncImagesOlderThanMinutes: DefaultResyncImagesOlderThanMinutes,
 		updateInterval:               updateInterval,
 		log:                          log,
 	}
@@ -61,8 +59,11 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 	})
 
-	go runAtInterval(ctx, u.defaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
-		if err := u.MarkImagesAsUntracked(ctx); err != nil {
+	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
+		if err := u.querier.MarkImagesAsUntracked(ctx, []sql.ImageState{
+			sql.ImageStateResync,
+			sql.ImageStateInitialized,
+		}); err != nil {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
@@ -143,7 +144,7 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 		ctx,
 		sql.MarkImagesForResyncParams{
 			ThresholdTime: pgtype.Timestamptz{
-				Time:  time.Now().Add(-u.resyncImagesOlderThanMinutes * time.Minute),
+				Time:  time.Now().Add(-u.resyncImagesOlderThanMinutes),
 				Valid: true,
 			},
 			ExcludedStates: []sql.ImageState{
