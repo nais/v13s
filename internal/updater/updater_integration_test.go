@@ -32,7 +32,7 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
-	updateInterval := 120 * time.Millisecond
+	updateInterval := 300 * time.Millisecond
 	markUntrackedInterval := 500 * time.Millisecond
 	markOlderThan := 250 * time.Millisecond
 	log := logrus.NewEntry(logrus.StandardLogger())
