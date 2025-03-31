@@ -259,8 +259,8 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/emicklei/go-restful/v3 v3.11.0 h1:rAQeMHw1c7zTmncogyy8VvRZwtkmkZ4FxERmMY4rD+g=
 github.com/emicklei/go-restful/v3 v3.11.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
-github.com/emicklei/pgtalk v1.9.2 h1:05beNGX+hwR7a1le8P2bGiHUx+0SkSQOLYJ4soM0Ugg=
-github.com/emicklei/pgtalk v1.9.2/go.mod h1:y5vNowmtU9JJ5/42LYGJV2dSYOh27SeZ23xDrgrmKUQ=
+github.com/emicklei/pgtalk v1.9.3 h1:i8XV6mP+AZZtSkYrSxwXCn1+58aYdYrbPUdEw2kBBZI=
+github.com/emicklei/pgtalk v1.9.3/go.mod h1:y5vNowmtU9JJ5/42LYGJV2dSYOh27SeZ23xDrgrmKUQ=
 github.com/emicklei/proto v1.13.4 h1:myn1fyf8t7tAqIzV91Tj9qXpvyXXGXk8OS2H6IBSc9g=
 github.com/emicklei/proto v1.13.4/go.mod h1:rn1FgRS/FANiZdD2djyH7TMA9jdRDcYQ9IEN9yvjX0A=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
