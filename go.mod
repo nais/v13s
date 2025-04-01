@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	cloud.google.com/go/auth v0.15.0
 	github.com/containerd/log v0.1.0
-	github.com/emicklei/pgtalk v1.9.2
+	github.com/emicklei/pgtalk v1.9.3
 	github.com/exaring/otelpgx v0.9.0
 	github.com/fatih/color v1.18.0
 	github.com/google/go-containerregistry v0.20.3
