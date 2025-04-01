@@ -19,7 +19,7 @@ var _ MappedNullable = &OrganizationalContact{}
 
 // OrganizationalContact struct for OrganizationalContact
 type OrganizationalContact struct {
-	Name  *string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 	Email *string `json:"email,omitempty"`
 	Phone *string `json:"phone,omitempty"`
 }
@@ -138,7 +138,7 @@ func (o *OrganizationalContact) SetPhone(v string) {
 }
 
 func (o OrganizationalContact) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -194,3 +194,5 @@ func (v *NullableOrganizationalContact) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

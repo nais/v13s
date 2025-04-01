@@ -19,15 +19,16 @@ import (
 	"strings"
 )
 
+
 type ProjectAPI interface {
 
 	/*
-		CloneProject Clones a project
+	CloneProject Clones a project
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCloneProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCloneProjectRequest
 	*/
 	CloneProject(ctx context.Context) ApiCloneProjectRequest
 
@@ -36,14 +37,14 @@ type ProjectAPI interface {
 	CloneProjectExecute(r ApiCloneProjectRequest) (*Project, *http.Response, error)
 
 	/*
-			CreateProject Creates a new project
+	CreateProject Creates a new project
 
-			<p>If a parent project exists, <code>parent.uuid</code> is required</p>
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>If a parent project exists, <code>parent.uuid</code> is required</p>
+<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
 
-			@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-			@return ApiCreateProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateProjectRequest
 	*/
 	CreateProject(ctx context.Context) ApiCreateProjectRequest
 
@@ -52,13 +53,13 @@ type ProjectAPI interface {
 	CreateProjectExecute(r ApiCreateProjectRequest) (*Project, *http.Response, error)
 
 	/*
-		DeleteProject Deletes a project
+	DeleteProject Deletes a project
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to delete
-		@return ApiDeleteProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to delete
+	@return ApiDeleteProjectRequest
 	*/
 	DeleteProject(ctx context.Context, uuid string) ApiDeleteProjectRequest
 
@@ -66,13 +67,13 @@ type ProjectAPI interface {
 	DeleteProjectExecute(r ApiDeleteProjectRequest) (*http.Response, error)
 
 	/*
-		GetChildrenProjects Returns a list of all children for a project
+	GetChildrenProjects Returns a list of all children for a project
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to get the children from
-		@return ApiGetChildrenProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to get the children from
+	@return ApiGetChildrenProjectsRequest
 	*/
 	GetChildrenProjects(ctx context.Context, uuid string) ApiGetChildrenProjectsRequest
 
@@ -81,14 +82,14 @@ type ProjectAPI interface {
 	GetChildrenProjectsExecute(r ApiGetChildrenProjectsRequest) ([]Project, *http.Response, error)
 
 	/*
-		GetChildrenProjectsByClassifier Returns a list of all children for a project by classifier
+	GetChildrenProjectsByClassifier Returns a list of all children for a project by classifier
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param classifier The classifier to query on
-		@param uuid The UUID of the project to get the children from
-		@return ApiGetChildrenProjectsByClassifierRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param classifier The classifier to query on
+	@param uuid The UUID of the project to get the children from
+	@return ApiGetChildrenProjectsByClassifierRequest
 	*/
 	GetChildrenProjectsByClassifier(ctx context.Context, classifier string, uuid string) ApiGetChildrenProjectsByClassifierRequest
 
@@ -97,14 +98,14 @@ type ProjectAPI interface {
 	GetChildrenProjectsByClassifierExecute(r ApiGetChildrenProjectsByClassifierRequest) ([]Project, *http.Response, error)
 
 	/*
-		GetChildrenProjectsByTag Returns a list of all children for a project by tag
+	GetChildrenProjectsByTag Returns a list of all children for a project by tag
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param tag The tag to query on
-		@param uuid The UUID of the project to get the children from
-		@return ApiGetChildrenProjectsByTagRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param tag The tag to query on
+	@param uuid The UUID of the project to get the children from
+	@return ApiGetChildrenProjectsByTagRequest
 	*/
 	GetChildrenProjectsByTag(ctx context.Context, tag string, uuid string) ApiGetChildrenProjectsByTagRequest
 
@@ -113,13 +114,13 @@ type ProjectAPI interface {
 	GetChildrenProjectsByTagExecute(r ApiGetChildrenProjectsByTagRequest) ([]Project, *http.Response, error)
 
 	/*
-		GetProject Returns a specific project
+	GetProject Returns a specific project
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to retrieve
-		@return ApiGetProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve
+	@return ApiGetProjectRequest
 	*/
 	GetProject(ctx context.Context, uuid string) ApiGetProjectRequest
 
@@ -128,12 +129,12 @@ type ProjectAPI interface {
 	GetProjectExecute(r ApiGetProjectRequest) (*Project, *http.Response, error)
 
 	/*
-		GetProjectByNameAndVersion Returns a specific project by its name and version
+	GetProjectByNameAndVersion Returns a specific project by its name and version
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetProjectByNameAndVersionRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetProjectByNameAndVersionRequest
 	*/
 	GetProjectByNameAndVersion(ctx context.Context) ApiGetProjectByNameAndVersionRequest
 
@@ -142,12 +143,12 @@ type ProjectAPI interface {
 	GetProjectByNameAndVersionExecute(r ApiGetProjectByNameAndVersionRequest) (*Project, *http.Response, error)
 
 	/*
-		GetProjects Returns a list of all projects
+	GetProjects Returns a list of all projects
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetProjectsRequest
 	*/
 	GetProjects(ctx context.Context) ApiGetProjectsRequest
 
@@ -156,13 +157,13 @@ type ProjectAPI interface {
 	GetProjectsExecute(r ApiGetProjectsRequest) ([]Project, *http.Response, error)
 
 	/*
-		GetProjectsByClassifier Returns a list of all projects by classifier
+	GetProjectsByClassifier Returns a list of all projects by classifier
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param classifier The classifier to query on
-		@return ApiGetProjectsByClassifierRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param classifier The classifier to query on
+	@return ApiGetProjectsByClassifierRequest
 	*/
 	GetProjectsByClassifier(ctx context.Context, classifier string) ApiGetProjectsByClassifierRequest
 
@@ -171,13 +172,13 @@ type ProjectAPI interface {
 	GetProjectsByClassifierExecute(r ApiGetProjectsByClassifierRequest) ([]Project, *http.Response, error)
 
 	/*
-		GetProjectsByTag Returns a list of all projects by tag
+	GetProjectsByTag Returns a list of all projects by tag
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param tag The tag to query on
-		@return ApiGetProjectsByTagRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param tag The tag to query on
+	@return ApiGetProjectsByTagRequest
 	*/
 	GetProjectsByTag(ctx context.Context, tag string) ApiGetProjectsByTagRequest
 
@@ -186,13 +187,13 @@ type ProjectAPI interface {
 	GetProjectsByTagExecute(r ApiGetProjectsByTagRequest) ([]Project, *http.Response, error)
 
 	/*
-		GetProjectsWithoutDescendantsOf Returns a list of all projects without the descendants of the selected project
+	GetProjectsWithoutDescendantsOf Returns a list of all projects without the descendants of the selected project
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project which descendants will be excluded
-		@return ApiGetProjectsWithoutDescendantsOfRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project which descendants will be excluded
+	@return ApiGetProjectsWithoutDescendantsOfRequest
 	*/
 	GetProjectsWithoutDescendantsOf(ctx context.Context, uuid string) ApiGetProjectsWithoutDescendantsOfRequest
 
@@ -201,13 +202,13 @@ type ProjectAPI interface {
 	GetProjectsWithoutDescendantsOfExecute(r ApiGetProjectsWithoutDescendantsOfRequest) ([]Project, *http.Response, error)
 
 	/*
-		PatchProject Partially updates a project
+	PatchProject Partially updates a project
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to modify
-		@return ApiPatchProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to modify
+	@return ApiPatchProjectRequest
 	*/
 	PatchProject(ctx context.Context, uuid string) ApiPatchProjectRequest
 
@@ -216,12 +217,12 @@ type ProjectAPI interface {
 	PatchProjectExecute(r ApiPatchProjectRequest) (*Project, *http.Response, error)
 
 	/*
-		UpdateProject Updates a project
+	UpdateProject Updates a project
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiUpdateProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateProjectRequest
 	*/
 	UpdateProject(ctx context.Context) ApiUpdateProjectRequest
 
@@ -234,9 +235,9 @@ type ProjectAPI interface {
 type ProjectAPIService service
 
 type ApiCloneProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	body       *CloneProjectRequest
+	body *CloneProjectRequest
 }
 
 func (r ApiCloneProjectRequest) Body(body CloneProjectRequest) ApiCloneProjectRequest {
@@ -253,25 +254,24 @@ CloneProject Clones a project
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCloneProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCloneProjectRequest
 */
 func (a *ProjectAPIService) CloneProject(ctx context.Context) ApiCloneProjectRequest {
 	return ApiCloneProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *ProjectAPIService) CloneProjectExecute(r ApiCloneProjectRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.CloneProject")
@@ -356,9 +356,9 @@ func (a *ProjectAPIService) CloneProjectExecute(r ApiCloneProjectRequest) (*Proj
 }
 
 type ApiCreateProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	body       *Project
+	body *Project
 }
 
 func (r ApiCreateProjectRequest) Body(body Project) ApiCreateProjectRequest {
@@ -376,25 +376,25 @@ CreateProject Creates a new project
 <p>If a parent project exists, <code>parent.uuid</code> is required</p>
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateProjectRequest
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateProjectRequest
 */
 func (a *ProjectAPIService) CreateProject(ctx context.Context) ApiCreateProjectRequest {
 	return ApiCreateProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *ProjectAPIService) CreateProjectExecute(r ApiCreateProjectRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.CreateProject")
@@ -479,9 +479,9 @@ func (a *ProjectAPIService) CreateProjectExecute(r ApiCreateProjectRequest) (*Pr
 }
 
 type ApiDeleteProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteProjectRequest) Execute() (*http.Response, error) {
@@ -493,24 +493,24 @@ DeleteProject Deletes a project
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to delete
-	@return ApiDeleteProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to delete
+ @return ApiDeleteProjectRequest
 */
 func (a *ProjectAPIService) DeleteProject(ctx context.Context, uuid string) ApiDeleteProjectRequest {
 	return ApiDeleteProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *ProjectAPIService) DeleteProjectExecute(r ApiDeleteProjectRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.DeleteProject")
@@ -585,16 +585,16 @@ func (a *ProjectAPIService) DeleteProjectExecute(r ApiDeleteProjectRequest) (*ht
 }
 
 type ApiGetChildrenProjectsRequest struct {
-	ctx             context.Context
-	ApiService      ProjectAPI
-	uuid            string
+	ctx context.Context
+	ApiService ProjectAPI
+	uuid string
 	excludeInactive *bool
-	pageNumber      *interface{}
-	pageSize        *interface{}
-	offset          *interface{}
-	limit           *interface{}
-	sortName        *string
-	sortOrder       *string
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally excludes inactive projects from being returned
@@ -648,27 +648,26 @@ GetChildrenProjects Returns a list of all children for a project
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to get the children from
-	@return ApiGetChildrenProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to get the children from
+ @return ApiGetChildrenProjectsRequest
 */
 func (a *ProjectAPIService) GetChildrenProjects(ctx context.Context, uuid string) ApiGetChildrenProjectsRequest {
 	return ApiGetChildrenProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetChildrenProjectsExecute(r ApiGetChildrenProjectsRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetChildrenProjects")
@@ -779,17 +778,17 @@ func (a *ProjectAPIService) GetChildrenProjectsExecute(r ApiGetChildrenProjectsR
 }
 
 type ApiGetChildrenProjectsByClassifierRequest struct {
-	ctx             context.Context
-	ApiService      ProjectAPI
-	classifier      string
-	uuid            string
+	ctx context.Context
+	ApiService ProjectAPI
+	classifier string
+	uuid string
 	excludeInactive *bool
-	pageNumber      *interface{}
-	pageSize        *interface{}
-	offset          *interface{}
-	limit           *interface{}
-	sortName        *string
-	sortOrder       *string
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally excludes inactive projects from being returned
@@ -843,29 +842,28 @@ GetChildrenProjectsByClassifier Returns a list of all children for a project by 
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param classifier The classifier to query on
-	@param uuid The UUID of the project to get the children from
-	@return ApiGetChildrenProjectsByClassifierRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param classifier The classifier to query on
+ @param uuid The UUID of the project to get the children from
+ @return ApiGetChildrenProjectsByClassifierRequest
 */
 func (a *ProjectAPIService) GetChildrenProjectsByClassifier(ctx context.Context, classifier string, uuid string) ApiGetChildrenProjectsByClassifierRequest {
 	return ApiGetChildrenProjectsByClassifierRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 		classifier: classifier,
-		uuid:       uuid,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetChildrenProjectsByClassifierExecute(r ApiGetChildrenProjectsByClassifierRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetChildrenProjectsByClassifier")
@@ -977,17 +975,17 @@ func (a *ProjectAPIService) GetChildrenProjectsByClassifierExecute(r ApiGetChild
 }
 
 type ApiGetChildrenProjectsByTagRequest struct {
-	ctx             context.Context
-	ApiService      ProjectAPI
-	tag             string
-	uuid            string
+	ctx context.Context
+	ApiService ProjectAPI
+	tag string
+	uuid string
 	excludeInactive *bool
-	pageNumber      *interface{}
-	pageSize        *interface{}
-	offset          *interface{}
-	limit           *interface{}
-	sortName        *string
-	sortOrder       *string
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally excludes inactive projects from being returned
@@ -1041,29 +1039,28 @@ GetChildrenProjectsByTag Returns a list of all children for a project by tag
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param tag The tag to query on
-	@param uuid The UUID of the project to get the children from
-	@return ApiGetChildrenProjectsByTagRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param tag The tag to query on
+ @param uuid The UUID of the project to get the children from
+ @return ApiGetChildrenProjectsByTagRequest
 */
 func (a *ProjectAPIService) GetChildrenProjectsByTag(ctx context.Context, tag string, uuid string) ApiGetChildrenProjectsByTagRequest {
 	return ApiGetChildrenProjectsByTagRequest{
 		ApiService: a,
-		ctx:        ctx,
-		tag:        tag,
-		uuid:       uuid,
+		ctx: ctx,
+		tag: tag,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetChildrenProjectsByTagExecute(r ApiGetChildrenProjectsByTagRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetChildrenProjectsByTag")
@@ -1175,9 +1172,9 @@ func (a *ProjectAPIService) GetChildrenProjectsByTagExecute(r ApiGetChildrenProj
 }
 
 type ApiGetProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetProjectRequest) Execute() (*Project, *http.Response, error) {
@@ -1189,27 +1186,26 @@ GetProject Returns a specific project
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve
-	@return ApiGetProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve
+ @return ApiGetProjectRequest
 */
 func (a *ProjectAPIService) GetProject(ctx context.Context, uuid string) ApiGetProjectRequest {
 	return ApiGetProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *ProjectAPIService) GetProjectExecute(r ApiGetProjectRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetProject")
@@ -1293,10 +1289,10 @@ func (a *ProjectAPIService) GetProjectExecute(r ApiGetProjectRequest) (*Project,
 }
 
 type ApiGetProjectByNameAndVersionRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	name       *string
-	version    *string
+	name *string
+	version *string
 }
 
 // The name of the project to query on
@@ -1320,25 +1316,24 @@ GetProjectByNameAndVersion Returns a specific project by its name and version
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetProjectByNameAndVersionRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetProjectByNameAndVersionRequest
 */
 func (a *ProjectAPIService) GetProjectByNameAndVersion(ctx context.Context) ApiGetProjectByNameAndVersionRequest {
 	return ApiGetProjectByNameAndVersionRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *ProjectAPIService) GetProjectByNameAndVersionExecute(r ApiGetProjectByNameAndVersionRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetProjectByNameAndVersion")
@@ -1429,18 +1424,18 @@ func (a *ProjectAPIService) GetProjectByNameAndVersionExecute(r ApiGetProjectByN
 }
 
 type ApiGetProjectsRequest struct {
-	ctx                       context.Context
-	ApiService                ProjectAPI
-	name                      *string
-	excludeInactive           *bool
-	onlyRoot                  *bool
+	ctx context.Context
+	ApiService ProjectAPI
+	name *string
+	excludeInactive *bool
+	onlyRoot *bool
 	notAssignedToTeamWithUuid *string
-	pageNumber                *interface{}
-	pageSize                  *interface{}
-	offset                    *interface{}
-	limit                     *interface{}
-	sortName                  *string
-	sortOrder                 *string
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The optional name of the project to query on
@@ -1512,25 +1507,24 @@ GetProjects Returns a list of all projects
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetProjectsRequest
 */
 func (a *ProjectAPIService) GetProjects(ctx context.Context) ApiGetProjectsRequest {
 	return ApiGetProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetProjectsExecute(r ApiGetProjectsRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetProjects")
@@ -1649,17 +1643,17 @@ func (a *ProjectAPIService) GetProjectsExecute(r ApiGetProjectsRequest) ([]Proje
 }
 
 type ApiGetProjectsByClassifierRequest struct {
-	ctx             context.Context
-	ApiService      ProjectAPI
-	classifier      string
+	ctx context.Context
+	ApiService ProjectAPI
+	classifier string
 	excludeInactive *bool
-	onlyRoot        *bool
-	pageNumber      *interface{}
-	pageSize        *interface{}
-	offset          *interface{}
-	limit           *interface{}
-	sortName        *string
-	sortOrder       *string
+	onlyRoot *bool
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally excludes inactive projects from being returned
@@ -1719,27 +1713,26 @@ GetProjectsByClassifier Returns a list of all projects by classifier
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param classifier The classifier to query on
-	@return ApiGetProjectsByClassifierRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param classifier The classifier to query on
+ @return ApiGetProjectsByClassifierRequest
 */
 func (a *ProjectAPIService) GetProjectsByClassifier(ctx context.Context, classifier string) ApiGetProjectsByClassifierRequest {
 	return ApiGetProjectsByClassifierRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 		classifier: classifier,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetProjectsByClassifierExecute(r ApiGetProjectsByClassifierRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetProjectsByClassifier")
@@ -1853,17 +1846,17 @@ func (a *ProjectAPIService) GetProjectsByClassifierExecute(r ApiGetProjectsByCla
 }
 
 type ApiGetProjectsByTagRequest struct {
-	ctx             context.Context
-	ApiService      ProjectAPI
-	tag             string
+	ctx context.Context
+	ApiService ProjectAPI
+	tag string
 	excludeInactive *bool
-	onlyRoot        *bool
-	pageNumber      *interface{}
-	pageSize        *interface{}
-	offset          *interface{}
-	limit           *interface{}
-	sortName        *string
-	sortOrder       *string
+	onlyRoot *bool
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally excludes inactive projects from being returned
@@ -1923,27 +1916,26 @@ GetProjectsByTag Returns a list of all projects by tag
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param tag The tag to query on
-	@return ApiGetProjectsByTagRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param tag The tag to query on
+ @return ApiGetProjectsByTagRequest
 */
 func (a *ProjectAPIService) GetProjectsByTag(ctx context.Context, tag string) ApiGetProjectsByTagRequest {
 	return ApiGetProjectsByTagRequest{
 		ApiService: a,
-		ctx:        ctx,
-		tag:        tag,
+		ctx: ctx,
+		tag: tag,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetProjectsByTagExecute(r ApiGetProjectsByTagRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetProjectsByTag")
@@ -2057,17 +2049,17 @@ func (a *ProjectAPIService) GetProjectsByTagExecute(r ApiGetProjectsByTagRequest
 }
 
 type ApiGetProjectsWithoutDescendantsOfRequest struct {
-	ctx             context.Context
-	ApiService      ProjectAPI
-	uuid            string
-	name            *string
+	ctx context.Context
+	ApiService ProjectAPI
+	uuid string
+	name *string
 	excludeInactive *bool
-	pageNumber      *interface{}
-	pageSize        *interface{}
-	offset          *interface{}
-	limit           *interface{}
-	sortName        *string
-	sortOrder       *string
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The optional name of the project to query on
@@ -2127,27 +2119,26 @@ GetProjectsWithoutDescendantsOf Returns a list of all projects without the desce
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project which descendants will be excluded
-	@return ApiGetProjectsWithoutDescendantsOfRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project which descendants will be excluded
+ @return ApiGetProjectsWithoutDescendantsOfRequest
 */
 func (a *ProjectAPIService) GetProjectsWithoutDescendantsOf(ctx context.Context, uuid string) ApiGetProjectsWithoutDescendantsOfRequest {
 	return ApiGetProjectsWithoutDescendantsOfRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *ProjectAPIService) GetProjectsWithoutDescendantsOfExecute(r ApiGetProjectsWithoutDescendantsOfRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.GetProjectsWithoutDescendantsOf")
@@ -2261,10 +2252,10 @@ func (a *ProjectAPIService) GetProjectsWithoutDescendantsOfExecute(r ApiGetProje
 }
 
 type ApiPatchProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	uuid       string
-	body       *Project
+	uuid string
+	body *Project
 }
 
 func (r ApiPatchProjectRequest) Body(body Project) ApiPatchProjectRequest {
@@ -2281,27 +2272,26 @@ PatchProject Partially updates a project
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to modify
-	@return ApiPatchProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to modify
+ @return ApiPatchProjectRequest
 */
 func (a *ProjectAPIService) PatchProject(ctx context.Context, uuid string) ApiPatchProjectRequest {
 	return ApiPatchProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *ProjectAPIService) PatchProjectExecute(r ApiPatchProjectRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPatch
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodPatch
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.PatchProject")
@@ -2387,9 +2377,9 @@ func (a *ProjectAPIService) PatchProjectExecute(r ApiPatchProjectRequest) (*Proj
 }
 
 type ApiUpdateProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectAPI
-	body       *Project
+	body *Project
 }
 
 func (r ApiUpdateProjectRequest) Body(body Project) ApiUpdateProjectRequest {
@@ -2406,25 +2396,24 @@ UpdateProject Updates a project
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateProjectRequest
 */
 func (a *ProjectAPIService) UpdateProject(ctx context.Context) ApiUpdateProjectRequest {
 	return ApiUpdateProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *ProjectAPIService) UpdateProjectExecute(r ApiUpdateProjectRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectAPIService.UpdateProject")

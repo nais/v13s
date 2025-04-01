@@ -14,7 +14,11 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-check: fmt vulncheck deadcode gosec staticcheck
+check: goimport fmt vulncheck deadcode gosec staticcheck
+
+goimport:
+	@echo "Running goimport..."
+	go run golang.org/x/tools/cmd/goimports@latest -l -w .
 
 fmt:
 	@echo "Running go fmt..."

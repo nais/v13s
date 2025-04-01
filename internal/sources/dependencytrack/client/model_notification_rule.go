@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,19 +21,19 @@ var _ MappedNullable = &NotificationRule{}
 
 // NotificationRule struct for NotificationRule
 type NotificationRule struct {
-	Name                 string                 `json:"name" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Enabled              *bool                  `json:"enabled,omitempty"`
-	NotifyChildren       *bool                  `json:"notifyChildren,omitempty"`
-	LogSuccessfulPublish *bool                  `json:"logSuccessfulPublish,omitempty"`
-	Scope                string                 `json:"scope"`
-	NotificationLevel    *string                `json:"notificationLevel,omitempty"`
-	Projects             []Project              `json:"projects,omitempty"`
-	Teams                []Team                 `json:"teams,omitempty"`
-	NotifyOn             []string               `json:"notifyOn,omitempty"`
-	Message              *string                `json:"message,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Publisher            *NotificationPublisher `json:"publisher,omitempty"`
-	PublisherConfig      *string                `json:"publisherConfig,omitempty"`
-	Uuid                 string                 `json:"uuid"`
+	Name string `json:"name" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Enabled *bool `json:"enabled,omitempty"`
+	NotifyChildren *bool `json:"notifyChildren,omitempty"`
+	LogSuccessfulPublish *bool `json:"logSuccessfulPublish,omitempty"`
+	Scope string `json:"scope"`
+	NotificationLevel *string `json:"notificationLevel,omitempty"`
+	Projects []Project `json:"projects,omitempty"`
+	Teams []Team `json:"teams,omitempty"`
+	NotifyOn []string `json:"notifyOn,omitempty"`
+	Message *string `json:"message,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Publisher *NotificationPublisher `json:"publisher,omitempty"`
+	PublisherConfig *string `json:"publisherConfig,omitempty"`
+	Uuid string `json:"uuid"`
 }
 
 type _NotificationRule NotificationRule
@@ -451,7 +451,7 @@ func (o *NotificationRule) SetUuid(v string) {
 }
 
 func (o NotificationRule) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -511,10 +511,10 @@ func (o *NotificationRule) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -570,3 +570,5 @@ func (v *NullableNotificationRule) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

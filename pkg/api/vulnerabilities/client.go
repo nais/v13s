@@ -3,6 +3,7 @@ package vulnerabilities
 import (
 	"context"
 	"fmt"
+
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"google.golang.org/grpc"
 )

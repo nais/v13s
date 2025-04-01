@@ -19,15 +19,16 @@ import (
 	"strings"
 )
 
+
 type ViolationAPI interface {
 
 	/*
-		GetViolations Returns a list of all policy violations for the entire portfolio
+	GetViolations Returns a list of all policy violations for the entire portfolio
 
-		<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetViolationsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetViolationsRequest
 	*/
 	GetViolations(ctx context.Context) ApiGetViolationsRequest
 
@@ -36,13 +37,13 @@ type ViolationAPI interface {
 	GetViolationsExecute(r ApiGetViolationsRequest) ([]PolicyViolation, *http.Response, error)
 
 	/*
-		GetViolationsByComponent Returns a list of all policy violations for a specific component
+	GetViolationsByComponent Returns a list of all policy violations for a specific component
 
-		<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the component
-		@return ApiGetViolationsByComponentRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component
+	@return ApiGetViolationsByComponentRequest
 	*/
 	GetViolationsByComponent(ctx context.Context, uuid string) ApiGetViolationsByComponentRequest
 
@@ -51,13 +52,13 @@ type ViolationAPI interface {
 	GetViolationsByComponentExecute(r ApiGetViolationsByComponentRequest) ([]PolicyViolation, *http.Response, error)
 
 	/*
-		GetViolationsByProject Returns a list of all policy violations for a specific project
+	GetViolationsByProject Returns a list of all policy violations for a specific project
 
-		<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
+	<p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project
-		@return ApiGetViolationsByProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetViolationsByProjectRequest
 	*/
 	GetViolationsByProject(ctx context.Context, uuid string) ApiGetViolationsByProjectRequest
 
@@ -70,15 +71,15 @@ type ViolationAPI interface {
 type ViolationAPIService service
 
 type ApiGetViolationsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ViolationAPI
 	suppressed *bool
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally includes suppressed violations
@@ -132,25 +133,24 @@ GetViolations Returns a list of all policy violations for the entire portfolio
 
 <p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetViolationsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetViolationsRequest
 */
 func (a *ViolationAPIService) GetViolations(ctx context.Context) ApiGetViolationsRequest {
 	return ApiGetViolationsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []PolicyViolation
+//  @return []PolicyViolation
 func (a *ViolationAPIService) GetViolationsExecute(r ApiGetViolationsRequest) ([]PolicyViolation, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []PolicyViolation
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []PolicyViolation
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ViolationAPIService.GetViolations")
@@ -260,16 +260,16 @@ func (a *ViolationAPIService) GetViolationsExecute(r ApiGetViolationsRequest) ([
 }
 
 type ApiGetViolationsByComponentRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ViolationAPI
-	uuid       string
+	uuid string
 	suppressed *bool
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally includes suppressed violations
@@ -323,27 +323,26 @@ GetViolationsByComponent Returns a list of all policy violations for a specific 
 
 <p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component
-	@return ApiGetViolationsByComponentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component
+ @return ApiGetViolationsByComponentRequest
 */
 func (a *ViolationAPIService) GetViolationsByComponent(ctx context.Context, uuid string) ApiGetViolationsByComponentRequest {
 	return ApiGetViolationsByComponentRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []PolicyViolation
+//  @return []PolicyViolation
 func (a *ViolationAPIService) GetViolationsByComponentExecute(r ApiGetViolationsByComponentRequest) ([]PolicyViolation, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []PolicyViolation
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []PolicyViolation
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ViolationAPIService.GetViolationsByComponent")
@@ -454,16 +453,16 @@ func (a *ViolationAPIService) GetViolationsByComponentExecute(r ApiGetViolations
 }
 
 type ApiGetViolationsByProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ViolationAPI
-	uuid       string
+	uuid string
 	suppressed *bool
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally includes suppressed violations
@@ -517,27 +516,26 @@ GetViolationsByProject Returns a list of all policy violations for a specific pr
 
 <p>Requires permission <strong>VIEW_POLICY_VIOLATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project
-	@return ApiGetViolationsByProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project
+ @return ApiGetViolationsByProjectRequest
 */
 func (a *ViolationAPIService) GetViolationsByProject(ctx context.Context, uuid string) ApiGetViolationsByProjectRequest {
 	return ApiGetViolationsByProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []PolicyViolation
+//  @return []PolicyViolation
 func (a *ViolationAPIService) GetViolationsByProjectExecute(r ApiGetViolationsByProjectRequest) ([]PolicyViolation, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []PolicyViolation
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []PolicyViolation
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ViolationAPIService.GetViolationsByProject")

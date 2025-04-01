@@ -19,10 +19,10 @@ var _ MappedNullable = &LdapUser{}
 
 // LdapUser struct for LdapUser
 type LdapUser struct {
-	Username    *string      `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	Dn          *string      `json:"dn,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	Teams       []Team       `json:"teams,omitempty"`
-	Email       *string      `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Username *string `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Dn *string `json:"dn,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Teams []Team `json:"teams,omitempty"`
+	Email *string `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
 	Permissions []Permission `json:"permissions,omitempty"`
 }
 
@@ -204,7 +204,7 @@ func (o *LdapUser) SetPermissions(v []Permission) {
 }
 
 func (o LdapUser) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -266,3 +266,5 @@ func (v *NullableLdapUser) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

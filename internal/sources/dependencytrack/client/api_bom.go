@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type BomAPI interface {
 
 	/*
-		ExportComponentAsCycloneDx Returns dependency metadata for a specific component in CycloneDX format
+	ExportComponentAsCycloneDx Returns dependency metadata for a specific component in CycloneDX format
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the component to export
-		@return ApiExportComponentAsCycloneDxRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to export
+	@return ApiExportComponentAsCycloneDxRequest
 	*/
 	ExportComponentAsCycloneDx(ctx context.Context, uuid string) ApiExportComponentAsCycloneDxRequest
 
@@ -37,13 +38,13 @@ type BomAPI interface {
 	ExportComponentAsCycloneDxExecute(r ApiExportComponentAsCycloneDxRequest) (string, *http.Response, error)
 
 	/*
-		ExportProjectAsCycloneDx Returns dependency metadata for a project in CycloneDX format
+	ExportProjectAsCycloneDx Returns dependency metadata for a project in CycloneDX format
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to export
-		@return ApiExportProjectAsCycloneDxRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to export
+	@return ApiExportProjectAsCycloneDxRequest
 	*/
 	ExportProjectAsCycloneDx(ctx context.Context, uuid string) ApiExportProjectAsCycloneDxRequest
 
@@ -52,27 +53,27 @@ type BomAPI interface {
 	ExportProjectAsCycloneDxExecute(r ApiExportProjectAsCycloneDxRequest) (string, *http.Response, error)
 
 	/*
-			IsTokenBeingProcessed Determines if there are any tasks associated with the token that are being processed, or in the queue to be processed.
+	IsTokenBeingProcessed Determines if there are any tasks associated with the token that are being processed, or in the queue to be processed.
 
-			<p>
-		  This endpoint is intended to be used in conjunction with uploading a supported BOM document.
-		  Upon upload, a token will be returned. The token can then be queried using this endpoint to
-		  determine if any tasks (such as vulnerability analysis) is being performed on the BOM:
-		  <ul>
-		    <li>A value of <code>true</code> indicates processing is occurring.</li>
-		    <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
-		  </ul>
-		  However, a value of <code>false</code> also does not confirm the token is valid,
-		  only that no processing is associated with the specified token.
-		</p>
-		<p>Requires permission <strong>BOM_UPLOAD</strong></p>
-		<p><strong>Deprecated</strong>. Use <code>/v1/event/token/{uuid}</code> instead.</p>
+	<p>
+  This endpoint is intended to be used in conjunction with uploading a supported BOM document.
+  Upon upload, a token will be returned. The token can then be queried using this endpoint to
+  determine if any tasks (such as vulnerability analysis) is being performed on the BOM:
+  <ul>
+    <li>A value of <code>true</code> indicates processing is occurring.</li>
+    <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
+  </ul>
+  However, a value of <code>false</code> also does not confirm the token is valid,
+  only that no processing is associated with the specified token.
+</p>
+<p>Requires permission <strong>BOM_UPLOAD</strong></p>
+<p><strong>Deprecated</strong>. Use <code>/v1/event/token/{uuid}</code> instead.</p>
 
-			@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-			@param uuid The UUID of the token to query
-			@return ApiIsTokenBeingProcessedRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the token to query
+	@return ApiIsTokenBeingProcessedRequest
 
-			Deprecated
+	Deprecated
 	*/
 	IsTokenBeingProcessed(ctx context.Context, uuid string) ApiIsTokenBeingProcessedRequest
 
@@ -82,25 +83,25 @@ type BomAPI interface {
 	IsTokenBeingProcessedExecute(r ApiIsTokenBeingProcessedRequest) (*IsTokenBeingProcessedResponse, *http.Response, error)
 
 	/*
-			UploadBom Upload a supported bill of material format document
+	UploadBom Upload a supported bill of material format document
 
-			<p>
-		   Expects CycloneDX and a valid project UUID. If a UUID is not specified,
-		   then the <code>projectName</code> and <code>projectVersion</code> must be specified.
-		   Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
-		   the project will be created. In this scenario, the principal making the request will
-		   additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
-		   <strong>PROJECT_CREATION_UPLOAD</strong> permission.
-		 </p>
-		 <p>
-		   The BOM will be validated against the CycloneDX schema. If schema validation fails,
-		   a response with problem details in RFC 9457 format will be returned. In this case,
-		   the response's content type will be <code>application/problem+json</code>.
-		 </p>
-		 <p>Requires permission <strong>BOM_UPLOAD</strong></p>
+	<p>
+   Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+   then the <code>projectName</code> and <code>projectVersion</code> must be specified.
+   Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
+   the project will be created. In this scenario, the principal making the request will
+   additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
+   <strong>PROJECT_CREATION_UPLOAD</strong> permission.
+ </p>
+ <p>
+   The BOM will be validated against the CycloneDX schema. If schema validation fails,
+   a response with problem details in RFC 9457 format will be returned. In this case,
+   the response's content type will be <code>application/problem+json</code>.
+ </p>
+ <p>Requires permission <strong>BOM_UPLOAD</strong></p>
 
-			@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-			@return ApiUploadBomRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUploadBomRequest
 	*/
 	UploadBom(ctx context.Context) ApiUploadBomRequest
 
@@ -109,30 +110,30 @@ type BomAPI interface {
 	UploadBomExecute(r ApiUploadBomRequest) (*BomUploadResponse, *http.Response, error)
 
 	/*
-			UploadBomBase64Encoded Upload a supported bill of material format document
+	UploadBomBase64Encoded Upload a supported bill of material format document
 
-			<p>
-		  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
-		  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
-		  Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
-		  the project will be created. In this scenario, the principal making the request will
-		  additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
-		  <strong>PROJECT_CREATION_UPLOAD</strong> permission.
-		</p>
-		<p>
-		  The BOM will be validated against the CycloneDX schema. If schema validation fails,
-		  a response with problem details in RFC 9457 format will be returned. In this case,
-		  the response's content type will be <code>application/problem+json</code>.
-		</p>
-		<p>
-		  The maximum allowed length of the <code>bom</code> value is 20'000'000 characters.
-		  When uploading large BOMs, the <code>POST</code> endpoint is preferred,
-		  as it does not have this limit.
-		</p>
-		<p>Requires permission <strong>BOM_UPLOAD</strong></p>
+	<p>
+  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
+  Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
+  the project will be created. In this scenario, the principal making the request will
+  additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
+  <strong>PROJECT_CREATION_UPLOAD</strong> permission.
+</p>
+<p>
+  The BOM will be validated against the CycloneDX schema. If schema validation fails,
+  a response with problem details in RFC 9457 format will be returned. In this case,
+  the response's content type will be <code>application/problem+json</code>.
+</p>
+<p>
+  The maximum allowed length of the <code>bom</code> value is 20'000'000 characters.
+  When uploading large BOMs, the <code>POST</code> endpoint is preferred,
+  as it does not have this limit.
+</p>
+<p>Requires permission <strong>BOM_UPLOAD</strong></p>
 
-			@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-			@return ApiUploadBomBase64EncodedRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUploadBomBase64EncodedRequest
 	*/
 	UploadBomBase64Encoded(ctx context.Context) ApiUploadBomBase64EncodedRequest
 
@@ -145,10 +146,10 @@ type BomAPI interface {
 type BomAPIService service
 
 type ApiExportComponentAsCycloneDxRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService BomAPI
-	uuid       string
-	format     *string
+	uuid string
+	format *string
 }
 
 // The format to output (defaults to JSON)
@@ -166,27 +167,26 @@ ExportComponentAsCycloneDx Returns dependency metadata for a specific component 
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to export
-	@return ApiExportComponentAsCycloneDxRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to export
+ @return ApiExportComponentAsCycloneDxRequest
 */
 func (a *BomAPIService) ExportComponentAsCycloneDx(ctx context.Context, uuid string) ApiExportComponentAsCycloneDxRequest {
 	return ApiExportComponentAsCycloneDxRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *BomAPIService) ExportComponentAsCycloneDxExecute(r ApiExportComponentAsCycloneDxRequest) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BomAPIService.ExportComponentAsCycloneDx")
@@ -273,12 +273,12 @@ func (a *BomAPIService) ExportComponentAsCycloneDxExecute(r ApiExportComponentAs
 }
 
 type ApiExportProjectAsCycloneDxRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService BomAPI
-	uuid       string
-	format     *string
-	variant    *string
-	download   *bool
+	uuid string
+	format *string
+	variant *string
+	download *bool
 }
 
 // The format to output (defaults to JSON)
@@ -308,27 +308,26 @@ ExportProjectAsCycloneDx Returns dependency metadata for a project in CycloneDX 
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to export
-	@return ApiExportProjectAsCycloneDxRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to export
+ @return ApiExportProjectAsCycloneDxRequest
 */
 func (a *BomAPIService) ExportProjectAsCycloneDx(ctx context.Context, uuid string) ApiExportProjectAsCycloneDxRequest {
 	return ApiExportProjectAsCycloneDxRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *BomAPIService) ExportProjectAsCycloneDxExecute(r ApiExportProjectAsCycloneDxRequest) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BomAPIService.ExportProjectAsCycloneDx")
@@ -421,9 +420,9 @@ func (a *BomAPIService) ExportProjectAsCycloneDxExecute(r ApiExportProjectAsCycl
 }
 
 type ApiIsTokenBeingProcessedRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService BomAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiIsTokenBeingProcessedRequest) Execute() (*IsTokenBeingProcessedResponse, *http.Response, error) {
@@ -434,46 +433,42 @@ func (r ApiIsTokenBeingProcessedRequest) Execute() (*IsTokenBeingProcessedRespon
 IsTokenBeingProcessed Determines if there are any tasks associated with the token that are being processed, or in the queue to be processed.
 
 <p>
-
-	This endpoint is intended to be used in conjunction with uploading a supported BOM document.
-	Upon upload, a token will be returned. The token can then be queried using this endpoint to
-	determine if any tasks (such as vulnerability analysis) is being performed on the BOM:
-	<ul>
-	  <li>A value of <code>true</code> indicates processing is occurring.</li>
-	  <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
-	</ul>
-	However, a value of <code>false</code> also does not confirm the token is valid,
-	only that no processing is associated with the specified token.
-
+  This endpoint is intended to be used in conjunction with uploading a supported BOM document.
+  Upon upload, a token will be returned. The token can then be queried using this endpoint to
+  determine if any tasks (such as vulnerability analysis) is being performed on the BOM:
+  <ul>
+    <li>A value of <code>true</code> indicates processing is occurring.</li>
+    <li>A value of <code>false</code> indicates that no processing is occurring for the specified token.</li>
+  </ul>
+  However, a value of <code>false</code> also does not confirm the token is valid,
+  only that no processing is associated with the specified token.
 </p>
 <p>Requires permission <strong>BOM_UPLOAD</strong></p>
 <p><strong>Deprecated</strong>. Use <code>/v1/event/token/{uuid}</code> instead.</p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the token to query
-	@return ApiIsTokenBeingProcessedRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the token to query
+ @return ApiIsTokenBeingProcessedRequest
 
 Deprecated
 */
 func (a *BomAPIService) IsTokenBeingProcessed(ctx context.Context, uuid string) ApiIsTokenBeingProcessedRequest {
 	return ApiIsTokenBeingProcessedRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return IsTokenBeingProcessedResponse
-//
+//  @return IsTokenBeingProcessedResponse
 // Deprecated
 func (a *BomAPIService) IsTokenBeingProcessedExecute(r ApiIsTokenBeingProcessedRequest) (*IsTokenBeingProcessedResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *IsTokenBeingProcessedResponse
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *IsTokenBeingProcessedResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BomAPIService.IsTokenBeingProcessed")
@@ -557,16 +552,16 @@ func (a *BomAPIService) IsTokenBeingProcessedExecute(r ApiIsTokenBeingProcessedR
 }
 
 type ApiUploadBomRequest struct {
-	ctx            context.Context
-	ApiService     BomAPI
-	project        *string
-	autoCreate     *bool
-	projectName    *string
+	ctx context.Context
+	ApiService BomAPI
+	project *string
+	autoCreate *bool
+	projectName *string
 	projectVersion *string
-	parentName     *string
-	parentVersion  *string
-	parentUUID     *string
-	bom            *string
+	parentName *string
+	parentVersion *string
+	parentUUID *string
+	bom *string
 }
 
 func (r ApiUploadBomRequest) Project(project string) ApiUploadBomRequest {
@@ -617,40 +612,38 @@ func (r ApiUploadBomRequest) Execute() (*BomUploadResponse, *http.Response, erro
 UploadBom Upload a supported bill of material format document
 
 <p>
+   Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+   then the <code>projectName</code> and <code>projectVersion</code> must be specified.
+   Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
+   the project will be created. In this scenario, the principal making the request will
+   additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
+   <strong>PROJECT_CREATION_UPLOAD</strong> permission.
+ </p>
+ <p>
+   The BOM will be validated against the CycloneDX schema. If schema validation fails,
+   a response with problem details in RFC 9457 format will be returned. In this case,
+   the response's content type will be <code>application/problem+json</code>.
+ </p>
+ <p>Requires permission <strong>BOM_UPLOAD</strong></p>
 
-	  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
-	  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
-	  Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
-	  the project will be created. In this scenario, the principal making the request will
-	  additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
-	  <strong>PROJECT_CREATION_UPLOAD</strong> permission.
-	</p>
-	<p>
-	  The BOM will be validated against the CycloneDX schema. If schema validation fails,
-	  a response with problem details in RFC 9457 format will be returned. In this case,
-	  the response's content type will be <code>application/problem+json</code>.
-	</p>
-	<p>Requires permission <strong>BOM_UPLOAD</strong></p>
-
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUploadBomRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUploadBomRequest
 */
 func (a *BomAPIService) UploadBom(ctx context.Context) ApiUploadBomRequest {
 	return ApiUploadBomRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return BomUploadResponse
+//  @return BomUploadResponse
 func (a *BomAPIService) UploadBomExecute(r ApiUploadBomRequest) (*BomUploadResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *BomUploadResponse
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *BomUploadResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BomAPIService.UploadBom")
@@ -748,8 +741,8 @@ func (a *BomAPIService) UploadBomExecute(r ApiUploadBomRequest) (*BomUploadRespo
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
@@ -768,9 +761,9 @@ func (a *BomAPIService) UploadBomExecute(r ApiUploadBomRequest) (*BomUploadRespo
 }
 
 type ApiUploadBomBase64EncodedRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService BomAPI
-	body       *BomSubmitRequest
+	body *BomSubmitRequest
 }
 
 func (r ApiUploadBomBase64EncodedRequest) Body(body BomSubmitRequest) ApiUploadBomBase64EncodedRequest {
@@ -786,50 +779,43 @@ func (r ApiUploadBomBase64EncodedRequest) Execute() (*BomUploadResponse, *http.R
 UploadBomBase64Encoded Upload a supported bill of material format document
 
 <p>
-
-	Expects CycloneDX and a valid project UUID. If a UUID is not specified,
-	then the <code>projectName</code> and <code>projectVersion</code> must be specified.
-	Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
-	the project will be created. In this scenario, the principal making the request will
-	additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
-	<strong>PROJECT_CREATION_UPLOAD</strong> permission.
-
+  Expects CycloneDX and a valid project UUID. If a UUID is not specified,
+  then the <code>projectName</code> and <code>projectVersion</code> must be specified.
+  Optionally, if <code>autoCreate</code> is specified and <code>true</code> and the project does not exist,
+  the project will be created. In this scenario, the principal making the request will
+  additionally need the <strong>PORTFOLIO_MANAGEMENT</strong> or
+  <strong>PROJECT_CREATION_UPLOAD</strong> permission.
 </p>
 <p>
-
-	The BOM will be validated against the CycloneDX schema. If schema validation fails,
-	a response with problem details in RFC 9457 format will be returned. In this case,
-	the response's content type will be <code>application/problem+json</code>.
-
+  The BOM will be validated against the CycloneDX schema. If schema validation fails,
+  a response with problem details in RFC 9457 format will be returned. In this case,
+  the response's content type will be <code>application/problem+json</code>.
 </p>
 <p>
-
-	The maximum allowed length of the <code>bom</code> value is 20'000'000 characters.
-	When uploading large BOMs, the <code>POST</code> endpoint is preferred,
-	as it does not have this limit.
-
+  The maximum allowed length of the <code>bom</code> value is 20'000'000 characters.
+  When uploading large BOMs, the <code>POST</code> endpoint is preferred,
+  as it does not have this limit.
 </p>
 <p>Requires permission <strong>BOM_UPLOAD</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUploadBomBase64EncodedRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUploadBomBase64EncodedRequest
 */
 func (a *BomAPIService) UploadBomBase64Encoded(ctx context.Context) ApiUploadBomBase64EncodedRequest {
 	return ApiUploadBomBase64EncodedRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return BomUploadResponse
+//  @return BomUploadResponse
 func (a *BomAPIService) UploadBomBase64EncodedExecute(r ApiUploadBomBase64EncodedRequest) (*BomUploadResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *BomUploadResponse
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *BomUploadResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BomAPIService.UploadBomBase64Encoded")
@@ -908,8 +894,8 @@ func (a *BomAPIService) UploadBomBase64EncodedExecute(r ApiUploadBomBase64Encode
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr

@@ -2,6 +2,7 @@ package grpcmgmt
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/updater"

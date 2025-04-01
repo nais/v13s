@@ -19,7 +19,7 @@ var _ MappedNullable = &MappedOidcGroupRequest{}
 
 // MappedOidcGroupRequest struct for MappedOidcGroupRequest
 type MappedOidcGroupRequest struct {
-	Team  *string `json:"team,omitempty" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
+	Team *string `json:"team,omitempty" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
 	Group *string `json:"group,omitempty" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
 }
 
@@ -105,7 +105,7 @@ func (o *MappedOidcGroupRequest) SetGroup(v string) {
 }
 
 func (o MappedOidcGroupRequest) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,3 +158,5 @@ func (v *NullableMappedOidcGroupRequest) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

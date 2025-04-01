@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,15 +21,15 @@ var _ MappedNullable = &Repository{}
 
 // Repository struct for Repository
 type Repository struct {
-	Type                   string  `json:"type"`
-	Identifier             *string `json:"identifier,omitempty"`
-	Url                    *string `json:"url,omitempty"`
-	ResolutionOrder        int32   `json:"resolutionOrder"`
-	Enabled                bool    `json:"enabled"`
-	Internal               bool    `json:"internal"`
-	AuthenticationRequired *bool   `json:"authenticationRequired,omitempty"`
-	Username               *string `json:"username,omitempty"`
-	Uuid                   string  `json:"uuid"`
+	Type string `json:"type"`
+	Identifier *string `json:"identifier,omitempty"`
+	Url *string `json:"url,omitempty"`
+	ResolutionOrder int32 `json:"resolutionOrder"`
+	Enabled bool `json:"enabled"`
+	Internal bool `json:"internal"`
+	AuthenticationRequired *bool `json:"authenticationRequired,omitempty"`
+	Username *string `json:"username,omitempty"`
+	Uuid string `json:"uuid"`
 }
 
 type _Repository Repository
@@ -305,7 +305,7 @@ func (o *Repository) SetUuid(v string) {
 }
 
 func (o Repository) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -351,10 +351,10 @@ func (o *Repository) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -410,3 +410,5 @@ func (v *NullableRepository) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

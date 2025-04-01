@@ -3,11 +3,12 @@ package auth
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/sirupsen/logrus"
-	"sync"
-	"time"
 )
 
 const XApiKeyName = "X-Api-Key"

@@ -4,6 +4,9 @@ package grpcvulnerabilities_test
 import (
 	"context"
 	"fmt"
+	"net"
+	"testing"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
@@ -15,8 +18,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
-	"net"
-	"testing"
 )
 
 func TestServer_ListVulnerabilities(t *testing.T) {

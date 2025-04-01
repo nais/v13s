@@ -1,15 +1,16 @@
 package auth
 
 import (
-	"cloud.google.com/go/auth/credentials/idtoken"
 	"context"
+	"strings"
+
+	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/nais/v13s/internal/collections"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"strings"
 )
 
 var (

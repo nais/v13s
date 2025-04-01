@@ -3,12 +3,13 @@ package auth
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestUsernamePasswordSource_ContextHeaders(t *testing.T) {

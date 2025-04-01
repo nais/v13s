@@ -3,6 +3,8 @@ package updater
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,7 +12,6 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 const (

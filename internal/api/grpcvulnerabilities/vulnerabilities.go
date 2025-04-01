@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/emicklei/pgtalk/convert"
 	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/api/grpcpagination"
@@ -11,8 +14,6 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"strings"
-	"time"
 )
 
 // TODO: add input validation for request, especially for filter values

@@ -3,10 +3,11 @@ package sources
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/sirupsen/logrus"
-	"strings"
 )
 
 var ErrNoMetrics = fmt.Errorf("no metrics found")

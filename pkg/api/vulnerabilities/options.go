@@ -1,9 +1,10 @@
 package vulnerabilities
 
 import (
+	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
 )
 
 var _ Option = (*funcOption)(nil)

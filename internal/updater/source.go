@@ -2,10 +2,11 @@ package updater
 
 import (
 	"context"
+	"time"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"golang.org/x/sync/errgroup"
-	"time"
 )
 
 type ImageVulnerabilityData struct {

@@ -19,8 +19,8 @@ var _ MappedNullable = &ProjectMetadata{}
 
 // ProjectMetadata struct for ProjectMetadata
 type ProjectMetadata struct {
-	Supplier *OrganizationalEntity   `json:"supplier,omitempty"`
-	Authors  []OrganizationalContact `json:"authors,omitempty"`
+	Supplier *OrganizationalEntity `json:"supplier,omitempty"`
+	Authors []OrganizationalContact `json:"authors,omitempty"`
 }
 
 // NewProjectMetadata instantiates a new ProjectMetadata object
@@ -105,7 +105,7 @@ func (o *ProjectMetadata) SetAuthors(v []OrganizationalContact) {
 }
 
 func (o ProjectMetadata) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,3 +158,5 @@ func (v *NullableProjectMetadata) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type FindingAPI interface {
 
 	/*
-		AnalyzeProject Triggers Vulnerability Analysis on a specific project
+	AnalyzeProject Triggers Vulnerability Analysis on a specific project
 
-		<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to analyze
-		@return ApiAnalyzeProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to analyze
+	@return ApiAnalyzeProjectRequest
 	*/
 	AnalyzeProject(ctx context.Context, uuid string) ApiAnalyzeProjectRequest
 
@@ -37,13 +38,13 @@ type FindingAPI interface {
 	AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*Project, *http.Response, error)
 
 	/*
-		ExportFindingsByProject Returns the findings for the specified project as FPF
+	ExportFindingsByProject Returns the findings for the specified project as FPF
 
-		<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project
-		@return ApiExportFindingsByProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiExportFindingsByProjectRequest
 	*/
 	ExportFindingsByProject(ctx context.Context, uuid string) ApiExportFindingsByProjectRequest
 
@@ -51,12 +52,12 @@ type FindingAPI interface {
 	ExportFindingsByProjectExecute(r ApiExportFindingsByProjectRequest) (*http.Response, error)
 
 	/*
-		GetAllFindings Returns a list of all findings
+	GetAllFindings Returns a list of all findings
 
-		<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetAllFindingsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllFindingsRequest
 	*/
 	GetAllFindings(ctx context.Context) ApiGetAllFindingsRequest
 
@@ -65,12 +66,12 @@ type FindingAPI interface {
 	GetAllFindingsExecute(r ApiGetAllFindingsRequest) ([]Finding, *http.Response, error)
 
 	/*
-		GetAllFindings1 Returns a list of all findings grouped by vulnerability
+	GetAllFindings1 Returns a list of all findings grouped by vulnerability
 
-		<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetAllFindings1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllFindings1Request
 	*/
 	GetAllFindings1(ctx context.Context) ApiGetAllFindings1Request
 
@@ -79,13 +80,13 @@ type FindingAPI interface {
 	GetAllFindings1Execute(r ApiGetAllFindings1Request) ([]GroupedFinding, *http.Response, error)
 
 	/*
-		GetFindingsByProject Returns a list of all findings for a specific project or generates SARIF file if Accept: application/sarif+json header is provided
+	GetFindingsByProject Returns a list of all findings for a specific project or generates SARIF file if Accept: application/sarif+json header is provided
 
-		<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
+	<p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project
-		@return ApiGetFindingsByProjectRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetFindingsByProjectRequest
 	*/
 	GetFindingsByProject(ctx context.Context, uuid string) ApiGetFindingsByProjectRequest
 
@@ -98,9 +99,9 @@ type FindingAPI interface {
 type FindingAPIService service
 
 type ApiAnalyzeProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService FindingAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiAnalyzeProjectRequest) Execute() (*Project, *http.Response, error) {
@@ -112,27 +113,26 @@ AnalyzeProject Triggers Vulnerability Analysis on a specific project
 
 <p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to analyze
-	@return ApiAnalyzeProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to analyze
+ @return ApiAnalyzeProjectRequest
 */
 func (a *FindingAPIService) AnalyzeProject(ctx context.Context, uuid string) ApiAnalyzeProjectRequest {
 	return ApiAnalyzeProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Project
+//  @return Project
 func (a *FindingAPIService) AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Project
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "FindingAPIService.AnalyzeProject")
@@ -216,9 +216,9 @@ func (a *FindingAPIService) AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*
 }
 
 type ApiExportFindingsByProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService FindingAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiExportFindingsByProjectRequest) Execute() (*http.Response, error) {
@@ -230,24 +230,24 @@ ExportFindingsByProject Returns the findings for the specified project as FPF
 
 <p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project
-	@return ApiExportFindingsByProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project
+ @return ApiExportFindingsByProjectRequest
 */
 func (a *FindingAPIService) ExportFindingsByProject(ctx context.Context, uuid string) ApiExportFindingsByProjectRequest {
 	return ApiExportFindingsByProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *FindingAPIService) ExportFindingsByProjectExecute(r ApiExportFindingsByProjectRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodGet
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "FindingAPIService.ExportFindingsByProject")
@@ -322,23 +322,23 @@ func (a *FindingAPIService) ExportFindingsByProjectExecute(r ApiExportFindingsBy
 }
 
 type ApiGetAllFindingsRequest struct {
-	ctx                  context.Context
-	ApiService           FindingAPI
-	showInactive         *bool
-	showSuppressed       *bool
-	severity             *string
-	analysisStatus       *string
-	vendorResponse       *string
-	publishDateFrom      *string
-	publishDateTo        *string
+	ctx context.Context
+	ApiService FindingAPI
+	showInactive *bool
+	showSuppressed *bool
+	severity *string
+	analysisStatus *string
+	vendorResponse *string
+	publishDateFrom *string
+	publishDateTo *string
 	attributedOnDateFrom *string
-	attributedOnDateTo   *string
-	textSearchField      *string
-	textSearchInput      *string
-	cvssv2From           *string
-	cvssv2To             *string
-	cvssv3From           *string
-	cvssv3To             *string
+	attributedOnDateTo *string
+	textSearchField *string
+	textSearchInput *string
+	cvssv2From *string
+	cvssv2To *string
+	cvssv3From *string
+	cvssv3To *string
 }
 
 // Show inactive projects
@@ -440,25 +440,24 @@ GetAllFindings Returns a list of all findings
 
 <p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetAllFindingsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetAllFindingsRequest
 */
 func (a *FindingAPIService) GetAllFindings(ctx context.Context) ApiGetAllFindingsRequest {
 	return ApiGetAllFindingsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Finding
+//  @return []Finding
 func (a *FindingAPIService) GetAllFindingsExecute(r ApiGetAllFindingsRequest) ([]Finding, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Finding
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Finding
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "FindingAPIService.GetAllFindings")
@@ -586,20 +585,20 @@ func (a *FindingAPIService) GetAllFindingsExecute(r ApiGetAllFindingsRequest) ([
 }
 
 type ApiGetAllFindings1Request struct {
-	ctx             context.Context
-	ApiService      FindingAPI
-	showInactive    *bool
-	severity        *string
+	ctx context.Context
+	ApiService FindingAPI
+	showInactive *bool
+	severity *string
 	publishDateFrom *string
-	publishDateTo   *string
+	publishDateTo *string
 	textSearchField *string
 	textSearchInput *string
-	cvssv2From      *string
-	cvssv2To        *string
-	cvssv3From      *string
-	cvssv3To        *string
+	cvssv2From *string
+	cvssv2To *string
+	cvssv3From *string
+	cvssv3To *string
 	occurrencesFrom *string
-	occurrencesTo   *string
+	occurrencesTo *string
 }
 
 // Show inactive projects
@@ -683,25 +682,24 @@ GetAllFindings1 Returns a list of all findings grouped by vulnerability
 
 <p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetAllFindings1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetAllFindings1Request
 */
 func (a *FindingAPIService) GetAllFindings1(ctx context.Context) ApiGetAllFindings1Request {
 	return ApiGetAllFindings1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []GroupedFinding
+//  @return []GroupedFinding
 func (a *FindingAPIService) GetAllFindings1Execute(r ApiGetAllFindings1Request) ([]GroupedFinding, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []GroupedFinding
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []GroupedFinding
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "FindingAPIService.GetAllFindings1")
@@ -820,12 +818,12 @@ func (a *FindingAPIService) GetAllFindings1Execute(r ApiGetAllFindings1Request) 
 }
 
 type ApiGetFindingsByProjectRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService FindingAPI
-	uuid       string
+	uuid string
 	suppressed *bool
-	source     *string
-	accept     *string
+	source *string
+	accept *string
 }
 
 // Optionally includes suppressed findings
@@ -854,27 +852,26 @@ GetFindingsByProject Returns a list of all findings for a specific project or ge
 
 <p>Requires permission <strong>VIEW_VULNERABILITY</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project
-	@return ApiGetFindingsByProjectRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project
+ @return ApiGetFindingsByProjectRequest
 */
 func (a *FindingAPIService) GetFindingsByProject(ctx context.Context, uuid string) ApiGetFindingsByProjectRequest {
 	return ApiGetFindingsByProjectRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Finding
+//  @return []Finding
 func (a *FindingAPIService) GetFindingsByProjectExecute(r ApiGetFindingsByProjectRequest) ([]Finding, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Finding
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Finding
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "FindingAPIService.GetFindingsByProject")

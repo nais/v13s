@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/in-toto/in-toto-golang/in_toto"
-	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
-	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
+	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 )
 
 var _ Client = &dependencyTrackClient{}

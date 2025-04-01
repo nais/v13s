@@ -4,9 +4,10 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"regexp"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"

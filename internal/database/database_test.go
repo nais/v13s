@@ -2,10 +2,11 @@ package database_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/test"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestMarkImagesAsUnused(t *testing.T) {

@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"os"
+	"strings"
+
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-	"math"
-	"os"
-	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/database"

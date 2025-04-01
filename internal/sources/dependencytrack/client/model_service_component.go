@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,24 +21,24 @@ var _ MappedNullable = &ServiceComponent{}
 
 // ServiceComponent struct for ServiceComponent
 type ServiceComponent struct {
-	Provider               *OrganizationalEntity `json:"provider,omitempty"`
-	Group                  *string               `json:"group,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Name                   *string               `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Version                *string               `json:"version,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Description            *string               `json:"description,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Endpoints              []string              `json:"endpoints,omitempty"`
-	Authenticated          *bool                 `json:"authenticated,omitempty"`
-	CrossesTrustBoundary   *bool                 `json:"crossesTrustBoundary,omitempty"`
-	Data                   []DataClassification  `json:"data,omitempty"`
-	ExternalReferences     []ExternalReference   `json:"externalReferences,omitempty"`
-	Parent                 *ServiceComponent     `json:"parent,omitempty"`
-	Children               []ServiceComponent    `json:"children,omitempty"`
-	Vulnerabilities        []Vulnerability       `json:"vulnerabilities,omitempty"`
-	Project                Project               `json:"project"`
-	LastInheritedRiskScore *float64              `json:"lastInheritedRiskScore,omitempty"`
-	Notes                  *string               `json:"notes,omitempty"`
-	Uuid                   string                `json:"uuid"`
-	BomRef                 *string               `json:"bomRef,omitempty"`
+	Provider *OrganizationalEntity `json:"provider,omitempty"`
+	Group *string `json:"group,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Version *string `json:"version,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Description *string `json:"description,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Endpoints []string `json:"endpoints,omitempty"`
+	Authenticated *bool `json:"authenticated,omitempty"`
+	CrossesTrustBoundary *bool `json:"crossesTrustBoundary,omitempty"`
+	Data []DataClassification `json:"data,omitempty"`
+	ExternalReferences []ExternalReference `json:"externalReferences,omitempty"`
+	Parent *ServiceComponent `json:"parent,omitempty"`
+	Children []ServiceComponent `json:"children,omitempty"`
+	Vulnerabilities []Vulnerability `json:"vulnerabilities,omitempty"`
+	Project Project `json:"project"`
+	LastInheritedRiskScore *float64 `json:"lastInheritedRiskScore,omitempty"`
+	Notes *string `json:"notes,omitempty"`
+	Uuid string `json:"uuid"`
+	BomRef *string `json:"bomRef,omitempty"`
 }
 
 type _ServiceComponent ServiceComponent
@@ -623,7 +623,7 @@ func (o *ServiceComponent) SetBomRef(v string) {
 }
 
 func (o ServiceComponent) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -699,10 +699,10 @@ func (o *ServiceComponent) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -758,3 +758,5 @@ func (v *NullableServiceComponent) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

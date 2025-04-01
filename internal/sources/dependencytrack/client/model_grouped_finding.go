@@ -20,7 +20,7 @@ var _ MappedNullable = &GroupedFinding{}
 // GroupedFinding struct for GroupedFinding
 type GroupedFinding struct {
 	Vulnerability map[string]map[string]interface{} `json:"vulnerability,omitempty"`
-	Attribution   map[string]map[string]interface{} `json:"attribution,omitempty"`
+	Attribution map[string]map[string]interface{} `json:"attribution,omitempty"`
 }
 
 // NewGroupedFinding instantiates a new GroupedFinding object
@@ -105,7 +105,7 @@ func (o *GroupedFinding) SetAttribution(v map[string]map[string]interface{}) {
 }
 
 func (o GroupedFinding) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,3 +158,5 @@ func (v *NullableGroupedFinding) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

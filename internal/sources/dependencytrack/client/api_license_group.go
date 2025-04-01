@@ -19,17 +19,18 @@ import (
 	"strings"
 )
 
+
 type LicenseGroupAPI interface {
 
 	/*
-		AddLicenseToLicenseGroup Adds the license to the specified license group.
+	AddLicenseToLicenseGroup Adds the license to the specified license group.
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid A valid license group
-		@param licenseUuid A valid license
-		@return ApiAddLicenseToLicenseGroupRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid A valid license group
+	@param licenseUuid A valid license
+	@return ApiAddLicenseToLicenseGroupRequest
 	*/
 	AddLicenseToLicenseGroup(ctx context.Context, uuid string, licenseUuid string) ApiAddLicenseToLicenseGroupRequest
 
@@ -38,12 +39,12 @@ type LicenseGroupAPI interface {
 	AddLicenseToLicenseGroupExecute(r ApiAddLicenseToLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
 
 	/*
-		CreateLicenseGroup Creates a new license group
+	CreateLicenseGroup Creates a new license group
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCreateLicenseGroupRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateLicenseGroupRequest
 	*/
 	CreateLicenseGroup(ctx context.Context) ApiCreateLicenseGroupRequest
 
@@ -52,13 +53,13 @@ type LicenseGroupAPI interface {
 	CreateLicenseGroupExecute(r ApiCreateLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
 
 	/*
-		DeleteLicenseGroup Deletes a license group
+	DeleteLicenseGroup Deletes a license group
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the license group to delete
-		@return ApiDeleteLicenseGroupRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the license group to delete
+	@return ApiDeleteLicenseGroupRequest
 	*/
 	DeleteLicenseGroup(ctx context.Context, uuid string) ApiDeleteLicenseGroupRequest
 
@@ -66,13 +67,13 @@ type LicenseGroupAPI interface {
 	DeleteLicenseGroupExecute(r ApiDeleteLicenseGroupRequest) (*http.Response, error)
 
 	/*
-		GetLicenseGroup Returns a specific license group
+	GetLicenseGroup Returns a specific license group
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the license group to retrieve
-		@return ApiGetLicenseGroupRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the license group to retrieve
+	@return ApiGetLicenseGroupRequest
 	*/
 	GetLicenseGroup(ctx context.Context, uuid string) ApiGetLicenseGroupRequest
 
@@ -81,12 +82,12 @@ type LicenseGroupAPI interface {
 	GetLicenseGroupExecute(r ApiGetLicenseGroupRequest) (*License, *http.Response, error)
 
 	/*
-		GetLicenseGroups Returns a list of all license groups
+	GetLicenseGroups Returns a list of all license groups
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetLicenseGroupsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetLicenseGroupsRequest
 	*/
 	GetLicenseGroups(ctx context.Context) ApiGetLicenseGroupsRequest
 
@@ -95,14 +96,14 @@ type LicenseGroupAPI interface {
 	GetLicenseGroupsExecute(r ApiGetLicenseGroupsRequest) ([]LicenseGroup, *http.Response, error)
 
 	/*
-		RemoveLicenseFromLicenseGroup Removes the license from the license group.
+	RemoveLicenseFromLicenseGroup Removes the license from the license group.
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid A valid license group
-		@param licenseUuid A valid license
-		@return ApiRemoveLicenseFromLicenseGroupRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid A valid license group
+	@param licenseUuid A valid license
+	@return ApiRemoveLicenseFromLicenseGroupRequest
 	*/
 	RemoveLicenseFromLicenseGroup(ctx context.Context, uuid string, licenseUuid string) ApiRemoveLicenseFromLicenseGroupRequest
 
@@ -111,12 +112,12 @@ type LicenseGroupAPI interface {
 	RemoveLicenseFromLicenseGroupExecute(r ApiRemoveLicenseFromLicenseGroupRequest) (*LicenseGroup, *http.Response, error)
 
 	/*
-		UpdateLicenseGroup Updates a license group
+	UpdateLicenseGroup Updates a license group
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiUpdateLicenseGroupRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateLicenseGroupRequest
 	*/
 	UpdateLicenseGroup(ctx context.Context) ApiUpdateLicenseGroupRequest
 
@@ -129,9 +130,9 @@ type LicenseGroupAPI interface {
 type LicenseGroupAPIService service
 
 type ApiAddLicenseToLicenseGroupRequest struct {
-	ctx         context.Context
-	ApiService  LicenseGroupAPI
-	uuid        string
+	ctx context.Context
+	ApiService LicenseGroupAPI
+	uuid string
 	licenseUuid string
 }
 
@@ -144,29 +145,28 @@ AddLicenseToLicenseGroup Adds the license to the specified license group.
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid A valid license group
-	@param licenseUuid A valid license
-	@return ApiAddLicenseToLicenseGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid A valid license group
+ @param licenseUuid A valid license
+ @return ApiAddLicenseToLicenseGroupRequest
 */
 func (a *LicenseGroupAPIService) AddLicenseToLicenseGroup(ctx context.Context, uuid string, licenseUuid string) ApiAddLicenseToLicenseGroupRequest {
 	return ApiAddLicenseToLicenseGroupRequest{
-		ApiService:  a,
-		ctx:         ctx,
-		uuid:        uuid,
+		ApiService: a,
+		ctx: ctx,
+		uuid: uuid,
 		licenseUuid: licenseUuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return LicenseGroup
+//  @return LicenseGroup
 func (a *LicenseGroupAPIService) AddLicenseToLicenseGroupExecute(r ApiAddLicenseToLicenseGroupRequest) (*LicenseGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *LicenseGroup
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *LicenseGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.AddLicenseToLicenseGroup")
@@ -251,9 +251,9 @@ func (a *LicenseGroupAPIService) AddLicenseToLicenseGroupExecute(r ApiAddLicense
 }
 
 type ApiCreateLicenseGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseGroupAPI
-	body       *LicenseGroup
+	body *LicenseGroup
 }
 
 func (r ApiCreateLicenseGroupRequest) Body(body LicenseGroup) ApiCreateLicenseGroupRequest {
@@ -270,25 +270,24 @@ CreateLicenseGroup Creates a new license group
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateLicenseGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateLicenseGroupRequest
 */
 func (a *LicenseGroupAPIService) CreateLicenseGroup(ctx context.Context) ApiCreateLicenseGroupRequest {
 	return ApiCreateLicenseGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return LicenseGroup
+//  @return LicenseGroup
 func (a *LicenseGroupAPIService) CreateLicenseGroupExecute(r ApiCreateLicenseGroupRequest) (*LicenseGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *LicenseGroup
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *LicenseGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.CreateLicenseGroup")
@@ -373,9 +372,9 @@ func (a *LicenseGroupAPIService) CreateLicenseGroupExecute(r ApiCreateLicenseGro
 }
 
 type ApiDeleteLicenseGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseGroupAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteLicenseGroupRequest) Execute() (*http.Response, error) {
@@ -387,24 +386,24 @@ DeleteLicenseGroup Deletes a license group
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the license group to delete
-	@return ApiDeleteLicenseGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the license group to delete
+ @return ApiDeleteLicenseGroupRequest
 */
 func (a *LicenseGroupAPIService) DeleteLicenseGroup(ctx context.Context, uuid string) ApiDeleteLicenseGroupRequest {
 	return ApiDeleteLicenseGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *LicenseGroupAPIService) DeleteLicenseGroupExecute(r ApiDeleteLicenseGroupRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.DeleteLicenseGroup")
@@ -479,9 +478,9 @@ func (a *LicenseGroupAPIService) DeleteLicenseGroupExecute(r ApiDeleteLicenseGro
 }
 
 type ApiGetLicenseGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseGroupAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetLicenseGroupRequest) Execute() (*License, *http.Response, error) {
@@ -493,27 +492,26 @@ GetLicenseGroup Returns a specific license group
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the license group to retrieve
-	@return ApiGetLicenseGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the license group to retrieve
+ @return ApiGetLicenseGroupRequest
 */
 func (a *LicenseGroupAPIService) GetLicenseGroup(ctx context.Context, uuid string) ApiGetLicenseGroupRequest {
 	return ApiGetLicenseGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return License
+//  @return License
 func (a *LicenseGroupAPIService) GetLicenseGroupExecute(r ApiGetLicenseGroupRequest) (*License, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *License
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *License
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.GetLicenseGroup")
@@ -597,14 +595,14 @@ func (a *LicenseGroupAPIService) GetLicenseGroupExecute(r ApiGetLicenseGroupRequ
 }
 
 type ApiGetLicenseGroupsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseGroupAPI
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -652,25 +650,24 @@ GetLicenseGroups Returns a list of all license groups
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetLicenseGroupsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetLicenseGroupsRequest
 */
 func (a *LicenseGroupAPIService) GetLicenseGroups(ctx context.Context) ApiGetLicenseGroupsRequest {
 	return ApiGetLicenseGroupsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []LicenseGroup
+//  @return []LicenseGroup
 func (a *LicenseGroupAPIService) GetLicenseGroupsExecute(r ApiGetLicenseGroupsRequest) ([]LicenseGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []LicenseGroup
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []LicenseGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.GetLicenseGroups")
@@ -777,9 +774,9 @@ func (a *LicenseGroupAPIService) GetLicenseGroupsExecute(r ApiGetLicenseGroupsRe
 }
 
 type ApiRemoveLicenseFromLicenseGroupRequest struct {
-	ctx         context.Context
-	ApiService  LicenseGroupAPI
-	uuid        string
+	ctx context.Context
+	ApiService LicenseGroupAPI
+	uuid string
 	licenseUuid string
 }
 
@@ -792,29 +789,28 @@ RemoveLicenseFromLicenseGroup Removes the license from the license group.
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid A valid license group
-	@param licenseUuid A valid license
-	@return ApiRemoveLicenseFromLicenseGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid A valid license group
+ @param licenseUuid A valid license
+ @return ApiRemoveLicenseFromLicenseGroupRequest
 */
 func (a *LicenseGroupAPIService) RemoveLicenseFromLicenseGroup(ctx context.Context, uuid string, licenseUuid string) ApiRemoveLicenseFromLicenseGroupRequest {
 	return ApiRemoveLicenseFromLicenseGroupRequest{
-		ApiService:  a,
-		ctx:         ctx,
-		uuid:        uuid,
+		ApiService: a,
+		ctx: ctx,
+		uuid: uuid,
 		licenseUuid: licenseUuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return LicenseGroup
+//  @return LicenseGroup
 func (a *LicenseGroupAPIService) RemoveLicenseFromLicenseGroupExecute(r ApiRemoveLicenseFromLicenseGroupRequest) (*LicenseGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodDelete
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *LicenseGroup
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *LicenseGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.RemoveLicenseFromLicenseGroup")
@@ -899,9 +895,9 @@ func (a *LicenseGroupAPIService) RemoveLicenseFromLicenseGroupExecute(r ApiRemov
 }
 
 type ApiUpdateLicenseGroupRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseGroupAPI
-	body       *LicenseGroup
+	body *LicenseGroup
 }
 
 func (r ApiUpdateLicenseGroupRequest) Body(body LicenseGroup) ApiUpdateLicenseGroupRequest {
@@ -918,25 +914,24 @@ UpdateLicenseGroup Updates a license group
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateLicenseGroupRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateLicenseGroupRequest
 */
 func (a *LicenseGroupAPIService) UpdateLicenseGroup(ctx context.Context) ApiUpdateLicenseGroupRequest {
 	return ApiUpdateLicenseGroupRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return LicenseGroup
+//  @return LicenseGroup
 func (a *LicenseGroupAPIService) UpdateLicenseGroupExecute(r ApiUpdateLicenseGroupRequest) (*LicenseGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *LicenseGroup
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *LicenseGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseGroupAPIService.UpdateLicenseGroup")

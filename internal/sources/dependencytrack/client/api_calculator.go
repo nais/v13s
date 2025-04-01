@@ -18,13 +18,14 @@ import (
 	"net/url"
 )
 
+
 type CalculatorAPI interface {
 
 	/*
-		GetCvssScores Returns the CVSS base score, impact sub-score and exploitability sub-score
+	GetCvssScores Returns the CVSS base score, impact sub-score and exploitability sub-score
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetCvssScoresRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetCvssScoresRequest
 	*/
 	GetCvssScores(ctx context.Context) ApiGetCvssScoresRequest
 
@@ -33,10 +34,10 @@ type CalculatorAPI interface {
 	GetCvssScoresExecute(r ApiGetCvssScoresRequest) (*Score, *http.Response, error)
 
 	/*
-		GetOwaspRRScores Returns the OWASP Risk Rating likelihood score, technical impact score and business impact score
+	GetOwaspRRScores Returns the OWASP Risk Rating likelihood score, technical impact score and business impact score
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetOwaspRRScoresRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetOwaspRRScoresRequest
 	*/
 	GetOwaspRRScores(ctx context.Context) ApiGetOwaspRRScoresRequest
 
@@ -49,9 +50,9 @@ type CalculatorAPI interface {
 type CalculatorAPIService service
 
 type ApiGetCvssScoresRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService CalculatorAPI
-	vector     *string
+	vector *string
 }
 
 // A valid CVSSv2 or CVSSv3 vector
@@ -67,25 +68,24 @@ func (r ApiGetCvssScoresRequest) Execute() (*Score, *http.Response, error) {
 /*
 GetCvssScores Returns the CVSS base score, impact sub-score and exploitability sub-score
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetCvssScoresRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetCvssScoresRequest
 */
 func (a *CalculatorAPIService) GetCvssScores(ctx context.Context) ApiGetCvssScoresRequest {
 	return ApiGetCvssScoresRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Score
+//  @return Score
 func (a *CalculatorAPIService) GetCvssScoresExecute(r ApiGetCvssScoresRequest) (*Score, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Score
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Score
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "CalculatorAPIService.GetCvssScores")
@@ -172,9 +172,9 @@ func (a *CalculatorAPIService) GetCvssScoresExecute(r ApiGetCvssScoresRequest) (
 }
 
 type ApiGetOwaspRRScoresRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService CalculatorAPI
-	vector     *string
+	vector *string
 }
 
 // A valid OWASP Risk Rating vector
@@ -190,25 +190,24 @@ func (r ApiGetOwaspRRScoresRequest) Execute() (*Score, *http.Response, error) {
 /*
 GetOwaspRRScores Returns the OWASP Risk Rating likelihood score, technical impact score and business impact score
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetOwaspRRScoresRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetOwaspRRScoresRequest
 */
 func (a *CalculatorAPIService) GetOwaspRRScores(ctx context.Context) ApiGetOwaspRRScoresRequest {
 	return ApiGetOwaspRRScoresRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Score
+//  @return Score
 func (a *CalculatorAPIService) GetOwaspRRScoresExecute(r ApiGetOwaspRRScoresRequest) (*Score, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Score
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Score
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "CalculatorAPIService.GetOwaspRRScores")

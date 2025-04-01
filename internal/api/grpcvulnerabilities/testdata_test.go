@@ -2,6 +2,7 @@ package grpcvulnerabilities_test
 
 import (
 	"fmt"
+
 	"github.com/nais/v13s/internal/database/sql"
 )
 

@@ -5,6 +5,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -17,10 +22,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type config struct {

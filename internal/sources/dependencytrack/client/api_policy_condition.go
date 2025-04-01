@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type PolicyConditionAPI interface {
 
 	/*
-		CreatePolicyCondition Creates a new policy condition
+	CreatePolicyCondition Creates a new policy condition
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the policy
-		@return ApiCreatePolicyConditionRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy
+	@return ApiCreatePolicyConditionRequest
 	*/
 	CreatePolicyCondition(ctx context.Context, uuid string) ApiCreatePolicyConditionRequest
 
@@ -37,13 +38,13 @@ type PolicyConditionAPI interface {
 	CreatePolicyConditionExecute(r ApiCreatePolicyConditionRequest) (*PolicyCondition, *http.Response, error)
 
 	/*
-		DeletePolicyCondition Deletes a policy condition
+	DeletePolicyCondition Deletes a policy condition
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the policy condition to delete
-		@return ApiDeletePolicyConditionRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy condition to delete
+	@return ApiDeletePolicyConditionRequest
 	*/
 	DeletePolicyCondition(ctx context.Context, uuid string) ApiDeletePolicyConditionRequest
 
@@ -51,12 +52,12 @@ type PolicyConditionAPI interface {
 	DeletePolicyConditionExecute(r ApiDeletePolicyConditionRequest) (*http.Response, error)
 
 	/*
-		UpdatePolicyCondition Updates a policy condition
+	UpdatePolicyCondition Updates a policy condition
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiUpdatePolicyConditionRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdatePolicyConditionRequest
 	*/
 	UpdatePolicyCondition(ctx context.Context) ApiUpdatePolicyConditionRequest
 
@@ -69,10 +70,10 @@ type PolicyConditionAPI interface {
 type PolicyConditionAPIService service
 
 type ApiCreatePolicyConditionRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService PolicyConditionAPI
-	uuid       string
-	body       *PolicyCondition
+	uuid string
+	body *PolicyCondition
 }
 
 func (r ApiCreatePolicyConditionRequest) Body(body PolicyCondition) ApiCreatePolicyConditionRequest {
@@ -89,27 +90,26 @@ CreatePolicyCondition Creates a new policy condition
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the policy
-	@return ApiCreatePolicyConditionRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the policy
+ @return ApiCreatePolicyConditionRequest
 */
 func (a *PolicyConditionAPIService) CreatePolicyCondition(ctx context.Context, uuid string) ApiCreatePolicyConditionRequest {
 	return ApiCreatePolicyConditionRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return PolicyCondition
+//  @return PolicyCondition
 func (a *PolicyConditionAPIService) CreatePolicyConditionExecute(r ApiCreatePolicyConditionRequest) (*PolicyCondition, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *PolicyCondition
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *PolicyCondition
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "PolicyConditionAPIService.CreatePolicyCondition")
@@ -195,9 +195,9 @@ func (a *PolicyConditionAPIService) CreatePolicyConditionExecute(r ApiCreatePoli
 }
 
 type ApiDeletePolicyConditionRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService PolicyConditionAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeletePolicyConditionRequest) Execute() (*http.Response, error) {
@@ -209,24 +209,24 @@ DeletePolicyCondition Deletes a policy condition
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the policy condition to delete
-	@return ApiDeletePolicyConditionRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the policy condition to delete
+ @return ApiDeletePolicyConditionRequest
 */
 func (a *PolicyConditionAPIService) DeletePolicyCondition(ctx context.Context, uuid string) ApiDeletePolicyConditionRequest {
 	return ApiDeletePolicyConditionRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *PolicyConditionAPIService) DeletePolicyConditionExecute(r ApiDeletePolicyConditionRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "PolicyConditionAPIService.DeletePolicyCondition")
@@ -301,9 +301,9 @@ func (a *PolicyConditionAPIService) DeletePolicyConditionExecute(r ApiDeletePoli
 }
 
 type ApiUpdatePolicyConditionRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService PolicyConditionAPI
-	body       *PolicyCondition
+	body *PolicyCondition
 }
 
 func (r ApiUpdatePolicyConditionRequest) Body(body PolicyCondition) ApiUpdatePolicyConditionRequest {
@@ -320,25 +320,24 @@ UpdatePolicyCondition Updates a policy condition
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdatePolicyConditionRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdatePolicyConditionRequest
 */
 func (a *PolicyConditionAPIService) UpdatePolicyCondition(ctx context.Context) ApiUpdatePolicyConditionRequest {
 	return ApiUpdatePolicyConditionRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return PolicyCondition
+//  @return PolicyCondition
 func (a *PolicyConditionAPIService) UpdatePolicyConditionExecute(r ApiUpdatePolicyConditionRequest) (*PolicyCondition, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *PolicyCondition
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *PolicyCondition
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "PolicyConditionAPIService.UpdatePolicyCondition")

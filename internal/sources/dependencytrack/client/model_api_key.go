@@ -11,8 +11,8 @@ API version: 4.11.7
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,10 +21,10 @@ var _ MappedNullable = &ApiKey{}
 
 // ApiKey struct for ApiKey
 type ApiKey struct {
-	Key       string  `json:"key" validate:"regexp=^[a-zA-Z_0-9]*$"`
-	Comment   *string `json:"comment,omitempty"`
-	Created   *int64  `json:"created,omitempty"`
-	LastUsed  *int64  `json:"lastUsed,omitempty"`
+	Key string `json:"key" validate:"regexp=^[a-zA-Z_0-9]*$"`
+	Comment *string `json:"comment,omitempty"`
+	Created *int64 `json:"created,omitempty"`
+	LastUsed *int64 `json:"lastUsed,omitempty"`
 	MaskedKey *string `json:"maskedKey,omitempty"`
 }
 
@@ -201,7 +201,7 @@ func (o *ApiKey) SetMaskedKey(v string) {
 }
 
 func (o ApiKey) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -239,10 +239,10 @@ func (o *ApiKey) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -298,3 +298,5 @@ func (v *NullableApiKey) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

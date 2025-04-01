@@ -19,15 +19,16 @@ import (
 	"strings"
 )
 
+
 type LicenseAPI interface {
 
 	/*
-		CreateLicense Creates a new custom license
+	CreateLicense Creates a new custom license
 
-		<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCreateLicenseRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateLicenseRequest
 	*/
 	CreateLicense(ctx context.Context) ApiCreateLicenseRequest
 
@@ -36,13 +37,13 @@ type LicenseAPI interface {
 	CreateLicenseExecute(r ApiCreateLicenseRequest) (*License, *http.Response, error)
 
 	/*
-		DeleteLicense Deletes a custom license
+	DeleteLicense Deletes a custom license
 
-		<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param licenseId The SPDX License ID of the license to delete
-		@return ApiDeleteLicenseRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param licenseId The SPDX License ID of the license to delete
+	@return ApiDeleteLicenseRequest
 	*/
 	DeleteLicense(ctx context.Context, licenseId string) ApiDeleteLicenseRequest
 
@@ -50,11 +51,11 @@ type LicenseAPI interface {
 	DeleteLicenseExecute(r ApiDeleteLicenseRequest) (*http.Response, error)
 
 	/*
-		GetLicense Returns a specific license
+	GetLicense Returns a specific license
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param licenseId The SPDX License ID of the license to retrieve
-		@return ApiGetLicenseRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param licenseId The SPDX License ID of the license to retrieve
+	@return ApiGetLicenseRequest
 	*/
 	GetLicense(ctx context.Context, licenseId string) ApiGetLicenseRequest
 
@@ -63,10 +64,10 @@ type LicenseAPI interface {
 	GetLicenseExecute(r ApiGetLicenseRequest) (*License, *http.Response, error)
 
 	/*
-		GetLicenseListing Returns a concise listing of all licenses
+	GetLicenseListing Returns a concise listing of all licenses
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetLicenseListingRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetLicenseListingRequest
 	*/
 	GetLicenseListing(ctx context.Context) ApiGetLicenseListingRequest
 
@@ -75,10 +76,10 @@ type LicenseAPI interface {
 	GetLicenseListingExecute(r ApiGetLicenseListingRequest) ([]License, *http.Response, error)
 
 	/*
-		GetLicenses Returns a list of all licenses with complete metadata for each license
+	GetLicenses Returns a list of all licenses with complete metadata for each license
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetLicensesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetLicensesRequest
 	*/
 	GetLicenses(ctx context.Context) ApiGetLicensesRequest
 
@@ -91,9 +92,9 @@ type LicenseAPI interface {
 type LicenseAPIService service
 
 type ApiCreateLicenseRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseAPI
-	body       *License
+	body *License
 }
 
 func (r ApiCreateLicenseRequest) Body(body License) ApiCreateLicenseRequest {
@@ -110,25 +111,24 @@ CreateLicense Creates a new custom license
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateLicenseRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateLicenseRequest
 */
 func (a *LicenseAPIService) CreateLicense(ctx context.Context) ApiCreateLicenseRequest {
 	return ApiCreateLicenseRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return License
+//  @return License
 func (a *LicenseAPIService) CreateLicenseExecute(r ApiCreateLicenseRequest) (*License, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *License
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *License
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseAPIService.CreateLicense")
@@ -213,9 +213,9 @@ func (a *LicenseAPIService) CreateLicenseExecute(r ApiCreateLicenseRequest) (*Li
 }
 
 type ApiDeleteLicenseRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseAPI
-	licenseId  string
+	licenseId string
 }
 
 func (r ApiDeleteLicenseRequest) Execute() (*http.Response, error) {
@@ -227,24 +227,24 @@ DeleteLicense Deletes a custom license
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param licenseId The SPDX License ID of the license to delete
-	@return ApiDeleteLicenseRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param licenseId The SPDX License ID of the license to delete
+ @return ApiDeleteLicenseRequest
 */
 func (a *LicenseAPIService) DeleteLicense(ctx context.Context, licenseId string) ApiDeleteLicenseRequest {
 	return ApiDeleteLicenseRequest{
 		ApiService: a,
-		ctx:        ctx,
-		licenseId:  licenseId,
+		ctx: ctx,
+		licenseId: licenseId,
 	}
 }
 
 // Execute executes the request
 func (a *LicenseAPIService) DeleteLicenseExecute(r ApiDeleteLicenseRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseAPIService.DeleteLicense")
@@ -319,9 +319,9 @@ func (a *LicenseAPIService) DeleteLicenseExecute(r ApiDeleteLicenseRequest) (*ht
 }
 
 type ApiGetLicenseRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseAPI
-	licenseId  string
+	licenseId string
 }
 
 func (r ApiGetLicenseRequest) Execute() (*License, *http.Response, error) {
@@ -331,27 +331,26 @@ func (r ApiGetLicenseRequest) Execute() (*License, *http.Response, error) {
 /*
 GetLicense Returns a specific license
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param licenseId The SPDX License ID of the license to retrieve
-	@return ApiGetLicenseRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param licenseId The SPDX License ID of the license to retrieve
+ @return ApiGetLicenseRequest
 */
 func (a *LicenseAPIService) GetLicense(ctx context.Context, licenseId string) ApiGetLicenseRequest {
 	return ApiGetLicenseRequest{
 		ApiService: a,
-		ctx:        ctx,
-		licenseId:  licenseId,
+		ctx: ctx,
+		licenseId: licenseId,
 	}
 }
 
 // Execute executes the request
-//
-//	@return License
+//  @return License
 func (a *LicenseAPIService) GetLicenseExecute(r ApiGetLicenseRequest) (*License, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *License
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *License
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseAPIService.GetLicense")
@@ -435,7 +434,7 @@ func (a *LicenseAPIService) GetLicenseExecute(r ApiGetLicenseRequest) (*License,
 }
 
 type ApiGetLicenseListingRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseAPI
 }
 
@@ -446,25 +445,24 @@ func (r ApiGetLicenseListingRequest) Execute() ([]License, *http.Response, error
 /*
 GetLicenseListing Returns a concise listing of all licenses
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetLicenseListingRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetLicenseListingRequest
 */
 func (a *LicenseAPIService) GetLicenseListing(ctx context.Context) ApiGetLicenseListingRequest {
 	return ApiGetLicenseListingRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []License
+//  @return []License
 func (a *LicenseAPIService) GetLicenseListingExecute(r ApiGetLicenseListingRequest) ([]License, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []License
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []License
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseAPIService.GetLicenseListing")
@@ -547,14 +545,14 @@ func (a *LicenseAPIService) GetLicenseListingExecute(r ApiGetLicenseListingReque
 }
 
 type ApiGetLicensesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LicenseAPI
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -600,25 +598,24 @@ func (r ApiGetLicensesRequest) Execute() ([]License, *http.Response, error) {
 /*
 GetLicenses Returns a list of all licenses with complete metadata for each license
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetLicensesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetLicensesRequest
 */
 func (a *LicenseAPIService) GetLicenses(ctx context.Context) ApiGetLicensesRequest {
 	return ApiGetLicensesRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []License
+//  @return []License
 func (a *LicenseAPIService) GetLicensesExecute(r ApiGetLicensesRequest) ([]License, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []License
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []License
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LicenseAPIService.GetLicenses")

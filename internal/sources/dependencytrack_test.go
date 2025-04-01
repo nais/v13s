@@ -3,10 +3,11 @@ package sources
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseFinding(t *testing.T) {

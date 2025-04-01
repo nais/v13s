@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type ComponentAPI interface {
 
 	/*
-		CreateComponent Creates a new component
+	CreateComponent Creates a new component
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to create a component for
-		@return ApiCreateComponentRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to create a component for
+	@return ApiCreateComponentRequest
 	*/
 	CreateComponent(ctx context.Context, uuid string) ApiCreateComponentRequest
 
@@ -37,13 +38,13 @@ type ComponentAPI interface {
 	CreateComponentExecute(r ApiCreateComponentRequest) (*Component, *http.Response, error)
 
 	/*
-		DeleteComponent Deletes a component
+	DeleteComponent Deletes a component
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the component to delete
-		@return ApiDeleteComponentRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to delete
+	@return ApiDeleteComponentRequest
 	*/
 	DeleteComponent(ctx context.Context, uuid string) ApiDeleteComponentRequest
 
@@ -51,13 +52,13 @@ type ComponentAPI interface {
 	DeleteComponentExecute(r ApiDeleteComponentRequest) (*http.Response, error)
 
 	/*
-		GetAllComponents Returns a list of all components for a given project
+	GetAllComponents Returns a list of all components for a given project
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to retrieve components for
-		@return ApiGetAllComponentsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve components for
+	@return ApiGetAllComponentsRequest
 	*/
 	GetAllComponents(ctx context.Context, uuid string) ApiGetAllComponentsRequest
 
@@ -66,13 +67,13 @@ type ComponentAPI interface {
 	GetAllComponentsExecute(r ApiGetAllComponentsRequest) ([]Component, *http.Response, error)
 
 	/*
-		GetComponentByHash Returns a list of components that have the specified hash value
+	GetComponentByHash Returns a list of components that have the specified hash value
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param hash The MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-384, SHA3-512, BLAKE2b-256, BLAKE2b-384, BLAKE2b-512, or BLAKE3 hash of the component to retrieve
-		@return ApiGetComponentByHashRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param hash The MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-384, SHA3-512, BLAKE2b-256, BLAKE2b-384, BLAKE2b-512, or BLAKE3 hash of the component to retrieve
+	@return ApiGetComponentByHashRequest
 	*/
 	GetComponentByHash(ctx context.Context, hash string) ApiGetComponentByHashRequest
 
@@ -81,12 +82,12 @@ type ComponentAPI interface {
 	GetComponentByHashExecute(r ApiGetComponentByHashRequest) ([]Component, *http.Response, error)
 
 	/*
-		GetComponentByIdentity Returns a list of components that have the specified component identity. This resource accepts coordinates (group, name, version) or purl, cpe, or swidTagId
+	GetComponentByIdentity Returns a list of components that have the specified component identity. This resource accepts coordinates (group, name, version) or purl, cpe, or swidTagId
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetComponentByIdentityRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetComponentByIdentityRequest
 	*/
 	GetComponentByIdentity(ctx context.Context) ApiGetComponentByIdentityRequest
 
@@ -95,13 +96,13 @@ type ComponentAPI interface {
 	GetComponentByIdentityExecute(r ApiGetComponentByIdentityRequest) ([]Component, *http.Response, error)
 
 	/*
-		GetComponentByUuid Returns a specific component
+	GetComponentByUuid Returns a specific component
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the component to retrieve
-		@return ApiGetComponentByUuidRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component to retrieve
+	@return ApiGetComponentByUuidRequest
 	*/
 	GetComponentByUuid(ctx context.Context, uuid string) ApiGetComponentByUuidRequest
 
@@ -110,14 +111,14 @@ type ComponentAPI interface {
 	GetComponentByUuidExecute(r ApiGetComponentByUuidRequest) (*Component, *http.Response, error)
 
 	/*
-		GetDependencyGraphForComponent Returns the expanded dependency graph to every occurrence of a component
+	GetDependencyGraphForComponent Returns the expanded dependency graph to every occurrence of a component
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param projectUuid The UUID of the project to get the expanded dependency graph for
-		@param componentUuids List of UUIDs of the components (separated by |) to get the expanded dependency graph for
-		@return ApiGetDependencyGraphForComponentRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param projectUuid The UUID of the project to get the expanded dependency graph for
+	@param componentUuids List of UUIDs of the components (separated by |) to get the expanded dependency graph for
+	@return ApiGetDependencyGraphForComponentRequest
 	*/
 	GetDependencyGraphForComponent(ctx context.Context, projectUuid string, componentUuids string) ApiGetDependencyGraphForComponentRequest
 
@@ -126,12 +127,12 @@ type ComponentAPI interface {
 	GetDependencyGraphForComponentExecute(r ApiGetDependencyGraphForComponentRequest) (*map[string]Component, *http.Response, error)
 
 	/*
-		IdentifyInternalComponents Requests the identification of internal components in the portfolio
+	IdentifyInternalComponents Requests the identification of internal components in the portfolio
 
-		<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiIdentifyInternalComponentsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiIdentifyInternalComponentsRequest
 	*/
 	IdentifyInternalComponents(ctx context.Context) ApiIdentifyInternalComponentsRequest
 
@@ -139,12 +140,12 @@ type ComponentAPI interface {
 	IdentifyInternalComponentsExecute(r ApiIdentifyInternalComponentsRequest) (*http.Response, error)
 
 	/*
-		UpdateComponent Updates a component
+	UpdateComponent Updates a component
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiUpdateComponentRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateComponentRequest
 	*/
 	UpdateComponent(ctx context.Context) ApiUpdateComponentRequest
 
@@ -157,10 +158,10 @@ type ComponentAPI interface {
 type ComponentAPIService service
 
 type ApiCreateComponentRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ComponentAPI
-	uuid       string
-	body       *Component
+	uuid string
+	body *Component
 }
 
 func (r ApiCreateComponentRequest) Body(body Component) ApiCreateComponentRequest {
@@ -177,27 +178,26 @@ CreateComponent Creates a new component
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to create a component for
-	@return ApiCreateComponentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to create a component for
+ @return ApiCreateComponentRequest
 */
 func (a *ComponentAPIService) CreateComponent(ctx context.Context, uuid string) ApiCreateComponentRequest {
 	return ApiCreateComponentRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Component
+//  @return Component
 func (a *ComponentAPIService) CreateComponentExecute(r ApiCreateComponentRequest) (*Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Component
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.CreateComponent")
@@ -283,9 +283,9 @@ func (a *ComponentAPIService) CreateComponentExecute(r ApiCreateComponentRequest
 }
 
 type ApiDeleteComponentRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ComponentAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteComponentRequest) Execute() (*http.Response, error) {
@@ -297,24 +297,24 @@ DeleteComponent Deletes a component
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to delete
-	@return ApiDeleteComponentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to delete
+ @return ApiDeleteComponentRequest
 */
 func (a *ComponentAPIService) DeleteComponent(ctx context.Context, uuid string) ApiDeleteComponentRequest {
 	return ApiDeleteComponentRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *ComponentAPIService) DeleteComponentExecute(r ApiDeleteComponentRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.DeleteComponent")
@@ -389,17 +389,17 @@ func (a *ComponentAPIService) DeleteComponentExecute(r ApiDeleteComponentRequest
 }
 
 type ApiGetAllComponentsRequest struct {
-	ctx          context.Context
-	ApiService   ComponentAPI
-	uuid         string
+	ctx context.Context
+	ApiService ComponentAPI
+	uuid string
 	onlyOutdated *bool
-	onlyDirect   *bool
-	pageNumber   *interface{}
-	pageSize     *interface{}
-	offset       *interface{}
-	limit        *interface{}
-	sortName     *string
-	sortOrder    *string
+	onlyDirect *bool
+	pageNumber *interface{}
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // Optionally exclude recent components so only outdated components are returned
@@ -459,27 +459,26 @@ GetAllComponents Returns a list of all components for a given project
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve components for
-	@return ApiGetAllComponentsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve components for
+ @return ApiGetAllComponentsRequest
 */
 func (a *ComponentAPIService) GetAllComponents(ctx context.Context, uuid string) ApiGetAllComponentsRequest {
 	return ApiGetAllComponentsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Component
+//  @return []Component
 func (a *ComponentAPIService) GetAllComponentsExecute(r ApiGetAllComponentsRequest) ([]Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Component
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.GetAllComponents")
@@ -593,15 +592,15 @@ func (a *ComponentAPIService) GetAllComponentsExecute(r ApiGetAllComponentsReque
 }
 
 type ApiGetComponentByHashRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ComponentAPI
-	hash       string
+	hash string
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -649,27 +648,26 @@ GetComponentByHash Returns a list of components that have the specified hash val
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param hash The MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-384, SHA3-512, BLAKE2b-256, BLAKE2b-384, BLAKE2b-512, or BLAKE3 hash of the component to retrieve
-	@return ApiGetComponentByHashRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param hash The MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-384, SHA3-512, BLAKE2b-256, BLAKE2b-384, BLAKE2b-512, or BLAKE3 hash of the component to retrieve
+ @return ApiGetComponentByHashRequest
 */
 func (a *ComponentAPIService) GetComponentByHash(ctx context.Context, hash string) ApiGetComponentByHashRequest {
 	return ApiGetComponentByHashRequest{
 		ApiService: a,
-		ctx:        ctx,
-		hash:       hash,
+		ctx: ctx,
+		hash: hash,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Component
+//  @return []Component
 func (a *ComponentAPIService) GetComponentByHashExecute(r ApiGetComponentByHashRequest) ([]Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Component
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.GetComponentByHash")
@@ -777,21 +775,21 @@ func (a *ComponentAPIService) GetComponentByHashExecute(r ApiGetComponentByHashR
 }
 
 type ApiGetComponentByIdentityRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ComponentAPI
-	group      *string
-	name       *string
-	version    *string
-	purl       *string
-	cpe        *string
-	swidTagId  *string
-	project    *string
+	group *string
+	name *string
+	version *string
+	purl *string
+	cpe *string
+	swidTagId *string
+	project *string
 	pageNumber *interface{}
-	pageSize   *interface{}
-	offset     *interface{}
-	limit      *interface{}
-	sortName   *string
-	sortOrder  *string
+	pageSize *interface{}
+	offset *interface{}
+	limit *interface{}
+	sortName *string
+	sortOrder *string
 }
 
 // The group of the component
@@ -881,25 +879,24 @@ GetComponentByIdentity Returns a list of components that have the specified comp
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetComponentByIdentityRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetComponentByIdentityRequest
 */
 func (a *ComponentAPIService) GetComponentByIdentity(ctx context.Context) ApiGetComponentByIdentityRequest {
 	return ApiGetComponentByIdentityRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Component
+//  @return []Component
 func (a *ComponentAPIService) GetComponentByIdentityExecute(r ApiGetComponentByIdentityRequest) ([]Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Component
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.GetComponentByIdentity")
@@ -1027,9 +1024,9 @@ func (a *ComponentAPIService) GetComponentByIdentityExecute(r ApiGetComponentByI
 }
 
 type ApiGetComponentByUuidRequest struct {
-	ctx                       context.Context
-	ApiService                ComponentAPI
-	uuid                      string
+	ctx context.Context
+	ApiService ComponentAPI
+	uuid string
 	includeRepositoryMetaData *bool
 }
 
@@ -1048,27 +1045,26 @@ GetComponentByUuid Returns a specific component
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component to retrieve
-	@return ApiGetComponentByUuidRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component to retrieve
+ @return ApiGetComponentByUuidRequest
 */
 func (a *ComponentAPIService) GetComponentByUuid(ctx context.Context, uuid string) ApiGetComponentByUuidRequest {
 	return ApiGetComponentByUuidRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Component
+//  @return Component
 func (a *ComponentAPIService) GetComponentByUuidExecute(r ApiGetComponentByUuidRequest) (*Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Component
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.GetComponentByUuid")
@@ -1155,9 +1151,9 @@ func (a *ComponentAPIService) GetComponentByUuidExecute(r ApiGetComponentByUuidR
 }
 
 type ApiGetDependencyGraphForComponentRequest struct {
-	ctx            context.Context
-	ApiService     ComponentAPI
-	projectUuid    string
+	ctx context.Context
+	ApiService ComponentAPI
+	projectUuid string
 	componentUuids string
 }
 
@@ -1170,29 +1166,28 @@ GetDependencyGraphForComponent Returns the expanded dependency graph to every oc
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param projectUuid The UUID of the project to get the expanded dependency graph for
-	@param componentUuids List of UUIDs of the components (separated by |) to get the expanded dependency graph for
-	@return ApiGetDependencyGraphForComponentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param projectUuid The UUID of the project to get the expanded dependency graph for
+ @param componentUuids List of UUIDs of the components (separated by |) to get the expanded dependency graph for
+ @return ApiGetDependencyGraphForComponentRequest
 */
 func (a *ComponentAPIService) GetDependencyGraphForComponent(ctx context.Context, projectUuid string, componentUuids string) ApiGetDependencyGraphForComponentRequest {
 	return ApiGetDependencyGraphForComponentRequest{
-		ApiService:     a,
-		ctx:            ctx,
-		projectUuid:    projectUuid,
+		ApiService: a,
+		ctx: ctx,
+		projectUuid: projectUuid,
 		componentUuids: componentUuids,
 	}
 }
 
 // Execute executes the request
-//
-//	@return map[string]Component
+//  @return map[string]Component
 func (a *ComponentAPIService) GetDependencyGraphForComponentExecute(r ApiGetDependencyGraphForComponentRequest) (*map[string]Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *map[string]Component
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *map[string]Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.GetDependencyGraphForComponent")
@@ -1277,7 +1272,7 @@ func (a *ComponentAPIService) GetDependencyGraphForComponentExecute(r ApiGetDepe
 }
 
 type ApiIdentifyInternalComponentsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ComponentAPI
 }
 
@@ -1290,22 +1285,22 @@ IdentifyInternalComponents Requests the identification of internal components in
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiIdentifyInternalComponentsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiIdentifyInternalComponentsRequest
 */
 func (a *ComponentAPIService) IdentifyInternalComponents(ctx context.Context) ApiIdentifyInternalComponentsRequest {
 	return ApiIdentifyInternalComponentsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *ComponentAPIService) IdentifyInternalComponentsExecute(r ApiIdentifyInternalComponentsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodGet
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.IdentifyInternalComponents")
@@ -1379,9 +1374,9 @@ func (a *ComponentAPIService) IdentifyInternalComponentsExecute(r ApiIdentifyInt
 }
 
 type ApiUpdateComponentRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ComponentAPI
-	body       *Component
+	body *Component
 }
 
 func (r ApiUpdateComponentRequest) Body(body Component) ApiUpdateComponentRequest {
@@ -1398,25 +1393,24 @@ UpdateComponent Updates a component
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateComponentRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateComponentRequest
 */
 func (a *ComponentAPIService) UpdateComponent(ctx context.Context) ApiUpdateComponentRequest {
 	return ApiUpdateComponentRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return Component
+//  @return Component
 func (a *ComponentAPIService) UpdateComponentExecute(r ApiUpdateComponentRequest) (*Component, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *Component
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *Component
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ComponentAPIService.UpdateComponent")

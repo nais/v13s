@@ -19,12 +19,12 @@ var _ MappedNullable = &DependencyGraphResponse{}
 
 // DependencyGraphResponse struct for DependencyGraphResponse
 type DependencyGraphResponse struct {
-	Uuid               *string `json:"uuid,omitempty"`
-	Name               *string `json:"name,omitempty"`
-	Version            *string `json:"version,omitempty"`
-	Purl               *string `json:"purl,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
+	Name *string `json:"name,omitempty"`
+	Version *string `json:"version,omitempty"`
+	Purl *string `json:"purl,omitempty"`
 	DirectDependencies *string `json:"directDependencies,omitempty"`
-	LatestVersion      *string `json:"latestVersion,omitempty"`
+	LatestVersion *string `json:"latestVersion,omitempty"`
 }
 
 // NewDependencyGraphResponse instantiates a new DependencyGraphResponse object
@@ -237,7 +237,7 @@ func (o *DependencyGraphResponse) SetLatestVersion(v string) {
 }
 
 func (o DependencyGraphResponse) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -302,3 +302,5 @@ func (v *NullableDependencyGraphResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

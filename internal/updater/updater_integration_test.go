@@ -3,6 +3,9 @@ package updater_test
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,8 +18,6 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 // TODO: add tests for VulnerabilitySummary upserted too
