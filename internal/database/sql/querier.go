@@ -23,13 +23,10 @@ type Querier interface {
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
-	GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
-	ListAllSuppressedVulnerabilities(ctx context.Context) ([]*SuppressedVulnerability, error)
-	ListAllVulnerabilitySummaries(ctx context.Context, arg ListAllVulnerabilitySummariesParams) ([]*VulnerabilitySummary, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
@@ -43,8 +40,6 @@ type Querier interface {
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
-	UpdateVulnerabilitySummary(ctx context.Context, arg UpdateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
-	UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error)
 	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error
 }
 

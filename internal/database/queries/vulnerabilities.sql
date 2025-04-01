@@ -113,20 +113,6 @@ UPDATE
     reason_text = @reason_text
 ;
 
--- name: GetSuppressedVulnerability :one
-SELECT *
-FROM suppressed_vulnerabilities
-WHERE image_name = @image_name
-  AND package = @package
-  AND cve_id = @cve_id
-;
-
--- name: ListAllSuppressedVulnerabilities :many
-SELECT *
-FROM suppressed_vulnerabilities
-ORDER BY updated_at DESC
-;
-
 -- name: ListSuppressedVulnerabilities :many
 SELECT DISTINCT sv.*, v.*, c.*, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv

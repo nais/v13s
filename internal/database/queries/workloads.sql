@@ -32,21 +32,6 @@ RETURNING
     *
 ;
 
--- name: UpdateWorkload :one
-UPDATE workloads
-SET
-    image_name = @image_name,
-    image_tag = @image_tag,
-    updated_at = NOW()
-WHERE
-    cluster = @cluster AND
-    namespace = @namespace AND
-    workload_type = @workload_type AND
-    name = @name
-RETURNING
-    *
-;
-
 -- name: ListWorkloadsByImage :many
 SELECT *
 FROM workloads

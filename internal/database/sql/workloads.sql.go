@@ -93,54 +93,6 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 	return items, nil
 }
 
-const updateWorkload = `-- name: UpdateWorkload :one
-UPDATE workloads
-SET
-    image_name = $1,
-    image_tag = $2,
-    updated_at = NOW()
-WHERE
-    cluster = $3 AND
-    namespace = $4 AND
-    workload_type = $5 AND
-    name = $6
-RETURNING
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
-`
-
-type UpdateWorkloadParams struct {
-	ImageName    string
-	ImageTag     string
-	Cluster      string
-	Namespace    string
-	WorkloadType string
-	Name         string
-}
-
-func (q *Queries) UpdateWorkload(ctx context.Context, arg UpdateWorkloadParams) (*Workload, error) {
-	row := q.db.QueryRow(ctx, updateWorkload,
-		arg.ImageName,
-		arg.ImageTag,
-		arg.Cluster,
-		arg.Namespace,
-		arg.WorkloadType,
-		arg.Name,
-	)
-	var i Workload
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.WorkloadType,
-		&i.Namespace,
-		&i.Cluster,
-		&i.ImageName,
-		&i.ImageTag,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return &i, err
-}
-
 const upsertWorkload = `-- name: UpsertWorkload :exec
 INSERT INTO workloads(
     name,

@@ -35,39 +35,6 @@ RETURNING
     *
 ;
 
--- name: UpdateVulnerabilitySummary :one
-UPDATE vulnerability_summary
-SET
-    critical = COALESCE(sqlc.narg(critical), critical),
-    high = COALESCE(sqlc.narg(high), high),
-    medium = COALESCE(sqlc.narg(medium), medium),
-    low = COALESCE(sqlc.narg(low), low),
-    unassigned = COALESCE(sqlc.narg(unassigned), unassigned),
-    risk_score = COALESCE(sqlc.narg(risk_score), risk_score),
-    updated_at = NOW()
-WHERE
-    vulnerability_summary.id = @id
-RETURNING
-    *
-;
-
--- name: ListAllVulnerabilitySummaries :many
-SELECT * FROM vulnerability_summary
-ORDER BY
-    CASE
-        WHEN @order_by::TEXT = 'risk_score:asc' THEN LOWER(vulnerability_summary.risk_score)
-END ASC,
-	CASE
-		WHEN @order_by::TEXT = 'risk_score:desc' THEN LOWER(vulnerability_summary.risk_score)
-END DESC,
-	vulnerability_summary.risk_score,
-	vulnerability_summary.critical ASC
-LIMIT
-	sqlc.arg('limit')
-OFFSET
-	sqlc.arg('offset')
-;
-
 -- name: ListVulnerabilitySummaries :many
 WITH filtered_workloads AS (
     SELECT *

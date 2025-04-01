@@ -190,38 +190,6 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 	return &i, err
 }
 
-const getSuppressedVulnerability = `-- name: GetSuppressedVulnerability :one
-SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at, suppressed_by
-FROM suppressed_vulnerabilities
-WHERE image_name = $1
-  AND package = $2
-  AND cve_id = $3
-`
-
-type GetSuppressedVulnerabilityParams struct {
-	ImageName string
-	Package   string
-	CveID     string
-}
-
-func (q *Queries) GetSuppressedVulnerability(ctx context.Context, arg GetSuppressedVulnerabilityParams) (*SuppressedVulnerability, error) {
-	row := q.db.QueryRow(ctx, getSuppressedVulnerability, arg.ImageName, arg.Package, arg.CveID)
-	var i SuppressedVulnerability
-	err := row.Scan(
-		&i.ID,
-		&i.ImageName,
-		&i.Package,
-		&i.CveID,
-		&i.Suppressed,
-		&i.Reason,
-		&i.ReasonText,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.SuppressedBy,
-	)
-	return &i, err
-}
-
 const getVulnerability = `-- name: GetVulnerability :one
 SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at
 FROM vulnerabilities
@@ -336,43 +304,6 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.SuppressedAt,
 	)
 	return &i, err
-}
-
-const listAllSuppressedVulnerabilities = `-- name: ListAllSuppressedVulnerabilities :many
-SELECT id, image_name, package, cve_id, suppressed, reason, reason_text, created_at, updated_at, suppressed_by
-FROM suppressed_vulnerabilities
-ORDER BY updated_at DESC
-`
-
-func (q *Queries) ListAllSuppressedVulnerabilities(ctx context.Context) ([]*SuppressedVulnerability, error) {
-	rows, err := q.db.Query(ctx, listAllSuppressedVulnerabilities)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*SuppressedVulnerability{}
-	for rows.Next() {
-		var i SuppressedVulnerability
-		if err := rows.Scan(
-			&i.ID,
-			&i.ImageName,
-			&i.Package,
-			&i.CveID,
-			&i.Suppressed,
-			&i.Reason,
-			&i.ReasonText,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.SuppressedBy,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
