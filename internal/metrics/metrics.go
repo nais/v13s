@@ -68,7 +68,7 @@ func NewMeterProvider(ctx context.Context) (*metric.MeterProvider, promClient.Ga
 func newResource() (*resource.Resource, error) {
 	return resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
-			semconv.ServiceName("api"),
+			semconv.ServiceName("v13s"),
 			semconv.ServiceVersion("0.1.0"),
 		))
 }
