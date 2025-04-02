@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "v13s.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       {{- include "v13s.selectorLabels" . | nindent 6 }}

@@ -6,17 +6,14 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strings"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/joho/godotenv"
-	"github.com/nais/v13s/internal/attestation"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
-	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -50,44 +47,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func uploadSboms(ctx context.Context, images ...string) error {
-	c, err := dependencytrack.NewClient(
-		"http://localhost:9010/api",
-		"Administrators",
-		"admin",
-		"yolo",
-		log.WithField("subsystem", "dp-client"),
-	)
-	if err != nil {
-		return err
-	}
-
-	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "cosign-verifier"), "navikt", "nais")
-	if err != nil {
-		return err
-	}
-
-	for _, image := range images {
-		parts := strings.Split(image, ":")
-		ref := &dependencytrack.WorkloadRef{
-			Cluster:   "dev",
-			Namespace: "devteam",
-			Type:      "app",
-			Name:      "nais-deploy-chicken-1",
-		}
-		att, err := verifier.GetAttestation(ctx, image)
-		if err != nil {
-			return err
-		}
-		err = c.CreateProjectWithSbom(ctx, parts[0], parts[1], att, ref)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func seedDependencyTrack(ctx context.Context) error {
@@ -131,65 +90,6 @@ func seedDependencyTrack(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func seedFromDependencyTrack(ctx context.Context, db sql.Querier) {
-	dpClient, err := dependencytrack.NewClient(
-		os.Getenv("V13S_DEPENDENCYTRACK_URL"),
-		os.Getenv("V13S_DEPENDENCYTRACK_TEAM"),
-		os.Getenv("V13S_DEPENDENCYTRACK_USERNAME"),
-		os.Getenv("V13S_DEPENDENCYTRACK_PASSWORD"),
-		log.WithField("subsystem", "dp-client"),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	projects, err := dpClient.GetProjectsByTag(ctx, "team:nais-system", 10, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, project := range projects {
-		if project.Metrics == nil {
-			fmt.Println("project metrics is nil", project)
-			continue
-		}
-
-		image := sql.CreateImageParams{
-			Name:     *project.Name,
-			Tag:      *project.Version,
-			Metadata: make(typeext.MapStringString),
-		}
-
-		if err := db.CreateImage(ctx, image); err != nil {
-			panic(err)
-		}
-
-		workloads := toCreateWorkloadParams(project, image)
-		for _, workload := range workloads {
-			_, err := db.CreateWorkload(ctx, *workload)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		arg := sql.CreateVulnerabilitySummaryParams{
-			ImageName:  *project.Name,
-			ImageTag:   *project.Version,
-			Critical:   project.Metrics.Critical,
-			High:       project.Metrics.High,
-			Medium:     project.Metrics.Medium,
-			Low:        project.Metrics.Low,
-			Unassigned: *project.Metrics.Unassigned,
-			RiskScore:  int32(*project.Metrics.InheritedRiskScore),
-		}
-		res, err := db.CreateVulnerabilitySummary(ctx, arg)
-		if err != nil {
-			panic(err)
-		}
-		log.Infof("created vulnerability summary: %v", res)
-	}
 }
 
 func createVulnData(ctx context.Context, db sql.Querier, images []string) {
@@ -319,28 +219,4 @@ func createVulnerability(severity int, cveID string, imageName string, imageTag 
 			Severity: safeInt(severity),
 			Refs:     map[string]string{},
 		}
-}
-
-func toCreateWorkloadParams(p client.Project, image sql.CreateImageParams) []*sql.CreateWorkloadParams {
-	workloads := make([]*sql.CreateWorkloadParams, 0)
-	for _, t := range p.Tags {
-		if strings.HasPrefix(*t.Name, "workload:") {
-			parts := strings.Split(strings.TrimPrefix(*t.Name, "workload:"), "|")
-			if len(parts) != 4 {
-				log.Printf("Invalid workload tag: %s", *t.Name)
-				continue
-			}
-			fmt.Printf("workload: %v\n", parts)
-			workloads = append(workloads, &sql.CreateWorkloadParams{
-				Cluster:      parts[0],
-				Namespace:    parts[1],
-				WorkloadType: parts[2],
-				Name:         parts[3],
-				ImageName:    image.Name,
-				ImageTag:     image.Tag,
-			})
-
-		}
-	}
-	return workloads
 }

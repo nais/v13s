@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
-	"github.com/sirupsen/logrus"
 )
 
 const (

@@ -10,6 +10,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
@@ -20,9 +24,6 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 )
 
 type Config struct {

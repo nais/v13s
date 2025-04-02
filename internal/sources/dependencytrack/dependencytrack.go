@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-	"github.com/sirupsen/logrus"
 )
 
 var _ Client = &dependencyTrackClient{}
@@ -84,7 +85,7 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, image
 
 	p, err := c.CreateProject(ctx, imageName, imageTag, tags)
 	if err != nil {
-		if !strings.Contains(err.Error(), "project already exists.") {
+		if !strings.Contains(err.Error(), "project already exists") {
 			c.log.Errorf("create project: %v", err)
 			return err
 		}
@@ -129,7 +130,7 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 		project, resp, err := req.Execute()
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusConflict {
-				return nil, fmt.Errorf("project already exists.")
+				return nil, fmt.Errorf("project already exists")
 			}
 			return nil, fmt.Errorf("failed to create project: %w, details: %s", err, parseErrorResponseBody(resp))
 		}

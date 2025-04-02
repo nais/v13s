@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 )
 
 func TestGetFindings(t *testing.T) {

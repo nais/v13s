@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
-	"golang.org/x/sync/errgroup"
 )
 
 type ImageVulnerabilityData struct {

@@ -13,15 +13,16 @@ import (
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/nais/v13s/pkg/api/auth"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/rodaine/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/nais/v13s/pkg/api/auth"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 )
 
 type config struct {

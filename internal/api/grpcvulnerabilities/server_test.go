@@ -8,16 +8,17 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
-	"github.com/nais/v13s/internal/collections"
-	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/test"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
+
+	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/test"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
 func TestServer_ListVulnerabilities(t *testing.T) {

@@ -9,6 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
@@ -16,8 +19,6 @@ import (
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 )
 
 // TODO: add tests for VulnerabilitySummary upserted too

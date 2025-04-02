@@ -3,8 +3,9 @@ package grpcpagination
 import (
 	"testing"
 
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
 type MockRequest struct {

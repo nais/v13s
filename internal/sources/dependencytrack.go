@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-	"github.com/sirupsen/logrus"
 )
 
 var ErrNoMetrics = fmt.Errorf("no metrics found")

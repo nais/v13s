@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/test"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMarkImagesAsUnused(t *testing.T) {
@@ -58,6 +59,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 			Name: "testimage2",
 			Tag:  "v1",
 		})
+		assert.NoError(t, err)
 
 		err = db.MarkUnusedImages(ctx,
 			[]sql.ImageState{

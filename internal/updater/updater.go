@@ -8,10 +8,11 @@ import (
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
-	"github.com/sirupsen/logrus"
 )
 
 const (

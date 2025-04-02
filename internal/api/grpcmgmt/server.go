@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
-	"github.com/sirupsen/logrus"
 )
 
 var _ management.ManagementServer = (*Server)(nil)

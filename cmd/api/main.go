@@ -7,9 +7,10 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/sirupsen/logrus"
+
 	"github.com/nais/v13s/internal/api"
 	"github.com/nais/v13s/internal/logger"
-	"github.com/sirupsen/logrus"
 )
 
 const (

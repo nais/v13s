@@ -9,11 +9,12 @@ import (
 
 	"github.com/emicklei/pgtalk/convert"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TODO: add input validation for request, especially for filter values
