@@ -9,14 +9,13 @@ import (
 	"strings"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/attestation"
+	"github.com/nais/v13s/internal/database"
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
-
-	"github.com/joho/godotenv"
-	"github.com/nais/v13s/internal/database"
-	"github.com/nais/v13s/internal/database/sql"
 	log "github.com/sirupsen/logrus"
 )
 
