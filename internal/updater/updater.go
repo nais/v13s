@@ -89,6 +89,9 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 
 	ch := make(chan *ImageVulnerabilityData, 100)
 
+	if err != nil {
+		return fmt.Errorf("creating cost updater runs counter: %w", err)
+	}
 	go func() {
 
 		if err = u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
