@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sirupsen/logrus"
-
+	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"github.com/sirupsen/logrus"
 )
 
 var _ management.ManagementServer = (*Server)(nil)
@@ -56,9 +56,22 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		return nil, err
 	}
 
+	isPlatformImage := collections.AnyMatch([]string{
+		"gcr.io/cloud-sql-connectors/cloud-sql-proxy",
+		"docker.io/devopsfaith/krakend",
+		"europe-north1-docker.pkg.dev/nais-io/nais/images/elector",
+	}, func(e string) bool {
+		return e == request.ImageName || request.Workload == "wonderwall"
+	})
+
+	wType := request.WorkloadType
+	if isPlatformImage {
+		wType = "platform"
+	}
+
 	if err := s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 		Name:         request.Workload,
-		WorkloadType: request.WorkloadType,
+		WorkloadType: wType,
 		Namespace:    request.Namespace,
 		Cluster:      request.Cluster,
 		ImageName:    request.ImageName,

@@ -32,12 +32,13 @@ type config struct {
 }
 
 type options struct {
-	cluster   string
-	namespace string
-	workload  string
-	limit     int64
-	order     string
-	since     string
+	cluster       string
+	namespace     string
+	workload      string
+	limit         int64
+	order         string
+	since         string
+	workload_type string
 }
 
 func main() {
@@ -455,6 +456,9 @@ func parseOptions(cmd *cli.Command, o *options) []vulnerabilities.Option {
 	if o.workload != "" {
 		opts = append(opts, vulnerabilities.WorkloadFilter(o.workload))
 	}
+	if o.workload_type != "" {
+		opts = append(opts, vulnerabilities.WorkloadTypeFilter(o.workload_type))
+	}
 	if o.limit > 0 {
 		opts = append(opts, vulnerabilities.Limit(int32(o.limit)))
 	} else {
@@ -511,6 +515,13 @@ func commonFlags(opts *options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "workload name",
 			Destination: &opts.workload,
+		},
+		&cli.StringFlag{
+			Name:        "type",
+			Aliases:     []string{"t"},
+			Value:       "",
+			Usage:       "workload type",
+			Destination: &opts.workload_type,
 		},
 		&cli.IntFlag{
 			Name:        "limit",
