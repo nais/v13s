@@ -10,10 +10,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
-
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
@@ -24,6 +20,10 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 type Config struct {
@@ -44,11 +44,6 @@ type Config struct {
 func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer signalStop()
-
-	listener, err := net.Listen("tcp", c.ListenAddr)
-	if err != nil {
-		log.WithError(err).Fatalf("Failed to listen on %s", c.ListenAddr)
-	}
 
 	_, promReg, err := metrics.NewMeterProvider(ctx)
 	if err != nil {
@@ -82,13 +77,11 @@ func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 	)
 	u.Run(ctx)
 
-	grpcServer := createGrpcServer(ctx, c, pool, u, log)
-
 	wg, ctx := errgroup.WithContext(ctx)
 
 	wg.Go(func() error {
-		if err := grpcServer.Serve(listener); err != nil {
-			log.WithError(err).Errorf("Failed to serve gRPC server")
+		if err = runGrpcServer(ctx, c, pool, u, log); err != nil {
+			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
 		return nil
@@ -122,16 +115,45 @@ func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 	return nil
 }
 
-func createGrpcServer(parentCtx context.Context, cfg Config, pool *pgxpool.Pool, u *updater.Updater, field logrus.FieldLogger) *grpc.Server {
-	serverOpts := make([]grpc.ServerOption, 0)
-
-	if !strings.HasPrefix(cfg.ListenAddr, "localhost") {
-		serverOpts = append(serverOpts, grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, field.WithField("subsystem", "auth"))))
+func runGrpcServer(ctx context.Context, cfg Config, pool *pgxpool.Pool, u *updater.Updater, log logrus.FieldLogger) error {
+	log.Info("GRPC serving on ", cfg.ListenAddr)
+	lis, err := net.Listen("tcp", cfg.ListenAddr)
+	if err != nil {
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 
-	grpcServer := grpc.NewServer(serverOpts...)
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, grpcvulnerabilities.NewServer(pool, field.WithField("subsystem", "vulnerabilities")))
-	management.RegisterManagementServer(grpcServer, grpcmgmt.NewServer(parentCtx, pool, u, field.WithField("subsystem", "management")))
+	opts := []grpc.ServerOption{
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	}
+	if !strings.HasPrefix(cfg.ListenAddr, "localhost") {
+		opts = append(opts, grpc.UnaryInterceptor(auth.TokenInterceptor(cfg.RequiredAudience, cfg.AuthorizedServiceAccounts, log.WithField("subsystem", "auth"))))
+	}
 
-	return grpcServer
+	s := grpc.NewServer(opts...)
+	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
+	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, u, log.WithField("subsystem", "management")))
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return s.Serve(lis) })
+	g.Go(func() error {
+		<-ctx.Done()
+
+		ch := make(chan struct{})
+		go func() {
+			s.GracefulStop()
+			close(ch)
+		}()
+
+		select {
+		case <-ch:
+			// ok
+		case <-time.After(5 * time.Second):
+			// force shutdown
+			s.Stop()
+		}
+
+		return nil
+	})
+
+	return g.Wait()
 }
