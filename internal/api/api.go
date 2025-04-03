@@ -3,10 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/nais/v13s/internal/config"
-	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager"
 	"net"
 	"os/signal"
 	"strings"
@@ -17,7 +13,11 @@ import (
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
+	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/kubernetes"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
@@ -30,22 +30,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Config struct {
-	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	InternalListenAddr        string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
-	DependencytrackUrl        string        `envconfig:"DEPENDENCYTRACK_URL" required:"true"`
-	DependencytrackTeam       string        `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
-	DependencytrackUsername   string        `envconfig:"DEPENDENCYTRACK_USERNAME" required:"true"`
-	DependencytrackPassword   string        `envconfig:"DEPENDENCYTRACK_PASSWORD" required:"true"`
-	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
-	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
-	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
-	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
-	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
-}
-
-func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
+func Run(ctx context.Context, c *config.Config, log logrus.FieldLogger) error {
 	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer signalStop()
 
@@ -62,10 +47,10 @@ func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 	defer pool.Close()
 
 	dpClient, err := dependencytrack.NewClient(
-		c.DependencytrackUrl,
-		c.DependencytrackTeam,
-		c.DependencytrackUsername,
-		c.DependencytrackPassword,
+		c.DependencyTrack.Url,
+		c.DependencyTrack.Team,
+		c.DependencyTrack.Username,
+		c.DependencyTrack.Password,
 		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {
@@ -80,13 +65,12 @@ func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 	if err != nil {
 		log.Fatalf("Failed to create cluster config map: %v", err)
 	}
+	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 
 	watcherMgr, err := kubernetes.NewManager(clusterConfig, log)
 	if err != nil {
 		log.Fatalf("Failed to create watcher manager: %v", err)
 	}
-
-	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 	ctx = manager.NewContext(ctx, sql.New(pool), source, log.WithField("subsystem", "manager"))
 	_ = kubernetes.NewWorkloadWatcher(ctx, watcherMgr, log.WithField("subsystem", "workload_watcher"))
 
@@ -136,7 +120,7 @@ func Run(ctx context.Context, c Config, log logrus.FieldLogger) error {
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg Config, pool *pgxpool.Pool, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, u *updater.Updater, log logrus.FieldLogger) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {

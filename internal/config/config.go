@@ -15,6 +15,7 @@ import (
 
 type Config struct {
 	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	InternalListenAddr        string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
 	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
 	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`

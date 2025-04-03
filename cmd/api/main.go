@@ -6,11 +6,10 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/sirupsen/logrus"
-
 	"github.com/nais/v13s/internal/api"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/logger"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -31,8 +30,7 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 
-	var c api.Config
-	err = envconfig.Process("V13S", &c)
+	c, err := config.NewConfig()
 	if err != nil {
 		log.WithError(err).Errorf("error when processing configuration")
 	}
