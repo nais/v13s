@@ -31,14 +31,14 @@ func AddOrUpdateWorkload(ctx context.Context, workload *model.Workload) error {
 	//m := mgr(ctx)
 	// check db if update is needed, i.e. image tag changed
 	// then update source with the new image tag
-	mgr(ctx).log.WithField("workload", workload).Info("adding or updating workload")
+	mgr(ctx).log.WithField("workload", workload).Debug("adding or updating workload")
 	return nil
 }
 
 func DeleteWorkload(ctx context.Context, workload *model.Workload) error {
 	//m := mgr(ctx)
 	// delete from db and source
-	mgr(ctx).log.WithField("workload", workload).Info("deleting workload")
+	mgr(ctx).log.WithField("workload", workload).Debug("deleting workload")
 	return nil
 }
 
