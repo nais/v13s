@@ -110,7 +110,7 @@ func getStaticClusterConfigs(clusters []StaticCluster) ClusterConfigMap {
 	return configs
 }
 
-func (c *StaticCluster) EnvDecode(value string) error {
+func (c *StaticCluster) Decode(value string) error {
 	if value == "" {
 		return nil
 	}
