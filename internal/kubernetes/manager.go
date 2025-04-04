@@ -142,7 +142,7 @@ func NewWatcherManagers(cfg config.Config, log logrus.Entry) ([]*Manager, error)
 		return nil, fmt.Errorf("creating cluster config map: %w", err)
 	}
 
-	if cfg.K8s.UseKubeConfig && os.Getenv("KUBECONFIG") != "" {
+	if os.Getenv("KUBECONFIG") != "" {
 		// TODO: how to use kubeconfig in the watcher manager?
 		envConfig := os.Getenv("KUBECONFIG")
 		kubeConfig, err := clientcmd.BuildConfigFromFlags("", envConfig)
