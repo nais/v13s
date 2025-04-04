@@ -18,6 +18,27 @@ values:
     config:
       type: string
 
+  kubernetes.static:
+    displayName: Static Kubernetes clusters
+    description: Comma-separated list of clusters with static credentials on the format 'name|apiserverHost|token'
+    config:
+      type: string
+      secret: true
+
+  kubernetes.clusters:
+    displayName: GKE clusters
+    description: Comma-separated list of static resources to monitor
+    config:
+      type: string
+    computed:
+      template: |
+        {{ if (eq .Tenant.Name "nav") }}
+        {{- $tenantEnvs := filter "kind" "legacy" .Envs -}}
+        {{ eachOf $tenantEnvs "name" | sortAlpha | join "," }}
+        {{ else }}
+        {{- $tenantEnvs := filter "kind" "tenant" .Envs -}}
+        {{ eachOf $tenantEnvs "name" | sortAlpha | join "," }}
+        {{ end }}
 
  # TODO: onprem special case, add accounts, old gcp also get added
   auth.serviceAccounts:

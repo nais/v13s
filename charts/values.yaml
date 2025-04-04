@@ -9,6 +9,12 @@ updateInterval: 5m
 auth:
   audience: "v13s"
   serviceAccounts: []
+fasit:
+  tenant:
+    name: "dev-nais"
+kubernetes:
+  clusters: "dev,prod"
+  static: ""
 ingress:
   className: nais-ingress
   host: ""

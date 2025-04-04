@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func Run(ctx context.Context, c *config.Config, log logrus.FieldLogger) error {
+func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error {
 	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer signalStop()
 
@@ -40,28 +40,24 @@ func Run(ctx context.Context, c *config.Config, log logrus.FieldLogger) error {
 	}
 	log.Info("Initializing database")
 
-	pool, err := database.New(ctx, c.DatabaseUrl, log.WithField("subsystem", "database"))
+	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
 	defer pool.Close()
 
 	dpClient, err := dependencytrack.NewClient(
-		c.DependencyTrack.Url,
-		c.DependencyTrack.Team,
-		c.DependencyTrack.Username,
-		c.DependencyTrack.Password,
+		cfg.DependencyTrack.Url,
+		cfg.DependencyTrack.Team,
+		cfg.DependencyTrack.Username,
+		cfg.DependencyTrack.Password,
 		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	clusterConfig, err := config.CreateClusterConfigMap(
-		"nav",
-		[]string{"dev"},
-		[]config.StaticCluster{},
-	)
+	clusterConfig, err := config.CreateClusterConfigMap(cfg.Tenant, cfg.K8s.Clusters, cfg.K8s.StaticClusters)
 	if err != nil {
 		log.Fatalf("Failed to create cluster config map: %v", err)
 	}
@@ -77,7 +73,7 @@ func Run(ctx context.Context, c *config.Config, log logrus.FieldLogger) error {
 	u := updater.NewUpdater(
 		pool,
 		source,
-		c.UpdateInterval,
+		cfg.UpdateInterval,
 		log.WithField("subsystem", "updater"),
 	)
 	u.Run(ctx)
@@ -85,7 +81,7 @@ func Run(ctx context.Context, c *config.Config, log logrus.FieldLogger) error {
 	wg, ctx := errgroup.WithContext(ctx)
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, c, pool, u, log); err != nil {
+		if err = runGrpcServer(ctx, cfg, pool, u, log); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
@@ -95,7 +91,7 @@ func Run(ctx context.Context, c *config.Config, log logrus.FieldLogger) error {
 	wg.Go(func() error {
 		return runInternalHTTPServer(
 			ctx,
-			c.InternalListenAddr,
+			cfg.InternalListenAddr,
 			promReg,
 			log,
 		)
