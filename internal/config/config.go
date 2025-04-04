@@ -28,16 +28,15 @@ type Config struct {
 }
 
 type DependencyTrackConfig struct {
-	Url      string `env:"DEPENDENCYTRACK_URL"`
-	Team     string `env:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
-	Username string `env:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
-	Password string `env:"DEPENDENCYTRACK_PASSWORD"`
+	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
+	Team     string `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
+	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
+	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
 }
 
 type K8sConfig struct {
-	UseKubeConfig  bool            `env:"V13S_KUBERNETES_USE_KUBECONFIG"`
-	Clusters       []string        `env:"V13S_KUBERNETES_CLUSTERS"`
-	StaticClusters []StaticCluster `env:"V13S_KUBERNETES_CLUSTERS_STATIC"`
+	Clusters       []string        `envconfig:"KUBERNETES_CLUSTERS"`
+	StaticClusters []StaticCluster `envconfig:"KUBERNETES_CLUSTERS_STATIC"`
 }
 
 func (k *K8sConfig) AllClusterNames() []string {
@@ -55,7 +54,7 @@ func NewConfig() (*Config, error) {
 	}
 
 	cfg := &Config{}
-	err = envconfig.Process("V13S", cfg)
+	err = envconfig.Process("", cfg)
 	if err != nil {
 		return nil, err
 	}
