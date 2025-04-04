@@ -32,6 +32,14 @@ RETURNING
     *
 ;
 
+-- name: DeleteWorkload :exec
+DELETE FROM workloads
+WHERE name = @name
+  AND workload_type = @workload_type
+  AND namespace = @namespace
+  AND cluster = @cluster
+;
+
 -- name: ListWorkloadsByImage :many
 SELECT *
 FROM workloads

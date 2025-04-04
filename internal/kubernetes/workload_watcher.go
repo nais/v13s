@@ -2,10 +2,11 @@ package kubernetes
 
 import (
 	"context"
-	"github.com/nais/v13s/internal/manager"
-	"github.com/nais/v13s/internal/model"
+	"strings"
 
 	nais "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/v13s/internal/manager"
+	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
 )
@@ -26,24 +27,24 @@ func NewWorkloadWatcher(ctx context.Context, mgr *Manager, log *logrus.Entry) *W
 }
 
 func (w *WorkloadWatcher) addOrUpdate(ctx context.Context, cluster string, obj any) {
-	workload := model.AsWorkload(cluster, obj)
-	if workload == nil {
+	workloads := getWorkloads(cluster, obj)
+	if len(workloads) == 0 {
 		w.log.Warnf("object type not supported for workload: %T", obj)
 		return
 	}
-	if err := manager.AddOrUpdateWorkload(ctx, workload); err != nil {
+	if err := manager.AddOrUpdateWorkloads(ctx, workloads...); err != nil {
 		w.log.WithError(err).Error("add or update workload with manager")
 		return
 	}
 }
 
 func (w *WorkloadWatcher) remove(ctx context.Context, cluster string, obj any) {
-	workload := model.AsWorkload(cluster, obj)
-	if workload == nil {
+	workloads := getWorkloads(cluster, obj)
+	if len(workloads) == 0 {
 		w.log.Warnf("object type not supported for workload: %T", obj)
 		return
 	}
-	if err := manager.DeleteWorkload(ctx, workload); err != nil {
+	if err := manager.DeleteWorkloads(ctx, workloads...); err != nil {
 		w.log.WithError(err).Error("delete workload with manager")
 		return
 	}
@@ -73,4 +74,73 @@ func (w *WorkloadWatcher) addWatcherFuncs(ctx context.Context) {
 		w.remove(ctx, cluster, obj)
 	})
 	j.Start(ctx)
+}
+
+func getWorkloads(cluster string, obj any) []*model.Workload {
+	ret := make([]*model.Workload, 0)
+	if obj == nil {
+		return ret
+	}
+
+	switch obj := obj.(type) {
+	case *v1.Deployment:
+		deployment := obj
+		for _, c := range deployment.Spec.Template.Spec.Containers {
+			name, tag := imageNameTag(c.Image)
+			ret = append(ret, &model.Workload{
+				Name:      setWorkloadName(c.Name, deployment.GetName()),
+				Namespace: deployment.GetNamespace(),
+				Cluster:   cluster,
+				// TODO: consider using some sort of checking if the workload has labels identifying
+				// TODO: an "nais application", and if so, set the type to "app" otherwise to its original type, deployment etc.
+				Type:      model.WorkloadTypeApp,
+				ImageName: name,
+				ImageTag:  tag,
+			})
+		}
+	case *nais.Naisjob:
+		job := obj
+		name, tag := imageNameTag(job.Spec.Image)
+		w := &model.Workload{
+			Cluster:   cluster,
+			Name:      jobName(job),
+			Namespace: job.GetNamespace(),
+			Type:      model.WorkloadTypeJob,
+			ImageName: name,
+			ImageTag:  tag,
+		}
+		if job.Status.DeploymentRolloutStatus == "complete" {
+			w.Status.LastSuccessful = true
+		}
+		ret = append(ret, w)
+	}
+	return ret
+}
+
+// A workload can have multiple containers, we need to set the workload name to the container name
+// if the container name is different from the workload name (other container) we now create each separate workload
+// for each container, probably we should reference the main workload with its containers.
+// TODO: Potentially an issue, ok for naiserator created workloads
+func setWorkloadName(containerName, workloadName string) string {
+	if containerName == workloadName {
+		return workloadName
+	}
+	return containerName
+}
+
+func jobName(job *nais.Naisjob) string {
+	workloadName := job.Labels["app"]
+	if workloadName != "" {
+		return workloadName
+	}
+
+	return job.GetName()
+}
+
+func imageNameTag(image string) (string, string) {
+	parts := strings.Split(image, ":")
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return parts[0], parts[1]
 }

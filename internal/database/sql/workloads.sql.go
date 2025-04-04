@@ -49,6 +49,31 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 	return &i, err
 }
 
+const deleteWorkload = `-- name: DeleteWorkload :exec
+DELETE FROM workloads
+WHERE name = $1
+  AND workload_type = $2
+  AND namespace = $3
+  AND cluster = $4
+`
+
+type DeleteWorkloadParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+}
+
+func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) error {
+	_, err := q.db.Exec(ctx, deleteWorkload,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+	)
+	return err
+}
+
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
 SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads
