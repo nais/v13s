@@ -1,3 +1,4 @@
+apiserverIP:
 image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images
   name: v13s

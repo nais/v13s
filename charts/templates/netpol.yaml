@@ -8,6 +8,9 @@ spec:
         - ipBlock:
             cidr: {{ .Values.database.public_ip }}/32
     - to:
+        - ipBlock:
+            cidr: {{ .Values.apiserverIP }}/32
+    - to:
         - namespaceSelector: { }
           podSelector:
             matchLabels:

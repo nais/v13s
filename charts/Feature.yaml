@@ -1,6 +1,10 @@
 environmentKinds:
   - management
 values:
+  apiserverIP:
+    displayName: API server IP
+    computed:
+      template: '"{{.Env.apiserver_endpoint}}"'
   ingress.host:
     displayName: Ingress host
     config:
