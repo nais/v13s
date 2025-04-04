@@ -21,6 +21,7 @@ const mgrKey ctxKey = iota
 func NewContext(ctx context.Context, querier sql.Querier, source sources.Source, log *logrus.Entry) context.Context {
 	return context.WithValue(ctx, mgrKey, &manager{
 		db:  querier,
+		src: source,
 		log: log,
 	})
 }
