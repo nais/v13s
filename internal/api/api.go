@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/attestation"
 	"net"
 	"os/signal"
 	"strings"
@@ -67,7 +68,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	if err != nil {
 		log.Fatalf("Failed to create watcher manager: %v", err)
 	}
-	ctx = manager.NewContext(ctx, sql.New(pool), source, log.WithField("subsystem", "manager"))
+
+	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
+	if err != nil {
+		log.Fatalf("Failed to create verifier: %v", err)
+	}
+	ctx = manager.NewContext(ctx, sql.New(pool), source, verifier, log.WithField("subsystem", "manager"))
 	_ = kubernetes.NewWorkloadWatcher(ctx, watcherMgr, log.WithField("subsystem", "workload_watcher"))
 
 	u := updater.NewUpdater(
@@ -79,6 +85,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	u.Run(ctx)
 
 	wg, ctx := errgroup.WithContext(ctx)
+
+	syncCtx, cancelSync := context.WithTimeout(ctx, 20*time.Second)
+	defer cancelSync()
+	if !watcherMgr.WaitForReady(syncCtx) {
+		log.Warn("timed out waiting for cache sync")
+		return fmt.Errorf("timed out waiting for cache sync")
+	}
 
 	wg.Go(func() error {
 		if err = runGrpcServer(ctx, cfg, pool, u, log); err != nil {

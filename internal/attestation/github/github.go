@@ -2,7 +2,6 @@ package github
 
 import (
 	"github.com/sigstore/cosign/v2/pkg/cosign"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -10,13 +9,11 @@ const (
 )
 
 type CertificateIdentity struct {
-	logger        *log.Entry
 	Organizations []string
 }
 
 func NewCertificateIdentity(organisations []string) *CertificateIdentity {
 	return &CertificateIdentity{
-		logger:        log.WithField("package", "github"),
 		Organizations: organisations,
 	}
 }

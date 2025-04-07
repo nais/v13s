@@ -25,6 +25,7 @@ type Config struct {
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
 	DependencyTrack           DependencyTrackConfig
 	K8s                       K8sConfig
+	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 }
 
 type DependencyTrackConfig struct {

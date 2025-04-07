@@ -5,6 +5,8 @@ package sql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createWorkload = `-- name: CreateWorkload :one
@@ -47,6 +49,31 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const createWorkloadVulnerabilitySource = `-- name: CreateWorkloadVulnerabilitySource :exec
+INSERT INTO workload_vulnerability_sources(
+    workload_id,
+    source_id,
+    source_type
+)
+VALUES (
+    $1,
+    $2,
+    $3
+) ON CONFLICT
+    DO NOTHING
+`
+
+type CreateWorkloadVulnerabilitySourceParams struct {
+	WorkloadID pgtype.UUID
+	SourceID   pgtype.UUID
+	SourceType string
+}
+
+func (q *Queries) CreateWorkloadVulnerabilitySource(ctx context.Context, arg CreateWorkloadVulnerabilitySourceParams) error {
+	_, err := q.db.Exec(ctx, createWorkloadVulnerabilitySource, arg.WorkloadID, arg.SourceID, arg.SourceType)
+	return err
 }
 
 const deleteWorkload = `-- name: DeleteWorkload :exec
@@ -156,7 +183,7 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 	return items, nil
 }
 
-const upsertWorkload = `-- name: UpsertWorkload :exec
+const upsertWorkload = `-- name: UpsertWorkload :one
 INSERT INTO workloads(
     name,
     workload_type,
@@ -179,6 +206,8 @@ VALUES (
         image_name = $5,
         image_tag = $6,
         updated_at = NOW()
+    RETURNING
+        id
 `
 
 type UpsertWorkloadParams struct {
@@ -190,8 +219,8 @@ type UpsertWorkloadParams struct {
 	ImageTag     string
 }
 
-func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error {
-	_, err := q.db.Exec(ctx, upsertWorkload,
+func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, upsertWorkload,
 		arg.Name,
 		arg.WorkloadType,
 		arg.Namespace,
@@ -199,5 +228,7 @@ func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) 
 		arg.ImageName,
 		arg.ImageTag,
 	)
-	return err
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }

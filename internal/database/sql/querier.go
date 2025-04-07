@@ -19,6 +19,7 @@ type Querier interface {
 	CreateImage(ctx context.Context, arg CreateImageParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
+	CreateWorkloadVulnerabilitySource(ctx context.Context, arg CreateWorkloadVulnerabilitySourceParams) error
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) error
 	GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
@@ -42,7 +43,7 @@ type Querier interface {
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
-	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error
+	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error)
 }
 
 var _ Querier = (*Queries)(nil)

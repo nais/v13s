@@ -6,7 +6,6 @@ import (
 	nais "github.com/nais/liberator/pkg/apis/nais.io/v1"
 	"github.com/nais/v13s/internal/config"
 	v1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 
@@ -60,7 +59,6 @@ func NewManager(clusterConfig config.ClusterConfigMap, log logrus.FieldLogger, o
 	scheme := runtime.NewScheme()
 	funcs := []func(s *runtime.Scheme) error{
 		nais.AddToScheme,
-		corev1.AddToScheme,
 		v1.AddToScheme,
 	}
 	for _, f := range funcs {
