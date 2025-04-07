@@ -5,6 +5,8 @@ package sql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createWorkload = `-- name: CreateWorkload :one
@@ -49,12 +51,14 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 	return &i, err
 }
 
-const deleteWorkload = `-- name: DeleteWorkload :exec
+const deleteWorkload = `-- name: DeleteWorkload :one
 DELETE FROM workloads
 WHERE name = $1
   AND workload_type = $2
   AND namespace = $3
   AND cluster = $4
+RETURNING
+    id
 `
 
 type DeleteWorkloadParams struct {
@@ -64,14 +68,54 @@ type DeleteWorkloadParams struct {
 	Cluster      string
 }
 
-func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) error {
-	_, err := q.db.Exec(ctx, deleteWorkload,
+func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteWorkload,
 		arg.Name,
 		arg.WorkloadType,
 		arg.Namespace,
 		arg.Cluster,
 	)
-	return err
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getWorkload = `-- name: GetWorkload :one
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+FROM workloads
+WHERE name = $1
+  AND workload_type = $2
+  AND namespace = $3
+  AND cluster = $4
+`
+
+type GetWorkloadParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+}
+
+func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error) {
+	row := q.db.QueryRow(ctx, getWorkload,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+	)
+	var i Workload
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.WorkloadType,
+		&i.Namespace,
+		&i.Cluster,
+		&i.ImageName,
+		&i.ImageTag,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
 }
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
@@ -156,7 +200,7 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 	return items, nil
 }
 
-const upsertWorkload = `-- name: UpsertWorkload :exec
+const upsertWorkload = `-- name: UpsertWorkload :one
 INSERT INTO workloads(
     name,
     workload_type,
@@ -179,6 +223,8 @@ VALUES (
         image_name = $5,
         image_tag = $6,
         updated_at = NOW()
+RETURNING
+    id
 `
 
 type UpsertWorkloadParams struct {
@@ -190,8 +236,8 @@ type UpsertWorkloadParams struct {
 	ImageTag     string
 }
 
-func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error {
-	_, err := q.db.Exec(ctx, upsertWorkload,
+func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, upsertWorkload,
 		arg.Name,
 		arg.WorkloadType,
 		arg.Namespace,
@@ -199,5 +245,7 @@ func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) 
 		arg.ImageName,
 		arg.ImageTag,
 	)
-	return err
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }

@@ -17,9 +17,10 @@ type Querier interface {
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CountVulnerabilitiesForImage(ctx context.Context, arg CountVulnerabilitiesForImageParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
+	CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
-	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) error
+	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
 	GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
@@ -28,6 +29,8 @@ type Querier interface {
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
+	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
+	ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
@@ -42,7 +45,7 @@ type Querier interface {
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
-	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) error
+	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -1,4 +1,4 @@
--- name: UpsertWorkload :exec
+-- name: UpsertWorkload :one
 INSERT INTO workloads(
     name,
     workload_type,
@@ -21,6 +21,8 @@ VALUES (
         image_name = @image_name,
         image_tag = @image_tag,
         updated_at = NOW()
+RETURNING
+    id
 ;
 
 -- name: CreateWorkload :one
@@ -32,12 +34,23 @@ RETURNING
     *
 ;
 
--- name: DeleteWorkload :exec
+-- name: GetWorkload :one
+SELECT *
+FROM workloads
+WHERE name = @name
+  AND workload_type = @workload_type
+  AND namespace = @namespace
+  AND cluster = @cluster
+;
+
+-- name: DeleteWorkload :one
 DELETE FROM workloads
 WHERE name = @name
   AND workload_type = @workload_type
   AND namespace = @namespace
   AND cluster = @cluster
+RETURNING
+    id
 ;
 
 -- name: ListWorkloadsByImage :many

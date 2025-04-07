@@ -69,7 +69,7 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 		wType = "platform"
 	}
 
-	if err := s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+	if _, err := s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 		Name:         request.Workload,
 		WorkloadType: wType,
 		Namespace:    request.Namespace,
