@@ -30,13 +30,13 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 
-	c, err := config.NewConfig()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		log.WithError(err).Errorf("error when processing configuration")
 	}
 
-	appLogger := setupLogger(log, c.LogFormat, c.LogLevel)
-	err = api.Run(ctx, c, appLogger)
+	appLogger := setupLogger(log, cfg.LogFormat, cfg.LogLevel)
+	err = api.Run(ctx, cfg, appLogger)
 	if err != nil {
 		appLogger.WithError(err).Errorf("error in run()")
 		os.Exit(exitCodeRunError)

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/internal/attestation"
 	"net"
 	"os/signal"
 	"strings"
@@ -65,7 +66,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		Deleted: make(chan *model.Workload, 10),
 	}
 
-	mgr := manager.NewWorkloadManager(sql.New(pool), source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
+	if err != nil {
+		log.Fatalf("Failed to create verifier: %v", err)
+	}
+
+	mgr := manager.NewWorkloadManager(sql.New(pool), verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))

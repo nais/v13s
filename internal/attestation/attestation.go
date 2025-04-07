@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/nais/v13s/internal/attestation/github"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
@@ -33,8 +34,8 @@ type Verifier struct {
 
 func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (*Verifier, error) {
 	// TODO: fix for localhost
-	//ids := github.NewCertificateIdentity(organizations).GetIdentities()
-	opts, err := CosignOptions(ctx, "", []cosign.Identity{})
+	ids := github.NewCertificateIdentity(organizations).GetIdentities()
+	opts, err := CosignOptions(ctx, "", ids)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +76,10 @@ func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.C
 		"statement-type": statement.Type,
 		"ref":            ref.String(),
 	}).Info("attestation verified and parsed statement")
+
+	if statement.PredicateType != in_toto.PredicateCycloneDX {
+		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)
+	}
 
 	return statement, nil
 }

@@ -191,7 +191,7 @@ func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, project
 		})
 		assert.NoError(t, err)
 
-		err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name:         fmt.Sprintf("workload-%s", p),
 			WorkloadType: "app",
 			Namespace:    "namespace-1",
@@ -210,17 +210,22 @@ type MockDtrack struct {
 	findings map[string][]client.Finding
 }
 
+func (m MockDtrack) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *dependencytrack.WorkloadRef) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) DeleteProject(ctx context.Context, uuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m MockDtrack) CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
 func (m MockDtrack) UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockDtrack) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *dependencytrack.WorkloadRef) error {
 	//TODO implement me
 	panic("implement me")
 }

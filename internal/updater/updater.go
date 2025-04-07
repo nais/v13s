@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	DefaultResyncImagesOlderThanMinutes = 60 * 12 * time.Minute // 12 hours
-	DefaultMarkUntrackedInterval        = 20 * time.Minute
+	FetchVulnerabilityDataForImagesDefaultLimit = 10
+	DefaultResyncImagesOlderThanMinutes         = 60 * 12 * time.Minute // 12 hours
+	DefaultMarkUntrackedInterval                = 20 * time.Minute
 )
 
 type Updater struct {
@@ -104,9 +105,7 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 		}
 	}()
 
-	// TODO: experiment with different limits, and move to const
-	// will block until limit is reached
-	err = u.FetchVulnerabilityDataForImages(ctx, images, 10, ch)
+	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
 	if err != nil {
 		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
 		return err

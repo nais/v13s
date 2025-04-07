@@ -83,8 +83,10 @@ func seedDependencyTrack(ctx context.Context) error {
 			Namespace: "devteam",
 			Type:      "app",
 			Name:      fmt.Sprintf("nais-deploy-chicken-%d", i),
+			ImageName: fmt.Sprintf(imgPrefix, i),
+			ImageTag:  "1",
 		}
-		err = c.CreateProjectWithSbom(ctx, fmt.Sprintf(imgPrefix, i), "1", att, ref)
+		_, err = c.CreateProjectWithSbom(ctx, att, ref)
 		if err != nil {
 			return err
 		}
