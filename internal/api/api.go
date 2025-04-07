@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/nais/v13s/internal/kubernetes/yolo"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"net"
 	"os/signal"
 	"strings"
@@ -15,9 +18,6 @@ import (
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
-	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
@@ -63,12 +63,43 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 
-	watcherMgr, err := kubernetes.NewManager(clusterConfig, log)
+	/*watcherMgr, err := kubernetes.NewManager(clusterConfig, log)
 	if err != nil {
 		log.Fatalf("Failed to create watcher manager: %v", err)
 	}
+
+	syncCtx, cancelSync := context.WithTimeout(ctx, 20*time.Second)
+	defer cancelSync()
+	if !watcherMgr.WaitForReady(syncCtx) {
+		return errors.New("timed out waiting for watchers to be ready")
+	}
+
+
 	ctx = manager.NewContext(ctx, sql.New(pool), source, log.WithField("subsystem", "manager"))
 	_ = kubernetes.NewWorkloadWatcher(ctx, watcherMgr, log.WithField("subsystem", "workload_watcher"))
+	*/
+	k8sMgr, err := k8s_new.NewManager(
+		clusterConfig,
+		log.WithField("subsystem", "k8s_manager"),
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+	)
+	if err != nil {
+		log.Fatalf("Failed to create k8s manager: %v", err)
+	}
+	k8sMgr.Start(ctx)
+
+	syncCtx, cancelSync := context.WithTimeout(ctx, 20*time.Second)
+	defer cancelSync()
+	if !k8sMgr.WaitForReady(syncCtx) {
+		return errors.New("timed out waiting for watchers to be ready")
+	}
+
+	/*err = k8s.Informers(ctx, clusterConfig, log.WithField("subsystem", "k8s_informers"))
+	if err != nil {
+		log.Fatalf("Failed to create informers: %v", err)
+	}
+
+	*/
 
 	u := updater.NewUpdater(
 		pool,
