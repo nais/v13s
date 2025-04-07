@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -13,13 +14,17 @@ import (
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type manager struct {
-	db       sql.Querier
-	src      sources.Source
-	verifier *attestation.Verifier
-	log      logrus.FieldLogger
+	db              sql.Querier
+	src             sources.Source
+	verifier        *attestation.Verifier
+	log             logrus.FieldLogger
+	workloadCounter metric.Int64UpDownCounter
 }
 
 type ctxKey int
@@ -27,11 +32,18 @@ type ctxKey int
 const mgrKey ctxKey = iota
 
 func NewContext(ctx context.Context, querier sql.Querier, source sources.Source, verifier *attestation.Verifier, log *logrus.Entry) context.Context {
+	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
+	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
+	if err != nil {
+		panic(err)
+	}
+
 	return context.WithValue(ctx, mgrKey, &manager{
-		db:       querier,
-		src:      source,
-		verifier: verifier,
-		log:      log,
+		db:              querier,
+		src:             source,
+		verifier:        verifier,
+		log:             log,
+		workloadCounter: udCounter,
 	})
 }
 
@@ -39,7 +51,7 @@ func NewContext(ctx context.Context, querier sql.Querier, source sources.Source,
 func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) error {
 	db := mgr(ctx).db
 	for _, w := range workloads {
-		image, err := db.GetImage(ctx, sql.GetImageParams{
+		_, err := db.GetImage(ctx, sql.GetImageParams{
 			Name: w.ImageName,
 			Tag:  w.ImageTag,
 		})
@@ -51,7 +63,7 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 			}
 		}
 
-		if image != nil {
+		if err == nil {
 			continue
 		}
 
@@ -70,14 +82,41 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 		if err != nil {
 			if !strings.Contains(err.Error(), attestation.ErrNoAttestation) {
 				mgr(ctx).log.WithError(err).Error("Failed to get attestation")
-				return err
 			}
 		}
 
+		mgr(ctx).workloadCounter.Add(
+			context.TODO(),
+			1,
+			metric.WithAttributes(
+				attribute.String("type", string(w.Type)),
+				attribute.String("hasAttestation", fmt.Sprint(att != nil)),
+			))
+
 		if att != nil {
 			source := mgr(ctx).src
+			sw := &sources.Workload{
+				Cluster:   w.Cluster,
+				Namespace: w.Namespace,
+				Name:      w.Name,
+				Type:      string(w.Type),
+				ImageName: w.ImageName,
+				ImageTag:  w.ImageTag,
+			}
+			id, err := source.UploadSbom(ctx, sw, att)
+			if err != nil {
+				mgr(ctx).log.WithError(err).Error("Failed to upload sbom")
+				return err
+			}
 
-			// TODO: dependencytrack update/create
+			err = db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+				SourceID: pgtype.UUID{
+					Bytes: id,
+					Valid: true,
+				},
+				WorkloadID: *workloadId,
+				SourceType: source.Name(),
+			})
 		}
 	}
 	return nil
@@ -88,7 +127,7 @@ func DeleteWorkloads(ctx context.Context, workloads ...*model.Workload) error {
 	// delete from db and source
 	for _, w := range workloads {
 		mgr(ctx).log.WithField("workload", w).Debug("deleting workload")
-		err := mgr(ctx).db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
+		id, err := mgr(ctx).db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
 			Name:         w.Name,
 			Cluster:      w.Cluster,
 			Namespace:    w.Namespace,
@@ -97,6 +136,30 @@ func DeleteWorkloads(ctx context.Context, workloads ...*model.Workload) error {
 		if err != nil {
 			mgr(ctx).log.WithError(err).Error("Failed to delete workload")
 			return err
+		}
+
+		refs, err := mgr(ctx).db.ListSourceRefs(ctx, sql.ListSourceRefsParams{
+			WorkloadID: id,
+			SourceType: mgr(ctx).src.Name(),
+		})
+		if err != nil {
+			mgr(ctx).log.WithError(err).Error("Failed to list source refs")
+			return err
+		}
+		for _, ref := range refs {
+			sw := &sources.Workload{
+				Cluster:   w.Cluster,
+				Namespace: w.Namespace,
+				Name:      w.Name,
+				Type:      string(w.Type),
+				ImageName: w.ImageName,
+				ImageTag:  w.ImageTag,
+			}
+			err = mgr(ctx).src.DeleteWorkload(ctx, ref.SourceID.Bytes, sw)
+			if err != nil {
+				mgr(ctx).log.WithError(err).Error("Failed to delete workload from source")
+				return err
+			}
 		}
 	}
 	return nil

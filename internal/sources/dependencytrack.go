@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
+	"github.com/google/uuid"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 )
 
 var ErrNoMetrics = fmt.Errorf("no metrics found")
@@ -40,6 +41,31 @@ func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) 
 
 func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
+}
+
+func (d *dependencytrackSource) UploadSbom(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+	d.log.Infof("uploading sbom for workload %v", workload)
+
+	projectId, err := d.client.CreateProjectWithSbom(
+		ctx,
+		workload.ImageName,
+		workload.ImageTag,
+		att,
+		&dependencytrack.WorkloadRef{},
+	)
+	if err != nil {
+		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
+	}
+	id, err := uuid.Parse(projectId)
+	if err != nil {
+		return uuid.New(), fmt.Errorf("parsing project id: %w", err)
+	}
+	return id, nil
+}
+
+func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
+	d.log.Infof("remove references for workload %v", workload)
+	return nil
 }
 
 func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {

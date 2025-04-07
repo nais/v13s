@@ -51,37 +51,14 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 	return &i, err
 }
 
-const createWorkloadVulnerabilitySource = `-- name: CreateWorkloadVulnerabilitySource :exec
-INSERT INTO workload_vulnerability_sources(
-    workload_id,
-    source_id,
-    source_type
-)
-VALUES (
-    $1,
-    $2,
-    $3
-) ON CONFLICT
-    DO NOTHING
-`
-
-type CreateWorkloadVulnerabilitySourceParams struct {
-	WorkloadID pgtype.UUID
-	SourceID   pgtype.UUID
-	SourceType string
-}
-
-func (q *Queries) CreateWorkloadVulnerabilitySource(ctx context.Context, arg CreateWorkloadVulnerabilitySourceParams) error {
-	_, err := q.db.Exec(ctx, createWorkloadVulnerabilitySource, arg.WorkloadID, arg.SourceID, arg.SourceType)
-	return err
-}
-
-const deleteWorkload = `-- name: DeleteWorkload :exec
+const deleteWorkload = `-- name: DeleteWorkload :one
 DELETE FROM workloads
 WHERE name = $1
   AND workload_type = $2
   AND namespace = $3
   AND cluster = $4
+RETURNING
+    id
 `
 
 type DeleteWorkloadParams struct {
@@ -91,14 +68,16 @@ type DeleteWorkloadParams struct {
 	Cluster      string
 }
 
-func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) error {
-	_, err := q.db.Exec(ctx, deleteWorkload,
+func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteWorkload,
 		arg.Name,
 		arg.WorkloadType,
 		arg.Namespace,
 		arg.Cluster,
 	)
-	return err
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many

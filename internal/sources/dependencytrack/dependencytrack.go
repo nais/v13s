@@ -10,10 +10,9 @@ import (
 	"strings"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
-	"github.com/sirupsen/logrus"
-
 	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 )
 
 var _ Client = &dependencyTrackClient{}
@@ -28,7 +27,7 @@ type Client interface {
 	TriggerAnalysis(ctx context.Context, uuid string) error
 	CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error)
 	UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error
-	CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error
+	CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error)
 }
 
 type dependencyTrackClient struct {
@@ -75,7 +74,7 @@ func setupConfig(rawURL string) *client.Configuration {
 	return cfg
 }
 
-func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error {
+func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
 	tags := []string{
 		fmt.Sprintf("cluster:%s", workloadRef.Cluster),
 		fmt.Sprintf("namespace:%s", workloadRef.Namespace),
@@ -87,25 +86,25 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, image
 	if err != nil {
 		if !strings.Contains(err.Error(), "project already exists") {
 			c.log.Errorf("create project: %v", err)
-			return err
+			return "", err
 		}
 	}
 
 	if p == nil {
 		p, err = c.GetProject(ctx, imageName, imageTag)
 		if err != nil {
-			return fmt.Errorf("failed to get project: %w", err)
+			return "", fmt.Errorf("failed to get project: %w", err)
 		}
 	}
 
 	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
-		return err
+		return "", err
 	}
 
 	if err = c.TriggerAnalysis(ctx, *p.Uuid); err != nil {
 		c.log.Warnf("trigger analysis: %v", err)
 	}
-	return nil
+	return *p.Uuid, nil
 }
 
 func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error) {
