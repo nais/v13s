@@ -74,6 +74,44 @@ func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) 
 	return err
 }
 
+const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+FROM workloads
+WHERE cluster = $1
+ORDER BY
+    (name, namespace, cluster, updated_at) DESC
+`
+
+func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error) {
+	rows, err := q.db.Query(ctx, listWorkloadsByCluster, cluster)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Workload{}
+	for rows.Next() {
+		var i Workload
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
 SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads

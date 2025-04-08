@@ -87,13 +87,18 @@ func getWorkloads(cluster string, obj any) []*model.Workload {
 		deployment := obj
 		for _, c := range deployment.Spec.Template.Spec.Containers {
 			name, tag := imageNameTag(c.Image)
+			wType := model.WorkloadTypeDeployment
+			for _, ref := range deployment.OwnerReferences {
+				if ref.Kind == "Application" && ref.APIVersion == "nais.io/v1alpha1" {
+					wType = model.WorkloadTypeApp
+				}
+			}
+
 			ret = append(ret, &model.Workload{
 				Name:      setWorkloadName(c.Name, deployment.GetName()),
 				Namespace: deployment.GetNamespace(),
 				Cluster:   cluster,
-				// TODO: consider using some sort of checking if the workload has labels identifying
-				// TODO: an "nais application", and if so, set the type to "app" otherwise to its original type, deployment etc.
-				Type:      model.WorkloadTypeApp,
+				Type:      wType,
 				ImageName: name,
 				ImageTag:  tag,
 			})

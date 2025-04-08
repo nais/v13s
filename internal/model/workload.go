@@ -7,9 +7,10 @@ import (
 type WorkloadType string
 
 const (
-	WorkloadTypeApp      WorkloadType = "app"
-	WorkloadTypeJob      WorkloadType = "job"
-	WorkloadTypePlatform WorkloadType = "platform"
+	WorkloadTypeApp        WorkloadType = "app"
+	WorkloadTypeJob        WorkloadType = "job"
+	WorkloadTypePlatform   WorkloadType = "platform"
+	WorkloadTypeDeployment WorkloadType = "deployment"
 )
 
 type Workload struct {

@@ -33,6 +33,7 @@ type Querier interface {
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
+	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
 	MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error

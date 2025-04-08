@@ -47,3 +47,10 @@ WHERE image_name = @image_name
   AND image_tag = @image_tag
 ORDER BY
     (name, cluster, updated_at) DESC;
+
+-- name: ListWorkloadsByCluster :many
+SELECT *
+FROM workloads
+WHERE cluster = @cluster
+ORDER BY
+    (name, namespace, cluster, updated_at) DESC;
