@@ -81,7 +81,7 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 		att, err := verifier.GetAttestation(ctx, w.ImageName+":"+w.ImageTag)
 		if err != nil {
 			if !strings.Contains(err.Error(), attestation.ErrNoAttestation) {
-				mgr(ctx).log.WithError(err).Error("Failed to get attestation")
+				mgr(ctx).log.WithError(err).Warn("Failed to get attestation")
 			}
 		}
 
@@ -105,6 +105,9 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 			}
 			id, err := source.UploadSbom(ctx, sw, att)
 			if err != nil {
+				if strings.Contains(err.Error(), "400") {
+					mgr(ctx).log.Println("### 400")
+				}
 				mgr(ctx).log.WithError(err).Error("Failed to upload sbom")
 				return err
 			}

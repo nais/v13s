@@ -77,6 +77,10 @@ func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.C
 		"ref":            ref.String(),
 	}).Info("attestation verified and parsed statement")
 
+	if statement.PredicateType != in_toto.PredicateCycloneDX {
+		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)
+	}
+
 	return statement, nil
 }
 
