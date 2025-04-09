@@ -64,7 +64,7 @@ WITH filtered_workloads AS (
     WHERE
         ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
       AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
-      AND ($3::TEXT IS NULL OR w.workload_type = $3::TEXT)
+      AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
       AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
 )
 SELECT
@@ -82,10 +82,10 @@ FROM filtered_workloads fw
 `
 
 type GetVulnerabilitySummaryParams struct {
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-	WorkloadName *string
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
 }
 
 type GetVulnerabilitySummaryRow struct {
@@ -103,7 +103,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 	row := q.db.QueryRow(ctx, getVulnerabilitySummary,
 		arg.Cluster,
 		arg.Namespace,
-		arg.WorkloadType,
+		arg.WorkloadTypes,
 		arg.WorkloadName,
 	)
 	var i GetVulnerabilitySummaryRow

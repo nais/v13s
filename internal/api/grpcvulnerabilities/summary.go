@@ -105,11 +105,15 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	wTypes := []string{"app", "job"}
+	if request.GetFilter().GetWorkloadType() != "" {
+		wTypes = []string{request.GetFilter().GetWorkloadType()}
+	}
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().WorkloadType,
-		WorkloadName: request.GetFilter().Workload,
+		Cluster:       request.GetFilter().Cluster,
+		Namespace:     request.GetFilter().Namespace,
+		WorkloadTypes: wTypes,
+		WorkloadName:  request.GetFilter().Workload,
 	})
 
 	if err != nil {
