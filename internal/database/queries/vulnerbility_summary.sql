@@ -42,7 +42,7 @@ WITH filtered_workloads AS (
     WHERE
         (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
       AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
-      AND (sqlc.narg('workload_type')::TEXT IS NULL OR w.workload_type = sqlc.narg('workload_type')::TEXT)
+      AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
       AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
 )
    , vulnerability_data AS (

@@ -7,12 +7,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
@@ -31,17 +30,21 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		since.Valid = true
 	}
 
+	wTypes := []string{"app", "job"}
+	if request.GetFilter().GetWorkloadType() != "" {
+		wTypes = []string{request.GetFilter().GetWorkloadType()}
+	}
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().WorkloadType,
-		WorkloadName: request.GetFilter().Workload,
-		ImageName:    request.GetFilter().ImageName,
-		ImageTag:     request.GetFilter().ImageTag,
-		OrderBy:      sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
-		Limit:        limit,
-		Offset:       offset,
-		Since:        since,
+		Cluster:       request.GetFilter().Cluster,
+		Namespace:     request.GetFilter().Namespace,
+		WorkloadTypes: wTypes,
+		WorkloadName:  request.GetFilter().Workload,
+		ImageName:     request.GetFilter().ImageName,
+		ImageTag:      request.GetFilter().ImageTag,
+		OrderBy:       sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+		Limit:         limit,
+		Offset:        offset,
+		Since:         since,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)

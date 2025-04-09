@@ -157,7 +157,7 @@ WITH filtered_workloads AS (
     WHERE
         ($4::TEXT IS NULL OR w.cluster = $4::TEXT)
       AND ($5::TEXT IS NULL OR w.namespace = $5::TEXT)
-      AND ($6::TEXT IS NULL OR w.workload_type = $6::TEXT)
+      AND ($6::TEXT[] IS NULL OR w.workload_type = ANY($6::TEXT[]))
       AND ($7::TEXT IS NULL OR w.name = $7::TEXT)
 )
    , vulnerability_data AS (
@@ -222,16 +222,16 @@ OFFSET $2
 `
 
 type ListVulnerabilitySummariesParams struct {
-	OrderBy      interface{}
-	Offset       int32
-	Limit        int32
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-	WorkloadName *string
-	Since        pgtype.Timestamptz
-	ImageName    *string
-	ImageTag     *string
+	OrderBy       interface{}
+	Offset        int32
+	Limit         int32
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	Since         pgtype.Timestamptz
+	ImageName     *string
+	ImageTag      *string
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -265,7 +265,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.Limit,
 		arg.Cluster,
 		arg.Namespace,
-		arg.WorkloadType,
+		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.Since,
 		arg.ImageName,
