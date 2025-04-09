@@ -28,6 +28,14 @@ type Status struct {
 	ScaledDown     bool
 }
 
+func (w *Workload) Equal(other *Workload) bool {
+	return w.Name == other.Name &&
+		w.Namespace == other.Namespace &&
+		w.Type == other.Type &&
+		w.ImageName == other.ImageName &&
+		w.ImageTag == other.ImageTag
+}
+
 func (w *Workload) String() string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s:%s", "todo", w.Namespace, w.Type, w.Name, w.ImageName, w.ImageTag)
 }
