@@ -29,6 +29,7 @@ type Querier interface {
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
+	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)

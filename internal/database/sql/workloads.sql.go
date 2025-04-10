@@ -80,6 +80,44 @@ func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) 
 	return id, err
 }
 
+const getWorkload = `-- name: GetWorkload :one
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+FROM workloads
+WHERE name = $1
+  AND workload_type = $2
+  AND namespace = $3
+  AND cluster = $4
+`
+
+type GetWorkloadParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+}
+
+func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error) {
+	row := q.db.QueryRow(ctx, getWorkload,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+	)
+	var i Workload
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.WorkloadType,
+		&i.Namespace,
+		&i.Cluster,
+		&i.ImageName,
+		&i.ImageTag,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
 SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads
@@ -185,8 +223,8 @@ VALUES (
         image_name = $5,
         image_tag = $6,
         updated_at = NOW()
-    RETURNING
-        id
+RETURNING
+    id
 `
 
 type UpsertWorkloadParams struct {

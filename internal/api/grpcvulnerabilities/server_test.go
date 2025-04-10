@@ -160,8 +160,9 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 			ImageTag:     "v1.0",
 		}
 
-		err = db.UpsertWorkload(ctx, w)
+		_, err := db.UpsertWorkload(ctx, w)
 		assert.NoError(t, err)
+		//assert.NotEqual(t, 0, id)
 
 		resp, err := client.ListVulnerabilities(
 			ctx,
@@ -246,7 +247,7 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 			ImageTag:     workload.ImageTag,
 		}
 
-		err = db.UpsertWorkload(ctx, w)
+		_, err = db.UpsertWorkload(ctx, w)
 		assert.NoError(t, err)
 
 		cweParams := make([]sql.BatchUpsertCveParams, 0)

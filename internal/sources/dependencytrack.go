@@ -48,10 +48,15 @@ func (d *dependencytrackSource) UploadSbom(ctx context.Context, workload *Worklo
 
 	projectId, err := d.client.CreateProjectWithSbom(
 		ctx,
-		workload.ImageName,
-		workload.ImageTag,
 		att,
-		&dependencytrack.WorkloadRef{},
+		&dependencytrack.WorkloadRef{
+			Cluster:   workload.Cluster,
+			Namespace: workload.Namespace,
+			Type:      workload.Type,
+			Name:      workload.Name,
+			ImageName: workload.ImageName,
+			ImageTag:  workload.ImageTag,
+		},
 	)
 	if err != nil {
 		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
@@ -65,6 +70,13 @@ func (d *dependencytrackSource) UploadSbom(ctx context.Context, workload *Worklo
 
 func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
 	d.log.Infof("remove references for workload %v", workload)
+
+	err := d.client.DeleteProject(ctx, ref.String())
+	if err != nil {
+		return fmt.Errorf("deleting project: %w", err)
+	}
+
+	d.log.Infof("deleted project %s", ref.String())
 	return nil
 }
 

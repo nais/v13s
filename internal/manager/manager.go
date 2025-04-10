@@ -51,26 +51,29 @@ func NewContext(ctx context.Context, querier sql.Querier, source sources.Source,
 func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) error {
 	db := mgr(ctx).db
 	for _, w := range workloads {
-		_, err := db.GetImage(ctx, sql.GetImageParams{
-			Name: w.ImageName,
-			Tag:  w.ImageTag,
+		row, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         w.Name,
+			Cluster:      w.Cluster,
+			Namespace:    w.Namespace,
+			WorkloadType: string(w.Type),
 		})
-
 		if err != nil {
 			if !errors.Is(err, pgx.ErrNoRows) {
-				mgr(ctx).log.WithError(err).Error("Failed to get image")
+				mgr(ctx).log.WithError(err).Error("Failed to get workload")
 				return err
 			}
 		}
 
-		if err == nil {
+		if w.Name == "slsa-verde" {
+			fmt.Println("found slsa-verde workload")
+		}
+		if row != nil && w.ImageTag == row.ImageTag {
+
 			continue
 		}
 
-		// check db if update is needed, i.e. image tag changed
-		// then update source with the new image tag
-
 		mgr(ctx).log.WithField("workload", w).Debug("adding or updating workload")
+		// TODO: add metadata to workload
 		workloadId, err := RegisterWorkload(ctx, w, map[string]string{})
 		if err != nil {
 			mgr(ctx).log.WithError(err).Error("Failed to register workload")
@@ -86,7 +89,7 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 		}
 
 		mgr(ctx).workloadCounter.Add(
-			context.TODO(),
+			ctx,
 			1,
 			metric.WithAttributes(
 				attribute.String("type", string(w.Type)),
@@ -105,9 +108,6 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 			}
 			id, err := source.UploadSbom(ctx, sw, att)
 			if err != nil {
-				if strings.Contains(err.Error(), "400") {
-					mgr(ctx).log.Println("### 400")
-				}
 				mgr(ctx).log.WithError(err).Error("Failed to upload sbom")
 				return err
 			}
@@ -126,8 +126,6 @@ func AddOrUpdateWorkloads(ctx context.Context, workloads ...*model.Workload) err
 }
 
 func DeleteWorkloads(ctx context.Context, workloads ...*model.Workload) error {
-	//m := mgr(ctx)
-	// delete from db and source
 	for _, w := range workloads {
 		mgr(ctx).log.WithField("workload", w).Debug("deleting workload")
 		id, err := mgr(ctx).db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
@@ -158,6 +156,9 @@ func DeleteWorkloads(ctx context.Context, workloads ...*model.Workload) error {
 				ImageName: w.ImageName,
 				ImageTag:  w.ImageTag,
 			}
+
+			// TODO: functionality that ensures that the workload is deleted from the source
+			// TODO: either a table that collects workload deletion failures or a retry mechanism
 			err = mgr(ctx).src.DeleteWorkload(ctx, ref.SourceID.Bytes, sw)
 			if err != nil {
 				mgr(ctx).log.WithError(err).Error("Failed to delete workload from source")
