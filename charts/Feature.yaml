@@ -44,7 +44,6 @@ values:
         {{ eachOf $tenantEnvs "name" | sortAlpha | join "," }}
         {{ end }}
 
- # TODO: onprem special case, add accounts, old gcp also get added
   auth.serviceAccounts:
     displayName: Authorized service accounts
     computed:
@@ -52,7 +51,7 @@ values:
         - "{{ .Management.slsa_verde_service_account }}"
         - "{{ .Management.nais_api_serviceaccount_email }}"
         {{- range $cluster := .Envs }}
-        {{- if not (or (eq $cluster.name "dev-gcp") (eq $cluster.name "prod-gcp") (eq $cluster.name "ci-fss")) }}
+        {{- if not (or (eq $cluster.name "ci-fss")) }}
         - "{{ $cluster.slsa_verde_service_account }}"
         {{- end }}
         {{- end }}

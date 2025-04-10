@@ -420,7 +420,6 @@ func createClient(cfg config, ctx context.Context) (vulnerabilities.Client, erro
 	if strings.Contains(cfg.VulnerabilitiesUrl, "localhost") {
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		// TODO: G402 (CWE-295): TLS MinVersion too low. (Confidence: HIGH, Severity: HIGH)
 		tlsOpts := &tls.Config{}
 		cred := credentials.NewTLS(tlsOpts)
 		dialOptions = append(dialOptions, grpc.WithTransportCredentials(cred))
