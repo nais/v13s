@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/nais/v13s/internal/k8s"
 	"net"
 	"os/signal"
 	"strings"
@@ -16,7 +15,11 @@ import (
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
+	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/kubernetes"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/updater"
@@ -57,7 +60,15 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 
-	informerMgr, err := k8s.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, log.WithField("subsystem", "k8s_watcher"))
+	workloadEventQueue := &kubernetes.WorkloadEventQueue{
+		Updated: make(chan *model.Workload, 10),
+		Deleted: make(chan *model.Workload, 10),
+	}
+
+	mgr := manager.NewWorkloadManager(sql.New(pool), source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr.Start(ctx)
+
+	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
 		log.Fatalf("Failed to create informer manager: %v", err)
 	}

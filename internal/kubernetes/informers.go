@@ -1,4 +1,4 @@
-package k8s
+package kubernetes
 
 import (
 	"context"
@@ -45,8 +45,8 @@ var gvrs = []schema.GroupVersionResource{
 	},
 }
 
-func NewInformerManager(ctx context.Context, tenant string, cfg config.K8sConfig, log logrus.FieldLogger) (*InformerManager, error) {
-	clusterConfig, err := config.CreateClusterConfigMap(tenant, cfg.Clusters, cfg.StaticClusters)
+func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sConfig, workloadQueue *WorkloadEventQueue, log logrus.FieldLogger) (*InformerManager, error) {
+	clusterConfig, err := config.CreateClusterConfigMap(tenant, k8sCfg.Clusters, k8sCfg.StaticClusters)
 	if err != nil {
 		return nil, fmt.Errorf("creating cluster config map: %w", err)
 	}
@@ -55,17 +55,17 @@ func NewInformerManager(ctx context.Context, tenant string, cfg config.K8sConfig
 	mgr := &InformerManager{
 		log: log,
 	}
-	for cluster, config := range clusterConfig {
-		dynamicClient, err := dynamic.NewForConfig(config)
+	for cluster, cfg := range clusterConfig {
+		dynamicClient, err := dynamic.NewForConfig(cfg)
 		if err != nil {
 			return nil, err
 		}
-		if config.NegotiatedSerializer == nil {
-			config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: schemepkg.Codecs}
+		if cfg.NegotiatedSerializer == nil {
+			cfg.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: schemepkg.Codecs}
 		}
-		config.UserAgent = "nais.io/v13s"
+		cfg.UserAgent = "nais.io/v13s"
 
-		discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+		discoveryClient, err := discovery.NewDiscoveryClientForConfig(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("creating discovery client: %w", err)
 		}
@@ -85,7 +85,7 @@ func NewInformerManager(ctx context.Context, tenant string, cfg config.K8sConfig
 				"resource": gvr.String(),
 			}).Info("creating informer")
 
-			_, err = informer.AddEventHandler(newWorkloadHandler(cluster, log.WithField("cluster", cluster)))
+			_, err = informer.AddEventHandler(newEventHandler(cluster, workloadQueue, log.WithField("cluster", cluster)))
 			if err != nil {
 				log.WithError(err).Warnf("failed to add event handler for resource %s in cluster %s", gvr.String(), cluster)
 				continue
@@ -101,13 +101,10 @@ func NewInformerManager(ctx context.Context, tenant string, cfg config.K8sConfig
 		}
 
 	}
-	m := &InformerManager{
-		clusters: clusters,
-		log:      log,
-	}
-	m.start(ctx)
+	mgr.clusters = clusters
+	mgr.start(ctx)
 
-	return m, nil
+	return mgr, nil
 }
 
 func (m *InformerManager) Stop() {

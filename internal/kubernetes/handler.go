@@ -1,4 +1,4 @@
-package k8s
+package kubernetes
 
 import (
 	"strings"
@@ -12,42 +12,53 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-var _ cache.ResourceEventHandler = &workloadHandler{}
+var _ cache.ResourceEventHandler = &eventHandler{}
 
-type workloadHandler struct {
-	cluster string
-	log     logrus.FieldLogger
+type eventHandler struct {
+	cluster    string
+	eventQueue *WorkloadEventQueue
+	log        logrus.FieldLogger
 }
 
-func newWorkloadHandler(cluster string, log logrus.FieldLogger) *workloadHandler {
-	return &workloadHandler{
-		cluster: cluster,
-		log:     log,
+type WorkloadEventQueue struct {
+	Updated chan *model.Workload
+	Deleted chan *model.Workload
+}
+
+func newEventHandler(cluster string, eventQueue *WorkloadEventQueue, log logrus.FieldLogger) *eventHandler {
+	return &eventHandler{
+		cluster:    cluster,
+		eventQueue: eventQueue,
+		log:        log,
 	}
 }
 
-func (w workloadHandler) OnAdd(obj any, _ bool) {
+func (w eventHandler) OnAdd(obj any, _ bool) {
 	o := w.convert(obj)
+
 	workloads := extractWorkloads(w.cluster, o)
 	for _, workload := range workloads {
 		w.log.WithField("workload_type", workload.Type).Debugf("adding workload name: %s", workload.Name)
+		w.eventQueue.Updated <- workload
 	}
 }
 
-func (w workloadHandler) OnUpdate(oldObj, newObj any) {
+func (w eventHandler) OnUpdate(oldObj, newObj any) {
 	ou := w.convert(oldObj)
 	nu := w.convert(newObj)
 	oldWorkloads := extractWorkloads(w.cluster, ou)
 	newWorkloads := extractWorkloads(w.cluster, nu)
 	if hasChanged(oldWorkloads, newWorkloads) {
-		w.log.Debug("OnUpdate workloads changed")
+		for _, workload := range newWorkloads {
+			w.log.WithField("workload_type", workload.Type).Debugf("updating workload name: %s", workload.Name)
+			w.eventQueue.Updated <- workload
+		}
 	} else {
 		w.log.Debug("OnUpdate workloads not changed")
 	}
-
 }
 
-func (w workloadHandler) OnDelete(obj any) {
+func (w eventHandler) OnDelete(obj any) {
 	a, ok := obj.(cache.DeletedFinalStateUnknown)
 	if ok {
 		obj = a.Obj
@@ -57,10 +68,11 @@ func (w workloadHandler) OnDelete(obj any) {
 	workloads := extractWorkloads(w.cluster, o)
 	for _, workload := range workloads {
 		w.log.WithField("workload_type", workload.Type).Debugf("deleting workload name: %s", workload.Name)
+		w.eventQueue.Deleted <- workload
 	}
 }
 
-func (w workloadHandler) convert(obj any) *unstructured.Unstructured {
+func (w eventHandler) convert(obj any) *unstructured.Unstructured {
 	o, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		w.log.WithFields(logrus.Fields{
@@ -154,7 +166,7 @@ func setWorkloadName(containerName, workloadName string) string {
 	if containerName == workloadName {
 		return workloadName
 	}
-	return containerName
+	return workloadName + "-" + containerName
 }
 
 func jobName(job *nais.Naisjob) string {
