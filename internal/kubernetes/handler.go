@@ -1,6 +1,8 @@
 package kubernetes
 
 import (
+	"github.com/nais/v13s/internal/collections"
+	corev1 "k8s.io/api/core/v1"
 	"strings"
 
 	nais "github.com/nais/liberator/pkg/apis/nais.io/v1"
@@ -119,12 +121,7 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 
 		for _, c := range deployment.Spec.Template.Spec.Containers {
 			name, tag := imageNameTag(c.Image)
-			wType := model.WorkloadTypeDeployment
-			for _, ref := range deployment.OwnerReferences {
-				if ref.Kind == "Application" && ref.APIVersion == "nais.io/v1alpha1" {
-					wType = model.WorkloadTypeApp
-				}
-			}
+			wType := getWorkloadType(deployment, c)
 
 			ret = append(ret, &model.Workload{
 				Name:      setWorkloadName(c.Name, deployment.GetName()),
@@ -156,6 +153,28 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 		ret = append(ret, w)
 	}
 	return ret
+}
+
+func getWorkloadType(deployment *v1.Deployment, container corev1.Container) model.WorkloadType {
+	isPlatformImage := collections.AnyMatch([]string{
+		"gcr.io/cloud-sql-connectors/cloud-sql-proxy",
+		"docker.io/devopsfaith/krakend",
+		"europe-north1-docker.pkg.dev/nais-io/nais/images/elector",
+	}, func(e string) bool {
+		return strings.HasPrefix(container.Image, e) || container.Name == "wonderwall"
+	})
+
+	wType := model.WorkloadTypeDeployment
+	for _, ref := range deployment.OwnerReferences {
+		if ref.Kind == "Application" && ref.APIVersion == "nais.io/v1alpha1" {
+			wType = model.WorkloadTypeApp
+		}
+	}
+
+	if isPlatformImage {
+		wType = model.WorkloadTypePlatform
+	}
+	return wType
 }
 
 // A workload can have multiple containers, we need to set the workload name to the container name

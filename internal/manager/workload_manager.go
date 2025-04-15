@@ -4,7 +4,6 @@ package manager
 import (
 	"context"
 
-	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/model"
@@ -61,22 +60,9 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		return err
 	}
 
-	isPlatformImage := collections.AnyMatch([]string{
-		"gcr.io/cloud-sql-connectors/cloud-sql-proxy",
-		"docker.io/devopsfaith/krakend",
-		"europe-north1-docker.pkg.dev/nais-io/nais/images/elector",
-	}, func(e string) bool {
-		return e == workload.ImageName || workload.Name == "wonderwall"
-	})
-
-	wType := workload.Type
-	if isPlatformImage {
-		wType = model.WorkloadTypePlatform
-	}
-
 	if err := m.db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 		Name:         workload.Name,
-		WorkloadType: string(wType),
+		WorkloadType: string(workload.Type),
 		Namespace:    workload.Namespace,
 		Cluster:      workload.Cluster,
 		ImageName:    workload.ImageName,
