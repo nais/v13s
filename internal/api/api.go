@@ -19,6 +19,7 @@ import (
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/updater"
@@ -57,18 +58,27 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create DependencyTrack client: %v", err)
 	}
 
-	clusterConfig, err := config.CreateClusterConfigMap(cfg.Tenant, cfg.K8s.Clusters, cfg.K8s.StaticClusters)
-	if err != nil {
-		log.Fatalf("Failed to create cluster config map: %v", err)
-	}
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 
-	watcherMgr, err := kubernetes.NewManager(clusterConfig, log)
-	if err != nil {
-		log.Fatalf("Failed to create watcher manager: %v", err)
+	workloadEventQueue := &kubernetes.WorkloadEventQueue{
+		Updated: make(chan *model.Workload, 10),
+		Deleted: make(chan *model.Workload, 10),
 	}
-	ctx = manager.NewContext(ctx, sql.New(pool), source, log.WithField("subsystem", "manager"))
-	_ = kubernetes.NewWorkloadWatcher(ctx, watcherMgr, log.WithField("subsystem", "workload_watcher"))
+
+	mgr := manager.NewWorkloadManager(sql.New(pool), source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr.Start(ctx)
+
+	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
+	if err != nil {
+		log.Fatalf("Failed to create informer manager: %v", err)
+	}
+	defer informerMgr.Stop()
+
+	syncCtx, cancelSync := context.WithTimeout(ctx, 20*time.Second)
+	defer cancelSync()
+	if !informerMgr.WaitForReady(syncCtx) {
+		log.Fatalf("timed out waiting for watchers to be ready")
+	}
 
 	u := updater.NewUpdater(
 		pool,
