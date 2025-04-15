@@ -35,7 +35,7 @@ type Querier interface {
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
-	MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error
+	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error
 	ResetDatabase(ctx context.Context) error

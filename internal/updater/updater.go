@@ -8,15 +8,15 @@ import (
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sirupsen/logrus"
-
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/sirupsen/logrus"
 )
 
 const (
 	DefaultResyncImagesOlderThanMinutes = 60 * 12 * time.Minute // 12 hours
+	DefaultMarkAsUntrackedAge           = 30 * time.Minute
 	DefaultMarkUntrackedInterval        = 20 * time.Minute
 )
 
@@ -62,10 +62,7 @@ func (u *Updater) Run(ctx context.Context) {
 	})
 
 	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
-		if err := u.querier.MarkImagesAsUntracked(ctx, []sql.ImageState{
-			sql.ImageStateResync,
-			sql.ImageStateInitialized,
-		}); err != nil {
+		if err := u.MarkImagesAsUntracked(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
@@ -132,14 +129,15 @@ func (u *Updater) MarkUnusedImages(ctx context.Context) error {
 }
 
 func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
-	err := u.querier.MarkImagesAsUntracked(ctx, []sql.ImageState{
-		sql.ImageStateResync,
-		sql.ImageStateInitialized,
+	return u.querier.MarkImagesAsUntracked(ctx, sql.MarkImagesAsUntrackedParams{
+		IncludedStates: []sql.ImageState{
+			sql.ImageStateResync,
+			sql.ImageStateInitialized,
+		},
+		ThresholdTime: pgtype.Timestamptz{
+			Time: time.Now().Add(-DefaultMarkAsUntrackedAge),
+		},
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'

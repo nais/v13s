@@ -554,6 +554,53 @@ func (_c *MockQuerier_CreateWorkload_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// DeleteWorkload provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteWorkload")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, DeleteWorkloadParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_DeleteWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteWorkload'
+type MockQuerier_DeleteWorkload_Call struct {
+	*mock.Call
+}
+
+// DeleteWorkload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg DeleteWorkloadParams
+func (_e *MockQuerier_Expecter) DeleteWorkload(ctx interface{}, arg interface{}) *MockQuerier_DeleteWorkload_Call {
+	return &MockQuerier_DeleteWorkload_Call{Call: _e.mock.On("DeleteWorkload", ctx, arg)}
+}
+
+func (_c *MockQuerier_DeleteWorkload_Call) Run(run func(ctx context.Context, arg DeleteWorkloadParams)) *MockQuerier_DeleteWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(DeleteWorkloadParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteWorkload_Call) Return(_a0 error) *MockQuerier_DeleteWorkload_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteWorkload_Call) RunAndReturn(run func(context.Context, DeleteWorkloadParams) error) *MockQuerier_DeleteWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GenerateVulnerabilitySummaryForImage provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error) {
 	ret := _m.Called(ctx, arg)
@@ -1320,6 +1367,65 @@ func (_c *MockQuerier_ListVulnerabilitySummaries_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// ListWorkloadsByCluster provides a mock function with given fields: ctx, cluster
+func (_m *MockQuerier) ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error) {
+	ret := _m.Called(ctx, cluster)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadsByCluster")
+	}
+
+	var r0 []*Workload
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*Workload, error)); ok {
+		return rf(ctx, cluster)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []*Workload); ok {
+		r0 = rf(ctx, cluster)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*Workload)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, cluster)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListWorkloadsByCluster_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadsByCluster'
+type MockQuerier_ListWorkloadsByCluster_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadsByCluster is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cluster string
+func (_e *MockQuerier_Expecter) ListWorkloadsByCluster(ctx interface{}, cluster interface{}) *MockQuerier_ListWorkloadsByCluster_Call {
+	return &MockQuerier_ListWorkloadsByCluster_Call{Call: _e.mock.On("ListWorkloadsByCluster", ctx, cluster)}
+}
+
+func (_c *MockQuerier_ListWorkloadsByCluster_Call) Run(run func(ctx context.Context, cluster string)) *MockQuerier_ListWorkloadsByCluster_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadsByCluster_Call) Return(_a0 []*Workload, _a1 error) *MockQuerier_ListWorkloadsByCluster_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadsByCluster_Call) RunAndReturn(run func(context.Context, string) ([]*Workload, error)) *MockQuerier_ListWorkloadsByCluster_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListWorkloadsByImage provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error) {
 	ret := _m.Called(ctx, arg)
@@ -1379,17 +1485,17 @@ func (_c *MockQuerier_ListWorkloadsByImage_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// MarkImagesAsUntracked provides a mock function with given fields: ctx, includedStates
-func (_m *MockQuerier) MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error {
-	ret := _m.Called(ctx, includedStates)
+// MarkImagesAsUntracked provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error {
+	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkImagesAsUntracked")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []ImageState) error); ok {
-		r0 = rf(ctx, includedStates)
+	if rf, ok := ret.Get(0).(func(context.Context, MarkImagesAsUntrackedParams) error); ok {
+		r0 = rf(ctx, arg)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1404,14 +1510,14 @@ type MockQuerier_MarkImagesAsUntracked_Call struct {
 
 // MarkImagesAsUntracked is a helper method to define mock.On call
 //   - ctx context.Context
-//   - includedStates []ImageState
-func (_e *MockQuerier_Expecter) MarkImagesAsUntracked(ctx interface{}, includedStates interface{}) *MockQuerier_MarkImagesAsUntracked_Call {
-	return &MockQuerier_MarkImagesAsUntracked_Call{Call: _e.mock.On("MarkImagesAsUntracked", ctx, includedStates)}
+//   - arg MarkImagesAsUntrackedParams
+func (_e *MockQuerier_Expecter) MarkImagesAsUntracked(ctx interface{}, arg interface{}) *MockQuerier_MarkImagesAsUntracked_Call {
+	return &MockQuerier_MarkImagesAsUntracked_Call{Call: _e.mock.On("MarkImagesAsUntracked", ctx, arg)}
 }
 
-func (_c *MockQuerier_MarkImagesAsUntracked_Call) Run(run func(ctx context.Context, includedStates []ImageState)) *MockQuerier_MarkImagesAsUntracked_Call {
+func (_c *MockQuerier_MarkImagesAsUntracked_Call) Run(run func(ctx context.Context, arg MarkImagesAsUntrackedParams)) *MockQuerier_MarkImagesAsUntracked_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]ImageState))
+		run(args[0].(context.Context), args[1].(MarkImagesAsUntrackedParams))
 	})
 	return _c
 }
@@ -1421,7 +1527,7 @@ func (_c *MockQuerier_MarkImagesAsUntracked_Call) Return(_a0 error) *MockQuerier
 	return _c
 }
 
-func (_c *MockQuerier_MarkImagesAsUntracked_Call) RunAndReturn(run func(context.Context, []ImageState) error) *MockQuerier_MarkImagesAsUntracked_Call {
+func (_c *MockQuerier_MarkImagesAsUntracked_Call) RunAndReturn(run func(context.Context, MarkImagesAsUntrackedParams) error) *MockQuerier_MarkImagesAsUntracked_Call {
 	_c.Call.Return(run)
 	return _c
 }

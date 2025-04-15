@@ -92,10 +92,16 @@ SET
     state = 'untracked',
     updated_at = NOW()
 WHERE state = ANY($1::image_state[])
+    AND updated_at < $2
 `
 
-func (q *Queries) MarkImagesAsUntracked(ctx context.Context, includedStates []ImageState) error {
-	_, err := q.db.Exec(ctx, markImagesAsUntracked, includedStates)
+type MarkImagesAsUntrackedParams struct {
+	IncludedStates []ImageState
+	ThresholdTime  pgtype.Timestamptz
+}
+
+func (q *Queries) MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error {
+	_, err := q.db.Exec(ctx, markImagesAsUntracked, arg.IncludedStates, arg.ThresholdTime)
 	return err
 }
 

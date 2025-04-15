@@ -37,6 +37,7 @@ SET
     state = 'untracked',
     updated_at = NOW()
 WHERE state = ANY(@included_states::image_state[])
+    AND updated_at < @threshold_time
 ;
 
 -- name: MarkUnusedImages :exec
