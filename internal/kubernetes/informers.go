@@ -7,7 +7,6 @@ import (
 
 	"github.com/nais/v13s/internal/config"
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/metric"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -19,10 +18,11 @@ import (
 )
 
 type InformerManager struct {
-	clusters        map[string]*clusterManager
-	cacheSyncs      []cache.InformerSynced
-	log             logrus.FieldLogger
-	resourceCounter metric.Int64UpDownCounter
+	clusters   map[string]*clusterManager
+	cacheSyncs []cache.InformerSynced
+	log        logrus.FieldLogger
+	// TODO: not in use
+	//resourceCounter metric.Int64UpDownCounter
 }
 
 type clusterManager struct {

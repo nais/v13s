@@ -1,14 +1,14 @@
 package kubernetes
 
 import (
-	"github.com/nais/v13s/internal/collections"
-	corev1 "k8s.io/api/core/v1"
 	"strings"
 
 	nais "github.com/nais/liberator/pkg/apis/nais.io/v1"
+	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"

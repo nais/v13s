@@ -14,11 +14,11 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-check: goimport fmt vulncheck deadcode gosec staticcheck goimport
+check: fmt vulncheck deadcode gosec staticcheck goimport
 
 goimport:
 	@echo "Running goimport..."
-	find . -type f -name '*.go' ! -path './internal/sources/dependencytrack/client/*'  ! -path './internal/database/sql/*' ! -name '*.pb.go' -exec go run golang.org/x/tools/cmd/goimports@latest -l -w -local github.com/nais  {} +
+	find . -type f -name '*.go' ! -path './internal/sources/dependencytrack/client/*'  ! -path './internal/database/sql/*' ! -name '*.pb.go' -exec go run golang.org/x/tools/cmd/goimports@latest -l -w  {} +
 
 fmt:
 	@echo "Running go fmt..."
