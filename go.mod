@@ -3,7 +3,7 @@ module github.com/nais/v13s
 go 1.24.2
 
 require (
-	cloud.google.com/go/auth v0.16.0
+	cloud.google.com/go/auth v0.16.1
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.11.2
 	github.com/exaring/otelpgx v0.9.0
