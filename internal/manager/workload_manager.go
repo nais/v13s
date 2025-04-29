@@ -144,6 +144,9 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			WorkloadID: *workloadId,
 			SourceType: source.Name(),
 		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
