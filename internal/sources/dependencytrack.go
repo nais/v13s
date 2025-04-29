@@ -31,6 +31,32 @@ type VulnerabilityMatch struct {
 	Found    bool
 }
 
+type tags struct {
+	tags []client.Tag
+}
+
+func (t *tags) hasWorkloadTag() bool {
+	for _, tag := range t.tags {
+		if strings.HasPrefix(tag.GetName(), "workload:") {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *tags) remove(workload *Workload) {
+	tags := make([]client.Tag, 0)
+	for _, tag := range t.tags {
+		if strings.HasPrefix(tag.GetName(), "workload:") {
+			if tag.GetName() == fmt.Sprintf("workload:%s|%s|%s|%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name) {
+				continue
+			}
+		}
+		tags = append(tags, tag)
+	}
+	t.tags = tags
+}
+
 // TODO: add a cache? maybe for projects only?
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
 	return &dependencytrackSource{
@@ -43,10 +69,10 @@ func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
 }
 
-func (d *dependencytrackSource) UploadSbom(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
 	d.log.Infof("uploading sbom for workload %v", workload)
 
-	projectId, err := d.client.CreateProjectWithSbom(
+	projectId, err := d.client.CreateOrUpdateProjectWithSbom(
 		ctx,
 		att,
 		&dependencytrack.WorkloadRef{
@@ -70,8 +96,30 @@ func (d *dependencytrackSource) UploadSbom(ctx context.Context, workload *Worklo
 
 func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
 	d.log.Infof("remove references for workload %v", workload)
+	// TODO: use ref uuid to get the project
+	p, err := d.client.GetProject(ctx, workload.ImageName, workload.ImageTag)
+	if err != nil {
+		return fmt.Errorf("getting project: %w", err)
+	}
+	if p == nil {
+		d.log.Infof("no project found for workload %v", workload)
+		return nil
+	}
 
-	err := d.client.DeleteProject(ctx, ref.String())
+	t := tags{tags: p.Tags}
+	t.remove(workload)
+
+	if t.hasWorkloadTag() {
+		p.Tags = t.tags
+		_, err = d.client.UpdateProject(ctx, p)
+		if err != nil {
+			return fmt.Errorf("updating project: %w", err)
+		}
+		d.log.Debugf("removed workload tags from project %s", *p.Name)
+		return nil
+	}
+
+	err = d.client.DeleteProject(ctx, ref.String())
 	if err != nil {
 		return fmt.Errorf("deleting project: %w", err)
 	}

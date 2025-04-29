@@ -210,17 +210,26 @@ type MockDtrack struct {
 	findings map[string][]client.Finding
 }
 
+func (m MockDtrack) CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error) {
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *dependencytrack.WorkloadRef) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m MockDtrack) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *dependencytrack.WorkloadRef) (string, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
 func (m MockDtrack) DeleteProject(ctx context.Context, uuid string) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockDtrack) CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error) {
 	//TODO implement me
 	panic("implement me")
 }

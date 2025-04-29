@@ -13,16 +13,15 @@ import (
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/nais/v13s/pkg/api/auth"
+	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/rodaine/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/nais/v13s/pkg/api/auth"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 )
 
 type config struct {
@@ -84,6 +83,14 @@ func main() {
 						Flags:   commonFlags(opts, "cluster", "namespace", "workload"),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
 							return listVulnerabilitiesForImage(ctx, cmd, c, opts)
+						},
+					},
+					{
+						Name:  "suppressed",
+						Usage: "list suppressed vulnerabilities",
+						Flags: commonFlags(opts),
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							return listSuppressedVulnerabilities(ctx, cmd, c, opts)
 						},
 					},
 					{
@@ -153,6 +160,37 @@ func main() {
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
+	start := time.Now()
+	resp, err := c.ListSuppressedVulnerabilities(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("Package", "CVE", "Reason", "Suppressed", "Suppressed By", "Image")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, n := range resp.GetNodes() {
+		tbl.AddRow(
+			n.GetPackage(),
+			n.CveId,
+			n.Reason,
+			n.Suppress,
+			n.SuppressedBy,
+			n.ImageName,
+		)
+	}
+
+	tbl.Print()
+	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
+
+	return nil
 }
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {

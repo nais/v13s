@@ -9,11 +9,10 @@ import (
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/joho/godotenv"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -86,7 +85,7 @@ func seedDependencyTrack(ctx context.Context) error {
 			ImageName: fmt.Sprintf(imgPrefix, i),
 			ImageTag:  "1",
 		}
-		_, err = c.CreateProjectWithSbom(ctx, att, ref)
+		_, err = c.CreateOrUpdateProjectWithSbom(ctx, att, ref)
 		if err != nil {
 			return err
 		}

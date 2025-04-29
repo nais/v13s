@@ -121,7 +121,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			ImageName: workload.ImageName,
 			ImageTag:  workload.ImageTag,
 		}
-		id, err := source.UploadSbom(ctx, sw, att)
+		id, err := source.UploadAttestation(ctx, sw, att)
 		if err != nil {
 			m.log.WithError(err).Error("Failed to upload sbom")
 			return err

@@ -25,10 +25,11 @@ type Client interface {
 	UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId, state string, suppressed bool) error
 	GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*client.Analysis, error)
 	TriggerAnalysis(ctx context.Context, uuid string) error
-	CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error)
+	CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error)
 	UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error
-	CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error)
+	CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error)
 	DeleteProject(ctx context.Context, uuid string) error
+	UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error)
 }
 
 type dependencyTrackClient struct {
@@ -44,23 +45,6 @@ type WorkloadRef struct {
 	Name      string
 	ImageName string
 	ImageTag  string
-}
-
-func (w *WorkloadRef) tags() []client.Tag {
-	stringTags := []string{
-		fmt.Sprintf("cluster:%s", w.Cluster),
-		fmt.Sprintf("namespace:%s", w.Namespace),
-		fmt.Sprintf("workload:%s", w.Cluster+"|"+w.Namespace+"|"+w.Type+"|"+w.Name),
-		fmt.Sprintf("image:%s", w.ImageName+":"+w.ImageTag),
-	}
-
-	tags := make([]client.Tag, 0)
-	for _, tag := range stringTags {
-		tags = append(tags, client.Tag{
-			Name: &tag,
-		})
-	}
-	return tags
 }
 
 func NewClient(url string, team auth.Team, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
@@ -94,15 +78,9 @@ func setupConfig(rawURL string) *client.Configuration {
 	return cfg
 }
 
-func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
-	tags := []string{
-		fmt.Sprintf("cluster:%s", workloadRef.Cluster),
-		fmt.Sprintf("namespace:%s", workloadRef.Namespace),
-		fmt.Sprintf("workload:%s", workloadRef.Cluster+"|"+workloadRef.Namespace+"|"+workloadRef.Type+"|"+workloadRef.Name),
-		fmt.Sprintf("image:%s", workloadRef.ImageName+":"+workloadRef.ImageTag),
-	}
-
-	projectName := fmt.Sprintf("%s:%s:%s", workloadRef.Cluster, workloadRef.Namespace, workloadRef.Name)
+func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
+	tags := workloadRef.tags()
+	projectName := workloadRef.projectName()
 
 	p, err := c.GetProject(ctx, projectName, workloadRef.ImageTag)
 	if err != nil {
@@ -111,7 +89,7 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom 
 
 	if p != nil {
 		p.Version = &workloadRef.ImageTag
-		p.Tags = workloadRef.tags()
+		p.Tags = append(p.Tags, workloadRef.tags()...)
 		p, err = c.UpdateProject(ctx, p)
 		if err != nil {
 			return "", fmt.Errorf("failed to update project: %w", err)
@@ -134,22 +112,16 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom 
 	return *p.Uuid, nil
 }
 
-func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []string) (*client.Project, error) {
+func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error) {
 	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
 		active := true
 		classifier := "APPLICATION"
-		t := make([]client.Tag, 0)
-		for _, tag := range tags {
-			t = append(t, client.Tag{
-				Name: &tag,
-			})
-		}
 		req := c.client.ProjectAPI.CreateProject(apiKeyCtx).Body(client.Project{
 			Name:       &name,
 			Active:     &active,
 			Classifier: &classifier,
 			Version:    &version,
-			Tags:       t,
+			Tags:       tags,
 			Parent:     nil,
 		})
 
@@ -403,4 +375,22 @@ func withAuthContextValue[T any](c *dependencyTrackClient, ctx context.Context, 
 		return zero, fmt.Errorf("auth error: %w", err)
 	}
 	return fn(apiKeyCtx)
+}
+
+func (w *WorkloadRef) projectName() string {
+	return w.ImageName
+}
+
+func (w *WorkloadRef) tags() []client.Tag {
+	stringTags := []string{
+		fmt.Sprintf("workload:%s", w.Cluster+"|"+w.Namespace+"|"+w.Type+"|"+w.Name),
+	}
+
+	tags := make([]client.Tag, 0)
+	for _, tag := range stringTags {
+		tags = append(tags, client.Tag{
+			Name: &tag,
+		})
+	}
+	return tags
 }
