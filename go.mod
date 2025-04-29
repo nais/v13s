@@ -24,6 +24,7 @@ require (
 	github.com/rodaine/table v1.3.0
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0
 	github.com/sigstore/cosign/v2 v2.5.0
+	github.com/sigstore/rekor v1.3.9
 	github.com/sirupsen/logrus v1.9.3
 	github.com/sqlc-dev/sqlc v1.28.0
 	github.com/stretchr/testify v1.10.0
@@ -248,7 +249,6 @@ require (
 	github.com/shirou/gopsutil/v4 v4.25.3 // indirect
 	github.com/sigstore/fulcio v1.6.6 // indirect
 	github.com/sigstore/protobuf-specs v0.4.1 // indirect
-	github.com/sigstore/rekor v1.3.9 // indirect
 	github.com/sigstore/sigstore v1.9.1 // indirect
 	github.com/sigstore/sigstore-go v0.7.1 // indirect
 	github.com/sigstore/timestamp-authority v1.2.5 // indirect
