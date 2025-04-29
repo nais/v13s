@@ -100,7 +100,7 @@ func main() {
 				cluster,
 			)
 
-			err := db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
+			id, err := db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
 				Name:         workload.Name,
 				WorkloadType: workload.WorkloadType,
 				Namespace:    workload.Namespace,
@@ -109,10 +109,12 @@ func main() {
 			if err != nil {
 				fmt.Printf("error deleting workload %s: %v\n", workload.Name, err)
 			}
+
+			fmt.Printf("deleted workload %s:%s:%s:%s:%s\n", workload.Name, workload.WorkloadType, workload.Namespace, cluster, id)
 		}
 
 		fmt.Printf("-------------------------------------------\n")
-		fmt.Printf("deleted %d workloads in cluster %s\n", len(workloadsToDelete), cluster)
+		fmt.Printf("deleted %d workloads in cluster %s\n with sourceID", len(workloadsToDelete), cluster)
 		workloads, err = db.ListWorkloadsByCluster(ctx, cluster)
 		if err != nil {
 			panic(fmt.Errorf("error listing workloads: %w", err))

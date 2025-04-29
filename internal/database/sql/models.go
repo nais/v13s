@@ -170,6 +170,15 @@ type Image struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type SourceRef struct {
+	ID         pgtype.UUID
+	WorkloadID pgtype.UUID
+	SourceID   pgtype.UUID
+	SourceType string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
 type SuppressedVulnerability struct {
 	ID           pgtype.UUID
 	ImageName    string

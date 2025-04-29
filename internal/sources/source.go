@@ -2,6 +2,9 @@ package sources
 
 import (
 	"context"
+
+	"github.com/google/uuid"
+	"github.com/in-toto/in-toto-golang/in_toto"
 )
 
 type Source interface {
@@ -11,7 +14,11 @@ type Source interface {
 	// TODO: add includeSuppressed bool
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
+	UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error)
+	DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error
 }
+
+type SourceId string
 
 type Workload struct {
 	Cluster   string

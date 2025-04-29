@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/nais/v13s/internal/attestation/github"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
@@ -33,8 +34,8 @@ type Verifier struct {
 
 func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (*Verifier, error) {
 	// TODO: fix for localhost
-	//ids := github.NewCertificateIdentity(organizations).GetIdentities()
-	opts, err := CosignOptions(ctx, "", []cosign.Identity{})
+	ids := github.NewCertificateIdentity(organizations).GetIdentities()
+	opts, err := CosignOptions(ctx, "", ids)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,12 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 	}, nil
 }
 
-func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.CycloneDXStatement, error) {
+type Attestation struct {
+	Statement *in_toto.CycloneDXStatement `json:"statement"`
+	Metadata  map[string]string           `json:"metadata"`
+}
+
+func (v *Verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
 		return nil, fmt.Errorf("parse reference: %v", err)
@@ -76,7 +82,42 @@ func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.C
 		"ref":            ref.String(),
 	}).Info("attestation verified and parsed statement")
 
-	return statement, nil
+	if statement.PredicateType != in_toto.PredicateCycloneDX {
+		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)
+	}
+
+	ret := &Attestation{
+		Statement: statement,
+	}
+
+	// TODO: find an easier way to get the metadata
+	bundle, err := att.Bundle()
+	if err != nil {
+		v.log.Warnf("failed to get bundle: %v", err)
+		return ret, nil
+	}
+	rekor, err := GetRekorMetadata(bundle)
+	if err != nil {
+		v.log.Warnf("failed to get rekor metadata: %v", err)
+		return ret, nil
+	}
+
+	j, err := json.Marshal(rekor)
+	if err != nil {
+		v.log.Warnf("failed to marshal metadata: %v", err)
+		return ret, nil
+	}
+
+	metadata := map[string]string{}
+	err = json.Unmarshal(j, &metadata)
+	if err != nil {
+		v.log.Warnf("failed to unmarshal metadata: %v", err)
+		return ret, nil
+	}
+
+	ret.Metadata = metadata
+
+	return ret, nil
 }
 
 func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign.Identity) (*cosign.CheckOpts, error) {

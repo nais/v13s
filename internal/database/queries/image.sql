@@ -6,6 +6,13 @@ VALUES
 ON CONFLICT DO NOTHING
 ;
 
+-- name: UpdateImage :exec
+UPDATE images SET
+    metadata = @metadata,
+    updated_at = NOW()
+WHERE name = @name AND tag = @tag
+;
+
 -- name: GetImage :one
 SELECT * FROM images WHERE name = @name AND tag = @tag;
 

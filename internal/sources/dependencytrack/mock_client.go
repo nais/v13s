@@ -25,8 +25,66 @@ func (_m *MockClient) EXPECT() *MockClient_Expecter {
 	return &MockClient_Expecter{mock: &_m.Mock}
 }
 
+// CreateOrUpdateProjectWithSbom provides a mock function with given fields: ctx, sbom, workloadRef
+func (_m *MockClient) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
+	ret := _m.Called(ctx, sbom, workloadRef)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateOrUpdateProjectWithSbom")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *in_toto.CycloneDXStatement, *WorkloadRef) (string, error)); ok {
+		return rf(ctx, sbom, workloadRef)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *in_toto.CycloneDXStatement, *WorkloadRef) string); ok {
+		r0 = rf(ctx, sbom, workloadRef)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *in_toto.CycloneDXStatement, *WorkloadRef) error); ok {
+		r1 = rf(ctx, sbom, workloadRef)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_CreateOrUpdateProjectWithSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOrUpdateProjectWithSbom'
+type MockClient_CreateOrUpdateProjectWithSbom_Call struct {
+	*mock.Call
+}
+
+// CreateOrUpdateProjectWithSbom is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sbom *in_toto.CycloneDXStatement
+//   - workloadRef *WorkloadRef
+func (_e *MockClient_Expecter) CreateOrUpdateProjectWithSbom(ctx interface{}, sbom interface{}, workloadRef interface{}) *MockClient_CreateOrUpdateProjectWithSbom_Call {
+	return &MockClient_CreateOrUpdateProjectWithSbom_Call{Call: _e.mock.On("CreateOrUpdateProjectWithSbom", ctx, sbom, workloadRef)}
+}
+
+func (_c *MockClient_CreateOrUpdateProjectWithSbom_Call) Run(run func(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef)) *MockClient_CreateOrUpdateProjectWithSbom_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*in_toto.CycloneDXStatement), args[2].(*WorkloadRef))
+	})
+	return _c
+}
+
+func (_c *MockClient_CreateOrUpdateProjectWithSbom_Call) Return(_a0 string, _a1 error) *MockClient_CreateOrUpdateProjectWithSbom_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_CreateOrUpdateProjectWithSbom_Call) RunAndReturn(run func(context.Context, *in_toto.CycloneDXStatement, *WorkloadRef) (string, error)) *MockClient_CreateOrUpdateProjectWithSbom_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateProject provides a mock function with given fields: ctx, name, version, tags
-func (_m *MockClient) CreateProject(ctx context.Context, name string, version string, tags []string) (*client.Project, error) {
+func (_m *MockClient) CreateProject(ctx context.Context, name string, version string, tags []client.Tag) (*client.Project, error) {
 	ret := _m.Called(ctx, name, version, tags)
 
 	if len(ret) == 0 {
@@ -35,10 +93,10 @@ func (_m *MockClient) CreateProject(ctx context.Context, name string, version st
 
 	var r0 *client.Project
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, []string) (*client.Project, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []client.Tag) (*client.Project, error)); ok {
 		return rf(ctx, name, version, tags)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, []string) *client.Project); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []client.Tag) *client.Project); ok {
 		r0 = rf(ctx, name, version, tags)
 	} else {
 		if ret.Get(0) != nil {
@@ -46,7 +104,7 @@ func (_m *MockClient) CreateProject(ctx context.Context, name string, version st
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, []string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, []client.Tag) error); ok {
 		r1 = rf(ctx, name, version, tags)
 	} else {
 		r1 = ret.Error(1)
@@ -64,14 +122,14 @@ type MockClient_CreateProject_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - version string
-//   - tags []string
+//   - tags []client.Tag
 func (_e *MockClient_Expecter) CreateProject(ctx interface{}, name interface{}, version interface{}, tags interface{}) *MockClient_CreateProject_Call {
 	return &MockClient_CreateProject_Call{Call: _e.mock.On("CreateProject", ctx, name, version, tags)}
 }
 
-func (_c *MockClient_CreateProject_Call) Run(run func(ctx context.Context, name string, version string, tags []string)) *MockClient_CreateProject_Call {
+func (_c *MockClient_CreateProject_Call) Run(run func(ctx context.Context, name string, version string, tags []client.Tag)) *MockClient_CreateProject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]client.Tag))
 	})
 	return _c
 }
@@ -81,22 +139,22 @@ func (_c *MockClient_CreateProject_Call) Return(_a0 *client.Project, _a1 error) 
 	return _c
 }
 
-func (_c *MockClient_CreateProject_Call) RunAndReturn(run func(context.Context, string, string, []string) (*client.Project, error)) *MockClient_CreateProject_Call {
+func (_c *MockClient_CreateProject_Call) RunAndReturn(run func(context.Context, string, string, []client.Tag) (*client.Project, error)) *MockClient_CreateProject_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// CreateProjectWithSbom provides a mock function with given fields: ctx, imageName, imageTag, sbom, workloadRef
-func (_m *MockClient) CreateProjectWithSbom(ctx context.Context, imageName string, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) error {
-	ret := _m.Called(ctx, imageName, imageTag, sbom, workloadRef)
+// DeleteProject provides a mock function with given fields: ctx, uuid
+func (_m *MockClient) DeleteProject(ctx context.Context, uuid string) error {
+	ret := _m.Called(ctx, uuid)
 
 	if len(ret) == 0 {
-		panic("no return value specified for CreateProjectWithSbom")
+		panic("no return value specified for DeleteProject")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, *in_toto.CycloneDXStatement, *WorkloadRef) error); ok {
-		r0 = rf(ctx, imageName, imageTag, sbom, workloadRef)
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, uuid)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -104,34 +162,31 @@ func (_m *MockClient) CreateProjectWithSbom(ctx context.Context, imageName strin
 	return r0
 }
 
-// MockClient_CreateProjectWithSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateProjectWithSbom'
-type MockClient_CreateProjectWithSbom_Call struct {
+// MockClient_DeleteProject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteProject'
+type MockClient_DeleteProject_Call struct {
 	*mock.Call
 }
 
-// CreateProjectWithSbom is a helper method to define mock.On call
+// DeleteProject is a helper method to define mock.On call
 //   - ctx context.Context
-//   - imageName string
-//   - imageTag string
-//   - sbom *in_toto.CycloneDXStatement
-//   - workloadRef *WorkloadRef
-func (_e *MockClient_Expecter) CreateProjectWithSbom(ctx interface{}, imageName interface{}, imageTag interface{}, sbom interface{}, workloadRef interface{}) *MockClient_CreateProjectWithSbom_Call {
-	return &MockClient_CreateProjectWithSbom_Call{Call: _e.mock.On("CreateProjectWithSbom", ctx, imageName, imageTag, sbom, workloadRef)}
+//   - uuid string
+func (_e *MockClient_Expecter) DeleteProject(ctx interface{}, uuid interface{}) *MockClient_DeleteProject_Call {
+	return &MockClient_DeleteProject_Call{Call: _e.mock.On("DeleteProject", ctx, uuid)}
 }
 
-func (_c *MockClient_CreateProjectWithSbom_Call) Run(run func(ctx context.Context, imageName string, imageTag string, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef)) *MockClient_CreateProjectWithSbom_Call {
+func (_c *MockClient_DeleteProject_Call) Run(run func(ctx context.Context, uuid string)) *MockClient_DeleteProject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(*in_toto.CycloneDXStatement), args[4].(*WorkloadRef))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockClient_CreateProjectWithSbom_Call) Return(_a0 error) *MockClient_CreateProjectWithSbom_Call {
+func (_c *MockClient_DeleteProject_Call) Return(_a0 error) *MockClient_DeleteProject_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockClient_CreateProjectWithSbom_Call) RunAndReturn(run func(context.Context, string, string, *in_toto.CycloneDXStatement, *WorkloadRef) error) *MockClient_CreateProjectWithSbom_Call {
+func (_c *MockClient_DeleteProject_Call) RunAndReturn(run func(context.Context, string) error) *MockClient_DeleteProject_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -535,6 +590,65 @@ func (_c *MockClient_UpdateFinding_Call) Return(_a0 error) *MockClient_UpdateFin
 }
 
 func (_c *MockClient_UpdateFinding_Call) RunAndReturn(run func(context.Context, string, string, string, string, string, string, bool) error) *MockClient_UpdateFinding_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateProject provides a mock function with given fields: ctx, project
+func (_m *MockClient) UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error) {
+	ret := _m.Called(ctx, project)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateProject")
+	}
+
+	var r0 *client.Project
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *client.Project) (*client.Project, error)); ok {
+		return rf(ctx, project)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *client.Project) *client.Project); ok {
+		r0 = rf(ctx, project)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.Project)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *client.Project) error); ok {
+		r1 = rf(ctx, project)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_UpdateProject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateProject'
+type MockClient_UpdateProject_Call struct {
+	*mock.Call
+}
+
+// UpdateProject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - project *client.Project
+func (_e *MockClient_Expecter) UpdateProject(ctx interface{}, project interface{}) *MockClient_UpdateProject_Call {
+	return &MockClient_UpdateProject_Call{Call: _e.mock.On("UpdateProject", ctx, project)}
+}
+
+func (_c *MockClient_UpdateProject_Call) Run(run func(ctx context.Context, project *client.Project)) *MockClient_UpdateProject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*client.Project))
+	})
+	return _c
+}
+
+func (_c *MockClient_UpdateProject_Call) Return(_a0 *client.Project, _a1 error) *MockClient_UpdateProject_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_UpdateProject_Call) RunAndReturn(run func(context.Context, *client.Project) (*client.Project, error)) *MockClient_UpdateProject_Call {
 	_c.Call.Return(run)
 	return _c
 }

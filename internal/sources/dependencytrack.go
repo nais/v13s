@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
+	"github.com/google/uuid"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 )
 
 var ErrNoMetrics = fmt.Errorf("no metrics found")
@@ -30,6 +31,32 @@ type VulnerabilityMatch struct {
 	Found    bool
 }
 
+type tags struct {
+	tags []client.Tag
+}
+
+func (t *tags) hasWorkloadTag() bool {
+	for _, tag := range t.tags {
+		if strings.HasPrefix(tag.GetName(), "workload:") {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *tags) remove(workload *Workload) {
+	tags := make([]client.Tag, 0)
+	for _, tag := range t.tags {
+		if strings.HasPrefix(tag.GetName(), "workload:") {
+			if tag.GetName() == fmt.Sprintf("workload:%s|%s|%s|%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name) {
+				continue
+			}
+		}
+		tags = append(tags, tag)
+	}
+	t.tags = tags
+}
+
 // TODO: add a cache? maybe for projects only?
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
 	return &dependencytrackSource{
@@ -40,6 +67,65 @@ func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) 
 
 func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
+}
+
+func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+	d.log.Infof("uploading sbom for workload %v", workload)
+
+	projectId, err := d.client.CreateOrUpdateProjectWithSbom(
+		ctx,
+		att,
+		&dependencytrack.WorkloadRef{
+			Cluster:   workload.Cluster,
+			Namespace: workload.Namespace,
+			Type:      workload.Type,
+			Name:      workload.Name,
+			ImageName: workload.ImageName,
+			ImageTag:  workload.ImageTag,
+		},
+	)
+	if err != nil {
+		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
+	}
+	id, err := uuid.Parse(projectId)
+	if err != nil {
+		return uuid.New(), fmt.Errorf("parsing project id: %w", err)
+	}
+	return id, nil
+}
+
+func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
+	d.log.Infof("remove references for workload %v", workload)
+	// TODO: use ref uuid to get the project
+	p, err := d.client.GetProject(ctx, workload.ImageName, workload.ImageTag)
+	if err != nil {
+		return fmt.Errorf("getting project: %w", err)
+	}
+	if p == nil {
+		d.log.Infof("no project found for workload %v", workload)
+		return nil
+	}
+
+	t := tags{tags: p.Tags}
+	t.remove(workload)
+
+	if t.hasWorkloadTag() {
+		p.Tags = t.tags
+		_, err = d.client.UpdateProject(ctx, p)
+		if err != nil {
+			return fmt.Errorf("updating project: %w", err)
+		}
+		d.log.Debugf("removed workload tags from project %s", *p.Name)
+		return nil
+	}
+
+	err = d.client.DeleteProject(ctx, ref.String())
+	if err != nil {
+		return fmt.Errorf("deleting project: %w", err)
+	}
+
+	d.log.Infof("deleted project %s", ref.String())
+	return nil
 }
 
 func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {

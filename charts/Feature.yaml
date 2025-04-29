@@ -44,6 +44,11 @@ values:
         {{ eachOf $tenantEnvs "name" | sortAlpha | join "," }}
         {{ end }}
 
+  github.organizations:
+    displayName: Authorized service accounts
+    config:
+      type: string_array
+
   auth.serviceAccounts:
     displayName: Authorized service accounts
     computed:

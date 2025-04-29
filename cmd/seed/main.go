@@ -9,11 +9,10 @@ import (
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/joho/godotenv"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -83,8 +82,10 @@ func seedDependencyTrack(ctx context.Context) error {
 			Namespace: "devteam",
 			Type:      "app",
 			Name:      fmt.Sprintf("nais-deploy-chicken-%d", i),
+			ImageName: fmt.Sprintf(imgPrefix, i),
+			ImageTag:  "1",
 		}
-		err = c.CreateProjectWithSbom(ctx, fmt.Sprintf(imgPrefix, i), "1", att, ref)
+		_, err = c.CreateOrUpdateProjectWithSbom(ctx, att, ref)
 		if err != nil {
 			return err
 		}

@@ -7,6 +7,9 @@ image:
 serviceAccountEmail:
 serviceAccountName: v13s-sa
 updateInterval: 5m
+github:
+  organizations:
+    - nais
 auth:
   audience: "v13s"
   serviceAccounts: []
