@@ -112,6 +112,15 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		))
 
 	if att != nil {
+		err = m.db.UpdateImage(ctx, sql.UpdateImageParams{
+			Name:     workload.ImageName,
+			Tag:      workload.ImageTag,
+			Metadata: att.Metadata,
+		})
+		if err != nil {
+			m.log.WithError(err).Error("Failed to update image metadata")
+		}
+
 		source := m.src
 		sw := &sources.Workload{
 			Cluster:   workload.Cluster,
@@ -121,7 +130,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			ImageName: workload.ImageName,
 			ImageTag:  workload.ImageTag,
 		}
-		id, err := source.UploadAttestation(ctx, sw, att)
+		id, err := source.UploadAttestation(ctx, sw, att.Statement)
 		if err != nil {
 			m.log.WithError(err).Error("Failed to upload sbom")
 			return err

@@ -46,7 +46,12 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 	}, nil
 }
 
-func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.CycloneDXStatement, error) {
+type Attestation struct {
+	Statement *in_toto.CycloneDXStatement `json:"statement"`
+	Metadata  map[string]string           `json:"metadata"`
+}
+
+func (v *Verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
 		return nil, fmt.Errorf("parse reference: %v", err)
@@ -81,7 +86,38 @@ func (v *Verifier) GetAttestation(ctx context.Context, image string) (*in_toto.C
 		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)
 	}
 
-	return statement, nil
+	ret := &Attestation{
+		Statement: statement,
+	}
+
+	// TODO: find an easier way to get the metadata
+	bundle, err := att.Bundle()
+	if err != nil {
+		v.log.Warnf("failed to get bundle: %v", err)
+		return ret, nil
+	}
+	rekor, err := GetRekorMetadata(bundle)
+	if err != nil {
+		v.log.Warnf("failed to get rekor metadata: %v", err)
+		return ret, nil
+	}
+
+	j, err := json.Marshal(rekor)
+	if err != nil {
+		v.log.Warnf("failed to marshal metadata: %v", err)
+		return ret, nil
+	}
+
+	metadata := map[string]string{}
+	err = json.Unmarshal(j, &metadata)
+	if err != nil {
+		v.log.Warnf("failed to unmarshal metadata: %v", err)
+		return ret, nil
+	}
+
+	ret.Metadata = metadata
+
+	return ret, nil
 }
 
 func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign.Identity) (*cosign.CheckOpts, error) {

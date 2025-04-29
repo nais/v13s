@@ -43,6 +43,7 @@ type Querier interface {
 	MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error
 	ResetDatabase(ctx context.Context) error
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
+	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error)

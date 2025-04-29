@@ -141,6 +141,24 @@ func (q *Queries) MarkUnusedImages(ctx context.Context, excludedStates []ImageSt
 	return err
 }
 
+const updateImage = `-- name: UpdateImage :exec
+UPDATE images SET
+    metadata = $1,
+    updated_at = NOW()
+WHERE name = $2 AND tag = $3
+`
+
+type UpdateImageParams struct {
+	Metadata typeext.MapStringString
+	Name     string
+	Tag      string
+}
+
+func (q *Queries) UpdateImage(ctx context.Context, arg UpdateImageParams) error {
+	_, err := q.db.Exec(ctx, updateImage, arg.Metadata, arg.Name, arg.Tag)
+	return err
+}
+
 const updateImageState = `-- name: UpdateImageState :exec
 UPDATE images
 SET
