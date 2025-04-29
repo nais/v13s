@@ -1894,6 +1894,53 @@ func (_c *MockQuerier_SuppressVulnerability_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// UpdateImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) UpdateImage(ctx context.Context, arg UpdateImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, UpdateImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpdateImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateImage'
+type MockQuerier_UpdateImage_Call struct {
+	*mock.Call
+}
+
+// UpdateImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg UpdateImageParams
+func (_e *MockQuerier_Expecter) UpdateImage(ctx interface{}, arg interface{}) *MockQuerier_UpdateImage_Call {
+	return &MockQuerier_UpdateImage_Call{Call: _e.mock.On("UpdateImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_UpdateImage_Call) Run(run func(ctx context.Context, arg UpdateImageParams)) *MockQuerier_UpdateImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(UpdateImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateImage_Call) Return(_a0 error) *MockQuerier_UpdateImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateImage_Call) RunAndReturn(run func(context.Context, UpdateImageParams) error) *MockQuerier_UpdateImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateImageState provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error {
 	ret := _m.Called(ctx, arg)
