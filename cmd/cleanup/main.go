@@ -138,7 +138,7 @@ func main() {
 }
 
 func newClients(cfg *config.Config) map[string]*Client {
-	clusterConfig, err := config.CreateClusterConfigMap(cfg.Tenant, cfg.K8s.Clusters, cfg.K8s.StaticClusters)
+	clusterConfig, err := config.CreateClusterConfigMap(cfg.Tenant, cfg.K8s)
 	if err != nil {
 		log.Fatalf("Failed to create cluster config map: %v", err)
 	}

@@ -46,7 +46,7 @@ var gvrs = []schema.GroupVersionResource{
 }
 
 func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sConfig, workloadQueue *WorkloadEventQueue, log logrus.FieldLogger) (*InformerManager, error) {
-	clusterConfig, err := config.CreateClusterConfigMap(tenant, k8sCfg.Clusters, k8sCfg.StaticClusters)
+	clusterConfig, err := config.CreateClusterConfigMap(tenant, k8sCfg)
 	if err != nil {
 		return nil, fmt.Errorf("creating cluster config map: %w", err)
 	}

@@ -36,6 +36,7 @@ type DependencyTrackConfig struct {
 }
 
 type K8sConfig struct {
+	SelfCluster    string          `envconfig:"KUBERNETES_SELF_CLUSTER" default:"management"`
 	Clusters       []string        `envconfig:"KUBERNETES_CLUSTERS"`
 	StaticClusters []StaticCluster `envconfig:"KUBERNETES_CLUSTERS_STATIC"`
 }
@@ -71,10 +72,10 @@ type StaticCluster struct {
 
 type ClusterConfigMap map[string]*rest.Config
 
-func CreateClusterConfigMap(tenant string, clusters []string, staticClusters []StaticCluster) (ClusterConfigMap, error) {
+func CreateClusterConfigMap(tenant string, config K8sConfig) (ClusterConfigMap, error) {
 	configs := ClusterConfigMap{}
 
-	for _, cluster := range clusters {
+	for _, cluster := range config.Clusters {
 		configs[cluster] = &rest.Config{
 			Host: fmt.Sprintf("https://apiserver.%s.%s.cloud.nais.io", cluster, tenant),
 			AuthProvider: &api.AuthProviderConfig{
@@ -85,8 +86,13 @@ func CreateClusterConfigMap(tenant string, clusters []string, staticClusters []S
 			},
 		}
 	}
+	mgmtCfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, fmt.Errorf("creating in-cluster config: %w", err)
+	}
+	configs[config.SelfCluster] = mgmtCfg
 
-	staticConfigs := getStaticClusterConfigs(staticClusters)
+	staticConfigs := getStaticClusterConfigs(config.StaticClusters)
 	for cluster, cfg := range staticConfigs {
 		configs[cluster] = cfg
 	}
