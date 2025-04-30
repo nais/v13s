@@ -18,6 +18,9 @@ spec:
     to:
     - fqdns:
       - private.googleapis.com
+      - ttl.sh
+      - sigstore-tuf-root.storage.googleapis.com
+      - europe-north1-docker.pkg.dev
 {{- $root := . }}
 {{- range split "," .Values.kubernetes.clusters }}
   - ports:
