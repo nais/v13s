@@ -49,6 +49,13 @@ values:
     config:
       type: string_array
 
+  dockerconfigjson:
+    displayName: Docker config json
+    description: Docker config json for pulling images from registries
+    config:
+      type: string
+      secret: true
+
   auth.serviceAccounts:
     displayName: Authorized service accounts
     computed:

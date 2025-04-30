@@ -27,6 +27,9 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: Always
+          env:
+            - name: DOCKER_CONFIG
+              value: /etc/docker-credentials
           envFrom:
             - secretRef:
                 name: {{ include "v13s.fullname" . }}
@@ -46,6 +49,11 @@ spec:
             - name: http-metrics
               containerPort: 8000
               protocol: TCP
+          volumeMounts:
+            - mountPath: /.sigstore
+              name: writable-tmp
+            - mountPath: /etc/docker-credentials
+              name: docker-credentials
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         - name: cloud-sql-proxy
@@ -67,3 +75,14 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "0.22"
+     volumes:
+       - name: writable-tmp
+         emptyDir: { }
+       - name: docker-credentials
+         secret:
+           defaultMode: 420
+           items:
+             - key: .dockerconfigjson
+               path: config.json
+           optional: true
+           secretName: v13s-docker-credentials

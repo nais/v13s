@@ -10,6 +10,7 @@ updateInterval: 5m
 github:
   organizations:
     - nais
+dockerconfigjson: '{"auths":{}}'
 auth:
   audience: "v13s"
   serviceAccounts: []
