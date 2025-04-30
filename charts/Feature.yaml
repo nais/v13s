@@ -45,7 +45,7 @@ values:
         {{ end }}
 
   github.organizations:
-    displayName: Authorized service accounts
+    displayName: Github Organizations
     config:
       type: string_array
 

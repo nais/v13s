@@ -86,11 +86,13 @@ func CreateClusterConfigMap(tenant string, config K8sConfig) (ClusterConfigMap, 
 			},
 		}
 	}
-	mgmtCfg, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("creating in-cluster config: %w", err)
+	if config.SelfCluster != "" {
+		mgmtCfg, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("creating in-cluster config: %w", err)
+		}
+		configs[config.SelfCluster] = mgmtCfg
 	}
-	configs[config.SelfCluster] = mgmtCfg
 
 	staticConfigs := getStaticClusterConfigs(config.StaticClusters)
 	for cluster, cfg := range staticConfigs {
