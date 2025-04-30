@@ -20,6 +20,7 @@ spec:
       - private.googleapis.com
       - ttl.sh
       - sigstore-tuf-root.storage.googleapis.com
+      - tuf-repo-cdn.sigstore.dev
       - europe-north1-docker.pkg.dev
 {{- $root := . }}
 {{- range split "," .Values.kubernetes.clusters }}
