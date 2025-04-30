@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -110,6 +111,11 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			attribute.String("type", string(workload.Type)),
 			attribute.String("hasAttestation", fmt.Sprint(att != nil)),
 		))
+
+	if os.Getenv("DISABLE_SBOM_UPDATE") != "" {
+		m.log.Debug("skipping sbom update")
+		return nil
+	}
 
 	if att != nil {
 		err = m.db.UpdateImage(ctx, sql.UpdateImageParams{
