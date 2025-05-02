@@ -31,13 +31,13 @@ type config struct {
 }
 
 type options struct {
-	cluster       string
-	namespace     string
-	workload      string
-	limit         int64
-	order         string
-	since         string
-	workload_type string
+	cluster      string
+	namespace    string
+	workload     string
+	limit        int
+	order        string
+	since        string
+	workloadType string
 }
 
 func main() {
@@ -336,7 +336,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		}
 
 		tbl.Print()
-		numFetched := offset + int(o.limit)
+		numFetched := offset + o.limit
 		if numFetched > int(resp.PageInfo.TotalCount) {
 			numFetched = int(resp.PageInfo.TotalCount)
 		}
@@ -357,7 +357,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		if input == "q" {
 			break
 		} else if input == "n" {
-			offset += int(o.limit)
+			offset += o.limit
 		} else {
 			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
 		}
@@ -424,7 +424,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 		}
 
 		tbl.Print()
-		numFetched := offset + int(o.limit)
+		numFetched := offset + o.limit
 		if numFetched > int(resp.PageInfo.TotalCount) {
 			numFetched = int(resp.PageInfo.TotalCount)
 		}
@@ -445,7 +445,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 		if input == "q" {
 			break
 		} else if input == "n" {
-			offset += int(o.limit)
+			offset += o.limit
 		} else {
 			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
 		}
@@ -494,8 +494,8 @@ func parseOptions(cmd *cli.Command, o *options) []vulnerabilities.Option {
 	if o.workload != "" {
 		opts = append(opts, vulnerabilities.WorkloadFilter(o.workload))
 	}
-	if o.workload_type != "" {
-		opts = append(opts, vulnerabilities.WorkloadTypeFilter(o.workload_type))
+	if o.workloadType != "" {
+		opts = append(opts, vulnerabilities.WorkloadTypeFilter(o.workloadType))
 	}
 	if o.limit > 0 {
 		opts = append(opts, vulnerabilities.Limit(int32(o.limit)))
@@ -559,7 +559,7 @@ func commonFlags(opts *options, excludes ...string) []cli.Flag {
 			Aliases:     []string{"t"},
 			Value:       "",
 			Usage:       "workload type",
-			Destination: &opts.workload_type,
+			Destination: &opts.workloadType,
 		},
 		&cli.IntFlag{
 			Name:        "limit",

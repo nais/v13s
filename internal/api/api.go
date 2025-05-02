@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/nais/v13s/internal/attestation"
 	"net"
 	"os/signal"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/nais/v13s/internal/api/auth"
 	"github.com/nais/v13s/internal/api/grpcmgmt"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"

@@ -69,6 +69,7 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
+	// TODO: add value to workload if locked
 	row, err := m.db.GetWorkload(ctx, sql.GetWorkloadParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
