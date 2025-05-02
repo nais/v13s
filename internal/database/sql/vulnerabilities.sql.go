@@ -307,17 +307,15 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 }
 
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
-SELECT DISTINCT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
+SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
                   AND sv.package = v.package
                   AND sv.cve_id = v.cve_id
          JOIN cve c ON v.cve_id = c.cve_id
-         JOIN (
-    SELECT DISTINCT image_name, image_tag, cluster, namespace
-    FROM workloads
-) w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         JOIN workloads w ON v.image_name = w.image_name
+    AND v.image_tag = w.image_tag
 WHERE (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
   AND (CASE WHEN $3::TEXT IS NOT NULL THEN v.image_name = $3::TEXT ELSE TRUE END)
@@ -327,10 +325,10 @@ ORDER BY
     CASE WHEN $5 = 'severity_desc' THEN c.severity END DESC,
     CASE WHEN $5 = 'workload_asc' THEN w.name END ASC,
     CASE WHEN $5 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $5 = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN $5 = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN $5 = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN $5 = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN $5 = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN $5 = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN $5 = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN $5 = 'cluster_desc' THEN w.cluster END DESC,
     v.id ASC
     LIMIT $7 OFFSET $6
 `

@@ -14,6 +14,7 @@ type Workload struct {
 	ImageName    string
 	ImageTag     string
 	Vulnz        []*Vulnerability
+	Summary      *sql.VulnerabilitySummary
 }
 
 type Vulnerability struct {
@@ -39,6 +40,16 @@ func generateTestWorkloads(clusters, namespaces []string, workloadsPerNamespace,
 					ImageTag:     imageTag,
 					Vulnz:        generateVulnerabilities(vulnsPerWorkload, i, imageName, imageTag), // Generate a different number of vulnerabilities
 				}
+				workload.Summary = &sql.VulnerabilitySummary{
+					ImageName:  imageName,
+					ImageTag:   imageTag,
+					Critical:   0,
+					High:       int32(vulnsPerWorkload),
+					Medium:     0,
+					Low:        0,
+					Unassigned: 0,
+					RiskScore:  0,
+				}
 				workloads = append(workloads, workload)
 			}
 		}
@@ -58,7 +69,6 @@ func generateVulnerabilities(numVulns, workloadIndex int, imageName string, imag
 
 // createVulnerability generates a predictable vulnerability instance
 func createVulnerability(cveID string, imageName string, imageTag string) *Vulnerability {
-
 	return &Vulnerability{
 		vuln: &sql.Vulnerability{
 			ImageName: imageName,

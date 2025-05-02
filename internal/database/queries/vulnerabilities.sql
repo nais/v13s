@@ -114,17 +114,15 @@ UPDATE
 ;
 
 -- name: ListSuppressedVulnerabilities :many
-SELECT DISTINCT sv.*, v.*, c.*, w.cluster, w.namespace
+SELECT sv.*, v.*, c.*, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
                   AND sv.package = v.package
                   AND sv.cve_id = v.cve_id
          JOIN cve c ON v.cve_id = c.cve_id
-         JOIN (
-    SELECT DISTINCT image_name, image_tag, cluster, namespace
-    FROM workloads
-) w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         JOIN workloads w ON v.image_name = w.image_name
+    AND v.image_tag = w.image_tag
 WHERE (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
@@ -134,10 +132,10 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
     CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
     CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
     v.id ASC
     LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ;

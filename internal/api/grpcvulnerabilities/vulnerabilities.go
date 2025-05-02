@@ -9,16 +9,15 @@ import (
 
 	"github.com/emicklei/pgtalk/convert"
 	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// TODO: add input validation for request, especially for filter values
 func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
+	// TODO: add input validation for request, especially for filter values
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -203,11 +202,23 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 	}
 
 	nodes := collections.Map(suppressed, func(row *sql.ListSuppressedVulnerabilitiesRow) *vulnerabilities.SuppressedVulnerability {
+		state := vulnerabilities.SuppressState_NOT_SET
+		switch row.Reason {
+		case sql.VulnerabilitySuppressReasonFalsePositive:
+			state = vulnerabilities.SuppressState_FALSE_POSITIVE
+		case sql.VulnerabilitySuppressReasonResolved:
+
+			state = vulnerabilities.SuppressState_RESOLVED
+		case sql.VulnerabilitySuppressReasonNotAffected:
+			state = vulnerabilities.SuppressState_NOT_AFFECTED
+		case sql.VulnerabilitySuppressReasonInTriage:
+			state = vulnerabilities.SuppressState_IN_TRIAGE
+		}
 		return &vulnerabilities.SuppressedVulnerability{
 			ImageName:    row.ImageName,
 			CveId:        row.CveID,
 			Package:      row.Package,
-			State:        suppressState(row.Reason),
+			State:        state,
 			Reason:       &row.ReasonText,
 			SuppressedBy: &row.SuppressedBy,
 			Suppress:     &row.Suppressed,
@@ -303,11 +314,11 @@ func safeInt(val *int32) int32 {
 	return *val
 }
 
-func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAt time.Time) *vulnerabilities.Suppression {
+func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {
 	var suppression *vulnerabilities.Suppression
 	if suppressReason.Valid() {
 		suppressReasonStr := strings.ToUpper(string(suppressReason))
-		time := suppressedAt
+		t := suppressedAtTime
 
 		reason := vulnerabilities.SuppressState_NOT_SET
 		if val, ok := vulnerabilities.SuppressState_value[suppressReasonStr]; ok {
@@ -319,7 +330,7 @@ func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReas
 			SuppressedDetails: str(reasonText, ""),
 			Suppressed:        suppressed,
 			SuppressedBy:      str(suppressedBy, ""),
-			LastUpdated:       timestamppb.New(time),
+			LastUpdated:       timestamppb.New(t),
 		}
 	}
 	return suppression
@@ -330,19 +341,4 @@ func str(s *string, def string) string {
 		return def
 	}
 	return *s
-}
-
-func suppressState(state sql.VulnerabilitySuppressReason) vulnerabilities.SuppressState {
-	switch state {
-	case sql.VulnerabilitySuppressReasonFalsePositive:
-		return vulnerabilities.SuppressState_FALSE_POSITIVE
-	case sql.VulnerabilitySuppressReasonResolved:
-		return vulnerabilities.SuppressState_RESOLVED
-	case sql.VulnerabilitySuppressReasonNotAffected:
-		return vulnerabilities.SuppressState_NOT_AFFECTED
-	case sql.VulnerabilitySuppressReasonInTriage:
-		return vulnerabilities.SuppressState_IN_TRIAGE
-	default:
-		return vulnerabilities.SuppressState_NOT_SET
-	}
 }
