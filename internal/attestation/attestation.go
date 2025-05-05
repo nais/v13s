@@ -18,6 +18,7 @@ import (
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
+	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/pkg/signature"
 	"github.com/sirupsen/logrus"
@@ -27,13 +28,15 @@ const (
 	ErrNoAttestation = "no matching attestations"
 )
 
+type VerifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, *cosign.CheckOpts, error)
+
 type Verifier struct {
-	opts *cosign.CheckOpts
-	log  *logrus.Entry
+	opts       *cosign.CheckOpts
+	log        *logrus.Entry
+	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
 func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (*Verifier, error) {
-	// TODO: fix for localhost
 	ids := github.NewCertificateIdentity(organizations).GetIdentities()
 	opts, err := CosignOptions(ctx, "", ids)
 	if err != nil {
@@ -43,6 +46,10 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 	return &Verifier{
 		opts: opts,
 		log:  log,
+		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			sigs, _, err := cosign.VerifyImageAttestations(ctx, ref, co)
+			return sigs, err
+		},
 	}, nil
 }
 
@@ -57,7 +64,7 @@ func (v *Verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, fmt.Errorf("parse reference: %v", err)
 	}
 
-	verified, _, err := cosign.VerifyImageAttestations(ctx, ref, v.opts)
+	verified, err := v.verifyFunc(ctx, ref, v.opts)
 	if err != nil {
 		if strings.Contains(err.Error(), ErrNoAttestation) {
 			v.log.Debug("no attestations found")
