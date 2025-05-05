@@ -19,23 +19,30 @@ var (
 	ErrMissingToken    = status.Errorf(codes.Unauthenticated, "missing token")
 )
 
-type googleIDTokenValidator struct {
+type ValidateFuncType func(ctx context.Context, token, audience string) (*idtoken.Payload, error)
+
+type GoogleIDTokenValidator struct {
 	audience                  string
 	authorizedServiceAccounts []string
 	log                       *log.Entry
+	validateFunc              ValidateFuncType
 }
 
 func TokenInterceptor(audience string, authorizedServiceAccounts []string, field *log.Entry) grpc.UnaryServerInterceptor {
-	g := &googleIDTokenValidator{
+	return NewGoogleIDTokenValidator(audience, authorizedServiceAccounts, field, idtoken.Validate).EnsureValidToken
+}
+
+func NewGoogleIDTokenValidator(audience string, authorizedServiceAccounts []string, field *log.Entry, validate ValidateFuncType) *GoogleIDTokenValidator {
+	return &GoogleIDTokenValidator{
 		audience:                  audience,
 		authorizedServiceAccounts: authorizedServiceAccounts,
 		log:                       field,
+		validateFunc:              validate,
 	}
-	return g.ensureValidToken
 }
 
 // TODO: when necessary add authorization per method, i.e. only slsa-verde can RegisterWorkload etc.
-func (g *googleIDTokenValidator) ensureValidToken(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+func (g *GoogleIDTokenValidator) EnsureValidToken(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, ErrMissingMetadata
@@ -50,14 +57,14 @@ func (g *googleIDTokenValidator) ensureValidToken(ctx context.Context, req any, 
 	return handler(ctx, req)
 }
 
-func (g *googleIDTokenValidator) valid(ctx context.Context, authorization []string) error {
+func (g *GoogleIDTokenValidator) valid(ctx context.Context, authorization []string) error {
 	if len(authorization) < 1 {
 		g.log.Warn("Missing authorization token")
 		return ErrMissingToken
 	}
 
 	token := strings.TrimPrefix(authorization[0], "Bearer ")
-	payload, err := idtoken.Validate(ctx, token, g.audience)
+	payload, err := g.validateFunc(ctx, token, g.audience)
 	if err != nil {
 		g.log.Errorf("failed to validate token: %v", err)
 		return status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
