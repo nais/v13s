@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/auth v0.16.1
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.11.2
-	github.com/exaring/otelpgx v0.9.0
+	github.com/exaring/otelpgx v0.9.1
 	github.com/fatih/color v1.18.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/google/go-containerregistry v0.20.3
