@@ -42,7 +42,13 @@ func TestWorkloadManager(t *testing.T) {
 		start := make(chan struct{}) // barrier to synchronize goroutines
 
 		numWorkloads := 10
-		mgr.addDispatcher.processingWg.Add(numWorkloads)
+		var processingWg sync.WaitGroup
+		processingWg.Add(numWorkloads)
+
+		mgr.addDispatcher.postProcessingHook = func(ctx context.Context, obj *model.Workload) error {
+			processingWg.Done()
+			return nil
+		}
 		for i := 0; i < numWorkloads; i++ {
 			wg.Add(1)
 			go func(id int) {
@@ -54,7 +60,7 @@ func TestWorkloadManager(t *testing.T) {
 
 		close(start)
 		wg.Wait()
-		mgr.addDispatcher.processingWg.Wait()
+		processingWg.Wait()
 	})
 }
 
