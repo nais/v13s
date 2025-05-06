@@ -15,7 +15,7 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5, $6)
 RETURNING
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 `
 
 type CreateWorkloadParams struct {
@@ -47,6 +47,7 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 		&i.ImageTag,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.State,
 	)
 	return &i, err
 }
@@ -81,7 +82,7 @@ func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) 
 }
 
 const getWorkload = `-- name: GetWorkload :one
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 FROM workloads
 WHERE name = $1
   AND workload_type = $2
@@ -114,12 +115,13 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 		&i.ImageTag,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.State,
 	)
 	return &i, err
 }
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 FROM workloads
 WHERE cluster = $1
 ORDER BY
@@ -145,6 +147,7 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 			&i.ImageTag,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.State,
 		); err != nil {
 			return nil, err
 		}
@@ -157,7 +160,7 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 }
 
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 FROM workloads
 WHERE image_name = $1
   AND image_tag = $2
@@ -189,6 +192,7 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 			&i.ImageTag,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.State,
 		); err != nil {
 			return nil, err
 		}
@@ -207,7 +211,8 @@ INSERT INTO workloads(
     namespace,
     cluster,
     image_name,
-    image_tag
+    image_tag,
+    state
 )
 VALUES (
     $1,
@@ -215,14 +220,17 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    'updated'
 ) ON CONFLICT
     ON CONSTRAINT workload_id DO
         UPDATE
     SET
         image_name = $5,
         image_tag = $6,
+        state = 'updated',
         updated_at = NOW()
+    WHERE workloads.state != 'updated'
 RETURNING
     id
 `

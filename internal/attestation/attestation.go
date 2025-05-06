@@ -28,22 +28,28 @@ const (
 	ErrNoAttestation = "no matching attestations"
 )
 
+type Verifier interface {
+	GetAttestation(ctx context.Context, image string) (*Attestation, error)
+}
+
+var _ Verifier = &verifier{}
+
 type VerifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, *cosign.CheckOpts, error)
 
-type Verifier struct {
-	opts       *cosign.CheckOpts
-	log        *logrus.Entry
+type verifier struct {
+	opts *cosign.CheckOpts
+	log  *logrus.Entry
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
-func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (*Verifier, error) {
+func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
 	ids := github.NewCertificateIdentity(organizations).GetIdentities()
 	opts, err := CosignOptions(ctx, "", ids)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Verifier{
+	return &verifier{
 		opts: opts,
 		log:  log,
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
@@ -58,7 +64,7 @@ type Attestation struct {
 	Metadata  map[string]string           `json:"metadata"`
 }
 
-func (v *Verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
+func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
 		return nil, fmt.Errorf("parse reference: %v", err)

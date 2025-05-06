@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/kubernetes"
@@ -27,7 +28,7 @@ const (
 
 type WorkloadManager struct {
 	db               sql.Querier
-	verifier         *attestation.Verifier
+	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
 	addDispatcher    *Dispatcher[*model.Workload]
@@ -36,14 +37,14 @@ type WorkloadManager struct {
 	log              logrus.FieldLogger
 }
 
-func NewWorkloadManager(querier sql.Querier, verifier *attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
 		panic(err)
 	}
 	m := &WorkloadManager{
-		db:              querier,
+		db:              sql.New(pool),
 		verifier:        verifier,
 		src:             source,
 		queue:           queue,
@@ -69,7 +70,6 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
-	// TODO: add value to workload if locked
 	row, err := m.db.GetWorkload(ctx, sql.GetWorkloadParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
@@ -94,6 +94,10 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 	if err != nil {
 		m.log.WithError(err).Error("Failed to register workload")
 		return err
+	}
+	if workloadId == nil {
+		m.log.Infof("workload already updated, skipping: %v", workload)
+		return nil
 	}
 
 	verifier := m.verifier
@@ -221,6 +225,9 @@ func (m *WorkloadManager) RegisterWorkload(ctx context.Context, workload *model.
 	})
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		m.log.WithError(err).Error("Failed to upsert workload")
 		return nil, err
 	}

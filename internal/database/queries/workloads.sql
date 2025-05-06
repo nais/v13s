@@ -5,7 +5,8 @@ INSERT INTO workloads(
     namespace,
     cluster,
     image_name,
-    image_tag
+    image_tag,
+    state
 )
 VALUES (
     @name,
@@ -13,14 +14,17 @@ VALUES (
     @namespace,
     @cluster,
     @image_name,
-    @image_tag
+    @image_tag,
+    'updated'
 ) ON CONFLICT
     ON CONSTRAINT workload_id DO
         UPDATE
     SET
         image_name = @image_name,
         image_tag = @image_tag,
+        state = 'updated',
         updated_at = NOW()
+    WHERE workloads.state != 'updated'
 RETURNING
     id
 ;

@@ -15,6 +15,12 @@ packages:
   github.com/nais/v13s/internal/database/sql:
     interfaces:
       Querier:
+  github.com/nais/v13s/internal/attestation:
+    interfaces:
+      Verifier:
+  github.com/nais/v13s/internal/sources:
+    interfaces:
+      Source:
   github.com/nais/v13s/internal/sources/dependencytrack:
     interfaces:
       Client:
