@@ -8,11 +8,11 @@ import (
 )
 
 type Dispatcher[T any] struct {
-	sem          chan struct{} // semaphore
-	queue        chan T
-	worker       Worker[T]
-	wg           sync.WaitGroup
-	processingWg sync.WaitGroup
+	sem                chan struct{} // semaphore
+	queue              chan T
+	worker             Worker[T]
+	wg                 sync.WaitGroup
+	postProcessingHook func(ctx context.Context, obj T) error
 }
 
 type Worker[T any] func(ctx context.Context, item T) error
@@ -70,8 +70,11 @@ Loop:
 				if err != nil {
 					logrus.Error("Failed to process workload")
 				}
-				// Decrement the processing waitgroup, can be used to wait for all the processing to finish, e.g. in tests
-				d.processingWg.Done()
+				if d.postProcessingHook != nil {
+					if err := d.postProcessingHook(ctx, obj); err != nil {
+						logrus.Error("Failed to run post process workload hook")
+					}
+				}
 			}(obj)
 		}
 	}
