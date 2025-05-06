@@ -176,7 +176,18 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 		d.log.Debug("analysis trail for vulnerability found")
 
 		if an == nil {
-			d.log.Warnf("no analysis trail found for vulnerability %s in project %s", v.CveId, metadata.projectId)
+			if err := d.client.UpdateFinding(
+				ctx,
+				v.SuppressedBy,
+				v.Reason,
+				metadata.projectId,
+				metadata.componentId,
+				metadata.vulnerabilityUuid,
+				v.State,
+				v.Suppressed,
+			); err != nil {
+				return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
+			}
 			return nil
 		}
 
