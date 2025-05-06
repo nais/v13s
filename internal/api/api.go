@@ -16,7 +16,6 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
-	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
@@ -71,7 +70,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
 
-	mgr := manager.NewWorkloadManager(sql.New(pool), verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr := manager.NewWorkloadManager(pool, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))

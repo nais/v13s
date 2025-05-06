@@ -150,6 +150,67 @@ func AllVulnerabilitySuppressReasonValues() []VulnerabilitySuppressReason {
 	}
 }
 
+type WorkloadState string
+
+const (
+	WorkloadStateInitialized   WorkloadState = "initialized"
+	WorkloadStateUpdated       WorkloadState = "updated"
+	WorkloadStateNoAttestation WorkloadState = "no_attestation"
+)
+
+func (e *WorkloadState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = WorkloadState(s)
+	case string:
+		*e = WorkloadState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for WorkloadState: %T", src)
+	}
+	return nil
+}
+
+type NullWorkloadState struct {
+	WorkloadState WorkloadState
+	Valid         bool // Valid is true if WorkloadState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullWorkloadState) Scan(value interface{}) error {
+	if value == nil {
+		ns.WorkloadState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.WorkloadState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullWorkloadState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.WorkloadState), nil
+}
+
+func (e WorkloadState) Valid() bool {
+	switch e {
+	case WorkloadStateInitialized,
+		WorkloadStateUpdated,
+		WorkloadStateNoAttestation:
+		return true
+	}
+	return false
+}
+
+func AllWorkloadStateValues() []WorkloadState {
+	return []WorkloadState{
+		WorkloadStateInitialized,
+		WorkloadStateUpdated,
+		WorkloadStateNoAttestation,
+	}
+}
+
 type Cve struct {
 	CveID     string
 	CveTitle  string
@@ -228,4 +289,5 @@ type Workload struct {
 	ImageTag     string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	State        WorkloadState
 }

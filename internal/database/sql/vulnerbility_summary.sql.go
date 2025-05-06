@@ -152,7 +152,7 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 
 const listVulnerabilitySummaries = `-- name: ListVulnerabilitySummaries :many
 WITH filtered_workloads AS (
-    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
+    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
     FROM workloads w
     WHERE
         ($4::TEXT IS NULL OR w.cluster = $4::TEXT)

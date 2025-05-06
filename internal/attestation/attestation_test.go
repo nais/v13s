@@ -19,7 +19,7 @@ import (
 )
 
 func TestGetAttestation_NoAttestation(t *testing.T) {
-	v := &Verifier{
+	v := &verifier{
 		log:  logrus.NewEntry(logrus.New()),
 		opts: &cosign.CheckOpts{}, // doesn't need to be real for this test
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
@@ -38,7 +38,7 @@ func TestGetAttestation_Success(t *testing.T) {
 	require.NoError(t, err)
 	rBundle := loadRekorBundleFromFile(t, "testdata/rekor-bundle.json")
 
-	v := &Verifier{
+	v := &verifier{
 		log:  logrus.NewEntry(logrus.New()),
 		opts: &cosign.CheckOpts{},
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
