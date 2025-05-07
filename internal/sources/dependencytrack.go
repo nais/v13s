@@ -156,74 +156,65 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 
 func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
 	d.log.Debug("maintaining suppressed vulnerabilities")
-	projectId := ""
+	triggeredProjects := make(map[string]struct{})
+
 	for _, v := range suppressed {
-		var metadata *dependencytrackVulnMetadata
-		if m, ok := v.Metadata.(*dependencytrackVulnMetadata); ok {
-			metadata = m
-		}
-		if metadata == nil {
+		metadata, ok := v.Metadata.(*dependencytrackVulnMetadata)
+		if !ok || metadata == nil {
 			d.log.Warnf("missing metadata for suppressed vulnerability, CveId '%s', Package '%s'", v.CveId, v.Package)
 			continue
 		}
-
-		projectId = metadata.projectId
 
 		an, err := d.client.GetAnalysisTrailForImage(ctx, metadata.projectId, metadata.componentId, metadata.vulnerabilityUuid)
 		if err != nil {
 			return err
 		}
-		d.log.Debug("analysis trail for vulnerability found")
 
-		if an == nil {
-			if err := d.client.UpdateFinding(
-				ctx,
-				v.SuppressedBy,
-				v.Reason,
-				metadata.projectId,
-				metadata.componentId,
-				metadata.vulnerabilityUuid,
-				v.State,
-				v.Suppressed,
-			); err != nil {
-				return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
+		if d.shouldUpdateFinding(an, v) {
+			d.log.Debug("analysis trail for vulnerability found")
+			if err := d.updateFinding(ctx, metadata, v); err != nil {
+				return err
 			}
-			return nil
-		}
-
-		if *an.IsSuppressed == v.Suppressed {
-			d.log.Infof("vulnerability %s suppression status is correct in project %s", v.CveId, metadata.projectId)
-			continue
-		}
-
-		if an.AnalysisState == v.State {
-			d.log.Infof("vulnerability %s state is correct in project %s", v.CveId, metadata.projectId)
-			continue
-		}
-
-		if err := d.client.UpdateFinding(
-			ctx,
-			v.SuppressedBy,
-			v.Reason,
-			metadata.projectId,
-			metadata.componentId,
-			metadata.vulnerabilityUuid,
-			v.State,
-			v.Suppressed,
-		); err != nil {
-			return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
+			triggeredProjects[metadata.projectId] = struct{}{}
+		} else {
+			d.log.Infof("vulnerability %s is already up to date in project %s", v.CveId, metadata.projectId)
 		}
 	}
 
-	if projectId != "" {
-		err := d.client.TriggerAnalysis(ctx, projectId)
-		if err != nil {
-			return fmt.Errorf("triggering analysis for project %s: %w", projectId, err)
+	for projectID := range triggeredProjects {
+		if err := d.client.TriggerAnalysis(ctx, projectID); err != nil {
+			return fmt.Errorf("triggering analysis for project %s: %w", projectID, err)
 		}
 	}
 
 	d.log.Debug("suppressed vulnerabilities maintained")
+	return nil
+}
 
+func (d *dependencytrackSource) shouldUpdateFinding(an *client.Analysis, v *SuppressedVulnerability) bool {
+	if an == nil {
+		return true
+	}
+	if an.IsSuppressed != nil && *an.IsSuppressed != v.Suppressed {
+		return true
+	}
+	return an.AnalysisState != v.State
+}
+
+func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrackVulnMetadata, v *SuppressedVulnerability) error {
+	err := d.client.UpdateFinding(
+		ctx,
+		v.SuppressedBy,
+		v.Reason,
+		metadata.projectId,
+		metadata.componentId,
+		metadata.vulnerabilityUuid,
+		v.State,
+		v.Suppressed,
+	)
+	if err != nil {
+		return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
+	}
 	return nil
 }
 
