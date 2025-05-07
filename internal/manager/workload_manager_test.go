@@ -35,13 +35,12 @@ func TestWorkloadManager(t *testing.T) {
 	verifier := attestation.NewMockVerifier(t)
 	mgr := NewWorkloadManager(pool, verifier, source, queue, logrus.WithField("subsystem", "test"))
 	t.Run("should only update the same workload from a goroutine/pod at a time", func(t *testing.T) {
-		verifier.EXPECT().GetAttestation(mock.Anything, mock.Anything).Return(nil, nil).Times(1)
-
+		numWorkloads := 10
+		verifier.EXPECT().GetAttestation(mock.Anything, mock.Anything).Return(nil, nil).Times(2)
 		mgr.Start(ctx)
 		var wg sync.WaitGroup
 		start := make(chan struct{}) // barrier to synchronize goroutines
 
-		numWorkloads := 10
 		var processingWg sync.WaitGroup
 		processingWg.Add(numWorkloads)
 
@@ -49,18 +48,29 @@ func TestWorkloadManager(t *testing.T) {
 			processingWg.Done()
 			return nil
 		}
+
 		for i := 0; i < numWorkloads; i++ {
 			wg.Add(1)
 			go func(id int) {
 				defer wg.Done()
 				<-start // wait for the barrier
-				queue.Updated <- workload("test", i)
+				queue.Updated <- workload("test", 0)
 			}(i)
 		}
 
 		close(start)
 		wg.Wait()
 		processingWg.Wait()
+		err = mgr.AddWorkload(ctx, workload("test", 100))
+		assert.NoError(t, err)
+		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Cluster:      "test",
+			Namespace:    "test",
+			Name:         "test",
+			WorkloadType: "app",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "100", w.ImageTag)
 	})
 }
 

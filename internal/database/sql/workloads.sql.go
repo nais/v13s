@@ -10,11 +10,8 @@ import (
 )
 
 const createWorkload = `-- name: CreateWorkload :one
-INSERT INTO
-    workloads (name, workload_type, namespace, cluster, image_name, image_tag)
-VALUES
-    ($1, $2, $3, $4, $5, $6)
-RETURNING
+INSERT INTO workloads (name, workload_type, namespace, cluster, image_name, image_tag)
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 `
 
@@ -53,12 +50,12 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 }
 
 const deleteWorkload = `-- name: DeleteWorkload :one
-DELETE FROM workloads
+DELETE
+FROM workloads
 WHERE name = $1
   AND workload_type = $2
   AND namespace = $3
-  AND cluster = $4
-RETURNING
+  AND cluster = $4 RETURNING
     id
 `
 
@@ -120,12 +117,72 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 	return &i, err
 }
 
+const initializeWorkload = `-- name: InitializeWorkload :one
+INSERT INTO workloads(name,
+                      workload_type,
+                      namespace,
+                      cluster,
+                      image_name,
+                      image_tag,
+                      state)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        'initialized') ON CONFLICT
+ON CONSTRAINT workload_id DO
+UPDATE
+    SET
+        state = 'initialized',
+        updated_at = NOW(),
+        image_name = $5,
+        image_tag = $6
+    WHERE workloads.state != 'initialized' and ( workloads.image_name != $5 or workloads.image_tag != $6 )
+    RETURNING
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+`
+
+type InitializeWorkloadParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+}
+
+func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (*Workload, error) {
+	row := q.db.QueryRow(ctx, initializeWorkload,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+		arg.ImageName,
+		arg.ImageTag,
+	)
+	var i Workload
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.WorkloadType,
+		&i.Namespace,
+		&i.Cluster,
+		&i.ImageName,
+		&i.ImageTag,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.State,
+	)
+	return &i, err
+}
+
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
 SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 FROM workloads
 WHERE cluster = $1
-ORDER BY
-    (name, namespace, cluster, updated_at) DESC
+ORDER BY (name, namespace, cluster, updated_at) DESC
 `
 
 func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error) {
@@ -164,8 +221,7 @@ SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, creat
 FROM workloads
 WHERE image_name = $1
   AND image_tag = $2
-ORDER BY
-    (name, cluster, updated_at) DESC
+ORDER BY (name, cluster, updated_at) DESC
 `
 
 type ListWorkloadsByImageParams struct {
@@ -204,34 +260,45 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 	return items, nil
 }
 
+const updateWorkloadState = `-- name: UpdateWorkloadState :exec
+UPDATE workloads
+SET state = $1
+WHERE id = $2
+`
+
+type UpdateWorkloadStateParams struct {
+	State WorkloadState
+	ID    pgtype.UUID
+}
+
+func (q *Queries) UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error {
+	_, err := q.db.Exec(ctx, updateWorkloadState, arg.State, arg.ID)
+	return err
+}
+
 const upsertWorkload = `-- name: UpsertWorkload :one
-INSERT INTO workloads(
-    name,
-    workload_type,
-    namespace,
-    cluster,
-    image_name,
-    image_tag,
-    state
-)
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    'updated'
-) ON CONFLICT
-    ON CONSTRAINT workload_id DO
-        UPDATE
+INSERT INTO workloads(name,
+                      workload_type,
+                      namespace,
+                      cluster,
+                      image_name,
+                      image_tag,
+                      state)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        'initialized') ON CONFLICT
+ON CONSTRAINT workload_id DO
+UPDATE
     SET
         image_name = $5,
-        image_tag = $6,
-        state = 'updated',
-        updated_at = NOW()
-    WHERE workloads.state != 'updated'
-RETURNING
+    image_tag = $6,
+    state = 'initialized',
+    updated_at = NOW()
+    RETURNING
     id
 `
 

@@ -30,6 +30,7 @@ type Querier interface {
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
+	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (*Workload, error)
 	ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
@@ -46,6 +47,7 @@ type Querier interface {
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
+	UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error
 	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error)
 }
 

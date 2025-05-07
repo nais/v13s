@@ -28,6 +28,7 @@ const (
 
 type WorkloadManager struct {
 	db               sql.Querier
+	pool             *pgxpool.Pool
 	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
@@ -45,6 +46,7 @@ func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, sourc
 	}
 	m := &WorkloadManager{
 		db:              sql.New(pool),
+		pool:            pool,
 		verifier:        verifier,
 		src:             source,
 		queue:           queue,
@@ -70,27 +72,53 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
-	row, err := m.db.GetWorkload(ctx, sql.GetWorkloadParams{
+	if err := m.db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     workload.ImageName,
+		Tag:      workload.ImageTag,
+		Metadata: map[string]string{},
+	}); err != nil {
+		m.log.WithError(err).Error("Failed to create image")
+		return err
+	}
+
+	row, err := m.db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
 		Namespace:    workload.Namespace,
 		WorkloadType: string(workload.Type),
+		ImageName:    workload.ImageName,
+		ImageTag:     workload.ImageTag,
 	})
+
+	if workload.ImageTag == "100" {
+		fmt.Printf("%+v\n", row)
+	}
+
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			m.log.WithField("workload", workload).Debug("workload already initialized, skipping")
+			return nil
+		}
+
 		if !errors.Is(err, pgx.ErrNoRows) {
-			m.log.WithError(err).Error("Failed to get workload")
+			m.log.WithError(err).Error("failed to get workload")
 			return err
 		}
 	}
 
-	if row != nil && workload.ImageTag == row.ImageTag {
+	/*	if row.State == sql.WorkloadStateInitialized {
+		m.log.Infof("workload already exists and is initialized, skipping: %v", workload)
+		return nil
+	}*/
+
+	/*if workload.ImageName == row.ImageName && workload.ImageTag == row.ImageTag {
 		m.log.Debugf("workload already exists and image tag is the same, skipping: %s", workload.Name)
 		return nil
-	}
+	}*/
+	workloadId := row.ID
 
-	m.log.WithField("workload", workload).Debug("adding or updating workload")
 	// TODO: add metadata to workload
-	workloadId, err := m.RegisterWorkload(ctx, workload, map[string]string{})
+	/*workloadId, err := m.RegisterWorkload(ctx, workload, map[string]string{})
 	if err != nil {
 		m.log.WithError(err).Error("Failed to register workload")
 		return err
@@ -98,7 +126,12 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 	if workloadId == nil {
 		m.log.Infof("workload already updated, skipping: %v", workload)
 		return nil
-	}
+	}*/
+
+	defer m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
+
+	// ensures that the workload can be registered again
+	m.log.WithField("workload", workload).Debug("adding or updating workload")
 
 	verifier := m.verifier
 	att, err := verifier.GetAttestation(ctx, workload.ImageName+":"+workload.ImageTag)
@@ -152,7 +185,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 				Bytes: id,
 				Valid: true,
 			},
-			WorkloadID: *workloadId,
+			WorkloadID: workloadId,
 			SourceType: source.Name(),
 		})
 		if err != nil {
@@ -160,7 +193,18 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		}
 	}
 
+	m.log.Infof("workload added: %v", workload)
 	return nil
+}
+
+func (m *WorkloadManager) setWorkloadState(ctx context.Context, id pgtype.UUID, state sql.WorkloadState) {
+	err := m.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: state,
+		ID:    id,
+	})
+	if err != nil {
+		m.log.WithError(err).Error("Failed to update workload state")
+	}
 }
 
 func (m *WorkloadManager) DeleteWorkload(ctx context.Context, w *model.Workload) error {
