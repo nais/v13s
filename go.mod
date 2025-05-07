@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	cloud.google.com/go/auth v0.16.1
+	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.11.2
 	github.com/exaring/otelpgx v0.9.1
@@ -47,6 +48,7 @@ require (
 	k8s.io/api v0.33.0
 	k8s.io/apimachinery v0.33.0
 	k8s.io/client-go v0.33.0
+	k8s.io/klog/v2 v2.130.1
 )
 
 require (
@@ -308,7 +310,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.33.0 // indirect
-	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979 // indirect
 	modernc.org/libc v1.62.1 // indirect
