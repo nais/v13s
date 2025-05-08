@@ -43,7 +43,7 @@ func TestNewCertificateIdentity(t *testing.T) {
 			enabled:     true,
 			serverUrl:   "https://github.com",
 			orgs:        []string{"tull"},
-			workFlowRef: "tull/yolo-bolo/.github/workflows/.build.yaml@refs/ta/1575/merge",
+			workFlowRef: "evilorg/yolo-bolo/.github/workflows/.build.yaml@refs/ta/1575/merge",
 			fails:       true,
 		},
 		{

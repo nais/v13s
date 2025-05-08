@@ -90,10 +90,6 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		ImageTag:     workload.ImageTag,
 	})
 
-	if workload.ImageTag == "100" {
-		fmt.Printf("%+v\n", row)
-	}
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			m.log.WithField("workload", workload).Debug("workload already initialized, skipping")
@@ -107,7 +103,6 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 	}
 	workloadId := row.ID
 
-	// TODO: add metadata to workload
 	defer m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
 
 	// ensures that the workload can be registered again
@@ -173,7 +168,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		}
 	}
 
-	m.log.Infof("workload added: %v", workload)
+	m.log.Debugf("workload added: %v", workload)
 	return nil
 }
 
@@ -227,34 +222,4 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, w *model.Workload)
 		}
 	}
 	return nil
-}
-
-func (m *WorkloadManager) RegisterWorkload(ctx context.Context, workload *model.Workload, metadata map[string]string) (*pgtype.UUID, error) {
-	if err := m.db.CreateImage(ctx, sql.CreateImageParams{
-		Name:     workload.ImageName,
-		Tag:      workload.ImageTag,
-		Metadata: metadata,
-	}); err != nil {
-		m.log.WithError(err).Error("Failed to create image")
-		return nil, err
-	}
-
-	id, err := m.db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
-		Name:         workload.Name,
-		WorkloadType: string(workload.Type),
-		Namespace:    workload.Namespace,
-		Cluster:      workload.Cluster,
-		ImageName:    workload.ImageName,
-		ImageTag:     workload.ImageTag,
-	})
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		m.log.WithError(err).Error("Failed to upsert workload")
-		return nil, err
-	}
-
-	return &id, err
 }
