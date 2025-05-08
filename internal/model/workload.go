@@ -37,5 +37,5 @@ func (w *Workload) Equal(other *Workload) bool {
 }
 
 func (w *Workload) String() string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s:%s", "todo", w.Namespace, w.Type, w.Name, w.ImageName, w.ImageTag)
+	return fmt.Sprintf("%s/%s/%s/%s:%s", w.Namespace, w.Type, w.Name, w.ImageName, w.ImageTag)
 }

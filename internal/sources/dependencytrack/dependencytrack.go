@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
@@ -16,6 +17,8 @@ import (
 )
 
 var _ Client = &dependencyTrackClient{}
+
+var projectLocks sync.Map
 
 type Client interface {
 	GetFindings(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]client.Finding, error)
@@ -82,34 +85,34 @@ func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Contex
 	tags := workloadRef.tags()
 	projectName := workloadRef.projectName()
 
-	p, err := c.GetProject(ctx, projectName, workloadRef.ImageTag)
-	if err != nil {
-		return "", fmt.Errorf("failed to get project: %w", err)
-	}
-
-	if p != nil {
-		p.Version = &workloadRef.ImageTag
-		p.Tags = append(p.Tags, workloadRef.tags()...)
-		p, err = c.UpdateProject(ctx, p)
+	return withProjectLock(projectName, func() (string, error) {
+		p, err := c.GetProject(ctx, projectName, workloadRef.ImageTag)
 		if err != nil {
-			return "", fmt.Errorf("failed to update project: %w", err)
+			return "", fmt.Errorf("failed to get project: %w", err)
 		}
-	} else {
-		p, err = c.CreateProject(ctx, projectName, workloadRef.ImageTag, tags)
-		if err != nil {
-			return "", fmt.Errorf("failed to create project: %w", err)
+		if p != nil {
+			p.Version = &workloadRef.ImageTag
+			p.Tags = append(p.Tags, workloadRef.tags()...)
+			p, err = c.UpdateProject(ctx, p)
+			if err != nil {
+				return "", fmt.Errorf("failed to update project: %w", err)
+			}
+		} else {
+			p, err = c.CreateProject(ctx, projectName, workloadRef.ImageTag, tags)
+			if err != nil {
+				return "", fmt.Errorf("failed to create project: %w", err)
+			}
 		}
-	}
 
-	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
-		return "", err
-	}
+		if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+			return "", err
+		}
 
-	if err = c.TriggerAnalysis(ctx, *p.Uuid); err != nil {
-		c.log.Warnf("trigger analysis: %v", err)
-	}
-
-	return *p.Uuid, nil
+		if err = c.TriggerAnalysis(ctx, *p.Uuid); err != nil {
+			c.log.Warnf("trigger analysis: %v", err)
+		}
+		return *p.Uuid, nil
+	})
 }
 
 func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error) {
@@ -347,6 +350,24 @@ func (c *dependencyTrackClient) DeleteProject(ctx context.Context, uuid string) 
 	})
 }
 
+func (c *dependencyTrackClient) withAuthContext(ctx context.Context, fn func(ctx context.Context) error) error {
+	apiKeyCtx, err := c.auth.ContextHeaders(ctx)
+	if err != nil {
+		return fmt.Errorf("auth error: %w", err)
+	}
+	return fn(apiKeyCtx)
+}
+
+func withProjectLock(projectName string, fn func() (string, error)) (string, error) {
+	m, _ := projectLocks.LoadOrStore(projectName, &sync.Mutex{})
+	mutex := m.(*sync.Mutex)
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	return fn()
+}
+
 func parseErrorResponseBody(resp *http.Response) string {
 	if resp == nil || resp.Body == nil {
 		return "no response body"
@@ -358,14 +379,6 @@ func parseErrorResponseBody(resp *http.Response) string {
 	}
 
 	return string(body)
-}
-
-func (c *dependencyTrackClient) withAuthContext(ctx context.Context, fn func(ctx context.Context) error) error {
-	apiKeyCtx, err := c.auth.ContextHeaders(ctx)
-	if err != nil {
-		return fmt.Errorf("auth error: %w", err)
-	}
-	return fn(apiKeyCtx)
 }
 
 func withAuthContextValue[T any](c *dependencyTrackClient, ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) {

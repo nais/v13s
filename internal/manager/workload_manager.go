@@ -105,29 +105,9 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			return err
 		}
 	}
-
-	/*	if row.State == sql.WorkloadStateInitialized {
-		m.log.Infof("workload already exists and is initialized, skipping: %v", workload)
-		return nil
-	}*/
-
-	/*if workload.ImageName == row.ImageName && workload.ImageTag == row.ImageTag {
-		m.log.Debugf("workload already exists and image tag is the same, skipping: %s", workload.Name)
-		return nil
-	}*/
 	workloadId := row.ID
 
 	// TODO: add metadata to workload
-	/*workloadId, err := m.RegisterWorkload(ctx, workload, map[string]string{})
-	if err != nil {
-		m.log.WithError(err).Error("Failed to register workload")
-		return err
-	}
-	if workloadId == nil {
-		m.log.Infof("workload already updated, skipping: %v", workload)
-		return nil
-	}*/
-
 	defer m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
 
 	// ensures that the workload can be registered again
