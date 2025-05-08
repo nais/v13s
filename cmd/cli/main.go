@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/pkg/api/auth"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -152,6 +154,34 @@ func main() {
 							return err
 						},
 					},
+				},
+			},
+			{
+				Name:    "sbom",
+				Aliases: []string{"s"},
+				Usage:   "download sbom",
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					if cmd.Args().Len() == 0 {
+						return fmt.Errorf("missing image")
+					}
+					verifier, err := attestation.NewVerifier(ctx, log.WithField("cmd", "sbom"), "nais", "navikt")
+					if err != nil {
+						return err
+					}
+					att, err := verifier.GetAttestation(ctx, cmd.Args().First())
+					if err != nil {
+						return err
+					}
+
+					if att == nil {
+						return fmt.Errorf("no attestation found for image %s", cmd.Args().First())
+					}
+					out, err := json.MarshalIndent(att.Statement.Predicate, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(out))
+					return nil
 				},
 			},
 		},
