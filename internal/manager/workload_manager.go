@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,7 +18,6 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -115,18 +115,6 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 	verifier := m.verifier
 	att, err := verifier.GetAttestation(ctx, workload.ImageName+":"+workload.ImageTag)
 
-	if err != nil {
-		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
-		if errors.As(err, &noMatchAttestationError) {
-			err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateNoAttestation)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
 	m.workloadCounter.Add(
 		ctx,
 		1,
@@ -134,6 +122,19 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			attribute.String("type", string(workload.Type)),
 			attribute.String("hasAttestation", fmt.Sprint(att != nil)),
 		))
+
+	if err != nil {
+		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
+		if errors.As(err, &noMatchAttestationError) {
+			err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateNoAttestation)
+			if err != nil {
+				return err
+			}
+			return nil
+		} else {
+			return err
+		}
+	}
 
 	if att != nil {
 		err = m.db.UpdateImage(ctx, sql.UpdateImageParams{
@@ -171,10 +172,10 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			return err
 		}
 
-		err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
-		if err != nil {
-			return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
-		}
+	}
+	err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
+	if err != nil {
+		return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
 	}
 
 	return nil

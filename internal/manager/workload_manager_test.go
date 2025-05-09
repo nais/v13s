@@ -16,6 +16,7 @@ import (
 	"testing"
 )
 
+// TODO: add more tests especially for the states and error handling
 func TestWorkloadManager(t *testing.T) {
 	ctx := context.Background()
 
