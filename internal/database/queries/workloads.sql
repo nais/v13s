@@ -47,6 +47,7 @@ UPDATE
         image_name = @image_name,
         image_tag = @image_tag
     WHERE workloads.state = 'failed' or
+        workloads.state = 'resync' or
         (workloads.state != 'processing' and ( workloads.image_name != @image_name or workloads.image_tag != @image_tag ))
     RETURNING
     *

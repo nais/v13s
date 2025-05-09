@@ -159,6 +159,7 @@ const (
 	WorkloadStateProcessing    WorkloadState = "processing"
 	WorkloadStateFailed        WorkloadState = "failed"
 	WorkloadStateUnrecoverable WorkloadState = "unrecoverable"
+	WorkloadStateResync        WorkloadState = "resync"
 )
 
 func (e *WorkloadState) Scan(src interface{}) error {
@@ -203,7 +204,8 @@ func (e WorkloadState) Valid() bool {
 		WorkloadStateNoAttestation,
 		WorkloadStateProcessing,
 		WorkloadStateFailed,
-		WorkloadStateUnrecoverable:
+		WorkloadStateUnrecoverable,
+		WorkloadStateResync:
 		return true
 	}
 	return false
@@ -217,6 +219,7 @@ func AllWorkloadStateValues() []WorkloadState {
 		WorkloadStateProcessing,
 		WorkloadStateFailed,
 		WorkloadStateUnrecoverable,
+		WorkloadStateResync,
 	}
 }
 

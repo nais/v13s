@@ -177,6 +177,7 @@ UPDATE
         image_name = $5,
         image_tag = $6
     WHERE workloads.state = 'failed' or
+        workloads.state = 'resync' or
         (workloads.state != 'processing' and ( workloads.image_name != $5 or workloads.image_tag != $6 ))
     RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state

@@ -16,3 +16,4 @@ CREATE TABLE workload_event_log
 ALTER TYPE workload_state ADD VALUE 'processing';
 ALTER TYPE workload_state ADD VALUE 'failed';
 ALTER TYPE workload_state ADD VALUE 'unrecoverable';
+ALTER TYPE workload_state ADD VALUE 'resync';
