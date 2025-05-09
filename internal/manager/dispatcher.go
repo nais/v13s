@@ -13,6 +13,7 @@ type Dispatcher[T any] struct {
 	worker             Worker[T]
 	wg                 sync.WaitGroup
 	postProcessingHook func(ctx context.Context, obj T) error
+	errorHook          func(ctx context.Context, obj T, err error)
 }
 
 type Worker[T any] func(ctx context.Context, item T) error
@@ -66,13 +67,16 @@ Loop:
 				// increment the semaphore count after worker is done
 				defer func() { <-d.sem }()
 				err := d.worker(ctx, obj)
-				// TODO: handle with result channel or callback
 				if err != nil {
-					logrus.Error("Failed to process workload")
+					if d.errorHook != nil {
+						d.errorHook(ctx, obj, err)
+					} else {
+						logrus.WithError(err).Error("failed to process workload")
+					}
 				}
 				if d.postProcessingHook != nil {
 					if err := d.postProcessingHook(ctx, obj); err != nil {
-						logrus.Error("Failed to run post process workload hook")
+						logrus.Error("failed to run post process workload hook")
 					}
 				}
 			}(obj)

@@ -2,11 +2,13 @@ package sources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/sirupsen/logrus"
@@ -70,7 +72,7 @@ func (d *dependencytrackSource) Name() string {
 }
 
 func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
-	d.log.Infof("uploading sbom for workload %v", workload)
+	d.log.Debugf("uploading sbom for workload %v", workload)
 
 	projectId, err := d.client.CreateOrUpdateProjectWithSbom(
 		ctx,
@@ -85,6 +87,12 @@ func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload 
 		},
 	)
 	if err != nil {
+		if errors.As(err, &dependencytrack.ClientError{}) {
+			return uuid.New(), model.ToUnrecoverableError(err)
+		}
+		if errors.As(err, &dependencytrack.ServerError{}) {
+			return uuid.New(), model.ToRecoverableError(err)
+		}
 		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
 	}
 	id, err := uuid.Parse(projectId)
@@ -95,7 +103,7 @@ func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload 
 }
 
 func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
-	d.log.Infof("remove references for workload %v", workload)
+	d.log.Debugf("remove references for workload %s", workload)
 	// TODO: use ref uuid to get the project
 	p, err := d.client.GetProject(ctx, workload.ImageName, workload.ImageTag)
 	if err != nil {
@@ -124,7 +132,7 @@ func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUI
 		return fmt.Errorf("deleting project: %w", err)
 	}
 
-	d.log.Infof("deleted project %s", ref.String())
+	d.log.Debugf("deleted project %s", ref.String())
 	return nil
 }
 

@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,6 +14,7 @@ import (
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -38,6 +37,13 @@ type WorkloadManager struct {
 	log              logrus.FieldLogger
 }
 
+type WorkloadEvent string
+
+const (
+	WorkloadEventFailed    WorkloadEvent = "failed"
+	WorkloadEventSucceeded WorkloadEvent = "succeeded"
+)
+
 func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
@@ -55,6 +61,7 @@ func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, sourc
 	}
 
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
+	m.addDispatcher.errorHook = m.handleError
 	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
 	return m
 }
@@ -103,17 +110,20 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 	}
 	workloadId := row.ID
 
-	defer m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
-
-	// ensures that the workload can be registered again
 	m.log.WithField("workload", workload).Debug("adding or updating workload")
 
 	verifier := m.verifier
 	att, err := verifier.GetAttestation(ctx, workload.ImageName+":"+workload.ImageTag)
 
 	if err != nil {
-		if !strings.Contains(err.Error(), attestation.ErrNoAttestation) {
-			m.log.WithError(err).Warn("Failed to get attestation")
+		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
+		if errors.As(err, &noMatchAttestationError) {
+			err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateNoAttestation)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
 		}
 	}
 
@@ -125,11 +135,6 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			attribute.String("hasAttestation", fmt.Sprint(att != nil)),
 		))
 
-	if os.Getenv("DISABLE_SBOM_UPDATE") != "" {
-		m.log.Debug("skipping sbom update")
-		return nil
-	}
-
 	if att != nil {
 		err = m.db.UpdateImage(ctx, sql.UpdateImageParams{
 			Name:     workload.ImageName,
@@ -137,7 +142,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 			Metadata: att.Metadata,
 		})
 		if err != nil {
-			m.log.WithError(err).Error("Failed to update image metadata")
+			return fmt.Errorf("failed to update image metadata: %w", err)
 		}
 
 		source := m.src
@@ -151,7 +156,6 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		}
 		id, err := source.UploadAttestation(ctx, sw, att.Statement)
 		if err != nil {
-			m.log.WithError(err).Error("Failed to upload sbom")
 			return err
 		}
 
@@ -166,20 +170,25 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 		if err != nil {
 			return err
 		}
+
+		err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
+		if err != nil {
+			return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
+		}
 	}
 
-	m.log.Debugf("workload added: %v", workload)
 	return nil
 }
 
-func (m *WorkloadManager) setWorkloadState(ctx context.Context, id pgtype.UUID, state sql.WorkloadState) {
+func (m *WorkloadManager) setWorkloadState(ctx context.Context, id pgtype.UUID, state sql.WorkloadState) error {
 	err := m.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 		State: state,
 		ID:    id,
 	})
 	if err != nil {
-		m.log.WithError(err).Error("Failed to update workload state")
+		return fmt.Errorf("failed to set workload state: %w", err)
 	}
+	return nil
 }
 
 func (m *WorkloadManager) DeleteWorkload(ctx context.Context, w *model.Workload) error {
@@ -222,4 +231,36 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, w *model.Workload)
 		}
 	}
 	return nil
+}
+
+func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
+	m.log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
+	err := m.db.AddWorkloadEvent(ctx, sql.AddWorkloadEventParams{
+		Name:         workload.Name,
+		Cluster:      workload.Cluster,
+		Namespace:    workload.Namespace,
+		WorkloadType: string(workload.Type),
+		EventType:    string(WorkloadEventFailed),
+		EventData:    originalErr.Error(),
+	})
+	if err != nil {
+		m.log.WithError(err).WithField("workload", workload).Error("failed to add workload event")
+	}
+	state := sql.WorkloadStateFailed
+	if errors.As(originalErr, &model.UnrecoverableError{}) {
+		m.log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
+		state = sql.WorkloadStateUnrecoverable
+	}
+	err = m.db.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
+		Name:         workload.Name,
+		Cluster:      workload.Cluster,
+		Namespace:    workload.Namespace,
+		WorkloadType: string(workload.Type),
+		ImageName:    workload.ImageName,
+		ImageTag:     workload.ImageTag,
+		State:        state,
+	})
+	if err != nil {
+		m.log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
+	}
 }

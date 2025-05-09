@@ -9,6 +9,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addWorkloadEvent = `-- name: AddWorkloadEvent :exec
+INSERT INTO workload_event_log (name,
+                             workload_type,
+                             namespace,
+                             cluster,
+                             event_type,
+                             event_data)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6) ON
+        CONFLICT DO NOTHING
+`
+
+type AddWorkloadEventParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	EventType    string
+	EventData    string
+}
+
+func (q *Queries) AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventParams) error {
+	_, err := q.db.Exec(ctx, addWorkloadEvent,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+		arg.EventType,
+		arg.EventData,
+	)
+	return err
+}
+
 const createWorkload = `-- name: CreateWorkload :one
 INSERT INTO workloads (name, workload_type, namespace, cluster, image_name, image_tag)
 VALUES ($1, $2, $3, $4, $5, $6) RETURNING
@@ -131,15 +168,16 @@ VALUES ($1,
         $4,
         $5,
         $6,
-        'initialized') ON CONFLICT
+        'processing') ON CONFLICT
 ON CONSTRAINT workload_id DO
 UPDATE
     SET
-        state = 'initialized',
+        state = 'processing',
         updated_at = NOW(),
         image_name = $5,
         image_tag = $6
-    WHERE workloads.state != 'initialized' and ( workloads.image_name != $5 or workloads.image_tag != $6 )
+    WHERE workloads.state = 'failed' or
+        (workloads.state != 'processing' and ( workloads.image_name != $5 or workloads.image_tag != $6 ))
     RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 `
@@ -258,6 +296,53 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 		return nil, err
 	}
 	return items, nil
+}
+
+const setWorkloadState = `-- name: SetWorkloadState :exec
+INSERT INTO workloads(name,
+                      workload_type,
+                      namespace,
+                      cluster,
+                      image_name,
+                      image_tag,
+                      state)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7) ON CONFLICT
+ON CONSTRAINT workload_id DO
+UPDATE
+    SET
+        image_name = $5,
+        image_tag = $6,
+        state = $7,
+        updated_at = NOW()
+`
+
+type SetWorkloadStateParams struct {
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+	State        WorkloadState
+}
+
+func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error {
+	_, err := q.db.Exec(ctx, setWorkloadState,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.State,
+	)
+	return err
 }
 
 const updateWorkloadState = `-- name: UpdateWorkloadState :exec

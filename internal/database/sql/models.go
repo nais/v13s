@@ -156,6 +156,9 @@ const (
 	WorkloadStateInitialized   WorkloadState = "initialized"
 	WorkloadStateUpdated       WorkloadState = "updated"
 	WorkloadStateNoAttestation WorkloadState = "no_attestation"
+	WorkloadStateProcessing    WorkloadState = "processing"
+	WorkloadStateFailed        WorkloadState = "failed"
+	WorkloadStateUnrecoverable WorkloadState = "unrecoverable"
 )
 
 func (e *WorkloadState) Scan(src interface{}) error {
@@ -197,7 +200,10 @@ func (e WorkloadState) Valid() bool {
 	switch e {
 	case WorkloadStateInitialized,
 		WorkloadStateUpdated,
-		WorkloadStateNoAttestation:
+		WorkloadStateNoAttestation,
+		WorkloadStateProcessing,
+		WorkloadStateFailed,
+		WorkloadStateUnrecoverable:
 		return true
 	}
 	return false
@@ -208,6 +214,9 @@ func AllWorkloadStateValues() []WorkloadState {
 		WorkloadStateInitialized,
 		WorkloadStateUpdated,
 		WorkloadStateNoAttestation,
+		WorkloadStateProcessing,
+		WorkloadStateFailed,
+		WorkloadStateUnrecoverable,
 	}
 }
 

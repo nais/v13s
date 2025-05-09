@@ -138,7 +138,11 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 		if err != nil {
 			return ret
 		}
-		name, tag := imageNameTag(job.Spec.Image)
+		image := job.Status.EffectiveImage
+		if image == "" {
+			image = job.Spec.Image
+		}
+		name, tag := imageNameTag(image)
 		w := &model.Workload{
 			Cluster:   cluster,
 			Name:      jobName(job),

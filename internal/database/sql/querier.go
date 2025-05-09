@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventParams) error
 	BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
@@ -43,6 +44,7 @@ type Querier interface {
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error
 	ResetDatabase(ctx context.Context) error
+	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error

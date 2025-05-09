@@ -35,6 +35,14 @@ type Client interface {
 	UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error)
 }
 
+type ClientError struct {
+	error
+}
+
+type ServerError struct {
+	error
+}
+
 type dependencyTrackClient struct {
 	client *client.APIClient
 	auth   auth.Auth
@@ -133,7 +141,7 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 			if resp != nil && resp.StatusCode == http.StatusConflict {
 				return nil, fmt.Errorf("project already exists")
 			}
-			return nil, fmt.Errorf("failed to create project: %w, details: %s", err, parseErrorResponseBody(resp))
+			return nil, convertError(err, "CreateProject", resp)
 		}
 
 		return project, nil
@@ -150,7 +158,7 @@ func (c *dependencyTrackClient) UploadSbom(ctx context.Context, projectId string
 		req := c.client.BomAPI.UploadBom(apiKeyCtx).Bom(string(b)).Project(projectId).AutoCreate(false)
 		_, resp, err := req.Execute()
 		if err != nil {
-			return fmt.Errorf("failed to upload sbom: %w details: %s", err, parseErrorResponseBody(resp))
+			return convertError(err, "UploadSbom", resp)
 		}
 		return nil
 	})
@@ -180,7 +188,7 @@ func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid, vulnId st
 
 		findings, resp, err := req.Execute()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get findings for project %s: %w, details: %s", uuid, err, parseErrorResponseBody(resp))
+			return nil, convertError(err, "GetFindings", resp)
 		}
 
 		return findings, nil
@@ -204,7 +212,7 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 				return nil, nil
 			}
 
-			return nil, fmt.Errorf("project not found: %s", string(body))
+			return nil, convertError(err, "GetProject", resp)
 		}
 
 		return project, err
@@ -221,7 +229,7 @@ func (c *dependencyTrackClient) GetProjectsByTag(ctx context.Context, tag string
 				Execute()
 
 			if err != nil {
-				return nil, fmt.Errorf("failed to get projects by tag: %w details: %s", err, parseErrorResponseBody(resp))
+				return nil, convertError(err, "GetProjectsByTag", resp)
 			}
 
 			return projects, err
@@ -237,7 +245,7 @@ func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset i
 				PageSize(limit).
 				PageNumber(pageNumber).
 				Execute()
-			return projects, fmt.Errorf("failed to get projects: %w details: %s", err, parseErrorResponseBody(resp))
+			return projects, convertError(err, "GetProjects", resp)
 		})
 	})
 }
@@ -323,7 +331,7 @@ func (c *dependencyTrackClient) GetAnalysisTrailForImage(
 			if resp != nil && resp.StatusCode == http.StatusNotFound {
 				return nil, nil
 			}
-			return nil, fmt.Errorf("failed to get analysis trail: %w details %s", err, parseErrorResponseBody(resp))
+			return nil, convertError(err, "GetAnalysisTrailForImage", resp)
 		}
 		return trail, nil
 	})
@@ -333,7 +341,7 @@ func (c *dependencyTrackClient) UpdateProject(ctx context.Context, p *client.Pro
 	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
 		project, resp, err := c.client.ProjectAPI.UpdateProject(apiKeyCtx).Body(*p).Execute()
 		if err != nil {
-			return nil, fmt.Errorf("failed to update project: %w details: %s", err, parseErrorResponseBody(resp))
+			return nil, convertError(err, "UpdateProject", resp)
 		}
 		return project, nil
 	})
@@ -368,6 +376,17 @@ func withProjectLock(projectName string, fn func() (string, error)) (string, err
 	return fn()
 }
 
+func convertError(err error, msg string, resp *http.Response) error {
+	switch {
+	case resp.StatusCode >= 400 && resp.StatusCode < 500:
+		return ClientError{fmt.Errorf("%s, err=%w, statuscode=%d, body=%s", msg, err, resp.StatusCode, parseErrorResponseBody(resp))}
+	case resp.StatusCode >= 500:
+		return ServerError{fmt.Errorf("%s, err=%w, statuscode=%d, body=%s", msg, err, resp.StatusCode, parseErrorResponseBody(resp))}
+	default:
+		return nil
+	}
+}
+
 func parseErrorResponseBody(resp *http.Response) string {
 	if resp == nil || resp.Body == nil {
 		return "no response body"
@@ -377,7 +396,6 @@ func parseErrorResponseBody(resp *http.Response) string {
 	if err != nil {
 		return fmt.Sprintf("failed to read response body: %v", err)
 	}
-
 	return string(body)
 }
 

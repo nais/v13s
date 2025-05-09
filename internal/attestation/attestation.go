@@ -4,16 +4,18 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/attestation/github"
+	"github.com/nais/v13s/internal/model"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
@@ -37,8 +39,8 @@ var _ Verifier = &verifier{}
 type VerifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, *cosign.CheckOpts, error)
 
 type verifier struct {
-	opts *cosign.CheckOpts
-	log  *logrus.Entry
+	opts       *cosign.CheckOpts
+	log        *logrus.Entry
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
@@ -54,6 +56,12 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 		log:  log,
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
 			sigs, _, err := cosign.VerifyImageAttestations(ctx, ref, co)
+			var tErr *transport.Error
+			if errors.As(err, &tErr) {
+				if tErr.StatusCode < 500 && tErr.StatusCode >= 400 {
+					return sigs, model.ToUnrecoverableError(tErr)
+				}
+			}
 			return sigs, err
 		},
 	}, nil
@@ -67,15 +75,11 @@ type Attestation struct {
 func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
-		return nil, fmt.Errorf("parse reference: %v", err)
+		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err))
 	}
 
 	verified, err := v.verifyFunc(ctx, ref, v.opts)
 	if err != nil {
-		if strings.Contains(err.Error(), ErrNoAttestation) {
-			v.log.Debug("no attestations found")
-			return nil, err
-		}
 		v.log.Warn("verifying image attestations")
 		return nil, err
 	}
@@ -93,7 +97,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		"predicate-type": statement.PredicateType,
 		"statement-type": statement.Type,
 		"ref":            ref.String(),
-	}).Info("attestation verified and parsed statement")
+	}).Debug("attestation verified and parsed statement")
 
 	if statement.PredicateType != in_toto.PredicateCycloneDX {
 		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)

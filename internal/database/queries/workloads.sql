@@ -38,17 +38,42 @@ VALUES (@name,
         @cluster,
         @image_name,
         @image_tag,
-        'initialized') ON CONFLICT
+        'processing') ON CONFLICT
 ON CONSTRAINT workload_id DO
 UPDATE
     SET
-        state = 'initialized',
+        state = 'processing',
         updated_at = NOW(),
         image_name = @image_name,
         image_tag = @image_tag
-    WHERE workloads.state != 'initialized' and ( workloads.image_name != @image_name or workloads.image_tag != @image_tag )
+    WHERE workloads.state = 'failed' or
+        (workloads.state != 'processing' and ( workloads.image_name != @image_name or workloads.image_tag != @image_tag ))
     RETURNING
     *
+;
+
+-- name: SetWorkloadState :exec
+INSERT INTO workloads(name,
+                      workload_type,
+                      namespace,
+                      cluster,
+                      image_name,
+                      image_tag,
+                      state)
+VALUES (@name,
+        @workload_type,
+        @namespace,
+        @cluster,
+        @image_name,
+        @image_tag,
+        @state) ON CONFLICT
+ON CONSTRAINT workload_id DO
+UPDATE
+    SET
+        image_name = @image_name,
+        image_tag = @image_tag,
+        state = @state,
+        updated_at = NOW()
 ;
 
 -- name: UpdateWorkloadState :exec
@@ -80,6 +105,22 @@ WHERE name = @name
   AND cluster = @cluster RETURNING
     id
 ;
+
+-- name: AddWorkloadEvent :exec
+INSERT INTO workload_event_log (name,
+                             workload_type,
+                             namespace,
+                             cluster,
+                             event_type,
+                             event_data)
+VALUES (@name,
+        @workload_type,
+        @namespace,
+        @cluster,
+        @event_type,
+        @event_data) ON
+        CONFLICT DO NOTHING;
+
 
 -- name: ListWorkloadsByImage :many
 SELECT *
