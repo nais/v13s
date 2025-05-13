@@ -20,6 +20,7 @@ require (
 	github.com/nais/liberator v0.0.0-20250428065725-7619bf4635da
 	github.com/nais/v13s/pkg/api v0.0.0-20250502115150-f688573ed858
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.24.2
 	github.com/prometheus/client_golang v1.22.0
 	github.com/rodaine/table v1.3.0

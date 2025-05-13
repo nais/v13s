@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	maxWorkers = 10
+	maxWorkers = 100
 )
 
 type WorkloadManager struct {
@@ -40,8 +40,11 @@ type WorkloadManager struct {
 type WorkloadEvent string
 
 const (
-	WorkloadEventFailed    WorkloadEvent = "failed"
-	WorkloadEventSucceeded WorkloadEvent = "succeeded"
+	WorkloadEventFailed           WorkloadEvent = "failed"
+	WorkloadEventUnrecoverable    WorkloadEvent = "unrecoverable_error"
+	WorkloadEventRecoverable      WorkloadEvent = "recoverable_error"
+	WorkloadEventSucceeded        WorkloadEvent = "succeeded"
+	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
 func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
@@ -236,22 +239,39 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, w *model.Workload)
 
 func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
 	m.log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
+	state := sql.WorkloadStateFailed
+	subsystem := WorkloadEventSubsystemUnknown
+	eventType := WorkloadEventFailed
+
+	var uErr model.UnrecoverableError
+	if errors.As(originalErr, &uErr) {
+		m.log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
+		subsystem = uErr.Subsystem
+		state = sql.WorkloadStateUnrecoverable
+		eventType = WorkloadEventUnrecoverable
+	}
+
+	var rErr model.RecoverableError
+	if errors.As(originalErr, &rErr) {
+		m.log.WithField("workload", workload.String()).Error("recoverable error, marking workload as failed")
+		subsystem = rErr.Subsystem
+		state = sql.WorkloadStateFailed
+		eventType = WorkloadEventRecoverable
+	}
+
 	err := m.db.AddWorkloadEvent(ctx, sql.AddWorkloadEventParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
 		Namespace:    workload.Namespace,
 		WorkloadType: string(workload.Type),
-		EventType:    string(WorkloadEventFailed),
+		EventType:    string(eventType),
 		EventData:    originalErr.Error(),
+		Subsystem:    subsystem,
 	})
 	if err != nil {
 		m.log.WithError(err).WithField("workload", workload).Error("failed to add workload event")
 	}
-	state := sql.WorkloadStateFailed
-	if errors.As(originalErr, &model.UnrecoverableError{}) {
-		m.log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
-		state = sql.WorkloadStateUnrecoverable
-	}
+
 	err = m.db.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,

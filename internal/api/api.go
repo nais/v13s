@@ -25,6 +25,7 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -35,10 +36,6 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer signalStop()
 
-	_, promReg, err := metrics.NewMeterProvider(ctx)
-	if err != nil {
-		return fmt.Errorf("create metric meter: %w", err)
-	}
 	log.Info("Initializing database")
 
 	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
@@ -61,8 +58,19 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 
 	workloadEventQueue := &kubernetes.WorkloadEventQueue{
-		Updated: make(chan *model.Workload, 10),
-		Deleted: make(chan *model.Workload, 10),
+		Updated: make(chan *model.Workload, 10000),
+		Deleted: make(chan *model.Workload, 10000),
+	}
+
+	gFunc := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "v13s_workload_update_queue_length",
+	}, func() float64 {
+		return float64(len(workloadEventQueue.Updated))
+	})
+
+	_, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
+	if err != nil {
+		return fmt.Errorf("create metric meter: %w", err)
 	}
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)

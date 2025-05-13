@@ -59,7 +59,9 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 			var tErr *transport.Error
 			if errors.As(err, &tErr) {
 				if tErr.StatusCode < 500 && tErr.StatusCode >= 400 {
-					return sigs, model.ToUnrecoverableError(tErr)
+					return sigs, model.ToUnrecoverableError(tErr, "attestation")
+				} else {
+					return sigs, model.ToRecoverableError(tErr, "attestation")
 				}
 			}
 			return sigs, err
@@ -75,7 +77,7 @@ type Attestation struct {
 func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
-		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err))
+		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err), "attestation")
 	}
 
 	verified, err := v.verifyFunc(ctx, ref, v.opts)

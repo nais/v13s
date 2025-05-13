@@ -9,16 +9,19 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 )
 
 var _ Client = &dependencyTrackClient{}
 
 var projectLocks sync.Map
+var projects = cache.New(5*time.Minute, 10*time.Minute)
 
 type Client interface {
 	GetFindings(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]client.Finding, error)
@@ -93,38 +96,52 @@ func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Contex
 	tags := workloadRef.tags()
 	projectName := workloadRef.projectName()
 
-	return withProjectLock(projectName, func() (string, error) {
-		p, err := c.GetProject(ctx, projectName, workloadRef.ImageTag)
-		if err != nil {
-			return "", fmt.Errorf("failed to get project: %w", err)
-		}
-		if p != nil {
-			p.Version = &workloadRef.ImageTag
-			p.Tags = append(p.Tags, workloadRef.tags()...)
-			p, err = c.UpdateProject(ctx, p)
-			if err != nil {
-				return "", fmt.Errorf("failed to update project: %w", err)
-			}
-		} else {
-			p, err = c.CreateProject(ctx, projectName, workloadRef.ImageTag, tags)
-			if err != nil {
-				return "", fmt.Errorf("failed to create project: %w", err)
-			}
-		}
+	key := projectName + ":" + workloadRef.ImageTag
+	var err error
+	var p *client.Project
+	l, _ := projectLocks.LoadOrStore(projectName+":"+workloadRef.ImageTag, &sync.Mutex{})
+	lock := l.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
 
-		if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+	pc, found := projects.Get(key)
+	if found {
+		p = pc.(*client.Project)
+	} else {
+		p, err = c.GetProject(ctx, projectName, workloadRef.ImageTag)
+		if err != nil {
 			return "", err
 		}
+		if p != nil {
+			projects.Set(key, p, cache.DefaultExpiration)
+		}
+	}
 
-		if err = c.TriggerAnalysis(ctx, *p.Uuid); err != nil {
-			c.log.Warnf("trigger analysis: %v", err)
+	if p != nil {
+		p.Version = &workloadRef.ImageTag
+		p.Tags = append(p.Tags, workloadRef.tags()...)
+		p, err = c.UpdateProject(ctx, p)
+		if err != nil {
+			return "", fmt.Errorf("failed to update project: %w", err)
 		}
 		return *p.Uuid, nil
-	})
+	}
+
+	p, err = c.CreateProject(ctx, projectName, workloadRef.ImageTag, tags)
+	if err != nil {
+		return "", fmt.Errorf("failed to create project: %w", err)
+	}
+
+	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+		return "", err
+	}
+
+	return *p.Uuid, nil
 }
 
 func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error) {
-	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
+	c.log.Debugf("creating project: %s", name+":"+version)
+	p, err := withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
 		active := true
 		classifier := "APPLICATION"
 		req := c.client.ProjectAPI.CreateProject(apiKeyCtx).Body(client.Project{
@@ -146,6 +163,11 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 
 		return project, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	projects.Set(name+":"+version, p, cache.DefaultExpiration)
+	return p, nil
 }
 
 func (c *dependencyTrackClient) UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
@@ -338,14 +360,19 @@ func (c *dependencyTrackClient) GetAnalysisTrailForImage(
 }
 
 func (c *dependencyTrackClient) UpdateProject(ctx context.Context, p *client.Project) (*client.Project, error) {
-	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
+	c.log.Debugf("updating project: %s", *p.Name+":"+*p.Version)
+	p, err := withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
 		project, resp, err := c.client.ProjectAPI.UpdateProject(apiKeyCtx).Body(*p).Execute()
 		if err != nil {
 			return nil, convertError(err, "UpdateProject", resp)
 		}
 		return project, nil
 	})
-
+	if err != nil {
+		return nil, err
+	}
+	projects.Set(*p.Uuid, p, cache.DefaultExpiration)
+	return p, nil
 }
 
 func (c *dependencyTrackClient) DeleteProject(ctx context.Context, uuid string) error {

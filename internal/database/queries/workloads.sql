@@ -113,13 +113,15 @@ INSERT INTO workload_event_log (name,
                              namespace,
                              cluster,
                              event_type,
-                             event_data)
+                             event_data,
+                              subsystem)
 VALUES (@name,
         @workload_type,
         @namespace,
         @cluster,
         @event_type,
-        @event_data) ON
+        @event_data,
+        @subsystem) ON
         CONFLICT DO NOTHING;
 
 

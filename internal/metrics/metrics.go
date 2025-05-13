@@ -18,7 +18,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func NewMeterProvider(ctx context.Context) (*metric.MeterProvider, promClient.Gatherer, error) {
+func NewMeterProvider(ctx context.Context, collectors ...promClient.Collector) (*metric.MeterProvider, promClient.Gatherer, error) {
 	res, err := newResource()
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating resource: %w", err)
@@ -30,6 +30,11 @@ func NewMeterProvider(ctx context.Context) (*metric.MeterProvider, promClient.Ga
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
+	}
+	for _, collector := range collectors {
+		if err := reg.Register(collector); err != nil {
+			return nil, nil, fmt.Errorf("registering collector: %w", err)
+		}
 	}
 
 	meterProvider := metric.NewMeterProvider(

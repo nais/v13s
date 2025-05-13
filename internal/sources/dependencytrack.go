@@ -86,12 +86,13 @@ func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload 
 			ImageTag:  workload.ImageTag,
 		},
 	)
+
 	if err != nil {
 		if errors.As(err, &dependencytrack.ClientError{}) {
-			return uuid.New(), model.ToUnrecoverableError(err)
+			return uuid.New(), model.ToUnrecoverableError(err, "dependencytrack")
 		}
 		if errors.As(err, &dependencytrack.ServerError{}) {
-			return uuid.New(), model.ToRecoverableError(err)
+			return uuid.New(), model.ToRecoverableError(err, "dependencytrack")
 		}
 		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
 	}

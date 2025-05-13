@@ -15,13 +15,15 @@ INSERT INTO workload_event_log (name,
                              namespace,
                              cluster,
                              event_type,
-                             event_data)
+                             event_data,
+                              subsystem)
 VALUES ($1,
         $2,
         $3,
         $4,
         $5,
-        $6) ON
+        $6,
+        $7) ON
         CONFLICT DO NOTHING
 `
 
@@ -32,6 +34,7 @@ type AddWorkloadEventParams struct {
 	Cluster      string
 	EventType    string
 	EventData    string
+	Subsystem    string
 }
 
 func (q *Queries) AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventParams) error {
@@ -42,6 +45,7 @@ func (q *Queries) AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventPara
 		arg.Cluster,
 		arg.EventType,
 		arg.EventData,
+		arg.Subsystem,
 	)
 	return err
 }
