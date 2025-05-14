@@ -5,14 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager/river"
+	"github.com/nais/v13s/internal/manager/jobs"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
@@ -29,7 +28,6 @@ const (
 type WorkloadManager struct {
 	db               sql.Querier
 	pool             *pgxpool.Pool
-	wmgr             *river.WorkerManager
 	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
@@ -37,6 +35,7 @@ type WorkloadManager struct {
 	deleteDispatcher *Dispatcher[*model.Workload]
 	workloadCounter  metric.Int64UpDownCounter
 	log              logrus.FieldLogger
+	wmgr             *jobs.WorkerManager
 }
 
 type WorkloadEvent string
@@ -49,7 +48,7 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(pool *pgxpool.Pool, wmgr *river.WorkerManager, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, wmgr *jobs.WorkerManager, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -58,22 +57,27 @@ func NewWorkloadManager(pool *pgxpool.Pool, wmgr *river.WorkerManager, verifier 
 	m := &WorkloadManager{
 		db:              sql.New(pool),
 		pool:            pool,
-		wmgr:            wmgr,
 		verifier:        verifier,
 		src:             source,
 		queue:           queue,
 		workloadCounter: udCounter,
+		wmgr:            wmgr,
 		log:             log,
 	}
 
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
 	m.addDispatcher.errorHook = m.handleError
 	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
+	jobs.AddWorker(wmgr, &AddWorkloadWorker{})
+
 	return m
 }
 
 func (m *WorkloadManager) Start(ctx context.Context) {
 	m.log.Info("starting workload manager")
+	if err := m.wmgr.Start(ctx); err != nil {
+		m.log.WithError(err).Fatal("failed to start worker manager")
+	}
 	m.addDispatcher.Start(ctx)
 	m.deleteDispatcher.Start(ctx)
 }
@@ -85,10 +89,11 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
-
-	err := m.wmgr.AddWorkload(ctx, workload)
+	err := m.wmgr.InsertJob(ctx, AddWorkloadArgs{
+		Workload: workload,
+	})
 	if err != nil {
-		m.log.WithError(err).Error("Failed to add workload")
+		m.log.WithError(err).Error("failed to insert job")
 		return err
 	}
 
@@ -294,4 +299,8 @@ func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workl
 	if err != nil {
 		m.log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
 	}
+}
+
+func (m *WorkloadManager) Stop(ctx context.Context) error {
+	return m.wmgr.Stop(ctx)
 }
