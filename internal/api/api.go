@@ -16,9 +16,9 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
+	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
-	"github.com/nais/v13s/internal/manager/river"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
@@ -79,14 +79,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
 
-	wmgr, err := river.NewWorkerManager(ctx, cfg.DatabaseUrl)
-	if err != nil {
-		log.Fatalf("Failed to create river worker manager: %v", err)
+	jobCfg := &job.Config{
+		DbUrl: cfg.DatabaseUrl,
 	}
-	defer wmgr.Stop(ctx)
 
-	mgr := manager.NewWorkloadManager(pool, wmgr, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
+	defer mgr.Stop(ctx)
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
@@ -124,6 +123,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			cfg.InternalListenAddr,
 			promReg,
 			log,
+			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
 		)
 	})
 

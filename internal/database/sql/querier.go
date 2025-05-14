@@ -21,11 +21,13 @@ type Querier interface {
 	CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
+	DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
 	GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
+	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
@@ -37,10 +39,10 @@ type Querier interface {
 	// 5. Final output
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
-	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (*Workload, error)
-	ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error)
+	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
+	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)

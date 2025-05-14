@@ -3,18 +3,29 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/pprof"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"riverqueue.com/riverui"
 )
 
-func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, log logrus.FieldLogger) error {
+type Handler struct {
+	Path    string
+	Handler http.Handler
+}
+
+func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, log logrus.FieldLogger, extraHandlers ...Handler) error {
 	router := chi.NewRouter()
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	router.Get("/healthz", func(_ http.ResponseWriter, _ *http.Request) {})
@@ -30,6 +41,14 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 	router.Handle("/pprof/heap", pprof.Handler("heap"))
 	router.Handle("/pprof/block", pprof.Handler("block"))
 	router.Handle("/pprof/allocs", pprof.Handler("allocs"))
+
+	for _, handler := range extraHandlers {
+		if handler.Handler == nil {
+			log.Errorf("Handler for %s is nil", handler.Path)
+			continue
+		}
+		router.Mount(handler.Path, handler.Handler)
+	}
 
 	srv := &http.Server{
 		Addr:              listenAddress,
@@ -60,4 +79,40 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 		return nil
 	})
 	return wg.Wait()
+}
+
+func riverUI(ctx context.Context, dbUrl string) *riverui.Server {
+	pool, err := pgxpool.New(ctx, dbUrl)
+	if err != nil {
+		logrus.Errorf("%v", err)
+		return nil
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+		Logger: logger,
+	})
+	if err != nil {
+		logrus.Errorf("%v", err)
+		return nil
+	}
+
+	opts := &riverui.ServerOpts{
+		Client: riverClient,
+		DB:     pool,
+		Logger: logger,
+		Prefix: "/riverui", // mount the UI and its APIs under /riverui
+	}
+	server, err := riverui.NewServer(opts)
+	if err != nil {
+		logrus.Errorf("%v", err)
+		return nil
+	}
+	// Start the server to initialize background processes for caching and periodic queries:
+	if err := server.Start(ctx); err != nil {
+		logrus.Errorf("river UI server failed to start: %v", err)
+	}
+	return server
 }

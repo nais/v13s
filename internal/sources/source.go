@@ -14,8 +14,8 @@ type Source interface {
 	// TODO: add includeSuppressed bool
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
-	UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error)
-	DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error
+	UploadAttestation(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement) (uuid.UUID, error)
+	Delete(ctx context.Context, imageName string, imageTag string) error
 }
 
 type SourceId string

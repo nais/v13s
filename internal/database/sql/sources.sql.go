@@ -11,66 +11,83 @@ import (
 
 const createSourceRef = `-- name: CreateSourceRef :exec
 INSERT INTO source_refs(
-    workload_id,
+    image_name,
+    image_tag,
     source_id,
     source_type
 )
 VALUES (
-           $1,
-           $2,
-           $3
+        $1,
+        $2,
+        $3,
+           $4
        ) ON CONFLICT
     DO NOTHING
 `
 
 type CreateSourceRefParams struct {
-	WorkloadID pgtype.UUID
+	ImageName  string
+	ImageTag   string
 	SourceID   pgtype.UUID
 	SourceType string
 }
 
 func (q *Queries) CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error {
-	_, err := q.db.Exec(ctx, createSourceRef, arg.WorkloadID, arg.SourceID, arg.SourceType)
+	_, err := q.db.Exec(ctx, createSourceRef,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.SourceID,
+		arg.SourceType,
+	)
 	return err
 }
 
-const listSourceRefs = `-- name: ListSourceRefs :many
-SELECT id, workload_id, source_id, source_type, created_at, updated_at
+const deleteSourceRef = `-- name: DeleteSourceRef :exec
+DELETE
 FROM source_refs
-WHERE workload_id = $1
-  AND source_type = $2
+WHERE image_name = $1
+  AND image_tag = $2
+  AND source_type = $3
+`
+
+type DeleteSourceRefParams struct {
+	ImageName  string
+	ImageTag   string
+	SourceType string
+}
+
+func (q *Queries) DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error {
+	_, err := q.db.Exec(ctx, deleteSourceRef, arg.ImageName, arg.ImageTag, arg.SourceType)
+	return err
+}
+
+const getSourceRef = `-- name: GetSourceRef :one
+SELECT id, source_id, source_type, created_at, updated_at, image_name, image_tag
+FROM source_refs
+WHERE image_name = $1
+  AND image_tag = $2
+  AND source_type = $3
 ORDER BY
     (source_id, source_type) DESC
 `
 
-type ListSourceRefsParams struct {
-	WorkloadID pgtype.UUID
+type GetSourceRefParams struct {
+	ImageName  string
+	ImageTag   string
 	SourceType string
 }
 
-func (q *Queries) ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error) {
-	rows, err := q.db.Query(ctx, listSourceRefs, arg.WorkloadID, arg.SourceType)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*SourceRef{}
-	for rows.Next() {
-		var i SourceRef
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkloadID,
-			&i.SourceID,
-			&i.SourceType,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error) {
+	row := q.db.QueryRow(ctx, getSourceRef, arg.ImageName, arg.ImageTag, arg.SourceType)
+	var i SourceRef
+	err := row.Scan(
+		&i.ID,
+		&i.SourceID,
+		&i.SourceType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ImageName,
+		&i.ImageTag,
+	)
+	return &i, err
 }

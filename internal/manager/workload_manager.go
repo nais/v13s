@@ -3,22 +3,17 @@ package manager
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager/river"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -29,7 +24,7 @@ const (
 type WorkloadManager struct {
 	db               sql.Querier
 	pool             *pgxpool.Pool
-	wmgr             *river.WorkerManager
+	jobClient        job.Client
 	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
@@ -49,31 +44,64 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(pool *pgxpool.Pool, wmgr *river.WorkerManager, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
 		panic(err)
 	}
+	db := sql.New(pool)
+
+	queues := map[string]river.QueueConfig{
+		KindAddWorkload: {
+			MaxWorkers: 100,
+		},
+		KindGetAttestation: {
+			MaxWorkers: 100,
+		},
+		KindUploadAttestation: {
+			MaxWorkers: 100,
+		},
+		KindDeleteWorkload: {
+			MaxWorkers: 100,
+		},
+		KindRemoveFromSource: {
+			MaxWorkers: 100,
+		},
+	}
+
+	jobClient, err := job.NewClient(ctx, jobCfg, queues)
+	if err != nil {
+		log.Fatalf("Failed to create job client: %v", err)
+	}
+	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "add_workload")})
+	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", "get_attestation")})
+	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
+	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
+	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
+
 	m := &WorkloadManager{
-		db:              sql.New(pool),
+		db:              db,
 		pool:            pool,
-		wmgr:            wmgr,
+		jobClient:       jobClient,
 		verifier:        verifier,
 		src:             source,
 		queue:           queue,
 		workloadCounter: udCounter,
 		log:             log,
 	}
-
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
-	m.addDispatcher.errorHook = m.handleError
+	//m.addDispatcher.errorHook = m.handleError
 	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
+
 	return m
 }
 
 func (m *WorkloadManager) Start(ctx context.Context) {
 	m.log.Info("starting workload manager")
+	if err := m.jobClient.Start(ctx); err != nil {
+		m.log.WithError(err).Fatal("failed to start worker manager")
+	}
 	m.addDispatcher.Start(ctx)
 	m.deleteDispatcher.Start(ctx)
 }
@@ -85,172 +113,27 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
-
-	err := m.wmgr.AddWorkload(ctx, workload)
-	if err != nil {
-		m.log.WithError(err).Error("Failed to add workload")
-		return err
-	}
-
-	if err := m.db.CreateImage(ctx, sql.CreateImageParams{
-		Name:     workload.ImageName,
-		Tag:      workload.ImageTag,
-		Metadata: map[string]string{},
-	}); err != nil {
-		m.log.WithError(err).Error("Failed to create image")
-		return err
-	}
-
-	row, err := m.db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
-		Name:         workload.Name,
-		Cluster:      workload.Cluster,
-		Namespace:    workload.Namespace,
-		WorkloadType: string(workload.Type),
-		ImageName:    workload.ImageName,
-		ImageTag:     workload.ImageTag,
-	})
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			m.log.WithField("workload", workload).Debug("workload already initialized, skipping")
-			return nil
-		}
-
-		if !errors.Is(err, pgx.ErrNoRows) {
-			m.log.WithError(err).Error("failed to get workload")
-			return err
-		}
-	}
-	workloadId := row.ID
-
 	m.log.WithField("workload", workload).Debug("adding or updating workload")
-
-	verifier := m.verifier
-	att, err := verifier.GetAttestation(ctx, workload.ImageName+":"+workload.ImageTag)
-
-	m.workloadCounter.Add(
-		ctx,
-		1,
-		metric.WithAttributes(
-			attribute.String("type", string(workload.Type)),
-			attribute.String("hasAttestation", fmt.Sprint(att != nil)),
-		))
-
-	if err != nil {
-		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
-		if errors.As(err, &noMatchAttestationError) {
-			if err.Error() != "no matching attestations: " {
-				m.log.WithError(err).Warn("could not get attestation")
-			}
-			err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateNoAttestation)
-			if err != nil {
-				return err
-			}
-			return nil
-		} else {
-			return err
-		}
-	}
-
-	if att != nil {
-		err = m.db.UpdateImage(ctx, sql.UpdateImageParams{
-			Name:     workload.ImageName,
-			Tag:      workload.ImageTag,
-			Metadata: att.Metadata,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to update image metadata: %w", err)
-		}
-
-		source := m.src
-		sw := &sources.Workload{
-			Cluster:   workload.Cluster,
-			Namespace: workload.Namespace,
-			Name:      workload.Name,
-			Type:      string(workload.Type),
-			ImageName: workload.ImageName,
-			ImageTag:  workload.ImageTag,
-		}
-		id, err := source.UploadAttestation(ctx, sw, att.Statement)
-		if err != nil {
-			return err
-		}
-
-		err = m.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
-			SourceID: pgtype.UUID{
-				Bytes: id,
-				Valid: true,
-			},
-			WorkloadID: workloadId,
-			SourceType: source.Name(),
-		})
-		if err != nil {
-			return err
-		}
-
-	}
-	err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateUpdated)
-	if err != nil {
-		return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
-	}
-
-	return nil
-}
-
-func (m *WorkloadManager) setWorkloadState(ctx context.Context, id pgtype.UUID, state sql.WorkloadState) error {
-	err := m.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
-		State: state,
-		ID:    id,
+	err := m.jobClient.AddJob(ctx, &AddWorkloadJob{
+		Workload: workload,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to set workload state: %w", err)
-	}
-	return nil
-}
-
-func (m *WorkloadManager) DeleteWorkload(ctx context.Context, w *model.Workload) error {
-	m.log.WithField("workload", w).Debug("deleting workload")
-	id, err := m.db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
-		Name:         w.Name,
-		Cluster:      w.Cluster,
-		Namespace:    w.Namespace,
-		WorkloadType: string(w.Type),
-	})
-	if err != nil {
-		m.log.WithError(err).Error("Failed to delete workload")
 		return err
 	}
+	return nil
+}
 
-	refs, err := m.db.ListSourceRefs(ctx, sql.ListSourceRefsParams{
-		WorkloadID: id,
-		SourceType: m.src.Name(),
+func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Workload) error {
+	err := m.jobClient.AddJob(ctx, &DeleteWorkloadJob{
+		Workload: workload,
 	})
 	if err != nil {
-		m.log.WithError(err).Error("Failed to list source refs")
 		return err
-	}
-	for _, ref := range refs {
-		sw := &sources.Workload{
-			Cluster:   w.Cluster,
-			Namespace: w.Namespace,
-			Name:      w.Name,
-			Type:      string(w.Type),
-			ImageName: w.ImageName,
-			ImageTag:  w.ImageTag,
-		}
-
-		// TODO: functionality that ensures that the workload is deleted from the source
-		// TODO: either a table that collects workload deletion failures or a retry mechanism
-		err = m.src.DeleteWorkload(ctx, ref.SourceID.Bytes, sw)
-		if err != nil {
-			m.log.WithError(err).Error("Failed to delete workload from source")
-			return err
-		}
 	}
 	return nil
 }
 
-func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
+/*func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
 	m.log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
 	state := sql.WorkloadStateFailed
 	subsystem := WorkloadEventSubsystemUnknown
@@ -297,4 +180,8 @@ func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workl
 	if err != nil {
 		m.log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
 	}
+}*/
+
+func (m *WorkloadManager) Stop(ctx context.Context) error {
+	return m.jobClient.Stop(ctx)
 }

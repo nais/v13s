@@ -34,6 +34,7 @@ type Client interface {
 	CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error)
 	UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error
 	CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error)
+	CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, imageName, imageTag string) (string, error)
 	DeleteProject(ctx context.Context, uuid string) error
 	UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error)
 }
@@ -90,6 +91,19 @@ func setupConfig(rawURL string) *client.Configuration {
 
 	cfg.Servers = client.ServerConfigurations{{URL: rawURL}}
 	return cfg
+}
+
+func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, imageName, imageTag string) (string, error) {
+	p, err := c.CreateProject(ctx, imageName, imageTag, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create project: %w", err)
+	}
+
+	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+		return "", err
+	}
+
+	return *p.Uuid, nil
 }
 
 func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
@@ -391,16 +405,6 @@ func (c *dependencyTrackClient) withAuthContext(ctx context.Context, fn func(ctx
 		return fmt.Errorf("auth error: %w", err)
 	}
 	return fn(apiKeyCtx)
-}
-
-func withProjectLock(projectName string, fn func() (string, error)) (string, error) {
-	m, _ := projectLocks.LoadOrStore(projectName, &sync.Mutex{})
-	mutex := m.(*sync.Mutex)
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return fn()
 }
 
 func convertError(err error, msg string, resp *http.Response) error {

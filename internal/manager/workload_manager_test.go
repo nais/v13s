@@ -35,7 +35,7 @@ func TestWorkloadManager(t *testing.T) {
 	}
 	logrus.StandardLogger().SetLevel(logrus.DebugLevel)
 	verifier := attestation.NewMockVerifier(t)
-	mgr := NewWorkloadManager(pool, nil, verifier, source, queue, logrus.WithField("subsystem", "test"))
+	mgr := NewWorkloadManager(ctx, pool, nil, verifier, source, queue, logrus.WithField("subsystem", "test"))
 	t.Run("should only update the same workload from a goroutine/pod at a time", func(t *testing.T) {
 		numWorkloads := 10
 		verifier.EXPECT().GetAttestation(mock.Anything, mock.Anything).Return(nil, nil).Times(2)
