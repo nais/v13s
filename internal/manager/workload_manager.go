@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,11 +12,13 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/kubernetes"
+	"github.com/nais/v13s/internal/manager/river"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -28,6 +29,7 @@ const (
 type WorkloadManager struct {
 	db               sql.Querier
 	pool             *pgxpool.Pool
+	wmgr             *river.WorkerManager
 	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
@@ -47,7 +49,7 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(pool *pgxpool.Pool, wmgr *river.WorkerManager, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -56,6 +58,7 @@ func NewWorkloadManager(pool *pgxpool.Pool, verifier attestation.Verifier, sourc
 	m := &WorkloadManager{
 		db:              sql.New(pool),
 		pool:            pool,
+		wmgr:            wmgr,
 		verifier:        verifier,
 		src:             source,
 		queue:           queue,
@@ -82,6 +85,13 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
+
+	err := m.wmgr.AddWorkload(ctx, workload)
+	if err != nil {
+		m.log.WithError(err).Error("Failed to add workload")
+		return err
+	}
+
 	if err := m.db.CreateImage(ctx, sql.CreateImageParams{
 		Name:     workload.ImageName,
 		Tag:      workload.ImageTag,

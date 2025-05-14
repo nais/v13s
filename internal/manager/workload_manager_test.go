@@ -3,6 +3,9 @@ package manager
 import (
 	"context"
 	"fmt"
+	"sync"
+	"testing"
+
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/kubernetes"
@@ -12,8 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"sync"
-	"testing"
 )
 
 // TODO: add more tests especially for the states and error handling
@@ -34,7 +35,7 @@ func TestWorkloadManager(t *testing.T) {
 	}
 	logrus.StandardLogger().SetLevel(logrus.DebugLevel)
 	verifier := attestation.NewMockVerifier(t)
-	mgr := NewWorkloadManager(pool, verifier, source, queue, logrus.WithField("subsystem", "test"))
+	mgr := NewWorkloadManager(pool, nil, verifier, source, queue, logrus.WithField("subsystem", "test"))
 	t.Run("should only update the same workload from a goroutine/pod at a time", func(t *testing.T) {
 		numWorkloads := 10
 		verifier.EXPECT().GetAttestation(mock.Anything, mock.Anything).Return(nil, nil).Times(2)
