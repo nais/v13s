@@ -78,10 +78,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
 
-	mgr := manager.NewWorkloadManager(pool, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
-	mgr.Start(ctx)
+	_ = manager.NewWorkloadManager(pool, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	//mgr.Start(ctx)
 
-	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
+	/*informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
 		log.Fatalf("Failed to create informer manager: %v", err)
 	}
@@ -91,7 +91,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	defer cancelSync()
 	if !informerMgr.WaitForReady(syncCtx) {
 		log.Fatalf("timed out waiting for watchers to be ready")
-	}
+	}*/
 
 	u := updater.NewUpdater(
 		pool,
@@ -99,7 +99,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		cfg.UpdateInterval,
 		log.WithField("subsystem", "updater"),
 	)
-	u.Run(ctx)
+	//	u.Run(ctx)
 
 	wg, ctx := errgroup.WithContext(ctx)
 

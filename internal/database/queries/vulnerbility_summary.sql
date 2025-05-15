@@ -105,8 +105,6 @@ ORDER BY
     LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 
-
-
 -- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT w.id, w.image_name, w.image_tag
@@ -129,6 +127,90 @@ SELECT
 FROM filtered_workloads fw
          LEFT JOIN vulnerability_summary v
                    ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag;
+
+-- name: GetVulnerabilitySummaryTimeSeries :many
+WITH filtered_workloads AS (
+    SELECT
+        w.image_name,
+        w.cluster,
+        w.namespace,
+        w.workload_type,
+        w.name AS workload_name
+    FROM workloads w
+    WHERE
+        (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
+      AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
+      AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
+      AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
+),
+     joined AS (
+         SELECT
+             v.*,
+             fw.cluster,
+             fw.namespace,
+             fw.workload_type,
+             fw.workload_name,
+             CASE
+                 WHEN sqlc.narg('resolution') = 'day' THEN date_trunc('day', v.updated_at)
+                 WHEN sqlc.narg('resolution') = 'week' THEN date_trunc('week', v.updated_at)
+                 WHEN sqlc.narg('resolution') = 'month' THEN date_trunc('month', v.updated_at)
+                 WHEN sqlc.narg('resolution') = 'hour' THEN date_trunc('hour', v.updated_at)
+                 ELSE date_trunc('day', v.updated_at) -- default fallback
+             END AS bucket_time
+         FROM vulnerability_summary v
+                  JOIN filtered_workloads fw ON v.image_name = fw.image_name
+         WHERE sqlc.narg('since')::timestamptz IS NULL
+    OR v.updated_at >= sqlc.narg('since')::timestamptz
+    ),
+    latest_per_workload_per_bucket AS (
+SELECT DISTINCT ON (workload_name, bucket_time)
+    bucket_time,
+    cluster,
+    namespace,
+    workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score
+FROM joined
+ORDER BY workload_name, bucket_time, updated_at DESC
+    ),
+    grouped AS (
+SELECT
+    bucket_time,
+    COALESCE(CASE WHEN 'cluster' = ANY(sqlc.arg('group_by')::TEXT[]) THEN cluster ELSE NULL END, 'all') AS group_cluster,
+    COALESCE(CASE WHEN 'namespace' = ANY(sqlc.arg('group_by')::TEXT[]) THEN namespace ELSE NULL END, 'all') AS group_namespace,
+    COALESCE(CASE WHEN 'workload_type' = ANY(sqlc.arg('group_by')::TEXT[]) THEN workload_type ELSE NULL END, 'all') AS group_workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score
+FROM latest_per_workload_per_bucket
+    )
+SELECT
+    bucket_time::timestamptz AS bucket_time,
+    group_cluster::TEXT AS group_cluster,
+    group_namespace::TEXT AS group_namespace,
+    group_workload_type::TEXT AS group_workload_type,
+    SUM(critical)::INT4 AS critical,
+    SUM(high)::INT4 AS high,
+    SUM(medium)::INT4 AS medium,
+    SUM(low)::INT4 AS low,
+    SUM(unassigned)::INT4 AS unassigned,
+    SUM(risk_score)::INT4 AS risk_score,
+    COUNT(*)::INT4 AS workload_count
+FROM grouped
+GROUP BY
+    bucket_time,
+    group_cluster,
+    group_namespace,
+    group_workload_type
+ORDER BY bucket_time;
+
 
 -- name: GetVulnerabilitySummaryForImage :one
 SELECT * FROM vulnerability_summary

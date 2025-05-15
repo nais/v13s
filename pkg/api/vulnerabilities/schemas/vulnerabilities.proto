@@ -33,6 +33,7 @@ service Vulnerabilities {
   // Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
   // Supplying all filters will give the summary for that specific workload
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
+  rpc GetVulnerabilitySummaryTimeSeries(GetVulnerabilitySummaryTimeSeriesRequest) returns (GetVulnerabilitySummaryTimeSeriesResponse);
 
   rpc GetVulnerabilitySummaryForImage(GetVulnerabilitySummaryForImageRequest) returns (GetVulnerabilitySummaryForImageResponse);
 
@@ -117,6 +118,39 @@ message GetVulnerabilitySummaryResponse {
   int32 sbom_count = 3;
   int32 workload_count = 4;
   float coverage = 5;
+}
+
+message GetVulnerabilitySummaryTimeSeriesRequest {
+  Filter filter = 1;
+  optional google.protobuf.Timestamp since = 2;
+  optional Resolution resolution = 3;
+  optional string group_by = 4;
+}
+
+message GetVulnerabilitySummaryTimeSeriesResponse {
+  repeated VulnerabilitySummaryPoint points = 1;
+}
+
+message VulnerabilitySummaryPoint {
+  int32 critical = 1;
+  int32 high = 2;
+  int32 medium = 3;
+  int32 low = 4;
+  int32 unassigned = 5;
+  int32 total = 6;
+  int32 riskScore = 7;
+  int32 workload_count = 8;
+  google.protobuf.Timestamp bucket_time = 9;
+  optional string cluster = 10;
+  optional string namespace = 11;
+  optional string workload_type = 12;
+  // optional string workload = 13;
+}
+
+enum Resolution {
+  DAY = 0;
+  WEEK = 1;
+  MONTH = 2;
 }
 
 message GetVulnerabilityByIdRequest{
