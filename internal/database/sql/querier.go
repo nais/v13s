@@ -55,6 +55,19 @@ type Querier interface {
 	MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error
 	ResetDatabase(ctx context.Context) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error
+	// newest version
+	// 1. Generate list of dates from that starting point to today
+	// 2. Join each workload with each date
+	// 3. For each workload/date, get latest summary up to that date
+	// 4. Aggregate totals per day
+	// 5. Final output
+	SummaryTimeseries(ctx context.Context, arg SummaryTimeseriesParams) ([]*SummaryTimeseriesRow, error)
+	// 1. Create the date range from start date up to today
+	// 2. Get all workloads with image_name (we'll join on image_name)
+	// 3. Combine every workload with every day
+	// 4. For each workload + day, find the most recent vulnerability summary up to that day
+	// 5. Return full time series
+	SummaryTimeseries0(ctx context.Context, arg SummaryTimeseries0Params) ([]*SummaryTimeseries0Row, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error

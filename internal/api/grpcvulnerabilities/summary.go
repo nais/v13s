@@ -11,8 +11,6 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"sort"
-	"time"
 )
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
@@ -152,7 +150,6 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	return response, nil
 }
 
-// TODO: validate input params before using in db query
 func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
@@ -186,7 +183,75 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		}
 
 	*/
-	sums, err := s.querier.ListVulnerabilitySummaryTimeseries(ctx, sql.ListVulnerabilitySummaryTimeseriesParams{
+	timeSeries, err := s.querier.SummaryTimeseries(ctx, sql.SummaryTimeseriesParams{
+		Cluster:       request.GetFilter().Cluster,
+		Namespace:     request.GetFilter().Namespace,
+		WorkloadTypes: wTypes,
+		WorkloadName:  request.GetFilter().Workload,
+		Since:         since,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
+	}
+
+	points := collections.Map(timeSeries, func(row *sql.SummaryTimeseriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
+		temp := ""
+		return &vulnerabilities.VulnerabilitySummaryPoint{
+			Critical:      row.Critical,
+			High:          row.High,
+			Medium:        row.Medium,
+			Low:           row.Low,
+			Unassigned:    row.Unassigned,
+			Total:         row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+			RiskScore:     row.RiskScore,
+			WorkloadCount: row.WorkloadCount,
+			BucketTime:    timestamppb.New(row.SnapshotDate.Time),
+			Cluster:       &temp,
+			Namespace:     &temp,
+			WorkloadType:  &temp,
+		}
+	})
+	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
+		Points: points,
+	}, nil
+}
+
+// TODO: validate input params before using in db query
+func (s *Server) GetVulnerabilitySummaryTimeSeriesTemp(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
+	if request.GetFilter() == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	since := pgtype.Timestamptz{}
+	if request.GetSince() != nil {
+		since.Time = request.GetSince().AsTime()
+		since.Valid = true
+	}
+	wTypes := []string{"app", "job"}
+	if request.GetFilter().GetWorkloadType() != "" {
+		wTypes = []string{request.GetFilter().GetWorkloadType()}
+	}
+	fmt.Printf("workload types: %v\n", wTypes)
+	/*	groupBy := make([]string, 0)
+		if request.GetGroupBy() != "" {
+			groupBy = []string{request.GetGroupBy()}
+		}
+		resolution := ""
+		if request.Resolution != nil {
+			switch request.GetResolution() {
+			case vulnerabilities.Resolution_HOUR:
+				resolution = "hour"
+			case vulnerabilities.Resolution_DAY:
+				resolution = "day"
+			case vulnerabilities.Resolution_WEEK:
+				resolution = "week"
+			case vulnerabilities.Resolution_MONTH:
+				resolution = "month"
+			}
+		}
+
+	*/
+	/*sums, err := s.querier.ListVulnerabilitySummaryTimeseries(ctx, sql.ListVulnerabilitySummaryTimeseriesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
@@ -299,6 +364,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 	})
 
 	fmt.Printf("%+v\n", yolo)
+	*/
 
 	/*	timeSeries, err := s.querier.GetVulnerabilitySummaryTimeSeries(ctx, sql.GetVulnerabilitySummaryTimeSeriesParams{
 			Cluster:       request.GetFilter().Cluster,
@@ -330,7 +396,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 			}
 		})*/
 	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
-		Points: points,
+		Points: []*vulnerabilities.VulnerabilitySummaryPoint{},
 	}, nil
 }
 

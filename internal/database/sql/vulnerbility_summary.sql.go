@@ -953,3 +953,259 @@ func (q *Queries) ListVulnerabilitySummaryTimeseries(ctx context.Context, arg Li
 	}
 	return items, nil
 }
+
+const summaryTimeseries = `-- name: SummaryTimeseries :many
+WITH snapshot_start_date AS (
+    SELECT COALESCE(
+                   (
+                       SELECT MAX(updated_at)::DATE
+                       FROM vulnerability_summary
+                       WHERE updated_at < $1::TIMESTAMPTZ
+               ),
+        $1::DATE
+    ) AS start_date
+),
+     date_series AS (
+         SELECT generate_series(
+                        (SELECT start_date FROM snapshot_start_date),
+                        CURRENT_DATE,
+                        interval '1 day'
+                )::date AS snapshot_date
+     ),
+     all_workloads AS (
+         SELECT id AS workload_id, image_name
+         FROM workloads w
+            WHERE ($2::TEXT IS NULL OR w.cluster = $2::TEXT)
+              AND ($3::TEXT IS NULL OR w.namespace = $3::TEXT)
+              AND ($4::TEXT[] IS NULL OR w.workload_type = ANY($4::TEXT[]))
+              AND ($5::TEXT IS NULL OR w.name = $5::TEXT)
+     ),
+     workload_dates AS (
+         SELECT w.workload_id, w.image_name, d.snapshot_date
+         FROM all_workloads w
+                  CROSS JOIN date_series d
+     ),
+     latest_summary_per_day AS (
+         SELECT DISTINCT ON (wd.workload_id, wd.snapshot_date)
+    wd.snapshot_date,
+    wd.workload_id,
+    vs.critical,
+    vs.high,
+    vs.medium,
+    vs.low,
+    vs.unassigned,
+    vs.risk_score
+FROM workload_dates wd
+    LEFT JOIN vulnerability_summary vs
+ON wd.image_name = vs.image_name
+    AND vs.updated_at::date <= wd.snapshot_date
+WHERE vs IS NOT NULL
+ORDER BY wd.workload_id, wd.snapshot_date, vs.updated_at DESC
+    ),
+    daily_aggregate AS (
+SELECT
+    snapshot_date,
+    COUNT(DISTINCT workload_id)::INT4 AS workload_count,
+    SUM(critical)::INT4 AS critical,
+    SUM(high)::INT4 AS high,
+    SUM(medium)::INT4 AS medium,
+    SUM(low)::INT4 AS low,
+    SUM(unassigned)::INT4 AS unassigned,
+    SUM(critical + high + medium + low + unassigned)::INT4 AS total,
+    SUM(risk_score)::INT4 AS risk_score
+FROM latest_summary_per_day
+GROUP BY snapshot_date
+    )
+SELECT snapshot_date, workload_count, critical, high, medium, low, unassigned, total, risk_score
+FROM daily_aggregate
+ORDER BY snapshot_date
+`
+
+type SummaryTimeseriesParams struct {
+	Since         pgtype.Timestamptz
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+}
+
+type SummaryTimeseriesRow struct {
+	SnapshotDate  pgtype.Date
+	WorkloadCount int32
+	Critical      int32
+	High          int32
+	Medium        int32
+	Low           int32
+	Unassigned    int32
+	Total         int32
+	RiskScore     int32
+}
+
+// newest version
+// 1. Generate list of dates from that starting point to today
+// 2. Join each workload with each date
+// 3. For each workload/date, get latest summary up to that date
+// 4. Aggregate totals per day
+// 5. Final output
+func (q *Queries) SummaryTimeseries(ctx context.Context, arg SummaryTimeseriesParams) ([]*SummaryTimeseriesRow, error) {
+	rows, err := q.db.Query(ctx, summaryTimeseries,
+		arg.Since,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*SummaryTimeseriesRow{}
+	for rows.Next() {
+		var i SummaryTimeseriesRow
+		if err := rows.Scan(
+			&i.SnapshotDate,
+			&i.WorkloadCount,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.Total,
+			&i.RiskScore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const summaryTimeseries0 = `-- name: SummaryTimeseries0 :many
+WITH snapshot_start_date AS (
+    SELECT COALESCE(
+                   (
+                       SELECT MAX(updated_at)::DATE
+                       FROM vulnerability_summary
+                       WHERE updated_at < $1::TIMESTAMPTZ
+               ),
+        $1::DATE  -- fallback to 'since' if no earlier summaries
+    ) AS start_date
+),
+     date_series AS (
+         SELECT generate_series(
+                        (SELECT start_date FROM snapshot_start_date),
+                        CURRENT_DATE,
+                        interval '1 day'
+                )::date AS snapshot_date
+     ),
+     workloads AS (
+         SELECT id AS workload_id, image_name, name AS workload_name, namespace, cluster
+         FROM workloads w
+         WHERE ($2::TEXT IS NULL OR w.cluster = $2::TEXT)
+            AND ($3::TEXT IS NULL OR w.namespace = $3::TEXT)
+            AND ($4::TEXT[] IS NULL OR w.workload_type = ANY($4::TEXT[]))
+            AND ($5::TEXT IS NULL OR w.name = $5::TEXT)
+     ),
+     workload_dates AS (
+         SELECT
+             w.workload_id,
+             w.image_name,
+             w.workload_name,
+             w.namespace,
+             w.cluster,
+             d.snapshot_date
+         FROM workloads w
+                  CROSS JOIN date_series d
+     ),
+     latest_summary_per_day AS (
+         SELECT DISTINCT ON (wd.workload_id, wd.snapshot_date)
+    wd.workload_id,
+    wd.workload_name,
+    wd.namespace,
+    wd.cluster,
+    wd.snapshot_date,
+    vs.critical,
+    vs.high,
+    vs.medium,
+    vs.low,
+    vs.unassigned,
+    vs.risk_score
+FROM workload_dates wd
+    LEFT JOIN vulnerability_summary vs
+ON wd.image_name = vs.image_name
+    AND vs.updated_at::date <= wd.snapshot_date
+WHERE vs IS NOT NULL
+ORDER BY wd.workload_id, wd.snapshot_date, vs.updated_at DESC
+    )
+SELECT workload_id, workload_name, namespace, cluster, snapshot_date, critical, high, medium, low, unassigned, risk_score
+FROM latest_summary_per_day
+ORDER BY workload_id, snapshot_date
+`
+
+type SummaryTimeseries0Params struct {
+	Since         pgtype.Timestamptz
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+}
+
+type SummaryTimeseries0Row struct {
+	WorkloadID   pgtype.UUID
+	WorkloadName string
+	Namespace    string
+	Cluster      string
+	SnapshotDate pgtype.Date
+	Critical     *int32
+	High         *int32
+	Medium       *int32
+	Low          *int32
+	Unassigned   *int32
+	RiskScore    *int32
+}
+
+// 1. Create the date range from start date up to today
+// 2. Get all workloads with image_name (we'll join on image_name)
+// 3. Combine every workload with every day
+// 4. For each workload + day, find the most recent vulnerability summary up to that day
+// 5. Return full time series
+func (q *Queries) SummaryTimeseries0(ctx context.Context, arg SummaryTimeseries0Params) ([]*SummaryTimeseries0Row, error) {
+	rows, err := q.db.Query(ctx, summaryTimeseries0,
+		arg.Since,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*SummaryTimeseries0Row{}
+	for rows.Next() {
+		var i SummaryTimeseries0Row
+		if err := rows.Scan(
+			&i.WorkloadID,
+			&i.WorkloadName,
+			&i.Namespace,
+			&i.Cluster,
+			&i.SnapshotDate,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.RiskScore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
