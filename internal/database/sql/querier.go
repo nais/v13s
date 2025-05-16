@@ -30,15 +30,24 @@ type Querier interface {
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
+	// Generate the time series calendar
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
+	// TODO: remove later below
+	GetVulnerabilitySummaryTimeSeriesNonCumulative(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesNonCumulativeParams) ([]*GetVulnerabilitySummaryTimeSeriesNonCumulativeRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (*Workload, error)
+	ListCumulativeVulnerabilityTimeSeries(ctx context.Context, arg ListCumulativeVulnerabilityTimeSeriesParams) ([]*ListCumulativeVulnerabilityTimeSeriesRow, error)
 	ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
+	// New: get most recent summary before `since`
+	// Get all newer summaries + join to workloads
+	// Combine recent and one older summary per image
+	// Join with workloads
+	ListVulnerabilitySummaryTimeseries(ctx context.Context, arg ListVulnerabilitySummaryTimeseriesParams) ([]*ListVulnerabilitySummaryTimeseriesRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error

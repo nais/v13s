@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
@@ -12,6 +11,8 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"sort"
+	"time"
 )
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
@@ -151,6 +152,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	return response, nil
 }
 
+// TODO: validate input params before using in db query
 func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
@@ -165,40 +167,168 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 	if request.GetFilter().GetWorkloadType() != "" {
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
 	}
-	groupBy := make([]string, 0)
-	if request.GetGroupBy() != "" {
-		groupBy = []string{request.GetGroupBy()}
-	}
+	/*	groupBy := make([]string, 0)
+		if request.GetGroupBy() != "" {
+			groupBy = []string{request.GetGroupBy()}
+		}
+		resolution := ""
+		if request.Resolution != nil {
+			switch request.GetResolution() {
+			case vulnerabilities.Resolution_HOUR:
+				resolution = "hour"
+			case vulnerabilities.Resolution_DAY:
+				resolution = "day"
+			case vulnerabilities.Resolution_WEEK:
+				resolution = "week"
+			case vulnerabilities.Resolution_MONTH:
+				resolution = "month"
+			}
+		}
 
-	timeSeries, err := s.querier.GetVulnerabilitySummaryTimeSeries(ctx, sql.GetVulnerabilitySummaryTimeSeriesParams{
+	*/
+	sums, err := s.querier.ListVulnerabilitySummaryTimeseries(ctx, sql.ListVulnerabilitySummaryTimeseriesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         since,
-		Resolution:    request.Resolution,
-		GroupBy:       groupBy,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vulnerability summary time series: %w", err)
+		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 	}
 
-	points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
-		return &vulnerabilities.VulnerabilitySummaryPoint{
-			Critical:      row.Critical,
-			High:          row.High,
-			Medium:        row.Medium,
-			Low:           row.Low,
-			Unassigned:    row.Unassigned,
-			Total:         row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-			RiskScore:     row.RiskScore,
-			WorkloadCount: row.WorkloadCount,
-			BucketTime:    timestamppb.New(row.BucketTime.Time),
-			Cluster:       &row.GroupCluster,
-			Namespace:     &row.GroupNamespace,
-			WorkloadType:  &row.GroupWorkloadType,
+	type Day = time.Time
+	type WorkloadId = string
+	type Summary = *sql.ListVulnerabilitySummaryTimeseriesRow
+
+	yolo := make(map[Day]map[WorkloadId]Summary)
+
+	type WorkloadBucket struct {
+		WorkloadId WorkloadId
+		Points     []Summary
+	}
+
+	type Buckets map[Day]map[WorkloadId]WorkloadBucket
+
+	buckets := make(Buckets)
+	for _, sum := range sums {
+		day := sum.SummaryUpdatedAt.Time.Truncate(24 * time.Hour)
+		key := day
+		workloadId := fmt.Sprintf("%s:%s:%s:%s", sum.Cluster, sum.Namespace, sum.WorkloadType, sum.WorkloadName)
+
+		// does day exist in buckets?
+		if _, exists := buckets[key]; !exists {
+			buckets[day] = make(map[WorkloadId]WorkloadBucket)
 		}
+		// does workload exist in buckets?
+		if _, exists := buckets[key][workloadId]; !exists {
+			buckets[key][workloadId] = WorkloadBucket{
+				WorkloadId: workloadId,
+				Points:     []Summary{},
+			}
+		}
+		// add summary to workload bucket
+		bucket := buckets[key][workloadId]
+		bucket.Points = append(bucket.Points, sum)
+		buckets[key][workloadId] = bucket
+	}
+
+	type SummaryPoint struct {
+		Critical      int32
+		High          int32
+		Medium        int32
+		Low           int32
+		Unassigned    int32
+		RiskScore     int32
+		WorkloadCount int32
+	}
+
+	type SummaryBuckets map[Day]SummaryPoint
+
+	summaryBuckets := make(SummaryBuckets)
+
+	points := make([]*vulnerabilities.VulnerabilitySummaryPoint, 0)
+
+	for day, workloads := range buckets {
+		if _, ok := summaryBuckets[day]; !ok {
+			summaryBuckets[day] = SummaryPoint{}
+		}
+		summaryPoint := summaryBuckets[day]
+		for _, workload := range workloads {
+			var summary Summary
+			for _, point := range workload.Points {
+				if summary == nil {
+					summary = point
+				}
+				if point.SummaryUpdatedAt.Time.After(summary.SummaryUpdatedAt.Time) {
+					if *point.RiskScore > 0 {
+						summary = point
+					}
+				}
+			}
+			if summary != nil && summary.HasSbom {
+				if summary.Critical == nil {
+					fmt.Printf("%+v\n", summary)
+				}
+				summaryPoint.Critical += *summary.Critical
+				summaryPoint.High += *summary.High
+				summaryPoint.Medium += *summary.Medium
+				summaryPoint.Low += *summary.Low
+				summaryPoint.Unassigned += *summary.Unassigned
+				summaryPoint.RiskScore += *summary.RiskScore
+				summaryPoint.WorkloadCount += 1
+			}
+		}
+		//summaryBuckets[day] = summaryPoint
+		points = append(points, &vulnerabilities.VulnerabilitySummaryPoint{
+			Critical:      summaryPoint.Critical,
+			High:          summaryPoint.High,
+			Medium:        summaryPoint.Medium,
+			Low:           summaryPoint.Low,
+			Unassigned:    summaryPoint.Unassigned,
+			Total:         summaryPoint.Critical + summaryPoint.High + summaryPoint.Medium + summaryPoint.Low + summaryPoint.Unassigned,
+			RiskScore:     summaryPoint.RiskScore,
+			WorkloadCount: summaryPoint.WorkloadCount,
+			BucketTime:    timestamppb.New(day),
+			Cluster:       request.GetFilter().Cluster,
+			Namespace:     request.GetFilter().Namespace,
+		})
+	}
+	sort.Slice(points, func(i, j int) bool {
+		return points[i].BucketTime.AsTime().Before(points[j].BucketTime.AsTime())
 	})
+
+	fmt.Printf("%+v\n", yolo)
+
+	/*	timeSeries, err := s.querier.GetVulnerabilitySummaryTimeSeries(ctx, sql.GetVulnerabilitySummaryTimeSeriesParams{
+			Cluster:       request.GetFilter().Cluster,
+			Namespace:     request.GetFilter().Namespace,
+			WorkloadTypes: wTypes,
+			WorkloadName:  request.GetFilter().Workload,
+			Since:         since,
+			Resolution:    resolution,
+			GroupBy:       groupBy,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get vulnerability summary time series: %w", err)
+		}
+
+		points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
+			return &vulnerabilities.VulnerabilitySummaryPoint{
+				Critical:      row.Critical,
+				High:          row.High,
+				Medium:        row.Medium,
+				Low:           row.Low,
+				Unassigned:    row.Unassigned,
+				Total:         row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+				RiskScore:     row.RiskScore,
+				WorkloadCount: row.WorkloadCount,
+				BucketTime:    timestamppb.New(row.BucketTime.Time),
+				Cluster:       &row.GroupCluster,
+				Namespace:     &row.GroupNamespace,
+				WorkloadType:  &row.GroupWorkloadType,
+			}
+		})*/
 	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
 		Points: points,
 	}, nil

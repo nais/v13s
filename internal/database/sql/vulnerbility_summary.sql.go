@@ -151,6 +151,193 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 }
 
 const getVulnerabilitySummaryTimeSeries = `-- name: GetVulnerabilitySummaryTimeSeries :many
+WITH time_buckets AS (
+    SELECT date_trunc(
+                   CASE
+                       WHEN $1::TEXT = 'hour' THEN 'hour'
+                       WHEN $1::TEXT = 'week' THEN 'week'
+                       WHEN $1::TEXT = 'month' THEN 'month'
+                       ELSE 'day'
+                       END,
+                   dd
+           )::timestamptz AS bucket_time
+    FROM generate_series(
+                 COALESCE($2::timestamptz, now() - interval '30 days'),
+                 now(),
+                 CASE
+                     WHEN $1::TEXT = 'hour' THEN interval '1 hour'
+                     WHEN $1::TEXT = 'week' THEN interval '1 week'
+                     WHEN $1::TEXT = 'month' THEN interval '1 month'
+                     ELSE interval '1 day'
+                     END
+         ) dd
+),
+     filtered_workloads AS (
+         SELECT
+             w.image_name,
+             w.cluster,
+             w.namespace,
+             w.workload_type,
+             w.name AS workload_name
+         FROM workloads w
+         WHERE
+             ($3::TEXT IS NULL OR w.cluster = $3::TEXT)
+           AND ($4::TEXT IS NULL OR w.namespace = $4::TEXT)
+           AND ($5::TEXT[] IS NULL OR w.workload_type = ANY($5::TEXT[]))
+           AND ($6::TEXT IS NULL OR w.name = $6::TEXT)
+           AND EXISTS (
+             SELECT 1
+             FROM vulnerability_summary vs
+             WHERE vs.image_name = w.image_name
+         )
+     ),
+     workload_time_matrix AS (
+         SELECT
+             tb.bucket_time,
+             fw.image_name,
+             fw.workload_name,
+             fw.cluster,
+             fw.namespace,
+             fw.workload_type
+         FROM time_buckets tb
+                  CROSS JOIN filtered_workloads fw
+     ),
+     summarized AS (
+         SELECT
+             wtm.bucket_time,
+             wtm.cluster,
+             wtm.namespace,
+             wtm.workload_type,
+             wtm.workload_name,
+             v.critical,
+             v.high,
+             v.medium,
+             v.low,
+             v.unassigned,
+             v.risk_score,
+             v.updated_at
+         FROM workload_time_matrix wtm
+                  LEFT JOIN vulnerability_summary v
+                            ON wtm.image_name = v.image_name
+                                AND v.updated_at BETWEEN COALESCE($2, now() - interval '30 days') AND wtm.bucket_time
+     ),
+     -- pick latest per workload as of that bucket_time
+     latest_per_workload_per_bucket AS (
+         SELECT DISTINCT ON (workload_name, bucket_time)
+    bucket_time,
+    cluster,
+    namespace,
+    workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score
+FROM summarized
+ORDER BY workload_name, bucket_time, updated_at DESC NULLS LAST
+    ),
+    grouped AS (
+SELECT
+    bucket_time,
+    COALESCE(CASE WHEN 'cluster' = ANY($7::TEXT[]) THEN cluster ELSE NULL END, 'all')::TEXT AS group_cluster,
+    COALESCE(CASE WHEN 'namespace' = ANY($7::TEXT[]) THEN namespace ELSE NULL END, 'all')::TEXT AS group_namespace,
+    COALESCE(CASE WHEN 'workload_type' = ANY($7::TEXT[]) THEN workload_type ELSE NULL END, 'all')::TEXT AS group_workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score
+FROM latest_per_workload_per_bucket
+    )
+SELECT
+    bucket_time::timestamptz AS bucket_time,
+    group_cluster,
+    group_namespace,
+    group_workload_type,
+    SUM(COALESCE(critical, 0))::INT4 AS critical,
+        SUM(COALESCE(high, 0))::INT4 AS high,
+        SUM(COALESCE(medium, 0))::INT4 AS medium,
+        SUM(COALESCE(low, 0))::INT4 AS low,
+        SUM(COALESCE(unassigned, 0))::INT4 AS unassigned,
+        SUM(COALESCE(risk_score, 0))::INT4 AS risk_score,
+        COUNT(*)::INT4 AS workload_count
+FROM grouped
+GROUP BY
+    bucket_time,
+    group_cluster,
+    group_namespace,
+    group_workload_type
+ORDER BY bucket_time
+`
+
+type GetVulnerabilitySummaryTimeSeriesParams struct {
+	Resolution    string
+	Since         pgtype.Timestamptz
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	GroupBy       []string
+}
+
+type GetVulnerabilitySummaryTimeSeriesRow struct {
+	BucketTime        pgtype.Timestamptz
+	GroupCluster      string
+	GroupNamespace    string
+	GroupWorkloadType string
+	Critical          int32
+	High              int32
+	Medium            int32
+	Low               int32
+	Unassigned        int32
+	RiskScore         int32
+	WorkloadCount     int32
+}
+
+// Generate the time series calendar
+func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilitySummaryTimeSeries,
+		arg.Resolution,
+		arg.Since,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+		arg.GroupBy,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetVulnerabilitySummaryTimeSeriesRow{}
+	for rows.Next() {
+		var i GetVulnerabilitySummaryTimeSeriesRow
+		if err := rows.Scan(
+			&i.BucketTime,
+			&i.GroupCluster,
+			&i.GroupNamespace,
+			&i.GroupWorkloadType,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.RiskScore,
+			&i.WorkloadCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getVulnerabilitySummaryTimeSeriesNonCumulative = `-- name: GetVulnerabilitySummaryTimeSeriesNonCumulative :many
 WITH filtered_workloads AS (
     SELECT
         w.image_name,
@@ -234,7 +421,7 @@ GROUP BY
 ORDER BY bucket_time
 `
 
-type GetVulnerabilitySummaryTimeSeriesParams struct {
+type GetVulnerabilitySummaryTimeSeriesNonCumulativeParams struct {
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
@@ -244,7 +431,7 @@ type GetVulnerabilitySummaryTimeSeriesParams struct {
 	GroupBy       []string
 }
 
-type GetVulnerabilitySummaryTimeSeriesRow struct {
+type GetVulnerabilitySummaryTimeSeriesNonCumulativeRow struct {
 	BucketTime        pgtype.Timestamptz
 	GroupCluster      string
 	GroupNamespace    string
@@ -258,8 +445,9 @@ type GetVulnerabilitySummaryTimeSeriesRow struct {
 	WorkloadCount     int32
 }
 
-func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error) {
-	rows, err := q.db.Query(ctx, getVulnerabilitySummaryTimeSeries,
+// TODO: remove later below
+func (q *Queries) GetVulnerabilitySummaryTimeSeriesNonCumulative(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesNonCumulativeParams) ([]*GetVulnerabilitySummaryTimeSeriesNonCumulativeRow, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilitySummaryTimeSeriesNonCumulative,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
@@ -272,9 +460,157 @@ func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg Get
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*GetVulnerabilitySummaryTimeSeriesRow{}
+	items := []*GetVulnerabilitySummaryTimeSeriesNonCumulativeRow{}
 	for rows.Next() {
-		var i GetVulnerabilitySummaryTimeSeriesRow
+		var i GetVulnerabilitySummaryTimeSeriesNonCumulativeRow
+		if err := rows.Scan(
+			&i.BucketTime,
+			&i.GroupCluster,
+			&i.GroupNamespace,
+			&i.GroupWorkloadType,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.RiskScore,
+			&i.WorkloadCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCumulativeVulnerabilityTimeSeries = `-- name: ListCumulativeVulnerabilityTimeSeries :many
+WITH filtered_workloads AS (
+    SELECT
+        w.image_name,
+        w.cluster,
+        w.namespace,
+        w.workload_type,
+        w.name AS workload_name
+    FROM workloads w
+    WHERE
+        ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
+      AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
+      AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
+      AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+),
+     joined AS (
+         SELECT
+             v.id, v.image_name, v.image_tag, v.critical, v.high, v.medium, v.low, v.unassigned, v.risk_score, v.created_at, v.updated_at,
+             fw.cluster,
+             fw.namespace,
+             fw.workload_type,
+             fw.workload_name,
+             CASE
+                 WHEN $5 = 'day' THEN date_trunc('day', v.updated_at)
+                 WHEN $5 = 'week' THEN date_trunc('week', v.updated_at)
+                 WHEN $5 = 'month' THEN date_trunc('month', v.updated_at)
+                 WHEN $5 = 'hour' THEN date_trunc('hour', v.updated_at)
+                 ELSE date_trunc('day', v.updated_at) -- default fallback
+                 END AS bucket_time
+         FROM vulnerability_summary v
+                  JOIN filtered_workloads fw ON v.image_name = fw.image_name
+         WHERE $6::timestamptz IS NULL
+    OR v.updated_at >= $6::timestamptz
+    ),
+    latest_per_workload_per_bucket AS (
+SELECT DISTINCT ON (workload_name, bucket_time)
+    bucket_time,
+    cluster,
+    namespace,
+    workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score
+FROM joined
+ORDER BY workload_name, bucket_time, updated_at DESC
+    ),
+    grouped AS (
+SELECT
+    bucket_time,
+    COALESCE(CASE WHEN 'cluster' = ANY($7::TEXT[]) THEN cluster ELSE NULL END, 'all') AS group_cluster,
+    COALESCE(CASE WHEN 'namespace' = ANY($7::TEXT[]) THEN namespace ELSE NULL END, 'all') AS group_namespace,
+    COALESCE(CASE WHEN 'workload_type' = ANY($7::TEXT[]) THEN workload_type ELSE NULL END, 'all') AS group_workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score
+FROM latest_per_workload_per_bucket
+    )
+SELECT
+    bucket_time::timestamptz AS bucket_time,
+        group_cluster::TEXT AS group_cluster,
+        group_namespace::TEXT AS group_namespace,
+        group_workload_type::TEXT AS group_workload_type,
+        SUM(critical)::INT4 AS critical,
+        SUM(high)::INT4 AS high,
+        SUM(medium)::INT4 AS medium,
+        SUM(low)::INT4 AS low,
+        SUM(unassigned)::INT4 AS unassigned,
+        SUM(risk_score)::INT4 AS risk_score,
+        COUNT(*)::INT4 AS workload_count
+FROM grouped
+GROUP BY
+    bucket_time,
+    group_cluster,
+    group_namespace,
+    group_workload_type
+ORDER BY bucket_time
+`
+
+type ListCumulativeVulnerabilityTimeSeriesParams struct {
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	Resolution    interface{}
+	Since         pgtype.Timestamptz
+	GroupBy       []string
+}
+
+type ListCumulativeVulnerabilityTimeSeriesRow struct {
+	BucketTime        pgtype.Timestamptz
+	GroupCluster      string
+	GroupNamespace    string
+	GroupWorkloadType string
+	Critical          int32
+	High              int32
+	Medium            int32
+	Low               int32
+	Unassigned        int32
+	RiskScore         int32
+	WorkloadCount     int32
+}
+
+func (q *Queries) ListCumulativeVulnerabilityTimeSeries(ctx context.Context, arg ListCumulativeVulnerabilityTimeSeriesParams) ([]*ListCumulativeVulnerabilityTimeSeriesRow, error) {
+	rows, err := q.db.Query(ctx, listCumulativeVulnerabilityTimeSeries,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+		arg.Resolution,
+		arg.Since,
+		arg.GroupBy,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListCumulativeVulnerabilityTimeSeriesRow{}
+	for rows.Next() {
+		var i ListCumulativeVulnerabilityTimeSeriesRow
 		if err := rows.Scan(
 			&i.BucketTime,
 			&i.GroupCluster,
@@ -426,6 +762,165 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 	items := []*ListVulnerabilitySummariesRow{}
 	for rows.Next() {
 		var i ListVulnerabilitySummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.CurrentImageName,
+			&i.CurrentImageTag,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.RiskScore,
+			&i.WorkloadCreatedAt,
+			&i.WorkloadUpdatedAt,
+			&i.SummaryCreatedAt,
+			&i.SummaryUpdatedAt,
+			&i.HasSbom,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVulnerabilitySummaryTimeseries = `-- name: ListVulnerabilitySummaryTimeseries :many
+WITH filtered_workloads AS (
+    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM workloads w
+    WHERE
+        ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
+      AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
+      AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
+      AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+),
+     older_summary AS (
+         SELECT DISTINCT ON (image_name)
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+FROM vulnerability_summary
+WHERE $5::TIMESTAMPTZ IS NOT NULL
+  AND updated_at < $5::TIMESTAMPTZ
+ORDER BY image_name, updated_at DESC
+    ),
+    recent_summaries AS (
+SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+FROM vulnerability_summary
+WHERE $5::TIMESTAMPTZ IS NULL OR updated_at > $5::TIMESTAMPTZ
+    ),
+    combined_summaries AS (
+SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at FROM recent_summaries
+UNION ALL
+SELECT id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at FROM older_summary
+    ),
+    vulnerability_data AS (
+SELECT
+    v.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name AS current_image_name,
+    w.image_tag AS current_image_tag,
+    v.image_name,
+    v.image_tag,
+    v.critical,
+    v.high,
+    v.medium,
+    v.low,
+    v.unassigned,
+    v.risk_score,
+    w.created_at AS workload_created_at,
+    w.updated_at AS workload_updated_at,
+    v.created_at AS summary_created_at,
+    v.updated_at AS summary_updated_at,
+    CASE WHEN v.image_name IS NOT NULL THEN TRUE ELSE FALSE END AS has_sbom
+FROM filtered_workloads w
+    LEFT JOIN combined_summaries v
+ON w.image_name = v.image_name
+    AND (
+    CASE
+    WHEN $5::TIMESTAMPTZ IS NULL THEN w.image_tag = v.image_tag
+    ELSE TRUE
+    END
+    )
+WHERE
+    ($6::TEXT IS NULL OR v.image_name = $6::TEXT)
+  AND ($7::TEXT IS NULL OR v.image_tag = $7::TEXT)
+    )
+SELECT id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom,
+       (SELECT COUNT(*) FROM vulnerability_data) AS total_count
+FROM vulnerability_data
+ORDER BY
+    -- your ordering logic here
+    summary_updated_at ASC, id DESC
+`
+
+type ListVulnerabilitySummaryTimeseriesParams struct {
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	Since         pgtype.Timestamptz
+	ImageName     *string
+	ImageTag      *string
+}
+
+type ListVulnerabilitySummaryTimeseriesRow struct {
+	ID                pgtype.UUID
+	WorkloadName      string
+	WorkloadType      string
+	Namespace         string
+	Cluster           string
+	CurrentImageName  string
+	CurrentImageTag   string
+	ImageName         *string
+	ImageTag          *string
+	Critical          *int32
+	High              *int32
+	Medium            *int32
+	Low               *int32
+	Unassigned        *int32
+	RiskScore         *int32
+	WorkloadCreatedAt pgtype.Timestamptz
+	WorkloadUpdatedAt pgtype.Timestamptz
+	SummaryCreatedAt  pgtype.Timestamptz
+	SummaryUpdatedAt  pgtype.Timestamptz
+	HasSbom           bool
+	TotalCount        int64
+}
+
+// New: get most recent summary before `since`
+// Get all newer summaries + join to workloads
+// Combine recent and one older summary per image
+// Join with workloads
+func (q *Queries) ListVulnerabilitySummaryTimeseries(ctx context.Context, arg ListVulnerabilitySummaryTimeseriesParams) ([]*ListVulnerabilitySummaryTimeseriesRow, error) {
+	rows, err := q.db.Query(ctx, listVulnerabilitySummaryTimeseries,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+		arg.Since,
+		arg.ImageName,
+		arg.ImageTag,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListVulnerabilitySummaryTimeseriesRow{}
+	for rows.Next() {
+		var i ListVulnerabilitySummaryTimeseriesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.WorkloadName,
