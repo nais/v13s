@@ -123,8 +123,6 @@ message GetVulnerabilitySummaryResponse {
 message GetVulnerabilitySummaryTimeSeriesRequest {
   Filter filter = 1;
   optional google.protobuf.Timestamp since = 2;
-  optional Resolution resolution = 3;
-  optional string group_by = 4;
 }
 
 message GetVulnerabilitySummaryTimeSeriesResponse {
@@ -141,10 +139,6 @@ message VulnerabilitySummaryPoint {
   int32 riskScore = 7;
   int32 workload_count = 8;
   google.protobuf.Timestamp bucket_time = 9;
-  optional string cluster = 10;
-  optional string namespace = 11;
-  optional string workload_type = 12;
-  // optional string workload = 13;
 }
 
 enum Resolution {

@@ -30,24 +30,20 @@ type Querier interface {
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
-	// Generate the time series calendar
+	// 1. Generate list of dates from that starting point to today
+	// 2. Join each workload with each date
+	// 3. For each workload/date, get latest summary up to that date
+	// 4. Aggregate totals per day
+	// 5. Final output
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
-	// TODO: remove later below
-	GetVulnerabilitySummaryTimeSeriesNonCumulative(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesNonCumulativeParams) ([]*GetVulnerabilitySummaryTimeSeriesNonCumulativeRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (*Workload, error)
-	ListCumulativeVulnerabilityTimeSeries(ctx context.Context, arg ListCumulativeVulnerabilityTimeSeriesParams) ([]*ListCumulativeVulnerabilityTimeSeriesRow, error)
 	ListSourceRefs(ctx context.Context, arg ListSourceRefsParams) ([]*SourceRef, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
-	// New: get most recent summary before `since`
-	// Get all newer summaries + join to workloads
-	// Combine recent and one older summary per image
-	// Join with workloads
-	ListVulnerabilitySummaryTimeseries(ctx context.Context, arg ListVulnerabilitySummaryTimeseriesParams) ([]*ListVulnerabilitySummaryTimeseriesRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error
@@ -55,19 +51,6 @@ type Querier interface {
 	MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error
 	ResetDatabase(ctx context.Context) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error
-	// newest version
-	// 1. Generate list of dates from that starting point to today
-	// 2. Join each workload with each date
-	// 3. For each workload/date, get latest summary up to that date
-	// 4. Aggregate totals per day
-	// 5. Final output
-	SummaryTimeseries(ctx context.Context, arg SummaryTimeseriesParams) ([]*SummaryTimeseriesRow, error)
-	// 1. Create the date range from start date up to today
-	// 2. Get all workloads with image_name (we'll join on image_name)
-	// 3. Combine every workload with every day
-	// 4. For each workload + day, find the most recent vulnerability summary up to that day
-	// 5. Return full time series
-	SummaryTimeseries0(ctx context.Context, arg SummaryTimeseries0Params) ([]*SummaryTimeseries0Row, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error

@@ -144,22 +144,7 @@ func main() {
 						Name:    "timeseries",
 						Aliases: []string{"t"},
 						Usage:   "get vulnerability summary time series for filter",
-						Flags: append(commonFlags(opts),
-							&cli.StringFlag{
-								Name:        "resolution",
-								Aliases:     []string{"r"},
-								Value:       "",
-								Usage:       "resolution for time series: day, week, month",
-								Destination: &opts.resolution,
-							},
-							&cli.StringFlag{
-								Name:        "groupby",
-								Aliases:     []string{"g"},
-								Value:       "",
-								Usage:       "dimensions for time series. default is not grouped. possible values: cluster, namespace, workload_type",
-								Destination: &opts.groupBy,
-							},
-						),
+						Flags:   commonFlags(opts),
 						Action: func(ctx context.Context, cmd *cli.Command) error {
 							return getTimeseries(ctx, cmd, c, opts)
 						},
@@ -220,38 +205,9 @@ func main() {
 
 func getTimeseries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
 	opts := parseOptions(cmd, o)
-	resolution := vulnerabilities.Resolution_DAY
 	format := time.DateOnly
-	if o.resolution != "" {
-		switch o.resolution {
-		case "hour":
-			resolution = vulnerabilities.Resolution_HOUR
-			format = time.RFC3339
-		case "day":
-			resolution = vulnerabilities.Resolution_DAY
-		case "week":
-			resolution = vulnerabilities.Resolution_WEEK
-		case "month":
-			resolution = vulnerabilities.Resolution_MONTH
-		default:
-			return fmt.Errorf("invalid resolution: %s, expected hour, day, week or month", o.resolution)
-		}
-	}
-	var groupBy *string
-	if o.groupBy != "" {
-		switch o.groupBy {
-		case "cluster":
-			groupBy = &o.groupBy
-		case "namespace":
-			groupBy = &o.groupBy
-		case "workload_type":
-			groupBy = &o.groupBy
-		default:
-			return fmt.Errorf("invalid groupby: %s, expected cluster, namespace or workload_type", o.groupBy)
-		}
-	}
 
-	resp, err := c.GetVulnerabilitySummaryTimeSeries(ctx, &resolution, groupBy, opts...)
+	resp, err := c.GetVulnerabilitySummaryTimeSeries(ctx, opts...)
 	if err != nil {
 		return err
 	}
@@ -268,9 +224,6 @@ func getTimeseries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		"Unassigned",
 		"RiskScore",
 		"WorkloadCount",
-		"Cluster",
-		"Namespace",
-		"WorkloadType",
 	}
 	tbl := table.New(headers...)
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
@@ -285,9 +238,6 @@ func getTimeseries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			p.GetUnassigned(),
 			p.GetRiskScore(),
 			p.GetWorkloadCount(),
-			p.GetCluster(),
-			p.GetNamespace(),
-			p.GetWorkloadType(),
 		}
 		tbl.AddRow(
 			vals...,
