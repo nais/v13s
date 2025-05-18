@@ -40,8 +40,6 @@ type options struct {
 	order        string
 	since        string
 	workloadType string
-	resolution   string
-	groupBy      string
 }
 
 func main() {
