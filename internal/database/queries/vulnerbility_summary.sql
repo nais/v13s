@@ -105,8 +105,6 @@ ORDER BY
     LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 
-
-
 -- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT w.id, w.image_name, w.image_tag
@@ -129,6 +127,77 @@ SELECT
 FROM filtered_workloads fw
          LEFT JOIN vulnerability_summary v
                    ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag;
+
+-- name: GetVulnerabilitySummaryTimeSeries :many
+WITH snapshot_start_date AS (
+    SELECT COALESCE(
+                   (
+                       SELECT MAX(updated_at)::DATE
+                       FROM vulnerability_summary
+                       WHERE updated_at < sqlc.narg('since')::TIMESTAMPTZ
+               ),
+        sqlc.narg('since')::DATE
+    ) AS start_date
+),
+-- 1. Generate list of dates from that starting point to today
+     date_series AS (
+         SELECT generate_series(
+                        (SELECT start_date FROM snapshot_start_date),
+                        CURRENT_DATE,
+                        interval '1 day'
+                )::date AS snapshot_date
+     ),
+-- 2. Join each workload with each date
+     all_workloads AS (
+         SELECT id AS workload_id, image_name
+         FROM workloads w
+            WHERE (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
+              AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
+              AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
+              AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
+     ),
+     workload_dates AS (
+         SELECT w.workload_id, w.image_name, d.snapshot_date
+         FROM all_workloads w
+                  CROSS JOIN date_series d
+     ),
+-- 3. For each workload/date, get latest summary up to that date
+     latest_summary_per_day AS (
+         SELECT DISTINCT ON (wd.workload_id, wd.snapshot_date)
+    wd.snapshot_date,
+    wd.workload_id,
+    vs.critical,
+    vs.high,
+    vs.medium,
+    vs.low,
+    vs.unassigned,
+    vs.risk_score
+FROM workload_dates wd
+    LEFT JOIN vulnerability_summary vs
+ON wd.image_name = vs.image_name
+    AND vs.updated_at::date <= wd.snapshot_date
+WHERE vs IS NOT NULL
+ORDER BY wd.workload_id, wd.snapshot_date, vs.updated_at DESC
+    ),
+-- 4. Aggregate totals per day
+    daily_aggregate AS (
+SELECT
+    snapshot_date,
+    COUNT(DISTINCT workload_id)::INT4 AS workload_count,
+    SUM(critical)::INT4 AS critical,
+    SUM(high)::INT4 AS high,
+    SUM(medium)::INT4 AS medium,
+    SUM(low)::INT4 AS low,
+    SUM(unassigned)::INT4 AS unassigned,
+    SUM(critical + high + medium + low + unassigned)::INT4 AS total,
+    SUM(risk_score)::INT4 AS risk_score
+FROM latest_summary_per_day
+GROUP BY snapshot_date
+    )
+-- 5. Final output
+SELECT *
+FROM daily_aggregate
+ORDER BY snapshot_date;
 
 -- name: GetVulnerabilitySummaryForImage :one
 SELECT * FROM vulnerability_summary

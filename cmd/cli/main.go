@@ -138,6 +138,15 @@ func main() {
 							return getSummary(ctx, cmd, c, opts)
 						},
 					},
+					{
+						Name:    "timeseries",
+						Aliases: []string{"t"},
+						Usage:   "get vulnerability summary time series for filter",
+						Flags:   commonFlags(opts),
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							return getTimeseries(ctx, cmd, c, opts)
+						},
+					},
 				},
 			},
 			{
@@ -190,6 +199,51 @@ func main() {
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getTimeseries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	opts := parseOptions(cmd, o)
+	format := time.DateOnly
+
+	resp, err := c.GetVulnerabilitySummaryTimeSeries(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	headers := []any{
+		"BucketTime",
+		"Critical",
+		"High",
+		"Medium",
+		"Low",
+		"Unassigned",
+		"RiskScore",
+		"WorkloadCount",
+	}
+	tbl := table.New(headers...)
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, p := range resp.GetPoints() {
+		vals := []any{
+			p.GetBucketTime().AsTime().Format(format),
+			p.GetCritical(),
+			p.GetHigh(),
+			p.GetMedium(),
+			p.GetLow(),
+			p.GetUnassigned(),
+			p.GetRiskScore(),
+			p.GetWorkloadCount(),
+		}
+		tbl.AddRow(
+			vals...,
+		)
+	}
+
+	tbl.Print()
+	return nil
 }
 
 func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {

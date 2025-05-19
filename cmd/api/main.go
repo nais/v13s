@@ -33,6 +33,7 @@ func main() {
 	cfg, err := config.NewConfig()
 	if err != nil {
 		log.WithError(err).Errorf("error when processing configuration")
+		os.Exit(exitCodeRunError)
 	}
 
 	appLogger := setupLogger(log, cfg.LogFormat, cfg.LogLevel)

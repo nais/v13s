@@ -30,6 +30,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		since.Valid = true
 	}
 
+	// TODO: extract this to a function
 	wTypes := []string{"app", "job"}
 	if request.GetFilter().GetWorkloadType() != "" {
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
@@ -148,6 +149,50 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		Coverage:             coverage,
 	}
 	return response, nil
+}
+
+func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
+	if request.GetFilter() == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	since := pgtype.Timestamptz{}
+	if request.GetSince() != nil {
+		since.Time = request.GetSince().AsTime()
+		since.Valid = true
+	}
+	wTypes := []string{"app", "job"}
+	if request.GetFilter().GetWorkloadType() != "" {
+		wTypes = []string{request.GetFilter().GetWorkloadType()}
+	}
+
+	timeSeries, err := s.querier.GetVulnerabilitySummaryTimeSeries(ctx, sql.GetVulnerabilitySummaryTimeSeriesParams{
+		Cluster:       request.GetFilter().Cluster,
+		Namespace:     request.GetFilter().Namespace,
+		WorkloadTypes: wTypes,
+		WorkloadName:  request.GetFilter().Workload,
+		Since:         since,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
+	}
+
+	points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
+		return &vulnerabilities.VulnerabilitySummaryPoint{
+			Critical:      row.Critical,
+			High:          row.High,
+			Medium:        row.Medium,
+			Low:           row.Low,
+			Unassigned:    row.Unassigned,
+			Total:         row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+			RiskScore:     row.RiskScore,
+			WorkloadCount: row.WorkloadCount,
+			BucketTime:    timestamppb.New(row.SnapshotDate.Time),
+		}
+	})
+	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
+		Points: points,
+	}, nil
 }
 
 func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryForImageRequest) (*vulnerabilities.GetVulnerabilitySummaryForImageResponse, error) {

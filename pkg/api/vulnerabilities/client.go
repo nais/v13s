@@ -16,6 +16,7 @@ type Client interface {
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
+	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
@@ -95,13 +96,20 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
 	o := applyOptions(opts...)
-
 	return c.v.GetVulnerabilitySummary(
 		ctx,
 		&GetVulnerabilitySummaryRequest{
 			Filter: o.Filter,
 		},
 	)
+}
+
+func (c *client) GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.GetVulnerabilitySummaryTimeSeries(ctx, &GetVulnerabilitySummaryTimeSeriesRequest{
+		Filter: o.Filter,
+		Since:  o.Since,
+	})
 }
 
 func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error) {
