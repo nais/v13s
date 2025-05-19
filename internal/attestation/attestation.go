@@ -110,11 +110,14 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 	}
 
 	// TODO: find an easier way to get the metadata
+	v.log.Debug("getting bundle...")
 	bundle, err := att.Bundle()
 	if err != nil {
 		v.log.Warnf("failed to get bundle: %v", err)
 		return ret, nil
 	}
+
+	v.log.Debug("getting rekor metadata...")
 	rekor, err := GetRekorMetadata(bundle)
 	if err != nil {
 		v.log.Warnf("failed to get rekor metadata: %v", err)
@@ -136,6 +139,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 
 	ret.Metadata = metadata
 
+	v.log.Debug("returning metadata...")
 	return ret, nil
 }
 

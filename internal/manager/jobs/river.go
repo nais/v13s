@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,9 +40,12 @@ func NewWorkerManager(ctx context.Context, dbUrl string, log logrus.FieldLogger)
 			Level: slog.LevelInfo,
 		})),
 		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {MaxWorkers: 100},
+			river.QueueDefault: {
+				MaxWorkers: 100,
+			},
 		},
-		Workers: workers,
+		JobTimeout: 30 * time.Second,
+		Workers:    workers,
 	})
 	if err != nil {
 		return nil, err
@@ -78,7 +82,11 @@ func (w *WorkerManager) InsertJob(ctx context.Context, jobArgs river.JobArgs) er
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = w.client.InsertTx(ctx, tx, jobArgs, nil)
+	opts := &river.InsertOpts{
+		MaxAttempts: 3,
+	}
+
+	_, err = w.client.InsertTx(ctx, tx, jobArgs, opts)
 	if err != nil {
 		return err
 	}
