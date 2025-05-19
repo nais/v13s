@@ -7,6 +7,7 @@ import (
 	"os"
 
 	promClient "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -18,21 +19,25 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func NewMeterProvider(ctx context.Context, collectors ...promClient.Collector) (*metric.MeterProvider, promClient.Gatherer, error) {
+func NewMeterProvider(ctx context.Context, colls ...promClient.Collector) (*metric.MeterProvider, promClient.Gatherer, error) {
 	res, err := newResource()
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating resource: %w", err)
 	}
 
 	reg := promClient.NewRegistry()
+	reg.MustRegister(
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	)
 	metricExporter, err := prometheus.New(
 		prometheus.WithRegisterer(reg),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
 	}
-	for _, collector := range collectors {
-		if err := reg.Register(collector); err != nil {
+	for _, collector := range colls {
+		if err = reg.Register(collector); err != nil {
 			return nil, nil, fmt.Errorf("registering collector: %w", err)
 		}
 	}
