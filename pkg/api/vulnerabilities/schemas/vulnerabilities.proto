@@ -141,13 +141,6 @@ message VulnerabilitySummaryPoint {
   google.protobuf.Timestamp bucket_time = 9;
 }
 
-enum Resolution {
-  HOUR = 0;
-  DAY = 1;
-  WEEK = 2;
-  MONTH = 3;
-}
-
 message GetVulnerabilityByIdRequest{
   string id = 1;
 }
