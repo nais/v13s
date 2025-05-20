@@ -88,9 +88,6 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 
 	ch := make(chan *ImageVulnerabilityData, 100)
 
-	if err != nil {
-		return fmt.Errorf("creating cost updater runs counter: %w", err)
-	}
 	go func() {
 
 		if err = u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
@@ -116,10 +113,15 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 }
 
 func (u *Updater) MarkUnusedImages(ctx context.Context) error {
-	err := u.querier.MarkUnusedImages(ctx, []sql.ImageState{
-		sql.ImageStateResync,
-		sql.ImageStateFailed,
-		sql.ImageStateInitialized,
+	err := u.querier.MarkUnusedImages(ctx, sql.MarkUnusedImagesParams{
+		ExcludedStates: []sql.ImageState{
+			sql.ImageStateResync,
+			sql.ImageStateFailed,
+			sql.ImageStateInitialized,
+		},
+		ThresholdTime: pgtype.Timestamptz{
+			Time: time.Now().Add(-DefaultMarkAsUntrackedAge),
+		},
 	})
 	if err != nil {
 		return err

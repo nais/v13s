@@ -132,12 +132,18 @@ UPDATE images
 SET state      = 'unused',
     updated_at = NOW()
 WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
+  AND images.updated_at < $1
   AND images.state != 'unused'
-  AND images.state != ANY($1::image_state[])
+  AND images.state != ANY($2::image_state[])
 `
 
-func (q *Queries) MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error {
-	_, err := q.db.Exec(ctx, markUnusedImages, excludedStates)
+type MarkUnusedImagesParams struct {
+	ThresholdTime  pgtype.Timestamptz
+	ExcludedStates []ImageState
+}
+
+func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error {
+	_, err := q.db.Exec(ctx, markUnusedImages, arg.ThresholdTime, arg.ExcludedStates)
 	return err
 }
 

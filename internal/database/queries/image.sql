@@ -52,6 +52,7 @@ UPDATE images
 SET state      = 'unused',
     updated_at = NOW()
 WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
+  AND images.updated_at < @threshold_time
   AND images.state != 'unused'
   AND images.state != ANY(@excluded_states::image_state[]);
 
