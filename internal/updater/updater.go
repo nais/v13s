@@ -189,7 +189,10 @@ func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVul
 		"num_errors": len(errs),
 	}).Infof("vulnerability data has been updated")
 
-	u.querier.RefreshVulnerabilitySummary(ctx)
+	if err := u.querier.RefreshVulnerabilitySummary(ctx); err != nil {
+		u.log.Errorf("failed to refresh vulnerability summary: %v", err)
+		return err
+	}
 
 	return nil
 }
