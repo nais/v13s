@@ -648,6 +648,53 @@ func (_c *MockQuerier_CreateWorkload_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// DeleteSourceRef provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteSourceRef")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, DeleteSourceRefParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_DeleteSourceRef_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteSourceRef'
+type MockQuerier_DeleteSourceRef_Call struct {
+	*mock.Call
+}
+
+// DeleteSourceRef is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg DeleteSourceRefParams
+func (_e *MockQuerier_Expecter) DeleteSourceRef(ctx interface{}, arg interface{}) *MockQuerier_DeleteSourceRef_Call {
+	return &MockQuerier_DeleteSourceRef_Call{Call: _e.mock.On("DeleteSourceRef", ctx, arg)}
+}
+
+func (_c *MockQuerier_DeleteSourceRef_Call) Run(run func(ctx context.Context, arg DeleteSourceRefParams)) *MockQuerier_DeleteSourceRef_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(DeleteSourceRefParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteSourceRef_Call) Return(_a0 error) *MockQuerier_DeleteSourceRef_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteSourceRef_Call) RunAndReturn(run func(context.Context, DeleteSourceRefParams) error) *MockQuerier_DeleteSourceRef_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteWorkload provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error) {
 	ret := _m.Called(ctx, arg)
@@ -1231,6 +1278,65 @@ func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) Return(_a0 *Vulnerab
 }
 
 func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) RunAndReturn(run func(context.Context, GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)) *MockQuerier_GetVulnerabilitySummaryForImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetVulnerabilitySummaryTimeSeries provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerabilitySummaryTimeSeries")
+	}
+
+	var r0 []*GetVulnerabilitySummaryTimeSeriesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, GetVulnerabilitySummaryTimeSeriesParams) []*GetVulnerabilitySummaryTimeSeriesRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetVulnerabilitySummaryTimeSeriesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, GetVulnerabilitySummaryTimeSeriesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetVulnerabilitySummaryTimeSeries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerabilitySummaryTimeSeries'
+type MockQuerier_GetVulnerabilitySummaryTimeSeries_Call struct {
+	*mock.Call
+}
+
+// GetVulnerabilitySummaryTimeSeries is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg GetVulnerabilitySummaryTimeSeriesParams
+func (_e *MockQuerier_Expecter) GetVulnerabilitySummaryTimeSeries(ctx interface{}, arg interface{}) *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call {
+	return &MockQuerier_GetVulnerabilitySummaryTimeSeries_Call{Call: _e.mock.On("GetVulnerabilitySummaryTimeSeries", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call) Run(run func(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams)) *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(GetVulnerabilitySummaryTimeSeriesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call) Return(_a0 []*GetVulnerabilitySummaryTimeSeriesRow, _a1 error) *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call) RunAndReturn(run func(context.Context, GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)) *MockQuerier_GetVulnerabilitySummaryTimeSeries_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1917,17 +2023,17 @@ func (_c *MockQuerier_MarkImagesForResync_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// MarkUnusedImages provides a mock function with given fields: ctx, excludedStates
-func (_m *MockQuerier) MarkUnusedImages(ctx context.Context, excludedStates []ImageState) error {
-	ret := _m.Called(ctx, excludedStates)
+// MarkUnusedImages provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error {
+	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkUnusedImages")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []ImageState) error); ok {
-		r0 = rf(ctx, excludedStates)
+	if rf, ok := ret.Get(0).(func(context.Context, MarkUnusedImagesParams) error); ok {
+		r0 = rf(ctx, arg)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1942,14 +2048,14 @@ type MockQuerier_MarkUnusedImages_Call struct {
 
 // MarkUnusedImages is a helper method to define mock.On call
 //   - ctx context.Context
-//   - excludedStates []ImageState
-func (_e *MockQuerier_Expecter) MarkUnusedImages(ctx interface{}, excludedStates interface{}) *MockQuerier_MarkUnusedImages_Call {
-	return &MockQuerier_MarkUnusedImages_Call{Call: _e.mock.On("MarkUnusedImages", ctx, excludedStates)}
+//   - arg MarkUnusedImagesParams
+func (_e *MockQuerier_Expecter) MarkUnusedImages(ctx interface{}, arg interface{}) *MockQuerier_MarkUnusedImages_Call {
+	return &MockQuerier_MarkUnusedImages_Call{Call: _e.mock.On("MarkUnusedImages", ctx, arg)}
 }
 
-func (_c *MockQuerier_MarkUnusedImages_Call) Run(run func(ctx context.Context, excludedStates []ImageState)) *MockQuerier_MarkUnusedImages_Call {
+func (_c *MockQuerier_MarkUnusedImages_Call) Run(run func(ctx context.Context, arg MarkUnusedImagesParams)) *MockQuerier_MarkUnusedImages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]ImageState))
+		run(args[0].(context.Context), args[1].(MarkUnusedImagesParams))
 	})
 	return _c
 }
@@ -1959,7 +2065,7 @@ func (_c *MockQuerier_MarkUnusedImages_Call) Return(_a0 error) *MockQuerier_Mark
 	return _c
 }
 
-func (_c *MockQuerier_MarkUnusedImages_Call) RunAndReturn(run func(context.Context, []ImageState) error) *MockQuerier_MarkUnusedImages_Call {
+func (_c *MockQuerier_MarkUnusedImages_Call) RunAndReturn(run func(context.Context, MarkUnusedImagesParams) error) *MockQuerier_MarkUnusedImages_Call {
 	_c.Call.Return(run)
 	return _c
 }

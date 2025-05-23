@@ -2,7 +2,10 @@ package database_test
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/nais/v13s/internal/updater"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -26,9 +29,14 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		createTestdata(t, db, "testimage1", "v1", true)
 
 		err = db.MarkUnusedImages(ctx,
-			[]sql.ImageState{
-				sql.ImageStateResync,
-				sql.ImageStateFailed,
+			sql.MarkUnusedImagesParams{
+				ThresholdTime: pgtype.Timestamptz{
+					Time: time.Now().Add(-updater.DefaultMarkAsUntrackedAge),
+				},
+				ExcludedStates: []sql.ImageState{
+					sql.ImageStateResync,
+					sql.ImageStateFailed,
+				},
 			})
 		assert.NoError(t, err)
 		image, err := db.GetImage(ctx, sql.GetImageParams{
@@ -62,9 +70,14 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = db.MarkUnusedImages(ctx,
-			[]sql.ImageState{
-				sql.ImageStateResync,
-				sql.ImageStateFailed,
+			sql.MarkUnusedImagesParams{
+				ThresholdTime: pgtype.Timestamptz{
+					Time: time.Now().Add(-updater.DefaultMarkAsUntrackedAge),
+				},
+				ExcludedStates: []sql.ImageState{
+					sql.ImageStateResync,
+					sql.ImageStateFailed,
+				},
 			})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateResync, image.State)
@@ -80,12 +93,17 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = db.MarkUnusedImages(ctx,
-			[]sql.ImageState{
-				sql.ImageStateResync,
-				sql.ImageStateFailed,
+			sql.MarkUnusedImagesParams{
+				ThresholdTime: pgtype.Timestamptz{
+					Time:  time.Now().Add(1 * time.Minute),
+					Valid: true,
+				},
+				ExcludedStates: []sql.ImageState{
+					sql.ImageStateResync,
+					sql.ImageStateFailed,
+				},
 			})
 		assert.NoError(t, err)
-
 		image, err := db.GetImage(ctx, sql.GetImageParams{
 			Name: "testimage",
 			Tag:  "old",
