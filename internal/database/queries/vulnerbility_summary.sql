@@ -134,7 +134,7 @@ WITH snapshot_start_date AS (
         (
             SELECT MAX(snapshot_date)
             FROM mv_vuln_daily_by_workload
-            WHERE snapshot_date < sqlc.narg('since')::DATE
+            WHERE snapshot_date < sqlc.narg('since')::TIMESTAMPTZ
         ),
         sqlc.narg('since')::DATE
     ) AS start_date

@@ -156,7 +156,7 @@ WITH snapshot_start_date AS (
         (
             SELECT MAX(snapshot_date)
             FROM mv_vuln_daily_by_workload
-            WHERE snapshot_date < $1::DATE
+            WHERE snapshot_date < $1::TIMESTAMPTZ
         ),
         $1::DATE
     ) AS start_date
@@ -187,7 +187,7 @@ ORDER BY snapshot_date
 `
 
 type GetVulnerabilitySummaryTimeSeriesParams struct {
-	Since         pgtype.Date
+	Since         pgtype.Timestamptz
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
