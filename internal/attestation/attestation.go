@@ -1,11 +1,14 @@
 package attestation
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
@@ -74,6 +77,44 @@ type Attestation struct {
 	Metadata  map[string]string           `json:"metadata"`
 }
 
+func (a *Attestation) Compress() ([]byte, error) {
+	data, err := json.Marshal(a)
+	if err != nil {
+		return nil, err
+	}
+
+	var buffer bytes.Buffer
+	writer := gzip.NewWriter(&buffer)
+	_, err = writer.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func Decompress(data []byte) (*Attestation, error) {
+	buffer := bytes.NewBuffer(data)
+	reader, err := gzip.NewReader(buffer)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	var attestation *Attestation
+	err = json.Unmarshal(b, &attestation)
+	if err != nil {
+		return nil, err
+	}
+	return attestation, nil
+}
+
 func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
 	ref, err := name.ParseReference(image)
 	if err != nil {
@@ -82,7 +123,6 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 
 	verified, err := v.verifyFunc(ctx, ref, v.opts)
 	if err != nil {
-		v.log.Warn("verifying image attestations")
 		return nil, err
 	}
 	att := verified[len(verified)-1]
@@ -102,7 +142,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 	}).Debug("attestation verified and parsed statement")
 
 	if statement.PredicateType != in_toto.PredicateCycloneDX {
-		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)
+		return nil, model.ToUnrecoverableError(fmt.Errorf("unsupported predicate type: %s", statement.PredicateType), "attestation")
 	}
 
 	ret := &Attestation{

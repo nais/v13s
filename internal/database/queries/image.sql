@@ -56,6 +56,13 @@ WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND ima
   AND images.state != 'unused'
   AND images.state != ANY(@excluded_states::image_state[]);
 
+-- name: ListUnusedImages :many
+SELECT name, tag
+FROM images
+WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
+   AND (sqlc.narg('name')::TEXT IS NULL OR name = sqlc.narg('name')::TEXT)
+ORDER BY updated_at;
+
 -- name: MarkImagesForResync :exec
 UPDATE images
 SET state      = 'resync',

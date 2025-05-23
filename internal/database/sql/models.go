@@ -245,11 +245,12 @@ type Image struct {
 
 type SourceRef struct {
 	ID         pgtype.UUID
-	WorkloadID pgtype.UUID
 	SourceID   pgtype.UUID
 	SourceType string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
+	ImageName  string
+	ImageTag   string
 }
 
 type SuppressedVulnerability struct {

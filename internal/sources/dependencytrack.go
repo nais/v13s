@@ -71,22 +71,10 @@ func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
 }
 
-func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
-	d.log.Debugf("uploading sbom for workload %v", workload)
+func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+	d.log.Debugf("uploading sbom for workload %v", imageName)
 
-	projectId, err := d.client.CreateOrUpdateProjectWithSbom(
-		ctx,
-		att,
-		&dependencytrack.WorkloadRef{
-			Cluster:   workload.Cluster,
-			Namespace: workload.Namespace,
-			Type:      workload.Type,
-			Name:      workload.Name,
-			ImageName: workload.ImageName,
-			ImageTag:  workload.ImageTag,
-		},
-	)
-
+	projectId, err := d.client.CreateProjectWithSbom(ctx, sbom, imageName, imageTag)
 	if err != nil {
 		if errors.As(err, &dependencytrack.ClientError{}) {
 			return uuid.New(), model.ToUnrecoverableError(err, "dependencytrack")
@@ -96,6 +84,7 @@ func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload 
 		}
 		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
 	}
+
 	id, err := uuid.Parse(projectId)
 	if err != nil {
 		return uuid.New(), fmt.Errorf("parsing project id: %w", err)
@@ -103,37 +92,22 @@ func (d *dependencytrackSource) UploadAttestation(ctx context.Context, workload 
 	return id, nil
 }
 
-func (d *dependencytrackSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
-	d.log.Debugf("remove references for workload %s", workload)
-	// TODO: use ref uuid to get the project
-	p, err := d.client.GetProject(ctx, workload.ImageName, workload.ImageTag)
+func (d *dependencytrackSource) Delete(ctx context.Context, imageName string, imageTag string) error {
+	p, err := d.client.GetProject(ctx, imageName, imageTag)
 	if err != nil {
 		return fmt.Errorf("getting project: %w", err)
 	}
 	if p == nil {
-		d.log.Infof("no project found for workload %v", workload)
+		d.log.Debugf("no project found for image %s:%s", imageName, imageTag)
 		return nil
 	}
 
-	t := tags{tags: p.Tags}
-	t.remove(workload)
-
-	if t.hasWorkloadTag() {
-		p.Tags = t.tags
-		_, err = d.client.UpdateProject(ctx, p)
-		if err != nil {
-			return fmt.Errorf("updating project: %w", err)
-		}
-		d.log.Debugf("removed workload tags from project %s", *p.Name)
-		return nil
-	}
-
-	err = d.client.DeleteProject(ctx, ref.String())
+	err = d.client.DeleteProject(ctx, *p.Uuid)
 	if err != nil {
 		return fmt.Errorf("deleting project: %w", err)
 	}
 
-	d.log.Debugf("deleted project %s", ref.String())
+	d.log.Debugf("deleted project %s:%s", imageName, imageTag)
 	return nil
 }
 

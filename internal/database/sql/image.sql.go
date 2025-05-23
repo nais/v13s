@@ -86,6 +86,39 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 	return items, nil
 }
 
+const listUnusedImages = `-- name: ListUnusedImages :many
+SELECT name, tag
+FROM images
+WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
+   AND ($1::TEXT IS NULL OR name = $1::TEXT)
+ORDER BY updated_at
+`
+
+type ListUnusedImagesRow struct {
+	Name string
+	Tag  string
+}
+
+func (q *Queries) ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error) {
+	rows, err := q.db.Query(ctx, listUnusedImages, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListUnusedImagesRow{}
+	for rows.Next() {
+		var i ListUnusedImagesRow
+		if err := rows.Scan(&i.Name, &i.Tag); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markImagesAsUntracked = `-- name: MarkImagesAsUntracked :exec
 UPDATE images
 SET

@@ -184,7 +184,7 @@ UPDATE
         workloads.state = 'resync' or
         (workloads.state != 'processing' and ( workloads.image_name != $5 or workloads.image_tag != $6 ))
     RETURNING
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    id
 `
 
 type InitializeWorkloadParams struct {
@@ -196,7 +196,7 @@ type InitializeWorkloadParams struct {
 	ImageTag     string
 }
 
-func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (*Workload, error) {
+func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, initializeWorkload,
 		arg.Name,
 		arg.WorkloadType,
@@ -205,20 +205,9 @@ func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkload
 		arg.ImageName,
 		arg.ImageTag,
 	)
-	var i Workload
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.WorkloadType,
-		&i.Namespace,
-		&i.Cluster,
-		&i.ImageName,
-		&i.ImageTag,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.State,
-	)
-	return &i, err
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many

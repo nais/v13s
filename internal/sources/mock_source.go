@@ -24,17 +24,17 @@ func (_m *MockSource) EXPECT() *MockSource_Expecter {
 	return &MockSource_Expecter{mock: &_m.Mock}
 }
 
-// DeleteWorkload provides a mock function with given fields: ctx, ref, workload
-func (_m *MockSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workload *Workload) error {
-	ret := _m.Called(ctx, ref, workload)
+// Delete provides a mock function with given fields: ctx, imageName, imageTag
+func (_m *MockSource) Delete(ctx context.Context, imageName string, imageTag string) error {
+	ret := _m.Called(ctx, imageName, imageTag)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DeleteWorkload")
+		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, *Workload) error); ok {
-		r0 = rf(ctx, ref, workload)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, imageName, imageTag)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -42,32 +42,32 @@ func (_m *MockSource) DeleteWorkload(ctx context.Context, ref uuid.UUID, workloa
 	return r0
 }
 
-// MockSource_DeleteWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteWorkload'
-type MockSource_DeleteWorkload_Call struct {
+// MockSource_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type MockSource_Delete_Call struct {
 	*mock.Call
 }
 
-// DeleteWorkload is a helper method to define mock.On call
+// Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - ref uuid.UUID
-//   - workload *Workload
-func (_e *MockSource_Expecter) DeleteWorkload(ctx interface{}, ref interface{}, workload interface{}) *MockSource_DeleteWorkload_Call {
-	return &MockSource_DeleteWorkload_Call{Call: _e.mock.On("DeleteWorkload", ctx, ref, workload)}
+//   - imageName string
+//   - imageTag string
+func (_e *MockSource_Expecter) Delete(ctx interface{}, imageName interface{}, imageTag interface{}) *MockSource_Delete_Call {
+	return &MockSource_Delete_Call{Call: _e.mock.On("Delete", ctx, imageName, imageTag)}
 }
 
-func (_c *MockSource_DeleteWorkload_Call) Run(run func(ctx context.Context, ref uuid.UUID, workload *Workload)) *MockSource_DeleteWorkload_Call {
+func (_c *MockSource_Delete_Call) Run(run func(ctx context.Context, imageName string, imageTag string)) *MockSource_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(*Workload))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *MockSource_DeleteWorkload_Call) Return(_a0 error) *MockSource_DeleteWorkload_Call {
+func (_c *MockSource_Delete_Call) Return(_a0 error) *MockSource_Delete_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSource_DeleteWorkload_Call) RunAndReturn(run func(context.Context, uuid.UUID, *Workload) error) *MockSource_DeleteWorkload_Call {
+func (_c *MockSource_Delete_Call) RunAndReturn(run func(context.Context, string, string) error) *MockSource_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -332,9 +332,9 @@ func (_c *MockSource_SuppressVulnerability_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// UploadAttestation provides a mock function with given fields: ctx, workload, att
-func (_m *MockSource) UploadAttestation(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
-	ret := _m.Called(ctx, workload, att)
+// UploadAttestation provides a mock function with given fields: ctx, imageName, imageTag, att
+func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+	ret := _m.Called(ctx, imageName, imageTag, att)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UploadAttestation")
@@ -342,19 +342,19 @@ func (_m *MockSource) UploadAttestation(ctx context.Context, workload *Workload,
 
 	var r0 uuid.UUID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Workload, *in_toto.CycloneDXStatement) (uuid.UUID, error)); ok {
-		return rf(ctx, workload, att)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, *in_toto.CycloneDXStatement) (uuid.UUID, error)); ok {
+		return rf(ctx, imageName, imageTag, att)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *Workload, *in_toto.CycloneDXStatement) uuid.UUID); ok {
-		r0 = rf(ctx, workload, att)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, *in_toto.CycloneDXStatement) uuid.UUID); ok {
+		r0 = rf(ctx, imageName, imageTag, att)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *Workload, *in_toto.CycloneDXStatement) error); ok {
-		r1 = rf(ctx, workload, att)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, *in_toto.CycloneDXStatement) error); ok {
+		r1 = rf(ctx, imageName, imageTag, att)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -369,15 +369,16 @@ type MockSource_UploadAttestation_Call struct {
 
 // UploadAttestation is a helper method to define mock.On call
 //   - ctx context.Context
-//   - workload *Workload
+//   - imageName string
+//   - imageTag string
 //   - att *in_toto.CycloneDXStatement
-func (_e *MockSource_Expecter) UploadAttestation(ctx interface{}, workload interface{}, att interface{}) *MockSource_UploadAttestation_Call {
-	return &MockSource_UploadAttestation_Call{Call: _e.mock.On("UploadAttestation", ctx, workload, att)}
+func (_e *MockSource_Expecter) UploadAttestation(ctx interface{}, imageName interface{}, imageTag interface{}, att interface{}) *MockSource_UploadAttestation_Call {
+	return &MockSource_UploadAttestation_Call{Call: _e.mock.On("UploadAttestation", ctx, imageName, imageTag, att)}
 }
 
-func (_c *MockSource_UploadAttestation_Call) Run(run func(ctx context.Context, workload *Workload, att *in_toto.CycloneDXStatement)) *MockSource_UploadAttestation_Call {
+func (_c *MockSource_UploadAttestation_Call) Run(run func(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement)) *MockSource_UploadAttestation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*Workload), args[2].(*in_toto.CycloneDXStatement))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(*in_toto.CycloneDXStatement))
 	})
 	return _c
 }
@@ -387,7 +388,7 @@ func (_c *MockSource_UploadAttestation_Call) Return(_a0 uuid.UUID, _a1 error) *M
 	return _c
 }
 
-func (_c *MockSource_UploadAttestation_Call) RunAndReturn(run func(context.Context, *Workload, *in_toto.CycloneDXStatement) (uuid.UUID, error)) *MockSource_UploadAttestation_Call {
+func (_c *MockSource_UploadAttestation_Call) RunAndReturn(run func(context.Context, string, string, *in_toto.CycloneDXStatement) (uuid.UUID, error)) *MockSource_UploadAttestation_Call {
 	_c.Call.Return(run)
 	return _c
 }
