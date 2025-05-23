@@ -153,52 +153,24 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 const getVulnerabilitySummaryTimeSeries = `-- name: GetVulnerabilitySummaryTimeSeries :many
 WITH snapshot_start_date AS (
     SELECT COALESCE(
-                   (
-                       SELECT MAX(updated_at)::DATE
-                       FROM vulnerability_summary
-                       WHERE updated_at < $1::TIMESTAMPTZ
-               ),
+        (
+            SELECT MAX(snapshot_date)
+            FROM mv_vuln_daily_by_workload
+            WHERE snapshot_date < $1::DATE
+        ),
         $1::DATE
     ) AS start_date
 ),
-     date_series AS (
-         SELECT generate_series(
-                        (SELECT start_date FROM snapshot_start_date),
-                        CURRENT_DATE,
-                        interval '1 day'
-                )::date AS snapshot_date
-     ),
-     all_workloads AS (
-         SELECT id AS workload_id, image_name
-         FROM workloads w
-            WHERE ($2::TEXT IS NULL OR w.cluster = $2::TEXT)
-              AND ($3::TEXT IS NULL OR w.namespace = $3::TEXT)
-              AND ($4::TEXT[] IS NULL OR w.workload_type = ANY($4::TEXT[]))
-              AND ($5::TEXT IS NULL OR w.name = $5::TEXT)
-     ),
-     workload_dates AS (
-         SELECT w.workload_id, w.image_name, d.snapshot_date
-         FROM all_workloads w
-                  CROSS JOIN date_series d
-     ),
-     latest_summary_per_day AS (
-         SELECT DISTINCT ON (wd.workload_id, wd.snapshot_date)
-    wd.snapshot_date,
-    wd.workload_id,
-    vs.critical,
-    vs.high,
-    vs.medium,
-    vs.low,
-    vs.unassigned,
-    vs.risk_score
-FROM workload_dates wd
-    LEFT JOIN vulnerability_summary vs
-ON wd.image_name = vs.image_name
-    AND vs.updated_at::date <= wd.snapshot_date
-WHERE vs IS NOT NULL
-ORDER BY wd.workload_id, wd.snapshot_date, vs.updated_at DESC
-    ),
-    daily_aggregate AS (
+filtered_data AS (
+    SELECT snapshot_date, workload_id, cluster, namespace, workload_type, workload_name, critical, high, medium, low, unassigned, risk_score
+    FROM mv_vuln_daily_by_workload
+    WHERE snapshot_date >= (SELECT start_date FROM snapshot_start_date)
+      AND snapshot_date <= CURRENT_DATE
+      AND ($2::TEXT IS NULL OR cluster = $2::TEXT)
+      AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
+      AND ($4::TEXT[] IS NULL OR workload_type = ANY($4::TEXT[]))
+      AND ($5::TEXT IS NULL OR workload_name = $5::TEXT)
+)
 SELECT
     snapshot_date,
     COUNT(DISTINCT workload_id)::INT4 AS workload_count,
@@ -209,16 +181,13 @@ SELECT
     SUM(unassigned)::INT4 AS unassigned,
     SUM(critical + high + medium + low + unassigned)::INT4 AS total,
     SUM(risk_score)::INT4 AS risk_score
-FROM latest_summary_per_day
+FROM filtered_data
 GROUP BY snapshot_date
-    )
-SELECT snapshot_date, workload_count, critical, high, medium, low, unassigned, total, risk_score
-FROM daily_aggregate
 ORDER BY snapshot_date
 `
 
 type GetVulnerabilitySummaryTimeSeriesParams struct {
-	Since         pgtype.Timestamptz
+	Since         pgtype.Date
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
@@ -237,11 +206,6 @@ type GetVulnerabilitySummaryTimeSeriesRow struct {
 	RiskScore     int32
 }
 
-// 1. Generate list of dates from that starting point to today
-// 2. Join each workload with each date
-// 3. For each workload/date, get latest summary up to that date
-// 4. Aggregate totals per day
-// 5. Final output
 func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error) {
 	rows, err := q.db.Query(ctx, getVulnerabilitySummaryTimeSeries,
 		arg.Since,
@@ -437,4 +401,13 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		return nil, err
 	}
 	return items, nil
+}
+
+const refreshVulnerabilitySummary = `-- name: RefreshVulnerabilitySummary :exec
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_daily_by_workload
+`
+
+func (q *Queries) RefreshVulnerabilitySummary(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, refreshVulnerabilitySummary)
+	return err
 }

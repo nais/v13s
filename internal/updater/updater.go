@@ -188,6 +188,9 @@ func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVul
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_errors": len(errs),
 	}).Infof("vulnerability data has been updated")
+
+	u.querier.RefreshVulnerabilitySummary(ctx)
+
 	return nil
 }
 

@@ -32,11 +32,6 @@ type Querier interface {
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
-	// 1. Generate list of dates from that starting point to today
-	// 2. Join each workload with each date
-	// 3. For each workload/date, get latest summary up to that date
-	// 4. Aggregate totals per day
-	// 5. Final output
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
@@ -51,6 +46,7 @@ type Querier interface {
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error
+	RefreshVulnerabilitySummary(ctx context.Context) error
 	ResetDatabase(ctx context.Context) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
