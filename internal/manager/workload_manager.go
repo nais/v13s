@@ -129,6 +129,9 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 	if err != nil {
 		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
 		if errors.As(err, &noMatchAttestationError) {
+			if err.Error() != "no matching attestations: " {
+				m.log.WithError(err).Warn("could not get attestation")
+			}
 			err = m.setWorkloadState(ctx, workloadId, sql.WorkloadStateNoAttestation)
 			if err != nil {
 				return err
