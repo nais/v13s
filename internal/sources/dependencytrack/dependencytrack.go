@@ -170,7 +170,7 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 		project, resp, err := req.Execute()
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusConflict {
-				return nil, fmt.Errorf("project already exists")
+				return nil, convertError(fmt.Errorf("project %s:%s already exists", name, version), "CreateProject", resp)
 			}
 			return nil, convertError(err, "CreateProject", resp)
 		}
