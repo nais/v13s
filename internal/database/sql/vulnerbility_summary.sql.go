@@ -154,7 +154,7 @@ const getVulnerabilitySummaryTimeSeries = `-- name: GetVulnerabilitySummaryTimeS
 WITH snapshot_start_date AS (
     SELECT COALESCE(
         (
-            SELECT MAX(snapshot_date)
+            SELECT (MAX(snapshot_date) + INTERVAL '1 day')::date
             FROM mv_vuln_daily_by_workload
             WHERE snapshot_date < $1::TIMESTAMPTZ
         ),
@@ -162,7 +162,7 @@ WITH snapshot_start_date AS (
     ) AS start_date
 ),
 filtered_data AS (
-    SELECT snapshot_date, workload_id, cluster, namespace, workload_type, workload_name, critical, high, medium, low, unassigned, risk_score
+    SELECT snapshot_date, workload_id, workload_name, cluster, namespace, workload_type, critical, high, medium, low, unassigned, total, risk_score
     FROM mv_vuln_daily_by_workload
     WHERE snapshot_date >= (SELECT start_date FROM snapshot_start_date)
       AND snapshot_date <= CURRENT_DATE
