@@ -132,7 +132,7 @@ FROM filtered_workloads fw
 WITH snapshot_start_date AS (
     SELECT COALESCE(
         (
-            SELECT MAX(snapshot_date)
+            SELECT (MAX(snapshot_date) + INTERVAL '1 day')::date
             FROM mv_vuln_daily_by_workload
             WHERE snapshot_date < sqlc.narg('since')::TIMESTAMPTZ
         ),
@@ -162,7 +162,6 @@ SELECT
 FROM filtered_data
 GROUP BY snapshot_date
 ORDER BY snapshot_date;
-
 
 -- name: RefreshVulnerabilitySummary :exec
 REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_daily_by_workload;
