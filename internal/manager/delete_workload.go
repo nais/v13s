@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"errors"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
@@ -46,7 +48,10 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 		WorkloadType: string(w.Type),
 	})
 	if err != nil {
-		d.log.WithError(err).Error("Failed to delete workload")
+		d.log.WithError(err).Error("failed to delete workload")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return handleJobErr(err)
+		}
 		return err
 	}
 
