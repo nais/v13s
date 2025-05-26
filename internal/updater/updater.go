@@ -67,6 +67,12 @@ func (u *Updater) Run(ctx context.Context) {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
+
+	go runAtInterval(ctx, 13*time.Hour, "refresh materialized view for vulnerability data", u.log, func() {
+		if err := u.querier.RefreshVulnerabilitySummary(ctx); err != nil {
+			u.log.Errorf("failed to refresh vulnerability summary: %v", err)
+		}
+	})
 }
 
 // ResyncImages Resync images that have state 'initialized' or 'resync'
@@ -188,6 +194,7 @@ func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVul
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_errors": len(errs),
 	}).Infof("vulnerability data has been updated")
+
 	return nil
 }
 

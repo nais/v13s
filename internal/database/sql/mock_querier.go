@@ -2070,6 +2070,52 @@ func (_c *MockQuerier_MarkUnusedImages_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// RefreshVulnerabilitySummary provides a mock function with given fields: ctx
+func (_m *MockQuerier) RefreshVulnerabilitySummary(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshVulnerabilitySummary")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_RefreshVulnerabilitySummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshVulnerabilitySummary'
+type MockQuerier_RefreshVulnerabilitySummary_Call struct {
+	*mock.Call
+}
+
+// RefreshVulnerabilitySummary is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) RefreshVulnerabilitySummary(ctx interface{}) *MockQuerier_RefreshVulnerabilitySummary_Call {
+	return &MockQuerier_RefreshVulnerabilitySummary_Call{Call: _e.mock.On("RefreshVulnerabilitySummary", ctx)}
+}
+
+func (_c *MockQuerier_RefreshVulnerabilitySummary_Call) Run(run func(ctx context.Context)) *MockQuerier_RefreshVulnerabilitySummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_RefreshVulnerabilitySummary_Call) Return(_a0 error) *MockQuerier_RefreshVulnerabilitySummary_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_RefreshVulnerabilitySummary_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_RefreshVulnerabilitySummary_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ResetDatabase provides a mock function with given fields: ctx
 func (_m *MockQuerier) ResetDatabase(ctx context.Context) error {
 	ret := _m.Called(ctx)
