@@ -3,7 +3,7 @@
 CREATE MATERIALIZED VIEW mv_vuln_daily_by_workload AS
 WITH date_series AS (
     SELECT generate_series(
-        (SELECT MIN(updated_at)::date FROM vulnerability_summary),
+        (SELECT MIN(created_at)::date FROM vulnerability_summary),
         CURRENT_DATE,
         interval '1 day'
     )::date AS snapshot_date
@@ -50,9 +50,9 @@ latest_summary_per_day AS (
     FROM workload_dates wd
     LEFT JOIN vulnerability_summary vs
         ON wd.image_name = vs.image_name
-        AND vs.updated_at::date <= wd.snapshot_date
+        AND vs.created_at::date <= wd.snapshot_date
     WHERE vs IS NOT NULL
-    ORDER BY wd.workload_id, wd.snapshot_date, vs.updated_at DESC
+    ORDER BY wd.workload_id, wd.snapshot_date, vs.created_at DESC
 )
 SELECT
     snapshot_date,
@@ -70,7 +70,7 @@ SELECT
     COALESCE(risk_score, 0)::INT4 AS risk_score
 FROM latest_summary_per_day;
 
-CREATE UNIQUE INDEX CONCURRENTLY idx_mv_vuln_daily_by_workload_unique
+CREATE UNIQUE INDEX idx_mv_vuln_daily_by_workload_unique
 ON mv_vuln_daily_by_workload (snapshot_date, workload_id);
 CREATE INDEX ON mv_vuln_daily_by_workload (workload_name, snapshot_date);
 CREATE INDEX ON mv_vuln_daily_by_workload (cluster, namespace, workload_type, snapshot_date);
