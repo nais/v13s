@@ -131,3 +131,13 @@ values:
     computed:
       template: |
         {{.Env.v13s_serviceaccount_email | quote}}
+
+  resources.requests.cpu:
+    displayName: CPU requests
+    config:
+      type: string
+
+  resources.requests.memory:
+    displayName: Memory requests
+    config:
+      type: string
