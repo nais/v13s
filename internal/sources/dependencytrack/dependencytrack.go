@@ -393,7 +393,7 @@ func (c *dependencyTrackClient) DeleteProject(ctx context.Context, uuid string) 
 	return c.withAuthContext(ctx, func(apiKeyCtx context.Context) error {
 		resp, err := c.client.ProjectAPI.DeleteProject(apiKeyCtx, uuid).Execute()
 		if err != nil {
-			return fmt.Errorf("failed to delete project: %w details: %s", err, parseErrorResponseBody(resp))
+			return convertError(err, "DeleteProject", resp)
 		}
 		return nil
 	})

@@ -52,7 +52,7 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 	err = r.source.Delete(ctx, job.Args.ImageName, job.Args.ImageTag)
 	if err != nil {
 		r.log.WithError(err).Error("failed to delete workload from source")
-		return river.JobCancel(err)
+		return handleJobErr(err)
 	}
 	return nil
 }
