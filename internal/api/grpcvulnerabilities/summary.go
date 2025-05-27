@@ -11,17 +11,18 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
+func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilitiespb.ListVulnerabilitySummariesRequest) (*vulnerabilitiespb.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
 	}
 
 	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
+		request.Filter = &vulnerabilitiespb.Filter{}
 	}
 
 	since := pgtype.Timestamptz{}
@@ -52,7 +53,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	}
 
 	total := 0
-	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilitiespb.WorkloadSummary {
 		total = int(row.TotalCount)
 		// if a workload does not have a sbom, the image name and tag will be nil from vulnerabilities_summary
 		imageName := row.CurrentImageName
@@ -63,9 +64,9 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		if row.ImageTag != nil {
 			imageTag = *row.ImageTag
 		}
-		return &vulnerabilities.WorkloadSummary{
+		return &vulnerabilitiespb.WorkloadSummary{
 			Id: row.ID.String(),
-			Workload: &vulnerabilities.Workload{
+			Workload: &vulnerabilitiespb.Workload{
 				Cluster:   row.Cluster,
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
@@ -74,7 +75,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				ImageTag:  imageTag,
 			},
 			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
-			VulnerabilitySummary: &vulnerabilities.Summary{
+			VulnerabilitySummary: &vulnerabilitiespb.Summary{
 				Critical:    safeInt(row.Critical),
 				High:        safeInt(row.High),
 				Medium:      safeInt(row.Medium),
@@ -92,7 +93,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	if err != nil {
 		return nil, err
 	}
-	response := &vulnerabilities.ListVulnerabilitySummariesResponse{
+	response := &vulnerabilitiespb.ListVulnerabilitySummariesResponse{
 		Nodes:    ws,
 		PageInfo: pageInfo,
 	}
@@ -101,9 +102,9 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 
 // TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
 // TLDR: make distinction between no summary found and summary found with 0 values
-func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
+func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilitiespb.GetVulnerabilitySummaryRequest) (*vulnerabilitiespb.GetVulnerabilitySummaryResponse, error) {
 	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
+		request.Filter = &vulnerabilitiespb.Filter{}
 	}
 
 	wTypes := []string{"app", "job"}
@@ -125,7 +126,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		row = &sql.GetVulnerabilitySummaryRow{}
 	}
 
-	summary := &vulnerabilities.Summary{
+	summary := &vulnerabilitiespb.Summary{
 		Critical:   row.Critical,
 		High:       row.High,
 		Medium:     row.Medium,
@@ -141,7 +142,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		coverage = float32(row.WorkloadWithSbom) / float32(row.WorkloadCount) * 100
 	}
 
-	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
+	response := &vulnerabilitiespb.GetVulnerabilitySummaryResponse{
 		Filter:               request.GetFilter(),
 		VulnerabilitySummary: summary,
 		WorkloadCount:        row.WorkloadCount,
@@ -151,9 +152,9 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	return response, nil
 }
 
-func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
+func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilitiespb.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilitiespb.GetVulnerabilitySummaryTimeSeriesResponse, error) {
 	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
+		request.Filter = &vulnerabilitiespb.Filter{}
 	}
 
 	since := pgtype.Timestamptz{}
@@ -177,8 +178,8 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 	}
 
-	points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
-		return &vulnerabilities.VulnerabilitySummaryPoint{
+	points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilitiespb.VulnerabilitySummaryPoint {
+		return &vulnerabilitiespb.VulnerabilitySummaryPoint{
 			Critical:      row.Critical,
 			High:          row.High,
 			Medium:        row.Medium,
@@ -190,21 +191,21 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 			BucketTime:    timestamppb.New(row.SnapshotDate.Time),
 		}
 	})
-	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
+	return &vulnerabilitiespb.GetVulnerabilitySummaryTimeSeriesResponse{
 		Points: points,
 	}, nil
 }
 
-func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryForImageRequest) (*vulnerabilities.GetVulnerabilitySummaryForImageResponse, error) {
+func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilitiespb.GetVulnerabilitySummaryForImageRequest) (*vulnerabilitiespb.GetVulnerabilitySummaryForImageResponse, error) {
 	summary, err := s.querier.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
-				VulnerabilitySummary: &vulnerabilities.Summary{},
-				WorkloadRef:          make([]*vulnerabilities.Workload, 0),
+			return &vulnerabilitiespb.GetVulnerabilitySummaryForImageResponse{
+				VulnerabilitySummary: &vulnerabilitiespb.Summary{},
+				WorkloadRef:          make([]*vulnerabilitiespb.Workload, 0),
 			}, nil
 		}
 
@@ -218,9 +219,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		return nil, fmt.Errorf("failed to list workloads by image: %w", err)
 	}
 
-	refs := make([]*vulnerabilities.Workload, 0)
+	refs := make([]*vulnerabilitiespb.Workload, 0)
 	for _, w := range workloads {
-		refs = append(refs, &vulnerabilities.Workload{
+		refs = append(refs, &vulnerabilitiespb.Workload{
 			Cluster:   w.Cluster,
 			Namespace: w.Namespace,
 			Name:      w.Name,
@@ -230,9 +231,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		})
 	}
 
-	vulnSummary := &vulnerabilities.Summary{}
+	vulnSummary := &vulnerabilitiespb.Summary{}
 	if summary != nil {
-		vulnSummary = &vulnerabilities.Summary{
+		vulnSummary = &vulnerabilitiespb.Summary{
 			Critical:    summary.Critical,
 			High:        summary.High,
 			Medium:      summary.Medium,
@@ -245,7 +246,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 	}
 
-	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
+	return &vulnerabilitiespb.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
 	}, nil

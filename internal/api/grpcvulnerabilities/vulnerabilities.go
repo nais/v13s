@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
+func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilitiespb.ListVulnerabilitiesRequest) (*vulnerabilitiespb.ListVulnerabilitiesResponse, error) {
 	// TODO: add input validation for request, especially for filter values
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -24,13 +25,13 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
+		request.Filter = &vulnerabilitiespb.Filter{}
 	}
 
 	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
-		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
+		WorkloadType:      vulnerabilities.FuzzyWorkloadType(request.Filter.WorkloadType),
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
@@ -43,10 +44,10 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
 	}
 
-	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
+	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilitiespb.Finding {
 
-		return &vulnerabilities.Finding{
-			WorkloadRef: &vulnerabilities.Workload{
+		return &vulnerabilitiespb.Finding{
+			WorkloadRef: &vulnerabilitiespb.Workload{
 				Cluster:   row.Cluster,
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
@@ -54,7 +55,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				ImageName: row.ImageName,
 				ImageTag:  row.ImageTag,
 			},
-			Vulnerability: &vulnerabilities.Vulnerability{
+			Vulnerability: &vulnerabilitiespb.Vulnerability{
 				Id:      row.ID.String(),
 				Package: row.Package,
 				Suppression: toSuppression(
@@ -64,12 +65,12 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
 				),
-				Cve: &vulnerabilities.Cve{
+				Cve: &vulnerabilitiespb.Cve{
 					Id:          row.CveID,
 					Title:       row.CveTitle,
 					Description: row.CveDesc,
 					Link:        row.CveLink,
-					Severity:    vulnerabilities.Severity(row.Severity),
+					Severity:    vulnerabilitiespb.Severity(row.Severity),
 				},
 			},
 		}
@@ -78,7 +79,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
-		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
+		WorkloadType:      vulnerabilities.FuzzyWorkloadType(request.GetFilter().WorkloadType),
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
 	})
@@ -92,14 +93,14 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, err
 	}
 
-	return &vulnerabilities.ListVulnerabilitiesResponse{
+	return &vulnerabilitiespb.ListVulnerabilitiesResponse{
 		Filter:   request.GetFilter(),
 		Nodes:    vulnz,
 		PageInfo: pageInfo,
 	}, nil
 }
 
-func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesForImageRequest) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
+func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulnerabilitiespb.ListVulnerabilitiesForImageRequest) (*vulnerabilitiespb.ListVulnerabilitiesForImageResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -133,9 +134,9 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
+	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilitiespb.Vulnerability {
 
-		return &vulnerabilities.Vulnerability{
+		return &vulnerabilitiespb.Vulnerability{
 			Id:      row.ID.String(),
 			Package: row.Package,
 			Suppression: toSuppression(
@@ -146,24 +147,24 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 				row.SuppressedAt.Time,
 			),
 			LatestVersion: row.LatestVersion,
-			Cve: &vulnerabilities.Cve{
+			Cve: &vulnerabilitiespb.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
 				Description: row.CveDesc,
 				Link:        row.CveLink,
-				Severity:    vulnerabilities.Severity(row.Severity),
+				Severity:    vulnerabilitiespb.Severity(row.Severity),
 				References:  row.Refs,
 			},
 		}
 	})
 
-	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
+	return &vulnerabilitiespb.ListVulnerabilitiesForImageResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
 	}, nil
 }
 
-func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vulnerabilities.ListSuppressedVulnerabilitiesRequest) (*vulnerabilities.ListSuppressedVulnerabilitiesResponse, error) {
+func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vulnerabilitiespb.ListSuppressedVulnerabilitiesRequest) (*vulnerabilitiespb.ListSuppressedVulnerabilitiesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -187,7 +188,7 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 	total, err := s.querier.CountSuppressedVulnerabilities(ctx, sql.CountSuppressedVulnerabilitiesParams{
 		Cluster:      filter.Cluster,
 		Namespace:    filter.Namespace,
-		WorkloadType: filter.FuzzyWorkloadType(),
+		WorkloadType: vulnerabilities.FuzzyWorkloadType(filter.WorkloadType),
 		WorkloadName: filter.Workload,
 		ImageName:    filter.ImageName,
 		ImageTag:     filter.ImageTag,
@@ -201,20 +202,20 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 		return nil, err
 	}
 
-	nodes := collections.Map(suppressed, func(row *sql.ListSuppressedVulnerabilitiesRow) *vulnerabilities.SuppressedVulnerability {
-		state := vulnerabilities.SuppressState_NOT_SET
+	nodes := collections.Map(suppressed, func(row *sql.ListSuppressedVulnerabilitiesRow) *vulnerabilitiespb.SuppressedVulnerability {
+		state := vulnerabilitiespb.SuppressState_NOT_SET
 		switch row.Reason {
 		case sql.VulnerabilitySuppressReasonFalsePositive:
-			state = vulnerabilities.SuppressState_FALSE_POSITIVE
+			state = vulnerabilitiespb.SuppressState_FALSE_POSITIVE
 		case sql.VulnerabilitySuppressReasonResolved:
 
-			state = vulnerabilities.SuppressState_RESOLVED
+			state = vulnerabilitiespb.SuppressState_RESOLVED
 		case sql.VulnerabilitySuppressReasonNotAffected:
-			state = vulnerabilities.SuppressState_NOT_AFFECTED
+			state = vulnerabilitiespb.SuppressState_NOT_AFFECTED
 		case sql.VulnerabilitySuppressReasonInTriage:
-			state = vulnerabilities.SuppressState_IN_TRIAGE
+			state = vulnerabilitiespb.SuppressState_IN_TRIAGE
 		}
-		return &vulnerabilities.SuppressedVulnerability{
+		return &vulnerabilitiespb.SuppressedVulnerability{
 			ImageName:    row.ImageName,
 			CveId:        row.CveID,
 			Package:      row.Package,
@@ -225,13 +226,13 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 		}
 	})
 
-	return &vulnerabilities.ListSuppressedVulnerabilitiesResponse{
+	return &vulnerabilitiespb.ListSuppressedVulnerabilitiesResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
 	}, nil
 }
 
-func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilities.GetVulnerabilityByIdRequest) (*vulnerabilities.GetVulnerabilityByIdResponse, error) {
+func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilitiespb.GetVulnerabilityByIdRequest) (*vulnerabilitiespb.GetVulnerabilityByIdResponse, error) {
 	uuid := convert.StringToUUID(request.Id)
 	row, err := s.querier.GetVulnerabilityById(ctx, uuid)
 	if err != nil {
@@ -241,25 +242,25 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 		return nil, fmt.Errorf("get vulnerability by id: %w", err)
 	}
 
-	return &vulnerabilities.GetVulnerabilityByIdResponse{
-		Vulnerability: &vulnerabilities.Vulnerability{
+	return &vulnerabilitiespb.GetVulnerabilityByIdResponse{
+		Vulnerability: &vulnerabilitiespb.Vulnerability{
 			Id:            row.ID.String(),
 			Package:       row.Package,
 			Suppression:   toSuppression(row.Suppressed, row.Reason.VulnerabilitySuppressReason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
 			LatestVersion: row.LatestVersion,
-			Cve: &vulnerabilities.Cve{
+			Cve: &vulnerabilitiespb.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
 				Description: row.CveDesc,
 				Link:        row.CveLink,
-				Severity:    vulnerabilities.Severity(row.Severity),
+				Severity:    vulnerabilitiespb.Severity(row.Severity),
 				References:  row.Refs,
 			},
 		},
 	}, nil
 }
 
-func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
+func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilitiespb.SuppressVulnerabilityRequest) (*vulnerabilitiespb.SuppressVulnerabilityResponse, error) {
 	uuid := convert.StringToUUID(request.Id)
 	vuln, err := s.querier.GetVulnerabilityById(ctx, uuid)
 	if err != nil {
@@ -281,22 +282,22 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
 	}
 
-	return &vulnerabilities.SuppressVulnerabilityResponse{
+	return &vulnerabilitiespb.SuppressVulnerabilityResponse{
 		CveId:      vuln.CveID,
 		Suppressed: request.GetSuppress(),
 	}, nil
 }
 
-func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilities.OrderByField) string {
+func sanitizeOrderBy(orderBy *vulnerabilitiespb.OrderBy, defaultOrder vulnerabilities.OrderByField) string {
 	if orderBy == nil {
-		orderBy = &vulnerabilities.OrderBy{
+		orderBy = &vulnerabilitiespb.OrderBy{
 			Field:     string(defaultOrder),
-			Direction: vulnerabilities.Direction_ASC,
+			Direction: vulnerabilitiespb.Direction_ASC,
 		}
 	}
 
 	direction := "asc"
-	if orderBy.Direction == vulnerabilities.Direction_DESC {
+	if orderBy.Direction == vulnerabilitiespb.Direction_DESC {
 		direction = "desc"
 	}
 	field := vulnerabilities.OrderByField(strings.ToLower(orderBy.Field))
@@ -314,18 +315,18 @@ func safeInt(val *int32) int32 {
 	return *val
 }
 
-func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {
-	var suppression *vulnerabilities.Suppression
+func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilitiespb.Suppression {
+	var suppression *vulnerabilitiespb.Suppression
 	if suppressReason.Valid() {
 		suppressReasonStr := strings.ToUpper(string(suppressReason))
 		t := suppressedAtTime
 
-		reason := vulnerabilities.SuppressState_NOT_SET
-		if val, ok := vulnerabilities.SuppressState_value[suppressReasonStr]; ok {
-			reason = vulnerabilities.SuppressState(val)
+		reason := vulnerabilitiespb.SuppressState_NOT_SET
+		if val, ok := vulnerabilitiespb.SuppressState_value[suppressReasonStr]; ok {
+			reason = vulnerabilitiespb.SuppressState(val)
 		}
 
-		suppression = &vulnerabilities.Suppression{
+		suppression = &vulnerabilitiespb.Suppression{
 			SuppressedReason:  reason,
 			SuppressedDetails: str(reasonText, ""),
 			Suppressed:        suppressed,

@@ -24,8 +24,8 @@ import (
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/updater"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb/management"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -87,7 +87,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
 
-	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
+	/*informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
 		log.Fatalf("Failed to create informer manager: %v", err)
 	}
@@ -98,6 +98,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	if !informerMgr.WaitForReady(syncCtx) {
 		log.Fatalf("timed out waiting for watchers to be ready")
 	}
+	*/
 
 	u := updater.NewUpdater(
 		pool,
@@ -110,7 +111,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	wg, ctx := errgroup.WithContext(ctx)
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, cfg, pool, u, log); err != nil {
+		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
@@ -146,7 +147,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
@@ -161,8 +162,8 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	}
 
 	s := grpc.NewServer(opts...)
-	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
-	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, u, log.WithField("subsystem", "management")))
+	vulnerabilitiespb.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
+	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, mgr, u, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return s.Serve(lis) })

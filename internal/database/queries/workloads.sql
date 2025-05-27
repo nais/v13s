@@ -53,29 +53,21 @@ UPDATE
     id
 ;
 
--- name: SetWorkloadState :exec
-INSERT INTO workloads(name,
-                      workload_type,
-                      namespace,
-                      cluster,
-                      image_name,
-                      image_tag,
-                      state)
-VALUES (@name,
-        @workload_type,
-        @namespace,
-        @cluster,
-        @image_name,
-        @image_tag,
-        @state) ON CONFLICT
-ON CONSTRAINT workload_id DO
-UPDATE
-    SET
-        image_name = @image_name,
-        image_tag = @image_tag,
-        state = @state,
-        updated_at = NOW()
-;
+-- name: SetWorkloadState :many
+WITH updated AS (
+UPDATE workloads
+SET state      = @state,
+    updated_at = NOW()
+WHERE (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
+  AND (sqlc.narg('namespace')::TEXT IS NULL OR namespace = sqlc.narg('namespace')::TEXT)
+  AND (sqlc.narg('workload_type')::TEXT IS NULL OR workload_type = sqlc.narg('workload_type')::TEXT)
+  AND (sqlc.narg('workload_name')::TEXT IS NULL OR name = sqlc.narg('workload_name')::TEXT)
+  AND state = @old_state
+    RETURNING *
+)
+SELECT *
+FROM updated
+ORDER BY cluster, namespace, name, updated_at DESC;
 
 -- name: UpdateWorkloadState :exec
 UPDATE workloads

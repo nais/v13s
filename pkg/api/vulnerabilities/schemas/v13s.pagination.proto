@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v13s.api.protobuf;
 
-option go_package = "./pkg/api/vulnerabilities";
+option go_package = "github.com/nais/v13s/pkg/api/vulnerabilitiespb";
 
 message PageInfo {
   int64 total_count = 1;

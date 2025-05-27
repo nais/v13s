@@ -4,6 +4,7 @@ package grpcvulnerabilities_test
 import (
 	"context"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
 	"net"
 	"testing"
 
@@ -163,7 +164,7 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 8, len(resp.Nodes))
-		assert.True(t, collections.AnyMatch(resp.Nodes, func(f *vulnerabilities.Finding) bool {
+		assert.True(t, collections.AnyMatch(resp.Nodes, func(f *vulnerabilitiespb.Finding) bool {
 			return f.WorkloadRef.Name == "workload-1" && f.WorkloadRef.Namespace == "namespace-1" && f.WorkloadRef.Cluster == "cluster-prod"
 		}))
 	})
@@ -247,7 +248,7 @@ func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 		vulns.Nodes[0].GetId(),
 		"not affected",
 		"test-user",
-		vulnerabilities.SuppressState_FALSE_POSITIVE,
+		vulnerabilitiespb.SuppressState_FALSE_POSITIVE,
 		true)
 	assert.NoError(t, err)
 
@@ -362,7 +363,7 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.
 	}
 }
 
-func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) {
+func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilitiespb.Finding) {
 	for _, v := range nodes {
 		key := fmt.Sprintf(
 			"%s.%s.%s.%s.%s.%s.%s",
@@ -386,7 +387,7 @@ func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, fu
 	lis := bufconn.Listen(1024 * 1024)
 	server := grpcvulnerabilities.NewServer(db, logrus.NewEntry(logrus.StandardLogger()))
 	grpcServer := grpc.NewServer()
-	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, server)
+	vulnerabilitiespb.RegisterVulnerabilitiesServer(grpcServer, server)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {

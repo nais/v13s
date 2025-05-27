@@ -2,11 +2,13 @@ syntax = "proto3";
 
 package v13s.api.protobuf;
 
-option go_package = "./pkg/api/vulnerabilities/management";
+option go_package = "github.com/nais/v13s/pkg/api/vulnerabilitiespb/management";
+import "vulnerabilities.proto";
 
 service Management{
   rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
   rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
+  rpc Resync(ResyncRequest) returns (ResyncResponse);
 }
 
 message RegisterWorkloadRequest {
@@ -28,4 +30,12 @@ message RegisterWorkloadResponse {}
 message TriggerSyncRequest {}
 message TriggerSyncResponse {}
 
+message ResyncRequest {
+  v13s.api.protobuf.Filter filter = 1;
+  optional string state = 2;
+}
 
+message ResyncResponse {
+  int32 num_workloads = 1;
+  repeated v13s.api.protobuf.Workload workloads = 2;
+}
