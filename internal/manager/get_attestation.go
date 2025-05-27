@@ -66,7 +66,6 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		if errors.As(err, &noMatchAttestationError) {
 			if err.Error() != "no matching attestations: " {
 				g.log.WithError(err).Error("failed to get attestation")
-				return river.JobCancel(err)
 			}
 			// TODO: handle errors
 			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
@@ -77,6 +76,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
 			recordOutput(ctx, JobStatusNoAttestation)
+			return river.JobCancel(err)
 		} else {
 			return handleJobErr(err)
 		}
