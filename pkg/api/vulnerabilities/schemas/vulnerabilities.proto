@@ -5,7 +5,7 @@ syntax = "proto3";
 //package nais.io.v13s.v1;
 package v13s.api.protobuf;
 
-option go_package = "./pkg/api/vulnerabilities";
+option go_package = "github.com/nais/v13s/pkg/api/vulnerabilitiespb";
 
 import "google/protobuf/timestamp.proto";
 // TODO: fix this import conflict in api or here
@@ -265,3 +265,4 @@ message Finding {
   Vulnerability vulnerability = 2;
   optional google.protobuf.Timestamp last_updated = 3;
 }
+

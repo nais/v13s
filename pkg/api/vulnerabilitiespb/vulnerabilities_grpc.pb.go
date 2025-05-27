@@ -9,7 +9,7 @@
 
 //package nais.io.v13s.v1;
 
-package vulnerabilities
+package vulnerabilitiespb
 
 import (
 	context "context"

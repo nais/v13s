@@ -46,8 +46,10 @@ generate-proto:
 	protoc \
 		-I pkg/api/vulnerabilities/schemas/ \
 		./pkg/api/vulnerabilities/schemas/*.proto \
-		--go_out=. \
-		--go-grpc_out=.
+		--go_out=out \
+		--go-grpc_out=out
+	rm -rf ./pkg/api/vulnerabilitiespb/*
+	mv out/github.com/nais/v13s/pkg/api/vulnerabilitiespb/* ./pkg/api/vulnerabilitiespb
 
 generate_dp_track:
 	@echo "Generating Go code from the OpenAPI specification..."

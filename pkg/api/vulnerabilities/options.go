@@ -1,6 +1,7 @@
 package vulnerabilities
 
 import (
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
 	"time"
 
 	"google.golang.org/grpc"
@@ -71,12 +72,12 @@ func (o OrderByField) IsValid() bool {
 const DefaultLimit = 50
 
 type Options struct {
-	Filter            *Filter
+	Filter            *vulnerabilitiespb.Filter
 	CallOptions       []grpc.CallOption
 	IncludeSuppressed bool
 	Limit             int32
 	Offset            int32
-	OrderBy           *OrderBy
+	OrderBy           *vulnerabilitiespb.OrderBy
 	Since             *timestamppb.Timestamp
 }
 
@@ -98,7 +99,7 @@ func GetOptions(opts ...Option) *Options {
 	return applyOptions(opts...)
 }
 
-func GetFilter(opts ...Option) *Filter {
+func GetFilter(opts ...Option) *vulnerabilitiespb.Filter {
 	return applyOptions(opts...).Filter
 }
 
@@ -118,7 +119,7 @@ func GetOffset(opts ...Option) int32 {
 	return applyOptions(opts...).Offset
 }
 
-func GetOrderBy(opts ...Option) *OrderBy {
+func GetOrderBy(opts ...Option) *vulnerabilitiespb.OrderBy {
 	return applyOptions(opts...).OrderBy
 }
 
@@ -137,7 +138,7 @@ func CallOptions(opts ...grpc.CallOption) Option {
 func ClusterFilter(name string) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
-			o.Filter = &Filter{}
+			o.Filter = &vulnerabilitiespb.Filter{}
 		}
 		o.Filter.Cluster = &name
 	})
@@ -147,7 +148,7 @@ func ClusterFilter(name string) Option {
 func NamespaceFilter(name string) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
-			o.Filter = &Filter{}
+			o.Filter = &vulnerabilitiespb.Filter{}
 		}
 		o.Filter.Namespace = &name
 	})
@@ -157,7 +158,7 @@ func NamespaceFilter(name string) Option {
 func WorkloadTypeFilter(name string) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
-			o.Filter = &Filter{}
+			o.Filter = &vulnerabilitiespb.Filter{}
 		}
 		o.Filter.WorkloadType = &name
 	})
@@ -166,7 +167,7 @@ func WorkloadTypeFilter(name string) Option {
 func WorkloadFilter(name string) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
-			o.Filter = &Filter{}
+			o.Filter = &vulnerabilitiespb.Filter{}
 		}
 		o.Filter.Workload = &name
 	})
@@ -175,7 +176,7 @@ func WorkloadFilter(name string) Option {
 func ImageFilter(name, tag string) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
-			o.Filter = &Filter{}
+			o.Filter = &vulnerabilitiespb.Filter{}
 		}
 		o.Filter.ImageName = &name
 		o.Filter.ImageTag = &tag
@@ -200,9 +201,9 @@ func Offset(offset int32) Option {
 	})
 }
 
-func Order(field OrderByField, direction Direction) Option {
+func Order(field OrderByField, direction vulnerabilitiespb.Direction) Option {
 	return newFuncOption(func(o *Options) {
-		o.OrderBy = &OrderBy{
+		o.OrderBy = &vulnerabilitiespb.OrderBy{
 			Field:     string(field),
 			Direction: direction,
 		}
@@ -221,7 +222,7 @@ func applyOptions(opts ...Option) *Options {
 		opt.Apply(o)
 	}
 	if o.Filter == nil {
-		o.Filter = &Filter{}
+		o.Filter = &vulnerabilitiespb.Filter{}
 	}
 	if o.Limit == 0 {
 		o.Limit = DefaultLimit
@@ -229,18 +230,18 @@ func applyOptions(opts ...Option) *Options {
 	return o
 }
 
-func (f *Filter) FuzzyWorkloadType() *string {
-	if f.WorkloadType == nil {
+func FuzzyWorkloadType(workloadType *string) *string {
+	if workloadType == nil {
 		return nil
 	}
 	app := string(WorkloadTypeApp)
 	job := string(WorkloadTypeJob)
 
-	switch *f.WorkloadType {
+	switch *workloadType {
 	case "app", "APP", "application", "Application", "APPLICATION":
 		return &app
 	case "job", "Job", "JOB", "Naisjob", "NAISJOB", "NaisJob":
 		return &job
 	}
-	return f.WorkloadType
+	return workloadType
 }

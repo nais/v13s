@@ -3,9 +3,8 @@ package grpcpagination
 import (
 	"testing"
 
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
 type MockRequest struct {
@@ -42,14 +41,14 @@ func TestPageInfo(t *testing.T) {
 		name          string
 		request       *MockRequest
 		total         int
-		expectedInfo  *vulnerabilities.PageInfo
+		expectedInfo  *vulnerabilitiespb.PageInfo
 		expectedError error
 	}{
 		{
 			"Valid input with next page",
 			&MockRequest{50, 100},
 			300,
-			&vulnerabilities.PageInfo{
+			&vulnerabilitiespb.PageInfo{
 				TotalCount:      300,
 				HasNextPage:     true,
 				HasPreviousPage: true,

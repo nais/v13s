@@ -292,51 +292,81 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 	return items, nil
 }
 
-const setWorkloadState = `-- name: SetWorkloadState :exec
-INSERT INTO workloads(name,
-                      workload_type,
-                      namespace,
-                      cluster,
-                      image_name,
-                      image_tag,
-                      state)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7) ON CONFLICT
-ON CONSTRAINT workload_id DO
-UPDATE
-    SET
-        image_name = $5,
-        image_tag = $6,
-        state = $7,
-        updated_at = NOW()
+const setWorkloadState = `-- name: SetWorkloadState :many
+WITH updated AS (
+UPDATE workloads
+SET state      = $1,
+    updated_at = NOW()
+WHERE ($2::TEXT IS NULL OR cluster = $2::TEXT)
+  AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
+  AND ($4::TEXT IS NULL OR workload_type = $4::TEXT)
+  AND ($5::TEXT IS NULL OR name = $5::TEXT)
+  AND state = $6
+    RETURNING id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+)
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+FROM updated
+ORDER BY cluster, namespace, name, updated_at DESC
 `
 
 type SetWorkloadStateParams struct {
+	State        WorkloadState
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+	WorkloadName *string
+	OldState     WorkloadState
+}
+
+type SetWorkloadStateRow struct {
+	ID           pgtype.UUID
 	Name         string
 	WorkloadType string
 	Namespace    string
 	Cluster      string
 	ImageName    string
 	ImageTag     string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
 	State        WorkloadState
 }
 
-func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error {
-	_, err := q.db.Exec(ctx, setWorkloadState,
-		arg.Name,
-		arg.WorkloadType,
-		arg.Namespace,
-		arg.Cluster,
-		arg.ImageName,
-		arg.ImageTag,
+func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error) {
+	rows, err := q.db.Query(ctx, setWorkloadState,
 		arg.State,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+		arg.OldState,
 	)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*SetWorkloadStateRow{}
+	for rows.Next() {
+		var i SetWorkloadStateRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateWorkloadState = `-- name: UpdateWorkloadState :exec

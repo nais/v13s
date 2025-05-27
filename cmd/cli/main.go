@@ -6,6 +6,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb"
+	"github.com/nais/v13s/pkg/api/vulnerabilitiespb/management"
 	"os"
 	"strconv"
 	"strings"
@@ -17,7 +19,6 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/pkg/api/auth"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
-	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/rodaine/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
@@ -40,6 +41,7 @@ type options struct {
 	order        string
 	since        string
 	workloadType string
+	state        string
 }
 
 func main() {
@@ -163,6 +165,15 @@ func main() {
 							return err
 						},
 					},
+					{
+						Name:    "resync",
+						Aliases: []string{"r"},
+						Usage:   "trigger resync of workloads",
+						Flags:   commonFlags(opts),
+						Action: func(ctx context.Context, cmd *cli.Command) error {
+							return resync(ctx, cmd, c, opts)
+						},
+					},
 				},
 			},
 			{
@@ -199,6 +210,55 @@ func main() {
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func resync(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
+	if o.state == "" {
+		return fmt.Errorf("missing state, use --state flag to specify the state of workload to resync")
+	}
+	filter := &vulnerabilitiespb.Filter{}
+	if o.cluster != "" {
+		filter.Cluster = &o.cluster
+	}
+	if o.namespace != "" {
+		filter.Namespace = &o.namespace
+	}
+	if o.workload != "" {
+		filter.Workload = &o.workload
+	}
+	if o.workloadType != "" {
+		filter.WorkloadType = &o.workloadType
+	}
+	resp, err := c.Resync(ctx, &management.ResyncRequest{
+		Filter: filter,
+		State:  &o.state,
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Resynced %d workloads with state '%s'\n", resp.GetNumWorkloads(), o.state)
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	headers := []any{"Workload", "Type", "Namespace", "Cluster"}
+	tbl := table.New(headers...)
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, w := range resp.GetWorkloads() {
+		vals := []any{
+			w.Name,
+			w.Type,
+			w.Namespace,
+			w.Cluster,
+		}
+		tbl.AddRow(
+			vals...,
+		)
+	}
+
+	tbl.Print()
+	return nil
 }
 
 func getTimeseries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
@@ -588,12 +648,12 @@ func parseOptions(cmd *cli.Command, o *options) []vulnerabilities.Option {
 	}
 
 	if o.order != "" {
-		direction := vulnerabilities.Direction_ASC
+		direction := vulnerabilitiespb.Direction_ASC
 		if strings.Contains(o.order, ":") {
 			parts := strings.Split(o.order, ":")
 			o.order = parts[0]
 			if parts[1] == "desc" {
-				direction = vulnerabilities.Direction_DESC
+				direction = vulnerabilitiespb.Direction_DESC
 			}
 		}
 		opts = append(opts, vulnerabilities.Order(vulnerabilities.OrderByField(o.order), direction))
@@ -665,6 +725,13 @@ func commonFlags(opts *options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "Specify a relative time (e.g. '1Y' for last year, '1M' for last month, '2D' for last 2 days, '12h' for last 12 hours, '30m' for last 30 minutes)",
 			Destination: &opts.since,
+		},
+		&cli.StringFlag{
+			Name:        "state",
+			Usage:       "state of the workload to resync",
+			Value:       "",
+			Aliases:     []string{"s"},
+			Destination: &opts.state,
 		},
 	}
 	for _, f := range cFlags {

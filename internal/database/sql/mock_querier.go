@@ -2163,21 +2163,33 @@ func (_c *MockQuerier_ResetDatabase_Call) RunAndReturn(run func(context.Context)
 }
 
 // SetWorkloadState provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error {
+func (_m *MockQuerier) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetWorkloadState")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, SetWorkloadStateParams) error); ok {
+	var r0 []*SetWorkloadStateRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, SetWorkloadStateParams) []*SetWorkloadStateRow); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*SetWorkloadStateRow)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, SetWorkloadStateParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockQuerier_SetWorkloadState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetWorkloadState'
@@ -2199,12 +2211,12 @@ func (_c *MockQuerier_SetWorkloadState_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockQuerier_SetWorkloadState_Call) Return(_a0 error) *MockQuerier_SetWorkloadState_Call {
-	_c.Call.Return(_a0)
+func (_c *MockQuerier_SetWorkloadState_Call) Return(_a0 []*SetWorkloadStateRow, _a1 error) *MockQuerier_SetWorkloadState_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_SetWorkloadState_Call) RunAndReturn(run func(context.Context, SetWorkloadStateParams) error) *MockQuerier_SetWorkloadState_Call {
+func (_c *MockQuerier_SetWorkloadState_Call) RunAndReturn(run func(context.Context, SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)) *MockQuerier_SetWorkloadState_Call {
 	_c.Call.Return(run)
 	return _c
 }

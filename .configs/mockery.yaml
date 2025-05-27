@@ -4,14 +4,6 @@ inpackage: true
 dir: "{{.InterfaceDir}}"
 filename: "mock_{{.InterfaceNameSnake}}.go"
 packages:
-  github.com/nais/v13s/pkg/api/vulnerabilities:
-    config:
-      include-regex: ".*Server"
-      exclude-regex: "Unsafe.*"
-  github.com/nais/v13s/pkg/api/vulnerabilities/management:
-    config:
-      include-regex: ".*Server"
-      exclude-regex: "Unsafe.*"
   github.com/nais/v13s/internal/database/sql:
     interfaces:
       Querier:
