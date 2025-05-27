@@ -36,6 +36,7 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
 		},
+		MaxAttempts: 4,
 		//	Tags:  []string{g.ImageTag},
 	}
 }
@@ -76,7 +77,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
 			recordOutput(ctx, JobStatusNoAttestation)
-			return river.JobCancel(err)
+			return river.JobCancel(noMatchAttestationError)
 		} else {
 			return handleJobErr(err)
 		}
@@ -95,7 +96,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		if err != nil {
 			return err
 		}
-		recordOutput(ctx, JobStatusNoAttestation)
+		recordOutput(ctx, JobStatusAttestationDownloaded)
 	}
 	return nil
 }

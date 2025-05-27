@@ -36,6 +36,7 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
 		},
+		MaxAttempts: 4,
 	}
 }
 

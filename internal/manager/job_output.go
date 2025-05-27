@@ -19,6 +19,7 @@ const (
 	JobStatusSkipped                JobStatus = "skipped"
 	JobStatusSourceRefExists        JobStatus = "source_ref_exists"
 	JobStatusNoAttestation          JobStatus = "no_attestation"
+	JobStatusAttestationDownloaded  JobStatus = "attestation_downloaded"
 	JobStatusAttestationUploaded    JobStatus = "attestation_uploaded"
 	JobStatusUpdated                JobStatus = "updated"
 	JobStatusImageRemovedFromSource JobStatus = "image_removed_from_source"

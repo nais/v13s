@@ -25,8 +25,9 @@ func (DeleteWorkloadJob) Kind() string { return KindDeleteWorkload }
 
 func (u DeleteWorkloadJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		Queue: KindDeleteWorkload,
-		Tags:  []string{u.Workload.Cluster, u.Workload.Namespace, string(u.Workload.Type), u.Workload.Name},
+		Queue:       KindDeleteWorkload,
+		Tags:        []string{u.Workload.Cluster, u.Workload.Namespace, string(u.Workload.Type), u.Workload.Name},
+		MaxAttempts: 4,
 	}
 }
 
@@ -48,9 +49,9 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 		WorkloadType: string(w.Type),
 	})
 	if err != nil {
-		d.log.WithError(err).Error("failed to delete workload")
 		if errors.Is(err, pgx.ErrNoRows) {
-			return handleJobErr(err)
+			recordOutput(ctx, JobStatusSkipped)
+			return nil
 		}
 		return err
 	}
