@@ -10,6 +10,7 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/model"
 	"github.com/riverqueue/river"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sirupsen/logrus"
@@ -22,9 +23,10 @@ const (
 )
 
 type GetAttestationJob struct {
-	ImageName  string
-	ImageTag   string
-	WorkloadId pgtype.UUID
+	ImageName    string
+	ImageTag     string
+	WorkloadId   pgtype.UUID
+	WorkloadType model.WorkloadType
 }
 
 func (GetAttestationJob) Kind() string { return KindGetAttestation }
@@ -48,6 +50,10 @@ type GetAttestationWorker struct {
 	workloadCounter metric.Int64UpDownCounter
 	log             logrus.FieldLogger
 	river.WorkerDefaults[GetAttestationJob]
+}
+
+func (g *GetAttestationWorker) NextRetry(job *river.Job[GetAttestationJob]) time.Time {
+	return time.Now().Add(1 * time.Minute)
 }
 
 func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttestationJob]) error {
@@ -77,6 +83,9 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
 			recordOutput(ctx, JobStatusNoAttestation)
+			if job.Args.WorkloadType == model.WorkloadTypeApp {
+				return noMatchAttestationError
+			}
 			return river.JobCancel(noMatchAttestationError)
 		} else {
 			return handleJobErr(err)

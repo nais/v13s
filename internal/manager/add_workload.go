@@ -73,9 +73,10 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	}
 
 	err = a.jobClient.AddJob(ctx, &GetAttestationJob{
-		ImageName:  workload.ImageName,
-		ImageTag:   workload.ImageTag,
-		WorkloadId: id,
+		ImageName:    workload.ImageName,
+		ImageTag:     workload.ImageTag,
+		WorkloadId:   id,
+		WorkloadType: workload.Type,
 	})
 	if err != nil {
 		return err
