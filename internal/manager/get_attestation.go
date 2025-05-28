@@ -39,7 +39,6 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 			ByPeriod: 1 * time.Minute,
 		},
 		MaxAttempts: 4,
-		//	Tags:  []string{g.ImageTag},
 	}
 }
 

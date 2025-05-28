@@ -25,6 +25,7 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/riverqueue/river v0.22.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
+	github.com/riverqueue/rivercontrib/otelriver v0.5.0
 	github.com/rodaine/table v1.3.0
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0
 	github.com/sigstore/cosign/v2 v2.5.0

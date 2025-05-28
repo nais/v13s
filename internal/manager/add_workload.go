@@ -26,7 +26,6 @@ func (AddWorkloadJob) Kind() string { return KindAddWorkload }
 func (a AddWorkloadJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindAddWorkload,
-		Tags:        []string{a.Workload.Cluster, a.Workload.Namespace, string(a.Workload.Type), a.Workload.Name},
 		MaxAttempts: 4,
 	}
 }

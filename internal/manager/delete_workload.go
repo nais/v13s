@@ -26,7 +26,6 @@ func (DeleteWorkloadJob) Kind() string { return KindDeleteWorkload }
 func (u DeleteWorkloadJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindDeleteWorkload,
-		Tags:        []string{u.Workload.Cluster, u.Workload.Namespace, string(u.Workload.Type), u.Workload.Name},
 		MaxAttempts: 4,
 	}
 }

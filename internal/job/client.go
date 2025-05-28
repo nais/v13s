@@ -14,6 +14,8 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
+	"github.com/riverqueue/river/rivertype"
+	"github.com/riverqueue/rivercontrib/otelriver"
 	"github.com/sirupsen/logrus"
 )
 
@@ -60,9 +62,13 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		})),
-		Queues:     queues,
-		Workers:    workers,
-		JobTimeout: 5 * time.Minute,
+		Queues:               queues,
+		Workers:              workers,
+		JobTimeout:           5 * time.Minute,
+		RescueStuckJobsAfter: 10 * time.Minute,
+		Middleware: []rivertype.Middleware{
+			otelriver.NewMiddleware(nil),
+		},
 	})
 	if err != nil {
 		return nil, err
