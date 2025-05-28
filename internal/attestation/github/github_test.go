@@ -22,7 +22,13 @@ func TestNewCertificateIdentity(t *testing.T) {
 			orgs:        []string{"nais"},
 			workFlowRef: "nais/yolo-bolo/.github/workflows/.main.yml@refs/heads/master",
 		},
-
+		{
+			name:        "GitHub Cert Authz is enabled and matches pattern",
+			enabled:     true,
+			serverUrl:   "https://github.com",
+			orgs:        []string{"nais"},
+			workFlowRef: "nais/sapo/.github/workflows/PROD%20deploy.yml@refs/heads/sapo-upgrade",
+		},
 		{
 			name:        "GitHub Cert Authz is enabled and matches pattern pull request",
 			enabled:     true,
