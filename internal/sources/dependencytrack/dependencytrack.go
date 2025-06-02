@@ -3,6 +3,7 @@ package dependencytrack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -94,12 +95,24 @@ func setupConfig(rawURL string) *client.Configuration {
 }
 
 func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, imageName, imageTag string) (string, error) {
-	p, err := c.CreateProject(ctx, imageName, imageTag, nil)
+	p, err := c.GetProject(ctx, imageName, imageTag)
 	if err != nil {
-		return "", fmt.Errorf("failed to create project: %w", err)
+		return "", err
+	}
+	if p == nil {
+		p, err = c.CreateProject(ctx, imageName, imageTag, nil)
+		if err != nil {
+			return "", fmt.Errorf("failed to create project: %w", err)
+		}
 	}
 
 	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+		if errors.As(err, &ClientError{}) {
+			deleteErr := c.DeleteProject(ctx, *p.Uuid)
+			if deleteErr != nil {
+				return "", fmt.Errorf("failed to delete project after upload failure: %w", err)
+			}
+		}
 		return "", err
 	}
 
