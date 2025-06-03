@@ -62,7 +62,7 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 			var tErr *transport.Error
 			if errors.As(err, &tErr) {
 				if tErr.StatusCode < 500 && tErr.StatusCode >= 400 {
-					return sigs, model.ToUnrecoverableError(tErr, "attestation")
+					return sigs, model.ToUnrecoverableError(fmt.Errorf("status: %d, error: %w", tErr.StatusCode, tErr), "attestation")
 				} else {
 					return sigs, model.ToRecoverableError(tErr, "attestation")
 				}
