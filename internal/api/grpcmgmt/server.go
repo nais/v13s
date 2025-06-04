@@ -2,6 +2,7 @@ package grpcmgmt
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
@@ -9,6 +10,7 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var _ management.ManagementServer = (*Server)(nil)
@@ -19,17 +21,6 @@ type Server struct {
 	updater   *updater.Updater
 	parentCtx context.Context
 	log       *logrus.Entry
-}
-
-func (s *Server) TriggerSync(_ context.Context, _ *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
-	go func() {
-		err := s.updater.ResyncImages(s.parentCtx)
-		if err != nil {
-			s.log.WithError(err).Error("Failed to resync images")
-		}
-	}()
-
-	return &management.TriggerSyncResponse{}, nil
 }
 
 func NewServer(parentCtx context.Context, pool *pgxpool.Pool, updater *updater.Updater, field *logrus.Entry) *Server {
@@ -88,4 +79,79 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 	//s.updater.QueueImage(s.parentCtx, request.ImageName, request.ImageTag)
 
 	return &management.RegisterWorkloadResponse{}, nil
+}
+
+func (s *Server) TriggerSync(_ context.Context, _ *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
+	go func() {
+		err := s.updater.ResyncImages(s.parentCtx)
+		if err != nil {
+			s.log.WithError(err).Error("Failed to resync images")
+		}
+	}()
+
+	return &management.TriggerSyncResponse{}, nil
+}
+
+func (s *Server) GetWorkloadStatus(ctx context.Context, request *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
+	status, err := s.querier.ListWorkloadStatusWithJobs(ctx, sql.ListWorkloadStatusWithJobsParams{
+		Cluster:       request.Cluster,
+		Namespace:     request.Namespace,
+		WorkloadName:  request.Workload,
+		WorkloadTypes: []string{"app"},
+	})
+	if err != nil {
+		s.log.WithError(err).Error("Failed to get workload status")
+		return nil, err
+	}
+
+	workloads := groupWorkloadsWithJobs(status)
+	return &management.GetWorkloadStatusResponse{
+		WorkloadStatus: workloads,
+	}, nil
+}
+
+func groupWorkloadsWithJobs(rows []*sql.ListWorkloadStatusWithJobsRow) []*management.WorkloadStatus {
+	grouped := make(map[string]*management.WorkloadStatus)
+
+	for _, row := range rows {
+		key := fmt.Sprintf("%s|%s|%s|%s", row.WorkloadName, row.Namespace, row.Cluster, row.WorkloadType)
+
+		if _, exists := grouped[key]; !exists {
+			grouped[key] = &management.WorkloadStatus{
+				Workload:          row.WorkloadName,
+				WorkloadType:      row.WorkloadType,
+				Namespace:         row.Namespace,
+				Cluster:           row.Cluster,
+				WorkloadState:     string(row.WorkloadState),
+				WorkloadUpdatedAt: timestamppb.New(row.WorkloadUpdatedAt.Time),
+				ImageName:         row.ImageName,
+				ImageTag:          row.ImageTag,
+				ImageState:        string(row.ImageState),
+				ImageUpdatedAt:    timestamppb.New(row.ImageUpdatedAt.Time),
+				Jobs:              []*management.Job{},
+			}
+		}
+
+		// If there's a job on this row, add it
+		if row.JobID != nil {
+
+			grouped[key].Jobs = append(grouped[key].Jobs, &management.Job{
+				Id:         *row.JobID,
+				Kind:       *row.JobKind,
+				State:      string(row.JobState.RiverJobState),
+				Metadata:   row.JobMetadata,
+				Attempts:   int32(*row.JobAttempt),
+				Errors:     row.JobErrors,
+				FinishedAt: timestamppb.New(row.JobFinalizedAt.Time),
+			})
+		}
+	}
+
+	// Flatten map to slice
+	result := make([]*management.WorkloadStatus, 0, len(grouped))
+	for _, workload := range grouped {
+		result = append(result, workload)
+	}
+
+	return result
 }

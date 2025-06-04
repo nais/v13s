@@ -21,8 +21,8 @@ const (
 )
 
 type UploadAttestationJob struct {
-	ImageName   string `json:"image_name" river:"unique"`
-	ImageTag    string `json:"image_tag" river:"unique"`
+	ImageName   string `river:"unique"`
+	ImageTag    string `river:"unique"`
 	WorkloadId  pgtype.UUID
 	Attestation []byte
 }
