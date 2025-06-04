@@ -134,14 +134,20 @@ func groupWorkloadsWithJobs(rows []*sql.ListWorkloadStatusWithJobsRow) []*manage
 
 		// If there's a job on this row, add it
 		if row.JobID != nil {
-
+			var metadata, jobErrors string
+			if row.JobMetadata != nil {
+				metadata = row.JobMetadata.(string)
+			}
+			if row.JobErrors != nil {
+				jobErrors = row.JobErrors.(string)
+			}
 			grouped[key].Jobs = append(grouped[key].Jobs, &management.Job{
 				Id:         *row.JobID,
 				Kind:       *row.JobKind,
 				State:      string(row.JobState.RiverJobState),
-				Metadata:   row.JobMetadata,
+				Metadata:   metadata,
 				Attempts:   int32(*row.JobAttempt),
-				Errors:     row.JobErrors,
+				Errors:     jobErrors,
 				FinishedAt: timestamppb.New(row.JobFinalizedAt.Time),
 			})
 		}

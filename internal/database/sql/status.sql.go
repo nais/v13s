@@ -176,8 +176,8 @@ SELECT
     rj.id AS job_id,
     rj.kind AS job_kind,
     rj.state AS job_state,
-    rj.metadata::TEXT AS job_metadata,
-    rj.errors::TEXT AS job_errors,
+    CASE WHEN rj.metadata::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_metadata,
+    CASE WHEN rj.errors::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_errors,
     rj.finalized_at AS job_finalized_at,
     rj.attempt AS job_attempt
 FROM workloads w
@@ -224,8 +224,8 @@ type ListWorkloadStatusWithJobsRow struct {
 	JobID             *int64
 	JobKind           *string
 	JobState          NullRiverJobState
-	JobMetadata       string
-	JobErrors         string
+	JobMetadata       interface{}
+	JobErrors         interface{}
 	JobFinalizedAt    pgtype.Timestamptz
 	JobAttempt        *int16
 }
