@@ -169,7 +169,9 @@ func main() {
 				Name:    "status",
 				Aliases: []string{"st"},
 				Usage:   "get workload status",
-				Flags:   commonFlags(opts, "limit", "order", "since"),
+				Flags:   append(commonFlags(opts, "limit", "order", "since"), &cli.BoolFlag{
+					//Name:
+				}),
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					var cluster, namespace, workload *string
 					if opts.cluster != "" {
@@ -181,6 +183,9 @@ func main() {
 					if opts.workload != "" {
 						workload = &opts.workload
 					}
+					//if opts.showJobs {
+					//	s
+					//}
 
 					status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
 						Cluster:   cluster,
@@ -207,7 +212,7 @@ func main() {
 							s.ImageState,
 						)
 					}
-
+					tbl.Print()
 					return nil
 				},
 			},
