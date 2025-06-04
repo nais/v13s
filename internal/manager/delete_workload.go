@@ -3,8 +3,8 @@ package manager
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"

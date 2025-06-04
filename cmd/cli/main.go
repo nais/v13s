@@ -166,6 +166,52 @@ func main() {
 				},
 			},
 			{
+				Name:    "status",
+				Aliases: []string{"st"},
+				Usage:   "get workload status",
+				Flags:   commonFlags(opts, "limit", "order", "since"),
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					var cluster, namespace, workload *string
+					if opts.cluster != "" {
+						cluster = &opts.cluster
+					}
+					if opts.namespace != "" {
+						namespace = &opts.namespace
+					}
+					if opts.workload != "" {
+						workload = &opts.workload
+					}
+
+					status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
+						Cluster:   cluster,
+						Namespace: namespace,
+						Workload:  workload,
+					})
+					if err != nil {
+						return fmt.Errorf("failed to get workload status: %w", err)
+					}
+					headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+					columnFmt := color.New(color.FgYellow).SprintfFunc()
+					tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
+					tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+					for _, s := range status.WorkloadStatus {
+						tbl.AddRow(
+							s.Workload,
+							s.WorkloadType,
+							s.Namespace,
+							s.Cluster,
+							s.WorkloadState,
+							s.ImageName,
+							s.ImageTag,
+							s.ImageState,
+						)
+					}
+
+					return nil
+				},
+			},
+			{
 				Name:    "sbom",
 				Aliases: []string{"s"},
 				Usage:   "download sbom",

@@ -83,6 +83,82 @@ func AllImageStateValues() []ImageState {
 	}
 }
 
+type RiverJobState string
+
+const (
+	RiverJobStateAvailable RiverJobState = "available"
+	RiverJobStateCancelled RiverJobState = "cancelled"
+	RiverJobStateCompleted RiverJobState = "completed"
+	RiverJobStateDiscarded RiverJobState = "discarded"
+	RiverJobStatePending   RiverJobState = "pending"
+	RiverJobStateRetryable RiverJobState = "retryable"
+	RiverJobStateRunning   RiverJobState = "running"
+	RiverJobStateScheduled RiverJobState = "scheduled"
+)
+
+func (e *RiverJobState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RiverJobState(s)
+	case string:
+		*e = RiverJobState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RiverJobState: %T", src)
+	}
+	return nil
+}
+
+type NullRiverJobState struct {
+	RiverJobState RiverJobState
+	Valid         bool // Valid is true if RiverJobState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRiverJobState) Scan(value interface{}) error {
+	if value == nil {
+		ns.RiverJobState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RiverJobState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRiverJobState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RiverJobState), nil
+}
+
+func (e RiverJobState) Valid() bool {
+	switch e {
+	case RiverJobStateAvailable,
+		RiverJobStateCancelled,
+		RiverJobStateCompleted,
+		RiverJobStateDiscarded,
+		RiverJobStatePending,
+		RiverJobStateRetryable,
+		RiverJobStateRunning,
+		RiverJobStateScheduled:
+		return true
+	}
+	return false
+}
+
+func AllRiverJobStateValues() []RiverJobState {
+	return []RiverJobState{
+		RiverJobStateAvailable,
+		RiverJobStateCancelled,
+		RiverJobStateCompleted,
+		RiverJobStateDiscarded,
+		RiverJobStatePending,
+		RiverJobStateRetryable,
+		RiverJobStateRunning,
+		RiverJobStateScheduled,
+	}
+}
+
 type VulnerabilitySuppressReason string
 
 const (
@@ -241,6 +317,27 @@ type Image struct {
 	State     ImageState
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type RiverJob struct {
+	ID           int64
+	State        RiverJobState
+	Attempt      int16
+	MaxAttempts  int16
+	AttemptedAt  pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+	FinalizedAt  pgtype.Timestamptz
+	ScheduledAt  pgtype.Timestamptz
+	Priority     int16
+	Args         []byte
+	AttemptedBy  []string
+	Errors       [][]byte
+	Kind         string
+	Metadata     []byte
+	Queue        string
+	Tags         []string
+	UniqueKey    []byte
+	UniqueStates pgtype.Bits
 }
 
 type SourceRef struct {

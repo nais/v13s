@@ -2,15 +2,14 @@ package database_test
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/nais/v13s/internal/updater"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/test"
+	"github.com/nais/v13s/internal/updater"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMarkImagesAsUnused(t *testing.T) {

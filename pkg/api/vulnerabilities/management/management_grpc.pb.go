@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Management_RegisterWorkload_FullMethodName = "/v13s.api.protobuf.Management/RegisterWorkload"
-	Management_TriggerSync_FullMethodName      = "/v13s.api.protobuf.Management/TriggerSync"
+	Management_RegisterWorkload_FullMethodName  = "/v13s.api.protobuf.Management/RegisterWorkload"
+	Management_TriggerSync_FullMethodName       = "/v13s.api.protobuf.Management/TriggerSync"
+	Management_GetWorkloadStatus_FullMethodName = "/v13s.api.protobuf.Management/GetWorkloadStatus"
 )
 
 // ManagementClient is the client API for Management service.
@@ -29,6 +30,7 @@ const (
 type ManagementClient interface {
 	RegisterWorkload(ctx context.Context, in *RegisterWorkloadRequest, opts ...grpc.CallOption) (*RegisterWorkloadResponse, error)
 	TriggerSync(ctx context.Context, in *TriggerSyncRequest, opts ...grpc.CallOption) (*TriggerSyncResponse, error)
+	GetWorkloadStatus(ctx context.Context, in *GetWorkloadStatusRequest, opts ...grpc.CallOption) (*GetWorkloadStatusResponse, error)
 }
 
 type managementClient struct {
@@ -59,12 +61,23 @@ func (c *managementClient) TriggerSync(ctx context.Context, in *TriggerSyncReque
 	return out, nil
 }
 
+func (c *managementClient) GetWorkloadStatus(ctx context.Context, in *GetWorkloadStatusRequest, opts ...grpc.CallOption) (*GetWorkloadStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWorkloadStatusResponse)
+	err := c.cc.Invoke(ctx, Management_GetWorkloadStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ManagementServer is the server API for Management service.
 // All implementations must embed UnimplementedManagementServer
 // for forward compatibility.
 type ManagementServer interface {
 	RegisterWorkload(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error)
 	TriggerSync(context.Context, *TriggerSyncRequest) (*TriggerSyncResponse, error)
+	GetWorkloadStatus(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)
 	mustEmbedUnimplementedManagementServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedManagementServer) RegisterWorkload(context.Context, *Register
 }
 func (UnimplementedManagementServer) TriggerSync(context.Context, *TriggerSyncRequest) (*TriggerSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TriggerSync not implemented")
+}
+func (UnimplementedManagementServer) GetWorkloadStatus(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkloadStatus not implemented")
 }
 func (UnimplementedManagementServer) mustEmbedUnimplementedManagementServer() {}
 func (UnimplementedManagementServer) testEmbeddedByValue()                    {}
@@ -138,6 +154,24 @@ func _Management_TriggerSync_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Management_GetWorkloadStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkloadStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServer).GetWorkloadStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Management_GetWorkloadStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServer).GetWorkloadStatus(ctx, req.(*GetWorkloadStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Management_ServiceDesc is the grpc.ServiceDesc for Management service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var Management_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TriggerSync",
 			Handler:    _Management_TriggerSync_Handler,
+		},
+		{
+			MethodName: "GetWorkloadStatus",
+			Handler:    _Management_GetWorkloadStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

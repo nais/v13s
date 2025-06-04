@@ -143,3 +143,7 @@ func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWo
 func (c *client) TriggerSync(ctx context.Context, in *management.TriggerSyncRequest, opts ...grpc.CallOption) (*management.TriggerSyncResponse, error) {
 	return c.m.TriggerSync(ctx, in, opts...)
 }
+
+func (c *client) GetWorkloadStatus(ctx context.Context, in *management.GetWorkloadStatusRequest, opts ...grpc.CallOption) (*management.GetWorkloadStatusResponse, error) {
+	return c.m.GetWorkloadStatus(ctx, in, opts...)
+}
