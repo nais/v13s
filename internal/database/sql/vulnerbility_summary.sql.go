@@ -57,6 +57,18 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 	return &i, err
 }
 
+const getLastSnapshotDateForVulnerabilitySummary = `-- name: GetLastSnapshotDateForVulnerabilitySummary :one
+SELECT COALESCE(MAX(snapshot_date), '2025-01-01')::date AS last_snapshot
+FROM vuln_daily_by_workload
+`
+
+func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error) {
+	row := q.db.QueryRow(ctx, getLastSnapshotDateForVulnerabilitySummary)
+	var last_snapshot pgtype.Date
+	err := row.Scan(&last_snapshot)
+	return last_snapshot, err
+}
+
 const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT w.id, w.image_name, w.image_tag
@@ -163,7 +175,7 @@ WITH snapshot_start_date AS (
 ),
 filtered_data AS (
     SELECT snapshot_date, workload_id, workload_name, cluster, namespace, workload_type, critical, high, medium, low, unassigned, total, risk_score
-    FROM mv_vuln_daily_by_workload
+    FROM vuln_daily_by_workload
     WHERE snapshot_date >= (SELECT start_date FROM snapshot_start_date)
       AND snapshot_date <= CURRENT_DATE
       AND ($2::TEXT IS NULL OR cluster = $2::TEXT)
@@ -409,5 +421,59 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_daily_by_workload
 
 func (q *Queries) RefreshVulnerabilitySummary(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, refreshVulnerabilitySummary)
+	return err
+}
+
+const refreshVulnerabilitySummaryForDate = `-- name: RefreshVulnerabilitySummaryForDate :exec
+WITH latest_summary_per_day AS (
+    SELECT DISTINCT ON (w.id)
+    $1::date AS snapshot_date,
+    w.id AS workload_id,
+    w.name AS workload_name,
+    w.cluster,
+    w.namespace,
+    w.workload_type,
+    vs.critical,
+    vs.high,
+    vs.medium,
+    vs.low,
+    vs.unassigned,
+    vs.risk_score
+FROM workloads w
+    LEFT JOIN vulnerability_summary vs
+ON w.image_name = vs.image_name
+    AND vs.created_at::date <= $1::date
+WHERE vs IS NOT NULL
+ORDER BY w.id, vs.created_at DESC
+    )
+INSERT INTO vuln_daily_by_workload
+SELECT
+    snapshot_date,
+    workload_id,
+    workload_name,
+    cluster,
+    namespace,
+    workload_type,
+    COALESCE(critical, 0)::INT4,
+        COALESCE(high, 0)::INT4,
+        COALESCE(medium, 0)::INT4,
+        COALESCE(low, 0)::INT4,
+        COALESCE(unassigned, 0)::INT4,
+        (COALESCE(critical, 0) + COALESCE(high, 0) + COALESCE(medium, 0) + COALESCE(low, 0) + COALESCE(unassigned, 0))::INT4,
+        COALESCE(risk_score, 0)::INT4
+FROM latest_summary_per_day
+    ON CONFLICT (snapshot_date, workload_id) DO UPDATE
+                                                    SET
+                                                    critical = EXCLUDED.critical,
+                                                    high = EXCLUDED.high,
+                                                    medium = EXCLUDED.medium,
+                                                    low = EXCLUDED.low,
+                                                    unassigned = EXCLUDED.unassigned,
+                                                    total = EXCLUDED.total,
+                                                    risk_score = EXCLUDED.risk_score
+`
+
+func (q *Queries) RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error {
+	_, err := q.db.Exec(ctx, refreshVulnerabilitySummaryForDate, date)
 	return err
 }

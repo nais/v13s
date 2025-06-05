@@ -141,7 +141,7 @@ WITH snapshot_start_date AS (
 ),
 filtered_data AS (
     SELECT *
-    FROM mv_vuln_daily_by_workload
+    FROM vuln_daily_by_workload
     WHERE snapshot_date >= (SELECT start_date FROM snapshot_start_date)
       AND snapshot_date <= CURRENT_DATE
       AND (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
@@ -170,3 +170,56 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_daily_by_workload;
 SELECT * FROM vulnerability_summary
 WHERE image_name = @image_name
   AND image_tag = @image_tag;
+
+-- name: GetLastSnapshotDateForVulnerabilitySummary :one
+SELECT COALESCE(MAX(snapshot_date), '2025-01-01')::date AS last_snapshot
+FROM vuln_daily_by_workload;
+
+
+-- name: RefreshVulnerabilitySummaryForDate :exec
+WITH latest_summary_per_day AS (
+    SELECT DISTINCT ON (w.id)
+    @date::date AS snapshot_date,
+    w.id AS workload_id,
+    w.name AS workload_name,
+    w.cluster,
+    w.namespace,
+    w.workload_type,
+    vs.critical,
+    vs.high,
+    vs.medium,
+    vs.low,
+    vs.unassigned,
+    vs.risk_score
+FROM workloads w
+    LEFT JOIN vulnerability_summary vs
+ON w.image_name = vs.image_name
+    AND vs.created_at::date <= @date::date
+WHERE vs IS NOT NULL
+ORDER BY w.id, vs.created_at DESC
+    )
+INSERT INTO vuln_daily_by_workload
+SELECT
+    snapshot_date,
+    workload_id,
+    workload_name,
+    cluster,
+    namespace,
+    workload_type,
+    COALESCE(critical, 0)::INT4,
+        COALESCE(high, 0)::INT4,
+        COALESCE(medium, 0)::INT4,
+        COALESCE(low, 0)::INT4,
+        COALESCE(unassigned, 0)::INT4,
+        (COALESCE(critical, 0) + COALESCE(high, 0) + COALESCE(medium, 0) + COALESCE(low, 0) + COALESCE(unassigned, 0))::INT4,
+        COALESCE(risk_score, 0)::INT4
+FROM latest_summary_per_day
+    ON CONFLICT (snapshot_date, workload_id) DO UPDATE
+                                                    SET
+                                                    critical = EXCLUDED.critical,
+                                                    high = EXCLUDED.high,
+                                                    medium = EXCLUDED.medium,
+                                                    low = EXCLUDED.low,
+                                                    unassigned = EXCLUDED.unassigned,
+                                                    total = EXCLUDED.total,
+                                                    risk_score = EXCLUDED.risk_score;

@@ -26,6 +26,7 @@ type Querier interface {
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
+	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
@@ -46,6 +47,7 @@ type Querier interface {
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error
 	RefreshVulnerabilitySummary(ctx context.Context) error
+	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	ResetDatabase(ctx context.Context) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error

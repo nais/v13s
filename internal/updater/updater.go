@@ -68,10 +68,28 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 	})
 
-	go runAtInterval(ctx, 13*time.Hour, "refresh materialized view for vulnerability data", u.log, func() {
-		if err := u.querier.RefreshVulnerabilitySummary(ctx); err != nil {
-			u.log.Errorf("failed to refresh vulnerability summary: %v", err)
+	// TODO: increase interval
+	go runAtInterval(ctx, 2*time.Minute, "refresh vulnerability summary for dates", u.log, func() {
+		now := time.Now()
+		lastSnapshot, err := u.querier.GetLastSnapshotDateForVulnerabilitySummary(ctx)
+		if err != nil {
+			u.log.WithError(err).Error("could not get last snapshot date")
 		}
+
+		startDate := lastSnapshot.Time.AddDate(0, 0, 1) // next day
+		today := time.Now().Truncate(24 * time.Hour)
+
+		days := 0
+		for d := startDate; !d.After(today); d = d.AddDate(0, 0, 1) {
+			if err = u.querier.RefreshVulnerabilitySummaryForDate(ctx, pgtype.Date{
+				Time:  d,
+				Valid: true,
+			}); err != nil {
+				u.log.WithError(err).Errorf("failed to refresh summary for %s", d.Format("2006-01-02"))
+			}
+			days++
+		}
+		u.log.Infof("vulnerability summary refreshed for %d days, took %f seconds\n", days, time.Since(now).Seconds())
 	})
 }
 
