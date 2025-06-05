@@ -68,8 +68,7 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 	})
 
-	// TODO: increase interval
-	go runAtInterval(ctx, 2*time.Minute, "refresh vulnerability summary for dates", u.log, func() {
+	go runAtInterval(ctx, 12*time.Hour, "refresh vulnerability summary for dates", u.log, func() {
 		now := time.Now()
 		lastSnapshot, err := u.querier.GetLastSnapshotDateForVulnerabilitySummary(ctx)
 		if err != nil {
