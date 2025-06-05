@@ -178,60 +178,72 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
 ;
 
 -- name: ListVulnerabilitiesForImage :many
-SELECT v.id,
-       v.image_name,
-       v.image_tag,
-       v.package,
-       v.cve_id,
-       v.latest_version,
-       v.created_at,
-       v.updated_at,
-       c.cve_title,
-       c.cve_desc,
-       c.cve_link,
-       c.severity,
-       c.refs,
-       COALESCE(sv.suppressed, FALSE) AS suppressed,
-       sv.reason,
-       sv.reason_text,
-       sv.suppressed_by,
-       sv.updated_at as suppressed_at
-FROM vulnerabilities v
-        JOIN cve c ON v.cve_id = c.cve_id
-        LEFT JOIN suppressed_vulnerabilities sv
-                ON v.image_name = sv.image_name
-                    AND v.package = sv.package
-                    AND v.cve_id = sv.cve_id
-WHERE v.image_name = @image_name
-    AND v.image_tag = @image_tag
-    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY
-    CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN v.package END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN v.package END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN v.cve_id END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN v.cve_id END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN COALESCE(sv.suppressed, FALSE) END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'suppressed_desc' THEN COALESCE(sv.suppressed, FALSE) END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'reason_asc' THEN sv.reason END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'reason_desc' THEN sv.reason END DESC,
-    c.severity, v.id ASC
-    LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
-;
-
--- name: CountVulnerabilitiesForImage :one
-SELECT COUNT(*) AS total
-FROM vulnerabilities v
-         JOIN cve c ON v.cve_id = c.cve_id
-         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
-         LEFT JOIN suppressed_vulnerabilities sv
-                   ON v.image_name = sv.image_name
-                       AND v.package = sv.package
-                       AND v.cve_id = sv.cve_id
-WHERE v.image_name = @image_name
-    AND v.image_tag = @image_tag
-    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+WITH image_vulnerabilities AS (
+    SELECT v.id,
+          v.image_name,
+          v.image_tag,
+          v.package,
+          v.cve_id,
+          v.latest_version,
+          v.created_at,
+          v.updated_at,
+          c.cve_title,
+          c.cve_desc,
+          c.cve_link,
+          c.severity,
+          c.refs::JSONB AS cve_refs,
+          COALESCE(sv.suppressed, FALSE) AS suppressed,
+          sv.reason,
+          sv.reason_text,
+          sv.suppressed_by,
+          sv.updated_at as suppressed_at
+    FROM vulnerabilities v
+            JOIN cve c ON v.cve_id = c.cve_id
+            LEFT JOIN suppressed_vulnerabilities sv
+                      ON v.image_name = sv.image_name
+                          AND v.package = sv.package
+                          AND v.cve_id = sv.cve_id
+    WHERE v.image_name = @image_name
+     AND v.image_tag = @image_tag
+     AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+)
+SELECT id,
+       image_name,
+       image_tag,
+       package,
+       cve_id,
+       latest_version,
+       created_at,
+       updated_at,
+       cve_title,
+       cve_desc,
+       cve_link,
+       severity,
+       cve_refs as cve_refs,
+       COALESCE(suppressed, FALSE) AS suppressed,
+       reason,
+       reason_text,
+       suppressed_by,
+       updated_at as suppressed_at,
+       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count
+FROM image_vulnerabilities
+ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN severity END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN package END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN package END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN cve_id END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN cve_id END DESC,
+         CASE
+             WHEN sqlc.narg('order_by') = 'suppressed_asc'
+                 THEN COALESCE(suppressed, FALSE) END ASC,
+         CASE
+             WHEN sqlc.narg('order_by') = 'suppressed_desc'
+                 THEN COALESCE(suppressed, FALSE) END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'reason_asc' THEN reason END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'reason_desc' THEN reason END DESC,
+         severity, id ASC
+    LIMIT sqlc.arg('limit')
+OFFSET sqlc.arg('offset')
 ;
 
 -- name: ListVulnerabilities :many

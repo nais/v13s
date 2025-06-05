@@ -2,6 +2,7 @@ package grpcvulnerabilities
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -118,22 +119,11 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
 
-	total, err := s.querier.CountVulnerabilitiesForImage(ctx, sql.CountVulnerabilitiesForImageParams{
-		ImageName:         request.GetImageName(),
-		ImageTag:          request.GetImageTag(),
-		IncludeSuppressed: &request.IncludeSuppressed,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to count vulnerabilities for image: %w", err)
-	}
-
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
-	if err != nil {
-		return nil, err
-	}
-
+	total := 0
 	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
+		total = int(row.TotalCount)
+		refs := map[string]string{}
+		_ = json.Unmarshal(row.CveRefs, &refs)
 
 		return &vulnerabilities.Vulnerability{
 			Id:      row.ID.String(),
@@ -152,10 +142,15 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 				Description: row.CveDesc,
 				Link:        row.CveLink,
 				Severity:    vulnerabilities.Severity(row.Severity),
-				References:  row.Refs,
+				References:  refs,
 			},
 		}
 	})
+
+	pageInfo, err := grpcpagination.PageInfo(request, total)
+	if err != nil {
+		return nil, err
+	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
 		Nodes:    nodes,

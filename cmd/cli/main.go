@@ -278,37 +278,66 @@ func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vuln
 }
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
-	opts := parseOptions(cmd, o)
-	if cmd.Args().Len() == 0 {
-		return fmt.Errorf("missing image name")
-	}
-	parts := strings.Split(cmd.Args().First(), ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
-	}
-	start := time.Now()
-	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
-	if err != nil {
-		return err
-	}
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	offset := 0
+	for {
+		opts := parseOptions(cmd, o)
+		opts = append(opts, vulnerabilities.Offset(int32(offset)))
 
-	tbl := table.New("Package", "CVE", "Title", "Severity")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		if cmd.Args().Len() == 0 {
+			return fmt.Errorf("missing image name")
+		}
+		parts := strings.Split(cmd.Args().First(), ":")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+		}
+		start := time.Now()
+		resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
+		if err != nil {
+			return err
+		}
+		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	for _, n := range resp.GetNodes() {
-		tbl.AddRow(
-			n.GetPackage(),
-			n.Cve.Id,
-			n.Cve.Title,
-			n.Cve.Severity,
-		)
+		tbl := table.New("Package", "CVE", "Title", "Severity")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+		for _, n := range resp.GetNodes() {
+			tbl.AddRow(
+				n.GetPackage(),
+				n.Cve.Id,
+				n.Cve.Title,
+				n.Cve.Severity,
+			)
+		}
+
+		tbl.Print()
+		fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
+		numFetched := offset + o.limit
+		if numFetched > int(resp.PageInfo.TotalCount) {
+			numFetched = int(resp.PageInfo.TotalCount)
+		}
+		fmt.Printf("Fetched %d of total '%d' summaries in %f seconds.\n", numFetched, resp.PageInfo.TotalCount, time.Since(start).Seconds())
+
+		// Check if there is another page
+		if !resp.GetPageInfo().GetHasNextPage() {
+			fmt.Printf("No more pages available.\n")
+			break
+		}
+
+		// Ask user for input to continue pagination
+		fmt.Println("Press 'n' for next page, 'q' to quit:")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "q" {
+			break
+		} else if input == "n" {
+			offset += o.limit
+		} else {
+			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
+		}
 	}
-
-	tbl.Print()
-	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
-
 	return nil
 }
 

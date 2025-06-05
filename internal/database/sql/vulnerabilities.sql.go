@@ -91,33 +91,6 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
-const countVulnerabilitiesForImage = `-- name: CountVulnerabilitiesForImage :one
-SELECT COUNT(*) AS total
-FROM vulnerabilities v
-         JOIN cve c ON v.cve_id = c.cve_id
-         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
-         LEFT JOIN suppressed_vulnerabilities sv
-                   ON v.image_name = sv.image_name
-                       AND v.package = sv.package
-                       AND v.cve_id = sv.cve_id
-WHERE v.image_name = $1
-    AND v.image_tag = $2
-    AND ($3::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-`
-
-type CountVulnerabilitiesForImageParams struct {
-	ImageName         string
-	ImageTag          string
-	IncludeSuppressed *bool
-}
-
-func (q *Queries) CountVulnerabilitiesForImage(ctx context.Context, arg CountVulnerabilitiesForImageParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countVulnerabilitiesForImage, arg.ImageName, arg.ImageTag, arg.IncludeSuppressed)
-	var total int64
-	err := row.Scan(&total)
-	return total, err
-}
-
 const generateVulnerabilitySummaryForImage = `-- name: GenerateVulnerabilitySummaryForImage :one
 SELECT COUNT(*) AS total,
        SUM(CASE WHEN c.severity = 5 THEN 1 ELSE 0 END) AS critical,
@@ -614,55 +587,81 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 }
 
 const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
-SELECT v.id,
-       v.image_name,
-       v.image_tag,
-       v.package,
-       v.cve_id,
-       v.latest_version,
-       v.created_at,
-       v.updated_at,
-       c.cve_title,
-       c.cve_desc,
-       c.cve_link,
-       c.severity,
-       c.refs,
-       COALESCE(sv.suppressed, FALSE) AS suppressed,
-       sv.reason,
-       sv.reason_text,
-       sv.suppressed_by,
-       sv.updated_at as suppressed_at
-FROM vulnerabilities v
-        JOIN cve c ON v.cve_id = c.cve_id
-        LEFT JOIN suppressed_vulnerabilities sv
-                ON v.image_name = sv.image_name
-                    AND v.package = sv.package
-                    AND v.cve_id = sv.cve_id
-WHERE v.image_name = $1
-    AND v.image_tag = $2
-    AND ($3::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-ORDER BY
-    CASE WHEN $4 = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN $4 = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN $4 = 'package_asc' THEN v.package END ASC,
-    CASE WHEN $4 = 'package_desc' THEN v.package END DESC,
-    CASE WHEN $4 = 'cve_id_asc' THEN v.cve_id END ASC,
-    CASE WHEN $4 = 'cve_id_desc' THEN v.cve_id END DESC,
-    CASE WHEN $4 = 'suppressed_asc' THEN COALESCE(sv.suppressed, FALSE) END ASC,
-    CASE WHEN $4 = 'suppressed_desc' THEN COALESCE(sv.suppressed, FALSE) END DESC,
-    CASE WHEN $4 = 'reason_asc' THEN sv.reason END ASC,
-    CASE WHEN $4 = 'reason_desc' THEN sv.reason END DESC,
-    c.severity, v.id ASC
-    LIMIT $6 OFFSET $5
+WITH image_vulnerabilities AS (
+    SELECT v.id,
+          v.image_name,
+          v.image_tag,
+          v.package,
+          v.cve_id,
+          v.latest_version,
+          v.created_at,
+          v.updated_at,
+          c.cve_title,
+          c.cve_desc,
+          c.cve_link,
+          c.severity,
+          c.refs::JSONB AS cve_refs,
+          COALESCE(sv.suppressed, FALSE) AS suppressed,
+          sv.reason,
+          sv.reason_text,
+          sv.suppressed_by,
+          sv.updated_at as suppressed_at
+    FROM vulnerabilities v
+            JOIN cve c ON v.cve_id = c.cve_id
+            LEFT JOIN suppressed_vulnerabilities sv
+                      ON v.image_name = sv.image_name
+                          AND v.package = sv.package
+                          AND v.cve_id = sv.cve_id
+    WHERE v.image_name = $4
+     AND v.image_tag = $5
+     AND ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+)
+SELECT id,
+       image_name,
+       image_tag,
+       package,
+       cve_id,
+       latest_version,
+       created_at,
+       updated_at,
+       cve_title,
+       cve_desc,
+       cve_link,
+       severity,
+       cve_refs as cve_refs,
+       COALESCE(suppressed, FALSE) AS suppressed,
+       reason,
+       reason_text,
+       suppressed_by,
+       updated_at as suppressed_at,
+       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count
+FROM image_vulnerabilities
+ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
+         CASE WHEN $1 = 'severity_desc' THEN severity END DESC,
+         CASE WHEN $1 = 'package_asc' THEN package END ASC,
+         CASE WHEN $1 = 'package_desc' THEN package END DESC,
+         CASE WHEN $1 = 'cve_id_asc' THEN cve_id END ASC,
+         CASE WHEN $1 = 'cve_id_desc' THEN cve_id END DESC,
+         CASE
+             WHEN $1 = 'suppressed_asc'
+                 THEN COALESCE(suppressed, FALSE) END ASC,
+         CASE
+             WHEN $1 = 'suppressed_desc'
+                 THEN COALESCE(suppressed, FALSE) END DESC,
+         CASE WHEN $1 = 'reason_asc' THEN reason END ASC,
+         CASE WHEN $1 = 'reason_desc' THEN reason END DESC,
+         severity, id ASC
+    LIMIT $3
+OFFSET $2
 `
 
 type ListVulnerabilitiesForImageParams struct {
-	ImageName         string
-	ImageTag          string
-	IncludeSuppressed *bool
 	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
+	ImageName         string
+	ImageTag          string
+	IncludeSuppressed *bool
 }
 
 type ListVulnerabilitiesForImageRow struct {
@@ -678,22 +677,23 @@ type ListVulnerabilitiesForImageRow struct {
 	CveDesc       string
 	CveLink       string
 	Severity      int32
-	Refs          typeext.MapStringString
+	CveRefs       []byte
 	Suppressed    bool
 	Reason        NullVulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	TotalCount    int64
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilitiesForImage,
-		arg.ImageName,
-		arg.ImageTag,
-		arg.IncludeSuppressed,
 		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.IncludeSuppressed,
 	)
 	if err != nil {
 		return nil, err
@@ -715,12 +715,13 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.CveDesc,
 			&i.CveLink,
 			&i.Severity,
-			&i.Refs,
+			&i.CveRefs,
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,
 			&i.SuppressedBy,
 			&i.SuppressedAt,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}

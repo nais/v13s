@@ -379,63 +379,6 @@ func (_c *MockQuerier_CountVulnerabilities_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// CountVulnerabilitiesForImage provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) CountVulnerabilitiesForImage(ctx context.Context, arg CountVulnerabilitiesForImageParams) (int64, error) {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CountVulnerabilitiesForImage")
-	}
-
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, CountVulnerabilitiesForImageParams) (int64, error)); ok {
-		return rf(ctx, arg)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, CountVulnerabilitiesForImageParams) int64); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		r0 = ret.Get(0).(int64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, CountVulnerabilitiesForImageParams) error); ok {
-		r1 = rf(ctx, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_CountVulnerabilitiesForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountVulnerabilitiesForImage'
-type MockQuerier_CountVulnerabilitiesForImage_Call struct {
-	*mock.Call
-}
-
-// CountVulnerabilitiesForImage is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg CountVulnerabilitiesForImageParams
-func (_e *MockQuerier_Expecter) CountVulnerabilitiesForImage(ctx interface{}, arg interface{}) *MockQuerier_CountVulnerabilitiesForImage_Call {
-	return &MockQuerier_CountVulnerabilitiesForImage_Call{Call: _e.mock.On("CountVulnerabilitiesForImage", ctx, arg)}
-}
-
-func (_c *MockQuerier_CountVulnerabilitiesForImage_Call) Run(run func(ctx context.Context, arg CountVulnerabilitiesForImageParams)) *MockQuerier_CountVulnerabilitiesForImage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(CountVulnerabilitiesForImageParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_CountVulnerabilitiesForImage_Call) Return(_a0 int64, _a1 error) *MockQuerier_CountVulnerabilitiesForImage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_CountVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, CountVulnerabilitiesForImageParams) (int64, error)) *MockQuerier_CountVulnerabilitiesForImage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateImage provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) CreateImage(ctx context.Context, arg CreateImageParams) error {
 	ret := _m.Called(ctx, arg)
