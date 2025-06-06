@@ -89,6 +89,10 @@ func (u *Updater) Run(ctx context.Context) {
 			days++
 		}
 		u.log.Infof("vulnerability summary refreshed for %d days, took %f seconds\n", days, time.Since(now).Seconds())
+
+		if err = u.querier.RefreshVulnerabilitySummaryDailyView(ctx); err != nil {
+			u.log.WithError(err).Error("failed to refresh vulnerability summary daily view")
+		}
 	})
 }
 

@@ -930,6 +930,62 @@ func (_c *MockQuerier_GetImagesScheduledForSync_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// GetLastSnapshotDateForVulnerabilitySummary provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLastSnapshotDateForVulnerabilitySummary")
+	}
+
+	var r0 pgtype.Date
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (pgtype.Date, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) pgtype.Date); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(pgtype.Date)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLastSnapshotDateForVulnerabilitySummary'
+type MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call struct {
+	*mock.Call
+}
+
+// GetLastSnapshotDateForVulnerabilitySummary is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetLastSnapshotDateForVulnerabilitySummary(ctx interface{}) *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call {
+	return &MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call{Call: _e.mock.On("GetLastSnapshotDateForVulnerabilitySummary", ctx)}
+}
+
+func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) Run(run func(ctx context.Context)) *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) Return(_a0 pgtype.Date, _a1 error) *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) RunAndReturn(run func(context.Context) (pgtype.Date, error)) *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSourceRef provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error) {
 	ret := _m.Called(ctx, arg)
@@ -2013,12 +2069,12 @@ func (_c *MockQuerier_MarkUnusedImages_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// RefreshVulnerabilitySummary provides a mock function with given fields: ctx
-func (_m *MockQuerier) RefreshVulnerabilitySummary(ctx context.Context) error {
+// RefreshVulnerabilitySummaryDailyView provides a mock function with given fields: ctx
+func (_m *MockQuerier) RefreshVulnerabilitySummaryDailyView(ctx context.Context) error {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RefreshVulnerabilitySummary")
+		panic("no return value specified for RefreshVulnerabilitySummaryDailyView")
 	}
 
 	var r0 error
@@ -2031,30 +2087,77 @@ func (_m *MockQuerier) RefreshVulnerabilitySummary(ctx context.Context) error {
 	return r0
 }
 
-// MockQuerier_RefreshVulnerabilitySummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshVulnerabilitySummary'
-type MockQuerier_RefreshVulnerabilitySummary_Call struct {
+// MockQuerier_RefreshVulnerabilitySummaryDailyView_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshVulnerabilitySummaryDailyView'
+type MockQuerier_RefreshVulnerabilitySummaryDailyView_Call struct {
 	*mock.Call
 }
 
-// RefreshVulnerabilitySummary is a helper method to define mock.On call
+// RefreshVulnerabilitySummaryDailyView is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockQuerier_Expecter) RefreshVulnerabilitySummary(ctx interface{}) *MockQuerier_RefreshVulnerabilitySummary_Call {
-	return &MockQuerier_RefreshVulnerabilitySummary_Call{Call: _e.mock.On("RefreshVulnerabilitySummary", ctx)}
+func (_e *MockQuerier_Expecter) RefreshVulnerabilitySummaryDailyView(ctx interface{}) *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call {
+	return &MockQuerier_RefreshVulnerabilitySummaryDailyView_Call{Call: _e.mock.On("RefreshVulnerabilitySummaryDailyView", ctx)}
 }
 
-func (_c *MockQuerier_RefreshVulnerabilitySummary_Call) Run(run func(ctx context.Context)) *MockQuerier_RefreshVulnerabilitySummary_Call {
+func (_c *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call) Run(run func(ctx context.Context)) *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context))
 	})
 	return _c
 }
 
-func (_c *MockQuerier_RefreshVulnerabilitySummary_Call) Return(_a0 error) *MockQuerier_RefreshVulnerabilitySummary_Call {
+func (_c *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call) Return(_a0 error) *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockQuerier_RefreshVulnerabilitySummary_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_RefreshVulnerabilitySummary_Call {
+func (_c *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_RefreshVulnerabilitySummaryDailyView_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RefreshVulnerabilitySummaryForDate provides a mock function with given fields: ctx, date
+func (_m *MockQuerier) RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error {
+	ret := _m.Called(ctx, date)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshVulnerabilitySummaryForDate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Date) error); ok {
+		r0 = rf(ctx, date)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_RefreshVulnerabilitySummaryForDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshVulnerabilitySummaryForDate'
+type MockQuerier_RefreshVulnerabilitySummaryForDate_Call struct {
+	*mock.Call
+}
+
+// RefreshVulnerabilitySummaryForDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - date pgtype.Date
+func (_e *MockQuerier_Expecter) RefreshVulnerabilitySummaryForDate(ctx interface{}, date interface{}) *MockQuerier_RefreshVulnerabilitySummaryForDate_Call {
+	return &MockQuerier_RefreshVulnerabilitySummaryForDate_Call{Call: _e.mock.On("RefreshVulnerabilitySummaryForDate", ctx, date)}
+}
+
+func (_c *MockQuerier_RefreshVulnerabilitySummaryForDate_Call) Run(run func(ctx context.Context, date pgtype.Date)) *MockQuerier_RefreshVulnerabilitySummaryForDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(pgtype.Date))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_RefreshVulnerabilitySummaryForDate_Call) Return(_a0 error) *MockQuerier_RefreshVulnerabilitySummaryForDate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_RefreshVulnerabilitySummaryForDate_Call) RunAndReturn(run func(context.Context, pgtype.Date) error) *MockQuerier_RefreshVulnerabilitySummaryForDate_Call {
 	_c.Call.Return(run)
 	return _c
 }

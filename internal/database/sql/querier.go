@@ -46,7 +46,7 @@ type Querier interface {
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error
-	RefreshVulnerabilitySummary(ctx context.Context) error
+	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	ResetDatabase(ctx context.Context) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error

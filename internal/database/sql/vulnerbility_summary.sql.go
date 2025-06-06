@@ -163,37 +163,23 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 }
 
 const getVulnerabilitySummaryTimeSeries = `-- name: GetVulnerabilitySummaryTimeSeries :many
-WITH snapshot_start_date AS (
-    SELECT COALESCE(
-        (
-            SELECT (MAX(snapshot_date) + INTERVAL '1 day')::date
-            FROM mv_vuln_daily_by_workload
-            WHERE snapshot_date < $1::TIMESTAMPTZ
-        ),
-        $1::DATE
-    ) AS start_date
-),
-filtered_data AS (
-    SELECT snapshot_date, workload_id, workload_name, cluster, namespace, workload_type, critical, high, medium, low, unassigned, total, risk_score
-    FROM vuln_daily_by_workload
-    WHERE snapshot_date >= (SELECT start_date FROM snapshot_start_date)
-      AND snapshot_date <= CURRENT_DATE
-      AND ($2::TEXT IS NULL OR cluster = $2::TEXT)
-      AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
-      AND ($4::TEXT[] IS NULL OR workload_type = ANY($4::TEXT[]))
-      AND ($5::TEXT IS NULL OR workload_name = $5::TEXT)
-)
 SELECT
     snapshot_date,
-    COUNT(DISTINCT workload_id)::INT4 AS workload_count,
+    SUM(workload_count)::INT4 AS workload_count,
     SUM(critical)::INT4 AS critical,
     SUM(high)::INT4 AS high,
     SUM(medium)::INT4 AS medium,
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
-    SUM(critical + high + medium + low + unassigned)::INT4 AS total,
+    SUM(total)::INT4 AS total,
     SUM(risk_score)::INT4 AS risk_score
-FROM filtered_data
+FROM mv_vuln_summary_daily_by_workload
+WHERE snapshot_date >= $1::TIMESTAMPTZ
+  AND snapshot_date <= CURRENT_DATE
+  AND ($2::TEXT IS NULL OR cluster = $2::TEXT)
+  AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
+  AND ($4::TEXT[] IS NULL OR workload_type = ANY($4::TEXT[]))
+  AND ($5::TEXT IS NULL OR workload_name = $5::TEXT)
 GROUP BY snapshot_date
 ORDER BY snapshot_date
 `
@@ -415,12 +401,12 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 	return items, nil
 }
 
-const refreshVulnerabilitySummary = `-- name: RefreshVulnerabilitySummary :exec
-REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_daily_by_workload
+const refreshVulnerabilitySummaryDailyView = `-- name: RefreshVulnerabilitySummaryDailyView :exec
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_summary_daily_by_workload
 `
 
-func (q *Queries) RefreshVulnerabilitySummary(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, refreshVulnerabilitySummary)
+func (q *Queries) RefreshVulnerabilitySummaryDailyView(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, refreshVulnerabilitySummaryDailyView)
 	return err
 }
 
@@ -442,9 +428,9 @@ WITH latest_summary_per_day AS (
 FROM workloads w
     LEFT JOIN vulnerability_summary vs
 ON w.image_name = vs.image_name
-    AND vs.created_at::date <= $1::date
+    AND vs.updated_at::date <= $1::date
 WHERE vs IS NOT NULL
-ORDER BY w.id, vs.created_at DESC
+ORDER BY w.id, vs.updated_at DESC
     )
 INSERT INTO vuln_daily_by_workload
 SELECT

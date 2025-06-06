@@ -129,42 +129,29 @@ FROM filtered_workloads fw
                    ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag;
 
 -- name: GetVulnerabilitySummaryTimeSeries :many
-WITH snapshot_start_date AS (
-    SELECT COALESCE(
-        (
-            SELECT (MAX(snapshot_date) + INTERVAL '1 day')::date
-            FROM mv_vuln_daily_by_workload
-            WHERE snapshot_date < sqlc.narg('since')::TIMESTAMPTZ
-        ),
-        sqlc.narg('since')::DATE
-    ) AS start_date
-),
-filtered_data AS (
-    SELECT *
-    FROM vuln_daily_by_workload
-    WHERE snapshot_date >= (SELECT start_date FROM snapshot_start_date)
-      AND snapshot_date <= CURRENT_DATE
-      AND (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
-      AND (sqlc.narg('namespace')::TEXT IS NULL OR namespace = sqlc.narg('namespace')::TEXT)
-      AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
-      AND (sqlc.narg('workload_name')::TEXT IS NULL OR workload_name = sqlc.narg('workload_name')::TEXT)
-)
 SELECT
     snapshot_date,
-    COUNT(DISTINCT workload_id)::INT4 AS workload_count,
+    SUM(workload_count)::INT4 AS workload_count,
     SUM(critical)::INT4 AS critical,
     SUM(high)::INT4 AS high,
     SUM(medium)::INT4 AS medium,
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
-    SUM(critical + high + medium + low + unassigned)::INT4 AS total,
+    SUM(total)::INT4 AS total,
     SUM(risk_score)::INT4 AS risk_score
-FROM filtered_data
+FROM mv_vuln_summary_daily_by_workload
+WHERE snapshot_date >= sqlc.arg('since')::TIMESTAMPTZ
+  AND snapshot_date <= CURRENT_DATE
+  AND (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
+  AND (sqlc.narg('namespace')::TEXT IS NULL OR namespace = sqlc.narg('namespace')::TEXT)
+  AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
+  AND (sqlc.narg('workload_name')::TEXT IS NULL OR workload_name = sqlc.narg('workload_name')::TEXT)
 GROUP BY snapshot_date
 ORDER BY snapshot_date;
 
--- name: RefreshVulnerabilitySummary :exec
-REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_daily_by_workload;
+
+-- name: RefreshVulnerabilitySummaryDailyView :exec
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_summary_daily_by_workload;
 
 -- name: GetVulnerabilitySummaryForImage :one
 SELECT * FROM vulnerability_summary
@@ -194,9 +181,9 @@ WITH latest_summary_per_day AS (
 FROM workloads w
     LEFT JOIN vulnerability_summary vs
 ON w.image_name = vs.image_name
-    AND vs.created_at::date <= @date::date
+    AND vs.updated_at::date <= @date::date
 WHERE vs IS NOT NULL
-ORDER BY w.id, vs.created_at DESC
+ORDER BY w.id, vs.updated_at DESC
     )
 INSERT INTO vuln_daily_by_workload
 SELECT
