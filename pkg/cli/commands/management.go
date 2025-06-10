@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -25,12 +26,45 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 			Usage:   "trigger a command",
 			Commands: []*cli.Command{
 				{
-					Name:    "sync",
+					Name:    "update",
 					Aliases: []string{"s"},
 					Usage:   "trigger sync of images",
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						_, err := c.TriggerSync(ctx, &management.TriggerSyncRequest{})
 						return err
+					},
+				},
+				{
+					Name:    "resync",
+					Aliases: []string{"r"},
+					Usage:   "trigger resync of workloads",
+					Flags:   flag.CommonFlags(opts, "limit", "order", "since"),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						resp, err := c.Resync(ctx, &management.ResyncRequest{
+							Cluster:      p(opts.Cluster),
+							Namespace:    p(opts.Namespace),
+							Workload:     p(opts.Workload),
+							WorkloadType: p(opts.WorkloadType),
+							//TODO: add flag for state
+							State: nil,
+						})
+						if err != nil {
+							return fmt.Errorf("failed to trigger resync: %w", err)
+						}
+
+						t := Table{
+							Headers: []any{"Cluster", "Namespace", "Type", "Workload"},
+						}
+						for _, w := range resp.Workloads {
+							parts := strings.Split(w, "/")
+							if len(parts) != 4 {
+								log.Warnf("unexpected workload format: %s", w)
+								continue
+							}
+							t.AddRow(parts...)
+						}
+						t.Print()
+						return nil
 					},
 				},
 			},
@@ -146,4 +180,29 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 			},
 		},
 	}
+}
+
+type Table struct {
+	Headers []any
+	Rows    [][]string
+}
+
+func (t *Table) AddRow(row ...string) {
+	t.Rows = append(t.Rows, row)
+}
+
+func (t *Table) Print() {
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	tbl := table.New(t.Headers...)
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	tbl.SetRows(t.Rows)
+	tbl.Print()
+}
+
+func p(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

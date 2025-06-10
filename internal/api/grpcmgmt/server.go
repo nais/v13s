@@ -7,6 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/manager"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
@@ -18,15 +20,17 @@ var _ management.ManagementServer = (*Server)(nil)
 type Server struct {
 	management.UnimplementedManagementServer
 	querier   sql.Querier
+	mgr       *manager.WorkloadManager
 	updater   *updater.Updater
 	parentCtx context.Context
 	log       *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, pool *pgxpool.Pool, updater *updater.Updater, field *logrus.Entry) *Server {
+func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr *manager.WorkloadManager, updater *updater.Updater, field *logrus.Entry) *Server {
 	return &Server{
 		parentCtx: parentCtx,
 		querier:   sql.New(pool),
+		mgr:       mgr,
 		updater:   updater,
 		log:       field,
 	}
@@ -173,4 +177,46 @@ func groupWorkloadsWithJobs(rows []*sql.ListWorkloadStatusWithJobsRow) []*manage
 	}
 
 	return result
+}
+
+func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) (*management.ResyncResponse, error) {
+	state := sql.WorkloadStateUpdated
+	if request.State != nil {
+		state = sql.WorkloadState(*request.State)
+	}
+	rows, err := s.querier.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
+		Cluster:      request.Cluster,
+		Namespace:    request.Namespace,
+		WorkloadName: request.Workload,
+		WorkloadType: request.WorkloadType,
+		OldState:     state,
+		State:        sql.WorkloadStateResync,
+	})
+	if err != nil {
+		s.log.WithError(err).Error("failed to set workload state")
+		return nil, err
+	}
+	workloads := make([]string, 0)
+	for _, row := range rows {
+		workload := &model.Workload{
+			Cluster:   row.Cluster,
+			Namespace: row.Namespace,
+			Name:      row.Name,
+			Type:      model.WorkloadType(row.WorkloadType),
+			ImageName: row.ImageName,
+			ImageTag:  row.ImageTag,
+		}
+
+		err = s.mgr.AddWorkload(ctx, workload)
+		if err != nil {
+			s.log.WithError(err).Error("failed to add workload to job queue")
+			return nil, err
+		}
+		workloads = append(workloads, fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
+	}
+	s.log.WithField("num workloads", len(workloads)).Info("added workloads to job queue")
+	return &management.ResyncResponse{
+		NumWorkloads: int32(len(workloads)),
+		Workloads:    workloads,
+	}, err
 }

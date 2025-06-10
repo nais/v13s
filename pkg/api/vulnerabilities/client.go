@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/grpc"
-
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
+	"google.golang.org/grpc"
 )
 
 type Client interface {
@@ -146,4 +145,8 @@ func (c *client) TriggerSync(ctx context.Context, in *management.TriggerSyncRequ
 
 func (c *client) GetWorkloadStatus(ctx context.Context, in *management.GetWorkloadStatusRequest, opts ...grpc.CallOption) (*management.GetWorkloadStatusResponse, error) {
 	return c.m.GetWorkloadStatus(ctx, in, opts...)
+}
+
+func (c *client) Resync(ctx context.Context, in *management.ResyncRequest, opts ...grpc.CallOption) (*management.ResyncResponse, error) {
+	return c.m.Resync(ctx, in, opts...)
 }

@@ -10,6 +10,7 @@ service Management{
   rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
   rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
   rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
+  rpc Resync(ResyncRequest) returns (ResyncResponse);
 }
 
 message RegisterWorkloadRequest {
@@ -70,4 +71,15 @@ message Job {
   google.protobuf.Timestamp finished_at = 7;
 }
 
+message ResyncRequest {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+  optional string state = 5;
+}
 
+message ResyncResponse {
+  int32 num_workloads = 1;
+  repeated string workloads = 2; // List of workload identifiers that were resynced
+}
