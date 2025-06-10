@@ -78,6 +78,7 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 func getTimeSeries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	opts := flag.ParseOptions(cmd, o)
 	format := time.DateOnly
+	start := time.Now()
 
 	resp, err := c.GetVulnerabilitySummaryTimeSeries(ctx, opts...)
 	if err != nil {
@@ -117,5 +118,7 @@ func getTimeSeries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 	}
 
 	tbl.Print()
+	duration := time.Since(start).Seconds()
+	fmt.Printf("Fetched %d points in %f seconds.\n", len(resp.GetPoints()), duration)
 	return nil
 }
