@@ -188,56 +188,62 @@ func main() {
 						workload = &opts.workload
 					}
 
-					status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
-						Cluster:   cluster,
-						Namespace: namespace,
-						Workload:  workload,
-						Limit:     int32(opts.limit),
-						Offset:    0,
-					})
-					if err != nil {
-						return fmt.Errorf("failed to get workload status: %w", err)
-					}
-					headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-					columnFmt := color.New(color.FgYellow).SprintfFunc()
+					err = paginate(opts.limit, func(offset int) (int, bool, error) {
+						status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
+							Cluster:   cluster,
+							Namespace: namespace,
+							Workload:  workload,
+							Limit:     int32(opts.limit),
+							Offset:    int32(offset),
+						})
+						if err != nil {
+							return 0, false, fmt.Errorf("failed to get workload status: %w", err)
+						}
+						headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+						columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-					if opts.showJobs {
-						tbl := table.New("Workload", "Id", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished at")
-						tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+						if opts.showJobs {
+							tbl := table.New("Workload", "Id", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished at")
+							tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
-						for _, s := range status.WorkloadStatus {
-							for _, job := range s.Jobs {
+							for _, s := range status.WorkloadStatus {
+								for _, job := range s.Jobs {
+									tbl.AddRow(
+										s.Workload,
+										job.Id,
+										job.Kind,
+										job.State,
+										job.Metadata,
+										job.Attempts,
+										job.Errors,
+										job.FinishedAt.AsTime().Format(time.RFC3339),
+									)
+								}
+							}
+							tbl.Print()
+						} else {
+
+							tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
+							tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+							for _, s := range status.WorkloadStatus {
 								tbl.AddRow(
 									s.Workload,
-									job.Id,
-									job.Kind,
-									job.State,
-									job.Metadata,
-									job.Attempts,
-									job.Errors,
-									job.FinishedAt.AsTime().Format(time.RFC3339),
+									s.WorkloadType,
+									s.Namespace,
+									s.Cluster,
+									s.WorkloadState,
+									s.ImageName,
+									s.ImageTag,
+									s.ImageState,
 								)
 							}
+							tbl.Print()
 						}
-						tbl.Print()
-					} else {
-
-						tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
-						tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-						for _, s := range status.WorkloadStatus {
-							tbl.AddRow(
-								s.Workload,
-								s.WorkloadType,
-								s.Namespace,
-								s.Cluster,
-								s.WorkloadState,
-								s.ImageName,
-								s.ImageTag,
-								s.ImageState,
-							)
-						}
-						tbl.Print()
+						return int(status.TotalCount), status.HasNextPage, nil
+					})
+					if err != nil {
+						return err
 					}
 					return nil
 				},
@@ -481,15 +487,12 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 }
 
 func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
-	offset := 0
-	for {
+	err := paginate(o.limit, func(offset int) (int, bool, error) {
 		opts := parseOptions(cmd, o)
 		opts = append(opts, vulnerabilities.Offset(int32(offset)))
-
-		start := time.Now()
 		resp, err := c.ListVulnerabilitySummaries(ctx, opts...)
 		if err != nil {
-			return err
+			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 		}
 
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
@@ -529,31 +532,11 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		}
 
 		tbl.Print()
-		numFetched := offset + o.limit
-		if numFetched > int(resp.PageInfo.TotalCount) {
-			numFetched = int(resp.PageInfo.TotalCount)
-		}
-		fmt.Printf("Fetched %d of total '%d' summaries in %f seconds.\n", numFetched, resp.PageInfo.TotalCount, time.Since(start).Seconds())
 
-		// Check if there is another page
-		if !resp.GetPageInfo().GetHasNextPage() {
-			fmt.Printf("No more pages available.\n")
-			break
-		}
-
-		// Ask user for input to continue pagination
-		fmt.Println("Press 'n' for next page, 'q' to quit:")
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		if input == "q" {
-			break
-		} else if input == "n" {
-			offset += o.limit
-		} else {
-			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
-		}
+		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -583,14 +566,12 @@ func convertDuration(duration string) (string, error) {
 }
 
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *options) error {
-	offset := 0
-	for {
-		start := time.Now()
+	err := paginate(o.limit, func(offset int) (int, bool, error) {
 		opts := parseOptions(cmd, o)
 		opts = append(opts, vulnerabilities.Offset(int32(offset)))
 		resp, err := c.ListVulnerabilities(ctx, opts...)
 		if err != nil {
-			return err
+			return 0, false, fmt.Errorf("failed to list vulnerabilities: %w", err)
 		}
 
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
@@ -617,32 +598,15 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 		}
 
 		tbl.Print()
-		numFetched := offset + o.limit
-		if numFetched > int(resp.PageInfo.TotalCount) {
-			numFetched = int(resp.PageInfo.TotalCount)
-		}
-		fmt.Printf("Fetched %d of total '%d' vulnerabilities in %f seconds.\n", numFetched, resp.PageInfo.TotalCount, time.Since(start).Seconds())
 
-		// Check if there is another page
-		if !resp.GetPageInfo().GetHasNextPage() {
-			fmt.Printf("No more pages available.\n")
-			break
-		}
+		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 
-		// Ask user for input to continue pagination
-		fmt.Println("Press 'n' for next page, 'q' to quit:")
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
+	})
 
-		if input == "q" {
-			break
-		} else if input == "n" {
-			offset += o.limit
-		} else {
-			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
-		}
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -789,4 +753,41 @@ func commonFlags(opts *options, excludes ...string) []cli.Flag {
 		}
 	}
 	return flags
+}
+
+func paginate(limit int, f func(offset int) (int, bool, error)) error {
+	offset := 0
+	for {
+		start := time.Now()
+		total, hasNext, err := f(offset)
+		if err != nil {
+			return err
+		}
+		numFetched := offset + limit
+		if numFetched > total {
+			numFetched = total
+		}
+		fmt.Printf("Fetched %d of total '%d' in %f seconds.\n", numFetched, total, time.Since(start).Seconds())
+
+		// Check if there is another page
+		if !hasNext {
+			fmt.Printf("No more pages available.\n")
+			break
+		}
+
+		// Ask user for input to continue paginate
+		fmt.Println("Press 'n' for next page, 'q' to quit:")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "q" {
+			break
+		} else if input == "n" {
+			offset += limit
+		} else {
+			fmt.Println("Invalid input. Use 'n' for next page or 'q' to quit.")
+		}
+	}
+	return nil
 }

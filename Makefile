@@ -5,7 +5,10 @@ build:
 	go build -o bin/api ./cmd/api
 
 build-cli:
-	go build -o bin/vulnz ./cmd/cli
+	go -C ./pkg/cli build -o ../../bin/vulnz
+
+install-cli:
+	go -C ./pkg/cli build -o ${GOBIN}/vulnz
 
 test:
 	go test -cover ./...
