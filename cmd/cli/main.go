@@ -40,6 +40,7 @@ type options struct {
 	order        string
 	since        string
 	workloadType string
+	showJobs     bool
 }
 
 func main() {
@@ -169,8 +170,11 @@ func main() {
 				Name:    "status",
 				Aliases: []string{"st"},
 				Usage:   "get workload status",
-				Flags:   append(commonFlags(opts, "limit", "order", "since"), &cli.BoolFlag{
-					//Name:
+				Flags: append(commonFlags(opts, "limit", "order", "since"), &cli.BoolFlag{
+					Name:        "show-jobs",
+					Aliases:     []string{"j"},
+					Usage:       "show jobs associated with the workload",
+					Destination: &opts.showJobs,
 				}),
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					var cluster, namespace, workload *string
@@ -183,36 +187,58 @@ func main() {
 					if opts.workload != "" {
 						workload = &opts.workload
 					}
-					//if opts.showJobs {
-					//	s
-					//}
 
 					status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
 						Cluster:   cluster,
 						Namespace: namespace,
 						Workload:  workload,
+						Limit:     int32(opts.limit),
+						Offset:    0,
 					})
 					if err != nil {
 						return fmt.Errorf("failed to get workload status: %w", err)
 					}
 					headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 					columnFmt := color.New(color.FgYellow).SprintfFunc()
-					tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
-					tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
-					for _, s := range status.WorkloadStatus {
-						tbl.AddRow(
-							s.Workload,
-							s.WorkloadType,
-							s.Namespace,
-							s.Cluster,
-							s.WorkloadState,
-							s.ImageName,
-							s.ImageTag,
-							s.ImageState,
-						)
+					if opts.showJobs {
+						tbl := table.New("Workload", "Id", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished at")
+						tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+						for _, s := range status.WorkloadStatus {
+							for _, job := range s.Jobs {
+								tbl.AddRow(
+									s.Workload,
+									job.Id,
+									job.Kind,
+									job.State,
+									job.Metadata,
+									job.Attempts,
+									job.Errors,
+									job.FinishedAt.AsTime().Format(time.RFC3339),
+								)
+							}
+						}
+						tbl.Print()
+					} else {
+
+						tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
+						tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+						for _, s := range status.WorkloadStatus {
+							tbl.AddRow(
+								s.Workload,
+								s.WorkloadType,
+								s.Namespace,
+								s.Cluster,
+								s.WorkloadState,
+								s.ImageName,
+								s.ImageTag,
+								s.ImageState,
+							)
+						}
+						tbl.Print()
 					}
-					tbl.Print()
 					return nil
 				},
 			},

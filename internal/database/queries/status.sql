@@ -40,6 +40,23 @@ WHERE
 ;
 
 -- name: ListWorkloadStatusWithJobs :many
+WITH filtered_workloads AS (
+    SELECT *
+    FROM workloads
+    WHERE
+        (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
+      AND (sqlc.narg('namespace')::TEXT IS NULL OR namespace = sqlc.narg('namespace')::TEXT)
+      AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
+      AND (sqlc.narg('workload_name')::TEXT IS NULL OR name = sqlc.narg('workload_name')::TEXT)
+),
+     total_count AS (
+         SELECT COUNT(*) AS total FROM filtered_workloads
+     ),
+     paged_workloads AS (
+         SELECT * FROM filtered_workloads
+         ORDER BY id
+    LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
+    )
 SELECT
     w.name AS workload_name,
     w.workload_type,
@@ -57,25 +74,21 @@ SELECT
     CASE WHEN rj.metadata::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_metadata,
     CASE WHEN rj.errors::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_errors,
     rj.finalized_at AS job_finalized_at,
-    rj.attempt AS job_attempt
-FROM workloads w
-         JOIN images i ON w.image_name = i.name AND w.image_tag = i.tag
-         LEFT JOIN river_job rj ON (
+    rj.attempt AS job_attempt,
+    tc.total
+FROM paged_workloads w
+JOIN total_count tc ON TRUE
+JOIN images i ON w.image_name = i.name AND w.image_tag = i.tag
+LEFT JOIN river_job rj ON (
     (rj.kind = 'add_workload' AND
      rj.args #>> '{Workload,Name}' = w.name AND
-        rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
-        rj.args #>> '{Workload,Namespace}' = w.namespace AND
-        rj.args #>> '{Workload,Cluster}' = w.cluster
-        )
-        OR
+     rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
+     rj.args #>> '{Workload,Namespace}' = w.namespace AND
+     rj.args #>> '{Workload,Cluster}' = w.cluster)
+ OR
     (rj.kind IN ('get_attestation', 'upload_attestation') AND
      rj.args #>> '{ImageName}' = w.image_name AND
-        rj.args #>> '{ImageTag}' = w.image_tag
-        )
-    )
-WHERE
-    (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
-  AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
-  AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
-  AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
+     rj.args #>> '{ImageTag}' = w.image_tag)
+)
 ORDER BY w.id;
+

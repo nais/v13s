@@ -162,6 +162,23 @@ func (q *Queries) ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatus
 }
 
 const listWorkloadStatusWithJobs = `-- name: ListWorkloadStatusWithJobs :many
+WITH filtered_workloads AS (
+    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM workloads
+    WHERE
+        ($1::TEXT IS NULL OR cluster = $1::TEXT)
+      AND ($2::TEXT IS NULL OR namespace = $2::TEXT)
+      AND ($3::TEXT[] IS NULL OR workload_type = ANY($3::TEXT[]))
+      AND ($4::TEXT IS NULL OR name = $4::TEXT)
+),
+     total_count AS (
+         SELECT COUNT(*) AS total FROM filtered_workloads
+     ),
+     paged_workloads AS (
+         SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state FROM filtered_workloads
+         ORDER BY id
+    LIMIT $6 OFFSET $5
+    )
 SELECT
     w.name AS workload_name,
     w.workload_type,
@@ -179,27 +196,22 @@ SELECT
     CASE WHEN rj.metadata::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_metadata,
     CASE WHEN rj.errors::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_errors,
     rj.finalized_at AS job_finalized_at,
-    rj.attempt AS job_attempt
-FROM workloads w
-         JOIN images i ON w.image_name = i.name AND w.image_tag = i.tag
-         LEFT JOIN river_job rj ON (
+    rj.attempt AS job_attempt,
+    tc.total
+FROM paged_workloads w
+JOIN total_count tc ON TRUE
+JOIN images i ON w.image_name = i.name AND w.image_tag = i.tag
+LEFT JOIN river_job rj ON (
     (rj.kind = 'add_workload' AND
      rj.args #>> '{Workload,Name}' = w.name AND
-        rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
-        rj.args #>> '{Workload,Namespace}' = w.namespace AND
-        rj.args #>> '{Workload,Cluster}' = w.cluster
-        )
-        OR
+     rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
+     rj.args #>> '{Workload,Namespace}' = w.namespace AND
+     rj.args #>> '{Workload,Cluster}' = w.cluster)
+ OR
     (rj.kind IN ('get_attestation', 'upload_attestation') AND
      rj.args #>> '{ImageName}' = w.image_name AND
-        rj.args #>> '{ImageTag}' = w.image_tag
-        )
-    )
-WHERE
-    ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
-  AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
-  AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
-  AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+     rj.args #>> '{ImageTag}' = w.image_tag)
+)
 ORDER BY w.id
 `
 
@@ -208,6 +220,8 @@ type ListWorkloadStatusWithJobsParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	Offset        int32
+	Limit         int32
 }
 
 type ListWorkloadStatusWithJobsRow struct {
@@ -228,6 +242,7 @@ type ListWorkloadStatusWithJobsRow struct {
 	JobErrors         interface{}
 	JobFinalizedAt    pgtype.Timestamptz
 	JobAttempt        *int16
+	Total             int64
 }
 
 func (q *Queries) ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error) {
@@ -236,6 +251,8 @@ func (q *Queries) ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorklo
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -262,6 +279,7 @@ func (q *Queries) ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorklo
 			&i.JobErrors,
 			&i.JobFinalizedAt,
 			&i.JobAttempt,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}

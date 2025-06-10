@@ -98,15 +98,28 @@ func (s *Server) GetWorkloadStatus(ctx context.Context, request *management.GetW
 		Namespace:     request.Namespace,
 		WorkloadName:  request.Workload,
 		WorkloadTypes: []string{"app"},
+		Limit:         request.Limit,
+		Offset:        request.Offset,
 	})
 	if err != nil {
 		s.log.WithError(err).Error("Failed to get workload status")
 		return nil, err
 	}
 
+	total := 0
+	if len(status) > 0 {
+		total = int(status[0].Total)
+	}
+
+	hasNextPage := int(request.Offset)+int(request.Limit) < total
+	hasPreviousPage := request.Offset > 0
+
 	workloads := groupWorkloadsWithJobs(status)
 	return &management.GetWorkloadStatusResponse{
-		WorkloadStatus: workloads,
+		WorkloadStatus:  workloads,
+		TotalCount:      int64(total),
+		HasNextPage:     hasNextPage,
+		HasPreviousPage: hasPreviousPage,
 	}, nil
 }
 

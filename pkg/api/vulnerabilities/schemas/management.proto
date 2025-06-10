@@ -35,6 +35,8 @@ message GetWorkloadStatusRequest {
   optional string cluster = 1;
   optional string namespace = 2;
   optional string workload = 3;
+  int32 limit = 4;
+  int32 offset = 5;
 }
 
 message WorkloadStatus {
@@ -53,6 +55,9 @@ message WorkloadStatus {
 
 message GetWorkloadStatusResponse {
   repeated WorkloadStatus workload_status = 1;
+  int64 total_count = 2;
+  bool has_next_page = 3;
+  bool has_previous_page = 4;
 }
 
 message Job {
