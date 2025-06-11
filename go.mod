@@ -8,7 +8,6 @@ require (
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.12.11
 	github.com/exaring/otelpgx v0.9.3
-	github.com/fatih/color v1.18.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/google/go-containerregistry v0.20.5
 	github.com/google/uuid v1.6.0
@@ -27,7 +26,6 @@ require (
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
 	github.com/riverqueue/river/rivertype v0.22.0
 	github.com/riverqueue/rivercontrib/otelriver v0.5.0
-	github.com/rodaine/table v1.3.0
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0
 	github.com/sigstore/cosign/v2 v2.5.0
 	github.com/sigstore/rekor v1.3.10
@@ -35,7 +33,6 @@ require (
 	github.com/sqlc-dev/sqlc v1.29.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.37.0
-	github.com/urfave/cli/v3 v3.3.3
 	github.com/vektra/mockery/v2 v2.53.4
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
@@ -59,7 +56,6 @@ require (
 
 require (
 	cel.dev/expr v0.20.0 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -320,7 +316,6 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
-	google.golang.org/api v0.232.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect

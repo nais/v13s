@@ -207,5 +207,3 @@ require (
 )
 
 replace github.com/nais/v13s/pkg/api => ../api
-
-// replace github.com/nais/v13s => ../..

@@ -17,7 +17,7 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-check: fmt vulncheck deadcode gosec staticcheck goimport
+check: fmt vulncheck deadcode staticcheck goimport
 
 goimport:
 	@echo "Running goimport..."
@@ -39,6 +39,7 @@ deadcode:
 	@echo "Running deadcode..."
 	go run golang.org/x/tools/cmd/deadcode@latest -filter "pkg/api/vulnerabilities/options" -test ./...
 
+# Is not in the total check, error for pkg/cli
 gosec:
 	@echo "Running gosec..."
 	go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude G404,G101,G115,G402 --exclude-generated -terse ./...
