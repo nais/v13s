@@ -38,7 +38,13 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					Name:    "resync",
 					Aliases: []string{"r"},
 					Usage:   "trigger resync of workloads",
-					Flags:   flag.CommonFlags(opts, "limit", "order", "since"),
+					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"), &cli.StringFlag{
+						Name:        "state",
+						Aliases:     []string{"st"},
+						Value:       "",
+						Usage:       "workload state, e.g. 'processing', 'initialized', 'updated', 'no_attestation', 'failed', 'unrecoverable', 'resync'",
+						Destination: &opts.WorkloadState,
+					}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return resync(ctx, c, opts)
 					},
@@ -71,13 +77,17 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 }
 
 func resync(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) error {
+	// validate state
+	if err := validateState(opts.WorkloadState); err != nil {
+		return err
+	}
+
 	resp, err := c.Resync(ctx, &management.ResyncRequest{
 		Cluster:      p(opts.Cluster),
 		Namespace:    p(opts.Namespace),
 		Workload:     p(opts.Workload),
 		WorkloadType: p(opts.WorkloadType),
-		//TODO: add flag for state
-		State: nil,
+		State:        p(opts.WorkloadState),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to trigger resync: %w", err)
@@ -217,4 +227,23 @@ func p(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func validateState(workloadState string) error {
+	var validStates = []string{
+		"processing", "initialized", "updated", "no_attestation",
+		"failed", "unrecoverable", "resync",
+	}
+	validSet := make(map[string]struct{}, len(validStates))
+	for _, s := range validStates {
+		validSet[s] = struct{}{}
+	}
+
+	if workloadState != "" {
+		if _, ok := validSet[workloadState]; !ok {
+			return fmt.Errorf("invalid workload state: %q\nvalid states: %s",
+				workloadState, strings.Join(validStates, ", "))
+		}
+	}
+	return nil
 }

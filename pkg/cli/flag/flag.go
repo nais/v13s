@@ -12,14 +12,15 @@ import (
 )
 
 type Options struct {
-	Cluster      string
-	Namespace    string
-	Workload     string
-	Limit        int
-	Order        string
-	Since        string
-	WorkloadType string
-	ShowJobs     bool
+	Cluster       string
+	Namespace     string
+	Workload      string
+	Limit         int
+	Order         string
+	Since         string
+	WorkloadType  string
+	ShowJobs      bool
+	WorkloadState string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
