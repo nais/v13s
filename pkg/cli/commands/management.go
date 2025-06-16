@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -119,19 +120,7 @@ func resync(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) e
 }
 
 func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload *string
-	if opts.Cluster != "" {
-		cluster = &opts.Cluster
-	}
-	if opts.Namespace != "" {
-		namespace = &opts.Namespace
-	}
-	if opts.Workload != "" {
-		workload = &opts.Workload
-	}
-
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	var cluster, namespace, workload = extractFilters(opts)
 
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
@@ -145,11 +134,12 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 			return 0, false, fmt.Errorf("failed to get workload status: %w", err)
 		}
 
-		tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		t := Table{
+			Headers: []any{"Workload", "Type", "Namespace", "Cluster", "State", "Image Name", "Image Tag", "Image State"},
+		}
 
 		for _, s := range status.WorkloadStatus {
-			tbl.AddRow(
+			t.AddRow(
 				s.Workload,
 				s.WorkloadType,
 				s.Namespace,
@@ -160,7 +150,7 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 				s.ImageState,
 			)
 		}
-		tbl.Print()
+		t.Print()
 		return int(status.TotalCount), status.HasNextPage, nil
 	})
 	if err != nil {
@@ -171,19 +161,8 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 }
 
 func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload *string
-	if opts.Cluster != "" {
-		cluster = &opts.Cluster
-	}
-	if opts.Namespace != "" {
-		namespace = &opts.Namespace
-	}
-	if opts.Workload != "" {
-		workload = &opts.Workload
-	}
+	var cluster, namespace, workload = extractFilters(opts)
 
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadJobs(ctx, &management.GetWorkloadJobsRequest{
 			Cluster:   cluster,
@@ -196,20 +175,22 @@ func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabili
 			return 0, false, fmt.Errorf("failed to get workload jobs: %w", err)
 		}
 
-		tbl := table.New("Id", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished at")
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		t := Table{
+			Headers: []any{"Job ID", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished At"},
+		}
+
 		for _, job := range status.GetJobs() {
-			tbl.AddRow(
-				job.Id,
+			t.AddRow(
+				strconv.FormatInt(job.Id, 10),
 				job.Kind,
 				job.State,
 				job.Metadata,
-				job.Attempts,
+				strconv.Itoa(int(job.Attempts)),
 				job.Errors,
 				job.FinishedAt.AsTime().Format(time.RFC3339),
 			)
 		}
-		tbl.Print()
+		t.Print()
 		return int(status.TotalCount), status.HasNextPage, nil
 	})
 	if err != nil {
@@ -284,4 +265,17 @@ func validateState(workloadState string) error {
 		}
 	}
 	return nil
+}
+
+func extractFilters(opts *flag.Options) (cluster, namespace, workload *string) {
+	if opts.Cluster != "" {
+		cluster = &opts.Cluster
+	}
+	if opts.Namespace != "" {
+		namespace = &opts.Namespace
+	}
+	if opts.Workload != "" {
+		workload = &opts.Workload
+	}
+	return
 }
