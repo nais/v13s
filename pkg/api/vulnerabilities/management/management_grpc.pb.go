@@ -22,6 +22,7 @@ const (
 	Management_RegisterWorkload_FullMethodName  = "/v13s.api.protobuf.Management/RegisterWorkload"
 	Management_TriggerSync_FullMethodName       = "/v13s.api.protobuf.Management/TriggerSync"
 	Management_GetWorkloadStatus_FullMethodName = "/v13s.api.protobuf.Management/GetWorkloadStatus"
+	Management_GetWorkloadJobs_FullMethodName   = "/v13s.api.protobuf.Management/GetWorkloadJobs"
 	Management_Resync_FullMethodName            = "/v13s.api.protobuf.Management/Resync"
 )
 
@@ -32,6 +33,7 @@ type ManagementClient interface {
 	RegisterWorkload(ctx context.Context, in *RegisterWorkloadRequest, opts ...grpc.CallOption) (*RegisterWorkloadResponse, error)
 	TriggerSync(ctx context.Context, in *TriggerSyncRequest, opts ...grpc.CallOption) (*TriggerSyncResponse, error)
 	GetWorkloadStatus(ctx context.Context, in *GetWorkloadStatusRequest, opts ...grpc.CallOption) (*GetWorkloadStatusResponse, error)
+	GetWorkloadJobs(ctx context.Context, in *GetWorkloadJobsRequest, opts ...grpc.CallOption) (*GetWorkloadJobsResponse, error)
 	Resync(ctx context.Context, in *ResyncRequest, opts ...grpc.CallOption) (*ResyncResponse, error)
 }
 
@@ -73,6 +75,16 @@ func (c *managementClient) GetWorkloadStatus(ctx context.Context, in *GetWorkloa
 	return out, nil
 }
 
+func (c *managementClient) GetWorkloadJobs(ctx context.Context, in *GetWorkloadJobsRequest, opts ...grpc.CallOption) (*GetWorkloadJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWorkloadJobsResponse)
+	err := c.cc.Invoke(ctx, Management_GetWorkloadJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *managementClient) Resync(ctx context.Context, in *ResyncRequest, opts ...grpc.CallOption) (*ResyncResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResyncResponse)
@@ -90,6 +102,7 @@ type ManagementServer interface {
 	RegisterWorkload(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error)
 	TriggerSync(context.Context, *TriggerSyncRequest) (*TriggerSyncResponse, error)
 	GetWorkloadStatus(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)
+	GetWorkloadJobs(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error)
 	Resync(context.Context, *ResyncRequest) (*ResyncResponse, error)
 	mustEmbedUnimplementedManagementServer()
 }
@@ -109,6 +122,9 @@ func (UnimplementedManagementServer) TriggerSync(context.Context, *TriggerSyncRe
 }
 func (UnimplementedManagementServer) GetWorkloadStatus(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWorkloadStatus not implemented")
+}
+func (UnimplementedManagementServer) GetWorkloadJobs(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkloadJobs not implemented")
 }
 func (UnimplementedManagementServer) Resync(context.Context, *ResyncRequest) (*ResyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Resync not implemented")
@@ -188,6 +204,24 @@ func _Management_GetWorkloadStatus_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Management_GetWorkloadJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkloadJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServer).GetWorkloadJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Management_GetWorkloadJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServer).GetWorkloadJobs(ctx, req.(*GetWorkloadJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Management_Resync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ResyncRequest)
 	if err := dec(in); err != nil {
@@ -224,6 +258,10 @@ var Management_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWorkloadStatus",
 			Handler:    _Management_GetWorkloadStatus_Handler,
+		},
+		{
+			MethodName: "GetWorkloadJobs",
+			Handler:    _Management_GetWorkloadJobs_Handler,
 		},
 		{
 			MethodName: "Resync",

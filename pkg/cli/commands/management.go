@@ -62,7 +62,17 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 				Destination: &opts.ShowJobs,
 			}),
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return getStatus(ctx, opts, c)
+				err := getStatus(ctx, opts, c)
+				if err != nil {
+					return fmt.Errorf("failed to get workload status: %w", err)
+				}
+				if opts.ShowJobs {
+					err = getWorkloadJobStatus(ctx, opts, c)
+					if err != nil {
+						return fmt.Errorf("failed to get workload job status: %w", err)
+					}
+				}
+				return nil
 			},
 		},
 		{
@@ -120,6 +130,9 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 		workload = &opts.Workload
 	}
 
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
 			Cluster:   cluster,
@@ -131,47 +144,72 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get workload status: %w", err)
 		}
-		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		if opts.ShowJobs {
-			tbl := table.New("Workload", "Id", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished at")
-			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
-			for _, s := range status.WorkloadStatus {
-				for _, job := range s.Jobs {
-					tbl.AddRow(
-						s.Workload,
-						job.Id,
-						job.Kind,
-						job.State,
-						job.Metadata,
-						job.Attempts,
-						job.Errors,
-						job.FinishedAt.AsTime().Format(time.RFC3339),
-					)
-				}
-			}
-			tbl.Print()
-		} else {
-
-			tbl := table.New("Workload", "Type", "Namespace", "Cluster", "State", "Image", "Image Tag", "Image State")
-			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-			for _, s := range status.WorkloadStatus {
-				tbl.AddRow(
-					s.Workload,
-					s.WorkloadType,
-					s.Namespace,
-					s.Cluster,
-					s.WorkloadState,
-					s.ImageName,
-					s.ImageTag,
-					s.ImageState,
-				)
-			}
-			tbl.Print()
+		for _, s := range status.WorkloadStatus {
+			tbl.AddRow(
+				s.Workload,
+				s.WorkloadType,
+				s.Namespace,
+				s.Cluster,
+				s.WorkloadState,
+				s.ImageName,
+				s.ImageTag,
+				s.ImageState,
+			)
 		}
+		tbl.Print()
+		return int(status.TotalCount), status.HasNextPage, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
+	var cluster, namespace, workload *string
+	if opts.Cluster != "" {
+		cluster = &opts.Cluster
+	}
+	if opts.Namespace != "" {
+		namespace = &opts.Namespace
+	}
+	if opts.Workload != "" {
+		workload = &opts.Workload
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
+		status, err := c.GetWorkloadJobs(ctx, &management.GetWorkloadJobsRequest{
+			Cluster:   cluster,
+			Namespace: namespace,
+			Workload:  workload,
+			Limit:     int32(opts.Limit),
+			Offset:    int32(offset),
+		})
+		if err != nil {
+			return 0, false, fmt.Errorf("failed to get workload jobs: %w", err)
+		}
+
+		tbl := table.New("Id", "Kind", "State", "Metadata", "Attempts", "Errors", "Finished at")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		for _, job := range status.GetJobs() {
+			tbl.AddRow(
+				job.Id,
+				job.Kind,
+				job.State,
+				job.Metadata,
+				job.Attempts,
+				job.Errors,
+				job.FinishedAt.AsTime().Format(time.RFC3339),
+			)
+		}
+		tbl.Print()
 		return int(status.TotalCount), status.HasNextPage, nil
 	})
 	if err != nil {

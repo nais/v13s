@@ -96,14 +96,14 @@ func (s *Server) TriggerSync(_ context.Context, _ *management.TriggerSyncRequest
 	return &management.TriggerSyncResponse{}, nil
 }
 
-func (s *Server) GetWorkloadStatus(ctx context.Context, request *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
-	status, err := s.querier.ListWorkloadStatusWithJobs(ctx, sql.ListWorkloadStatusWithJobsParams{
-		Cluster:       request.Cluster,
-		Namespace:     request.Namespace,
-		WorkloadName:  request.Workload,
+func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
+	rows, err := s.querier.ListWorkloadStatus(ctx, sql.ListWorkloadStatusParams{
+		Cluster:       req.Cluster,
+		Namespace:     req.Namespace,
+		WorkloadName:  req.Workload,
 		WorkloadTypes: []string{"app"},
-		Limit:         request.Limit,
-		Offset:        request.Offset,
+		Limit:         req.Limit,
+		Offset:        req.Offset,
 	})
 	if err != nil {
 		s.log.WithError(err).Error("Failed to get workload status")
@@ -111,14 +111,30 @@ func (s *Server) GetWorkloadStatus(ctx context.Context, request *management.GetW
 	}
 
 	total := 0
-	if len(status) > 0 {
-		total = int(status[0].Total)
+	if len(rows) > 0 {
+		total = int(rows[0].Total)
 	}
 
-	hasNextPage := int(request.Offset)+int(request.Limit) < total
-	hasPreviousPage := request.Offset > 0
+	hasNextPage := int(req.Offset)+int(req.Limit) < total
+	hasPreviousPage := req.Offset > 0
 
-	workloads := groupWorkloadsWithJobs(status)
+	workloads := make([]*management.WorkloadStatus, 0, len(rows))
+	for _, row := range rows {
+		workloads = append(workloads, &management.WorkloadStatus{
+			Workload:          row.WorkloadName,
+			WorkloadType:      row.WorkloadType,
+			Namespace:         row.Namespace,
+			Cluster:           row.Cluster,
+			WorkloadState:     string(row.WorkloadState),
+			WorkloadUpdatedAt: timestamppb.New(row.WorkloadUpdatedAt.Time),
+			ImageName:         row.ImageName,
+			ImageTag:          row.ImageTag,
+			ImageState:        string(row.ImageState),
+			ImageUpdatedAt:    timestamppb.New(row.ImageUpdatedAt.Time),
+			Jobs:              nil, // Not included here
+		})
+	}
+
 	return &management.GetWorkloadStatusResponse{
 		WorkloadStatus:  workloads,
 		TotalCount:      int64(total),
@@ -127,56 +143,52 @@ func (s *Server) GetWorkloadStatus(ctx context.Context, request *management.GetW
 	}, nil
 }
 
-func groupWorkloadsWithJobs(rows []*sql.ListWorkloadStatusWithJobsRow) []*management.WorkloadStatus {
-	grouped := make(map[string]*management.WorkloadStatus)
+func (s *Server) GetWorkloadJobs(ctx context.Context, req *management.GetWorkloadJobsRequest) (*management.GetWorkloadJobsResponse, error) {
+	rows, err := s.querier.ListJobsForWorkload(ctx, sql.ListJobsForWorkloadParams{
+		WorkloadName: req.Workload,
+		Namespace:    req.Namespace,
+		Cluster:      req.Cluster,
+		Offset:       req.Offset,
+		Limit:        req.Limit,
+	})
+	if err != nil {
+		s.log.WithError(err).Error("Failed to get workload jobs")
+		return nil, err
+	}
 
+	jobs := make([]*management.Job, 0, len(rows))
 	for _, row := range rows {
-		key := fmt.Sprintf("%s|%s|%s|%s", row.WorkloadName, row.Namespace, row.Cluster, row.WorkloadType)
-
-		if _, exists := grouped[key]; !exists {
-			grouped[key] = &management.WorkloadStatus{
-				Workload:          row.WorkloadName,
-				WorkloadType:      row.WorkloadType,
-				Namespace:         row.Namespace,
-				Cluster:           row.Cluster,
-				WorkloadState:     string(row.WorkloadState),
-				WorkloadUpdatedAt: timestamppb.New(row.WorkloadUpdatedAt.Time),
-				ImageName:         row.ImageName,
-				ImageTag:          row.ImageTag,
-				ImageState:        string(row.ImageState),
-				ImageUpdatedAt:    timestamppb.New(row.ImageUpdatedAt.Time),
-				Jobs:              []*management.Job{},
-			}
+		var metadata, jobErrors string
+		if row.JobMetadata != nil {
+			metadata = row.JobMetadata.(string)
 		}
-
-		// If there's a job on this row, add it
-		if row.JobID != nil {
-			var metadata, jobErrors string
-			if row.JobMetadata != nil {
-				metadata = row.JobMetadata.(string)
-			}
-			if row.JobErrors != nil {
-				jobErrors = row.JobErrors.(string)
-			}
-			grouped[key].Jobs = append(grouped[key].Jobs, &management.Job{
-				Id:         *row.JobID,
-				Kind:       *row.JobKind,
-				State:      string(row.JobState.RiverJobState),
-				Metadata:   metadata,
-				Attempts:   int32(*row.JobAttempt),
-				Errors:     jobErrors,
-				FinishedAt: timestamppb.New(row.JobFinalizedAt.Time),
-			})
+		if row.JobErrors != nil {
+			jobErrors = row.JobErrors.(string)
 		}
+		jobs = append(jobs, &management.Job{
+			Id:         row.JobID,
+			Kind:       row.JobKind,
+			State:      string(row.JobState),
+			Metadata:   metadata,
+			Attempts:   int32(row.JobAttempt),
+			Errors:     jobErrors,
+			FinishedAt: timestamppb.New(row.JobFinalizedAt.Time),
+		})
+	}
+	total := 0
+	if len(rows) > 0 {
+		total = int(rows[0].Total)
 	}
 
-	// Flatten map to slice
-	result := make([]*management.WorkloadStatus, 0, len(grouped))
-	for _, workload := range grouped {
-		result = append(result, workload)
-	}
+	hasNextPage := int(req.Offset)+int(req.Limit) < total
+	hasPreviousPage := req.Offset > 0
 
-	return result
+	return &management.GetWorkloadJobsResponse{
+		Jobs:            jobs,
+		TotalCount:      int64(total),
+		HasNextPage:     hasNextPage,
+		HasPreviousPage: hasPreviousPage,
+	}, nil
 }
 
 func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) (*management.ResyncResponse, error) {

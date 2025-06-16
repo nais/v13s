@@ -10,6 +10,7 @@ service Management{
   rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
   rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
   rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
+  rpc GetWorkloadJobs(GetWorkloadJobsRequest) returns (GetWorkloadJobsResponse);
   rpc Resync(ResyncRequest) returns (ResyncResponse);
 }
 
@@ -69,6 +70,21 @@ message Job {
   int32 attempts = 5;
   string errors = 6;
   google.protobuf.Timestamp finished_at = 7;
+}
+
+message GetWorkloadJobsRequest {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  int32 Limit = 4;
+  int32 Offset = 5;
+}
+
+message GetWorkloadJobsResponse {
+  repeated Job jobs = 1;
+  int64 total_count = 2;
+  bool has_next_page = 3;
+  bool has_previous_page = 4;
 }
 
 message ResyncRequest {

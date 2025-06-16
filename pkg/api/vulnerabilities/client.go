@@ -147,6 +147,10 @@ func (c *client) GetWorkloadStatus(ctx context.Context, in *management.GetWorklo
 	return c.m.GetWorkloadStatus(ctx, in, opts...)
 }
 
+func (c *client) GetWorkloadJobs(ctx context.Context, in *management.GetWorkloadJobsRequest, opts ...grpc.CallOption) (*management.GetWorkloadJobsResponse, error) {
+	return c.m.GetWorkloadJobs(ctx, in, opts...)
+}
+
 func (c *client) Resync(ctx context.Context, in *management.ResyncRequest, opts ...grpc.CallOption) (*management.ResyncResponse, error) {
 	return c.m.Resync(ctx, in, opts...)
 }
