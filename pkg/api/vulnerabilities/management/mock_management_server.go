@@ -21,6 +21,124 @@ func (_m *MockManagementServer) EXPECT() *MockManagementServer_Expecter {
 	return &MockManagementServer_Expecter{mock: &_m.Mock}
 }
 
+// GetWorkloadJobs provides a mock function with given fields: _a0, _a1
+func (_m *MockManagementServer) GetWorkloadJobs(_a0 context.Context, _a1 *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWorkloadJobs")
+	}
+
+	var r0 *GetWorkloadJobsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadJobsRequest) *GetWorkloadJobsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*GetWorkloadJobsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *GetWorkloadJobsRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockManagementServer_GetWorkloadJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkloadJobs'
+type MockManagementServer_GetWorkloadJobs_Call struct {
+	*mock.Call
+}
+
+// GetWorkloadJobs is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *GetWorkloadJobsRequest
+func (_e *MockManagementServer_Expecter) GetWorkloadJobs(_a0 interface{}, _a1 interface{}) *MockManagementServer_GetWorkloadJobs_Call {
+	return &MockManagementServer_GetWorkloadJobs_Call{Call: _e.mock.On("GetWorkloadJobs", _a0, _a1)}
+}
+
+func (_c *MockManagementServer_GetWorkloadJobs_Call) Run(run func(_a0 context.Context, _a1 *GetWorkloadJobsRequest)) *MockManagementServer_GetWorkloadJobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*GetWorkloadJobsRequest))
+	})
+	return _c
+}
+
+func (_c *MockManagementServer_GetWorkloadJobs_Call) Return(_a0 *GetWorkloadJobsResponse, _a1 error) *MockManagementServer_GetWorkloadJobs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockManagementServer_GetWorkloadJobs_Call) RunAndReturn(run func(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error)) *MockManagementServer_GetWorkloadJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetWorkloadStatus provides a mock function with given fields: _a0, _a1
+func (_m *MockManagementServer) GetWorkloadStatus(_a0 context.Context, _a1 *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWorkloadStatus")
+	}
+
+	var r0 *GetWorkloadStatusResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadStatusRequest) *GetWorkloadStatusResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*GetWorkloadStatusResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *GetWorkloadStatusRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockManagementServer_GetWorkloadStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkloadStatus'
+type MockManagementServer_GetWorkloadStatus_Call struct {
+	*mock.Call
+}
+
+// GetWorkloadStatus is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *GetWorkloadStatusRequest
+func (_e *MockManagementServer_Expecter) GetWorkloadStatus(_a0 interface{}, _a1 interface{}) *MockManagementServer_GetWorkloadStatus_Call {
+	return &MockManagementServer_GetWorkloadStatus_Call{Call: _e.mock.On("GetWorkloadStatus", _a0, _a1)}
+}
+
+func (_c *MockManagementServer_GetWorkloadStatus_Call) Run(run func(_a0 context.Context, _a1 *GetWorkloadStatusRequest)) *MockManagementServer_GetWorkloadStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*GetWorkloadStatusRequest))
+	})
+	return _c
+}
+
+func (_c *MockManagementServer_GetWorkloadStatus_Call) Return(_a0 *GetWorkloadStatusResponse, _a1 error) *MockManagementServer_GetWorkloadStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockManagementServer_GetWorkloadStatus_Call) RunAndReturn(run func(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)) *MockManagementServer_GetWorkloadStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterWorkload provides a mock function with given fields: _a0, _a1
 func (_m *MockManagementServer) RegisterWorkload(_a0 context.Context, _a1 *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error) {
 	ret := _m.Called(_a0, _a1)
@@ -76,6 +194,65 @@ func (_c *MockManagementServer_RegisterWorkload_Call) Return(_a0 *RegisterWorklo
 }
 
 func (_c *MockManagementServer_RegisterWorkload_Call) RunAndReturn(run func(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error)) *MockManagementServer_RegisterWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Resync provides a mock function with given fields: _a0, _a1
+func (_m *MockManagementServer) Resync(_a0 context.Context, _a1 *ResyncRequest) (*ResyncResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Resync")
+	}
+
+	var r0 *ResyncResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *ResyncRequest) (*ResyncResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *ResyncRequest) *ResyncResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ResyncResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *ResyncRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockManagementServer_Resync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Resync'
+type MockManagementServer_Resync_Call struct {
+	*mock.Call
+}
+
+// Resync is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *ResyncRequest
+func (_e *MockManagementServer_Expecter) Resync(_a0 interface{}, _a1 interface{}) *MockManagementServer_Resync_Call {
+	return &MockManagementServer_Resync_Call{Call: _e.mock.On("Resync", _a0, _a1)}
+}
+
+func (_c *MockManagementServer_Resync_Call) Run(run func(_a0 context.Context, _a1 *ResyncRequest)) *MockManagementServer_Resync_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*ResyncRequest))
+	})
+	return _c
+}
+
+func (_c *MockManagementServer_Resync_Call) Return(_a0 *ResyncResponse, _a1 error) *MockManagementServer_Resync_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockManagementServer_Resync_Call) RunAndReturn(run func(context.Context, *ResyncRequest) (*ResyncResponse, error)) *MockManagementServer_Resync_Call {
 	_c.Call.Return(run)
 	return _c
 }

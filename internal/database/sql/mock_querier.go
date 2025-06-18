@@ -1456,6 +1456,124 @@ func (_c *MockQuerier_InitializeWorkload_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// ListJobsForWorkload provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListJobsForWorkload")
+	}
+
+	var r0 []*ListJobsForWorkloadRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ListJobsForWorkloadParams) []*ListJobsForWorkloadRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*ListJobsForWorkloadRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ListJobsForWorkloadParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListJobsForWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListJobsForWorkload'
+type MockQuerier_ListJobsForWorkload_Call struct {
+	*mock.Call
+}
+
+// ListJobsForWorkload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg ListJobsForWorkloadParams
+func (_e *MockQuerier_Expecter) ListJobsForWorkload(ctx interface{}, arg interface{}) *MockQuerier_ListJobsForWorkload_Call {
+	return &MockQuerier_ListJobsForWorkload_Call{Call: _e.mock.On("ListJobsForWorkload", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListJobsForWorkload_Call) Run(run func(ctx context.Context, arg ListJobsForWorkloadParams)) *MockQuerier_ListJobsForWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ListJobsForWorkloadParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListJobsForWorkload_Call) Return(_a0 []*ListJobsForWorkloadRow, _a1 error) *MockQuerier_ListJobsForWorkload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListJobsForWorkload_Call) RunAndReturn(run func(context.Context, ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)) *MockQuerier_ListJobsForWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListRiverJobs provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListRiverJobs")
+	}
+
+	var r0 []*RiverJob
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ListRiverJobsParams) ([]*RiverJob, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ListRiverJobsParams) []*RiverJob); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*RiverJob)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ListRiverJobsParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListRiverJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRiverJobs'
+type MockQuerier_ListRiverJobs_Call struct {
+	*mock.Call
+}
+
+// ListRiverJobs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg ListRiverJobsParams
+func (_e *MockQuerier_Expecter) ListRiverJobs(ctx interface{}, arg interface{}) *MockQuerier_ListRiverJobs_Call {
+	return &MockQuerier_ListRiverJobs_Call{Call: _e.mock.On("ListRiverJobs", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListRiverJobs_Call) Run(run func(ctx context.Context, arg ListRiverJobsParams)) *MockQuerier_ListRiverJobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ListRiverJobsParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListRiverJobs_Call) Return(_a0 []*RiverJob, _a1 error) *MockQuerier_ListRiverJobs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListRiverJobs_Call) RunAndReturn(run func(context.Context, ListRiverJobsParams) ([]*RiverJob, error)) *MockQuerier_ListRiverJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListSuppressedVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error) {
 	ret := _m.Called(ctx, arg)
@@ -1806,6 +1924,124 @@ func (_c *MockQuerier_ListVulnerabilitySummaries_Call) Return(_a0 []*ListVulnera
 }
 
 func (_c *MockQuerier_ListVulnerabilitySummaries_Call) RunAndReturn(run func(context.Context, ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)) *MockQuerier_ListVulnerabilitySummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListWorkloadStatus provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadStatus")
+	}
+
+	var r0 []*ListWorkloadStatusRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ListWorkloadStatusParams) []*ListWorkloadStatusRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*ListWorkloadStatusRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ListWorkloadStatusParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListWorkloadStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadStatus'
+type MockQuerier_ListWorkloadStatus_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg ListWorkloadStatusParams
+func (_e *MockQuerier_Expecter) ListWorkloadStatus(ctx interface{}, arg interface{}) *MockQuerier_ListWorkloadStatus_Call {
+	return &MockQuerier_ListWorkloadStatus_Call{Call: _e.mock.On("ListWorkloadStatus", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListWorkloadStatus_Call) Run(run func(ctx context.Context, arg ListWorkloadStatusParams)) *MockQuerier_ListWorkloadStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ListWorkloadStatusParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadStatus_Call) Return(_a0 []*ListWorkloadStatusRow, _a1 error) *MockQuerier_ListWorkloadStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadStatus_Call) RunAndReturn(run func(context.Context, ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)) *MockQuerier_ListWorkloadStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListWorkloadStatusWithJobs provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadStatusWithJobs")
+	}
+
+	var r0 []*ListWorkloadStatusWithJobsRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ListWorkloadStatusWithJobsParams) []*ListWorkloadStatusWithJobsRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*ListWorkloadStatusWithJobsRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ListWorkloadStatusWithJobsParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListWorkloadStatusWithJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadStatusWithJobs'
+type MockQuerier_ListWorkloadStatusWithJobs_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadStatusWithJobs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg ListWorkloadStatusWithJobsParams
+func (_e *MockQuerier_Expecter) ListWorkloadStatusWithJobs(ctx interface{}, arg interface{}) *MockQuerier_ListWorkloadStatusWithJobs_Call {
+	return &MockQuerier_ListWorkloadStatusWithJobs_Call{Call: _e.mock.On("ListWorkloadStatusWithJobs", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListWorkloadStatusWithJobs_Call) Run(run func(ctx context.Context, arg ListWorkloadStatusWithJobsParams)) *MockQuerier_ListWorkloadStatusWithJobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ListWorkloadStatusWithJobsParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadStatusWithJobs_Call) Return(_a0 []*ListWorkloadStatusWithJobsRow, _a1 error) *MockQuerier_ListWorkloadStatusWithJobs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadStatusWithJobs_Call) RunAndReturn(run func(context.Context, ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)) *MockQuerier_ListWorkloadStatusWithJobs_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2209,21 +2445,33 @@ func (_c *MockQuerier_ResetDatabase_Call) RunAndReturn(run func(context.Context)
 }
 
 // SetWorkloadState provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error {
+func (_m *MockQuerier) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetWorkloadState")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, SetWorkloadStateParams) error); ok {
+	var r0 []*SetWorkloadStateRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, SetWorkloadStateParams) []*SetWorkloadStateRow); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*SetWorkloadStateRow)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, SetWorkloadStateParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockQuerier_SetWorkloadState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetWorkloadState'
@@ -2245,12 +2493,12 @@ func (_c *MockQuerier_SetWorkloadState_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockQuerier_SetWorkloadState_Call) Return(_a0 error) *MockQuerier_SetWorkloadState_Call {
-	_c.Call.Return(_a0)
+func (_c *MockQuerier_SetWorkloadState_Call) Return(_a0 []*SetWorkloadStateRow, _a1 error) *MockQuerier_SetWorkloadState_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_SetWorkloadState_Call) RunAndReturn(run func(context.Context, SetWorkloadStateParams) error) *MockQuerier_SetWorkloadState_Call {
+func (_c *MockQuerier_SetWorkloadState_Call) RunAndReturn(run func(context.Context, SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)) *MockQuerier_SetWorkloadState_Call {
 	_c.Call.Return(run)
 	return _c
 }
