@@ -19,10 +19,10 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.MeterProvider, promClient.Gatherer, error) {
+func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.MeterProvider, *sdktrace.TracerProvider, promClient.Gatherer, error) {
 	res, err := newResource()
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating resource: %w", err)
+		return nil, nil, nil, fmt.Errorf("creating resource: %w", err)
 	}
 
 	reg := promClient.NewRegistry()
@@ -35,11 +35,11 @@ func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.M
 	)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
+		return nil, nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
 	}
 	for _, collector := range c {
 		if err := reg.Register(collector); err != nil {
-			return nil, nil, fmt.Errorf("registering collector: %w", err)
+			return nil, nil, nil, fmt.Errorf("registering collector: %w", err)
 		}
 	}
 
@@ -50,6 +50,7 @@ func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.M
 	otel.SetMeterProvider(meterProvider)
 
 	// Only create a trace provider if the environment variable is set
+	var tp *sdktrace.TracerProvider
 	if _, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT"); ok {
 		client := otlptracegrpc.NewClient()
 		exp, err := otlptrace.New(ctx, client)
@@ -57,7 +58,7 @@ func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.M
 			log.Fatalf("failed to initialize exporter: %e", err)
 		}
 
-		tp := sdktrace.NewTracerProvider(
+		tp = sdktrace.NewTracerProvider(
 			sdktrace.WithBatcher(exp),
 			sdktrace.WithResource(
 				resource.NewWithAttributes(
@@ -73,7 +74,7 @@ func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.M
 	// Register the TraceContext propagator globally.
 	otel.SetTextMapPropagator(tc)
 
-	return meterProvider, reg, nil
+	return meterProvider, tp, reg, nil
 }
 
 func newResource() (*resource.Resource, error) {

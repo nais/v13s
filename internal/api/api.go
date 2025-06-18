@@ -69,10 +69,15 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return float64(len(workloadEventQueue.Updated))
 	})
 
-	_, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
+	_, tp, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
 	if err != nil {
 		return fmt.Errorf("create metric meter: %w", err)
 	}
+	defer func() {
+		if err = tp.Shutdown(ctx); err != nil {
+			log.WithError(err).Warn("Failed to shut down tracer provider")
+		}
+	}()
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
 	if err != nil {

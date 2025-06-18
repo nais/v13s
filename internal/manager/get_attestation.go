@@ -14,7 +14,9 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -56,6 +58,15 @@ func (g *GetAttestationWorker) NextRetry(job *river.Job[GetAttestationJob]) time
 }
 
 func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttestationJob]) error {
+	ctx, span := otel.Tracer("v13s/get-attestation").Start(ctx, "GetAttestationWorker.Work")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("image.name", job.Args.ImageName),
+		attribute.String("image.tag", job.Args.ImageTag),
+		attribute.String("workload.id", job.Args.WorkloadId.String()),
+	)
+
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 	att, err := g.verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
@@ -71,6 +82,8 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		// TODO: handle no attestation found vs error in verifying
 		if errors.As(err, &noMatchAttestationError) {
 			if err.Error() != "no matching attestations: " {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				g.log.WithError(err).Error("failed to get attestation")
 			}
 			// TODO: handle errors
@@ -102,6 +115,8 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			Attestation: compressed,
 		})
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 		recordOutput(ctx, JobStatusAttestationDownloaded)

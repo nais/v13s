@@ -17,6 +17,7 @@ import (
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var _ Client = &dependencyTrackClient{}
@@ -91,6 +92,11 @@ func setupConfig(rawURL string) *client.Configuration {
 	}
 
 	cfg.Servers = client.ServerConfigurations{{URL: rawURL}}
+	// wrap the default transport with OpenTelemetry instrumentation
+	cfg.HTTPClient = &http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
 	return cfg
 }
 
