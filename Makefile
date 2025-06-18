@@ -10,6 +10,10 @@ build-cli:
 install-cli:
 	go -C ./pkg/cli build -o ${GOBIN}/vulnz
 
+tidy:
+	@echo "Running go mod tidy for all modules..."
+	find . -name go.mod -execdir go mod tidy \;
+
 test:
 	go test -cover ./...
 
