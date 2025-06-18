@@ -2,11 +2,16 @@ syntax = "proto3";
 
 package v13s.api.protobuf;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "./pkg/api/vulnerabilities/management";
 
 service Management{
   rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
   rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
+  rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
+  rpc GetWorkloadJobs(GetWorkloadJobsRequest) returns (GetWorkloadJobsResponse);
+  rpc Resync(ResyncRequest) returns (ResyncResponse);
 }
 
 message RegisterWorkloadRequest {
@@ -28,4 +33,69 @@ message RegisterWorkloadResponse {}
 message TriggerSyncRequest {}
 message TriggerSyncResponse {}
 
+message GetWorkloadStatusRequest {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
 
+message WorkloadStatus {
+  string cluster = 1;
+  string namespace = 2;
+  string workload = 3;
+  string workload_type = 4;
+  string workload_state = 5;
+  string image_state = 6;
+  string image_name = 7;
+  string image_tag = 8;
+  repeated Job jobs = 9;
+  google.protobuf.Timestamp workload_updated_at = 10;
+  google.protobuf.Timestamp image_updated_at = 11;
+}
+
+message GetWorkloadStatusResponse {
+  repeated WorkloadStatus workload_status = 1;
+  int64 total_count = 2;
+  bool has_next_page = 3;
+  bool has_previous_page = 4;
+}
+
+message Job {
+  int64 id = 1;
+  string kind = 2;
+  string state = 3;
+  string metadata = 4;
+  int32 attempts = 5;
+  string errors = 6;
+  google.protobuf.Timestamp finished_at = 7;
+}
+
+message GetWorkloadJobsRequest {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  int32 Limit = 4;
+  int32 Offset = 5;
+}
+
+message GetWorkloadJobsResponse {
+  repeated Job jobs = 1;
+  int64 total_count = 2;
+  bool has_next_page = 3;
+  bool has_previous_page = 4;
+}
+
+message ResyncRequest {
+  optional string cluster = 1;
+  optional string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+  optional string state = 5;
+}
+
+message ResyncResponse {
+  int32 num_workloads = 1;
+  repeated string workloads = 2; // List of workload identifiers that were resynced
+}

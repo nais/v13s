@@ -14,6 +14,9 @@ import (
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 const (
@@ -21,8 +24,8 @@ const (
 )
 
 type UploadAttestationJob struct {
-	ImageName   string `json:"image_name" river:"unique"`
-	ImageTag    string `json:"image_tag" river:"unique"`
+	ImageName   string `river:"unique"`
+	ImageTag    string `river:"unique"`
 	WorkloadId  pgtype.UUID
 	Attestation []byte
 }
@@ -49,6 +52,15 @@ type UploadAttestationWorker struct {
 }
 
 func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[UploadAttestationJob]) error {
+	ctx, span := otel.Tracer("v13s/upload-attestation").Start(ctx, "UploadAttestationWorker")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("image.name", job.Args.ImageName),
+		attribute.String("image.tag", job.Args.ImageTag),
+		attribute.String("workload.id", job.Args.WorkloadId.String()),
+	)
+
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 	att, err := attestation.Decompress(job.Args.Attestation)
@@ -79,6 +91,8 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		if errors.Is(err, pgx.ErrNoRows) {
 			id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Statement)
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to upload attestation to source")
 				return handleJobErr(err)
 			}
 

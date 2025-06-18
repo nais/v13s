@@ -33,32 +33,6 @@ type VulnerabilityMatch struct {
 	Found    bool
 }
 
-type tags struct {
-	tags []client.Tag
-}
-
-func (t *tags) hasWorkloadTag() bool {
-	for _, tag := range t.tags {
-		if strings.HasPrefix(tag.GetName(), "workload:") {
-			return true
-		}
-	}
-	return false
-}
-
-func (t *tags) remove(workload *Workload) {
-	tags := make([]client.Tag, 0)
-	for _, tag := range t.tags {
-		if strings.HasPrefix(tag.GetName(), "workload:") {
-			if tag.GetName() == fmt.Sprintf("workload:%s|%s|%s|%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name) {
-				continue
-			}
-		}
-		tags = append(tags, tag)
-	}
-	t.tags = tags
-}
-
 // TODO: add a cache? maybe for projects only?
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
 	return &dependencytrackSource{

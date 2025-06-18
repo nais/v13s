@@ -24,3 +24,9 @@ users can import the package with a specific version.
   images tags. If we do a update we only have the latest image tag for each workload. We still have the history of all
   images tags in the image table.
 
+## River
+
+```bash
+  river migrate-get --line main --all --up > river_schema.sql
+```
+

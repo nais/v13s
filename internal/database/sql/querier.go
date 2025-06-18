@@ -35,12 +35,16 @@ type Querier interface {
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
+	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
+	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
 	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
+	ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)
+	ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error
@@ -49,7 +53,7 @@ type Querier interface {
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	ResetDatabase(ctx context.Context) error
-	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) error
+	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error

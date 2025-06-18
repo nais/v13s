@@ -69,10 +69,15 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return float64(len(workloadEventQueue.Updated))
 	})
 
-	_, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
+	_, tp, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
 	if err != nil {
 		return fmt.Errorf("create metric meter: %w", err)
 	}
+	defer func() {
+		if err = tp.Shutdown(ctx); err != nil {
+			log.WithError(err).Warn("Failed to shut down tracer provider")
+		}
+	}()
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
 	if err != nil {
@@ -110,7 +115,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	wg, ctx := errgroup.WithContext(ctx)
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, cfg, pool, u, log); err != nil {
+		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
@@ -146,7 +151,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
@@ -162,7 +167,7 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 
 	s := grpc.NewServer(opts...)
 	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
-	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, u, log.WithField("subsystem", "management")))
+	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, mgr, u, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return s.Serve(lis) })

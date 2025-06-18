@@ -9,7 +9,9 @@ sql:
   - &default_domain
     name: "Workloads SQL"
     engine: "postgresql"
-    schema: "../internal/database/migrations"
+    schema:
+      - "../internal/database/migrations"
+      - "../internal/database/river_schema/river_schema.sql"
     queries: "../internal/database/queries"
     rules:
       - "always-order-by"
