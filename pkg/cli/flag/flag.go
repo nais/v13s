@@ -21,6 +21,7 @@ type Options struct {
 	WorkloadType  string
 	ShowJobs      bool
 	WorkloadState string
+	ImageState    string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {

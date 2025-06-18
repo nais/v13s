@@ -40,12 +40,21 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					Aliases: []string{"r"},
 					Usage:   "trigger resync of workloads",
 					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"), &cli.StringFlag{
-						Name:        "state",
-						Aliases:     []string{"st"},
-						Value:       "",
-						Usage:       "workload state, e.g. 'processing', 'initialized', 'updated', 'no_attestation', 'failed', 'unrecoverable', 'resync'",
+						Name:    "workload-state",
+						Aliases: []string{"ws"},
+						Value:   "",
+						Usage: "workload state, e.g. 'processing', 'initialized', 'updated', 'no_attestation', 'failed', 'unrecoverable', 'resync'" +
+							"Default is resync.",
 						Destination: &opts.WorkloadState,
-					}),
+					},
+						&cli.StringFlag{
+							Name:    "image-state",
+							Aliases: []string{"is"},
+							Value:   "",
+							Usage: "image state, e.g. 'initialized', 'updated', 'untracked', 'failed', 'resync', 'outdated', 'unused'" +
+								"Default is resync.",
+							Destination: &opts.ImageState,
+						}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return resync(ctx, c, opts)
 					},
@@ -94,11 +103,12 @@ func resync(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) e
 	}
 
 	resp, err := c.Resync(ctx, &management.ResyncRequest{
-		Cluster:      p(opts.Cluster),
-		Namespace:    p(opts.Namespace),
-		Workload:     p(opts.Workload),
-		WorkloadType: p(opts.WorkloadType),
-		State:        p(opts.WorkloadState),
+		Cluster:       p(opts.Cluster),
+		Namespace:     p(opts.Namespace),
+		Workload:      p(opts.Workload),
+		WorkloadType:  p(opts.WorkloadType),
+		WorkloadState: p(opts.WorkloadState),
+		ImageState:    p(opts.ImageState),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to trigger resync: %w", err)

@@ -192,16 +192,16 @@ func (s *Server) GetWorkloadJobs(ctx context.Context, req *management.GetWorkloa
 }
 
 func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) (*management.ResyncResponse, error) {
-	state := sql.WorkloadStateUpdated
-	if request.State != nil {
-		state = sql.WorkloadState(*request.State)
+	workloadState := sql.WorkloadStateUpdated
+	if request.WorkloadState != nil {
+		workloadState = sql.WorkloadState(*request.WorkloadState)
 	}
 	rows, err := s.querier.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
 		Cluster:      request.Cluster,
 		Namespace:    request.Namespace,
 		WorkloadName: request.Workload,
 		WorkloadType: request.WorkloadType,
-		OldState:     state,
+		OldState:     workloadState,
 		State:        sql.WorkloadStateResync,
 	})
 	if err != nil {
@@ -224,6 +224,23 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			s.log.WithError(err).Error("failed to add workload to job queue")
 			return nil, err
 		}
+
+		imageState := sql.ImageStateResync
+		if request.ImageState != nil {
+			imageState = sql.ImageState(*request.ImageState)
+		}
+
+		err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State: imageState,
+			Name:  workload.ImageName,
+			Tag:   workload.ImageTag,
+		})
+
+		if err != nil {
+			s.log.WithError(err).Error("failed to update image state")
+			return nil, err
+		}
+
 		workloads = append(workloads, fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
 	}
 	s.log.WithField("num workloads", len(workloads)).Info("added workloads to job queue")

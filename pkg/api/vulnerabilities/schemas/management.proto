@@ -92,7 +92,8 @@ message ResyncRequest {
   optional string namespace = 2;
   optional string workload = 3;
   optional string workload_type = 4;
-  optional string state = 5;
+  optional string workload_state = 5;
+  optional string image_state = 6;
 }
 
 message ResyncResponse {
