@@ -45,7 +45,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.36.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.14.0
-	google.golang.org/grpc v1.72.1
+	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	k8s.io/api v0.33.1
 	k8s.io/apimachinery v0.33.1
@@ -55,7 +55,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.20.0 // indirect
+	cel.dev/expr v0.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
