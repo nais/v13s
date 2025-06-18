@@ -3,7 +3,7 @@ module github.com/nais/v13s
 go 1.24.4
 
 require (
-	cloud.google.com/go/auth v0.16.1
+	cloud.google.com/go/auth v0.16.2
 	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.12.11
@@ -45,7 +45,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.36.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.14.0
-	google.golang.org/grpc v1.72.1
+	google.golang.org/grpc v1.72.2
 	google.golang.org/protobuf v1.36.6
 	k8s.io/api v0.33.1
 	k8s.io/apimachinery v0.33.1
