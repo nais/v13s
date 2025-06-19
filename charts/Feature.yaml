@@ -60,13 +60,7 @@ values:
     displayName: Authorized service accounts
     computed:
       template: |
-        - "{{ .Management.slsa_verde_service_account }}"
         - "{{ .Management.nais_api_serviceaccount_email }}"
-        {{- range $cluster := .Envs }}
-        {{- if not (or (eq $cluster.name "ci-fss")) }}
-        - "{{ $cluster.slsa_verde_service_account }}"
-        {{- end }}
-        {{- end }}
     config:
       type: string_array
 
