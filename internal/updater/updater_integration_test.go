@@ -35,10 +35,13 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	dpTrack := NewMock(projectNames)
-	updateInterval := 200 * time.Millisecond
+	updateSchedule := updater.ScheduleConfig{
+		Type:     updater.SchedulerInterval,
+		Interval: 200 * time.Millisecond,
+	}
 	log := logrus.NewEntry(logrus.StandardLogger())
 	logrus.SetLevel(logrus.DebugLevel)
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, log), updateInterval, log)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(dpTrack, log), updateSchedule, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(1*time.Second))
@@ -46,7 +49,7 @@ func TestUpdater(t *testing.T) {
 
 		insertWorkloads(ctx, t, db, projectNames)
 		u.Run(updaterCtx)
-		time.Sleep(2 * updateInterval)
+		time.Sleep(2 * updateSchedule.Interval)
 
 		for _, p := range projectNames {
 			imageName := p
@@ -101,7 +104,7 @@ func TestUpdater(t *testing.T) {
 
 		// Should update projectName[0] since it is older than updater.DefaultResyncImagesOlderThanMinutes
 		u.Run(updaterCtx)
-		time.Sleep(2 * updateInterval)
+		time.Sleep(2 * updateSchedule.Interval)
 
 		vulns, err := db.ListVulnerabilities(
 			ctx,

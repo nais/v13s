@@ -16,9 +16,9 @@ import (
 
 const (
 	FetchVulnerabilityDataForImagesDefaultLimit = 10
-	DefaultMarkUntrackedInterval                = 20 * time.Minute
-	DefaultResyncImagesOlderThanMinutes         = 60 * 12 * time.Minute // 12 hours
-	DefaultMarkAsUntrackedAge                   = 30 * time.Minute
+	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
+	RefreshVulnerabilitySummaryCronDailyView    = "* 1 * * *"    // every day at 1 AM
+	MarkAsUntrackedAge                          = 30 * time.Minute
 )
 
 type Updater struct {
@@ -26,11 +26,11 @@ type Updater struct {
 	querier                      *sql.Queries
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
-	updateInterval               time.Duration
+	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval time.Duration, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -39,15 +39,15 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, updateInterval time.D
 		db:                           pool,
 		querier:                      sql.New(pool),
 		source:                       source,
-		resyncImagesOlderThanMinutes: DefaultResyncImagesOlderThanMinutes,
-		updateInterval:               updateInterval,
+		resyncImagesOlderThanMinutes: 60 * 12 * time.Minute, // 12 hours
+		updateSchedule:               schedule,
 		log:                          log,
 	}
 }
 
 // Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
-	go runAtInterval(ctx, u.updateInterval, "mark and resync images", u.log, func() {
+	go runScheduled(ctx, u.updateSchedule, "mark and resync images", u.log, func() {
 		if err := u.MarkUnusedImages(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images as unused")
 			return
@@ -62,13 +62,13 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 	})
 
-	go runAtInterval(ctx, DefaultMarkUntrackedInterval, "mark untracked images", u.log, func() {
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUntrackedCronInterval}, "mark untracked images", u.log, func() {
 		if err := u.MarkImagesAsUntracked(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images as untracked")
 		}
 	})
 
-	go runAtInterval(ctx, 12*time.Hour, "refresh vulnerability summary for dates", u.log, func() {
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshVulnerabilitySummaryCronDailyView}, "refresh daily", u.log, func() {
 		now := time.Now()
 		lastSnapshot, err := u.querier.GetLastSnapshotDateForVulnerabilitySummary(ctx)
 		if err != nil {
@@ -147,7 +147,7 @@ func (u *Updater) MarkUnusedImages(ctx context.Context) error {
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-DefaultMarkAsUntrackedAge),
+			Time: time.Now().Add(-MarkAsUntrackedAge),
 		},
 	})
 	if err != nil {
@@ -163,7 +163,7 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-DefaultMarkAsUntrackedAge),
+			Time: time.Now().Add(-MarkAsUntrackedAge),
 		},
 	})
 }
@@ -311,24 +311,4 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 		}).Infof("upserted batch of image states (updated)")
 	}
 	return errs
-}
-
-func runAtInterval(ctx context.Context, interval time.Duration, name string, log *logrus.Entry, job func()) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info("job stopped")
-			return
-		case <-ticker.C:
-			// TODO: set as debug
-			log.Infof("running scheduled job '%s' at interval %v", name, interval)
-			job()
-		}
-	}
 }

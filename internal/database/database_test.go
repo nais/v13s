@@ -30,7 +30,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		err = db.MarkUnusedImages(ctx,
 			sql.MarkUnusedImagesParams{
 				ThresholdTime: pgtype.Timestamptz{
-					Time: time.Now().Add(-updater.DefaultMarkAsUntrackedAge),
+					Time: time.Now().Add(-updater.MarkAsUntrackedAge),
 				},
 				ExcludedStates: []sql.ImageState{
 					sql.ImageStateResync,
@@ -71,7 +71,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		err = db.MarkUnusedImages(ctx,
 			sql.MarkUnusedImagesParams{
 				ThresholdTime: pgtype.Timestamptz{
-					Time: time.Now().Add(-updater.DefaultMarkAsUntrackedAge),
+					Time: time.Now().Add(-updater.MarkAsUntrackedAge),
 				},
 				ExcludedStates: []sql.ImageState{
 					sql.ImageStateResync,
