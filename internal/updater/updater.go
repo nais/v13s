@@ -17,7 +17,7 @@ import (
 const (
 	FetchVulnerabilityDataForImagesDefaultLimit = 10
 	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
-	RefreshVulnerabilitySummaryCronDailyView    = "* 1 * * *"    // every day at 1 AM
+	RefreshVulnerabilitySummaryCronDailyView    = "0 1 * * *"    // every day at 1 AM
 	MarkAsUntrackedAge                          = 30 * time.Minute
 )
 
