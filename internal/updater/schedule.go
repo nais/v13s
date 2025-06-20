@@ -53,7 +53,7 @@ func runAtInterval(ctx context.Context, interval time.Duration, name string, log
 }
 
 func runAtCronSchedule(ctx context.Context, cronExpr string, name string, log *logrus.Entry, job func()) {
-	location, err := time.LoadLocation("Europe/Oslo")
+	location, err := time.LoadLocation("Local")
 	if err != nil {
 		log.WithError(err).Error("failed to load time zone")
 		return
