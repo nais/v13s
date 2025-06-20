@@ -8,7 +8,7 @@ require (
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.12.11
 	github.com/exaring/otelpgx v0.9.3
-	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/google/go-containerregistry v0.20.6
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
