@@ -19,15 +19,16 @@ import (
 	"strings"
 )
 
+
 type LdapAPI interface {
 
 	/*
-		AddMapping1 Adds a mapping
+	AddMapping1 Adds a mapping
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiAddMapping1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiAddMapping1Request
 	*/
 	AddMapping1(ctx context.Context) ApiAddMapping1Request
 
@@ -36,13 +37,13 @@ type LdapAPI interface {
 	AddMapping1Execute(r ApiAddMapping1Request) (*MappedLdapGroup, *http.Response, error)
 
 	/*
-		DeleteMapping1 Removes a mapping
+	DeleteMapping1 Removes a mapping
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the mapping to delete
-		@return ApiDeleteMapping1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the mapping to delete
+	@return ApiDeleteMapping1Request
 	*/
 	DeleteMapping1(ctx context.Context, uuid string) ApiDeleteMapping1Request
 
@@ -50,16 +51,16 @@ type LdapAPI interface {
 	DeleteMapping1Execute(r ApiDeleteMapping1Request) (*http.Response, error)
 
 	/*
-		RetrieveLdapGroups Returns the DNs of all accessible groups within the directory
+	RetrieveLdapGroups Returns the DNs of all accessible groups within the directory
 
-		<p>
-	  This API performs a pass-through query to the configured LDAP server.
-	  Search criteria results are cached using default Alpine CacheManager policy.
 	<p>
-	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+  This API performs a pass-through query to the configured LDAP server.
+  Search criteria results are cached using default Alpine CacheManager policy.
+<p>
+<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiRetrieveLdapGroupsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiRetrieveLdapGroupsRequest
 	*/
 	RetrieveLdapGroups(ctx context.Context) ApiRetrieveLdapGroupsRequest
 
@@ -68,13 +69,13 @@ type LdapAPI interface {
 	RetrieveLdapGroupsExecute(r ApiRetrieveLdapGroupsRequest) ([]string, *http.Response, error)
 
 	/*
-		RetrieveLdapGroups1 Returns the DNs of all groups mapped to the specified team
+	RetrieveLdapGroups1 Returns the DNs of all groups mapped to the specified team
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the team to retrieve mappings for
-		@return ApiRetrieveLdapGroups1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the team to retrieve mappings for
+	@return ApiRetrieveLdapGroups1Request
 	*/
 	RetrieveLdapGroups1(ctx context.Context, uuid string) ApiRetrieveLdapGroups1Request
 
@@ -87,8 +88,8 @@ type LdapAPI interface {
 type LdapAPIService service
 
 type ApiAddMapping1Request struct {
-	ctx                    context.Context
-	ApiService             LdapAPI
+	ctx context.Context
+	ApiService LdapAPI
 	mappedLdapGroupRequest *MappedLdapGroupRequest
 }
 
@@ -106,25 +107,24 @@ AddMapping1 Adds a mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiAddMapping1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiAddMapping1Request
 */
 func (a *LdapAPIService) AddMapping1(ctx context.Context) ApiAddMapping1Request {
 	return ApiAddMapping1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return MappedLdapGroup
+//  @return MappedLdapGroup
 func (a *LdapAPIService) AddMapping1Execute(r ApiAddMapping1Request) (*MappedLdapGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *MappedLdapGroup
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *MappedLdapGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LdapAPIService.AddMapping1")
@@ -209,9 +209,9 @@ func (a *LdapAPIService) AddMapping1Execute(r ApiAddMapping1Request) (*MappedLda
 }
 
 type ApiDeleteMapping1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LdapAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiDeleteMapping1Request) Execute() (*http.Response, error) {
@@ -223,24 +223,24 @@ DeleteMapping1 Removes a mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the mapping to delete
-	@return ApiDeleteMapping1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the mapping to delete
+ @return ApiDeleteMapping1Request
 */
 func (a *LdapAPIService) DeleteMapping1(ctx context.Context, uuid string) ApiDeleteMapping1Request {
 	return ApiDeleteMapping1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *LdapAPIService) DeleteMapping1Execute(r ApiDeleteMapping1Request) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LdapAPIService.DeleteMapping1")
@@ -315,7 +315,7 @@ func (a *LdapAPIService) DeleteMapping1Execute(r ApiDeleteMapping1Request) (*htt
 }
 
 type ApiRetrieveLdapGroupsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LdapAPI
 }
 
@@ -327,32 +327,29 @@ func (r ApiRetrieveLdapGroupsRequest) Execute() ([]string, *http.Response, error
 RetrieveLdapGroups Returns the DNs of all accessible groups within the directory
 
 <p>
-
-	This API performs a pass-through query to the configured LDAP server.
-	Search criteria results are cached using default Alpine CacheManager policy.
-
+  This API performs a pass-through query to the configured LDAP server.
+  Search criteria results are cached using default Alpine CacheManager policy.
 <p>
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiRetrieveLdapGroupsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiRetrieveLdapGroupsRequest
 */
 func (a *LdapAPIService) RetrieveLdapGroups(ctx context.Context) ApiRetrieveLdapGroupsRequest {
 	return ApiRetrieveLdapGroupsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []string
+//  @return []string
 func (a *LdapAPIService) RetrieveLdapGroupsExecute(r ApiRetrieveLdapGroupsRequest) ([]string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []string
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LdapAPIService.RetrieveLdapGroups")
@@ -435,9 +432,9 @@ func (a *LdapAPIService) RetrieveLdapGroupsExecute(r ApiRetrieveLdapGroupsReques
 }
 
 type ApiRetrieveLdapGroups1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService LdapAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiRetrieveLdapGroups1Request) Execute() ([]MappedLdapGroup, *http.Response, error) {
@@ -449,27 +446,26 @@ RetrieveLdapGroups1 Returns the DNs of all groups mapped to the specified team
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the team to retrieve mappings for
-	@return ApiRetrieveLdapGroups1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the team to retrieve mappings for
+ @return ApiRetrieveLdapGroups1Request
 */
 func (a *LdapAPIService) RetrieveLdapGroups1(ctx context.Context, uuid string) ApiRetrieveLdapGroups1Request {
 	return ApiRetrieveLdapGroups1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []MappedLdapGroup
+//  @return []MappedLdapGroup
 func (a *LdapAPIService) RetrieveLdapGroups1Execute(r ApiRetrieveLdapGroups1Request) ([]MappedLdapGroup, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []MappedLdapGroup
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []MappedLdapGroup
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "LdapAPIService.RetrieveLdapGroups1")

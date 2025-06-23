@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,15 +21,15 @@ var _ MappedNullable = &PolicyViolation{}
 
 // PolicyViolation struct for PolicyViolation
 type PolicyViolation struct {
-	Type            *string          `json:"type,omitempty"`
-	Project         *Project         `json:"project,omitempty"`
-	Component       *Component       `json:"component,omitempty"`
+	Type *string `json:"type,omitempty"`
+	Project *Project `json:"project,omitempty"`
+	Component *Component `json:"component,omitempty"`
 	PolicyCondition *PolicyCondition `json:"policyCondition,omitempty"`
 	// UNIX epoch timestamp in milliseconds
-	Timestamp int64              `json:"timestamp"`
-	Text      *string            `json:"text,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Analysis  *ViolationAnalysis `json:"analysis,omitempty"`
-	Uuid      string             `json:"uuid"`
+	Timestamp int64 `json:"timestamp"`
+	Text *string `json:"text,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Analysis *ViolationAnalysis `json:"analysis,omitempty"`
+	Uuid string `json:"uuid"`
 }
 
 type _PolicyViolation PolicyViolation
@@ -294,7 +294,7 @@ func (o *PolicyViolation) SetUuid(v string) {
 }
 
 func (o PolicyViolation) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -340,10 +340,10 @@ func (o *PolicyViolation) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -399,3 +399,5 @@ func (v *NullablePolicyViolation) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

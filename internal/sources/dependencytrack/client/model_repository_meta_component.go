@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,10 +21,10 @@ var _ MappedNullable = &RepositoryMetaComponent{}
 
 // RepositoryMetaComponent struct for RepositoryMetaComponent
 type RepositoryMetaComponent struct {
-	RepositoryType string  `json:"repositoryType"`
-	Namespace      *string `json:"namespace,omitempty"`
-	Name           string  `json:"name"`
-	LatestVersion  string  `json:"latestVersion"`
+	RepositoryType string `json:"repositoryType"`
+	Namespace *string `json:"namespace,omitempty"`
+	Name string `json:"name"`
+	LatestVersion string `json:"latestVersion"`
 	// UNIX epoch timestamp in milliseconds
 	Published int64 `json:"published"`
 	// UNIX epoch timestamp in milliseconds
@@ -208,7 +208,7 @@ func (o *RepositoryMetaComponent) SetLastCheck(v int64) {
 }
 
 func (o RepositoryMetaComponent) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -245,10 +245,10 @@ func (o *RepositoryMetaComponent) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -304,3 +304,5 @@ func (v *NullableRepositoryMetaComponent) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

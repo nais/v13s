@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,13 +21,13 @@ var _ MappedNullable = &NotificationPublisher{}
 
 // NotificationPublisher struct for NotificationPublisher
 type NotificationPublisher struct {
-	Name             string  `json:"name"`
-	Description      *string `json:"description,omitempty"`
-	PublisherClass   string  `json:"publisherClass"`
-	Template         *string `json:"template,omitempty"`
-	TemplateMimeType string  `json:"templateMimeType"`
-	DefaultPublisher *bool   `json:"defaultPublisher,omitempty"`
-	Uuid             string  `json:"uuid"`
+	Name string `json:"name"`
+	Description *string `json:"description,omitempty"`
+	PublisherClass string `json:"publisherClass"`
+	Template *string `json:"template,omitempty"`
+	TemplateMimeType string `json:"templateMimeType"`
+	DefaultPublisher *bool `json:"defaultPublisher,omitempty"`
+	Uuid string `json:"uuid"`
 }
 
 type _NotificationPublisher NotificationPublisher
@@ -246,7 +246,7 @@ func (o *NotificationPublisher) SetUuid(v string) {
 }
 
 func (o NotificationPublisher) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -287,10 +287,10 @@ func (o *NotificationPublisher) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -346,3 +346,5 @@ func (v *NullableNotificationPublisher) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

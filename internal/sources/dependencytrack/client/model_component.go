@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,53 +21,53 @@ var _ MappedNullable = &Component{}
 
 // Component struct for Component
 type Component struct {
-	Authors                []OrganizationalContact  `json:"authors,omitempty"`
-	Publisher              *string                  `json:"publisher,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Supplier               *OrganizationalEntity    `json:"supplier,omitempty"`
-	Group                  *string                  `json:"group,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Name                   *string                  `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Version                *string                  `json:"version,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Classifier             string                   `json:"classifier"`
-	Filename               *string                  "json:\"filename,omitempty\" validate:\"regexp=^[\\\\p{Alnum}:\\/\\\\\\\\!@#$%^&{}\\\\[\\\\]()_+\\\\-=,.~'` ]{1,255}$\""
-	Extension              *string                  "json:\"extension,omitempty\" validate:\"regexp=^[\\\\p{Alnum}!@#$%^&{}\\\\[\\\\]()_+\\\\-=,.~'` ]{1,255}$\""
-	Md5                    *string                  `json:"md5,omitempty" validate:"regexp=^[0-9a-fA-F]{32}$"`
-	Sha1                   *string                  `json:"sha1,omitempty" validate:"regexp=^[0-9a-fA-F]{40}$"`
-	Sha256                 *string                  `json:"sha256,omitempty" validate:"regexp=^[0-9a-fA-F]{64}$"`
-	Sha384                 *string                  `json:"sha384,omitempty" validate:"regexp=^[0-9a-fA-F]{96}$"`
-	Sha512                 *string                  `json:"sha512,omitempty" validate:"regexp=^[0-9a-fA-F]{128}$"`
-	Sha3256                *string                  `json:"sha3_256,omitempty" validate:"regexp=^[0-9a-fA-F]{64}$"`
-	Sha3384                *string                  `json:"sha3_384,omitempty" validate:"regexp=^[0-9a-fA-F]{96}$"`
-	Sha3512                *string                  `json:"sha3_512,omitempty" validate:"regexp=^[0-9a-fA-F]{128}$"`
-	Blake2b256             *string                  `json:"blake2b_256,omitempty" validate:"regexp=^[0-9a-f]{64}$"`
-	Blake2b384             *string                  `json:"blake2b_384,omitempty" validate:"regexp=^[0-9a-f]{96}$"`
-	Blake2b512             *string                  `json:"blake2b_512,omitempty" validate:"regexp=^[0-9a-f]{128}$"`
-	Blake3                 *string                  `json:"blake3,omitempty" validate:"regexp=^[A-Fa-f0-9]*$"`
-	Cpe                    *string                  "json:\"cpe,omitempty\" validate:\"regexp=(cpe:2\\\\.3:[aho\\\\*\\\\-](:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\\\*\\\\-]))(:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){4})|([c][pP][eE]:\\/[AHOaho]?(:[A-Za-z0-9\\\\._\\\\-~%]*){0,6})\""
-	Purl                   *string                  `json:"purl,omitempty"`
-	PurlCoordinates        *string                  `json:"purlCoordinates,omitempty"`
-	SwidTagId              *string                  `json:"swidTagId,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Description            *string                  `json:"description,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Copyright              *string                  `json:"copyright,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	License                *string                  `json:"license,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	LicenseExpression      *string                  `json:"licenseExpression,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	LicenseUrl             *string                  `json:"licenseUrl,omitempty" validate:"regexp=^((((https?|ftps?|sftp|imap|rtsp|rtmp|sip|sips|git|ssh|telnet|nntp|file):\\/\\/)|(mailto:|news:))(%[0-9A-Fa-f]{2}|[-()_.!~*';\\/?:@&=+$,A-Za-z0-9])+)([).!';\\/?:,][[:blank:]])?$"`
-	ResolvedLicense        *License                 `json:"resolvedLicense,omitempty"`
-	DirectDependencies     *string                  `json:"directDependencies,omitempty"`
-	ExternalReferences     []ExternalReference      `json:"externalReferences,omitempty"`
-	Parent                 *Component               `json:"parent,omitempty"`
-	Children               []Component              `json:"children,omitempty"`
-	Properties             []ComponentProperty      `json:"properties,omitempty"`
-	Vulnerabilities        []Vulnerability          `json:"vulnerabilities,omitempty"`
-	Project                Project                  `json:"project"`
-	LastInheritedRiskScore *float64                 `json:"lastInheritedRiskScore,omitempty"`
-	Notes                  *string                  `json:"notes,omitempty"`
-	Uuid                   string                   `json:"uuid"`
-	Author                 *string                  `json:"author,omitempty"`
-	Metrics                *DependencyMetrics       `json:"metrics,omitempty"`
-	RepositoryMeta         *RepositoryMetaComponent `json:"repositoryMeta,omitempty"`
-	DependencyGraph        []string                 `json:"dependencyGraph,omitempty"`
-	ExpandDependencyGraph  *bool                    `json:"expandDependencyGraph,omitempty"`
-	IsInternal             *bool                    `json:"isInternal,omitempty"`
+	Authors []OrganizationalContact `json:"authors,omitempty"`
+	Publisher *string `json:"publisher,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Supplier *OrganizationalEntity `json:"supplier,omitempty"`
+	Group *string `json:"group,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Version *string `json:"version,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Classifier string `json:"classifier"`
+	Filename *string "json:\"filename,omitempty\" validate:\"regexp=^[\\\\p{Alnum}:\\/\\\\\\\\!@#$%^&{}\\\\[\\\\]()_+\\\\-=,.~'` ]{1,255}$\""
+	Extension *string "json:\"extension,omitempty\" validate:\"regexp=^[\\\\p{Alnum}!@#$%^&{}\\\\[\\\\]()_+\\\\-=,.~'` ]{1,255}$\""
+	Md5 *string `json:"md5,omitempty" validate:"regexp=^[0-9a-fA-F]{32}$"`
+	Sha1 *string `json:"sha1,omitempty" validate:"regexp=^[0-9a-fA-F]{40}$"`
+	Sha256 *string `json:"sha256,omitempty" validate:"regexp=^[0-9a-fA-F]{64}$"`
+	Sha384 *string `json:"sha384,omitempty" validate:"regexp=^[0-9a-fA-F]{96}$"`
+	Sha512 *string `json:"sha512,omitempty" validate:"regexp=^[0-9a-fA-F]{128}$"`
+	Sha3256 *string `json:"sha3_256,omitempty" validate:"regexp=^[0-9a-fA-F]{64}$"`
+	Sha3384 *string `json:"sha3_384,omitempty" validate:"regexp=^[0-9a-fA-F]{96}$"`
+	Sha3512 *string `json:"sha3_512,omitempty" validate:"regexp=^[0-9a-fA-F]{128}$"`
+	Blake2b256 *string `json:"blake2b_256,omitempty" validate:"regexp=^[0-9a-f]{64}$"`
+	Blake2b384 *string `json:"blake2b_384,omitempty" validate:"regexp=^[0-9a-f]{96}$"`
+	Blake2b512 *string `json:"blake2b_512,omitempty" validate:"regexp=^[0-9a-f]{128}$"`
+	Blake3 *string `json:"blake3,omitempty" validate:"regexp=^[A-Fa-f0-9]*$"`
+	Cpe *string "json:\"cpe,omitempty\" validate:\"regexp=(cpe:2\\\\.3:[aho\\\\*\\\\-](:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\\\*\\\\-]))(:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){4})|([c][pP][eE]:\\/[AHOaho]?(:[A-Za-z0-9\\\\._\\\\-~%]*){0,6})\""
+	Purl *string `json:"purl,omitempty"`
+	PurlCoordinates *string `json:"purlCoordinates,omitempty"`
+	SwidTagId *string `json:"swidTagId,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Description *string `json:"description,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Copyright *string `json:"copyright,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	License *string `json:"license,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	LicenseExpression *string `json:"licenseExpression,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	LicenseUrl *string `json:"licenseUrl,omitempty" validate:"regexp=^((((https?|ftps?|sftp|imap|rtsp|rtmp|sip|sips|git|ssh|telnet|nntp|file):\\/\\/)|(mailto:|news:))(%[0-9A-Fa-f]{2}|[-()_.!~*';\\/?:@&=+$,A-Za-z0-9])+)([).!';\\/?:,][[:blank:]])?$"`
+	ResolvedLicense *License `json:"resolvedLicense,omitempty"`
+	DirectDependencies *string `json:"directDependencies,omitempty"`
+	ExternalReferences []ExternalReference `json:"externalReferences,omitempty"`
+	Parent *Component `json:"parent,omitempty"`
+	Children []Component `json:"children,omitempty"`
+	Properties []ComponentProperty `json:"properties,omitempty"`
+	Vulnerabilities []Vulnerability `json:"vulnerabilities,omitempty"`
+	Project Project `json:"project"`
+	LastInheritedRiskScore *float64 `json:"lastInheritedRiskScore,omitempty"`
+	Notes *string `json:"notes,omitempty"`
+	Uuid string `json:"uuid"`
+	Author *string `json:"author,omitempty"`
+	Metrics *DependencyMetrics `json:"metrics,omitempty"`
+	RepositoryMeta *RepositoryMetaComponent `json:"repositoryMeta,omitempty"`
+	DependencyGraph []string `json:"dependencyGraph,omitempty"`
+	ExpandDependencyGraph *bool `json:"expandDependencyGraph,omitempty"`
+	IsInternal *bool `json:"isInternal,omitempty"`
 }
 
 type _Component Component
@@ -1573,7 +1573,7 @@ func (o *Component) SetIsInternal(v bool) {
 }
 
 func (o Component) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -1735,10 +1735,10 @@ func (o *Component) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -1794,3 +1794,5 @@ func (v *NullableComponent) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

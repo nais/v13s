@@ -19,9 +19,9 @@ var _ MappedNullable = &ProjectVersion{}
 
 // ProjectVersion struct for ProjectVersion
 type ProjectVersion struct {
-	Uuid    *string `json:"uuid,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
 	Version *string `json:"version,omitempty"`
-	Active  *bool   `json:"active,omitempty"`
+	Active *bool `json:"active,omitempty"`
 }
 
 // NewProjectVersion instantiates a new ProjectVersion object
@@ -138,7 +138,7 @@ func (o *ProjectVersion) SetActive(v bool) {
 }
 
 func (o ProjectVersion) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -194,3 +194,5 @@ func (v *NullableProjectVersion) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

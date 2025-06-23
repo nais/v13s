@@ -19,8 +19,8 @@ var _ MappedNullable = &Cwe{}
 
 // Cwe struct for Cwe
 type Cwe struct {
-	CweId *int32  `json:"cweId,omitempty"`
-	Name  *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	CweId *int32 `json:"cweId,omitempty"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
 }
 
 // NewCwe instantiates a new Cwe object
@@ -105,7 +105,7 @@ func (o *Cwe) SetName(v string) {
 }
 
 func (o Cwe) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,3 +158,5 @@ func (v *NullableCwe) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

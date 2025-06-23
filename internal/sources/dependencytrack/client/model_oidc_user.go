@@ -19,11 +19,11 @@ var _ MappedNullable = &OidcUser{}
 
 // OidcUser struct for OidcUser
 type OidcUser struct {
-	Username          *string      `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	SubjectIdentifier *string      `json:"subjectIdentifier,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	Email             *string      `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	Teams             []Team       `json:"teams,omitempty"`
-	Permissions       []Permission `json:"permissions,omitempty"`
+	Username *string `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	SubjectIdentifier *string `json:"subjectIdentifier,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Email *string `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Teams []Team `json:"teams,omitempty"`
+	Permissions []Permission `json:"permissions,omitempty"`
 }
 
 // NewOidcUser instantiates a new OidcUser object
@@ -204,7 +204,7 @@ func (o *OidcUser) SetPermissions(v []Permission) {
 }
 
 func (o OidcUser) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -266,3 +266,5 @@ func (v *NullableOidcUser) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

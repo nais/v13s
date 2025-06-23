@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,19 +21,19 @@ var _ MappedNullable = &License{}
 
 // License struct for License
 type License struct {
-	LicenseGroups           []LicenseGroup `json:"licenseGroups,omitempty"`
-	Uuid                    string         `json:"uuid"`
-	Name                    *string        `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	LicenseText             *string        `json:"licenseText,omitempty"`
-	StandardLicenseTemplate *string        `json:"standardLicenseTemplate,omitempty"`
-	StandardLicenseHeader   *string        `json:"standardLicenseHeader,omitempty"`
-	LicenseComments         *string        `json:"licenseComments,omitempty"`
-	LicenseId               *string        `json:"licenseId,omitempty" validate:"regexp=^[a-zA-Z0-9_.\\\\-+]*$"`
-	IsOsiApproved           *bool          `json:"isOsiApproved,omitempty"`
-	IsFsfLibre              *bool          `json:"isFsfLibre,omitempty"`
-	IsDeprecatedLicenseId   *bool          `json:"isDeprecatedLicenseId,omitempty"`
-	IsCustomLicense         *bool          `json:"isCustomLicense,omitempty"`
-	SeeAlso                 []string       `json:"seeAlso,omitempty"`
+	LicenseGroups []LicenseGroup `json:"licenseGroups,omitempty"`
+	Uuid string `json:"uuid"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	LicenseText *string `json:"licenseText,omitempty"`
+	StandardLicenseTemplate *string `json:"standardLicenseTemplate,omitempty"`
+	StandardLicenseHeader *string `json:"standardLicenseHeader,omitempty"`
+	LicenseComments *string `json:"licenseComments,omitempty"`
+	LicenseId *string `json:"licenseId,omitempty" validate:"regexp=^[a-zA-Z0-9_.\\\\-+]*$"`
+	IsOsiApproved *bool `json:"isOsiApproved,omitempty"`
+	IsFsfLibre *bool `json:"isFsfLibre,omitempty"`
+	IsDeprecatedLicenseId *bool `json:"isDeprecatedLicenseId,omitempty"`
+	IsCustomLicense *bool `json:"isCustomLicense,omitempty"`
+	SeeAlso []string `json:"seeAlso,omitempty"`
 }
 
 type _License License
@@ -465,7 +465,7 @@ func (o *License) SetSeeAlso(v []string) {
 }
 
 func (o License) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -527,10 +527,10 @@ func (o *License) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -586,3 +586,5 @@ func (v *NullableLicense) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

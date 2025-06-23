@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,12 +21,12 @@ var _ MappedNullable = &ViolationAnalysisRequest{}
 
 // ViolationAnalysisRequest struct for ViolationAnalysisRequest
 type ViolationAnalysisRequest struct {
-	Component       string  `json:"component" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
-	PolicyViolation string  `json:"policyViolation" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
-	AnalysisState   *string `json:"analysisState,omitempty"`
-	Comment         *string `json:"comment,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}\\\\n\\\\r\\\\t]*$"`
-	IsSuppressed    *bool   `json:"isSuppressed,omitempty"`
-	Suppressed      *bool   `json:"suppressed,omitempty"`
+	Component string `json:"component" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
+	PolicyViolation string `json:"policyViolation" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
+	AnalysisState *string `json:"analysisState,omitempty"`
+	Comment *string `json:"comment,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}\\\\n\\\\r\\\\t]*$"`
+	IsSuppressed *bool `json:"isSuppressed,omitempty"`
+	Suppressed *bool `json:"suppressed,omitempty"`
 }
 
 type _ViolationAnalysisRequest ViolationAnalysisRequest
@@ -227,7 +227,7 @@ func (o *ViolationAnalysisRequest) SetSuppressed(v bool) {
 }
 
 func (o ViolationAnalysisRequest) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -267,10 +267,10 @@ func (o *ViolationAnalysisRequest) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -326,3 +326,5 @@ func (v *NullableViolationAnalysisRequest) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

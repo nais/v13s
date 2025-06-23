@@ -19,10 +19,10 @@ var _ MappedNullable = &Framework{}
 
 // Framework struct for Framework
 type Framework struct {
-	Name      *string `json:"name,omitempty"`
-	Version   *string `json:"version,omitempty"`
+	Name *string `json:"name,omitempty"`
+	Version *string `json:"version,omitempty"`
 	Timestamp *string `json:"timestamp,omitempty"`
-	Uuid      *string `json:"uuid,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
 }
 
 // NewFramework instantiates a new Framework object
@@ -171,7 +171,7 @@ func (o *Framework) SetUuid(v string) {
 }
 
 func (o Framework) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -230,3 +230,5 @@ func (v *NullableFramework) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

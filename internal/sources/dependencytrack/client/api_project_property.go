@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type ProjectPropertyAPI interface {
 
 	/*
-		CreateProperty1 Creates a new project property
+	CreateProperty1 Creates a new project property
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to create a property for
-		@return ApiCreateProperty1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to create a property for
+	@return ApiCreateProperty1Request
 	*/
 	CreateProperty1(ctx context.Context, uuid string) ApiCreateProperty1Request
 
@@ -37,13 +38,13 @@ type ProjectPropertyAPI interface {
 	CreateProperty1Execute(r ApiCreateProperty1Request) (*ProjectProperty, *http.Response, error)
 
 	/*
-		DeleteProperty1 Deletes a config property
+	DeleteProperty1 Deletes a config property
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to delete a property from
-		@return ApiDeleteProperty1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to delete a property from
+	@return ApiDeleteProperty1Request
 	*/
 	DeleteProperty1(ctx context.Context, uuid string) ApiDeleteProperty1Request
 
@@ -51,13 +52,13 @@ type ProjectPropertyAPI interface {
 	DeleteProperty1Execute(r ApiDeleteProperty1Request) (*http.Response, error)
 
 	/*
-		GetProperties1 Returns a list of all ProjectProperties for the specified project
+	GetProperties1 Returns a list of all ProjectProperties for the specified project
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to retrieve properties for
-		@return ApiGetProperties1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to retrieve properties for
+	@return ApiGetProperties1Request
 	*/
 	GetProperties1(ctx context.Context, uuid string) ApiGetProperties1Request
 
@@ -66,13 +67,13 @@ type ProjectPropertyAPI interface {
 	GetProperties1Execute(r ApiGetProperties1Request) ([]ProjectProperty, *http.Response, error)
 
 	/*
-		UpdateProperty Updates a project property
+	UpdateProperty Updates a project property
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project to create a property for
-		@return ApiUpdatePropertyRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project to create a property for
+	@return ApiUpdatePropertyRequest
 	*/
 	UpdateProperty(ctx context.Context, uuid string) ApiUpdatePropertyRequest
 
@@ -85,9 +86,9 @@ type ProjectPropertyAPI interface {
 type ProjectPropertyAPIService service
 
 type ApiCreateProperty1Request struct {
-	ctx             context.Context
-	ApiService      ProjectPropertyAPI
-	uuid            string
+	ctx context.Context
+	ApiService ProjectPropertyAPI
+	uuid string
 	projectProperty *ProjectProperty
 }
 
@@ -105,27 +106,26 @@ CreateProperty1 Creates a new project property
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to create a property for
-	@return ApiCreateProperty1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to create a property for
+ @return ApiCreateProperty1Request
 */
 func (a *ProjectPropertyAPIService) CreateProperty1(ctx context.Context, uuid string) ApiCreateProperty1Request {
 	return ApiCreateProperty1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ProjectProperty
+//  @return ProjectProperty
 func (a *ProjectPropertyAPIService) CreateProperty1Execute(r ApiCreateProperty1Request) (*ProjectProperty, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ProjectProperty
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ProjectProperty
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectPropertyAPIService.CreateProperty1")
@@ -211,9 +211,9 @@ func (a *ProjectPropertyAPIService) CreateProperty1Execute(r ApiCreateProperty1R
 }
 
 type ApiDeleteProperty1Request struct {
-	ctx             context.Context
-	ApiService      ProjectPropertyAPI
-	uuid            string
+	ctx context.Context
+	ApiService ProjectPropertyAPI
+	uuid string
 	projectProperty *ProjectProperty
 }
 
@@ -231,24 +231,24 @@ DeleteProperty1 Deletes a config property
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to delete a property from
-	@return ApiDeleteProperty1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to delete a property from
+ @return ApiDeleteProperty1Request
 */
 func (a *ProjectPropertyAPIService) DeleteProperty1(ctx context.Context, uuid string) ApiDeleteProperty1Request {
 	return ApiDeleteProperty1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
 func (a *ProjectPropertyAPIService) DeleteProperty1Execute(r ApiDeleteProperty1Request) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectPropertyAPIService.DeleteProperty1")
@@ -325,9 +325,9 @@ func (a *ProjectPropertyAPIService) DeleteProperty1Execute(r ApiDeleteProperty1R
 }
 
 type ApiGetProperties1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService ProjectPropertyAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetProperties1Request) Execute() ([]ProjectProperty, *http.Response, error) {
@@ -339,27 +339,26 @@ GetProperties1 Returns a list of all ProjectProperties for the specified project
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to retrieve properties for
-	@return ApiGetProperties1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to retrieve properties for
+ @return ApiGetProperties1Request
 */
 func (a *ProjectPropertyAPIService) GetProperties1(ctx context.Context, uuid string) ApiGetProperties1Request {
 	return ApiGetProperties1Request{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ProjectProperty
+//  @return []ProjectProperty
 func (a *ProjectPropertyAPIService) GetProperties1Execute(r ApiGetProperties1Request) ([]ProjectProperty, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ProjectProperty
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ProjectProperty
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectPropertyAPIService.GetProperties1")
@@ -443,9 +442,9 @@ func (a *ProjectPropertyAPIService) GetProperties1Execute(r ApiGetProperties1Req
 }
 
 type ApiUpdatePropertyRequest struct {
-	ctx             context.Context
-	ApiService      ProjectPropertyAPI
-	uuid            string
+	ctx context.Context
+	ApiService ProjectPropertyAPI
+	uuid string
 	projectProperty *ProjectProperty
 }
 
@@ -463,27 +462,26 @@ UpdateProperty Updates a project property
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project to create a property for
-	@return ApiUpdatePropertyRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project to create a property for
+ @return ApiUpdatePropertyRequest
 */
 func (a *ProjectPropertyAPIService) UpdateProperty(ctx context.Context, uuid string) ApiUpdatePropertyRequest {
 	return ApiUpdatePropertyRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ProjectProperty
+//  @return ProjectProperty
 func (a *ProjectPropertyAPIService) UpdatePropertyExecute(r ApiUpdatePropertyRequest) (*ProjectProperty, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ProjectProperty
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ProjectProperty
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ProjectPropertyAPIService.UpdateProperty")

@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -24,9 +24,9 @@ type AffectedVersionAttribution struct {
 	// UNIX epoch timestamp in milliseconds
 	FirstSeen int64 `json:"firstSeen"`
 	// UNIX epoch timestamp in milliseconds
-	LastSeen int64   `json:"lastSeen"`
-	Source   *string `json:"source,omitempty"`
-	Uuid     *string `json:"uuid,omitempty"`
+	LastSeen int64 `json:"lastSeen"`
+	Source *string `json:"source,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
 }
 
 type _AffectedVersionAttribution AffectedVersionAttribution
@@ -163,7 +163,7 @@ func (o *AffectedVersionAttribution) SetUuid(v string) {
 }
 
 func (o AffectedVersionAttribution) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -197,10 +197,10 @@ func (o *AffectedVersionAttribution) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -256,3 +256,5 @@ func (v *NullableAffectedVersionAttribution) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

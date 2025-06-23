@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,17 +21,17 @@ var _ MappedNullable = &ManagedUser{}
 
 // ManagedUser struct for ManagedUser
 type ManagedUser struct {
-	Username            *string      `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	LastPasswordChange  int64        `json:"lastPasswordChange"`
-	Fullname            *string      `json:"fullname,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	Email               *string      `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	Suspended           *bool        `json:"suspended,omitempty"`
-	ForcePasswordChange *bool        `json:"forcePasswordChange,omitempty"`
-	NonExpiryPassword   *bool        `json:"nonExpiryPassword,omitempty"`
-	Teams               []Team       `json:"teams,omitempty"`
-	Permissions         []Permission `json:"permissions,omitempty"`
-	NewPassword         *string      `json:"newPassword,omitempty"`
-	ConfirmPassword     *string      `json:"confirmPassword,omitempty"`
+	Username *string `json:"username,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	LastPasswordChange int64 `json:"lastPasswordChange"`
+	Fullname *string `json:"fullname,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Email *string `json:"email,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	Suspended *bool `json:"suspended,omitempty"`
+	ForcePasswordChange *bool `json:"forcePasswordChange,omitempty"`
+	NonExpiryPassword *bool `json:"nonExpiryPassword,omitempty"`
+	Teams []Team `json:"teams,omitempty"`
+	Permissions []Permission `json:"permissions,omitempty"`
+	NewPassword *string `json:"newPassword,omitempty"`
+	ConfirmPassword *string `json:"confirmPassword,omitempty"`
 }
 
 type _ManagedUser ManagedUser
@@ -399,7 +399,7 @@ func (o *ManagedUser) SetConfirmPassword(v string) {
 }
 
 func (o ManagedUser) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -455,10 +455,10 @@ func (o *ManagedUser) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -514,3 +514,5 @@ func (v *NullableManagedUser) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

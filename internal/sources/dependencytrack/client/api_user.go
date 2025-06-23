@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type UserAPI interface {
 
 	/*
-		AddTeamToUser Adds the username to the specified team.
+	AddTeamToUser Adds the username to the specified team.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param username A valid username
-		@return ApiAddTeamToUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param username A valid username
+	@return ApiAddTeamToUserRequest
 	*/
 	AddTeamToUser(ctx context.Context, username string) ApiAddTeamToUserRequest
 
@@ -37,12 +38,12 @@ type UserAPI interface {
 	AddTeamToUserExecute(r ApiAddTeamToUserRequest) (*UserPrincipal, *http.Response, error)
 
 	/*
-		CreateLdapUser Creates a new user that references an existing LDAP object.
+	CreateLdapUser Creates a new user that references an existing LDAP object.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCreateLdapUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateLdapUserRequest
 	*/
 	CreateLdapUser(ctx context.Context) ApiCreateLdapUserRequest
 
@@ -51,12 +52,12 @@ type UserAPI interface {
 	CreateLdapUserExecute(r ApiCreateLdapUserRequest) (*LdapUser, *http.Response, error)
 
 	/*
-		CreateManagedUser Creates a new user.
+	CreateManagedUser Creates a new user.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCreateManagedUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateManagedUserRequest
 	*/
 	CreateManagedUser(ctx context.Context) ApiCreateManagedUserRequest
 
@@ -65,12 +66,12 @@ type UserAPI interface {
 	CreateManagedUserExecute(r ApiCreateManagedUserRequest) (*ManagedUser, *http.Response, error)
 
 	/*
-		CreateOidcUser Creates a new user that references an existing OpenID Connect user.
+	CreateOidcUser Creates a new user that references an existing OpenID Connect user.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCreateOidcUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateOidcUserRequest
 	*/
 	CreateOidcUser(ctx context.Context) ApiCreateOidcUserRequest
 
@@ -79,12 +80,12 @@ type UserAPI interface {
 	CreateOidcUserExecute(r ApiCreateOidcUserRequest) (*OidcUser, *http.Response, error)
 
 	/*
-		DeleteLdapUser Deletes a user.
+	DeleteLdapUser Deletes a user.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiDeleteLdapUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiDeleteLdapUserRequest
 	*/
 	DeleteLdapUser(ctx context.Context) ApiDeleteLdapUserRequest
 
@@ -92,12 +93,12 @@ type UserAPI interface {
 	DeleteLdapUserExecute(r ApiDeleteLdapUserRequest) (*http.Response, error)
 
 	/*
-		DeleteManagedUser Deletes a user.
+	DeleteManagedUser Deletes a user.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiDeleteManagedUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiDeleteManagedUserRequest
 	*/
 	DeleteManagedUser(ctx context.Context) ApiDeleteManagedUserRequest
 
@@ -105,12 +106,12 @@ type UserAPI interface {
 	DeleteManagedUserExecute(r ApiDeleteManagedUserRequest) (*http.Response, error)
 
 	/*
-		DeleteOidcUser Deletes an OpenID Connect user.
+	DeleteOidcUser Deletes an OpenID Connect user.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiDeleteOidcUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiDeleteOidcUserRequest
 	*/
 	DeleteOidcUser(ctx context.Context) ApiDeleteOidcUserRequest
 
@@ -118,12 +119,12 @@ type UserAPI interface {
 	DeleteOidcUserExecute(r ApiDeleteOidcUserRequest) (*http.Response, error)
 
 	/*
-		ForceChangePassword Asserts login credentials and upon successful authentication, verifies passwords match and changes users password
+	ForceChangePassword Asserts login credentials and upon successful authentication, verifies passwords match and changes users password
 
-		Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
+	Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiForceChangePasswordRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiForceChangePasswordRequest
 	*/
 	ForceChangePassword(ctx context.Context) ApiForceChangePasswordRequest
 
@@ -131,12 +132,12 @@ type UserAPI interface {
 	ForceChangePasswordExecute(r ApiForceChangePasswordRequest) (*http.Response, error)
 
 	/*
-		GetLdapUsers Returns a list of all LDAP users
+	GetLdapUsers Returns a list of all LDAP users
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetLdapUsersRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetLdapUsersRequest
 	*/
 	GetLdapUsers(ctx context.Context) ApiGetLdapUsersRequest
 
@@ -145,12 +146,12 @@ type UserAPI interface {
 	GetLdapUsersExecute(r ApiGetLdapUsersRequest) ([]LdapUser, *http.Response, error)
 
 	/*
-		GetManagedUsers Returns a list of all managed users
+	GetManagedUsers Returns a list of all managed users
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetManagedUsersRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetManagedUsersRequest
 	*/
 	GetManagedUsers(ctx context.Context) ApiGetManagedUsersRequest
 
@@ -159,12 +160,12 @@ type UserAPI interface {
 	GetManagedUsersExecute(r ApiGetManagedUsersRequest) ([]ManagedUser, *http.Response, error)
 
 	/*
-		GetOidcUsers Returns a list of all OIDC users
+	GetOidcUsers Returns a list of all OIDC users
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetOidcUsersRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetOidcUsersRequest
 	*/
 	GetOidcUsers(ctx context.Context) ApiGetOidcUsersRequest
 
@@ -173,10 +174,10 @@ type UserAPI interface {
 	GetOidcUsersExecute(r ApiGetOidcUsersRequest) ([]OidcUser, *http.Response, error)
 
 	/*
-		GetSelf1 Returns information about the current logged in user.
+	GetSelf1 Returns information about the current logged in user.
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetSelf1Request
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetSelf1Request
 	*/
 	GetSelf1(ctx context.Context) ApiGetSelf1Request
 
@@ -185,13 +186,13 @@ type UserAPI interface {
 	GetSelf1Execute(r ApiGetSelf1Request) (*UserPrincipal, *http.Response, error)
 
 	/*
-		RemoveTeamFromUser Removes the username from the specified team.
+	RemoveTeamFromUser Removes the username from the specified team.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param username A valid username
-		@return ApiRemoveTeamFromUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param username A valid username
+	@return ApiRemoveTeamFromUserRequest
 	*/
 	RemoveTeamFromUser(ctx context.Context, username string) ApiRemoveTeamFromUserRequest
 
@@ -200,12 +201,12 @@ type UserAPI interface {
 	RemoveTeamFromUserExecute(r ApiRemoveTeamFromUserRequest) (*UserPrincipal, *http.Response, error)
 
 	/*
-		UpdateManagedUser Updates a managed user.
+	UpdateManagedUser Updates a managed user.
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiUpdateManagedUserRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateManagedUserRequest
 	*/
 	UpdateManagedUser(ctx context.Context) ApiUpdateManagedUserRequest
 
@@ -214,10 +215,10 @@ type UserAPI interface {
 	UpdateManagedUserExecute(r ApiUpdateManagedUserRequest) (*ManagedUser, *http.Response, error)
 
 	/*
-		UpdateSelf Updates information about the current logged in user.
+	UpdateSelf Updates information about the current logged in user.
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiUpdateSelfRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiUpdateSelfRequest
 	*/
 	UpdateSelf(ctx context.Context) ApiUpdateSelfRequest
 
@@ -226,12 +227,12 @@ type UserAPI interface {
 	UpdateSelfExecute(r ApiUpdateSelfRequest) (*ManagedUser, *http.Response, error)
 
 	/*
-		ValidateCredentials Assert login credentials
+	ValidateCredentials Assert login credentials
 
-		Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
+	Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiValidateCredentialsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiValidateCredentialsRequest
 	*/
 	ValidateCredentials(ctx context.Context) ApiValidateCredentialsRequest
 
@@ -240,12 +241,12 @@ type UserAPI interface {
 	ValidateCredentialsExecute(r ApiValidateCredentialsRequest) (string, *http.Response, error)
 
 	/*
-		ValidateOidcAccessToken Login with OpenID Connect
+	ValidateOidcAccessToken Login with OpenID Connect
 
-		Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
+	Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiValidateOidcAccessTokenRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiValidateOidcAccessTokenRequest
 	*/
 	ValidateOidcAccessToken(ctx context.Context) ApiValidateOidcAccessTokenRequest
 
@@ -258,9 +259,9 @@ type UserAPI interface {
 type UserAPIService service
 
 type ApiAddTeamToUserRequest struct {
-	ctx                context.Context
-	ApiService         UserAPI
-	username           string
+	ctx context.Context
+	ApiService UserAPI
+	username string
 	identifiableObject *IdentifiableObject
 }
 
@@ -279,27 +280,26 @@ AddTeamToUser Adds the username to the specified team.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param username A valid username
-	@return ApiAddTeamToUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param username A valid username
+ @return ApiAddTeamToUserRequest
 */
 func (a *UserAPIService) AddTeamToUser(ctx context.Context, username string) ApiAddTeamToUserRequest {
 	return ApiAddTeamToUserRequest{
 		ApiService: a,
-		ctx:        ctx,
-		username:   username,
+		ctx: ctx,
+		username: username,
 	}
 }
 
 // Execute executes the request
-//
-//	@return UserPrincipal
+//  @return UserPrincipal
 func (a *UserAPIService) AddTeamToUserExecute(r ApiAddTeamToUserRequest) (*UserPrincipal, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *UserPrincipal
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *UserPrincipal
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.AddTeamToUser")
@@ -388,9 +388,9 @@ func (a *UserAPIService) AddTeamToUserExecute(r ApiAddTeamToUserRequest) (*UserP
 }
 
 type ApiCreateLdapUserRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
-	ldapUser   *LdapUser
+	ldapUser *LdapUser
 }
 
 func (r ApiCreateLdapUserRequest) LdapUser(ldapUser LdapUser) ApiCreateLdapUserRequest {
@@ -407,25 +407,24 @@ CreateLdapUser Creates a new user that references an existing LDAP object.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateLdapUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateLdapUserRequest
 */
 func (a *UserAPIService) CreateLdapUser(ctx context.Context) ApiCreateLdapUserRequest {
 	return ApiCreateLdapUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return LdapUser
+//  @return LdapUser
 func (a *UserAPIService) CreateLdapUserExecute(r ApiCreateLdapUserRequest) (*LdapUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *LdapUser
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *LdapUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.CreateLdapUser")
@@ -510,8 +509,8 @@ func (a *UserAPIService) CreateLdapUserExecute(r ApiCreateLdapUserRequest) (*Lda
 }
 
 type ApiCreateManagedUserRequest struct {
-	ctx         context.Context
-	ApiService  UserAPI
+	ctx context.Context
+	ApiService UserAPI
 	managedUser *ManagedUser
 }
 
@@ -529,25 +528,24 @@ CreateManagedUser Creates a new user.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateManagedUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateManagedUserRequest
 */
 func (a *UserAPIService) CreateManagedUser(ctx context.Context) ApiCreateManagedUserRequest {
 	return ApiCreateManagedUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ManagedUser
+//  @return ManagedUser
 func (a *UserAPIService) CreateManagedUserExecute(r ApiCreateManagedUserRequest) (*ManagedUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ManagedUser
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ManagedUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.CreateManagedUser")
@@ -632,9 +630,9 @@ func (a *UserAPIService) CreateManagedUserExecute(r ApiCreateManagedUserRequest)
 }
 
 type ApiCreateOidcUserRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
-	oidcUser   *OidcUser
+	oidcUser *OidcUser
 }
 
 func (r ApiCreateOidcUserRequest) OidcUser(oidcUser OidcUser) ApiCreateOidcUserRequest {
@@ -651,25 +649,24 @@ CreateOidcUser Creates a new user that references an existing OpenID Connect use
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateOidcUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateOidcUserRequest
 */
 func (a *UserAPIService) CreateOidcUser(ctx context.Context) ApiCreateOidcUserRequest {
 	return ApiCreateOidcUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return OidcUser
+//  @return OidcUser
 func (a *UserAPIService) CreateOidcUserExecute(r ApiCreateOidcUserRequest) (*OidcUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPut
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *OidcUser
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *OidcUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.CreateOidcUser")
@@ -754,9 +751,9 @@ func (a *UserAPIService) CreateOidcUserExecute(r ApiCreateOidcUserRequest) (*Oid
 }
 
 type ApiDeleteLdapUserRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
-	ldapUser   *LdapUser
+	ldapUser *LdapUser
 }
 
 func (r ApiDeleteLdapUserRequest) LdapUser(ldapUser LdapUser) ApiDeleteLdapUserRequest {
@@ -773,22 +770,22 @@ DeleteLdapUser Deletes a user.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiDeleteLdapUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiDeleteLdapUserRequest
 */
 func (a *UserAPIService) DeleteLdapUser(ctx context.Context) ApiDeleteLdapUserRequest {
 	return ApiDeleteLdapUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *UserAPIService) DeleteLdapUserExecute(r ApiDeleteLdapUserRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.DeleteLdapUser")
@@ -864,8 +861,8 @@ func (a *UserAPIService) DeleteLdapUserExecute(r ApiDeleteLdapUserRequest) (*htt
 }
 
 type ApiDeleteManagedUserRequest struct {
-	ctx         context.Context
-	ApiService  UserAPI
+	ctx context.Context
+	ApiService UserAPI
 	managedUser *ManagedUser
 }
 
@@ -883,22 +880,22 @@ DeleteManagedUser Deletes a user.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiDeleteManagedUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiDeleteManagedUserRequest
 */
 func (a *UserAPIService) DeleteManagedUser(ctx context.Context) ApiDeleteManagedUserRequest {
 	return ApiDeleteManagedUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *UserAPIService) DeleteManagedUserExecute(r ApiDeleteManagedUserRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.DeleteManagedUser")
@@ -974,9 +971,9 @@ func (a *UserAPIService) DeleteManagedUserExecute(r ApiDeleteManagedUserRequest)
 }
 
 type ApiDeleteOidcUserRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
-	oidcUser   *OidcUser
+	oidcUser *OidcUser
 }
 
 func (r ApiDeleteOidcUserRequest) OidcUser(oidcUser OidcUser) ApiDeleteOidcUserRequest {
@@ -993,22 +990,22 @@ DeleteOidcUser Deletes an OpenID Connect user.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiDeleteOidcUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiDeleteOidcUserRequest
 */
 func (a *UserAPIService) DeleteOidcUser(ctx context.Context) ApiDeleteOidcUserRequest {
 	return ApiDeleteOidcUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *UserAPIService) DeleteOidcUserExecute(r ApiDeleteOidcUserRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.DeleteOidcUser")
@@ -1084,11 +1081,11 @@ func (a *UserAPIService) DeleteOidcUserExecute(r ApiDeleteOidcUserRequest) (*htt
 }
 
 type ApiForceChangePasswordRequest struct {
-	ctx             context.Context
-	ApiService      UserAPI
-	username        *string
-	password        *string
-	newPassword     *string
+	ctx context.Context
+	ApiService UserAPI
+	username *string
+	password *string
+	newPassword *string
 	confirmPassword *string
 }
 
@@ -1121,22 +1118,22 @@ ForceChangePassword Asserts login credentials and upon successful authentication
 
 Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiForceChangePasswordRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiForceChangePasswordRequest
 */
 func (a *UserAPIService) ForceChangePassword(ctx context.Context) ApiForceChangePasswordRequest {
 	return ApiForceChangePasswordRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *UserAPIService) ForceChangePasswordExecute(r ApiForceChangePasswordRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.ForceChangePassword")
@@ -1222,7 +1219,7 @@ func (a *UserAPIService) ForceChangePasswordExecute(r ApiForceChangePasswordRequ
 }
 
 type ApiGetLdapUsersRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
 }
 
@@ -1235,25 +1232,24 @@ GetLdapUsers Returns a list of all LDAP users
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetLdapUsersRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetLdapUsersRequest
 */
 func (a *UserAPIService) GetLdapUsers(ctx context.Context) ApiGetLdapUsersRequest {
 	return ApiGetLdapUsersRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []LdapUser
+//  @return []LdapUser
 func (a *UserAPIService) GetLdapUsersExecute(r ApiGetLdapUsersRequest) ([]LdapUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []LdapUser
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []LdapUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.GetLdapUsers")
@@ -1336,7 +1332,7 @@ func (a *UserAPIService) GetLdapUsersExecute(r ApiGetLdapUsersRequest) ([]LdapUs
 }
 
 type ApiGetManagedUsersRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
 }
 
@@ -1349,25 +1345,24 @@ GetManagedUsers Returns a list of all managed users
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetManagedUsersRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetManagedUsersRequest
 */
 func (a *UserAPIService) GetManagedUsers(ctx context.Context) ApiGetManagedUsersRequest {
 	return ApiGetManagedUsersRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []ManagedUser
+//  @return []ManagedUser
 func (a *UserAPIService) GetManagedUsersExecute(r ApiGetManagedUsersRequest) ([]ManagedUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []ManagedUser
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []ManagedUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.GetManagedUsers")
@@ -1450,7 +1445,7 @@ func (a *UserAPIService) GetManagedUsersExecute(r ApiGetManagedUsersRequest) ([]
 }
 
 type ApiGetOidcUsersRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
 }
 
@@ -1463,25 +1458,24 @@ GetOidcUsers Returns a list of all OIDC users
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetOidcUsersRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetOidcUsersRequest
 */
 func (a *UserAPIService) GetOidcUsers(ctx context.Context) ApiGetOidcUsersRequest {
 	return ApiGetOidcUsersRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []OidcUser
+//  @return []OidcUser
 func (a *UserAPIService) GetOidcUsersExecute(r ApiGetOidcUsersRequest) ([]OidcUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []OidcUser
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []OidcUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.GetOidcUsers")
@@ -1564,7 +1558,7 @@ func (a *UserAPIService) GetOidcUsersExecute(r ApiGetOidcUsersRequest) ([]OidcUs
 }
 
 type ApiGetSelf1Request struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
 }
 
@@ -1575,25 +1569,24 @@ func (r ApiGetSelf1Request) Execute() (*UserPrincipal, *http.Response, error) {
 /*
 GetSelf1 Returns information about the current logged in user.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetSelf1Request
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetSelf1Request
 */
 func (a *UserAPIService) GetSelf1(ctx context.Context) ApiGetSelf1Request {
 	return ApiGetSelf1Request{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return UserPrincipal
+//  @return UserPrincipal
 func (a *UserAPIService) GetSelf1Execute(r ApiGetSelf1Request) (*UserPrincipal, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *UserPrincipal
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *UserPrincipal
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.GetSelf1")
@@ -1676,9 +1669,9 @@ func (a *UserAPIService) GetSelf1Execute(r ApiGetSelf1Request) (*UserPrincipal, 
 }
 
 type ApiRemoveTeamFromUserRequest struct {
-	ctx                context.Context
-	ApiService         UserAPI
-	username           string
+	ctx context.Context
+	ApiService UserAPI
+	username string
 	identifiableObject *IdentifiableObject
 }
 
@@ -1697,27 +1690,26 @@ RemoveTeamFromUser Removes the username from the specified team.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param username A valid username
-	@return ApiRemoveTeamFromUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param username A valid username
+ @return ApiRemoveTeamFromUserRequest
 */
 func (a *UserAPIService) RemoveTeamFromUser(ctx context.Context, username string) ApiRemoveTeamFromUserRequest {
 	return ApiRemoveTeamFromUserRequest{
 		ApiService: a,
-		ctx:        ctx,
-		username:   username,
+		ctx: ctx,
+		username: username,
 	}
 }
 
 // Execute executes the request
-//
-//	@return UserPrincipal
+//  @return UserPrincipal
 func (a *UserAPIService) RemoveTeamFromUserExecute(r ApiRemoveTeamFromUserRequest) (*UserPrincipal, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodDelete
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *UserPrincipal
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *UserPrincipal
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.RemoveTeamFromUser")
@@ -1806,8 +1798,8 @@ func (a *UserAPIService) RemoveTeamFromUserExecute(r ApiRemoveTeamFromUserReques
 }
 
 type ApiUpdateManagedUserRequest struct {
-	ctx         context.Context
-	ApiService  UserAPI
+	ctx context.Context
+	ApiService UserAPI
 	managedUser *ManagedUser
 }
 
@@ -1825,25 +1817,24 @@ UpdateManagedUser Updates a managed user.
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateManagedUserRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateManagedUserRequest
 */
 func (a *UserAPIService) UpdateManagedUser(ctx context.Context) ApiUpdateManagedUserRequest {
 	return ApiUpdateManagedUserRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ManagedUser
+//  @return ManagedUser
 func (a *UserAPIService) UpdateManagedUserExecute(r ApiUpdateManagedUserRequest) (*ManagedUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ManagedUser
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ManagedUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.UpdateManagedUser")
@@ -1928,8 +1919,8 @@ func (a *UserAPIService) UpdateManagedUserExecute(r ApiUpdateManagedUserRequest)
 }
 
 type ApiUpdateSelfRequest struct {
-	ctx         context.Context
-	ApiService  UserAPI
+	ctx context.Context
+	ApiService UserAPI
 	managedUser *ManagedUser
 }
 
@@ -1945,25 +1936,24 @@ func (r ApiUpdateSelfRequest) Execute() (*ManagedUser, *http.Response, error) {
 /*
 UpdateSelf Updates information about the current logged in user.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiUpdateSelfRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiUpdateSelfRequest
 */
 func (a *UserAPIService) UpdateSelf(ctx context.Context) ApiUpdateSelfRequest {
 	return ApiUpdateSelfRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return ManagedUser
+//  @return ManagedUser
 func (a *UserAPIService) UpdateSelfExecute(r ApiUpdateSelfRequest) (*ManagedUser, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *ManagedUser
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *ManagedUser
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.UpdateSelf")
@@ -2048,10 +2038,10 @@ func (a *UserAPIService) UpdateSelfExecute(r ApiUpdateSelfRequest) (*ManagedUser
 }
 
 type ApiValidateCredentialsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService UserAPI
-	username   *string
-	password   *string
+	username *string
+	password *string
 }
 
 func (r ApiValidateCredentialsRequest) Username(username string) ApiValidateCredentialsRequest {
@@ -2073,25 +2063,24 @@ ValidateCredentials Assert login credentials
 
 Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiValidateCredentialsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiValidateCredentialsRequest
 */
 func (a *UserAPIService) ValidateCredentials(ctx context.Context) ApiValidateCredentialsRequest {
 	return ApiValidateCredentialsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *UserAPIService) ValidateCredentialsExecute(r ApiValidateCredentialsRequest) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.ValidateCredentials")
@@ -2180,9 +2169,9 @@ func (a *UserAPIService) ValidateCredentialsExecute(r ApiValidateCredentialsRequ
 }
 
 type ApiValidateOidcAccessTokenRequest struct {
-	ctx         context.Context
-	ApiService  UserAPI
-	idToken     *string
+	ctx context.Context
+	ApiService UserAPI
+	idToken *string
 	accessToken *string
 }
 
@@ -2206,25 +2195,24 @@ ValidateOidcAccessToken Login with OpenID Connect
 
 Upon a successful login, a JSON Web Token will be returned in the response body. This functionality requires authentication to be enabled.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiValidateOidcAccessTokenRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiValidateOidcAccessTokenRequest
 */
 func (a *UserAPIService) ValidateOidcAccessToken(ctx context.Context) ApiValidateOidcAccessTokenRequest {
 	return ApiValidateOidcAccessTokenRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return string
+//  @return string
 func (a *UserAPIService) ValidateOidcAccessTokenExecute(r ApiValidateOidcAccessTokenRequest) (string, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue string
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  string
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "UserAPIService.ValidateOidcAccessToken")

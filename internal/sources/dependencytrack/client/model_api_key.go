@@ -19,12 +19,12 @@ var _ MappedNullable = &ApiKey{}
 
 // ApiKey struct for ApiKey
 type ApiKey struct {
-	Comment   *string `json:"comment,omitempty"`
-	Created   *int64  `json:"created,omitempty"`
-	LastUsed  *int64  `json:"lastUsed,omitempty"`
-	PublicId  *string `json:"publicId,omitempty"`
-	Key       *string `json:"key,omitempty"`
-	Legacy    *bool   `json:"legacy,omitempty"`
+	Comment *string `json:"comment,omitempty"`
+	Created *int64 `json:"created,omitempty"`
+	LastUsed *int64 `json:"lastUsed,omitempty"`
+	PublicId *string `json:"publicId,omitempty"`
+	Key *string `json:"key,omitempty"`
+	Legacy *bool `json:"legacy,omitempty"`
 	MaskedKey *string `json:"maskedKey,omitempty"`
 }
 
@@ -270,7 +270,7 @@ func (o *ApiKey) SetMaskedKey(v string) {
 }
 
 func (o ApiKey) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -338,3 +338,5 @@ func (v *NullableApiKey) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

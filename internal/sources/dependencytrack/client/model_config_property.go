@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,11 +21,11 @@ var _ MappedNullable = &ConfigProperty{}
 
 // ConfigProperty struct for ConfigProperty
 type ConfigProperty struct {
-	GroupName     *string `json:"groupName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	PropertyName  *string `json:"propertyName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	GroupName *string `json:"groupName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	PropertyName *string `json:"propertyName,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
 	PropertyValue *string `json:"propertyValue,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
-	PropertyType  string  `json:"propertyType"`
-	Description   *string `json:"description,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
+	PropertyType string `json:"propertyType"`
+	Description *string `json:"description,omitempty" validate:"regexp=[\\\\P{Cc}]+"`
 }
 
 type _ConfigProperty ConfigProperty
@@ -201,7 +201,7 @@ func (o *ConfigProperty) SetDescription(v string) {
 }
 
 func (o ConfigProperty) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -239,10 +239,10 @@ func (o *ConfigProperty) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -298,3 +298,5 @@ func (v *NullableConfigProperty) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

@@ -19,15 +19,16 @@ import (
 	"strings"
 )
 
+
 type AclAPI interface {
 
 	/*
-		AddMapping Adds an ACL mapping
+	AddMapping Adds an ACL mapping
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiAddMappingRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiAddMappingRequest
 	*/
 	AddMapping(ctx context.Context) ApiAddMappingRequest
 
@@ -35,14 +36,14 @@ type AclAPI interface {
 	AddMappingExecute(r ApiAddMappingRequest) (*http.Response, error)
 
 	/*
-		DeleteMapping Removes an ACL mapping
+	DeleteMapping Removes an ACL mapping
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param teamUuid The UUID of the team to delete the mapping for
-		@param projectUuid The UUID of the project to delete the mapping for
-		@return ApiDeleteMappingRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param teamUuid The UUID of the team to delete the mapping for
+	@param projectUuid The UUID of the project to delete the mapping for
+	@return ApiDeleteMappingRequest
 	*/
 	DeleteMapping(ctx context.Context, teamUuid string, projectUuid string) ApiDeleteMappingRequest
 
@@ -50,13 +51,13 @@ type AclAPI interface {
 	DeleteMappingExecute(r ApiDeleteMappingRequest) (*http.Response, error)
 
 	/*
-		RetrieveProjects Returns the projects assigned to the specified team
+	RetrieveProjects Returns the projects assigned to the specified team
 
-		<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the team to retrieve mappings for
-		@return ApiRetrieveProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the team to retrieve mappings for
+	@return ApiRetrieveProjectsRequest
 	*/
 	RetrieveProjects(ctx context.Context, uuid string) ApiRetrieveProjectsRequest
 
@@ -69,8 +70,8 @@ type AclAPI interface {
 type AclAPIService service
 
 type ApiAddMappingRequest struct {
-	ctx               context.Context
-	ApiService        AclAPI
+	ctx context.Context
+	ApiService AclAPI
 	aclMappingRequest *AclMappingRequest
 }
 
@@ -88,22 +89,22 @@ AddMapping Adds an ACL mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiAddMappingRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiAddMappingRequest
 */
 func (a *AclAPIService) AddMapping(ctx context.Context) ApiAddMappingRequest {
 	return ApiAddMappingRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *AclAPIService) AddMappingExecute(r ApiAddMappingRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPut
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AclAPIService.AddMapping")
@@ -179,9 +180,9 @@ func (a *AclAPIService) AddMappingExecute(r ApiAddMappingRequest) (*http.Respons
 }
 
 type ApiDeleteMappingRequest struct {
-	ctx         context.Context
-	ApiService  AclAPI
-	teamUuid    string
+	ctx context.Context
+	ApiService AclAPI
+	teamUuid string
 	projectUuid string
 }
 
@@ -194,16 +195,16 @@ DeleteMapping Removes an ACL mapping
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param teamUuid The UUID of the team to delete the mapping for
-	@param projectUuid The UUID of the project to delete the mapping for
-	@return ApiDeleteMappingRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param teamUuid The UUID of the team to delete the mapping for
+ @param projectUuid The UUID of the project to delete the mapping for
+ @return ApiDeleteMappingRequest
 */
 func (a *AclAPIService) DeleteMapping(ctx context.Context, teamUuid string, projectUuid string) ApiDeleteMappingRequest {
 	return ApiDeleteMappingRequest{
-		ApiService:  a,
-		ctx:         ctx,
-		teamUuid:    teamUuid,
+		ApiService: a,
+		ctx: ctx,
+		teamUuid: teamUuid,
 		projectUuid: projectUuid,
 	}
 }
@@ -211,9 +212,9 @@ func (a *AclAPIService) DeleteMapping(ctx context.Context, teamUuid string, proj
 // Execute executes the request
 func (a *AclAPIService) DeleteMappingExecute(r ApiDeleteMappingRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AclAPIService.DeleteMapping")
@@ -289,17 +290,17 @@ func (a *AclAPIService) DeleteMappingExecute(r ApiDeleteMappingRequest) (*http.R
 }
 
 type ApiRetrieveProjectsRequest struct {
-	ctx             context.Context
-	ApiService      AclAPI
-	uuid            string
-	pageNumber      *string
-	pageSize        *string
-	offset          *string
-	limit           *string
-	sortName        *string
-	sortOrder       *string
+	ctx context.Context
+	ApiService AclAPI
+	uuid string
+	pageNumber *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 	excludeInactive *bool
-	onlyRoot        *bool
+	onlyRoot *bool
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -359,27 +360,26 @@ RetrieveProjects Returns the projects assigned to the specified team
 
 <p>Requires permission <strong>ACCESS_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the team to retrieve mappings for
-	@return ApiRetrieveProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the team to retrieve mappings for
+ @return ApiRetrieveProjectsRequest
 */
 func (a *AclAPIService) RetrieveProjects(ctx context.Context, uuid string) ApiRetrieveProjectsRequest {
 	return ApiRetrieveProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Project
+//  @return []Project
 func (a *AclAPIService) RetrieveProjectsExecute(r ApiRetrieveProjectsRequest) ([]Project, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Project
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Project
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AclAPIService.RetrieveProjects")

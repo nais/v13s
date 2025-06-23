@@ -19,8 +19,8 @@ var _ MappedNullable = &TeamSelfResponse{}
 
 // TeamSelfResponse struct for TeamSelfResponse
 type TeamSelfResponse struct {
-	Uuid        *string      `json:"uuid,omitempty"`
-	Name        *string      `json:"name,omitempty"`
+	Uuid *string `json:"uuid,omitempty"`
+	Name *string `json:"name,omitempty"`
 	Permissions []Permission `json:"permissions,omitempty"`
 }
 
@@ -138,7 +138,7 @@ func (o *TeamSelfResponse) SetPermissions(v []Permission) {
 }
 
 func (o TeamSelfResponse) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -194,3 +194,5 @@ func (v *NullableTeamSelfResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

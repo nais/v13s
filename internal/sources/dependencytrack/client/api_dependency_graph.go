@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type DependencyGraphAPI interface {
 
 	/*
-		GetComponentsAndServicesByComponentUuid Returns a list of specific components and services from component UUID
+	GetComponentsAndServicesByComponentUuid Returns a list of specific components and services from component UUID
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the component
-		@return ApiGetComponentsAndServicesByComponentUuidRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the component
+	@return ApiGetComponentsAndServicesByComponentUuidRequest
 	*/
 	GetComponentsAndServicesByComponentUuid(ctx context.Context, uuid string) ApiGetComponentsAndServicesByComponentUuidRequest
 
@@ -37,13 +38,13 @@ type DependencyGraphAPI interface {
 	GetComponentsAndServicesByComponentUuidExecute(r ApiGetComponentsAndServicesByComponentUuidRequest) ([]DependencyGraphResponse, *http.Response, error)
 
 	/*
-		GetComponentsAndServicesByProjectUuid Returns a list of specific components and services from project UUID
+	GetComponentsAndServicesByProjectUuid Returns a list of specific components and services from project UUID
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the project
-		@return ApiGetComponentsAndServicesByProjectUuidRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the project
+	@return ApiGetComponentsAndServicesByProjectUuidRequest
 	*/
 	GetComponentsAndServicesByProjectUuid(ctx context.Context, uuid string) ApiGetComponentsAndServicesByProjectUuidRequest
 
@@ -56,9 +57,9 @@ type DependencyGraphAPI interface {
 type DependencyGraphAPIService service
 
 type ApiGetComponentsAndServicesByComponentUuidRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService DependencyGraphAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetComponentsAndServicesByComponentUuidRequest) Execute() ([]DependencyGraphResponse, *http.Response, error) {
@@ -70,27 +71,26 @@ GetComponentsAndServicesByComponentUuid Returns a list of specific components an
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the component
-	@return ApiGetComponentsAndServicesByComponentUuidRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the component
+ @return ApiGetComponentsAndServicesByComponentUuidRequest
 */
 func (a *DependencyGraphAPIService) GetComponentsAndServicesByComponentUuid(ctx context.Context, uuid string) ApiGetComponentsAndServicesByComponentUuidRequest {
 	return ApiGetComponentsAndServicesByComponentUuidRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []DependencyGraphResponse
+//  @return []DependencyGraphResponse
 func (a *DependencyGraphAPIService) GetComponentsAndServicesByComponentUuidExecute(r ApiGetComponentsAndServicesByComponentUuidRequest) ([]DependencyGraphResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []DependencyGraphResponse
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []DependencyGraphResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DependencyGraphAPIService.GetComponentsAndServicesByComponentUuid")
@@ -174,9 +174,9 @@ func (a *DependencyGraphAPIService) GetComponentsAndServicesByComponentUuidExecu
 }
 
 type ApiGetComponentsAndServicesByProjectUuidRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService DependencyGraphAPI
-	uuid       string
+	uuid string
 }
 
 func (r ApiGetComponentsAndServicesByProjectUuidRequest) Execute() ([]DependencyGraphResponse, *http.Response, error) {
@@ -188,27 +188,26 @@ GetComponentsAndServicesByProjectUuid Returns a list of specific components and 
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the project
-	@return ApiGetComponentsAndServicesByProjectUuidRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the project
+ @return ApiGetComponentsAndServicesByProjectUuidRequest
 */
 func (a *DependencyGraphAPIService) GetComponentsAndServicesByProjectUuid(ctx context.Context, uuid string) ApiGetComponentsAndServicesByProjectUuidRequest {
 	return ApiGetComponentsAndServicesByProjectUuidRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []DependencyGraphResponse
+//  @return []DependencyGraphResponse
 func (a *DependencyGraphAPIService) GetComponentsAndServicesByProjectUuidExecute(r ApiGetComponentsAndServicesByProjectUuidRequest) ([]DependencyGraphResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []DependencyGraphResponse
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []DependencyGraphResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DependencyGraphAPIService.GetComponentsAndServicesByProjectUuid")

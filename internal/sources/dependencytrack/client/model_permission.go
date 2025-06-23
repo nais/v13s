@@ -19,7 +19,7 @@ var _ MappedNullable = &Permission{}
 
 // Permission struct for Permission
 type Permission struct {
-	Name        *string `json:"name,omitempty" validate:"regexp=^[a-zA-Z_0-9]*$"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[a-zA-Z_0-9]*$"`
 	Description *string `json:"description,omitempty"`
 }
 
@@ -105,7 +105,7 @@ func (o *Permission) SetDescription(v string) {
 }
 
 func (o Permission) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,3 +158,5 @@ func (v *NullablePermission) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

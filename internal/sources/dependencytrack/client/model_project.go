@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,41 +21,41 @@ var _ MappedNullable = &Project{}
 
 // Project struct for Project
 type Project struct {
-	Authors            []OrganizationalContact `json:"authors,omitempty"`
-	Publisher          *string                 `json:"publisher,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Manufacturer       *OrganizationalEntity   `json:"manufacturer,omitempty"`
-	Supplier           *OrganizationalEntity   `json:"supplier,omitempty"`
-	Group              *string                 `json:"group,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Name               *string                 `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Description        *string                 `json:"description,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Version            *string                 `json:"version,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	Classifier         *string                 `json:"classifier,omitempty"`
-	CollectionLogic    *string                 `json:"collectionLogic,omitempty"`
-	CollectionTag      *Tag                    `json:"collectionTag,omitempty"`
-	Cpe                *string                 "json:\"cpe,omitempty\" validate:\"regexp=(cpe:2\\\\.3:[aho\\\\*\\\\-](:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\\\*\\\\-]))(:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){4})|([c][pP][eE]:\\/[AHOaho]?(:[A-Za-z0-9\\\\._\\\\-~%]*){0,6})\""
-	Purl               *string                 `json:"purl,omitempty"`
-	SwidTagId          *string                 `json:"swidTagId,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
-	DirectDependencies *string                 `json:"directDependencies,omitempty"`
-	Uuid               string                  `json:"uuid"`
-	Parent             *Project                `json:"parent,omitempty"`
-	Children           []Project               `json:"children,omitempty"`
-	Properties         []ProjectProperty       `json:"properties,omitempty"`
-	Tags               []Tag                   `json:"tags,omitempty"`
+	Authors []OrganizationalContact `json:"authors,omitempty"`
+	Publisher *string `json:"publisher,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Manufacturer *OrganizationalEntity `json:"manufacturer,omitempty"`
+	Supplier *OrganizationalEntity `json:"supplier,omitempty"`
+	Group *string `json:"group,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Name *string `json:"name,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Description *string `json:"description,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Version *string `json:"version,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	Classifier *string `json:"classifier,omitempty"`
+	CollectionLogic *string `json:"collectionLogic,omitempty"`
+	CollectionTag *Tag `json:"collectionTag,omitempty"`
+	Cpe *string "json:\"cpe,omitempty\" validate:\"regexp=(cpe:2\\\\.3:[aho\\\\*\\\\-](:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\\\\*\\\\-]))(:(((\\\\?*|\\\\*?)([a-zA-Z0-9\\\\-\\\\._]|(\\\\\\\\[\\\\\\\\\\\\*\\\\?!\\\"#$$%&'\\\\(\\\\)\\\\+,\\/:;<=>@\\\\[\\\\]\\\\^`\\\\{\\\\|}~]))+(\\\\?*|\\\\*?))|[\\\\*\\\\-])){4})|([c][pP][eE]:\\/[AHOaho]?(:[A-Za-z0-9\\\\._\\\\-~%]*){0,6})\""
+	Purl *string `json:"purl,omitempty"`
+	SwidTagId *string `json:"swidTagId,omitempty" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}]*$"`
+	DirectDependencies *string `json:"directDependencies,omitempty"`
+	Uuid string `json:"uuid"`
+	Parent *Project `json:"parent,omitempty"`
+	Children []Project `json:"children,omitempty"`
+	Properties []ProjectProperty `json:"properties,omitempty"`
+	Tags []Tag `json:"tags,omitempty"`
 	// UNIX epoch timestamp in milliseconds
-	LastBomImport          int64    `json:"lastBomImport"`
-	LastBomImportFormat    *string  `json:"lastBomImportFormat,omitempty"`
+	LastBomImport int64 `json:"lastBomImport"`
+	LastBomImportFormat *string `json:"lastBomImportFormat,omitempty"`
 	LastInheritedRiskScore *float64 `json:"lastInheritedRiskScore,omitempty"`
 	// UNIX epoch timestamp in milliseconds
-	LastVulnerabilityAnalysis *int64              `json:"lastVulnerabilityAnalysis,omitempty"`
-	Active                    *bool               `json:"active,omitempty"`
-	IsLatest                  *bool               `json:"isLatest,omitempty"`
-	AccessTeams               []Team              `json:"accessTeams,omitempty"`
-	ExternalReferences        []ExternalReference `json:"externalReferences,omitempty"`
-	Metadata                  *ProjectMetadata    `json:"metadata,omitempty"`
-	Versions                  []ProjectVersion    `json:"versions,omitempty"`
-	Author                    *string             `json:"author,omitempty"`
-	Metrics                   *ProjectMetrics     `json:"metrics,omitempty"`
-	BomRef                    *string             `json:"bomRef,omitempty"`
+	LastVulnerabilityAnalysis *int64 `json:"lastVulnerabilityAnalysis,omitempty"`
+	Active *bool `json:"active,omitempty"`
+	IsLatest *bool `json:"isLatest,omitempty"`
+	AccessTeams []Team `json:"accessTeams,omitempty"`
+	ExternalReferences []ExternalReference `json:"externalReferences,omitempty"`
+	Metadata *ProjectMetadata `json:"metadata,omitempty"`
+	Versions []ProjectVersion `json:"versions,omitempty"`
+	Author *string `json:"author,omitempty"`
+	Metrics *ProjectMetrics `json:"metrics,omitempty"`
+	BomRef *string `json:"bomRef,omitempty"`
 }
 
 type _Project Project
@@ -1120,7 +1120,7 @@ func (o *Project) SetBomRef(v string) {
 }
 
 func (o Project) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -1241,10 +1241,10 @@ func (o *Project) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -1300,3 +1300,5 @@ func (v *NullableProject) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

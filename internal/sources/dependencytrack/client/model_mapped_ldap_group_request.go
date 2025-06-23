@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -22,7 +22,7 @@ var _ MappedNullable = &MappedLdapGroupRequest{}
 // MappedLdapGroupRequest struct for MappedLdapGroupRequest
 type MappedLdapGroupRequest struct {
 	Team string `json:"team" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
-	Dn   string `json:"dn" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}\\\\n\\\\r\\\\t]*$"`
+	Dn string `json:"dn" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}\\\\n\\\\r\\\\t]*$"`
 }
 
 type _MappedLdapGroupRequest MappedLdapGroupRequest
@@ -95,7 +95,7 @@ func (o *MappedLdapGroupRequest) SetDn(v string) {
 }
 
 func (o MappedLdapGroupRequest) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -123,10 +123,10 @@ func (o *MappedLdapGroupRequest) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -182,3 +182,5 @@ func (v *NullableMappedLdapGroupRequest) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

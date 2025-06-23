@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,17 +21,17 @@ var _ MappedNullable = &CloneProjectRequest{}
 
 // CloneProjectRequest struct for CloneProjectRequest
 type CloneProjectRequest struct {
-	Project                 string `json:"project" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
-	Version                 string `json:"version" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}\\\\n\\\\r\\\\t]*$"`
-	IncludeTags             *bool  `json:"includeTags,omitempty"`
-	IncludeProperties       *bool  `json:"includeProperties,omitempty"`
-	IncludeDependencies     *bool  `json:"includeDependencies,omitempty"`
-	IncludeComponents       *bool  `json:"includeComponents,omitempty"`
-	IncludeServices         *bool  `json:"includeServices,omitempty"`
-	IncludeAuditHistory     *bool  `json:"includeAuditHistory,omitempty"`
-	IncludeACL              *bool  `json:"includeACL,omitempty"`
-	IncludePolicyViolations *bool  `json:"includePolicyViolations,omitempty"`
-	MakeCloneLatest         *bool  `json:"makeCloneLatest,omitempty"`
+	Project string `json:"project" validate:"regexp=^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"`
+	Version string `json:"version" validate:"regexp=^[\\\\p{IsWhite_Space}\\\\p{L}\\\\p{M}\\\\p{S}\\\\p{N}\\\\p{P}\\\\n\\\\r\\\\t]*$"`
+	IncludeTags *bool `json:"includeTags,omitempty"`
+	IncludeProperties *bool `json:"includeProperties,omitempty"`
+	IncludeDependencies *bool `json:"includeDependencies,omitempty"`
+	IncludeComponents *bool `json:"includeComponents,omitempty"`
+	IncludeServices *bool `json:"includeServices,omitempty"`
+	IncludeAuditHistory *bool `json:"includeAuditHistory,omitempty"`
+	IncludeACL *bool `json:"includeACL,omitempty"`
+	IncludePolicyViolations *bool `json:"includePolicyViolations,omitempty"`
+	MakeCloneLatest *bool `json:"makeCloneLatest,omitempty"`
 }
 
 type _CloneProjectRequest CloneProjectRequest
@@ -392,7 +392,7 @@ func (o *CloneProjectRequest) SetMakeCloneLatest(v bool) {
 }
 
 func (o CloneProjectRequest) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -447,10 +447,10 @@ func (o *CloneProjectRequest) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -506,3 +506,5 @@ func (v *NullableCloneProjectRequest) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

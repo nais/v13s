@@ -19,16 +19,17 @@ import (
 	"strings"
 )
 
+
 type TagAPI interface {
 
 	/*
-		CreateTags Creates one or more tags.
+	CreateTags Creates one or more tags.
 
-		<p>Requires permission <strong>TAG_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>TAG_MANAGEMENT</strong></p>
 
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiCreateTagsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiCreateTagsRequest
 	*/
 	CreateTags(ctx context.Context) ApiCreateTagsRequest
 
@@ -36,23 +37,23 @@ type TagAPI interface {
 	CreateTagsExecute(r ApiCreateTagsRequest) (*http.Response, error)
 
 	/*
-		DeleteTags Deletes one or more tags.
+	DeleteTags Deletes one or more tags.
 
-		<p>A tag can only be deleted if no projects or policies are assigned to it.</p>
-	<p>
-	  Principals with <strong>PORTFOLIO_MANAGEMENT</strong> permission, and access
-	  to <em>all</em> assigned projects (if portfolio ACL is enabled), can delete
-	  a tag with assigned projects.
-	</p>
-	<p>
-	  Principals with <strong>POLICY_MANAGEMENT</strong> permission can delete tags
-	  with assigned policies.
-	</p>
-	<p>Requires permission <strong>TAG_MANAGEMENT</strong></p>
+	<p>A tag can only be deleted if no projects or policies are assigned to it.</p>
+<p>
+  Principals with <strong>PORTFOLIO_MANAGEMENT</strong> permission, and access
+  to <em>all</em> assigned projects (if portfolio ACL is enabled), can delete
+  a tag with assigned projects.
+</p>
+<p>
+  Principals with <strong>POLICY_MANAGEMENT</strong> permission can delete tags
+  with assigned policies.
+</p>
+<p>Requires permission <strong>TAG_MANAGEMENT</strong></p>
 
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiDeleteTagsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiDeleteTagsRequest
 	*/
 	DeleteTags(ctx context.Context) ApiDeleteTagsRequest
 
@@ -60,12 +61,12 @@ type TagAPI interface {
 	DeleteTagsExecute(r ApiDeleteTagsRequest) (*http.Response, error)
 
 	/*
-		GetAllTags Returns a list of all tags
+	GetAllTags Returns a list of all tags
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@return ApiGetAllTagsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllTagsRequest
 	*/
 	GetAllTags(ctx context.Context) ApiGetAllTagsRequest
 
@@ -74,13 +75,13 @@ type TagAPI interface {
 	GetAllTagsExecute(r ApiGetAllTagsRequest) ([]TagListResponseItem, *http.Response, error)
 
 	/*
-		GetTaggedCollectionProjects Returns a list of all collection projects that use the given tag for their collection logic.
+	GetTaggedCollectionProjects Returns a list of all collection projects that use the given tag for their collection logic.
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to get collection projects for
-		@return ApiGetTaggedCollectionProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to get collection projects for
+	@return ApiGetTaggedCollectionProjectsRequest
 	*/
 	GetTaggedCollectionProjects(ctx context.Context, name string) ApiGetTaggedCollectionProjectsRequest
 
@@ -89,13 +90,13 @@ type TagAPI interface {
 	GetTaggedCollectionProjectsExecute(r ApiGetTaggedCollectionProjectsRequest) ([]TaggedCollectionProjectListResponseItem, *http.Response, error)
 
 	/*
-		GetTaggedNotificationRules Returns a list of all notification rules assigned to the given tag.
+	GetTaggedNotificationRules Returns a list of all notification rules assigned to the given tag.
 
-		<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to get notification rules for
-		@return ApiGetTaggedNotificationRulesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to get notification rules for
+	@return ApiGetTaggedNotificationRulesRequest
 	*/
 	GetTaggedNotificationRules(ctx context.Context, name string) ApiGetTaggedNotificationRulesRequest
 
@@ -104,13 +105,13 @@ type TagAPI interface {
 	GetTaggedNotificationRulesExecute(r ApiGetTaggedNotificationRulesRequest) ([]TaggedPolicyListResponseItem, *http.Response, error)
 
 	/*
-		GetTaggedPolicies Returns a list of all policies assigned to the given tag.
+	GetTaggedPolicies Returns a list of all policies assigned to the given tag.
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to get policies for
-		@return ApiGetTaggedPoliciesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to get policies for
+	@return ApiGetTaggedPoliciesRequest
 	*/
 	GetTaggedPolicies(ctx context.Context, name string) ApiGetTaggedPoliciesRequest
 
@@ -119,13 +120,13 @@ type TagAPI interface {
 	GetTaggedPoliciesExecute(r ApiGetTaggedPoliciesRequest) ([]TaggedPolicyListResponseItem, *http.Response, error)
 
 	/*
-		GetTaggedProjects Returns a list of all projects assigned to the given tag.
+	GetTaggedProjects Returns a list of all projects assigned to the given tag.
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to get projects for
-		@return ApiGetTaggedProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to get projects for
+	@return ApiGetTaggedProjectsRequest
 	*/
 	GetTaggedProjects(ctx context.Context, name string) ApiGetTaggedProjectsRequest
 
@@ -134,17 +135,17 @@ type TagAPI interface {
 	GetTaggedProjectsExecute(r ApiGetTaggedProjectsRequest) ([]TaggedProjectListResponseItem, *http.Response, error)
 
 	/*
-		GetTags Returns a list of all tags associated with a given policy
+	GetTags Returns a list of all tags associated with a given policy
 
-		<p><strong>Deprecated</strong>. Use <code>/api/v1/tag/policy/{uuid}</code> instead.</p>
-	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p><strong>Deprecated</strong>. Use <code>/api/v1/tag/policy/{uuid}</code> instead.</p>
+<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param policyUuid The UUID of the policy
-		@return ApiGetTagsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param policyUuid The UUID of the policy
+	@return ApiGetTagsRequest
 
-		Deprecated
+	Deprecated
 	*/
 	GetTags(ctx context.Context, policyUuid string) ApiGetTagsRequest
 
@@ -154,13 +155,13 @@ type TagAPI interface {
 	GetTagsExecute(r ApiGetTagsRequest) ([]Tag, *http.Response, error)
 
 	/*
-		GetTagsForPolicy Returns a list of all tags associated with a given policy
+	GetTagsForPolicy Returns a list of all tags associated with a given policy
 
-		<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
+	<p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param uuid The UUID of the policy
-		@return ApiGetTagsForPolicyRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param uuid The UUID of the policy
+	@return ApiGetTagsForPolicyRequest
 	*/
 	GetTagsForPolicy(ctx context.Context, uuid string) ApiGetTagsForPolicyRequest
 
@@ -169,13 +170,13 @@ type TagAPI interface {
 	GetTagsForPolicyExecute(r ApiGetTagsForPolicyRequest) ([]Tag, *http.Response, error)
 
 	/*
-		TagNotificationRules Tags one or more notification rules.
+	TagNotificationRules Tags one or more notification rules.
 
-		<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to assign
-		@return ApiTagNotificationRulesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to assign
+	@return ApiTagNotificationRulesRequest
 	*/
 	TagNotificationRules(ctx context.Context, name string) ApiTagNotificationRulesRequest
 
@@ -183,13 +184,13 @@ type TagAPI interface {
 	TagNotificationRulesExecute(r ApiTagNotificationRulesRequest) (*http.Response, error)
 
 	/*
-		TagPolicies Tags one or more policies.
+	TagPolicies Tags one or more policies.
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to assign
-		@return ApiTagPoliciesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to assign
+	@return ApiTagPoliciesRequest
 	*/
 	TagPolicies(ctx context.Context, name string) ApiTagPoliciesRequest
 
@@ -197,13 +198,13 @@ type TagAPI interface {
 	TagPoliciesExecute(r ApiTagPoliciesRequest) (*http.Response, error)
 
 	/*
-		TagProjects Tags one or more projects.
+	TagProjects Tags one or more projects.
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag to assign
-		@return ApiTagProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag to assign
+	@return ApiTagProjectsRequest
 	*/
 	TagProjects(ctx context.Context, name string) ApiTagProjectsRequest
 
@@ -211,13 +212,13 @@ type TagAPI interface {
 	TagProjectsExecute(r ApiTagProjectsRequest) (*http.Response, error)
 
 	/*
-		UntagNotificationRules Untags one or more notification rules.
+	UntagNotificationRules Untags one or more notification rules.
 
-		<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
+	<p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag
-		@return ApiUntagNotificationRulesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag
+	@return ApiUntagNotificationRulesRequest
 	*/
 	UntagNotificationRules(ctx context.Context, name string) ApiUntagNotificationRulesRequest
 
@@ -225,13 +226,13 @@ type TagAPI interface {
 	UntagNotificationRulesExecute(r ApiUntagNotificationRulesRequest) (*http.Response, error)
 
 	/*
-		UntagPolicies Untags one or more policies.
+	UntagPolicies Untags one or more policies.
 
-		<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag
-		@return ApiUntagPoliciesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag
+	@return ApiUntagPoliciesRequest
 	*/
 	UntagPolicies(ctx context.Context, name string) ApiUntagPoliciesRequest
 
@@ -239,13 +240,13 @@ type TagAPI interface {
 	UntagPoliciesExecute(r ApiUntagPoliciesRequest) (*http.Response, error)
 
 	/*
-		UntagProjects Untags one or more projects.
+	UntagProjects Untags one or more projects.
 
-		<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
+	<p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-		@param name Name of the tag
-		@return ApiUntagProjectsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name Name of the tag
+	@return ApiUntagProjectsRequest
 	*/
 	UntagProjects(ctx context.Context, name string) ApiUntagProjectsRequest
 
@@ -257,8 +258,8 @@ type TagAPI interface {
 type TagAPIService service
 
 type ApiCreateTagsRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
+	ctx context.Context
+	ApiService TagAPI
 	requestBody *[]string
 }
 
@@ -277,22 +278,23 @@ CreateTags Creates one or more tags.
 
 <p>Requires permission <strong>TAG_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiCreateTagsRequest
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiCreateTagsRequest
 */
 func (a *TagAPIService) CreateTags(ctx context.Context) ApiCreateTagsRequest {
 	return ApiCreateTagsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) CreateTagsExecute(r ApiCreateTagsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPut
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.CreateTags")
@@ -368,8 +370,8 @@ func (a *TagAPIService) CreateTagsExecute(r ApiCreateTagsRequest) (*http.Respons
 }
 
 type ApiDeleteTagsRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
+	ctx context.Context
+	ApiService TagAPI
 	requestBody *[]string
 }
 
@@ -388,36 +390,33 @@ DeleteTags Deletes one or more tags.
 
 <p>A tag can only be deleted if no projects or policies are assigned to it.</p>
 <p>
-
-	Principals with <strong>PORTFOLIO_MANAGEMENT</strong> permission, and access
-	to <em>all</em> assigned projects (if portfolio ACL is enabled), can delete
-	a tag with assigned projects.
-
+  Principals with <strong>PORTFOLIO_MANAGEMENT</strong> permission, and access
+  to <em>all</em> assigned projects (if portfolio ACL is enabled), can delete
+  a tag with assigned projects.
 </p>
 <p>
-
-	Principals with <strong>POLICY_MANAGEMENT</strong> permission can delete tags
-	with assigned policies.
-
+  Principals with <strong>POLICY_MANAGEMENT</strong> permission can delete tags
+  with assigned policies.
 </p>
 <p>Requires permission <strong>TAG_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiDeleteTagsRequest
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiDeleteTagsRequest
 */
 func (a *TagAPIService) DeleteTags(ctx context.Context) ApiDeleteTagsRequest {
 	return ApiDeleteTagsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) DeleteTagsExecute(r ApiDeleteTagsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.DeleteTags")
@@ -493,8 +492,8 @@ func (a *TagAPIService) DeleteTagsExecute(r ApiDeleteTagsRequest) (*http.Respons
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}
@@ -503,14 +502,14 @@ func (a *TagAPIService) DeleteTagsExecute(r ApiDeleteTagsRequest) (*http.Respons
 }
 
 type ApiGetAllTagsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -558,25 +557,24 @@ GetAllTags Returns a list of all tags
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiGetAllTagsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiGetAllTagsRequest
 */
 func (a *TagAPIService) GetAllTags(ctx context.Context) ApiGetAllTagsRequest {
 	return ApiGetAllTagsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []TagListResponseItem
+//  @return []TagListResponseItem
 func (a *TagAPIService) GetAllTagsExecute(r ApiGetAllTagsRequest) ([]TagListResponseItem, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []TagListResponseItem
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []TagListResponseItem
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetAllTags")
@@ -683,15 +681,15 @@ func (a *TagAPIService) GetAllTagsExecute(r ApiGetAllTagsRequest) ([]TagListResp
 }
 
 type ApiGetTaggedCollectionProjectsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
-	name       string
+	name string
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -739,27 +737,26 @@ GetTaggedCollectionProjects Returns a list of all collection projects that use t
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to get collection projects for
-	@return ApiGetTaggedCollectionProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to get collection projects for
+ @return ApiGetTaggedCollectionProjectsRequest
 */
 func (a *TagAPIService) GetTaggedCollectionProjects(ctx context.Context, name string) ApiGetTaggedCollectionProjectsRequest {
 	return ApiGetTaggedCollectionProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []TaggedCollectionProjectListResponseItem
+//  @return []TaggedCollectionProjectListResponseItem
 func (a *TagAPIService) GetTaggedCollectionProjectsExecute(r ApiGetTaggedCollectionProjectsRequest) ([]TaggedCollectionProjectListResponseItem, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []TaggedCollectionProjectListResponseItem
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []TaggedCollectionProjectListResponseItem
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTaggedCollectionProjects")
@@ -867,15 +864,15 @@ func (a *TagAPIService) GetTaggedCollectionProjectsExecute(r ApiGetTaggedCollect
 }
 
 type ApiGetTaggedNotificationRulesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
-	name       string
+	name string
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -923,27 +920,26 @@ GetTaggedNotificationRules Returns a list of all notification rules assigned to 
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to get notification rules for
-	@return ApiGetTaggedNotificationRulesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to get notification rules for
+ @return ApiGetTaggedNotificationRulesRequest
 */
 func (a *TagAPIService) GetTaggedNotificationRules(ctx context.Context, name string) ApiGetTaggedNotificationRulesRequest {
 	return ApiGetTaggedNotificationRulesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []TaggedPolicyListResponseItem
+//  @return []TaggedPolicyListResponseItem
 func (a *TagAPIService) GetTaggedNotificationRulesExecute(r ApiGetTaggedNotificationRulesRequest) ([]TaggedPolicyListResponseItem, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []TaggedPolicyListResponseItem
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []TaggedPolicyListResponseItem
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTaggedNotificationRules")
@@ -1051,15 +1047,15 @@ func (a *TagAPIService) GetTaggedNotificationRulesExecute(r ApiGetTaggedNotifica
 }
 
 type ApiGetTaggedPoliciesRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
-	name       string
+	name string
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -1107,27 +1103,26 @@ GetTaggedPolicies Returns a list of all policies assigned to the given tag.
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to get policies for
-	@return ApiGetTaggedPoliciesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to get policies for
+ @return ApiGetTaggedPoliciesRequest
 */
 func (a *TagAPIService) GetTaggedPolicies(ctx context.Context, name string) ApiGetTaggedPoliciesRequest {
 	return ApiGetTaggedPoliciesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []TaggedPolicyListResponseItem
+//  @return []TaggedPolicyListResponseItem
 func (a *TagAPIService) GetTaggedPoliciesExecute(r ApiGetTaggedPoliciesRequest) ([]TaggedPolicyListResponseItem, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []TaggedPolicyListResponseItem
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []TaggedPolicyListResponseItem
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTaggedPolicies")
@@ -1235,15 +1230,15 @@ func (a *TagAPIService) GetTaggedPoliciesExecute(r ApiGetTaggedPoliciesRequest) 
 }
 
 type ApiGetTaggedProjectsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
-	name       string
+	name string
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -1291,27 +1286,26 @@ GetTaggedProjects Returns a list of all projects assigned to the given tag.
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to get projects for
-	@return ApiGetTaggedProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to get projects for
+ @return ApiGetTaggedProjectsRequest
 */
 func (a *TagAPIService) GetTaggedProjects(ctx context.Context, name string) ApiGetTaggedProjectsRequest {
 	return ApiGetTaggedProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []TaggedProjectListResponseItem
+//  @return []TaggedProjectListResponseItem
 func (a *TagAPIService) GetTaggedProjectsExecute(r ApiGetTaggedProjectsRequest) ([]TaggedProjectListResponseItem, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []TaggedProjectListResponseItem
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []TaggedProjectListResponseItem
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTaggedProjects")
@@ -1419,15 +1413,15 @@ func (a *TagAPIService) GetTaggedProjectsExecute(r ApiGetTaggedProjectsRequest) 
 }
 
 type ApiGetTagsRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
 	policyUuid string
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -1476,31 +1470,30 @@ GetTags Returns a list of all tags associated with a given policy
 <p><strong>Deprecated</strong>. Use <code>/api/v1/tag/policy/{uuid}</code> instead.</p>
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param policyUuid The UUID of the policy
-	@return ApiGetTagsRequest
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param policyUuid The UUID of the policy
+ @return ApiGetTagsRequest
 
 Deprecated
 */
 func (a *TagAPIService) GetTags(ctx context.Context, policyUuid string) ApiGetTagsRequest {
 	return ApiGetTagsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 		policyUuid: policyUuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Tag
-//
+//  @return []Tag
 // Deprecated
 func (a *TagAPIService) GetTagsExecute(r ApiGetTagsRequest) ([]Tag, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Tag
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Tag
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTags")
@@ -1608,15 +1601,15 @@ func (a *TagAPIService) GetTagsExecute(r ApiGetTagsRequest) ([]Tag, *http.Respon
 }
 
 type ApiGetTagsForPolicyRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService TagAPI
-	uuid       string
+	uuid string
 	pageNumber *string
-	pageSize   *string
-	offset     *string
-	limit      *string
-	sortName   *string
-	sortOrder  *string
+	pageSize *string
+	offset *string
+	limit *string
+	sortName *string
+	sortOrder *string
 }
 
 // The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;.
@@ -1664,27 +1657,26 @@ GetTagsForPolicy Returns a list of all tags associated with a given policy
 
 <p>Requires permission <strong>VIEW_PORTFOLIO</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param uuid The UUID of the policy
-	@return ApiGetTagsForPolicyRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param uuid The UUID of the policy
+ @return ApiGetTagsForPolicyRequest
 */
 func (a *TagAPIService) GetTagsForPolicy(ctx context.Context, uuid string) ApiGetTagsForPolicyRequest {
 	return ApiGetTagsForPolicyRequest{
 		ApiService: a,
-		ctx:        ctx,
-		uuid:       uuid,
+		ctx: ctx,
+		uuid: uuid,
 	}
 }
 
 // Execute executes the request
-//
-//	@return []Tag
+//  @return []Tag
 func (a *TagAPIService) GetTagsForPolicyExecute(r ApiGetTagsForPolicyRequest) ([]Tag, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue []Tag
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  []Tag
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.GetTagsForPolicy")
@@ -1792,9 +1784,9 @@ func (a *TagAPIService) GetTagsForPolicyExecute(r ApiGetTagsForPolicyRequest) ([
 }
 
 type ApiTagNotificationRulesRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
-	name        string
+	ctx context.Context
+	ApiService TagAPI
+	name string
 	requestBody *[]string
 }
 
@@ -1813,24 +1805,24 @@ TagNotificationRules Tags one or more notification rules.
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to assign
-	@return ApiTagNotificationRulesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to assign
+ @return ApiTagNotificationRulesRequest
 */
 func (a *TagAPIService) TagNotificationRules(ctx context.Context, name string) ApiTagNotificationRulesRequest {
 	return ApiTagNotificationRulesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) TagNotificationRulesExecute(r ApiTagNotificationRulesRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.TagNotificationRules")
@@ -1916,8 +1908,8 @@ func (a *TagAPIService) TagNotificationRulesExecute(r ApiTagNotificationRulesReq
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}
@@ -1926,9 +1918,9 @@ func (a *TagAPIService) TagNotificationRulesExecute(r ApiTagNotificationRulesReq
 }
 
 type ApiTagPoliciesRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
-	name        string
+	ctx context.Context
+	ApiService TagAPI
+	name string
 	requestBody *[]string
 }
 
@@ -1947,24 +1939,24 @@ TagPolicies Tags one or more policies.
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to assign
-	@return ApiTagPoliciesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to assign
+ @return ApiTagPoliciesRequest
 */
 func (a *TagAPIService) TagPolicies(ctx context.Context, name string) ApiTagPoliciesRequest {
 	return ApiTagPoliciesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) TagPoliciesExecute(r ApiTagPoliciesRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.TagPolicies")
@@ -2050,8 +2042,8 @@ func (a *TagAPIService) TagPoliciesExecute(r ApiTagPoliciesRequest) (*http.Respo
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}
@@ -2060,9 +2052,9 @@ func (a *TagAPIService) TagPoliciesExecute(r ApiTagPoliciesRequest) (*http.Respo
 }
 
 type ApiTagProjectsRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
-	name        string
+	ctx context.Context
+	ApiService TagAPI
+	name string
 	requestBody *[]string
 }
 
@@ -2081,24 +2073,24 @@ TagProjects Tags one or more projects.
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag to assign
-	@return ApiTagProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag to assign
+ @return ApiTagProjectsRequest
 */
 func (a *TagAPIService) TagProjects(ctx context.Context, name string) ApiTagProjectsRequest {
 	return ApiTagProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) TagProjectsExecute(r ApiTagProjectsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodPost
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.TagProjects")
@@ -2184,8 +2176,8 @@ func (a *TagAPIService) TagProjectsExecute(r ApiTagProjectsRequest) (*http.Respo
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}
@@ -2194,9 +2186,9 @@ func (a *TagAPIService) TagProjectsExecute(r ApiTagProjectsRequest) (*http.Respo
 }
 
 type ApiUntagNotificationRulesRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
-	name        string
+	ctx context.Context
+	ApiService TagAPI
+	name string
 	requestBody *[]string
 }
 
@@ -2215,24 +2207,24 @@ UntagNotificationRules Untags one or more notification rules.
 
 <p>Requires permission <strong>SYSTEM_CONFIGURATION</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag
-	@return ApiUntagNotificationRulesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag
+ @return ApiUntagNotificationRulesRequest
 */
 func (a *TagAPIService) UntagNotificationRules(ctx context.Context, name string) ApiUntagNotificationRulesRequest {
 	return ApiUntagNotificationRulesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) UntagNotificationRulesExecute(r ApiUntagNotificationRulesRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.UntagNotificationRules")
@@ -2318,8 +2310,8 @@ func (a *TagAPIService) UntagNotificationRulesExecute(r ApiUntagNotificationRule
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}
@@ -2328,9 +2320,9 @@ func (a *TagAPIService) UntagNotificationRulesExecute(r ApiUntagNotificationRule
 }
 
 type ApiUntagPoliciesRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
-	name        string
+	ctx context.Context
+	ApiService TagAPI
+	name string
 	requestBody *[]string
 }
 
@@ -2349,24 +2341,24 @@ UntagPolicies Untags one or more policies.
 
 <p>Requires permission <strong>POLICY_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag
-	@return ApiUntagPoliciesRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag
+ @return ApiUntagPoliciesRequest
 */
 func (a *TagAPIService) UntagPolicies(ctx context.Context, name string) ApiUntagPoliciesRequest {
 	return ApiUntagPoliciesRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) UntagPoliciesExecute(r ApiUntagPoliciesRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.UntagPolicies")
@@ -2452,8 +2444,8 @@ func (a *TagAPIService) UntagPoliciesExecute(r ApiUntagPoliciesRequest) (*http.R
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}
@@ -2462,9 +2454,9 @@ func (a *TagAPIService) UntagPoliciesExecute(r ApiUntagPoliciesRequest) (*http.R
 }
 
 type ApiUntagProjectsRequest struct {
-	ctx         context.Context
-	ApiService  TagAPI
-	name        string
+	ctx context.Context
+	ApiService TagAPI
+	name string
 	requestBody *[]string
 }
 
@@ -2483,24 +2475,24 @@ UntagProjects Untags one or more projects.
 
 <p>Requires permission <strong>PORTFOLIO_MANAGEMENT</strong></p>
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param name Name of the tag
-	@return ApiUntagProjectsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param name Name of the tag
+ @return ApiUntagProjectsRequest
 */
 func (a *TagAPIService) UntagProjects(ctx context.Context, name string) ApiUntagProjectsRequest {
 	return ApiUntagProjectsRequest{
 		ApiService: a,
-		ctx:        ctx,
-		name:       name,
+		ctx: ctx,
+		name: name,
 	}
 }
 
 // Execute executes the request
 func (a *TagAPIService) UntagProjectsExecute(r ApiUntagProjectsRequest) (*http.Response, error) {
 	var (
-		localVarHTTPMethod = http.MethodDelete
-		localVarPostBody   interface{}
-		formFiles          []formFile
+		localVarHTTPMethod   = http.MethodDelete
+		localVarPostBody     interface{}
+		formFiles            []formFile
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TagAPIService.UntagProjects")
@@ -2586,8 +2578,8 @@ func (a *TagAPIService) UntagProjectsExecute(r ApiUntagProjectsRequest) (*http.R
 				newErr.error = err.Error()
 				return localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarHTTPResponse, newErr
 	}

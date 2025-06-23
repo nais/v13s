@@ -11,8 +11,8 @@ API version: 4.13.2
 package client
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -22,8 +22,8 @@ var _ MappedNullable = &ViolationAnalysisComment{}
 // ViolationAnalysisComment struct for ViolationAnalysisComment
 type ViolationAnalysisComment struct {
 	// UNIX epoch timestamp in milliseconds
-	Timestamp int64   `json:"timestamp"`
-	Comment   string  `json:"comment"`
+	Timestamp int64 `json:"timestamp"`
+	Comment string `json:"comment"`
 	Commenter *string `json:"commenter,omitempty"`
 }
 
@@ -129,7 +129,7 @@ func (o *ViolationAnalysisComment) SetCommenter(v string) {
 }
 
 func (o ViolationAnalysisComment) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -160,10 +160,10 @@ func (o *ViolationAnalysisComment) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -219,3 +219,5 @@ func (v *NullableViolationAnalysisComment) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+
