@@ -175,8 +175,8 @@ func (c *apiKeySource) fetchTeamApiKey(ctx context.Context) (*string, error) {
 	}
 
 	for _, t := range teams {
-		if *t.Name == c.team {
-			return c.selectApiKeyFromTeam(ctx, t)
+		if t.Name != nil && *t.Name == c.team {
+			return c.selectApiKeyFromTeam(ctx, *t.Name, t.Uuid)
 		}
 	}
 
@@ -191,43 +191,46 @@ func (c *apiKeySource) fetchTeamApiKeyByUuid(ctx context.Context) (*string, erro
 	if team == nil || team.Uuid == "" {
 		return nil, fmt.Errorf("team with uuid %s not found", c.teamUuid)
 	}
-	return c.selectApiKeyFromTeam(ctx, *team)
+	return c.selectApiKeyFromTeam(ctx, *team.Name, team.Uuid)
 }
 
-func (c *apiKeySource) selectApiKeyFromTeam(ctx context.Context, t client.Team) (*string, error) {
+func (c *apiKeySource) selectApiKeyFromTeam(ctx context.Context, teamName, teamUuid string) (*string, error) {
 	// Try to get existing key from DB
-	sourceKey, err := c.db.GetSourceKey(ctx, t.Uuid)
+	sourceKey, err := c.db.GetSourceKey(ctx, teamUuid)
 	if err == nil {
+		if sourceKey.Key == "" {
+			return nil, fmt.Errorf("found empty API key for team %s in DB", teamName)
+		}
 		c.apiKey = &sourceKey.Key
-		c.log.Infof("loaded API key for team %s from DB", *t.Name)
+		c.log.Infof("loaded API key for team %s from DB", teamName)
 		return c.apiKey, nil
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("failed to query API key for team %s: %w", *t.Name, err)
+		return nil, fmt.Errorf("failed to query API key for team %s: %w", teamName, err)
 	}
 
 	// Not found in DB: generate a new one
-	apikey, resp, err := c.client.TeamAPI.GenerateApiKey(ctx, t.Uuid).Execute()
+	apikey, resp, err := c.client.TeamAPI.GenerateApiKey(ctx, teamUuid).Execute()
 	if err != nil {
-		c.log.Errorf("failed to generate API key for team %s: %v: %v", *t.Name, err, resp)
-		return nil, fmt.Errorf("failed to generate API key for team %s: %w", *t.Name, err)
+		c.log.Errorf("failed to generate API key for team %s: %v: %v", teamName, err, resp)
+		return nil, fmt.Errorf("failed to generate API key for team %s: %w", teamName, err)
 	}
 
 	c.apiKey = apikey.Key
 	if c.apiKey == nil {
-		return nil, fmt.Errorf("received nil API key from dependency-track for team %s", *t.Name)
+		return nil, fmt.Errorf("received nil API key from dependency-track for team %s", teamName)
 	}
 
 	if err = c.db.CreateSourceKey(ctx, sql.CreateSourceKeyParams{
-		Name: *t.Name,
-		Uuid: t.Uuid,
+		Name: teamName,
+		Uuid: teamUuid,
 		Key:  *c.apiKey,
 	}); err != nil {
-		return nil, fmt.Errorf("failed to persist API key for team %s: %w", *t.Name, err)
+		return nil, fmt.Errorf("failed to persist API key for team %s: %w", teamName, err)
 	}
 
-	c.log.Infof("Generated and persisted API key for team %s", *t.Name)
-	c.teamUuid = t.Uuid
+	c.log.Infof("Generated and persisted API key for team %s", teamName)
+	c.teamUuid = teamUuid
 	return c.apiKey, nil
 }

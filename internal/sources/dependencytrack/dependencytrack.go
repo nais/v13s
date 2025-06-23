@@ -269,7 +269,7 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 			Version(version).
 			Execute()
 
-		if err != nil && resp != nil && resp.StatusCode == 404 {
+		if err != nil && resp != nil && resp.Body != nil && resp.StatusCode == 404 {
 			body, readErr := io.ReadAll(resp.Body)
 			if readErr != nil {
 				return nil, fmt.Errorf("failed to read response body: %w", readErr)
