@@ -29,20 +29,5 @@ DELETE
 FROM source_refs
 WHERE image_name = @image_name
   AND image_tag = @image_tag
-  AND source_type = @source_type;
-
--- name: CreateSourceKey :exec
-INSERT INTO source_keys(uuid,
-                        source,
-                        team_name,
-                        key)
-VALUES (@uuid,
-        @source,
-        @team_name,
-        @key) ON CONFLICT
-    DO NOTHING;
-
--- name: GetSourceKey :one
-SELECT *
-FROM source_keys
-WHERE uuid = @uuid;
+  AND source_type = @source_type
+;

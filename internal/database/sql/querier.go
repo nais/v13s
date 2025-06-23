@@ -17,7 +17,6 @@ type Querier interface {
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
-	CreateSourceKey(ctx context.Context, arg CreateSourceKeyParams) error
 	CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
@@ -28,7 +27,6 @@ type Querier interface {
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
-	GetSourceKey(ctx context.Context, uuid string) (*SourceKey, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)

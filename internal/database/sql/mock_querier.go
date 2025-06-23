@@ -426,53 +426,6 @@ func (_c *MockQuerier_CreateImage_Call) RunAndReturn(run func(context.Context, C
 	return _c
 }
 
-// CreateSourceKey provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) CreateSourceKey(ctx context.Context, arg CreateSourceKeyParams) error {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreateSourceKey")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, CreateSourceKeyParams) error); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockQuerier_CreateSourceKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateSourceKey'
-type MockQuerier_CreateSourceKey_Call struct {
-	*mock.Call
-}
-
-// CreateSourceKey is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg CreateSourceKeyParams
-func (_e *MockQuerier_Expecter) CreateSourceKey(ctx interface{}, arg interface{}) *MockQuerier_CreateSourceKey_Call {
-	return &MockQuerier_CreateSourceKey_Call{Call: _e.mock.On("CreateSourceKey", ctx, arg)}
-}
-
-func (_c *MockQuerier_CreateSourceKey_Call) Run(run func(ctx context.Context, arg CreateSourceKeyParams)) *MockQuerier_CreateSourceKey_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(CreateSourceKeyParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_CreateSourceKey_Call) Return(_a0 error) *MockQuerier_CreateSourceKey_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockQuerier_CreateSourceKey_Call) RunAndReturn(run func(context.Context, CreateSourceKeyParams) error) *MockQuerier_CreateSourceKey_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateSourceRef provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error {
 	ret := _m.Called(ctx, arg)
@@ -1029,65 +982,6 @@ func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) Return(_a
 }
 
 func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) RunAndReturn(run func(context.Context) (pgtype.Date, error)) *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetSourceKey provides a mock function with given fields: ctx, uuid
-func (_m *MockQuerier) GetSourceKey(ctx context.Context, uuid string) (*SourceKey, error) {
-	ret := _m.Called(ctx, uuid)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSourceKey")
-	}
-
-	var r0 *SourceKey
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*SourceKey, error)); ok {
-		return rf(ctx, uuid)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *SourceKey); ok {
-		r0 = rf(ctx, uuid)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*SourceKey)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, uuid)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_GetSourceKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSourceKey'
-type MockQuerier_GetSourceKey_Call struct {
-	*mock.Call
-}
-
-// GetSourceKey is a helper method to define mock.On call
-//   - ctx context.Context
-//   - uuid string
-func (_e *MockQuerier_Expecter) GetSourceKey(ctx interface{}, uuid interface{}) *MockQuerier_GetSourceKey_Call {
-	return &MockQuerier_GetSourceKey_Call{Call: _e.mock.On("GetSourceKey", ctx, uuid)}
-}
-
-func (_c *MockQuerier_GetSourceKey_Call) Run(run func(ctx context.Context, uuid string)) *MockQuerier_GetSourceKey_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GetSourceKey_Call) Return(_a0 *SourceKey, _a1 error) *MockQuerier_GetSourceKey_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_GetSourceKey_Call) RunAndReturn(run func(context.Context, string) (*SourceKey, error)) *MockQuerier_GetSourceKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

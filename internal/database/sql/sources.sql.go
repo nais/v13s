@@ -9,35 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createSourceKey = `-- name: CreateSourceKey :exec
-INSERT INTO source_keys(uuid,
-                        source,
-                        team_name,
-                        key)
-VALUES ($1,
-        $2,
-        $3,
-        $4) ON CONFLICT
-    DO NOTHING
-`
-
-type CreateSourceKeyParams struct {
-	Uuid     string
-	Source   string
-	TeamName string
-	Key      string
-}
-
-func (q *Queries) CreateSourceKey(ctx context.Context, arg CreateSourceKeyParams) error {
-	_, err := q.db.Exec(ctx, createSourceKey,
-		arg.Uuid,
-		arg.Source,
-		arg.TeamName,
-		arg.Key,
-	)
-	return err
-}
-
 const createSourceRef = `-- name: CreateSourceRef :exec
 INSERT INTO source_refs(
     image_name,
@@ -88,25 +59,6 @@ type DeleteSourceRefParams struct {
 func (q *Queries) DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error {
 	_, err := q.db.Exec(ctx, deleteSourceRef, arg.ImageName, arg.ImageTag, arg.SourceType)
 	return err
-}
-
-const getSourceKey = `-- name: GetSourceKey :one
-SELECT uuid, source, team_name, key, created_at
-FROM source_keys
-WHERE uuid = $1
-`
-
-func (q *Queries) GetSourceKey(ctx context.Context, uuid string) (*SourceKey, error) {
-	row := q.db.QueryRow(ctx, getSourceKey, uuid)
-	var i SourceKey
-	err := row.Scan(
-		&i.Uuid,
-		&i.Source,
-		&i.TeamName,
-		&i.Key,
-		&i.CreatedAt,
-	)
-	return &i, err
 }
 
 const getSourceRef = `-- name: GetSourceRef :one

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/patrickmn/go-cache"
@@ -66,17 +65,16 @@ type WorkloadRef struct {
 	ImageTag  string
 }
 
-func NewClient(url string, team auth.Team, username auth.Username, password auth.Password, pool *pgxpool.Pool, log *logrus.Entry) (Client, error) {
+func NewClient(url string, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
 	if url == "" {
 		return nil, fmt.Errorf("NewClient: URL cannot be empty")
 	}
 
 	clientConfig := setupConfig(url)
 	apiClient := client.NewAPIClient(clientConfig)
-	userPasSource := auth.NewUsernamePasswordSource(username, password, apiClient, log)
 	return &dependencyTrackClient{
 		client: apiClient,
-		auth:   auth.NewApiKeySource(team, userPasSource, apiClient, pool, log),
+		auth:   auth.NewUsernamePasswordSource(username, password, apiClient, log),
 		log:    log,
 	}, nil
 }
