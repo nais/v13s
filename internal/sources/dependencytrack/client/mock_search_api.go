@@ -521,33 +521,42 @@ func (_c *MockSearchAPI_Reindex_Call) RunAndReturn(run func(context.Context) Api
 }
 
 // ReindexExecute provides a mock function with given fields: r
-func (_m *MockSearchAPI) ReindexExecute(r ApiReindexRequest) (*http.Response, error) {
+func (_m *MockSearchAPI) ReindexExecute(r ApiReindexRequest) (*BomUploadResponse, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReindexExecute")
 	}
 
-	var r0 *http.Response
-	var r1 error
-	if rf, ok := ret.Get(0).(func(ApiReindexRequest) (*http.Response, error)); ok {
+	var r0 *BomUploadResponse
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiReindexRequest) (*BomUploadResponse, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiReindexRequest) *http.Response); ok {
+	if rf, ok := ret.Get(0).(func(ApiReindexRequest) *BomUploadResponse); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*http.Response)
+			r0 = ret.Get(0).(*BomUploadResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiReindexRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(ApiReindexRequest) *http.Response); ok {
 		r1 = rf(r)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(ApiReindexRequest) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockSearchAPI_ReindexExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReindexExecute'
@@ -568,12 +577,12 @@ func (_c *MockSearchAPI_ReindexExecute_Call) Run(run func(r ApiReindexRequest)) 
 	return _c
 }
 
-func (_c *MockSearchAPI_ReindexExecute_Call) Return(_a0 *http.Response, _a1 error) *MockSearchAPI_ReindexExecute_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockSearchAPI_ReindexExecute_Call) Return(_a0 *BomUploadResponse, _a1 *http.Response, _a2 error) *MockSearchAPI_ReindexExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockSearchAPI_ReindexExecute_Call) RunAndReturn(run func(ApiReindexRequest) (*http.Response, error)) *MockSearchAPI_ReindexExecute_Call {
+func (_c *MockSearchAPI_ReindexExecute_Call) RunAndReturn(run func(ApiReindexRequest) (*BomUploadResponse, *http.Response, error)) *MockSearchAPI_ReindexExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

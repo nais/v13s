@@ -8,7 +8,7 @@ Name | Type | Description | Notes
 **Project** | Pointer to [**Project**](Project.md) |  | [optional] 
 **Component** | Pointer to [**Component**](Component.md) |  | [optional] 
 **PolicyCondition** | Pointer to [**PolicyCondition**](PolicyCondition.md) |  | [optional] 
-**Timestamp** | Pointer to **time.Time** |  | [optional] 
+**Timestamp** | **int64** | UNIX epoch timestamp in milliseconds | 
 **Text** | Pointer to **string** |  | [optional] 
 **Analysis** | Pointer to [**ViolationAnalysis**](ViolationAnalysis.md) |  | [optional] 
 **Uuid** | **string** |  | 
@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 
 ### NewPolicyViolation
 
-`func NewPolicyViolation(uuid string, ) *PolicyViolation`
+`func NewPolicyViolation(timestamp int64, uuid string, ) *PolicyViolation`
 
 NewPolicyViolation instantiates a new PolicyViolation object
 This constructor will assign default values to properties that have it defined,
@@ -134,28 +134,23 @@ HasPolicyCondition returns a boolean if a field has been set.
 
 ### GetTimestamp
 
-`func (o *PolicyViolation) GetTimestamp() time.Time`
+`func (o *PolicyViolation) GetTimestamp() int64`
 
 GetTimestamp returns the Timestamp field if non-nil, zero value otherwise.
 
 ### GetTimestampOk
 
-`func (o *PolicyViolation) GetTimestampOk() (*time.Time, bool)`
+`func (o *PolicyViolation) GetTimestampOk() (*int64, bool)`
 
 GetTimestampOk returns a tuple with the Timestamp field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetTimestamp
 
-`func (o *PolicyViolation) SetTimestamp(v time.Time)`
+`func (o *PolicyViolation) SetTimestamp(v int64)`
 
 SetTimestamp sets Timestamp field to given value.
 
-### HasTimestamp
-
-`func (o *PolicyViolation) HasTimestamp() bool`
-
-HasTimestamp returns a boolean if a field has been set.
 
 ### GetText
 

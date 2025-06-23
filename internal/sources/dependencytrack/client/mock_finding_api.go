@@ -70,24 +70,24 @@ func (_c *MockFindingAPI_AnalyzeProject_Call) RunAndReturn(run func(context.Cont
 }
 
 // AnalyzeProjectExecute provides a mock function with given fields: r
-func (_m *MockFindingAPI) AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*Project, *http.Response, error) {
+func (_m *MockFindingAPI) AnalyzeProjectExecute(r ApiAnalyzeProjectRequest) (*BomUploadResponse, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AnalyzeProjectExecute")
 	}
 
-	var r0 *Project
+	var r0 *BomUploadResponse
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiAnalyzeProjectRequest) (*Project, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiAnalyzeProjectRequest) (*BomUploadResponse, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiAnalyzeProjectRequest) *Project); ok {
+	if rf, ok := ret.Get(0).(func(ApiAnalyzeProjectRequest) *BomUploadResponse); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*Project)
+			r0 = ret.Get(0).(*BomUploadResponse)
 		}
 	}
 
@@ -126,12 +126,12 @@ func (_c *MockFindingAPI_AnalyzeProjectExecute_Call) Run(run func(r ApiAnalyzePr
 	return _c
 }
 
-func (_c *MockFindingAPI_AnalyzeProjectExecute_Call) Return(_a0 *Project, _a1 *http.Response, _a2 error) *MockFindingAPI_AnalyzeProjectExecute_Call {
+func (_c *MockFindingAPI_AnalyzeProjectExecute_Call) Return(_a0 *BomUploadResponse, _a1 *http.Response, _a2 error) *MockFindingAPI_AnalyzeProjectExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockFindingAPI_AnalyzeProjectExecute_Call) RunAndReturn(run func(ApiAnalyzeProjectRequest) (*Project, *http.Response, error)) *MockFindingAPI_AnalyzeProjectExecute_Call {
+func (_c *MockFindingAPI_AnalyzeProjectExecute_Call) RunAndReturn(run func(ApiAnalyzeProjectRequest) (*BomUploadResponse, *http.Response, error)) *MockFindingAPI_AnalyzeProjectExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -184,33 +184,40 @@ func (_c *MockFindingAPI_ExportFindingsByProject_Call) RunAndReturn(run func(con
 }
 
 // ExportFindingsByProjectExecute provides a mock function with given fields: r
-func (_m *MockFindingAPI) ExportFindingsByProjectExecute(r ApiExportFindingsByProjectRequest) (*http.Response, error) {
+func (_m *MockFindingAPI) ExportFindingsByProjectExecute(r ApiExportFindingsByProjectRequest) (string, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExportFindingsByProjectExecute")
 	}
 
-	var r0 *http.Response
-	var r1 error
-	if rf, ok := ret.Get(0).(func(ApiExportFindingsByProjectRequest) (*http.Response, error)); ok {
+	var r0 string
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiExportFindingsByProjectRequest) (string, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiExportFindingsByProjectRequest) *http.Response); ok {
+	if rf, ok := ret.Get(0).(func(ApiExportFindingsByProjectRequest) string); ok {
 		r0 = rf(r)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*http.Response)
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiExportFindingsByProjectRequest) *http.Response); ok {
+		r1 = rf(r)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiExportFindingsByProjectRequest) error); ok {
-		r1 = rf(r)
+	if rf, ok := ret.Get(2).(func(ApiExportFindingsByProjectRequest) error); ok {
+		r2 = rf(r)
 	} else {
-		r1 = ret.Error(1)
+		r2 = ret.Error(2)
 	}
 
-	return r0, r1
+	return r0, r1, r2
 }
 
 // MockFindingAPI_ExportFindingsByProjectExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExportFindingsByProjectExecute'
@@ -231,12 +238,12 @@ func (_c *MockFindingAPI_ExportFindingsByProjectExecute_Call) Run(run func(r Api
 	return _c
 }
 
-func (_c *MockFindingAPI_ExportFindingsByProjectExecute_Call) Return(_a0 *http.Response, _a1 error) *MockFindingAPI_ExportFindingsByProjectExecute_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockFindingAPI_ExportFindingsByProjectExecute_Call) Return(_a0 string, _a1 *http.Response, _a2 error) *MockFindingAPI_ExportFindingsByProjectExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockFindingAPI_ExportFindingsByProjectExecute_Call) RunAndReturn(run func(ApiExportFindingsByProjectRequest) (*http.Response, error)) *MockFindingAPI_ExportFindingsByProjectExecute_Call {
+func (_c *MockFindingAPI_ExportFindingsByProjectExecute_Call) RunAndReturn(run func(ApiExportFindingsByProjectRequest) (string, *http.Response, error)) *MockFindingAPI_ExportFindingsByProjectExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -334,24 +341,24 @@ func (_c *MockFindingAPI_GetAllFindings1_Call) RunAndReturn(run func(context.Con
 }
 
 // GetAllFindings1Execute provides a mock function with given fields: r
-func (_m *MockFindingAPI) GetAllFindings1Execute(r ApiGetAllFindings1Request) ([]GroupedFinding, *http.Response, error) {
+func (_m *MockFindingAPI) GetAllFindings1Execute(r ApiGetAllFindings1Request) ([]Finding, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllFindings1Execute")
 	}
 
-	var r0 []GroupedFinding
+	var r0 []Finding
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiGetAllFindings1Request) ([]GroupedFinding, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetAllFindings1Request) ([]Finding, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiGetAllFindings1Request) []GroupedFinding); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetAllFindings1Request) []Finding); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]GroupedFinding)
+			r0 = ret.Get(0).([]Finding)
 		}
 	}
 
@@ -390,12 +397,12 @@ func (_c *MockFindingAPI_GetAllFindings1Execute_Call) Run(run func(r ApiGetAllFi
 	return _c
 }
 
-func (_c *MockFindingAPI_GetAllFindings1Execute_Call) Return(_a0 []GroupedFinding, _a1 *http.Response, _a2 error) *MockFindingAPI_GetAllFindings1Execute_Call {
+func (_c *MockFindingAPI_GetAllFindings1Execute_Call) Return(_a0 []Finding, _a1 *http.Response, _a2 error) *MockFindingAPI_GetAllFindings1Execute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockFindingAPI_GetAllFindings1Execute_Call) RunAndReturn(run func(ApiGetAllFindings1Request) ([]GroupedFinding, *http.Response, error)) *MockFindingAPI_GetAllFindings1Execute_Call {
+func (_c *MockFindingAPI_GetAllFindings1Execute_Call) RunAndReturn(run func(ApiGetAllFindings1Request) ([]Finding, *http.Response, error)) *MockFindingAPI_GetAllFindings1Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }

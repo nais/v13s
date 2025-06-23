@@ -478,6 +478,119 @@ func (_c *MockNotificationAPI_CreateNotificationRuleExecute_Call) RunAndReturn(r
 	return _c
 }
 
+// CreateScheduledNotificationRule provides a mock function with given fields: ctx
+func (_m *MockNotificationAPI) CreateScheduledNotificationRule(ctx context.Context) ApiCreateScheduledNotificationRuleRequest {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateScheduledNotificationRule")
+	}
+
+	var r0 ApiCreateScheduledNotificationRuleRequest
+	if rf, ok := ret.Get(0).(func(context.Context) ApiCreateScheduledNotificationRuleRequest); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(ApiCreateScheduledNotificationRuleRequest)
+	}
+
+	return r0
+}
+
+// MockNotificationAPI_CreateScheduledNotificationRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateScheduledNotificationRule'
+type MockNotificationAPI_CreateScheduledNotificationRule_Call struct {
+	*mock.Call
+}
+
+// CreateScheduledNotificationRule is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockNotificationAPI_Expecter) CreateScheduledNotificationRule(ctx interface{}) *MockNotificationAPI_CreateScheduledNotificationRule_Call {
+	return &MockNotificationAPI_CreateScheduledNotificationRule_Call{Call: _e.mock.On("CreateScheduledNotificationRule", ctx)}
+}
+
+func (_c *MockNotificationAPI_CreateScheduledNotificationRule_Call) Run(run func(ctx context.Context)) *MockNotificationAPI_CreateScheduledNotificationRule_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockNotificationAPI_CreateScheduledNotificationRule_Call) Return(_a0 ApiCreateScheduledNotificationRuleRequest) *MockNotificationAPI_CreateScheduledNotificationRule_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockNotificationAPI_CreateScheduledNotificationRule_Call) RunAndReturn(run func(context.Context) ApiCreateScheduledNotificationRuleRequest) *MockNotificationAPI_CreateScheduledNotificationRule_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateScheduledNotificationRuleExecute provides a mock function with given fields: r
+func (_m *MockNotificationAPI) CreateScheduledNotificationRuleExecute(r ApiCreateScheduledNotificationRuleRequest) (*NotificationRule, *http.Response, error) {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateScheduledNotificationRuleExecute")
+	}
+
+	var r0 *NotificationRule
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiCreateScheduledNotificationRuleRequest) (*NotificationRule, *http.Response, error)); ok {
+		return rf(r)
+	}
+	if rf, ok := ret.Get(0).(func(ApiCreateScheduledNotificationRuleRequest) *NotificationRule); ok {
+		r0 = rf(r)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*NotificationRule)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiCreateScheduledNotificationRuleRequest) *http.Response); ok {
+		r1 = rf(r)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(ApiCreateScheduledNotificationRuleRequest) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateScheduledNotificationRuleExecute'
+type MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call struct {
+	*mock.Call
+}
+
+// CreateScheduledNotificationRuleExecute is a helper method to define mock.On call
+//   - r ApiCreateScheduledNotificationRuleRequest
+func (_e *MockNotificationAPI_Expecter) CreateScheduledNotificationRuleExecute(r interface{}) *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call {
+	return &MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call{Call: _e.mock.On("CreateScheduledNotificationRuleExecute", r)}
+}
+
+func (_c *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call) Run(run func(r ApiCreateScheduledNotificationRuleRequest)) *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ApiCreateScheduledNotificationRuleRequest))
+	})
+	return _c
+}
+
+func (_c *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call) Return(_a0 *NotificationRule, _a1 *http.Response, _a2 error) *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call) RunAndReturn(run func(ApiCreateScheduledNotificationRuleRequest) (*NotificationRule, *http.Response, error)) *MockNotificationAPI_CreateScheduledNotificationRuleExecute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteNotificationPublisher provides a mock function with given fields: ctx, notificationPublisherUuid
 func (_m *MockNotificationAPI) DeleteNotificationPublisher(ctx context.Context, notificationPublisherUuid string) ApiDeleteNotificationPublisherRequest {
 	ret := _m.Called(ctx, notificationPublisherUuid)
@@ -1247,6 +1360,111 @@ func (_c *MockNotificationAPI_RestoreDefaultTemplatesExecute_Call) RunAndReturn(
 	return _c
 }
 
+// TestNotificationRule provides a mock function with given fields: ctx, uuid
+func (_m *MockNotificationAPI) TestNotificationRule(ctx context.Context, uuid string) ApiTestNotificationRuleRequest {
+	ret := _m.Called(ctx, uuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TestNotificationRule")
+	}
+
+	var r0 ApiTestNotificationRuleRequest
+	if rf, ok := ret.Get(0).(func(context.Context, string) ApiTestNotificationRuleRequest); ok {
+		r0 = rf(ctx, uuid)
+	} else {
+		r0 = ret.Get(0).(ApiTestNotificationRuleRequest)
+	}
+
+	return r0
+}
+
+// MockNotificationAPI_TestNotificationRule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TestNotificationRule'
+type MockNotificationAPI_TestNotificationRule_Call struct {
+	*mock.Call
+}
+
+// TestNotificationRule is a helper method to define mock.On call
+//   - ctx context.Context
+//   - uuid string
+func (_e *MockNotificationAPI_Expecter) TestNotificationRule(ctx interface{}, uuid interface{}) *MockNotificationAPI_TestNotificationRule_Call {
+	return &MockNotificationAPI_TestNotificationRule_Call{Call: _e.mock.On("TestNotificationRule", ctx, uuid)}
+}
+
+func (_c *MockNotificationAPI_TestNotificationRule_Call) Run(run func(ctx context.Context, uuid string)) *MockNotificationAPI_TestNotificationRule_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockNotificationAPI_TestNotificationRule_Call) Return(_a0 ApiTestNotificationRuleRequest) *MockNotificationAPI_TestNotificationRule_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockNotificationAPI_TestNotificationRule_Call) RunAndReturn(run func(context.Context, string) ApiTestNotificationRuleRequest) *MockNotificationAPI_TestNotificationRule_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TestNotificationRuleExecute provides a mock function with given fields: r
+func (_m *MockNotificationAPI) TestNotificationRuleExecute(r ApiTestNotificationRuleRequest) (*http.Response, error) {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TestNotificationRuleExecute")
+	}
+
+	var r0 *http.Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(ApiTestNotificationRuleRequest) (*http.Response, error)); ok {
+		return rf(r)
+	}
+	if rf, ok := ret.Get(0).(func(ApiTestNotificationRuleRequest) *http.Response); ok {
+		r0 = rf(r)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Response)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiTestNotificationRuleRequest) error); ok {
+		r1 = rf(r)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockNotificationAPI_TestNotificationRuleExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TestNotificationRuleExecute'
+type MockNotificationAPI_TestNotificationRuleExecute_Call struct {
+	*mock.Call
+}
+
+// TestNotificationRuleExecute is a helper method to define mock.On call
+//   - r ApiTestNotificationRuleRequest
+func (_e *MockNotificationAPI_Expecter) TestNotificationRuleExecute(r interface{}) *MockNotificationAPI_TestNotificationRuleExecute_Call {
+	return &MockNotificationAPI_TestNotificationRuleExecute_Call{Call: _e.mock.On("TestNotificationRuleExecute", r)}
+}
+
+func (_c *MockNotificationAPI_TestNotificationRuleExecute_Call) Run(run func(r ApiTestNotificationRuleRequest)) *MockNotificationAPI_TestNotificationRuleExecute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ApiTestNotificationRuleRequest))
+	})
+	return _c
+}
+
+func (_c *MockNotificationAPI_TestNotificationRuleExecute_Call) Return(_a0 *http.Response, _a1 error) *MockNotificationAPI_TestNotificationRuleExecute_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockNotificationAPI_TestNotificationRuleExecute_Call) RunAndReturn(run func(ApiTestNotificationRuleRequest) (*http.Response, error)) *MockNotificationAPI_TestNotificationRuleExecute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TestSmtpPublisherConfig provides a mock function with given fields: ctx
 func (_m *MockNotificationAPI) TestSmtpPublisherConfig(ctx context.Context) ApiTestSmtpPublisherConfigRequest {
 	ret := _m.Called(ctx)
@@ -1398,24 +1616,24 @@ func (_c *MockNotificationAPI_UpdateNotificationPublisher_Call) RunAndReturn(run
 }
 
 // UpdateNotificationPublisherExecute provides a mock function with given fields: r
-func (_m *MockNotificationAPI) UpdateNotificationPublisherExecute(r ApiUpdateNotificationPublisherRequest) (*NotificationRule, *http.Response, error) {
+func (_m *MockNotificationAPI) UpdateNotificationPublisherExecute(r ApiUpdateNotificationPublisherRequest) (*NotificationPublisher, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateNotificationPublisherExecute")
 	}
 
-	var r0 *NotificationRule
+	var r0 *NotificationPublisher
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiUpdateNotificationPublisherRequest) (*NotificationRule, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateNotificationPublisherRequest) (*NotificationPublisher, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiUpdateNotificationPublisherRequest) *NotificationRule); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateNotificationPublisherRequest) *NotificationPublisher); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*NotificationRule)
+			r0 = ret.Get(0).(*NotificationPublisher)
 		}
 	}
 
@@ -1454,12 +1672,12 @@ func (_c *MockNotificationAPI_UpdateNotificationPublisherExecute_Call) Run(run f
 	return _c
 }
 
-func (_c *MockNotificationAPI_UpdateNotificationPublisherExecute_Call) Return(_a0 *NotificationRule, _a1 *http.Response, _a2 error) *MockNotificationAPI_UpdateNotificationPublisherExecute_Call {
+func (_c *MockNotificationAPI_UpdateNotificationPublisherExecute_Call) Return(_a0 *NotificationPublisher, _a1 *http.Response, _a2 error) *MockNotificationAPI_UpdateNotificationPublisherExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockNotificationAPI_UpdateNotificationPublisherExecute_Call) RunAndReturn(run func(ApiUpdateNotificationPublisherRequest) (*NotificationRule, *http.Response, error)) *MockNotificationAPI_UpdateNotificationPublisherExecute_Call {
+func (_c *MockNotificationAPI_UpdateNotificationPublisherExecute_Call) RunAndReturn(run func(ApiUpdateNotificationPublisherRequest) (*NotificationPublisher, *http.Response, error)) *MockNotificationAPI_UpdateNotificationPublisherExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

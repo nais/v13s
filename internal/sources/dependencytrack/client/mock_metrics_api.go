@@ -1316,42 +1316,33 @@ func (_c *MockMetricsAPI_RefreshPortfolioMetrics_Call) RunAndReturn(run func(con
 }
 
 // RefreshPortfolioMetricsExecute provides a mock function with given fields: r
-func (_m *MockMetricsAPI) RefreshPortfolioMetricsExecute(r ApiRefreshPortfolioMetricsRequest) (*PortfolioMetrics, *http.Response, error) {
+func (_m *MockMetricsAPI) RefreshPortfolioMetricsExecute(r ApiRefreshPortfolioMetricsRequest) (*http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RefreshPortfolioMetricsExecute")
 	}
 
-	var r0 *PortfolioMetrics
-	var r1 *http.Response
-	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiRefreshPortfolioMetricsRequest) (*PortfolioMetrics, *http.Response, error)); ok {
+	var r0 *http.Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(ApiRefreshPortfolioMetricsRequest) (*http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiRefreshPortfolioMetricsRequest) *PortfolioMetrics); ok {
+	if rf, ok := ret.Get(0).(func(ApiRefreshPortfolioMetricsRequest) *http.Response); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*PortfolioMetrics)
+			r0 = ret.Get(0).(*http.Response)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiRefreshPortfolioMetricsRequest) *http.Response); ok {
+	if rf, ok := ret.Get(1).(func(ApiRefreshPortfolioMetricsRequest) error); ok {
 		r1 = rf(r)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*http.Response)
-		}
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(ApiRefreshPortfolioMetricsRequest) error); ok {
-		r2 = rf(r)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockMetricsAPI_RefreshPortfolioMetricsExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshPortfolioMetricsExecute'
@@ -1372,12 +1363,12 @@ func (_c *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call) Run(run func(r Api
 	return _c
 }
 
-func (_c *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call) Return(_a0 *PortfolioMetrics, _a1 *http.Response, _a2 error) *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call) Return(_a0 *http.Response, _a1 error) *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call) RunAndReturn(run func(ApiRefreshPortfolioMetricsRequest) (*PortfolioMetrics, *http.Response, error)) *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call {
+func (_c *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call) RunAndReturn(run func(ApiRefreshPortfolioMetricsRequest) (*http.Response, error)) *MockMetricsAPI_RefreshPortfolioMetricsExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

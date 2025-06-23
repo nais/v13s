@@ -76,7 +76,7 @@ func (d *dependencytrackSource) Delete(ctx context.Context, imageName string, im
 		return nil
 	}
 
-	err = d.client.DeleteProject(ctx, *p.Uuid)
+	err = d.client.DeleteProject(ctx, p.Uuid)
 	if err != nil {
 		return fmt.Errorf("deleting project: %w", err)
 	}
@@ -95,9 +95,9 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		return nil, ErrNoProject
 	}
 
-	findings, err := d.client.GetFindings(ctx, *p.Uuid, "", includeSuppressed)
+	findings, err := d.client.GetFindings(ctx, p.Uuid, "", includeSuppressed)
 	if err != nil {
-		return nil, fmt.Errorf("getting findings for project %s: %w", *p.Uuid, err)
+		return nil, fmt.Errorf("getting findings for project %s: %w", p.Uuid, err)
 	}
 
 	vulns := make([]*Vulnerability, 0)
@@ -198,7 +198,7 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 	}
 
 	return &VulnerabilitySummary{
-		Id:         *p.Uuid,
+		Id:         p.Uuid,
 		Critical:   p.Metrics.Critical,
 		High:       p.Metrics.High,
 		Medium:     p.Metrics.Medium,
@@ -374,9 +374,9 @@ func (d *dependencytrackSource) getProjectsForImage(ctx context.Context, imageNa
 }
 
 func (d *dependencytrackSource) processProject(ctx context.Context, p client.Project, v *SuppressedVulnerability) (bool, error) {
-	findings, err := d.client.GetFindings(ctx, *p.Uuid, v.CveId, true)
+	findings, err := d.client.GetFindings(ctx, p.Uuid, v.CveId, true)
 	if err != nil {
-		return false, fmt.Errorf("getting findings for project %s: %w", *p.Uuid, err)
+		return false, fmt.Errorf("getting findings for project %s: %w", p.Uuid, err)
 	}
 
 	match, err := d.findMatchingVulnerability(findings, v.CveId)
@@ -385,7 +385,7 @@ func (d *dependencytrackSource) processProject(ctx context.Context, p client.Pro
 	}
 
 	if !match.Found {
-		d.log.Warnf("vulnerability %s not found in project %s", v.CveId, *p.Uuid)
+		d.log.Warnf("vulnerability %s not found in project %s", v.CveId, p.Uuid)
 		return false, nil
 	}
 
@@ -394,24 +394,24 @@ func (d *dependencytrackSource) processProject(ctx context.Context, p client.Pro
 		return false, err
 	}
 
-	an, err := d.client.GetAnalysisTrailForImage(ctx, *p.Uuid, componentId, match.VulnUuid)
+	an, err := d.client.GetAnalysisTrailForImage(ctx, p.Uuid, componentId, match.VulnUuid)
 	if err != nil {
 		return false, err
 	}
 
 	if an == nil {
-		d.log.Warnf("no analysis trail found for vulnerability %s in project %s", v.CveId, *p.Uuid)
+		d.log.Warnf("no analysis trail found for vulnerability %s in project %s", v.CveId, p.Uuid)
 		return false, nil
 	}
 
-	needsUpdate := d.checkAndLogUpdates(an, v, *p.Uuid)
+	needsUpdate := d.checkAndLogUpdates(an, v, p.Uuid)
 	if !needsUpdate {
-		d.log.Infof("no update needed for vulnerability %s in project %s", v.CveId, *p.Uuid)
+		d.log.Infof("no update needed for vulnerability %s in project %s", v.CveId, p.Uuid)
 		return false, nil
 	}
 
-	if err := d.client.UpdateFinding(ctx, v.SuppressedBy, v.Reason, *p.Uuid, componentId, match.VulnUuid, v.State, v.Suppressed); err != nil {
-		return false, fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, *p.Uuid, err)
+	if err := d.client.UpdateFinding(ctx, v.SuppressedBy, v.Reason, p.Uuid, componentId, match.VulnUuid, v.State, v.Suppressed); err != nil {
+		return false, fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, p.Uuid, err)
 	}
 
 	return true, nil

@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **AuthenticationRequired** | Pointer to **bool** |  | [optional] 
 **Username** | Pointer to **string** |  | [optional] 
 **Uuid** | **string** |  | 
+**Password** | Pointer to **string** |  | [optional] 
 
 ## Methods
 
@@ -232,6 +233,31 @@ and a boolean to check if the value has been set.
 
 SetUuid sets Uuid field to given value.
 
+
+### GetPassword
+
+`func (o *Repository) GetPassword() string`
+
+GetPassword returns the Password field if non-nil, zero value otherwise.
+
+### GetPasswordOk
+
+`func (o *Repository) GetPasswordOk() (*string, bool)`
+
+GetPasswordOk returns a tuple with the Password field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetPassword
+
+`func (o *Repository) SetPassword(v string)`
+
+SetPassword sets Password field to given value.
+
+### HasPassword
+
+`func (o *Repository) HasPassword() bool`
+
+HasPassword returns a boolean if a field has been set.
 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

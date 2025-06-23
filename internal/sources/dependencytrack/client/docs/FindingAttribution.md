@@ -4,7 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**AttributedOn** | **time.Time** |  | 
+**AttributedOn** | **int64** | UNIX epoch timestamp in milliseconds | 
 **AnalyzerIdentity** | Pointer to **string** |  | [optional] 
 **Component** | [**Component**](Component.md) |  | 
 **Vulnerability** | [**Vulnerability**](Vulnerability.md) |  | 
@@ -16,7 +16,7 @@ Name | Type | Description | Notes
 
 ### NewFindingAttribution
 
-`func NewFindingAttribution(attributedOn time.Time, component Component, vulnerability Vulnerability, uuid string, ) *FindingAttribution`
+`func NewFindingAttribution(attributedOn int64, component Component, vulnerability Vulnerability, uuid string, ) *FindingAttribution`
 
 NewFindingAttribution instantiates a new FindingAttribution object
 This constructor will assign default values to properties that have it defined,
@@ -33,20 +33,20 @@ but it doesn't guarantee that properties required by API are set
 
 ### GetAttributedOn
 
-`func (o *FindingAttribution) GetAttributedOn() time.Time`
+`func (o *FindingAttribution) GetAttributedOn() int64`
 
 GetAttributedOn returns the AttributedOn field if non-nil, zero value otherwise.
 
 ### GetAttributedOnOk
 
-`func (o *FindingAttribution) GetAttributedOnOk() (*time.Time, bool)`
+`func (o *FindingAttribution) GetAttributedOnOk() (*int64, bool)`
 
 GetAttributedOnOk returns a tuple with the AttributedOn field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetAttributedOn
 
-`func (o *FindingAttribution) SetAttributedOn(v time.Time)`
+`func (o *FindingAttribution) SetAttributedOn(v int64)`
 
 SetAttributedOn sets AttributedOn field to given value.
 

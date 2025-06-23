@@ -247,17 +247,17 @@ func (_c *MockBadgeAPI_GetProjectPolicyViolationsBadgeExecute_Call) RunAndReturn
 	return _c
 }
 
-// GetProjectVulnerabilitiesBadge provides a mock function with given fields: ctx, name, version
-func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadge(ctx context.Context, name string, version string) ApiGetProjectVulnerabilitiesBadgeRequest {
-	ret := _m.Called(ctx, name, version)
+// GetProjectVulnerabilitiesBadge provides a mock function with given fields: ctx, uuid
+func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadge(ctx context.Context, uuid string) ApiGetProjectVulnerabilitiesBadgeRequest {
+	ret := _m.Called(ctx, uuid)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetProjectVulnerabilitiesBadge")
 	}
 
 	var r0 ApiGetProjectVulnerabilitiesBadgeRequest
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) ApiGetProjectVulnerabilitiesBadgeRequest); ok {
-		r0 = rf(ctx, name, version)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ApiGetProjectVulnerabilitiesBadgeRequest); ok {
+		r0 = rf(ctx, uuid)
 	} else {
 		r0 = ret.Get(0).(ApiGetProjectVulnerabilitiesBadgeRequest)
 	}
@@ -272,15 +272,14 @@ type MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call struct {
 
 // GetProjectVulnerabilitiesBadge is a helper method to define mock.On call
 //   - ctx context.Context
-//   - name string
-//   - version string
-func (_e *MockBadgeAPI_Expecter) GetProjectVulnerabilitiesBadge(ctx interface{}, name interface{}, version interface{}) *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call {
-	return &MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call{Call: _e.mock.On("GetProjectVulnerabilitiesBadge", ctx, name, version)}
+//   - uuid string
+func (_e *MockBadgeAPI_Expecter) GetProjectVulnerabilitiesBadge(ctx interface{}, uuid interface{}) *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call {
+	return &MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call{Call: _e.mock.On("GetProjectVulnerabilitiesBadge", ctx, uuid)}
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call) Run(run func(ctx context.Context, name string, version string)) *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call) Run(run func(ctx context.Context, uuid string)) *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -290,22 +289,22 @@ func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call) Return(_a0 ApiGetPro
 	return _c
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call) RunAndReturn(run func(context.Context, string, string) ApiGetProjectVulnerabilitiesBadgeRequest) *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call) RunAndReturn(run func(context.Context, string) ApiGetProjectVulnerabilitiesBadgeRequest) *MockBadgeAPI_GetProjectVulnerabilitiesBadge_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetProjectVulnerabilitiesBadge1 provides a mock function with given fields: ctx, uuid
-func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadge1(ctx context.Context, uuid string) ApiGetProjectVulnerabilitiesBadge1Request {
-	ret := _m.Called(ctx, uuid)
+// GetProjectVulnerabilitiesBadge1 provides a mock function with given fields: ctx, name, version
+func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadge1(ctx context.Context, name string, version string) ApiGetProjectVulnerabilitiesBadge1Request {
+	ret := _m.Called(ctx, name, version)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetProjectVulnerabilitiesBadge1")
 	}
 
 	var r0 ApiGetProjectVulnerabilitiesBadge1Request
-	if rf, ok := ret.Get(0).(func(context.Context, string) ApiGetProjectVulnerabilitiesBadge1Request); ok {
-		r0 = rf(ctx, uuid)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ApiGetProjectVulnerabilitiesBadge1Request); ok {
+		r0 = rf(ctx, name, version)
 	} else {
 		r0 = ret.Get(0).(ApiGetProjectVulnerabilitiesBadge1Request)
 	}
@@ -320,14 +319,15 @@ type MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call struct {
 
 // GetProjectVulnerabilitiesBadge1 is a helper method to define mock.On call
 //   - ctx context.Context
-//   - uuid string
-func (_e *MockBadgeAPI_Expecter) GetProjectVulnerabilitiesBadge1(ctx interface{}, uuid interface{}) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call {
-	return &MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call{Call: _e.mock.On("GetProjectVulnerabilitiesBadge1", ctx, uuid)}
+//   - name string
+//   - version string
+func (_e *MockBadgeAPI_Expecter) GetProjectVulnerabilitiesBadge1(ctx interface{}, name interface{}, version interface{}) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call {
+	return &MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call{Call: _e.mock.On("GetProjectVulnerabilitiesBadge1", ctx, name, version)}
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call) Run(run func(ctx context.Context, uuid string)) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call) Run(run func(ctx context.Context, name string, version string)) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -337,31 +337,29 @@ func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call) Return(_a0 ApiGetPr
 	return _c
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call) RunAndReturn(run func(context.Context, string) ApiGetProjectVulnerabilitiesBadge1Request) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call) RunAndReturn(run func(context.Context, string, string) ApiGetProjectVulnerabilitiesBadge1Request) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetProjectVulnerabilitiesBadge1Execute provides a mock function with given fields: r
-func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadge1Execute(r ApiGetProjectVulnerabilitiesBadge1Request) (*ProjectMetrics, *http.Response, error) {
+func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadge1Execute(r ApiGetProjectVulnerabilitiesBadge1Request) (string, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetProjectVulnerabilitiesBadge1Execute")
 	}
 
-	var r0 *ProjectMetrics
+	var r0 string
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadge1Request) (*ProjectMetrics, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadge1Request) (string, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadge1Request) *ProjectMetrics); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadge1Request) string); ok {
 		r0 = rf(r)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*ProjectMetrics)
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	if rf, ok := ret.Get(1).(func(ApiGetProjectVulnerabilitiesBadge1Request) *http.Response); ok {
@@ -399,36 +397,34 @@ func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call) Run(run func
 	return _c
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call) Return(_a0 *ProjectMetrics, _a1 *http.Response, _a2 error) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call) Return(_a0 string, _a1 *http.Response, _a2 error) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call) RunAndReturn(run func(ApiGetProjectVulnerabilitiesBadge1Request) (*ProjectMetrics, *http.Response, error)) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call) RunAndReturn(run func(ApiGetProjectVulnerabilitiesBadge1Request) (string, *http.Response, error)) *MockBadgeAPI_GetProjectVulnerabilitiesBadge1Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetProjectVulnerabilitiesBadgeExecute provides a mock function with given fields: r
-func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadgeExecute(r ApiGetProjectVulnerabilitiesBadgeRequest) (*ProjectMetrics, *http.Response, error) {
+func (_m *MockBadgeAPI) GetProjectVulnerabilitiesBadgeExecute(r ApiGetProjectVulnerabilitiesBadgeRequest) (string, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetProjectVulnerabilitiesBadgeExecute")
 	}
 
-	var r0 *ProjectMetrics
+	var r0 string
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadgeRequest) (*ProjectMetrics, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadgeRequest) (string, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadgeRequest) *ProjectMetrics); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetProjectVulnerabilitiesBadgeRequest) string); ok {
 		r0 = rf(r)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*ProjectMetrics)
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	if rf, ok := ret.Get(1).(func(ApiGetProjectVulnerabilitiesBadgeRequest) *http.Response); ok {
@@ -466,12 +462,12 @@ func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call) Run(run func(
 	return _c
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call) Return(_a0 *ProjectMetrics, _a1 *http.Response, _a2 error) *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call) Return(_a0 string, _a1 *http.Response, _a2 error) *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call) RunAndReturn(run func(ApiGetProjectVulnerabilitiesBadgeRequest) (*ProjectMetrics, *http.Response, error)) *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call {
+func (_c *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call) RunAndReturn(run func(ApiGetProjectVulnerabilitiesBadgeRequest) (string, *http.Response, error)) *MockBadgeAPI_GetProjectVulnerabilitiesBadgeExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

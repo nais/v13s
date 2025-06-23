@@ -6,15 +6,15 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**AnalyzeProject**](FindingAPI.md#AnalyzeProject) | **Post** /v1/finding/project/{uuid}/analyze | Triggers Vulnerability Analysis on a specific project
 [**ExportFindingsByProject**](FindingAPI.md#ExportFindingsByProject) | **Get** /v1/finding/project/{uuid}/export | Returns the findings for the specified project as FPF
-[**GetAllFindings**](FindingAPI.md#GetAllFindings) | **Get** /v1/finding | Returns a list of all findings
-[**GetAllFindings1**](FindingAPI.md#GetAllFindings1) | **Get** /v1/finding/grouped | Returns a list of all findings grouped by vulnerability
+[**GetAllFindings**](FindingAPI.md#GetAllFindings) | **Get** /v1/finding/grouped | Returns a list of all findings grouped by vulnerability
+[**GetAllFindings1**](FindingAPI.md#GetAllFindings1) | **Get** /v1/finding | Returns a list of all findings
 [**GetFindingsByProject**](FindingAPI.md#GetFindingsByProject) | **Get** /v1/finding/project/{uuid} | Returns a list of all findings for a specific project or generates SARIF file if Accept: application/sarif+json header is provided
 
 
 
 ## AnalyzeProject
 
-> Project AnalyzeProject(ctx, uuid).Execute()
+> BomUploadResponse AnalyzeProject(ctx, uuid).Execute()
 
 Triggers Vulnerability Analysis on a specific project
 
@@ -42,7 +42,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error when calling `FindingAPI.AnalyzeProject``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `AnalyzeProject`: Project
+	// response from `AnalyzeProject`: BomUploadResponse
 	fmt.Fprintf(os.Stdout, "Response from `FindingAPI.AnalyzeProject`: %v\n", resp)
 }
 ```
@@ -66,11 +66,11 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**Project**](Project.md)
+[**BomUploadResponse**](BomUploadResponse.md)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -84,7 +84,7 @@ Name | Type | Description  | Notes
 
 ## ExportFindingsByProject
 
-> ExportFindingsByProject(ctx, uuid).Execute()
+> string ExportFindingsByProject(ctx, uuid).Execute()
 
 Returns the findings for the specified project as FPF
 
@@ -107,11 +107,13 @@ func main() {
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.FindingAPI.ExportFindingsByProject(context.Background(), uuid).Execute()
+	resp, r, err := apiClient.FindingAPI.ExportFindingsByProject(context.Background(), uuid).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `FindingAPI.ExportFindingsByProject``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
+	// response from `ExportFindingsByProject`: string
+	fmt.Fprintf(os.Stdout, "Response from `FindingAPI.ExportFindingsByProject`: %v\n", resp)
 }
 ```
 
@@ -134,16 +136,16 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- (empty response body)
+**string**
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -152,7 +154,95 @@ Name | Type | Description  | Notes
 
 ## GetAllFindings
 
-> []Finding GetAllFindings(ctx).ShowInactive(showInactive).ShowSuppressed(showSuppressed).Severity(severity).AnalysisStatus(analysisStatus).VendorResponse(vendorResponse).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).AttributedOnDateFrom(attributedOnDateFrom).AttributedOnDateTo(attributedOnDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).Execute()
+> []Finding GetAllFindings(ctx).ShowInactive(showInactive).Severity(severity).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).OccurrencesFrom(occurrencesFrom).OccurrencesTo(occurrencesTo).Execute()
+
+Returns a list of all findings grouped by vulnerability
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
+)
+
+func main() {
+	showInactive := true // bool | Show inactive projects (optional)
+	severity := "severity_example" // string | Filter by severity (optional)
+	publishDateFrom := "publishDateFrom_example" // string | Filter published from this date (optional)
+	publishDateTo := "publishDateTo_example" // string | Filter published to this date (optional)
+	textSearchField := "textSearchField_example" // string | Filter the text input in these fields (optional)
+	textSearchInput := "textSearchInput_example" // string | Filter by this text input (optional)
+	cvssv2From := "cvssv2From_example" // string | Filter CVSSv2 from this value (optional)
+	cvssv2To := "cvssv2To_example" // string | Filter CVSSv2 to this value (optional)
+	cvssv3From := "cvssv3From_example" // string | Filter CVSSv3 from this value (optional)
+	cvssv3To := "cvssv3To_example" // string | Filter CVSSv3 to this value (optional)
+	occurrencesFrom := "occurrencesFrom_example" // string | Filter occurrences in projects from this value (optional)
+	occurrencesTo := "occurrencesTo_example" // string | Filter occurrences in projects to this value (optional)
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.FindingAPI.GetAllFindings(context.Background()).ShowInactive(showInactive).Severity(severity).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).OccurrencesFrom(occurrencesFrom).OccurrencesTo(occurrencesTo).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `FindingAPI.GetAllFindings``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `GetAllFindings`: []Finding
+	fmt.Fprintf(os.Stdout, "Response from `FindingAPI.GetAllFindings`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiGetAllFindingsRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **showInactive** | **bool** | Show inactive projects | 
+ **severity** | **string** | Filter by severity | 
+ **publishDateFrom** | **string** | Filter published from this date | 
+ **publishDateTo** | **string** | Filter published to this date | 
+ **textSearchField** | **string** | Filter the text input in these fields | 
+ **textSearchInput** | **string** | Filter by this text input | 
+ **cvssv2From** | **string** | Filter CVSSv2 from this value | 
+ **cvssv2To** | **string** | Filter CVSSv2 to this value | 
+ **cvssv3From** | **string** | Filter CVSSv3 from this value | 
+ **cvssv3To** | **string** | Filter CVSSv3 to this value | 
+ **occurrencesFrom** | **string** | Filter occurrences in projects from this value | 
+ **occurrencesTo** | **string** | Filter occurrences in projects to this value | 
+
+### Return type
+
+[**[]Finding**](Finding.md)
+
+### Authorization
+
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## GetAllFindings1
+
+> []Finding GetAllFindings1(ctx).ShowInactive(showInactive).ShowSuppressed(showSuppressed).Severity(severity).AnalysisStatus(analysisStatus).VendorResponse(vendorResponse).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).AttributedOnDateFrom(attributedOnDateFrom).AttributedOnDateTo(attributedOnDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).Execute()
 
 Returns a list of all findings
 
@@ -189,13 +279,13 @@ func main() {
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.FindingAPI.GetAllFindings(context.Background()).ShowInactive(showInactive).ShowSuppressed(showSuppressed).Severity(severity).AnalysisStatus(analysisStatus).VendorResponse(vendorResponse).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).AttributedOnDateFrom(attributedOnDateFrom).AttributedOnDateTo(attributedOnDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).Execute()
+	resp, r, err := apiClient.FindingAPI.GetAllFindings1(context.Background()).ShowInactive(showInactive).ShowSuppressed(showSuppressed).Severity(severity).AnalysisStatus(analysisStatus).VendorResponse(vendorResponse).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).AttributedOnDateFrom(attributedOnDateFrom).AttributedOnDateTo(attributedOnDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `FindingAPI.GetAllFindings``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error when calling `FindingAPI.GetAllFindings1``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `GetAllFindings`: []Finding
-	fmt.Fprintf(os.Stdout, "Response from `FindingAPI.GetAllFindings`: %v\n", resp)
+	// response from `GetAllFindings1`: []Finding
+	fmt.Fprintf(os.Stdout, "Response from `FindingAPI.GetAllFindings1`: %v\n", resp)
 }
 ```
 
@@ -205,7 +295,7 @@ func main() {
 
 ### Other Parameters
 
-Other parameters are passed through a pointer to a apiGetAllFindingsRequest struct via the builder pattern
+Other parameters are passed through a pointer to a apiGetAllFindings1Request struct via the builder pattern
 
 
 Name | Type | Description  | Notes
@@ -232,95 +322,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## GetAllFindings1
-
-> []GroupedFinding GetAllFindings1(ctx).ShowInactive(showInactive).Severity(severity).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).OccurrencesFrom(occurrencesFrom).OccurrencesTo(occurrencesTo).Execute()
-
-Returns a list of all findings grouped by vulnerability
-
-
-
-### Example
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"os"
-	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
-)
-
-func main() {
-	showInactive := true // bool | Show inactive projects (optional)
-	severity := "severity_example" // string | Filter by severity (optional)
-	publishDateFrom := "publishDateFrom_example" // string | Filter published from this date (optional)
-	publishDateTo := "publishDateTo_example" // string | Filter published to this date (optional)
-	textSearchField := "textSearchField_example" // string | Filter the text input in these fields (optional)
-	textSearchInput := "textSearchInput_example" // string | Filter by this text input (optional)
-	cvssv2From := "cvssv2From_example" // string | Filter CVSSv2 from this value (optional)
-	cvssv2To := "cvssv2To_example" // string | Filter CVSSv2 to this value (optional)
-	cvssv3From := "cvssv3From_example" // string | Filter CVSSv3 from this value (optional)
-	cvssv3To := "cvssv3To_example" // string | Filter CVSSv3 to this value (optional)
-	occurrencesFrom := "occurrencesFrom_example" // string | Filter occurrences in projects from this value (optional)
-	occurrencesTo := "occurrencesTo_example" // string | Filter occurrences in projects to this value (optional)
-
-	configuration := openapiclient.NewConfiguration()
-	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.FindingAPI.GetAllFindings1(context.Background()).ShowInactive(showInactive).Severity(severity).PublishDateFrom(publishDateFrom).PublishDateTo(publishDateTo).TextSearchField(textSearchField).TextSearchInput(textSearchInput).Cvssv2From(cvssv2From).Cvssv2To(cvssv2To).Cvssv3From(cvssv3From).Cvssv3To(cvssv3To).OccurrencesFrom(occurrencesFrom).OccurrencesTo(occurrencesTo).Execute()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `FindingAPI.GetAllFindings1``: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
-	}
-	// response from `GetAllFindings1`: []GroupedFinding
-	fmt.Fprintf(os.Stdout, "Response from `FindingAPI.GetAllFindings1`: %v\n", resp)
-}
-```
-
-### Path Parameters
-
-
-
-### Other Parameters
-
-Other parameters are passed through a pointer to a apiGetAllFindings1Request struct via the builder pattern
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **showInactive** | **bool** | Show inactive projects | 
- **severity** | **string** | Filter by severity | 
- **publishDateFrom** | **string** | Filter published from this date | 
- **publishDateTo** | **string** | Filter published to this date | 
- **textSearchField** | **string** | Filter the text input in these fields | 
- **textSearchInput** | **string** | Filter by this text input | 
- **cvssv2From** | **string** | Filter CVSSv2 from this value | 
- **cvssv2To** | **string** | Filter CVSSv2 to this value | 
- **cvssv3From** | **string** | Filter CVSSv3 from this value | 
- **cvssv3To** | **string** | Filter CVSSv3 to this value | 
- **occurrencesFrom** | **string** | Filter occurrences in projects from this value | 
- **occurrencesTo** | **string** | Filter occurrences in projects to this value | 
-
-### Return type
-
-[**[]GroupedFinding**](GroupedFinding.md)
-
-### Authorization
-
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -396,7 +398,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

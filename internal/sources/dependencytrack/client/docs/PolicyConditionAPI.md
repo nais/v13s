@@ -12,7 +12,7 @@ Method | HTTP request | Description
 
 ## CreatePolicyCondition
 
-> PolicyCondition CreatePolicyCondition(ctx, uuid).Body(body).Execute()
+> PolicyCondition CreatePolicyCondition(ctx, uuid).PolicyCondition(policyCondition).Execute()
 
 Creates a new policy condition
 
@@ -32,11 +32,11 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the policy
-	body := *openapiclient.NewPolicyCondition("Uuid_example") // PolicyCondition |  (optional)
+	policyCondition := *openapiclient.NewPolicyCondition("Uuid_example") // PolicyCondition |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.PolicyConditionAPI.CreatePolicyCondition(context.Background(), uuid).Body(body).Execute()
+	resp, r, err := apiClient.PolicyConditionAPI.CreatePolicyCondition(context.Background(), uuid).PolicyCondition(policyCondition).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `PolicyConditionAPI.CreatePolicyCondition``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -62,7 +62,7 @@ Other parameters are passed through a pointer to a apiCreatePolicyConditionReque
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**PolicyCondition**](PolicyCondition.md) |  | 
+ **policyCondition** | [**PolicyCondition**](PolicyCondition.md) |  | 
 
 ### Return type
 
@@ -70,7 +70,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -138,7 +138,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -152,7 +152,7 @@ Name | Type | Description  | Notes
 
 ## UpdatePolicyCondition
 
-> PolicyCondition UpdatePolicyCondition(ctx).Body(body).Execute()
+> PolicyCondition UpdatePolicyCondition(ctx).PolicyCondition(policyCondition).Execute()
 
 Updates a policy condition
 
@@ -171,11 +171,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewPolicyCondition("Uuid_example") // PolicyCondition |  (optional)
+	policyCondition := *openapiclient.NewPolicyCondition("Uuid_example") // PolicyCondition |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.PolicyConditionAPI.UpdatePolicyCondition(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.PolicyConditionAPI.UpdatePolicyCondition(context.Background()).PolicyCondition(policyCondition).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `PolicyConditionAPI.UpdatePolicyCondition``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -196,7 +196,7 @@ Other parameters are passed through a pointer to a apiUpdatePolicyConditionReque
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**PolicyCondition**](PolicyCondition.md) |  | 
+ **policyCondition** | [**PolicyCondition**](PolicyCondition.md) |  | 
 
 ### Return type
 
@@ -204,7 +204,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

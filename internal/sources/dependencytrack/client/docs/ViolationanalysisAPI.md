@@ -65,7 +65,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -79,7 +79,7 @@ Name | Type | Description  | Notes
 
 ## UpdateAnalysis1
 
-> ViolationAnalysis UpdateAnalysis1(ctx).Body(body).Execute()
+> ViolationAnalysis UpdateAnalysis1(ctx).ViolationAnalysisRequest(violationAnalysisRequest).Execute()
 
 Records a violation analysis decision
 
@@ -98,11 +98,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewViolationAnalysisRequest("Component_example", "PolicyViolation_example") // ViolationAnalysisRequest |  (optional)
+	violationAnalysisRequest := *openapiclient.NewViolationAnalysisRequest("Component_example", "PolicyViolation_example") // ViolationAnalysisRequest |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ViolationanalysisAPI.UpdateAnalysis1(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.ViolationanalysisAPI.UpdateAnalysis1(context.Background()).ViolationAnalysisRequest(violationAnalysisRequest).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ViolationanalysisAPI.UpdateAnalysis1``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -123,7 +123,7 @@ Other parameters are passed through a pointer to a apiUpdateAnalysis1Request str
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ViolationAnalysisRequest**](ViolationAnalysisRequest.md) |  | 
+ **violationAnalysisRequest** | [**ViolationAnalysisRequest**](ViolationAnalysisRequest.md) |  | 
 
 ### Return type
 
@@ -131,7 +131,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

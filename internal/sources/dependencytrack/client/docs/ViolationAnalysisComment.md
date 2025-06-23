@@ -4,7 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Timestamp** | **time.Time** |  | 
+**Timestamp** | **int64** | UNIX epoch timestamp in milliseconds | 
 **Comment** | **string** |  | 
 **Commenter** | Pointer to **string** |  | [optional] 
 
@@ -12,7 +12,7 @@ Name | Type | Description | Notes
 
 ### NewViolationAnalysisComment
 
-`func NewViolationAnalysisComment(timestamp time.Time, comment string, ) *ViolationAnalysisComment`
+`func NewViolationAnalysisComment(timestamp int64, comment string, ) *ViolationAnalysisComment`
 
 NewViolationAnalysisComment instantiates a new ViolationAnalysisComment object
 This constructor will assign default values to properties that have it defined,
@@ -29,20 +29,20 @@ but it doesn't guarantee that properties required by API are set
 
 ### GetTimestamp
 
-`func (o *ViolationAnalysisComment) GetTimestamp() time.Time`
+`func (o *ViolationAnalysisComment) GetTimestamp() int64`
 
 GetTimestamp returns the Timestamp field if non-nil, zero value otherwise.
 
 ### GetTimestampOk
 
-`func (o *ViolationAnalysisComment) GetTimestampOk() (*time.Time, bool)`
+`func (o *ViolationAnalysisComment) GetTimestampOk() (*int64, bool)`
 
 GetTimestampOk returns a tuple with the Timestamp field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetTimestamp
 
-`func (o *ViolationAnalysisComment) SetTimestamp(v time.Time)`
+`func (o *ViolationAnalysisComment) SetTimestamp(v int64)`
 
 SetTimestamp sets Timestamp field to given value.
 

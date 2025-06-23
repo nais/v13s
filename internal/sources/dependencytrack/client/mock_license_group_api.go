@@ -403,24 +403,24 @@ func (_c *MockLicenseGroupAPI_GetLicenseGroup_Call) RunAndReturn(run func(contex
 }
 
 // GetLicenseGroupExecute provides a mock function with given fields: r
-func (_m *MockLicenseGroupAPI) GetLicenseGroupExecute(r ApiGetLicenseGroupRequest) (*License, *http.Response, error) {
+func (_m *MockLicenseGroupAPI) GetLicenseGroupExecute(r ApiGetLicenseGroupRequest) (*LicenseGroup, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetLicenseGroupExecute")
 	}
 
-	var r0 *License
+	var r0 *LicenseGroup
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiGetLicenseGroupRequest) (*License, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetLicenseGroupRequest) (*LicenseGroup, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiGetLicenseGroupRequest) *License); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetLicenseGroupRequest) *LicenseGroup); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*License)
+			r0 = ret.Get(0).(*LicenseGroup)
 		}
 	}
 
@@ -459,12 +459,12 @@ func (_c *MockLicenseGroupAPI_GetLicenseGroupExecute_Call) Run(run func(r ApiGet
 	return _c
 }
 
-func (_c *MockLicenseGroupAPI_GetLicenseGroupExecute_Call) Return(_a0 *License, _a1 *http.Response, _a2 error) *MockLicenseGroupAPI_GetLicenseGroupExecute_Call {
+func (_c *MockLicenseGroupAPI_GetLicenseGroupExecute_Call) Return(_a0 *LicenseGroup, _a1 *http.Response, _a2 error) *MockLicenseGroupAPI_GetLicenseGroupExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockLicenseGroupAPI_GetLicenseGroupExecute_Call) RunAndReturn(run func(ApiGetLicenseGroupRequest) (*License, *http.Response, error)) *MockLicenseGroupAPI_GetLicenseGroupExecute_Call {
+func (_c *MockLicenseGroupAPI_GetLicenseGroupExecute_Call) RunAndReturn(run func(ApiGetLicenseGroupRequest) (*LicenseGroup, *http.Response, error)) *MockLicenseGroupAPI_GetLicenseGroupExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -69,42 +69,33 @@ func (_c *MockAclAPI_AddMapping_Call) RunAndReturn(run func(context.Context) Api
 }
 
 // AddMappingExecute provides a mock function with given fields: r
-func (_m *MockAclAPI) AddMappingExecute(r ApiAddMappingRequest) (*AclMappingRequest, *http.Response, error) {
+func (_m *MockAclAPI) AddMappingExecute(r ApiAddMappingRequest) (*http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddMappingExecute")
 	}
 
-	var r0 *AclMappingRequest
-	var r1 *http.Response
-	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiAddMappingRequest) (*AclMappingRequest, *http.Response, error)); ok {
+	var r0 *http.Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(ApiAddMappingRequest) (*http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiAddMappingRequest) *AclMappingRequest); ok {
+	if rf, ok := ret.Get(0).(func(ApiAddMappingRequest) *http.Response); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*AclMappingRequest)
+			r0 = ret.Get(0).(*http.Response)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiAddMappingRequest) *http.Response); ok {
+	if rf, ok := ret.Get(1).(func(ApiAddMappingRequest) error); ok {
 		r1 = rf(r)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*http.Response)
-		}
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(ApiAddMappingRequest) error); ok {
-		r2 = rf(r)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockAclAPI_AddMappingExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddMappingExecute'
@@ -125,12 +116,12 @@ func (_c *MockAclAPI_AddMappingExecute_Call) Run(run func(r ApiAddMappingRequest
 	return _c
 }
 
-func (_c *MockAclAPI_AddMappingExecute_Call) Return(_a0 *AclMappingRequest, _a1 *http.Response, _a2 error) *MockAclAPI_AddMappingExecute_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *MockAclAPI_AddMappingExecute_Call) Return(_a0 *http.Response, _a1 error) *MockAclAPI_AddMappingExecute_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockAclAPI_AddMappingExecute_Call) RunAndReturn(run func(ApiAddMappingRequest) (*AclMappingRequest, *http.Response, error)) *MockAclAPI_AddMappingExecute_Call {
+func (_c *MockAclAPI_AddMappingExecute_Call) RunAndReturn(run func(ApiAddMappingRequest) (*http.Response, error)) *MockAclAPI_AddMappingExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -289,24 +280,24 @@ func (_c *MockAclAPI_RetrieveProjects_Call) RunAndReturn(run func(context.Contex
 }
 
 // RetrieveProjectsExecute provides a mock function with given fields: r
-func (_m *MockAclAPI) RetrieveProjectsExecute(r ApiRetrieveProjectsRequest) ([]string, *http.Response, error) {
+func (_m *MockAclAPI) RetrieveProjectsExecute(r ApiRetrieveProjectsRequest) ([]Project, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveProjectsExecute")
 	}
 
-	var r0 []string
+	var r0 []Project
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiRetrieveProjectsRequest) ([]string, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiRetrieveProjectsRequest) ([]Project, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiRetrieveProjectsRequest) []string); ok {
+	if rf, ok := ret.Get(0).(func(ApiRetrieveProjectsRequest) []Project); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
+			r0 = ret.Get(0).([]Project)
 		}
 	}
 
@@ -345,12 +336,12 @@ func (_c *MockAclAPI_RetrieveProjectsExecute_Call) Run(run func(r ApiRetrievePro
 	return _c
 }
 
-func (_c *MockAclAPI_RetrieveProjectsExecute_Call) Return(_a0 []string, _a1 *http.Response, _a2 error) *MockAclAPI_RetrieveProjectsExecute_Call {
+func (_c *MockAclAPI_RetrieveProjectsExecute_Call) Return(_a0 []Project, _a1 *http.Response, _a2 error) *MockAclAPI_RetrieveProjectsExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockAclAPI_RetrieveProjectsExecute_Call) RunAndReturn(run func(ApiRetrieveProjectsRequest) ([]string, *http.Response, error)) *MockAclAPI_RetrieveProjectsExecute_Call {
+func (_c *MockAclAPI_RetrieveProjectsExecute_Call) RunAndReturn(run func(ApiRetrieveProjectsRequest) ([]Project, *http.Response, error)) *MockAclAPI_RetrieveProjectsExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

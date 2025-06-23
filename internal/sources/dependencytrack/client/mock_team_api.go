@@ -22,6 +22,119 @@ func (_m *MockTeamAPI) EXPECT() *MockTeamAPI_Expecter {
 	return &MockTeamAPI_Expecter{mock: &_m.Mock}
 }
 
+// AvailableTeams provides a mock function with given fields: ctx
+func (_m *MockTeamAPI) AvailableTeams(ctx context.Context) ApiAvailableTeamsRequest {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AvailableTeams")
+	}
+
+	var r0 ApiAvailableTeamsRequest
+	if rf, ok := ret.Get(0).(func(context.Context) ApiAvailableTeamsRequest); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(ApiAvailableTeamsRequest)
+	}
+
+	return r0
+}
+
+// MockTeamAPI_AvailableTeams_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AvailableTeams'
+type MockTeamAPI_AvailableTeams_Call struct {
+	*mock.Call
+}
+
+// AvailableTeams is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockTeamAPI_Expecter) AvailableTeams(ctx interface{}) *MockTeamAPI_AvailableTeams_Call {
+	return &MockTeamAPI_AvailableTeams_Call{Call: _e.mock.On("AvailableTeams", ctx)}
+}
+
+func (_c *MockTeamAPI_AvailableTeams_Call) Run(run func(ctx context.Context)) *MockTeamAPI_AvailableTeams_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockTeamAPI_AvailableTeams_Call) Return(_a0 ApiAvailableTeamsRequest) *MockTeamAPI_AvailableTeams_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockTeamAPI_AvailableTeams_Call) RunAndReturn(run func(context.Context) ApiAvailableTeamsRequest) *MockTeamAPI_AvailableTeams_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AvailableTeamsExecute provides a mock function with given fields: r
+func (_m *MockTeamAPI) AvailableTeamsExecute(r ApiAvailableTeamsRequest) ([]VisibleTeams, *http.Response, error) {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AvailableTeamsExecute")
+	}
+
+	var r0 []VisibleTeams
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiAvailableTeamsRequest) ([]VisibleTeams, *http.Response, error)); ok {
+		return rf(r)
+	}
+	if rf, ok := ret.Get(0).(func(ApiAvailableTeamsRequest) []VisibleTeams); ok {
+		r0 = rf(r)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]VisibleTeams)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiAvailableTeamsRequest) *http.Response); ok {
+		r1 = rf(r)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(ApiAvailableTeamsRequest) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockTeamAPI_AvailableTeamsExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AvailableTeamsExecute'
+type MockTeamAPI_AvailableTeamsExecute_Call struct {
+	*mock.Call
+}
+
+// AvailableTeamsExecute is a helper method to define mock.On call
+//   - r ApiAvailableTeamsRequest
+func (_e *MockTeamAPI_Expecter) AvailableTeamsExecute(r interface{}) *MockTeamAPI_AvailableTeamsExecute_Call {
+	return &MockTeamAPI_AvailableTeamsExecute_Call{Call: _e.mock.On("AvailableTeamsExecute", r)}
+}
+
+func (_c *MockTeamAPI_AvailableTeamsExecute_Call) Run(run func(r ApiAvailableTeamsRequest)) *MockTeamAPI_AvailableTeamsExecute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ApiAvailableTeamsRequest))
+	})
+	return _c
+}
+
+func (_c *MockTeamAPI_AvailableTeamsExecute_Call) Return(_a0 []VisibleTeams, _a1 *http.Response, _a2 error) *MockTeamAPI_AvailableTeamsExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockTeamAPI_AvailableTeamsExecute_Call) RunAndReturn(run func(ApiAvailableTeamsRequest) ([]VisibleTeams, *http.Response, error)) *MockTeamAPI_AvailableTeamsExecute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateTeam provides a mock function with given fields: ctx
 func (_m *MockTeamAPI) CreateTeam(ctx context.Context) ApiCreateTeamRequest {
 	ret := _m.Called(ctx)
@@ -135,9 +248,9 @@ func (_c *MockTeamAPI_CreateTeamExecute_Call) RunAndReturn(run func(ApiCreateTea
 	return _c
 }
 
-// DeleteApiKey provides a mock function with given fields: ctx, apikey
-func (_m *MockTeamAPI) DeleteApiKey(ctx context.Context, apikey string) ApiDeleteApiKeyRequest {
-	ret := _m.Called(ctx, apikey)
+// DeleteApiKey provides a mock function with given fields: ctx, publicIdOrKey
+func (_m *MockTeamAPI) DeleteApiKey(ctx context.Context, publicIdOrKey string) ApiDeleteApiKeyRequest {
+	ret := _m.Called(ctx, publicIdOrKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteApiKey")
@@ -145,7 +258,7 @@ func (_m *MockTeamAPI) DeleteApiKey(ctx context.Context, apikey string) ApiDelet
 
 	var r0 ApiDeleteApiKeyRequest
 	if rf, ok := ret.Get(0).(func(context.Context, string) ApiDeleteApiKeyRequest); ok {
-		r0 = rf(ctx, apikey)
+		r0 = rf(ctx, publicIdOrKey)
 	} else {
 		r0 = ret.Get(0).(ApiDeleteApiKeyRequest)
 	}
@@ -160,12 +273,12 @@ type MockTeamAPI_DeleteApiKey_Call struct {
 
 // DeleteApiKey is a helper method to define mock.On call
 //   - ctx context.Context
-//   - apikey string
-func (_e *MockTeamAPI_Expecter) DeleteApiKey(ctx interface{}, apikey interface{}) *MockTeamAPI_DeleteApiKey_Call {
-	return &MockTeamAPI_DeleteApiKey_Call{Call: _e.mock.On("DeleteApiKey", ctx, apikey)}
+//   - publicIdOrKey string
+func (_e *MockTeamAPI_Expecter) DeleteApiKey(ctx interface{}, publicIdOrKey interface{}) *MockTeamAPI_DeleteApiKey_Call {
+	return &MockTeamAPI_DeleteApiKey_Call{Call: _e.mock.On("DeleteApiKey", ctx, publicIdOrKey)}
 }
 
-func (_c *MockTeamAPI_DeleteApiKey_Call) Run(run func(ctx context.Context, apikey string)) *MockTeamAPI_DeleteApiKey_Call {
+func (_c *MockTeamAPI_DeleteApiKey_Call) Run(run func(ctx context.Context, publicIdOrKey string)) *MockTeamAPI_DeleteApiKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
@@ -798,9 +911,9 @@ func (_c *MockTeamAPI_GetTeamsExecute_Call) RunAndReturn(run func(ApiGetTeamsReq
 	return _c
 }
 
-// RegenerateApiKey provides a mock function with given fields: ctx, apikey
-func (_m *MockTeamAPI) RegenerateApiKey(ctx context.Context, apikey string) ApiRegenerateApiKeyRequest {
-	ret := _m.Called(ctx, apikey)
+// RegenerateApiKey provides a mock function with given fields: ctx, publicIdOrKey
+func (_m *MockTeamAPI) RegenerateApiKey(ctx context.Context, publicIdOrKey string) ApiRegenerateApiKeyRequest {
+	ret := _m.Called(ctx, publicIdOrKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegenerateApiKey")
@@ -808,7 +921,7 @@ func (_m *MockTeamAPI) RegenerateApiKey(ctx context.Context, apikey string) ApiR
 
 	var r0 ApiRegenerateApiKeyRequest
 	if rf, ok := ret.Get(0).(func(context.Context, string) ApiRegenerateApiKeyRequest); ok {
-		r0 = rf(ctx, apikey)
+		r0 = rf(ctx, publicIdOrKey)
 	} else {
 		r0 = ret.Get(0).(ApiRegenerateApiKeyRequest)
 	}
@@ -823,12 +936,12 @@ type MockTeamAPI_RegenerateApiKey_Call struct {
 
 // RegenerateApiKey is a helper method to define mock.On call
 //   - ctx context.Context
-//   - apikey string
-func (_e *MockTeamAPI_Expecter) RegenerateApiKey(ctx interface{}, apikey interface{}) *MockTeamAPI_RegenerateApiKey_Call {
-	return &MockTeamAPI_RegenerateApiKey_Call{Call: _e.mock.On("RegenerateApiKey", ctx, apikey)}
+//   - publicIdOrKey string
+func (_e *MockTeamAPI_Expecter) RegenerateApiKey(ctx interface{}, publicIdOrKey interface{}) *MockTeamAPI_RegenerateApiKey_Call {
+	return &MockTeamAPI_RegenerateApiKey_Call{Call: _e.mock.On("RegenerateApiKey", ctx, publicIdOrKey)}
 }
 
-func (_c *MockTeamAPI_RegenerateApiKey_Call) Run(run func(ctx context.Context, apikey string)) *MockTeamAPI_RegenerateApiKey_Call {
+func (_c *MockTeamAPI_RegenerateApiKey_Call) Run(run func(ctx context.Context, publicIdOrKey string)) *MockTeamAPI_RegenerateApiKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
@@ -912,9 +1025,9 @@ func (_c *MockTeamAPI_RegenerateApiKeyExecute_Call) RunAndReturn(run func(ApiReg
 	return _c
 }
 
-// UpdateApiKeyComment provides a mock function with given fields: ctx, key
-func (_m *MockTeamAPI) UpdateApiKeyComment(ctx context.Context, key string) ApiUpdateApiKeyCommentRequest {
-	ret := _m.Called(ctx, key)
+// UpdateApiKeyComment provides a mock function with given fields: ctx, publicIdOrKey
+func (_m *MockTeamAPI) UpdateApiKeyComment(ctx context.Context, publicIdOrKey string) ApiUpdateApiKeyCommentRequest {
+	ret := _m.Called(ctx, publicIdOrKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateApiKeyComment")
@@ -922,7 +1035,7 @@ func (_m *MockTeamAPI) UpdateApiKeyComment(ctx context.Context, key string) ApiU
 
 	var r0 ApiUpdateApiKeyCommentRequest
 	if rf, ok := ret.Get(0).(func(context.Context, string) ApiUpdateApiKeyCommentRequest); ok {
-		r0 = rf(ctx, key)
+		r0 = rf(ctx, publicIdOrKey)
 	} else {
 		r0 = ret.Get(0).(ApiUpdateApiKeyCommentRequest)
 	}
@@ -937,12 +1050,12 @@ type MockTeamAPI_UpdateApiKeyComment_Call struct {
 
 // UpdateApiKeyComment is a helper method to define mock.On call
 //   - ctx context.Context
-//   - key string
-func (_e *MockTeamAPI_Expecter) UpdateApiKeyComment(ctx interface{}, key interface{}) *MockTeamAPI_UpdateApiKeyComment_Call {
-	return &MockTeamAPI_UpdateApiKeyComment_Call{Call: _e.mock.On("UpdateApiKeyComment", ctx, key)}
+//   - publicIdOrKey string
+func (_e *MockTeamAPI_Expecter) UpdateApiKeyComment(ctx interface{}, publicIdOrKey interface{}) *MockTeamAPI_UpdateApiKeyComment_Call {
+	return &MockTeamAPI_UpdateApiKeyComment_Call{Call: _e.mock.On("UpdateApiKeyComment", ctx, publicIdOrKey)}
 }
 
-func (_c *MockTeamAPI_UpdateApiKeyComment_Call) Run(run func(ctx context.Context, key string)) *MockTeamAPI_UpdateApiKeyComment_Call {
+func (_c *MockTeamAPI_UpdateApiKeyComment_Call) Run(run func(ctx context.Context, publicIdOrKey string)) *MockTeamAPI_UpdateApiKeyComment_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})

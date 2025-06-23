@@ -8,14 +8,14 @@ Name | Type | Description | Notes
 **Namespace** | Pointer to **string** |  | [optional] 
 **Name** | **string** |  | 
 **LatestVersion** | **string** |  | 
-**Published** | Pointer to **time.Time** |  | [optional] 
-**LastCheck** | **time.Time** |  | 
+**Published** | **int64** | UNIX epoch timestamp in milliseconds | 
+**LastCheck** | **int64** | UNIX epoch timestamp in milliseconds | 
 
 ## Methods
 
 ### NewRepositoryMetaComponent
 
-`func NewRepositoryMetaComponent(repositoryType string, name string, latestVersion string, lastCheck time.Time, ) *RepositoryMetaComponent`
+`func NewRepositoryMetaComponent(repositoryType string, name string, latestVersion string, published int64, lastCheck int64, ) *RepositoryMetaComponent`
 
 NewRepositoryMetaComponent instantiates a new RepositoryMetaComponent object
 This constructor will assign default values to properties that have it defined,
@@ -117,45 +117,40 @@ SetLatestVersion sets LatestVersion field to given value.
 
 ### GetPublished
 
-`func (o *RepositoryMetaComponent) GetPublished() time.Time`
+`func (o *RepositoryMetaComponent) GetPublished() int64`
 
 GetPublished returns the Published field if non-nil, zero value otherwise.
 
 ### GetPublishedOk
 
-`func (o *RepositoryMetaComponent) GetPublishedOk() (*time.Time, bool)`
+`func (o *RepositoryMetaComponent) GetPublishedOk() (*int64, bool)`
 
 GetPublishedOk returns a tuple with the Published field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetPublished
 
-`func (o *RepositoryMetaComponent) SetPublished(v time.Time)`
+`func (o *RepositoryMetaComponent) SetPublished(v int64)`
 
 SetPublished sets Published field to given value.
 
-### HasPublished
-
-`func (o *RepositoryMetaComponent) HasPublished() bool`
-
-HasPublished returns a boolean if a field has been set.
 
 ### GetLastCheck
 
-`func (o *RepositoryMetaComponent) GetLastCheck() time.Time`
+`func (o *RepositoryMetaComponent) GetLastCheck() int64`
 
 GetLastCheck returns the LastCheck field if non-nil, zero value otherwise.
 
 ### GetLastCheckOk
 
-`func (o *RepositoryMetaComponent) GetLastCheckOk() (*time.Time, bool)`
+`func (o *RepositoryMetaComponent) GetLastCheckOk() (*int64, bool)`
 
 GetLastCheckOk returns a tuple with the LastCheck field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastCheck
 
-`func (o *RepositoryMetaComponent) SetLastCheck(v time.Time)`
+`func (o *RepositoryMetaComponent) SetLastCheck(v int64)`
 
 SetLastCheck sets LastCheck field to given value.
 

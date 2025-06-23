@@ -4,7 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Timestamp** | **int64** |  | 
+**Timestamp** | **int64** | UNIX epoch timestamp in milliseconds | 
 **Comment** | **string** |  | 
 **Commenter** | Pointer to **string** |  | [optional] 
 

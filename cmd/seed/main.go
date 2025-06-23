@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
@@ -42,18 +43,19 @@ func main() {
 	createNaisApiWorkloads(ctx, db, "superprod", "devteam")
 	createVulnData(ctx, db, images)
 
-	err = seedDependencyTrack(ctx)
+	err = seedDependencyTrack(ctx, pool)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func seedDependencyTrack(ctx context.Context) error {
+func seedDependencyTrack(ctx context.Context, pool *pgxpool.Pool) error {
 	c, err := dependencytrack.NewClient(
 		"http://localhost:9010/api",
 		"Administrators",
 		"admin",
 		"yolo",
+		pool,
 		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {

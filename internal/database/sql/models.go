@@ -340,6 +340,13 @@ type RiverJob struct {
 	UniqueStates pgtype.Bits
 }
 
+type SourceKey struct {
+	Name      string
+	Uuid      string
+	Key       string
+	CreatedAt pgtype.Timestamp
+}
+
 type SourceRef struct {
 	ID         pgtype.UUID
 	SourceID   pgtype.UUID

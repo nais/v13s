@@ -135,6 +135,121 @@ func (_c *MockConfigPropertyAPI_GetConfigPropertiesExecute_Call) RunAndReturn(ru
 	return _c
 }
 
+// GetPublicConfigProperty provides a mock function with given fields: ctx, groupName, propertyName
+func (_m *MockConfigPropertyAPI) GetPublicConfigProperty(ctx context.Context, groupName string, propertyName string) ApiGetPublicConfigPropertyRequest {
+	ret := _m.Called(ctx, groupName, propertyName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPublicConfigProperty")
+	}
+
+	var r0 ApiGetPublicConfigPropertyRequest
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ApiGetPublicConfigPropertyRequest); ok {
+		r0 = rf(ctx, groupName, propertyName)
+	} else {
+		r0 = ret.Get(0).(ApiGetPublicConfigPropertyRequest)
+	}
+
+	return r0
+}
+
+// MockConfigPropertyAPI_GetPublicConfigProperty_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPublicConfigProperty'
+type MockConfigPropertyAPI_GetPublicConfigProperty_Call struct {
+	*mock.Call
+}
+
+// GetPublicConfigProperty is a helper method to define mock.On call
+//   - ctx context.Context
+//   - groupName string
+//   - propertyName string
+func (_e *MockConfigPropertyAPI_Expecter) GetPublicConfigProperty(ctx interface{}, groupName interface{}, propertyName interface{}) *MockConfigPropertyAPI_GetPublicConfigProperty_Call {
+	return &MockConfigPropertyAPI_GetPublicConfigProperty_Call{Call: _e.mock.On("GetPublicConfigProperty", ctx, groupName, propertyName)}
+}
+
+func (_c *MockConfigPropertyAPI_GetPublicConfigProperty_Call) Run(run func(ctx context.Context, groupName string, propertyName string)) *MockConfigPropertyAPI_GetPublicConfigProperty_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockConfigPropertyAPI_GetPublicConfigProperty_Call) Return(_a0 ApiGetPublicConfigPropertyRequest) *MockConfigPropertyAPI_GetPublicConfigProperty_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockConfigPropertyAPI_GetPublicConfigProperty_Call) RunAndReturn(run func(context.Context, string, string) ApiGetPublicConfigPropertyRequest) *MockConfigPropertyAPI_GetPublicConfigProperty_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPublicConfigPropertyExecute provides a mock function with given fields: r
+func (_m *MockConfigPropertyAPI) GetPublicConfigPropertyExecute(r ApiGetPublicConfigPropertyRequest) (*ConfigProperty, *http.Response, error) {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPublicConfigPropertyExecute")
+	}
+
+	var r0 *ConfigProperty
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiGetPublicConfigPropertyRequest) (*ConfigProperty, *http.Response, error)); ok {
+		return rf(r)
+	}
+	if rf, ok := ret.Get(0).(func(ApiGetPublicConfigPropertyRequest) *ConfigProperty); ok {
+		r0 = rf(r)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ConfigProperty)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiGetPublicConfigPropertyRequest) *http.Response); ok {
+		r1 = rf(r)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(ApiGetPublicConfigPropertyRequest) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPublicConfigPropertyExecute'
+type MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call struct {
+	*mock.Call
+}
+
+// GetPublicConfigPropertyExecute is a helper method to define mock.On call
+//   - r ApiGetPublicConfigPropertyRequest
+func (_e *MockConfigPropertyAPI_Expecter) GetPublicConfigPropertyExecute(r interface{}) *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call {
+	return &MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call{Call: _e.mock.On("GetPublicConfigPropertyExecute", r)}
+}
+
+func (_c *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call) Run(run func(r ApiGetPublicConfigPropertyRequest)) *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ApiGetPublicConfigPropertyRequest))
+	})
+	return _c
+}
+
+func (_c *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call) Return(_a0 *ConfigProperty, _a1 *http.Response, _a2 error) *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call) RunAndReturn(run func(ApiGetPublicConfigPropertyRequest) (*ConfigProperty, *http.Response, error)) *MockConfigPropertyAPI_GetPublicConfigPropertyExecute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateConfigProperty provides a mock function with given fields: ctx
 func (_m *MockConfigPropertyAPI) UpdateConfigProperty(ctx context.Context) ApiUpdateConfigPropertyRequest {
 	ret := _m.Called(ctx)
@@ -228,24 +343,24 @@ func (_c *MockConfigPropertyAPI_UpdateConfigProperty1_Call) RunAndReturn(run fun
 }
 
 // UpdateConfigProperty1Execute provides a mock function with given fields: r
-func (_m *MockConfigPropertyAPI) UpdateConfigProperty1Execute(r ApiUpdateConfigProperty1Request) (*ConfigProperty, *http.Response, error) {
+func (_m *MockConfigPropertyAPI) UpdateConfigProperty1Execute(r ApiUpdateConfigProperty1Request) ([]ConfigProperty, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateConfigProperty1Execute")
 	}
 
-	var r0 *ConfigProperty
+	var r0 []ConfigProperty
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiUpdateConfigProperty1Request) (*ConfigProperty, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateConfigProperty1Request) ([]ConfigProperty, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiUpdateConfigProperty1Request) *ConfigProperty); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateConfigProperty1Request) []ConfigProperty); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*ConfigProperty)
+			r0 = ret.Get(0).([]ConfigProperty)
 		}
 	}
 
@@ -284,35 +399,35 @@ func (_c *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call) Run(run func(
 	return _c
 }
 
-func (_c *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call) Return(_a0 *ConfigProperty, _a1 *http.Response, _a2 error) *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call {
+func (_c *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call) Return(_a0 []ConfigProperty, _a1 *http.Response, _a2 error) *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call) RunAndReturn(run func(ApiUpdateConfigProperty1Request) (*ConfigProperty, *http.Response, error)) *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call {
+func (_c *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call) RunAndReturn(run func(ApiUpdateConfigProperty1Request) ([]ConfigProperty, *http.Response, error)) *MockConfigPropertyAPI_UpdateConfigProperty1Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateConfigPropertyExecute provides a mock function with given fields: r
-func (_m *MockConfigPropertyAPI) UpdateConfigPropertyExecute(r ApiUpdateConfigPropertyRequest) ([]ConfigProperty, *http.Response, error) {
+func (_m *MockConfigPropertyAPI) UpdateConfigPropertyExecute(r ApiUpdateConfigPropertyRequest) (*ConfigProperty, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateConfigPropertyExecute")
 	}
 
-	var r0 []ConfigProperty
+	var r0 *ConfigProperty
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiUpdateConfigPropertyRequest) ([]ConfigProperty, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateConfigPropertyRequest) (*ConfigProperty, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiUpdateConfigPropertyRequest) []ConfigProperty); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateConfigPropertyRequest) *ConfigProperty); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]ConfigProperty)
+			r0 = ret.Get(0).(*ConfigProperty)
 		}
 	}
 
@@ -351,12 +466,12 @@ func (_c *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call) Run(run func(r
 	return _c
 }
 
-func (_c *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call) Return(_a0 []ConfigProperty, _a1 *http.Response, _a2 error) *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call {
+func (_c *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call) Return(_a0 *ConfigProperty, _a1 *http.Response, _a2 error) *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call) RunAndReturn(run func(ApiUpdateConfigPropertyRequest) ([]ConfigProperty, *http.Response, error)) *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call {
+func (_c *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call) RunAndReturn(run func(ApiUpdateConfigPropertyRequest) (*ConfigProperty, *http.Response, error)) *MockConfigPropertyAPI_UpdateConfigPropertyExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

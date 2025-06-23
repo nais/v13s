@@ -50,6 +50,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		cfg.DependencyTrack.Team,
 		cfg.DependencyTrack.Username,
 		cfg.DependencyTrack.Password,
+		pool,
 		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {

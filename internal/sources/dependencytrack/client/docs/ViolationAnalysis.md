@@ -6,6 +6,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **AnalysisState** | **string** |  | 
 **AnalysisComments** | Pointer to [**[]ViolationAnalysisComment**](ViolationAnalysisComment.md) |  | [optional] 
+**ViolationAnalysisState** | Pointer to **string** |  | [optional] 
 **IsSuppressed** | Pointer to **bool** |  | [optional] 
 
 ## Methods
@@ -71,6 +72,31 @@ SetAnalysisComments sets AnalysisComments field to given value.
 `func (o *ViolationAnalysis) HasAnalysisComments() bool`
 
 HasAnalysisComments returns a boolean if a field has been set.
+
+### GetViolationAnalysisState
+
+`func (o *ViolationAnalysis) GetViolationAnalysisState() string`
+
+GetViolationAnalysisState returns the ViolationAnalysisState field if non-nil, zero value otherwise.
+
+### GetViolationAnalysisStateOk
+
+`func (o *ViolationAnalysis) GetViolationAnalysisStateOk() (*string, bool)`
+
+GetViolationAnalysisStateOk returns a tuple with the ViolationAnalysisState field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetViolationAnalysisState
+
+`func (o *ViolationAnalysis) SetViolationAnalysisState(v string)`
+
+SetViolationAnalysisState sets ViolationAnalysisState field to given value.
+
+### HasViolationAnalysisState
+
+`func (o *ViolationAnalysis) HasViolationAnalysisState() bool`
+
+HasViolationAnalysisState returns a boolean if a field has been set.
 
 ### GetIsSuppressed
 

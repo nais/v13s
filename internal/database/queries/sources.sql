@@ -30,3 +30,21 @@ FROM source_refs
 WHERE image_name = @image_name
   AND image_tag = @image_tag
   AND source_type = @source_type;
+
+-- name: CreateSourceKey :exec
+INSERT INTO source_keys(
+    name,
+    uuid,
+    key
+)
+VALUES (
+        @name,
+        @uuid,
+        @key
+    ) ON CONFLICT
+    DO NOTHING;
+
+-- name: GetSourceKey :one
+SELECT *
+FROM source_keys
+WHERE uuid = @uuid;

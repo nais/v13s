@@ -2,17 +2,20 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/sirupsen/logrus"
-
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
+	"github.com/sirupsen/logrus"
 )
 
-const XApiKeyName = "X-Api-Key"
+const ApiKeyAuthName = "ApiKeyAuth"
 
 var (
 	_ Auth = &usernamePasswordSource{}
@@ -30,8 +33,8 @@ type (
 )
 
 type usernamePasswordSource struct {
-	username    string
-	password    string
+	username    Username
+	password    Password
 	accessToken string
 	lock        sync.Mutex
 	client      *client.APIClient
@@ -104,8 +107,9 @@ func (c *usernamePasswordSource) parseToken(token string) (jwt.Token, error) {
 }
 
 type apiKeySource struct {
-	team     string
-	apiKey   string
+	db       *sql.Queries
+	team     Team
+	apiKey   *string
 	teamUuid string
 	source   Auth
 	client   *client.APIClient
@@ -113,11 +117,13 @@ type apiKeySource struct {
 	log      *logrus.Entry
 }
 
-func NewApiKeySource(team Team, u Auth, c *client.APIClient, log *logrus.Entry) Auth {
+func NewApiKeySource(team Team, u Auth, c *client.APIClient, pool *pgxpool.Pool, log *logrus.Entry) Auth {
+	db := sql.New(pool)
 	return &apiKeySource{
 		team:   team,
 		source: u,
 		client: c,
+		db:     db,
 		log:    log,
 	}
 }
@@ -127,29 +133,33 @@ func (c *apiKeySource) ContextHeaders(ctx context.Context) (context.Context, err
 	if err != nil {
 		return nil, err
 	}
-	apiKey := map[string]client.APIKey{XApiKeyName: {Key: key}}
+	apiKey := map[string]client.APIKey{ApiKeyAuthName: {Key: *key}}
 	return context.WithValue(ctx, client.ContextAPIKeys, apiKey), nil
 }
 
-func (c *apiKeySource) refreshApiKey(ctx context.Context) (string, error) {
+func (c *apiKeySource) refreshApiKey(ctx context.Context) (*string, error) {
+	if c.apiKey != nil && *c.apiKey != "" {
+		return c.apiKey, nil
+	}
+
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if c.apiKey == "" {
-		c.log.Info("API key refreshed")
+	if c.apiKey == nil {
 		key, err := c.getApiKey(ctx)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
+		c.log.Info("API key refreshed")
 		c.apiKey = key
 	}
 	return c.apiKey, nil
 }
 
-func (c *apiKeySource) getApiKey(ctx context.Context) (string, error) {
+func (c *apiKeySource) getApiKey(ctx context.Context) (*string, error) {
 	bearerCtx, err := c.source.ContextHeaders(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if c.teamUuid != "" {
@@ -158,36 +168,66 @@ func (c *apiKeySource) getApiKey(ctx context.Context) (string, error) {
 	return c.fetchTeamApiKey(bearerCtx)
 }
 
-func (c *apiKeySource) fetchTeamApiKey(ctx context.Context) (string, error) {
+func (c *apiKeySource) fetchTeamApiKey(ctx context.Context) (*string, error) {
 	teams, _, err := c.client.TeamAPI.GetTeams(ctx).Execute()
 	if err != nil {
-		return "", fmt.Errorf("failed to get teams: %w", err)
+		return nil, fmt.Errorf("failed to get teams: %w", err)
 	}
 
 	for _, t := range teams {
 		if *t.Name == c.team {
-			return c.selectApiKeyFromTeam(t)
+			return c.selectApiKeyFromTeam(ctx, t)
 		}
 	}
 
-	return "", fmt.Errorf("no team found with name %s", c.team)
+	return nil, fmt.Errorf("no team found with name %s", c.team)
 }
 
-func (c *apiKeySource) fetchTeamApiKeyByUuid(ctx context.Context) (string, error) {
+func (c *apiKeySource) fetchTeamApiKeyByUuid(ctx context.Context) (*string, error) {
 	team, _, err := c.client.TeamAPI.GetTeam(ctx, c.teamUuid).Execute()
 	if err != nil {
-		return "", fmt.Errorf("failed to get team: %w", err)
+		return nil, fmt.Errorf("failed to get team: %w", err)
 	}
-	if team == nil {
-		return "", fmt.Errorf("team with uuid %s not found", c.teamUuid)
+	if team == nil || team.Uuid == "" {
+		return nil, fmt.Errorf("team with uuid %s not found", c.teamUuid)
 	}
-	return c.selectApiKeyFromTeam(*team)
+	return c.selectApiKeyFromTeam(ctx, *team)
 }
 
-func (c *apiKeySource) selectApiKeyFromTeam(t client.Team) (string, error) {
-	if len(t.ApiKeys) == 0 {
-		return "", fmt.Errorf("no API keys found for team %s", c.team)
+func (c *apiKeySource) selectApiKeyFromTeam(ctx context.Context, t client.Team) (*string, error) {
+	// Try to get existing key from DB
+	sourceKey, err := c.db.GetSourceKey(ctx, t.Uuid)
+	if err == nil {
+		c.apiKey = &sourceKey.Key
+		c.log.Infof("loaded API key for team %s from DB", *t.Name)
+		return c.apiKey, nil
 	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to query API key for team %s: %w", *t.Name, err)
+	}
+
+	// Not found in DB: generate a new one
+	apikey, resp, err := c.client.TeamAPI.GenerateApiKey(ctx, t.Uuid).Execute()
+	if err != nil {
+		c.log.Errorf("failed to generate API key for team %s: %v: %v", *t.Name, err, resp)
+		return nil, fmt.Errorf("failed to generate API key for team %s: %w", *t.Name, err)
+	}
+
+	c.apiKey = apikey.Key
+	if c.apiKey == nil {
+		return nil, fmt.Errorf("received nil API key from dependency-track for team %s", *t.Name)
+	}
+
+	if err = c.db.CreateSourceKey(ctx, sql.CreateSourceKeyParams{
+		Name: *t.Name,
+		Uuid: t.Uuid,
+		Key:  *c.apiKey,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to persist API key for team %s: %w", *t.Name, err)
+	}
+
+	c.log.Infof("Generated and persisted API key for team %s", *t.Name)
 	c.teamUuid = t.Uuid
-	return t.ApiKeys[0].Key, nil
+	return c.apiKey, nil
 }

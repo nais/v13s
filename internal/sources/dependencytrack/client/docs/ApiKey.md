@@ -4,17 +4,19 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Key** | **string** |  | 
 **Comment** | Pointer to **string** |  | [optional] 
 **Created** | Pointer to **int64** |  | [optional] 
 **LastUsed** | Pointer to **int64** |  | [optional] 
+**PublicId** | Pointer to **string** |  | [optional] 
+**Key** | Pointer to **string** |  | [optional] 
+**Legacy** | Pointer to **bool** |  | [optional] 
 **MaskedKey** | Pointer to **string** |  | [optional] 
 
 ## Methods
 
 ### NewApiKey
 
-`func NewApiKey(key string, ) *ApiKey`
+`func NewApiKey() *ApiKey`
 
 NewApiKey instantiates a new ApiKey object
 This constructor will assign default values to properties that have it defined,
@@ -28,26 +30,6 @@ will change when the set of required properties is changed
 NewApiKeyWithDefaults instantiates a new ApiKey object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
-
-### GetKey
-
-`func (o *ApiKey) GetKey() string`
-
-GetKey returns the Key field if non-nil, zero value otherwise.
-
-### GetKeyOk
-
-`func (o *ApiKey) GetKeyOk() (*string, bool)`
-
-GetKeyOk returns a tuple with the Key field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetKey
-
-`func (o *ApiKey) SetKey(v string)`
-
-SetKey sets Key field to given value.
-
 
 ### GetComment
 
@@ -123,6 +105,81 @@ SetLastUsed sets LastUsed field to given value.
 `func (o *ApiKey) HasLastUsed() bool`
 
 HasLastUsed returns a boolean if a field has been set.
+
+### GetPublicId
+
+`func (o *ApiKey) GetPublicId() string`
+
+GetPublicId returns the PublicId field if non-nil, zero value otherwise.
+
+### GetPublicIdOk
+
+`func (o *ApiKey) GetPublicIdOk() (*string, bool)`
+
+GetPublicIdOk returns a tuple with the PublicId field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetPublicId
+
+`func (o *ApiKey) SetPublicId(v string)`
+
+SetPublicId sets PublicId field to given value.
+
+### HasPublicId
+
+`func (o *ApiKey) HasPublicId() bool`
+
+HasPublicId returns a boolean if a field has been set.
+
+### GetKey
+
+`func (o *ApiKey) GetKey() string`
+
+GetKey returns the Key field if non-nil, zero value otherwise.
+
+### GetKeyOk
+
+`func (o *ApiKey) GetKeyOk() (*string, bool)`
+
+GetKeyOk returns a tuple with the Key field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetKey
+
+`func (o *ApiKey) SetKey(v string)`
+
+SetKey sets Key field to given value.
+
+### HasKey
+
+`func (o *ApiKey) HasKey() bool`
+
+HasKey returns a boolean if a field has been set.
+
+### GetLegacy
+
+`func (o *ApiKey) GetLegacy() bool`
+
+GetLegacy returns the Legacy field if non-nil, zero value otherwise.
+
+### GetLegacyOk
+
+`func (o *ApiKey) GetLegacyOk() (*bool, bool)`
+
+GetLegacyOk returns a tuple with the Legacy field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetLegacy
+
+`func (o *ApiKey) SetLegacy(v bool)`
+
+SetLegacy sets Legacy field to given value.
+
+### HasLegacy
+
+`func (o *ApiKey) HasLegacy() bool`
+
+HasLegacy returns a boolean if a field has been set.
 
 ### GetMaskedKey
 

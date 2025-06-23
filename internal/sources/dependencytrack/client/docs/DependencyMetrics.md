@@ -4,12 +4,10 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Project** | [**Project**](Project.md) |  | 
-**Component** | [**Component**](Component.md) |  | 
-**Critical** | Pointer to **int32** |  | [optional] 
-**High** | Pointer to **int32** |  | [optional] 
-**Medium** | Pointer to **int32** |  | [optional] 
-**Low** | Pointer to **int32** |  | [optional] 
+**Critical** | **int32** |  | 
+**High** | **int32** |  | 
+**Medium** | **int32** |  | 
+**Low** | **int32** |  | 
 **Unassigned** | Pointer to **int32** |  | [optional] 
 **Vulnerabilities** | Pointer to **int64** |  | [optional] 
 **Suppressed** | Pointer to **int32** |  | [optional] 
@@ -32,14 +30,14 @@ Name | Type | Description | Notes
 **PolicyViolationsOperationalTotal** | Pointer to **int32** |  | [optional] 
 **PolicyViolationsOperationalAudited** | Pointer to **int32** |  | [optional] 
 **PolicyViolationsOperationalUnaudited** | Pointer to **int32** |  | [optional] 
-**FirstOccurrence** | **float32** |  | 
-**LastOccurrence** | **float32** |  | 
+**FirstOccurrence** | **int64** | UNIX epoch timestamp in milliseconds | 
+**LastOccurrence** | **int64** | UNIX epoch timestamp in milliseconds | 
 
 ## Methods
 
 ### NewDependencyMetrics
 
-`func NewDependencyMetrics(project Project, component Component, firstOccurrence float32, lastOccurrence float32, ) *DependencyMetrics`
+`func NewDependencyMetrics(critical int32, high int32, medium int32, low int32, firstOccurrence int64, lastOccurrence int64, ) *DependencyMetrics`
 
 NewDependencyMetrics instantiates a new DependencyMetrics object
 This constructor will assign default values to properties that have it defined,
@@ -53,46 +51,6 @@ will change when the set of required properties is changed
 NewDependencyMetricsWithDefaults instantiates a new DependencyMetrics object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
-
-### GetProject
-
-`func (o *DependencyMetrics) GetProject() Project`
-
-GetProject returns the Project field if non-nil, zero value otherwise.
-
-### GetProjectOk
-
-`func (o *DependencyMetrics) GetProjectOk() (*Project, bool)`
-
-GetProjectOk returns a tuple with the Project field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetProject
-
-`func (o *DependencyMetrics) SetProject(v Project)`
-
-SetProject sets Project field to given value.
-
-
-### GetComponent
-
-`func (o *DependencyMetrics) GetComponent() Component`
-
-GetComponent returns the Component field if non-nil, zero value otherwise.
-
-### GetComponentOk
-
-`func (o *DependencyMetrics) GetComponentOk() (*Component, bool)`
-
-GetComponentOk returns a tuple with the Component field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetComponent
-
-`func (o *DependencyMetrics) SetComponent(v Component)`
-
-SetComponent sets Component field to given value.
-
 
 ### GetCritical
 
@@ -113,11 +71,6 @@ and a boolean to check if the value has been set.
 
 SetCritical sets Critical field to given value.
 
-### HasCritical
-
-`func (o *DependencyMetrics) HasCritical() bool`
-
-HasCritical returns a boolean if a field has been set.
 
 ### GetHigh
 
@@ -138,11 +91,6 @@ and a boolean to check if the value has been set.
 
 SetHigh sets High field to given value.
 
-### HasHigh
-
-`func (o *DependencyMetrics) HasHigh() bool`
-
-HasHigh returns a boolean if a field has been set.
 
 ### GetMedium
 
@@ -163,11 +111,6 @@ and a boolean to check if the value has been set.
 
 SetMedium sets Medium field to given value.
 
-### HasMedium
-
-`func (o *DependencyMetrics) HasMedium() bool`
-
-HasMedium returns a boolean if a field has been set.
 
 ### GetLow
 
@@ -188,11 +131,6 @@ and a boolean to check if the value has been set.
 
 SetLow sets Low field to given value.
 
-### HasLow
-
-`func (o *DependencyMetrics) HasLow() bool`
-
-HasLow returns a boolean if a field has been set.
 
 ### GetUnassigned
 
@@ -746,40 +684,40 @@ HasPolicyViolationsOperationalUnaudited returns a boolean if a field has been se
 
 ### GetFirstOccurrence
 
-`func (o *DependencyMetrics) GetFirstOccurrence() float32`
+`func (o *DependencyMetrics) GetFirstOccurrence() int64`
 
 GetFirstOccurrence returns the FirstOccurrence field if non-nil, zero value otherwise.
 
 ### GetFirstOccurrenceOk
 
-`func (o *DependencyMetrics) GetFirstOccurrenceOk() (*float32, bool)`
+`func (o *DependencyMetrics) GetFirstOccurrenceOk() (*int64, bool)`
 
 GetFirstOccurrenceOk returns a tuple with the FirstOccurrence field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetFirstOccurrence
 
-`func (o *DependencyMetrics) SetFirstOccurrence(v float32)`
+`func (o *DependencyMetrics) SetFirstOccurrence(v int64)`
 
 SetFirstOccurrence sets FirstOccurrence field to given value.
 
 
 ### GetLastOccurrence
 
-`func (o *DependencyMetrics) GetLastOccurrence() float32`
+`func (o *DependencyMetrics) GetLastOccurrence() int64`
 
 GetLastOccurrence returns the LastOccurrence field if non-nil, zero value otherwise.
 
 ### GetLastOccurrenceOk
 
-`func (o *DependencyMetrics) GetLastOccurrenceOk() (*float32, bool)`
+`func (o *DependencyMetrics) GetLastOccurrenceOk() (*int64, bool)`
 
 GetLastOccurrenceOk returns a tuple with the LastOccurrence field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastOccurrence
 
-`func (o *DependencyMetrics) SetLastOccurrence(v float32)`
+`func (o *DependencyMetrics) SetLastOccurrence(v int64)`
 
 SetLastOccurrence sets LastOccurrence field to given value.
 

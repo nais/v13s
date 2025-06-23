@@ -72,12 +72,12 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: application/vnd.cyclonedx+xml
+- **Accept**: application/vnd.cyclonedx+xml, application/vnd.cyclonedx+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -148,7 +148,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -218,7 +218,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -232,7 +232,7 @@ Name | Type | Description  | Notes
 
 ## UploadBom
 
-> BomUploadResponse UploadBom(ctx).Project(project).AutoCreate(autoCreate).ProjectName(projectName).ProjectVersion(projectVersion).ParentName(parentName).ParentVersion(parentVersion).ParentUUID(parentUUID).Bom(bom).Execute()
+> BomUploadResponse UploadBom(ctx).Project(project).AutoCreate(autoCreate).ProjectName(projectName).ProjectVersion(projectVersion).ProjectTags(projectTags).ParentName(parentName).ParentVersion(parentVersion).ParentUUID(parentUUID).IsLatest(isLatest).Bom(bom).Execute()
 
 Upload a supported bill of material format document
 
@@ -255,14 +255,16 @@ func main() {
 	autoCreate := true // bool |  (optional) (default to false)
 	projectName := "projectName_example" // string |  (optional)
 	projectVersion := "projectVersion_example" // string |  (optional)
+	projectTags := "projectTags_example" // string |  (optional)
 	parentName := "parentName_example" // string |  (optional)
 	parentVersion := "parentVersion_example" // string |  (optional)
 	parentUUID := "parentUUID_example" // string |  (optional)
+	isLatest := true // bool |  (optional) (default to false)
 	bom := "bom_example" // string |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.BomAPI.UploadBom(context.Background()).Project(project).AutoCreate(autoCreate).ProjectName(projectName).ProjectVersion(projectVersion).ParentName(parentName).ParentVersion(parentVersion).ParentUUID(parentUUID).Bom(bom).Execute()
+	resp, r, err := apiClient.BomAPI.UploadBom(context.Background()).Project(project).AutoCreate(autoCreate).ProjectName(projectName).ProjectVersion(projectVersion).ProjectTags(projectTags).ParentName(parentName).ParentVersion(parentVersion).ParentUUID(parentUUID).IsLatest(isLatest).Bom(bom).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `BomAPI.UploadBom``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -287,9 +289,11 @@ Name | Type | Description  | Notes
  **autoCreate** | **bool** |  | [default to false]
  **projectName** | **string** |  | 
  **projectVersion** | **string** |  | 
+ **projectTags** | **string** |  | 
  **parentName** | **string** |  | 
  **parentVersion** | **string** |  | 
  **parentUUID** | **string** |  | 
+ **isLatest** | **bool** |  | [default to false]
  **bom** | **string** |  | 
 
 ### Return type
@@ -298,12 +302,12 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: multipart/form-data
-- **Accept**: application/json
+- **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -312,7 +316,7 @@ Name | Type | Description  | Notes
 
 ## UploadBomBase64Encoded
 
-> BomUploadResponse UploadBomBase64Encoded(ctx).Body(body).Execute()
+> BomUploadResponse UploadBomBase64Encoded(ctx).BomSubmitRequest(bomSubmitRequest).Execute()
 
 Upload a supported bill of material format document
 
@@ -331,11 +335,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewBomSubmitRequest("38640b33-4ba9-4733-bdab-cbfc40c6f8aa", "ewogICJib21Gb3JtYXQiOiAiQ3ljbG9uZURYIiwKICAic3BlY1ZlcnNpb24iOiAiMS40IiwKICAiY29tcG9uZW50cyI6IFsKICAgIHsKICAgICAgInR5cGUiOiAibGlicmFyeSIsCiAgICAgICJuYW1lIjogImFjbWUtbGliIiwKICAgICAgInZlcnNpb24iOiAiMS4wLjAiCiAgICB9CiAgXQp9") // BomSubmitRequest | 
+	bomSubmitRequest := *openapiclient.NewBomSubmitRequest("38640b33-4ba9-4733-bdab-cbfc40c6f8aa", "ewogICJib21Gb3JtYXQiOiAiQ3ljbG9uZURYIiwKICAic3BlY1ZlcnNpb24iOiAiMS40IiwKICAiY29tcG9uZW50cyI6IFsKICAgIHsKICAgICAgInR5cGUiOiAibGlicmFyeSIsCiAgICAgICJuYW1lIjogImFjbWUtbGliIiwKICAgICAgInZlcnNpb24iOiAiMS4wLjAiCiAgICB9CiAgXQp9") // BomSubmitRequest | 
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.BomAPI.UploadBomBase64Encoded(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.BomAPI.UploadBomBase64Encoded(context.Background()).BomSubmitRequest(bomSubmitRequest).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `BomAPI.UploadBomBase64Encoded``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -356,7 +360,7 @@ Other parameters are passed through a pointer to a apiUploadBomBase64EncodedRequ
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**BomSubmitRequest**](BomSubmitRequest.md) |  | 
+ **bomSubmitRequest** | [**BomSubmitRequest**](BomSubmitRequest.md) |  | 
 
 ### Return type
 
@@ -364,12 +368,12 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: application/json
-- **Accept**: application/json
+- **Accept**: application/json, application/problem+json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)

@@ -299,25 +299,23 @@ func (_c *MockPermissionAPI_GetAllPermissions_Call) RunAndReturn(run func(contex
 }
 
 // GetAllPermissionsExecute provides a mock function with given fields: r
-func (_m *MockPermissionAPI) GetAllPermissionsExecute(r ApiGetAllPermissionsRequest) ([]Permission, *http.Response, error) {
+func (_m *MockPermissionAPI) GetAllPermissionsExecute(r ApiGetAllPermissionsRequest) (string, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllPermissionsExecute")
 	}
 
-	var r0 []Permission
+	var r0 string
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiGetAllPermissionsRequest) ([]Permission, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetAllPermissionsRequest) (string, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiGetAllPermissionsRequest) []Permission); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetAllPermissionsRequest) string); ok {
 		r0 = rf(r)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]Permission)
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	if rf, ok := ret.Get(1).(func(ApiGetAllPermissionsRequest) *http.Response); ok {
@@ -355,12 +353,12 @@ func (_c *MockPermissionAPI_GetAllPermissionsExecute_Call) Run(run func(r ApiGet
 	return _c
 }
 
-func (_c *MockPermissionAPI_GetAllPermissionsExecute_Call) Return(_a0 []Permission, _a1 *http.Response, _a2 error) *MockPermissionAPI_GetAllPermissionsExecute_Call {
+func (_c *MockPermissionAPI_GetAllPermissionsExecute_Call) Return(_a0 string, _a1 *http.Response, _a2 error) *MockPermissionAPI_GetAllPermissionsExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockPermissionAPI_GetAllPermissionsExecute_Call) RunAndReturn(run func(ApiGetAllPermissionsRequest) ([]Permission, *http.Response, error)) *MockPermissionAPI_GetAllPermissionsExecute_Call {
+func (_c *MockPermissionAPI_GetAllPermissionsExecute_Call) RunAndReturn(run func(ApiGetAllPermissionsRequest) (string, *http.Response, error)) *MockPermissionAPI_GetAllPermissionsExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

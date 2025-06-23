@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/nais/v13s/internal/test"
+
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -75,19 +77,35 @@ func TestApiKeySource_ContextHeaders(t *testing.T) {
 	}).Once()
 
 	teamName := "teamName"
+	key := "key"
 	mockTeamAPI.On("GetTeamsExecute", mock.Anything).Return(
 		[]client.Team{{Name: &teamName, ApiKeys: []client.ApiKey{
 			{
-				Key: "key",
+				Key: &key,
 			},
-		}}},
+		},
+			Uuid: "123"},
+		},
 		nil,
 		nil,
 	).Once()
 
-	apiSource := NewApiKeySource("teamName", authSource, mockClient, logrus.NewEntry(logrus.New()))
+	mockTeamAPI.On("GenerateApiKey", mock.Anything, "123").Return(client.ApiGenerateApiKeyRequest{
+		ApiService: mockTeamAPI,
+	}).Once()
+
+	mockTeamAPI.On("GenerateApiKeyExecute", mock.Anything).Return(
+		&client.ApiKey{
+			Key: &key,
+		},
+		nil,
+		nil,
+	).Once()
 
 	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	apiSource := NewApiKeySource("teamName", authSource, mockClient, pool, logrus.NewEntry(logrus.New()))
+
 	teamsCtx, err := apiSource.ContextHeaders(ctx)
 	assert.NoError(t, err)
 	fmt.Println(teamsCtx)
@@ -118,18 +136,21 @@ func TestApiKeySource_TeamNotExists(t *testing.T) {
 	authSource := NewUsernamePasswordSource("user", "password", mockClient, logrus.NewEntry(logrus.New()))
 
 	teamName := "teamName"
+	key := "key"
 	mockTeamAPI.On("GetTeamsExecute", mock.Anything).Return(
 		[]client.Team{{Name: &teamName, ApiKeys: []client.ApiKey{
 			{
-				Key: "key",
+				Key: &key,
 			},
-		}}},
+		}, Uuid: "123"},
+		},
 		nil,
 		nil,
 	).Once()
 
 	ctx := context.Background()
-	apiSource := NewApiKeySource("teamName2", authSource, mockClient, logrus.NewEntry(logrus.New()))
+	pool := test.GetPool(ctx, t, true)
+	apiSource := NewApiKeySource("teamName2", authSource, mockClient, pool, logrus.NewEntry(logrus.New()))
 	_, err := apiSource.ContextHeaders(ctx)
 	assert.Error(t, err)
 }
