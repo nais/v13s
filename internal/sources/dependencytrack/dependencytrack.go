@@ -13,9 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/sources/dependencytrack/auth"
 	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/patrickmn/go-cache"

@@ -341,8 +341,9 @@ type RiverJob struct {
 }
 
 type SourceKey struct {
-	Name      string
 	Uuid      string
+	Source    string
+	TeamName  string
 	Key       string
 	CreatedAt pgtype.Timestamp
 }

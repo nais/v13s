@@ -10,27 +10,31 @@ import (
 )
 
 const createSourceKey = `-- name: CreateSourceKey :exec
-INSERT INTO source_keys(
-    name,
-    uuid,
-    key
-)
-VALUES (
-        $1,
+INSERT INTO source_keys(uuid,
+                        source,
+                        team_name,
+                        key)
+VALUES ($1,
         $2,
-        $3
-    ) ON CONFLICT
+        $3,
+        $4) ON CONFLICT
     DO NOTHING
 `
 
 type CreateSourceKeyParams struct {
-	Name string
-	Uuid string
-	Key  string
+	Uuid     string
+	Source   string
+	TeamName string
+	Key      string
 }
 
 func (q *Queries) CreateSourceKey(ctx context.Context, arg CreateSourceKeyParams) error {
-	_, err := q.db.Exec(ctx, createSourceKey, arg.Name, arg.Uuid, arg.Key)
+	_, err := q.db.Exec(ctx, createSourceKey,
+		arg.Uuid,
+		arg.Source,
+		arg.TeamName,
+		arg.Key,
+	)
 	return err
 }
 
@@ -87,7 +91,7 @@ func (q *Queries) DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams
 }
 
 const getSourceKey = `-- name: GetSourceKey :one
-SELECT name, uuid, key, created_at
+SELECT uuid, source, team_name, key, created_at
 FROM source_keys
 WHERE uuid = $1
 `
@@ -96,8 +100,9 @@ func (q *Queries) GetSourceKey(ctx context.Context, uuid string) (*SourceKey, er
 	row := q.db.QueryRow(ctx, getSourceKey, uuid)
 	var i SourceKey
 	err := row.Scan(
-		&i.Name,
 		&i.Uuid,
+		&i.Source,
+		&i.TeamName,
 		&i.Key,
 		&i.CreatedAt,
 	)

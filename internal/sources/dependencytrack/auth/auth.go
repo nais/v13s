@@ -223,9 +223,10 @@ func (c *apiKeySource) selectApiKeyFromTeam(ctx context.Context, teamName, teamU
 	}
 
 	if err = c.db.CreateSourceKey(ctx, sql.CreateSourceKeyParams{
-		Name: teamName,
-		Uuid: teamUuid,
-		Key:  *c.apiKey,
+		Uuid:     teamUuid,
+		Source:   "dependencytrack",
+		TeamName: teamName,
+		Key:      *c.apiKey,
 	}); err != nil {
 		return nil, fmt.Errorf("failed to persist API key for team %s: %w", teamName, err)
 	}

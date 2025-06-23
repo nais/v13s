@@ -272,6 +272,8 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 			link = fmt.Sprintf("https://ubuntu.com/security/CVE-%s", vulnId)
 		case "OSSINDEX":
 			link = fmt.Sprintf("https://ossindex.sonatype.org/vuln/%s", vulnId)
+		case "DEBIAN":
+			link = fmt.Sprintf("https://security-tracker.debian.org/tracker/%s", vulnId)
 		}
 	}
 

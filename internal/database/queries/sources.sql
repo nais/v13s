@@ -32,16 +32,14 @@ WHERE image_name = @image_name
   AND source_type = @source_type;
 
 -- name: CreateSourceKey :exec
-INSERT INTO source_keys(
-    name,
-    uuid,
-    key
-)
-VALUES (
-        @name,
-        @uuid,
-        @key
-    ) ON CONFLICT
+INSERT INTO source_keys(uuid,
+                        source,
+                        team_name,
+                        key)
+VALUES (@uuid,
+        @source,
+        @team_name,
+        @key) ON CONFLICT
     DO NOTHING;
 
 -- name: GetSourceKey :one
