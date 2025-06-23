@@ -438,6 +438,8 @@ func (c *dependencyTrackClient) withAuthContext(ctx context.Context, fn func(ctx
 
 func convertError(err error, msg string, resp *http.Response) error {
 	switch {
+	case resp == nil:
+		return fmt.Errorf("%s, err=%w, statuscode=unknown, body=unknown", msg, err)
 	case resp.StatusCode >= 400 && resp.StatusCode < 500:
 		return ClientError{fmt.Errorf("%s, err=%w, statuscode=%d, body=%s", msg, err, resp.StatusCode, parseErrorResponseBody(resp))}
 	case resp.StatusCode >= 500:
