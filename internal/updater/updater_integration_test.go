@@ -264,7 +264,7 @@ func (m MockDtrack) AddFinding(projectName string, vulnName string) {
 	u := ""
 	for _, p := range m.projects {
 		if *p.Name == projectName {
-			u = *p.Uuid
+			u = p.Uuid
 		}
 	}
 	findings := m.findings[u]
@@ -288,7 +288,7 @@ func (m MockDtrack) AddFinding(projectName string, vulnName string) {
 
 func (m MockDtrack) GetFindings(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]client.Finding, error) {
 	for _, p := range m.projects {
-		if *p.Uuid == uuid {
+		if p.Uuid == uuid {
 			return m.findings[uuid], nil
 		}
 	}
@@ -332,7 +332,7 @@ func NewMock(projectNames []string) *MockDtrack {
 		projects = append(projects, &client.Project{
 			Name:    &p,
 			Version: &version,
-			Uuid:    &id,
+			Uuid:    id,
 			Metrics: &client.ProjectMetrics{
 				Critical:           critical,
 				High:               high,

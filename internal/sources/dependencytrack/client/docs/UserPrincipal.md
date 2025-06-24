@@ -7,8 +7,8 @@ Name | Type | Description | Notes
 **Name** | Pointer to **string** |  | [optional] 
 **Permissions** | Pointer to [**[]Permission**](Permission.md) |  | [optional] 
 **Id** | Pointer to **int64** |  | [optional] 
-**Teams** | Pointer to [**[]Team**](Team.md) |  | [optional] 
 **Username** | Pointer to **string** |  | [optional] 
+**Teams** | Pointer to [**[]Team**](Team.md) |  | [optional] 
 **Email** | Pointer to **string** |  | [optional] 
 
 ## Methods
@@ -105,31 +105,6 @@ SetId sets Id field to given value.
 
 HasId returns a boolean if a field has been set.
 
-### GetTeams
-
-`func (o *UserPrincipal) GetTeams() []Team`
-
-GetTeams returns the Teams field if non-nil, zero value otherwise.
-
-### GetTeamsOk
-
-`func (o *UserPrincipal) GetTeamsOk() (*[]Team, bool)`
-
-GetTeamsOk returns a tuple with the Teams field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetTeams
-
-`func (o *UserPrincipal) SetTeams(v []Team)`
-
-SetTeams sets Teams field to given value.
-
-### HasTeams
-
-`func (o *UserPrincipal) HasTeams() bool`
-
-HasTeams returns a boolean if a field has been set.
-
 ### GetUsername
 
 `func (o *UserPrincipal) GetUsername() string`
@@ -154,6 +129,31 @@ SetUsername sets Username field to given value.
 `func (o *UserPrincipal) HasUsername() bool`
 
 HasUsername returns a boolean if a field has been set.
+
+### GetTeams
+
+`func (o *UserPrincipal) GetTeams() []Team`
+
+GetTeams returns the Teams field if non-nil, zero value otherwise.
+
+### GetTeamsOk
+
+`func (o *UserPrincipal) GetTeamsOk() (*[]Team, bool)`
+
+GetTeamsOk returns a tuple with the Teams field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetTeams
+
+`func (o *UserPrincipal) SetTeams(v []Team)`
+
+SetTeams sets Teams field to given value.
+
+### HasTeams
+
+`func (o *UserPrincipal) HasTeams() bool`
+
+HasTeams returns a boolean if a field has been set.
 
 ### GetEmail
 

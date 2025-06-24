@@ -53,7 +53,6 @@ func seedDependencyTrack(ctx context.Context) error {
 		"http://localhost:9010/api",
 		"Administrators",
 		"admin",
-		"yolo",
 		log.WithField("subsystem", "dp-client"),
 	)
 	if err != nil {

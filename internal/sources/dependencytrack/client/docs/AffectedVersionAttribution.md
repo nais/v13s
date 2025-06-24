@@ -4,8 +4,8 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**FirstSeen** | Pointer to **time.Time** |  | [optional] 
-**LastSeen** | Pointer to **time.Time** |  | [optional] 
+**FirstSeen** | **int64** | UNIX epoch timestamp in milliseconds | 
+**LastSeen** | **int64** | UNIX epoch timestamp in milliseconds | 
 **Source** | Pointer to **string** |  | [optional] 
 **Uuid** | Pointer to **string** |  | [optional] 
 
@@ -13,7 +13,7 @@ Name | Type | Description | Notes
 
 ### NewAffectedVersionAttribution
 
-`func NewAffectedVersionAttribution() *AffectedVersionAttribution`
+`func NewAffectedVersionAttribution(firstSeen int64, lastSeen int64, ) *AffectedVersionAttribution`
 
 NewAffectedVersionAttribution instantiates a new AffectedVersionAttribution object
 This constructor will assign default values to properties that have it defined,
@@ -30,53 +30,43 @@ but it doesn't guarantee that properties required by API are set
 
 ### GetFirstSeen
 
-`func (o *AffectedVersionAttribution) GetFirstSeen() time.Time`
+`func (o *AffectedVersionAttribution) GetFirstSeen() int64`
 
 GetFirstSeen returns the FirstSeen field if non-nil, zero value otherwise.
 
 ### GetFirstSeenOk
 
-`func (o *AffectedVersionAttribution) GetFirstSeenOk() (*time.Time, bool)`
+`func (o *AffectedVersionAttribution) GetFirstSeenOk() (*int64, bool)`
 
 GetFirstSeenOk returns a tuple with the FirstSeen field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetFirstSeen
 
-`func (o *AffectedVersionAttribution) SetFirstSeen(v time.Time)`
+`func (o *AffectedVersionAttribution) SetFirstSeen(v int64)`
 
 SetFirstSeen sets FirstSeen field to given value.
 
-### HasFirstSeen
-
-`func (o *AffectedVersionAttribution) HasFirstSeen() bool`
-
-HasFirstSeen returns a boolean if a field has been set.
 
 ### GetLastSeen
 
-`func (o *AffectedVersionAttribution) GetLastSeen() time.Time`
+`func (o *AffectedVersionAttribution) GetLastSeen() int64`
 
 GetLastSeen returns the LastSeen field if non-nil, zero value otherwise.
 
 ### GetLastSeenOk
 
-`func (o *AffectedVersionAttribution) GetLastSeenOk() (*time.Time, bool)`
+`func (o *AffectedVersionAttribution) GetLastSeenOk() (*int64, bool)`
 
 GetLastSeenOk returns a tuple with the LastSeen field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastSeen
 
-`func (o *AffectedVersionAttribution) SetLastSeen(v time.Time)`
+`func (o *AffectedVersionAttribution) SetLastSeen(v int64)`
 
 SetLastSeen sets LastSeen field to given value.
 
-### HasLastSeen
-
-`func (o *AffectedVersionAttribution) HasLastSeen() bool`
-
-HasLastSeen returns a boolean if a field has been set.
 
 ### GetSource
 

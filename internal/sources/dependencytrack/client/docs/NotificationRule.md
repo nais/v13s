@@ -11,18 +11,24 @@ Name | Type | Description | Notes
 **Scope** | **string** |  | 
 **NotificationLevel** | Pointer to **string** |  | [optional] 
 **Projects** | Pointer to [**[]Project**](Project.md) |  | [optional] 
+**Tags** | Pointer to [**[]Tag**](Tag.md) |  | [optional] 
 **Teams** | Pointer to [**[]Team**](Team.md) |  | [optional] 
 **NotifyOn** | Pointer to **[]string** |  | [optional] 
 **Message** | Pointer to **string** |  | [optional] 
 **Publisher** | Pointer to [**NotificationPublisher**](NotificationPublisher.md) |  | [optional] 
 **PublisherConfig** | Pointer to **string** |  | [optional] 
+**TriggerType** | **string** |  | [readonly] 
+**ScheduleLastTriggeredAt** | Pointer to **int64** | When the schedule last triggered, as UNIX epoch timestamp in milliseconds | [optional] [readonly] 
+**ScheduleNextTriggerAt** | Pointer to **int64** | When the schedule triggers next, as UNIX epoch timestamp in milliseconds | [optional] [readonly] 
+**ScheduleCron** | Pointer to **string** | Schedule of this rule as cron expression. Must not be set for rules with trigger type EVENT. | [optional] 
+**ScheduleSkipUnchanged** | Pointer to **bool** | Whether to skip emitting a scheduled notification if it doesn&#39;t contain any changes since its last emission. Must not be set for rules with trigger type EVENT. | [optional] 
 **Uuid** | **string** |  | 
 
 ## Methods
 
 ### NewNotificationRule
 
-`func NewNotificationRule(name string, scope string, uuid string, ) *NotificationRule`
+`func NewNotificationRule(name string, scope string, triggerType string, uuid string, ) *NotificationRule`
 
 NewNotificationRule instantiates a new NotificationRule object
 This constructor will assign default values to properties that have it defined,
@@ -202,6 +208,31 @@ SetProjects sets Projects field to given value.
 
 HasProjects returns a boolean if a field has been set.
 
+### GetTags
+
+`func (o *NotificationRule) GetTags() []Tag`
+
+GetTags returns the Tags field if non-nil, zero value otherwise.
+
+### GetTagsOk
+
+`func (o *NotificationRule) GetTagsOk() (*[]Tag, bool)`
+
+GetTagsOk returns a tuple with the Tags field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetTags
+
+`func (o *NotificationRule) SetTags(v []Tag)`
+
+SetTags sets Tags field to given value.
+
+### HasTags
+
+`func (o *NotificationRule) HasTags() bool`
+
+HasTags returns a boolean if a field has been set.
+
 ### GetTeams
 
 `func (o *NotificationRule) GetTeams() []Team`
@@ -326,6 +357,126 @@ SetPublisherConfig sets PublisherConfig field to given value.
 `func (o *NotificationRule) HasPublisherConfig() bool`
 
 HasPublisherConfig returns a boolean if a field has been set.
+
+### GetTriggerType
+
+`func (o *NotificationRule) GetTriggerType() string`
+
+GetTriggerType returns the TriggerType field if non-nil, zero value otherwise.
+
+### GetTriggerTypeOk
+
+`func (o *NotificationRule) GetTriggerTypeOk() (*string, bool)`
+
+GetTriggerTypeOk returns a tuple with the TriggerType field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetTriggerType
+
+`func (o *NotificationRule) SetTriggerType(v string)`
+
+SetTriggerType sets TriggerType field to given value.
+
+
+### GetScheduleLastTriggeredAt
+
+`func (o *NotificationRule) GetScheduleLastTriggeredAt() int64`
+
+GetScheduleLastTriggeredAt returns the ScheduleLastTriggeredAt field if non-nil, zero value otherwise.
+
+### GetScheduleLastTriggeredAtOk
+
+`func (o *NotificationRule) GetScheduleLastTriggeredAtOk() (*int64, bool)`
+
+GetScheduleLastTriggeredAtOk returns a tuple with the ScheduleLastTriggeredAt field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetScheduleLastTriggeredAt
+
+`func (o *NotificationRule) SetScheduleLastTriggeredAt(v int64)`
+
+SetScheduleLastTriggeredAt sets ScheduleLastTriggeredAt field to given value.
+
+### HasScheduleLastTriggeredAt
+
+`func (o *NotificationRule) HasScheduleLastTriggeredAt() bool`
+
+HasScheduleLastTriggeredAt returns a boolean if a field has been set.
+
+### GetScheduleNextTriggerAt
+
+`func (o *NotificationRule) GetScheduleNextTriggerAt() int64`
+
+GetScheduleNextTriggerAt returns the ScheduleNextTriggerAt field if non-nil, zero value otherwise.
+
+### GetScheduleNextTriggerAtOk
+
+`func (o *NotificationRule) GetScheduleNextTriggerAtOk() (*int64, bool)`
+
+GetScheduleNextTriggerAtOk returns a tuple with the ScheduleNextTriggerAt field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetScheduleNextTriggerAt
+
+`func (o *NotificationRule) SetScheduleNextTriggerAt(v int64)`
+
+SetScheduleNextTriggerAt sets ScheduleNextTriggerAt field to given value.
+
+### HasScheduleNextTriggerAt
+
+`func (o *NotificationRule) HasScheduleNextTriggerAt() bool`
+
+HasScheduleNextTriggerAt returns a boolean if a field has been set.
+
+### GetScheduleCron
+
+`func (o *NotificationRule) GetScheduleCron() string`
+
+GetScheduleCron returns the ScheduleCron field if non-nil, zero value otherwise.
+
+### GetScheduleCronOk
+
+`func (o *NotificationRule) GetScheduleCronOk() (*string, bool)`
+
+GetScheduleCronOk returns a tuple with the ScheduleCron field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetScheduleCron
+
+`func (o *NotificationRule) SetScheduleCron(v string)`
+
+SetScheduleCron sets ScheduleCron field to given value.
+
+### HasScheduleCron
+
+`func (o *NotificationRule) HasScheduleCron() bool`
+
+HasScheduleCron returns a boolean if a field has been set.
+
+### GetScheduleSkipUnchanged
+
+`func (o *NotificationRule) GetScheduleSkipUnchanged() bool`
+
+GetScheduleSkipUnchanged returns the ScheduleSkipUnchanged field if non-nil, zero value otherwise.
+
+### GetScheduleSkipUnchangedOk
+
+`func (o *NotificationRule) GetScheduleSkipUnchangedOk() (*bool, bool)`
+
+GetScheduleSkipUnchangedOk returns a tuple with the ScheduleSkipUnchanged field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetScheduleSkipUnchanged
+
+`func (o *NotificationRule) SetScheduleSkipUnchanged(v bool)`
+
+SetScheduleSkipUnchanged sets ScheduleSkipUnchanged field to given value.
+
+### HasScheduleSkipUnchanged
+
+`func (o *NotificationRule) HasScheduleSkipUnchanged() bool`
+
+HasScheduleSkipUnchanged returns a boolean if a field has been set.
 
 ### GetUuid
 

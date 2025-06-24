@@ -18,7 +18,7 @@ Method | HTTP request | Description
 
 ## AddMapping2
 
-> MappedOidcGroup AddMapping2(ctx).Body(body).Execute()
+> MappedOidcGroup AddMapping2(ctx).MappedOidcGroupRequest(mappedOidcGroupRequest).Execute()
 
 Adds a mapping
 
@@ -37,11 +37,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewMappedOidcGroupRequest() // MappedOidcGroupRequest |  (optional)
+	mappedOidcGroupRequest := *openapiclient.NewMappedOidcGroupRequest("Team_example", "Group_example") // MappedOidcGroupRequest |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.OidcAPI.AddMapping2(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.OidcAPI.AddMapping2(context.Background()).MappedOidcGroupRequest(mappedOidcGroupRequest).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `OidcAPI.AddMapping2``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -62,7 +62,7 @@ Other parameters are passed through a pointer to a apiAddMapping2Request struct 
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**MappedOidcGroupRequest**](MappedOidcGroupRequest.md) |  | 
+ **mappedOidcGroupRequest** | [**MappedOidcGroupRequest**](MappedOidcGroupRequest.md) |  | 
 
 ### Return type
 
@@ -70,7 +70,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -84,7 +84,7 @@ Name | Type | Description  | Notes
 
 ## CreateGroup
 
-> OidcGroup CreateGroup(ctx).Body(body).Execute()
+> OidcGroup CreateGroup(ctx).OidcGroup(oidcGroup).Execute()
 
 Creates group
 
@@ -103,11 +103,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewOidcGroup("Uuid_example") // OidcGroup |  (optional)
+	oidcGroup := *openapiclient.NewOidcGroup("Uuid_example") // OidcGroup |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.OidcAPI.CreateGroup(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.OidcAPI.CreateGroup(context.Background()).OidcGroup(oidcGroup).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `OidcAPI.CreateGroup``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -128,7 +128,7 @@ Other parameters are passed through a pointer to a apiCreateGroupRequest struct 
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**OidcGroup**](OidcGroup.md) |  | 
+ **oidcGroup** | [**OidcGroup**](OidcGroup.md) |  | 
 
 ### Return type
 
@@ -136,7 +136,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -204,7 +204,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -275,7 +275,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -343,7 +343,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -402,7 +402,7 @@ Other parameters are passed through a pointer to a apiIsAvailableRequest struct 
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -463,7 +463,7 @@ Other parameters are passed through a pointer to a apiRetrieveGroupsRequest stru
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -533,7 +533,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key), [Bearer](../README.md#Bearer)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -547,7 +547,7 @@ Name | Type | Description  | Notes
 
 ## UpdateGroup
 
-> OidcGroup UpdateGroup(ctx).Body(body).Execute()
+> OidcGroup UpdateGroup(ctx).OidcGroup(oidcGroup).Execute()
 
 Updates group
 
@@ -566,11 +566,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewOidcGroup("Uuid_example") // OidcGroup |  (optional)
+	oidcGroup := *openapiclient.NewOidcGroup("Uuid_example") // OidcGroup |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.OidcAPI.UpdateGroup(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.OidcAPI.UpdateGroup(context.Background()).OidcGroup(oidcGroup).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `OidcAPI.UpdateGroup``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -591,7 +591,7 @@ Other parameters are passed through a pointer to a apiUpdateGroupRequest struct 
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**OidcGroup**](OidcGroup.md) |  | 
+ **oidcGroup** | [**OidcGroup**](OidcGroup.md) |  | 
 
 ### Return type
 
@@ -599,7 +599,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

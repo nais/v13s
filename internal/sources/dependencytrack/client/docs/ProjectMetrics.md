@@ -4,7 +4,6 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Project** | Pointer to [**Project**](Project.md) |  | [optional] 
 **Critical** | **int32** |  | 
 **High** | **int32** |  | 
 **Medium** | **int32** |  | 
@@ -33,14 +32,16 @@ Name | Type | Description | Notes
 **PolicyViolationsOperationalTotal** | Pointer to **int32** |  | [optional] 
 **PolicyViolationsOperationalAudited** | Pointer to **int32** |  | [optional] 
 **PolicyViolationsOperationalUnaudited** | Pointer to **int32** |  | [optional] 
-**FirstOccurrence** | **float32** |  | 
-**LastOccurrence** | **float32** |  | 
+**CollectionLogic** | Pointer to **string** |  | [optional] 
+**CollectionLogicChanged** | Pointer to **bool** |  | [optional] 
+**FirstOccurrence** | **int64** | UNIX epoch timestamp in milliseconds | 
+**LastOccurrence** | **int64** | UNIX epoch timestamp in milliseconds | 
 
 ## Methods
 
 ### NewProjectMetrics
 
-`func NewProjectMetrics(critical int32, high int32, medium int32, low int32, firstOccurrence float32, lastOccurrence float32, ) *ProjectMetrics`
+`func NewProjectMetrics(critical int32, high int32, medium int32, low int32, firstOccurrence int64, lastOccurrence int64, ) *ProjectMetrics`
 
 NewProjectMetrics instantiates a new ProjectMetrics object
 This constructor will assign default values to properties that have it defined,
@@ -54,31 +55,6 @@ will change when the set of required properties is changed
 NewProjectMetricsWithDefaults instantiates a new ProjectMetrics object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
-
-### GetProject
-
-`func (o *ProjectMetrics) GetProject() Project`
-
-GetProject returns the Project field if non-nil, zero value otherwise.
-
-### GetProjectOk
-
-`func (o *ProjectMetrics) GetProjectOk() (*Project, bool)`
-
-GetProjectOk returns a tuple with the Project field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetProject
-
-`func (o *ProjectMetrics) SetProject(v Project)`
-
-SetProject sets Project field to given value.
-
-### HasProject
-
-`func (o *ProjectMetrics) HasProject() bool`
-
-HasProject returns a boolean if a field has been set.
 
 ### GetCritical
 
@@ -760,42 +736,92 @@ SetPolicyViolationsOperationalUnaudited sets PolicyViolationsOperationalUnaudite
 
 HasPolicyViolationsOperationalUnaudited returns a boolean if a field has been set.
 
+### GetCollectionLogic
+
+`func (o *ProjectMetrics) GetCollectionLogic() string`
+
+GetCollectionLogic returns the CollectionLogic field if non-nil, zero value otherwise.
+
+### GetCollectionLogicOk
+
+`func (o *ProjectMetrics) GetCollectionLogicOk() (*string, bool)`
+
+GetCollectionLogicOk returns a tuple with the CollectionLogic field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCollectionLogic
+
+`func (o *ProjectMetrics) SetCollectionLogic(v string)`
+
+SetCollectionLogic sets CollectionLogic field to given value.
+
+### HasCollectionLogic
+
+`func (o *ProjectMetrics) HasCollectionLogic() bool`
+
+HasCollectionLogic returns a boolean if a field has been set.
+
+### GetCollectionLogicChanged
+
+`func (o *ProjectMetrics) GetCollectionLogicChanged() bool`
+
+GetCollectionLogicChanged returns the CollectionLogicChanged field if non-nil, zero value otherwise.
+
+### GetCollectionLogicChangedOk
+
+`func (o *ProjectMetrics) GetCollectionLogicChangedOk() (*bool, bool)`
+
+GetCollectionLogicChangedOk returns a tuple with the CollectionLogicChanged field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCollectionLogicChanged
+
+`func (o *ProjectMetrics) SetCollectionLogicChanged(v bool)`
+
+SetCollectionLogicChanged sets CollectionLogicChanged field to given value.
+
+### HasCollectionLogicChanged
+
+`func (o *ProjectMetrics) HasCollectionLogicChanged() bool`
+
+HasCollectionLogicChanged returns a boolean if a field has been set.
+
 ### GetFirstOccurrence
 
-`func (o *ProjectMetrics) GetFirstOccurrence() float32`
+`func (o *ProjectMetrics) GetFirstOccurrence() int64`
 
 GetFirstOccurrence returns the FirstOccurrence field if non-nil, zero value otherwise.
 
 ### GetFirstOccurrenceOk
 
-`func (o *ProjectMetrics) GetFirstOccurrenceOk() (*float32, bool)`
+`func (o *ProjectMetrics) GetFirstOccurrenceOk() (*int64, bool)`
 
 GetFirstOccurrenceOk returns a tuple with the FirstOccurrence field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetFirstOccurrence
 
-`func (o *ProjectMetrics) SetFirstOccurrence(v float32)`
+`func (o *ProjectMetrics) SetFirstOccurrence(v int64)`
 
 SetFirstOccurrence sets FirstOccurrence field to given value.
 
 
 ### GetLastOccurrence
 
-`func (o *ProjectMetrics) GetLastOccurrence() float32`
+`func (o *ProjectMetrics) GetLastOccurrence() int64`
 
 GetLastOccurrence returns the LastOccurrence field if non-nil, zero value otherwise.
 
 ### GetLastOccurrenceOk
 
-`func (o *ProjectMetrics) GetLastOccurrenceOk() (*float32, bool)`
+`func (o *ProjectMetrics) GetLastOccurrenceOk() (*int64, bool)`
 
 GetLastOccurrenceOk returns a tuple with the LastOccurrence field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastOccurrence
 
-`func (o *ProjectMetrics) SetLastOccurrence(v float32)`
+`func (o *ProjectMetrics) SetLastOccurrence(v int64)`
 
 SetLastOccurrence sets LastOccurrence field to given value.
 

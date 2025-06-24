@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **Tags** | Pointer to [**[]Tag**](Tag.md) |  | [optional] 
 **Uuid** | **string** |  | 
 **IncludeChildren** | Pointer to **bool** |  | [optional] 
+**OnlyLatestProjectVersion** | Pointer to **bool** |  | [optional] 
 **Global** | Pointer to **bool** |  | [optional] 
 
 ## Methods
@@ -227,6 +228,31 @@ SetIncludeChildren sets IncludeChildren field to given value.
 `func (o *Policy) HasIncludeChildren() bool`
 
 HasIncludeChildren returns a boolean if a field has been set.
+
+### GetOnlyLatestProjectVersion
+
+`func (o *Policy) GetOnlyLatestProjectVersion() bool`
+
+GetOnlyLatestProjectVersion returns the OnlyLatestProjectVersion field if non-nil, zero value otherwise.
+
+### GetOnlyLatestProjectVersionOk
+
+`func (o *Policy) GetOnlyLatestProjectVersionOk() (*bool, bool)`
+
+GetOnlyLatestProjectVersionOk returns a tuple with the OnlyLatestProjectVersion field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetOnlyLatestProjectVersion
+
+`func (o *Policy) SetOnlyLatestProjectVersion(v bool)`
+
+SetOnlyLatestProjectVersion sets OnlyLatestProjectVersion field to given value.
+
+### HasOnlyLatestProjectVersion
+
+`func (o *Policy) HasOnlyLatestProjectVersion() bool`
+
+HasOnlyLatestProjectVersion returns a boolean if a field has been set.
 
 ### GetGlobal
 

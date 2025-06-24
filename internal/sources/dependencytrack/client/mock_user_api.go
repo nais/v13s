@@ -834,40 +834,33 @@ func (_c *MockUserAPI_ForceChangePassword_Call) RunAndReturn(run func(context.Co
 }
 
 // ForceChangePasswordExecute provides a mock function with given fields: r
-func (_m *MockUserAPI) ForceChangePasswordExecute(r ApiForceChangePasswordRequest) (string, *http.Response, error) {
+func (_m *MockUserAPI) ForceChangePasswordExecute(r ApiForceChangePasswordRequest) (*http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ForceChangePasswordExecute")
 	}
 
-	var r0 string
-	var r1 *http.Response
-	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiForceChangePasswordRequest) (string, *http.Response, error)); ok {
+	var r0 *http.Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(ApiForceChangePasswordRequest) (*http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiForceChangePasswordRequest) string); ok {
+	if rf, ok := ret.Get(0).(func(ApiForceChangePasswordRequest) *http.Response); ok {
 		r0 = rf(r)
 	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(ApiForceChangePasswordRequest) *http.Response); ok {
-		r1 = rf(r)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*http.Response)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Response)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(ApiForceChangePasswordRequest) error); ok {
-		r2 = rf(r)
+	if rf, ok := ret.Get(1).(func(ApiForceChangePasswordRequest) error); ok {
+		r1 = rf(r)
 	} else {
-		r2 = ret.Error(2)
+		r1 = ret.Error(1)
 	}
 
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockUserAPI_ForceChangePasswordExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ForceChangePasswordExecute'
@@ -888,12 +881,12 @@ func (_c *MockUserAPI_ForceChangePasswordExecute_Call) Run(run func(r ApiForceCh
 	return _c
 }
 
-func (_c *MockUserAPI_ForceChangePasswordExecute_Call) Return(_a0 string, _a1 *http.Response, _a2 error) *MockUserAPI_ForceChangePasswordExecute_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *MockUserAPI_ForceChangePasswordExecute_Call) Return(_a0 *http.Response, _a1 error) *MockUserAPI_ForceChangePasswordExecute_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockUserAPI_ForceChangePasswordExecute_Call) RunAndReturn(run func(ApiForceChangePasswordRequest) (string, *http.Response, error)) *MockUserAPI_ForceChangePasswordExecute_Call {
+func (_c *MockUserAPI_ForceChangePasswordExecute_Call) RunAndReturn(run func(ApiForceChangePasswordRequest) (*http.Response, error)) *MockUserAPI_ForceChangePasswordExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1624,24 +1617,24 @@ func (_c *MockUserAPI_UpdateSelf_Call) RunAndReturn(run func(context.Context) Ap
 }
 
 // UpdateSelfExecute provides a mock function with given fields: r
-func (_m *MockUserAPI) UpdateSelfExecute(r ApiUpdateSelfRequest) (*UserPrincipal, *http.Response, error) {
+func (_m *MockUserAPI) UpdateSelfExecute(r ApiUpdateSelfRequest) (*ManagedUser, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateSelfExecute")
 	}
 
-	var r0 *UserPrincipal
+	var r0 *ManagedUser
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiUpdateSelfRequest) (*UserPrincipal, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateSelfRequest) (*ManagedUser, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiUpdateSelfRequest) *UserPrincipal); ok {
+	if rf, ok := ret.Get(0).(func(ApiUpdateSelfRequest) *ManagedUser); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*UserPrincipal)
+			r0 = ret.Get(0).(*ManagedUser)
 		}
 	}
 
@@ -1680,12 +1673,12 @@ func (_c *MockUserAPI_UpdateSelfExecute_Call) Run(run func(r ApiUpdateSelfReques
 	return _c
 }
 
-func (_c *MockUserAPI_UpdateSelfExecute_Call) Return(_a0 *UserPrincipal, _a1 *http.Response, _a2 error) *MockUserAPI_UpdateSelfExecute_Call {
+func (_c *MockUserAPI_UpdateSelfExecute_Call) Return(_a0 *ManagedUser, _a1 *http.Response, _a2 error) *MockUserAPI_UpdateSelfExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockUserAPI_UpdateSelfExecute_Call) RunAndReturn(run func(ApiUpdateSelfRequest) (*UserPrincipal, *http.Response, error)) *MockUserAPI_UpdateSelfExecute_Call {
+func (_c *MockUserAPI_UpdateSelfExecute_Call) RunAndReturn(run func(ApiUpdateSelfRequest) (*ManagedUser, *http.Response, error)) *MockUserAPI_UpdateSelfExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

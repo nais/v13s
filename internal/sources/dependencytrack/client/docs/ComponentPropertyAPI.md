@@ -6,13 +6,13 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**CreateProperty**](ComponentPropertyAPI.md#CreateProperty) | **Put** /v1/component/{uuid}/property | Creates a new component property
 [**DeleteProperty**](ComponentPropertyAPI.md#DeleteProperty) | **Delete** /v1/component/{uuid}/property/{propertyUuid} | Deletes a config property
-[**GetProperties**](ComponentPropertyAPI.md#GetProperties) | **Get** /v1/component/{uuid}/property | Returns a list of all ComponentProperties for the specified component
+[**GetProperties**](ComponentPropertyAPI.md#GetProperties) | **Get** /v1/component/{uuid}/property | Returns a list of all properties for the specified component
 
 
 
 ## CreateProperty
 
-> ComponentProperty CreateProperty(ctx, uuid).Body(body).Execute()
+> ComponentProperty CreateProperty(ctx, uuid).ComponentProperty(componentProperty).Execute()
 
 Creates a new component property
 
@@ -32,11 +32,11 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the component to create a property for
-	body := *openapiclient.NewComponentProperty("PropertyType_example", "Uuid_example") // ComponentProperty |  (optional)
+	componentProperty := *openapiclient.NewComponentProperty("PropertyType_example", "Uuid_example") // ComponentProperty |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ComponentPropertyAPI.CreateProperty(context.Background(), uuid).Body(body).Execute()
+	resp, r, err := apiClient.ComponentPropertyAPI.CreateProperty(context.Background(), uuid).ComponentProperty(componentProperty).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentPropertyAPI.CreateProperty``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -62,7 +62,7 @@ Other parameters are passed through a pointer to a apiCreatePropertyRequest stru
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**ComponentProperty**](ComponentProperty.md) |  | 
+ **componentProperty** | [**ComponentProperty**](ComponentProperty.md) |  | 
 
 ### Return type
 
@@ -70,7 +70,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -84,7 +84,7 @@ Name | Type | Description  | Notes
 
 ## DeleteProperty
 
-> ComponentProperty DeleteProperty(ctx, uuid, propertyUuid).Execute()
+> DeleteProperty(ctx, uuid, propertyUuid).Execute()
 
 Deletes a config property
 
@@ -108,13 +108,11 @@ func main() {
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ComponentPropertyAPI.DeleteProperty(context.Background(), uuid, propertyUuid).Execute()
+	r, err := apiClient.ComponentPropertyAPI.DeleteProperty(context.Background(), uuid, propertyUuid).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentPropertyAPI.DeleteProperty``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `DeleteProperty`: ComponentProperty
-	fmt.Fprintf(os.Stdout, "Response from `ComponentPropertyAPI.DeleteProperty`: %v\n", resp)
 }
 ```
 
@@ -139,16 +137,16 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**ComponentProperty**](ComponentProperty.md)
+ (empty response body)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: application/json
+- **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -159,7 +157,7 @@ Name | Type | Description  | Notes
 
 > []ComponentProperty GetProperties(ctx, uuid).Execute()
 
-Returns a list of all ComponentProperties for the specified component
+Returns a list of all properties for the specified component
 
 
 
@@ -213,7 +211,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

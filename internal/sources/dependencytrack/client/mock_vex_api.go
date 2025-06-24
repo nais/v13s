@@ -227,33 +227,42 @@ func (_c *MockVexAPI_UploadVex1_Call) RunAndReturn(run func(context.Context) Api
 }
 
 // UploadVex1Execute provides a mock function with given fields: r
-func (_m *MockVexAPI) UploadVex1Execute(r ApiUploadVex1Request) (*http.Response, error) {
+func (_m *MockVexAPI) UploadVex1Execute(r ApiUploadVex1Request) (*BomUploadResponse, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UploadVex1Execute")
 	}
 
-	var r0 *http.Response
-	var r1 error
-	if rf, ok := ret.Get(0).(func(ApiUploadVex1Request) (*http.Response, error)); ok {
+	var r0 *BomUploadResponse
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiUploadVex1Request) (*BomUploadResponse, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiUploadVex1Request) *http.Response); ok {
+	if rf, ok := ret.Get(0).(func(ApiUploadVex1Request) *BomUploadResponse); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*http.Response)
+			r0 = ret.Get(0).(*BomUploadResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiUploadVex1Request) error); ok {
+	if rf, ok := ret.Get(1).(func(ApiUploadVex1Request) *http.Response); ok {
 		r1 = rf(r)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(ApiUploadVex1Request) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockVexAPI_UploadVex1Execute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadVex1Execute'
@@ -274,44 +283,53 @@ func (_c *MockVexAPI_UploadVex1Execute_Call) Run(run func(r ApiUploadVex1Request
 	return _c
 }
 
-func (_c *MockVexAPI_UploadVex1Execute_Call) Return(_a0 *http.Response, _a1 error) *MockVexAPI_UploadVex1Execute_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockVexAPI_UploadVex1Execute_Call) Return(_a0 *BomUploadResponse, _a1 *http.Response, _a2 error) *MockVexAPI_UploadVex1Execute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockVexAPI_UploadVex1Execute_Call) RunAndReturn(run func(ApiUploadVex1Request) (*http.Response, error)) *MockVexAPI_UploadVex1Execute_Call {
+func (_c *MockVexAPI_UploadVex1Execute_Call) RunAndReturn(run func(ApiUploadVex1Request) (*BomUploadResponse, *http.Response, error)) *MockVexAPI_UploadVex1Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UploadVexExecute provides a mock function with given fields: r
-func (_m *MockVexAPI) UploadVexExecute(r ApiUploadVexRequest) (*http.Response, error) {
+func (_m *MockVexAPI) UploadVexExecute(r ApiUploadVexRequest) (*BomUploadResponse, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UploadVexExecute")
 	}
 
-	var r0 *http.Response
-	var r1 error
-	if rf, ok := ret.Get(0).(func(ApiUploadVexRequest) (*http.Response, error)); ok {
+	var r0 *BomUploadResponse
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiUploadVexRequest) (*BomUploadResponse, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiUploadVexRequest) *http.Response); ok {
+	if rf, ok := ret.Get(0).(func(ApiUploadVexRequest) *BomUploadResponse); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*http.Response)
+			r0 = ret.Get(0).(*BomUploadResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiUploadVexRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(ApiUploadVexRequest) *http.Response); ok {
 		r1 = rf(r)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(ApiUploadVexRequest) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockVexAPI_UploadVexExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadVexExecute'
@@ -332,12 +350,12 @@ func (_c *MockVexAPI_UploadVexExecute_Call) Run(run func(r ApiUploadVexRequest))
 	return _c
 }
 
-func (_c *MockVexAPI_UploadVexExecute_Call) Return(_a0 *http.Response, _a1 error) *MockVexAPI_UploadVexExecute_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockVexAPI_UploadVexExecute_Call) Return(_a0 *BomUploadResponse, _a1 *http.Response, _a2 error) *MockVexAPI_UploadVexExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockVexAPI_UploadVexExecute_Call) RunAndReturn(run func(ApiUploadVexRequest) (*http.Response, error)) *MockVexAPI_UploadVexExecute_Call {
+func (_c *MockVexAPI_UploadVexExecute_Call) RunAndReturn(run func(ApiUploadVexRequest) (*BomUploadResponse, *http.Response, error)) *MockVexAPI_UploadVexExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

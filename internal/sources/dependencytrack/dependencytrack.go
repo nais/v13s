@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -64,17 +65,16 @@ type WorkloadRef struct {
 	ImageTag  string
 }
 
-func NewClient(url string, team auth.Team, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
+func NewClient(url string, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
 	if url == "" {
 		return nil, fmt.Errorf("NewClient: URL cannot be empty")
 	}
 
 	clientConfig := setupConfig(url)
 	apiClient := client.NewAPIClient(clientConfig)
-	userPasSource := auth.NewUsernamePasswordSource(username, password, apiClient, log)
 	return &dependencyTrackClient{
 		client: apiClient,
-		auth:   auth.NewApiKeySource(team, userPasSource, apiClient, log),
+		auth:   auth.NewUsernamePasswordSource(username, password, apiClient, log),
 		log:    log,
 	}, nil
 }
@@ -103,26 +103,34 @@ func setupConfig(rawURL string) *client.Configuration {
 func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, imageName, imageTag string) (string, error) {
 	p, err := c.GetProject(ctx, imageName, imageTag)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to lookup project: %w", err)
 	}
+
 	if p == nil {
 		p, err = c.CreateProject(ctx, imageName, imageTag, nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to create project: %w", err)
 		}
+		if p == nil {
+			return "", fmt.Errorf("created project is unexpectedly nil")
+		}
 	}
 
-	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
-		if errors.As(err, &ClientError{}) {
-			deleteErr := c.DeleteProject(ctx, *p.Uuid)
-			if deleteErr != nil {
-				return "", fmt.Errorf("failed to delete project after upload failure: %w", err)
+	if p.Uuid == "" {
+		return "", fmt.Errorf("project UUID is empty")
+	}
+
+	if err = c.UploadSbom(ctx, p.Uuid, sbom); err != nil {
+		var clientErr *ClientError
+		if errors.As(err, &clientErr) {
+			if deleteErr := c.DeleteProject(ctx, p.Uuid); deleteErr != nil {
+				return "", fmt.Errorf("upload failed: %w (also failed to delete project: %v)", err, deleteErr)
 			}
 		}
-		return "", err
+		return "", fmt.Errorf("failed to upload SBOM: %w", err)
 	}
 
-	return *p.Uuid, nil
+	return p.Uuid, nil
 }
 
 func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
@@ -157,7 +165,7 @@ func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Contex
 		if err != nil {
 			return "", fmt.Errorf("failed to update project: %w", err)
 		}
-		return *p.Uuid, nil
+		return p.Uuid, nil
 	}
 
 	p, err = c.CreateProject(ctx, projectName, workloadRef.ImageTag, tags)
@@ -165,11 +173,11 @@ func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Contex
 		return "", fmt.Errorf("failed to create project: %w", err)
 	}
 
-	if err = c.UploadSbom(ctx, *p.Uuid, sbom); err != nil {
+	if err = c.UploadSbom(ctx, p.Uuid, sbom); err != nil {
 		return "", err
 	}
 
-	return *p.Uuid, nil
+	return p.Uuid, nil
 }
 
 func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error) {
@@ -177,7 +185,8 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 	p, err := withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
 		active := true
 		classifier := "APPLICATION"
-		req := c.client.ProjectAPI.CreateProject(apiKeyCtx).Body(client.Project{
+
+		req := c.client.ProjectAPI.CreateProject(apiKeyCtx).Project(client.Project{
 			Name:       &name,
 			Active:     &active,
 			Classifier: &classifier,
@@ -219,7 +228,7 @@ func (c *dependencyTrackClient) UploadSbom(ctx context.Context, projectId string
 	})
 }
 
-// Is this function lacking pagination for all findings in a project or do we not need it?
+// GetFindings Is this function lacking pagination for all findings in a project or do we not need it?
 // https://github.com/DependencyTrack/dependency-track/issues/3811
 // https://github.com/DependencyTrack/dependency-track/issues/4677
 func (c *dependencyTrackClient) GetFindings(ctx context.Context, uuid, vulnId string, suppressed bool) ([]client.Finding, error) {
@@ -257,7 +266,7 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 			Version(version).
 			Execute()
 
-		if err != nil && resp != nil && resp.StatusCode == 404 {
+		if err != nil && resp != nil && resp.Body != nil && resp.StatusCode == 404 {
 			body, readErr := io.ReadAll(resp.Body)
 			if readErr != nil {
 				return nil, fmt.Errorf("failed to read response body: %w", readErr)
@@ -279,8 +288,8 @@ func (c *dependencyTrackClient) GetProjectsByTag(ctx context.Context, tag string
 		return c.paginateProjects(apiKeyCtx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 			pageNumber := (offset / limit) + 1
 			projects, resp, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
-				PageSize(limit).
-				PageNumber(pageNumber).
+				PageSize(strconv.Itoa(int(limit))).
+				PageNumber(strconv.Itoa(int(pageNumber))).
 				Execute()
 
 			if err != nil {
@@ -296,9 +305,10 @@ func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset i
 	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) ([]client.Project, error) {
 		return c.paginateProjects(apiKeyCtx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
 			pageNumber := (offset / limit) + 1
+			// convert to string from int32
 			projects, resp, err := c.client.ProjectAPI.GetProjects(ctx).
-				PageSize(limit).
-				PageNumber(pageNumber).
+				PageSize(strconv.Itoa(int(limit))).
+				PageNumber(strconv.Itoa(int(pageNumber))).
 				Execute()
 			return projects, convertError(err, "GetProjects", resp)
 		})
@@ -349,7 +359,7 @@ func (c *dependencyTrackClient) UpdateFinding(
 		}
 
 		_, resp, err := c.client.AnalysisAPI.UpdateAnalysis(apiKeyCtx).
-			Body(analysisRequest).
+			AnalysisRequest(analysisRequest).
 			Execute()
 
 		if err != nil {
@@ -395,7 +405,7 @@ func (c *dependencyTrackClient) GetAnalysisTrailForImage(
 func (c *dependencyTrackClient) UpdateProject(ctx context.Context, p *client.Project) (*client.Project, error) {
 	c.log.Debugf("updating project: %s", *p.Name+":"+*p.Version)
 	p, err := withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
-		project, resp, err := c.client.ProjectAPI.UpdateProject(apiKeyCtx).Body(*p).Execute()
+		project, resp, err := c.client.ProjectAPI.UpdateProject(apiKeyCtx).Project(*p).Execute()
 		if err != nil {
 			return nil, convertError(err, "UpdateProject", resp)
 		}
@@ -404,7 +414,7 @@ func (c *dependencyTrackClient) UpdateProject(ctx context.Context, p *client.Pro
 	if err != nil {
 		return nil, err
 	}
-	projects.Set(*p.Uuid, p, cache.DefaultExpiration)
+	projects.Set(p.Uuid, p, cache.DefaultExpiration)
 	return p, nil
 }
 
@@ -428,6 +438,8 @@ func (c *dependencyTrackClient) withAuthContext(ctx context.Context, fn func(ctx
 
 func convertError(err error, msg string, resp *http.Response) error {
 	switch {
+	case resp == nil:
+		return fmt.Errorf("%s, err=%w, statuscode=unknown, body=unknown", msg, err)
 	case resp.StatusCode >= 400 && resp.StatusCode < 500:
 		return ClientError{fmt.Errorf("%s, err=%w, statuscode=%d, body=%s", msg, err, resp.StatusCode, parseErrorResponseBody(resp))}
 	case resp.StatusCode >= 500:

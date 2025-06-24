@@ -745,24 +745,24 @@ func (_c *MockComponentAPI_GetDependencyGraphForComponent_Call) RunAndReturn(run
 }
 
 // GetDependencyGraphForComponentExecute provides a mock function with given fields: r
-func (_m *MockComponentAPI) GetDependencyGraphForComponentExecute(r ApiGetDependencyGraphForComponentRequest) (*map[string]Component, *http.Response, error) {
+func (_m *MockComponentAPI) GetDependencyGraphForComponentExecute(r ApiGetDependencyGraphForComponentRequest) (map[string]interface{}, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDependencyGraphForComponentExecute")
 	}
 
-	var r0 *map[string]Component
+	var r0 map[string]interface{}
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiGetDependencyGraphForComponentRequest) (*map[string]Component, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetDependencyGraphForComponentRequest) (map[string]interface{}, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiGetDependencyGraphForComponentRequest) *map[string]Component); ok {
+	if rf, ok := ret.Get(0).(func(ApiGetDependencyGraphForComponentRequest) map[string]interface{}); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*map[string]Component)
+			r0 = ret.Get(0).(map[string]interface{})
 		}
 	}
 
@@ -801,12 +801,12 @@ func (_c *MockComponentAPI_GetDependencyGraphForComponentExecute_Call) Run(run f
 	return _c
 }
 
-func (_c *MockComponentAPI_GetDependencyGraphForComponentExecute_Call) Return(_a0 *map[string]Component, _a1 *http.Response, _a2 error) *MockComponentAPI_GetDependencyGraphForComponentExecute_Call {
+func (_c *MockComponentAPI_GetDependencyGraphForComponentExecute_Call) Return(_a0 map[string]interface{}, _a1 *http.Response, _a2 error) *MockComponentAPI_GetDependencyGraphForComponentExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockComponentAPI_GetDependencyGraphForComponentExecute_Call) RunAndReturn(run func(ApiGetDependencyGraphForComponentRequest) (*map[string]Component, *http.Response, error)) *MockComponentAPI_GetDependencyGraphForComponentExecute_Call {
+func (_c *MockComponentAPI_GetDependencyGraphForComponentExecute_Call) RunAndReturn(run func(ApiGetDependencyGraphForComponentRequest) (map[string]interface{}, *http.Response, error)) *MockComponentAPI_GetDependencyGraphForComponentExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

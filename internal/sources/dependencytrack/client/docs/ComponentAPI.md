@@ -18,7 +18,7 @@ Method | HTTP request | Description
 
 ## CreateComponent
 
-> Component CreateComponent(ctx, uuid).Body(body).Execute()
+> Component CreateComponent(ctx, uuid).Component(component).Execute()
 
 Creates a new component
 
@@ -38,11 +38,11 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the project to create a component for
-	body := *openapiclient.NewComponent(*openapiclient.NewProject(), "Uuid_example") // Component |  (optional)
+	component := *openapiclient.NewComponent("Classifier_example", *openapiclient.NewProject("Uuid_example", int64(123)), "Uuid_example") // Component |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ComponentAPI.CreateComponent(context.Background(), uuid).Body(body).Execute()
+	resp, r, err := apiClient.ComponentAPI.CreateComponent(context.Background(), uuid).Component(component).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentAPI.CreateComponent``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -68,7 +68,7 @@ Other parameters are passed through a pointer to a apiCreateComponentRequest str
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**Component**](Component.md) |  | 
+ **component** | [**Component**](Component.md) |  | 
 
 ### Return type
 
@@ -76,7 +76,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -144,7 +144,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -158,7 +158,7 @@ Name | Type | Description  | Notes
 
 ## GetAllComponents
 
-> []Component GetAllComponents(ctx, uuid).OnlyOutdated(onlyOutdated).OnlyDirect(onlyDirect).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+> []Component GetAllComponents(ctx, uuid).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).OnlyOutdated(onlyOutdated).OnlyDirect(onlyDirect).Execute()
 
 Returns a list of all components for a given project
 
@@ -178,18 +178,18 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the project to retrieve components for
-	onlyOutdated := true // bool | Optionally exclude recent components so only outdated components are returned (optional)
-	onlyDirect := true // bool | Optionally exclude transitive dependencies so only direct dependencies are returned (optional)
-	pageNumber := TODO // interface{} | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to 1)
-	pageSize := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to 100)
-	offset := TODO // interface{} | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
-	limit := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
+	pageNumber := "pageNumber_example" // string | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to "1")
+	pageSize := "pageSize_example" // string | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to "100")
+	offset := "offset_example" // string | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
+	limit := "limit_example" // string | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
 	sortName := "sortName_example" // string | Name of the resource field to sort on. (optional)
 	sortOrder := "sortOrder_example" // string | Ordering of items when sorting with <code>sortName</code>. (optional)
+	onlyOutdated := true // bool | Optionally exclude recent components so only outdated components are returned (optional)
+	onlyDirect := true // bool | Optionally exclude transitive dependencies so only direct dependencies are returned (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ComponentAPI.GetAllComponents(context.Background(), uuid).OnlyOutdated(onlyOutdated).OnlyDirect(onlyDirect).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+	resp, r, err := apiClient.ComponentAPI.GetAllComponents(context.Background(), uuid).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).OnlyOutdated(onlyOutdated).OnlyDirect(onlyDirect).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentAPI.GetAllComponents``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -215,14 +215,14 @@ Other parameters are passed through a pointer to a apiGetAllComponentsRequest st
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **onlyOutdated** | **bool** | Optionally exclude recent components so only outdated components are returned | 
- **onlyDirect** | **bool** | Optionally exclude transitive dependencies so only direct dependencies are returned | 
- **pageNumber** | [**interface{}**](interface{}.md) | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to 1]
- **pageSize** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to 100]
- **offset** | [**interface{}**](interface{}.md) | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
- **limit** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
+ **pageNumber** | **string** | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to &quot;1&quot;]
+ **pageSize** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to &quot;100&quot;]
+ **offset** | **string** | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
+ **limit** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
  **sortName** | **string** | Name of the resource field to sort on. | 
  **sortOrder** | **string** | Ordering of items when sorting with &lt;code&gt;sortName&lt;/code&gt;. | 
+ **onlyOutdated** | **bool** | Optionally exclude recent components so only outdated components are returned | 
+ **onlyDirect** | **bool** | Optionally exclude transitive dependencies so only direct dependencies are returned | 
 
 ### Return type
 
@@ -230,7 +230,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -264,10 +264,10 @@ import (
 
 func main() {
 	hash := "hash_example" // string | The MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-384, SHA3-512, BLAKE2b-256, BLAKE2b-384, BLAKE2b-512, or BLAKE3 hash of the component to retrieve
-	pageNumber := TODO // interface{} | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to 1)
-	pageSize := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to 100)
-	offset := TODO // interface{} | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
-	limit := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
+	pageNumber := "pageNumber_example" // string | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to "1")
+	pageSize := "pageSize_example" // string | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to "100")
+	offset := "offset_example" // string | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
+	limit := "limit_example" // string | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
 	sortName := "sortName_example" // string | Name of the resource field to sort on. (optional)
 	sortOrder := "sortOrder_example" // string | Ordering of items when sorting with <code>sortName</code>. (optional)
 
@@ -299,10 +299,10 @@ Other parameters are passed through a pointer to a apiGetComponentByHashRequest 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **pageNumber** | [**interface{}**](interface{}.md) | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to 1]
- **pageSize** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to 100]
- **offset** | [**interface{}**](interface{}.md) | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
- **limit** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
+ **pageNumber** | **string** | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to &quot;1&quot;]
+ **pageSize** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to &quot;100&quot;]
+ **offset** | **string** | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
+ **limit** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
  **sortName** | **string** | Name of the resource field to sort on. | 
  **sortOrder** | **string** | Ordering of items when sorting with &lt;code&gt;sortName&lt;/code&gt;. | 
 
@@ -312,7 +312,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -326,7 +326,7 @@ Name | Type | Description  | Notes
 
 ## GetComponentByIdentity
 
-> []Component GetComponentByIdentity(ctx).Group(group).Name(name).Version(version).Purl(purl).Cpe(cpe).SwidTagId(swidTagId).Project(project).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+> []Component GetComponentByIdentity(ctx).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Group(group).Name(name).Version(version).Purl(purl).Cpe(cpe).SwidTagId(swidTagId).Project(project).Execute()
 
 Returns a list of components that have the specified component identity. This resource accepts coordinates (group, name, version) or purl, cpe, or swidTagId
 
@@ -345,6 +345,12 @@ import (
 )
 
 func main() {
+	pageNumber := "pageNumber_example" // string | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to "1")
+	pageSize := "pageSize_example" // string | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to "100")
+	offset := "offset_example" // string | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
+	limit := "limit_example" // string | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
+	sortName := "sortName_example" // string | Name of the resource field to sort on. (optional)
+	sortOrder := "sortOrder_example" // string | Ordering of items when sorting with <code>sortName</code>. (optional)
 	group := "group_example" // string | The group of the component (optional)
 	name := "name_example" // string | The name of the component (optional)
 	version := "version_example" // string | The version of the component (optional)
@@ -352,16 +358,10 @@ func main() {
 	cpe := "cpe_example" // string | The cpe of the component (optional)
 	swidTagId := "swidTagId_example" // string | The swidTagId of the component (optional)
 	project := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The project the component belongs to (optional)
-	pageNumber := TODO // interface{} | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to 1)
-	pageSize := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to 100)
-	offset := TODO // interface{} | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
-	limit := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
-	sortName := "sortName_example" // string | Name of the resource field to sort on. (optional)
-	sortOrder := "sortOrder_example" // string | Ordering of items when sorting with <code>sortName</code>. (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ComponentAPI.GetComponentByIdentity(context.Background()).Group(group).Name(name).Version(version).Purl(purl).Cpe(cpe).SwidTagId(swidTagId).Project(project).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+	resp, r, err := apiClient.ComponentAPI.GetComponentByIdentity(context.Background()).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Group(group).Name(name).Version(version).Purl(purl).Cpe(cpe).SwidTagId(swidTagId).Project(project).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentAPI.GetComponentByIdentity``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -382,6 +382,12 @@ Other parameters are passed through a pointer to a apiGetComponentByIdentityRequ
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **pageNumber** | **string** | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to &quot;1&quot;]
+ **pageSize** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to &quot;100&quot;]
+ **offset** | **string** | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
+ **limit** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
+ **sortName** | **string** | Name of the resource field to sort on. | 
+ **sortOrder** | **string** | Ordering of items when sorting with &lt;code&gt;sortName&lt;/code&gt;. | 
  **group** | **string** | The group of the component | 
  **name** | **string** | The name of the component | 
  **version** | **string** | The version of the component | 
@@ -389,12 +395,6 @@ Name | Type | Description  | Notes
  **cpe** | **string** | The cpe of the component | 
  **swidTagId** | **string** | The swidTagId of the component | 
  **project** | **string** | The project the component belongs to | 
- **pageNumber** | [**interface{}**](interface{}.md) | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to 1]
- **pageSize** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to 100]
- **offset** | [**interface{}**](interface{}.md) | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
- **limit** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
- **sortName** | **string** | Name of the resource field to sort on. | 
- **sortOrder** | **string** | Ordering of items when sorting with &lt;code&gt;sortName&lt;/code&gt;. | 
 
 ### Return type
 
@@ -402,7 +402,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -474,7 +474,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -488,7 +488,7 @@ Name | Type | Description  | Notes
 
 ## GetDependencyGraphForComponent
 
-> map[string]Component GetDependencyGraphForComponent(ctx, projectUuid, componentUuids).Execute()
+> map[string]interface{} GetDependencyGraphForComponent(ctx, projectUuid, componentUuids).Execute()
 
 Returns the expanded dependency graph to every occurrence of a component
 
@@ -517,7 +517,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentAPI.GetDependencyGraphForComponent``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `GetDependencyGraphForComponent`: map[string]Component
+	// response from `GetDependencyGraphForComponent`: map[string]interface{}
 	fmt.Fprintf(os.Stdout, "Response from `ComponentAPI.GetDependencyGraphForComponent`: %v\n", resp)
 }
 ```
@@ -543,11 +543,11 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**map[string]Component**](Component.md)
+**map[string]interface{}**
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -606,7 +606,7 @@ Other parameters are passed through a pointer to a apiIdentifyInternalComponents
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -620,7 +620,7 @@ Other parameters are passed through a pointer to a apiIdentifyInternalComponents
 
 ## UpdateComponent
 
-> Component UpdateComponent(ctx).Body(body).Execute()
+> Component UpdateComponent(ctx).Component(component).Execute()
 
 Updates a component
 
@@ -639,11 +639,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewComponent(*openapiclient.NewProject(), "Uuid_example") // Component |  (optional)
+	component := *openapiclient.NewComponent("Classifier_example", *openapiclient.NewProject("Uuid_example", int64(123)), "Uuid_example") // Component |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ComponentAPI.UpdateComponent(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.ComponentAPI.UpdateComponent(context.Background()).Component(component).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ComponentAPI.UpdateComponent``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -664,7 +664,7 @@ Other parameters are passed through a pointer to a apiUpdateComponentRequest str
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**Component**](Component.md) |  | 
+ **component** | [**Component**](Component.md) |  | 
 
 ### Return type
 
@@ -672,7 +672,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

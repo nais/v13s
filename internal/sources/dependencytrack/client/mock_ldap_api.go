@@ -183,42 +183,33 @@ func (_c *MockLdapAPI_DeleteMapping1_Call) RunAndReturn(run func(context.Context
 }
 
 // DeleteMapping1Execute provides a mock function with given fields: r
-func (_m *MockLdapAPI) DeleteMapping1Execute(r ApiDeleteMapping1Request) (*MappedLdapGroup, *http.Response, error) {
+func (_m *MockLdapAPI) DeleteMapping1Execute(r ApiDeleteMapping1Request) (*http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteMapping1Execute")
 	}
 
-	var r0 *MappedLdapGroup
-	var r1 *http.Response
-	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiDeleteMapping1Request) (*MappedLdapGroup, *http.Response, error)); ok {
+	var r0 *http.Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(ApiDeleteMapping1Request) (*http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiDeleteMapping1Request) *MappedLdapGroup); ok {
+	if rf, ok := ret.Get(0).(func(ApiDeleteMapping1Request) *http.Response); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*MappedLdapGroup)
+			r0 = ret.Get(0).(*http.Response)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(ApiDeleteMapping1Request) *http.Response); ok {
+	if rf, ok := ret.Get(1).(func(ApiDeleteMapping1Request) error); ok {
 		r1 = rf(r)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*http.Response)
-		}
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(ApiDeleteMapping1Request) error); ok {
-		r2 = rf(r)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockLdapAPI_DeleteMapping1Execute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMapping1Execute'
@@ -239,27 +230,27 @@ func (_c *MockLdapAPI_DeleteMapping1Execute_Call) Run(run func(r ApiDeleteMappin
 	return _c
 }
 
-func (_c *MockLdapAPI_DeleteMapping1Execute_Call) Return(_a0 *MappedLdapGroup, _a1 *http.Response, _a2 error) *MockLdapAPI_DeleteMapping1Execute_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *MockLdapAPI_DeleteMapping1Execute_Call) Return(_a0 *http.Response, _a1 error) *MockLdapAPI_DeleteMapping1Execute_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockLdapAPI_DeleteMapping1Execute_Call) RunAndReturn(run func(ApiDeleteMapping1Request) (*MappedLdapGroup, *http.Response, error)) *MockLdapAPI_DeleteMapping1Execute_Call {
+func (_c *MockLdapAPI_DeleteMapping1Execute_Call) RunAndReturn(run func(ApiDeleteMapping1Request) (*http.Response, error)) *MockLdapAPI_DeleteMapping1Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RetrieveLdapGroups provides a mock function with given fields: ctx, uuid
-func (_m *MockLdapAPI) RetrieveLdapGroups(ctx context.Context, uuid string) ApiRetrieveLdapGroupsRequest {
-	ret := _m.Called(ctx, uuid)
+// RetrieveLdapGroups provides a mock function with given fields: ctx
+func (_m *MockLdapAPI) RetrieveLdapGroups(ctx context.Context) ApiRetrieveLdapGroupsRequest {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveLdapGroups")
 	}
 
 	var r0 ApiRetrieveLdapGroupsRequest
-	if rf, ok := ret.Get(0).(func(context.Context, string) ApiRetrieveLdapGroupsRequest); ok {
-		r0 = rf(ctx, uuid)
+	if rf, ok := ret.Get(0).(func(context.Context) ApiRetrieveLdapGroupsRequest); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Get(0).(ApiRetrieveLdapGroupsRequest)
 	}
@@ -274,14 +265,13 @@ type MockLdapAPI_RetrieveLdapGroups_Call struct {
 
 // RetrieveLdapGroups is a helper method to define mock.On call
 //   - ctx context.Context
-//   - uuid string
-func (_e *MockLdapAPI_Expecter) RetrieveLdapGroups(ctx interface{}, uuid interface{}) *MockLdapAPI_RetrieveLdapGroups_Call {
-	return &MockLdapAPI_RetrieveLdapGroups_Call{Call: _e.mock.On("RetrieveLdapGroups", ctx, uuid)}
+func (_e *MockLdapAPI_Expecter) RetrieveLdapGroups(ctx interface{}) *MockLdapAPI_RetrieveLdapGroups_Call {
+	return &MockLdapAPI_RetrieveLdapGroups_Call{Call: _e.mock.On("RetrieveLdapGroups", ctx)}
 }
 
-func (_c *MockLdapAPI_RetrieveLdapGroups_Call) Run(run func(ctx context.Context, uuid string)) *MockLdapAPI_RetrieveLdapGroups_Call {
+func (_c *MockLdapAPI_RetrieveLdapGroups_Call) Run(run func(ctx context.Context)) *MockLdapAPI_RetrieveLdapGroups_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -291,22 +281,22 @@ func (_c *MockLdapAPI_RetrieveLdapGroups_Call) Return(_a0 ApiRetrieveLdapGroupsR
 	return _c
 }
 
-func (_c *MockLdapAPI_RetrieveLdapGroups_Call) RunAndReturn(run func(context.Context, string) ApiRetrieveLdapGroupsRequest) *MockLdapAPI_RetrieveLdapGroups_Call {
+func (_c *MockLdapAPI_RetrieveLdapGroups_Call) RunAndReturn(run func(context.Context) ApiRetrieveLdapGroupsRequest) *MockLdapAPI_RetrieveLdapGroups_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RetrieveLdapGroups1 provides a mock function with given fields: ctx
-func (_m *MockLdapAPI) RetrieveLdapGroups1(ctx context.Context) ApiRetrieveLdapGroups1Request {
-	ret := _m.Called(ctx)
+// RetrieveLdapGroups1 provides a mock function with given fields: ctx, uuid
+func (_m *MockLdapAPI) RetrieveLdapGroups1(ctx context.Context, uuid string) ApiRetrieveLdapGroups1Request {
+	ret := _m.Called(ctx, uuid)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveLdapGroups1")
 	}
 
 	var r0 ApiRetrieveLdapGroups1Request
-	if rf, ok := ret.Get(0).(func(context.Context) ApiRetrieveLdapGroups1Request); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ApiRetrieveLdapGroups1Request); ok {
+		r0 = rf(ctx, uuid)
 	} else {
 		r0 = ret.Get(0).(ApiRetrieveLdapGroups1Request)
 	}
@@ -321,13 +311,14 @@ type MockLdapAPI_RetrieveLdapGroups1_Call struct {
 
 // RetrieveLdapGroups1 is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockLdapAPI_Expecter) RetrieveLdapGroups1(ctx interface{}) *MockLdapAPI_RetrieveLdapGroups1_Call {
-	return &MockLdapAPI_RetrieveLdapGroups1_Call{Call: _e.mock.On("RetrieveLdapGroups1", ctx)}
+//   - uuid string
+func (_e *MockLdapAPI_Expecter) RetrieveLdapGroups1(ctx interface{}, uuid interface{}) *MockLdapAPI_RetrieveLdapGroups1_Call {
+	return &MockLdapAPI_RetrieveLdapGroups1_Call{Call: _e.mock.On("RetrieveLdapGroups1", ctx, uuid)}
 }
 
-func (_c *MockLdapAPI_RetrieveLdapGroups1_Call) Run(run func(ctx context.Context)) *MockLdapAPI_RetrieveLdapGroups1_Call {
+func (_c *MockLdapAPI_RetrieveLdapGroups1_Call) Run(run func(ctx context.Context, uuid string)) *MockLdapAPI_RetrieveLdapGroups1_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -337,30 +328,30 @@ func (_c *MockLdapAPI_RetrieveLdapGroups1_Call) Return(_a0 ApiRetrieveLdapGroups
 	return _c
 }
 
-func (_c *MockLdapAPI_RetrieveLdapGroups1_Call) RunAndReturn(run func(context.Context) ApiRetrieveLdapGroups1Request) *MockLdapAPI_RetrieveLdapGroups1_Call {
+func (_c *MockLdapAPI_RetrieveLdapGroups1_Call) RunAndReturn(run func(context.Context, string) ApiRetrieveLdapGroups1Request) *MockLdapAPI_RetrieveLdapGroups1_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // RetrieveLdapGroups1Execute provides a mock function with given fields: r
-func (_m *MockLdapAPI) RetrieveLdapGroups1Execute(r ApiRetrieveLdapGroups1Request) ([]string, *http.Response, error) {
+func (_m *MockLdapAPI) RetrieveLdapGroups1Execute(r ApiRetrieveLdapGroups1Request) ([]MappedLdapGroup, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveLdapGroups1Execute")
 	}
 
-	var r0 []string
+	var r0 []MappedLdapGroup
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiRetrieveLdapGroups1Request) ([]string, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiRetrieveLdapGroups1Request) ([]MappedLdapGroup, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiRetrieveLdapGroups1Request) []string); ok {
+	if rf, ok := ret.Get(0).(func(ApiRetrieveLdapGroups1Request) []MappedLdapGroup); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
+			r0 = ret.Get(0).([]MappedLdapGroup)
 		}
 	}
 
@@ -399,12 +390,12 @@ func (_c *MockLdapAPI_RetrieveLdapGroups1Execute_Call) Run(run func(r ApiRetriev
 	return _c
 }
 
-func (_c *MockLdapAPI_RetrieveLdapGroups1Execute_Call) Return(_a0 []string, _a1 *http.Response, _a2 error) *MockLdapAPI_RetrieveLdapGroups1Execute_Call {
+func (_c *MockLdapAPI_RetrieveLdapGroups1Execute_Call) Return(_a0 []MappedLdapGroup, _a1 *http.Response, _a2 error) *MockLdapAPI_RetrieveLdapGroups1Execute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockLdapAPI_RetrieveLdapGroups1Execute_Call) RunAndReturn(run func(ApiRetrieveLdapGroups1Request) ([]string, *http.Response, error)) *MockLdapAPI_RetrieveLdapGroups1Execute_Call {
+func (_c *MockLdapAPI_RetrieveLdapGroups1Execute_Call) RunAndReturn(run func(ApiRetrieveLdapGroups1Request) ([]MappedLdapGroup, *http.Response, error)) *MockLdapAPI_RetrieveLdapGroups1Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }

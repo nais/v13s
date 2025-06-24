@@ -29,4 +29,5 @@ DELETE
 FROM source_refs
 WHERE image_name = @image_name
   AND image_tag = @image_tag
-  AND source_type = @source_type;
+  AND source_type = @source_type
+;

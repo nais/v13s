@@ -26,7 +26,7 @@ Method | HTTP request | Description
 
 ## AddTeamToUser
 
-> UserPrincipal AddTeamToUser(ctx, username).Body(body).Execute()
+> UserPrincipal AddTeamToUser(ctx, username).IdentifiableObject(identifiableObject).Execute()
 
 Adds the username to the specified team.
 
@@ -46,11 +46,11 @@ import (
 
 func main() {
 	username := "username_example" // string | A valid username
-	body := *openapiclient.NewIdentifiableObject() // IdentifiableObject | The UUID of the team to associate username with
+	identifiableObject := *openapiclient.NewIdentifiableObject() // IdentifiableObject | The UUID of the team to associate username with
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.AddTeamToUser(context.Background(), username).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.AddTeamToUser(context.Background(), username).IdentifiableObject(identifiableObject).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.AddTeamToUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -76,7 +76,7 @@ Other parameters are passed through a pointer to a apiAddTeamToUserRequest struc
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**IdentifiableObject**](IdentifiableObject.md) | The UUID of the team to associate username with | 
+ **identifiableObject** | [**IdentifiableObject**](IdentifiableObject.md) | The UUID of the team to associate username with | 
 
 ### Return type
 
@@ -84,7 +84,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -98,7 +98,7 @@ Name | Type | Description  | Notes
 
 ## CreateLdapUser
 
-> LdapUser CreateLdapUser(ctx).Body(body).Execute()
+> LdapUser CreateLdapUser(ctx).LdapUser(ldapUser).Execute()
 
 Creates a new user that references an existing LDAP object.
 
@@ -117,11 +117,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewLdapUser() // LdapUser |  (optional)
+	ldapUser := *openapiclient.NewLdapUser() // LdapUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.CreateLdapUser(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.CreateLdapUser(context.Background()).LdapUser(ldapUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.CreateLdapUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -142,7 +142,7 @@ Other parameters are passed through a pointer to a apiCreateLdapUserRequest stru
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**LdapUser**](LdapUser.md) |  | 
+ **ldapUser** | [**LdapUser**](LdapUser.md) |  | 
 
 ### Return type
 
@@ -150,7 +150,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -164,7 +164,7 @@ Name | Type | Description  | Notes
 
 ## CreateManagedUser
 
-> ManagedUser CreateManagedUser(ctx).Body(body).Execute()
+> ManagedUser CreateManagedUser(ctx).ManagedUser(managedUser).Execute()
 
 Creates a new user.
 
@@ -183,11 +183,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
+	managedUser := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.CreateManagedUser(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.CreateManagedUser(context.Background()).ManagedUser(managedUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.CreateManagedUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -208,7 +208,7 @@ Other parameters are passed through a pointer to a apiCreateManagedUserRequest s
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ManagedUser**](ManagedUser.md) |  | 
+ **managedUser** | [**ManagedUser**](ManagedUser.md) |  | 
 
 ### Return type
 
@@ -216,7 +216,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -230,7 +230,7 @@ Name | Type | Description  | Notes
 
 ## CreateOidcUser
 
-> OidcUser CreateOidcUser(ctx).Body(body).Execute()
+> OidcUser CreateOidcUser(ctx).OidcUser(oidcUser).Execute()
 
 Creates a new user that references an existing OpenID Connect user.
 
@@ -249,11 +249,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewOidcUser() // OidcUser |  (optional)
+	oidcUser := *openapiclient.NewOidcUser() // OidcUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.CreateOidcUser(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.CreateOidcUser(context.Background()).OidcUser(oidcUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.CreateOidcUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -274,7 +274,7 @@ Other parameters are passed through a pointer to a apiCreateOidcUserRequest stru
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**OidcUser**](OidcUser.md) |  | 
+ **oidcUser** | [**OidcUser**](OidcUser.md) |  | 
 
 ### Return type
 
@@ -282,7 +282,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -296,7 +296,7 @@ Name | Type | Description  | Notes
 
 ## DeleteLdapUser
 
-> DeleteLdapUser(ctx).Body(body).Execute()
+> DeleteLdapUser(ctx).LdapUser(ldapUser).Execute()
 
 Deletes a user.
 
@@ -315,11 +315,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewLdapUser() // LdapUser |  (optional)
+	ldapUser := *openapiclient.NewLdapUser() // LdapUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.UserAPI.DeleteLdapUser(context.Background()).Body(body).Execute()
+	r, err := apiClient.UserAPI.DeleteLdapUser(context.Background()).LdapUser(ldapUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.DeleteLdapUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -338,7 +338,7 @@ Other parameters are passed through a pointer to a apiDeleteLdapUserRequest stru
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**LdapUser**](LdapUser.md) |  | 
+ **ldapUser** | [**LdapUser**](LdapUser.md) |  | 
 
 ### Return type
 
@@ -346,7 +346,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -360,7 +360,7 @@ Name | Type | Description  | Notes
 
 ## DeleteManagedUser
 
-> DeleteManagedUser(ctx).Body(body).Execute()
+> DeleteManagedUser(ctx).ManagedUser(managedUser).Execute()
 
 Deletes a user.
 
@@ -379,11 +379,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
+	managedUser := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.UserAPI.DeleteManagedUser(context.Background()).Body(body).Execute()
+	r, err := apiClient.UserAPI.DeleteManagedUser(context.Background()).ManagedUser(managedUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.DeleteManagedUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -402,7 +402,7 @@ Other parameters are passed through a pointer to a apiDeleteManagedUserRequest s
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ManagedUser**](ManagedUser.md) |  | 
+ **managedUser** | [**ManagedUser**](ManagedUser.md) |  | 
 
 ### Return type
 
@@ -410,7 +410,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -424,7 +424,7 @@ Name | Type | Description  | Notes
 
 ## DeleteOidcUser
 
-> DeleteOidcUser(ctx).Body(body).Execute()
+> DeleteOidcUser(ctx).OidcUser(oidcUser).Execute()
 
 Deletes an OpenID Connect user.
 
@@ -443,11 +443,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewOidcUser() // OidcUser |  (optional)
+	oidcUser := *openapiclient.NewOidcUser() // OidcUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.UserAPI.DeleteOidcUser(context.Background()).Body(body).Execute()
+	r, err := apiClient.UserAPI.DeleteOidcUser(context.Background()).OidcUser(oidcUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.DeleteOidcUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -466,7 +466,7 @@ Other parameters are passed through a pointer to a apiDeleteOidcUserRequest stru
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**OidcUser**](OidcUser.md) |  | 
+ **oidcUser** | [**OidcUser**](OidcUser.md) |  | 
 
 ### Return type
 
@@ -474,7 +474,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -488,7 +488,7 @@ Name | Type | Description  | Notes
 
 ## ForceChangePassword
 
-> string ForceChangePassword(ctx).Username(username).Password(password).NewPassword(newPassword).ConfirmPassword(confirmPassword).Execute()
+> ForceChangePassword(ctx).Username(username).Password(password).NewPassword(newPassword).ConfirmPassword(confirmPassword).Execute()
 
 Asserts login credentials and upon successful authentication, verifies passwords match and changes users password
 
@@ -514,13 +514,11 @@ func main() {
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.ForceChangePassword(context.Background()).Username(username).Password(password).NewPassword(newPassword).ConfirmPassword(confirmPassword).Execute()
+	r, err := apiClient.UserAPI.ForceChangePassword(context.Background()).Username(username).Password(password).NewPassword(newPassword).ConfirmPassword(confirmPassword).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.ForceChangePassword``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `ForceChangePassword`: string
-	fmt.Fprintf(os.Stdout, "Response from `UserAPI.ForceChangePassword`: %v\n", resp)
 }
 ```
 
@@ -542,16 +540,16 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**string**
+ (empty response body)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: application/x-www-form-urlencoded
-- **Accept**: text/plain
+- **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -607,7 +605,7 @@ Other parameters are passed through a pointer to a apiGetLdapUsersRequest struct
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -668,7 +666,7 @@ Other parameters are passed through a pointer to a apiGetManagedUsersRequest str
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -729,7 +727,7 @@ Other parameters are passed through a pointer to a apiGetOidcUsersRequest struct
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -788,7 +786,7 @@ Other parameters are passed through a pointer to a apiGetSelf1Request struct via
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -802,7 +800,7 @@ Other parameters are passed through a pointer to a apiGetSelf1Request struct via
 
 ## RemoveTeamFromUser
 
-> UserPrincipal RemoveTeamFromUser(ctx, username).Body(body).Execute()
+> UserPrincipal RemoveTeamFromUser(ctx, username).IdentifiableObject(identifiableObject).Execute()
 
 Removes the username from the specified team.
 
@@ -822,11 +820,11 @@ import (
 
 func main() {
 	username := "username_example" // string | A valid username
-	body := *openapiclient.NewIdentifiableObject() // IdentifiableObject | The UUID of the team to un-associate username from
+	identifiableObject := *openapiclient.NewIdentifiableObject() // IdentifiableObject | The UUID of the team to un-associate username from
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.RemoveTeamFromUser(context.Background(), username).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.RemoveTeamFromUser(context.Background(), username).IdentifiableObject(identifiableObject).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.RemoveTeamFromUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -852,7 +850,7 @@ Other parameters are passed through a pointer to a apiRemoveTeamFromUserRequest 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**IdentifiableObject**](IdentifiableObject.md) | The UUID of the team to un-associate username from | 
+ **identifiableObject** | [**IdentifiableObject**](IdentifiableObject.md) | The UUID of the team to un-associate username from | 
 
 ### Return type
 
@@ -860,7 +858,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -874,7 +872,7 @@ Name | Type | Description  | Notes
 
 ## UpdateManagedUser
 
-> ManagedUser UpdateManagedUser(ctx).Body(body).Execute()
+> ManagedUser UpdateManagedUser(ctx).ManagedUser(managedUser).Execute()
 
 Updates a managed user.
 
@@ -893,11 +891,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
+	managedUser := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.UpdateManagedUser(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.UpdateManagedUser(context.Background()).ManagedUser(managedUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.UpdateManagedUser``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -918,7 +916,7 @@ Other parameters are passed through a pointer to a apiUpdateManagedUserRequest s
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ManagedUser**](ManagedUser.md) |  | 
+ **managedUser** | [**ManagedUser**](ManagedUser.md) |  | 
 
 ### Return type
 
@@ -926,7 +924,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -940,7 +938,7 @@ Name | Type | Description  | Notes
 
 ## UpdateSelf
 
-> UserPrincipal UpdateSelf(ctx).Body(body).Execute()
+> ManagedUser UpdateSelf(ctx).ManagedUser(managedUser).Execute()
 
 Updates information about the current logged in user.
 
@@ -957,16 +955,16 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
+	managedUser := *openapiclient.NewManagedUser(int64(123)) // ManagedUser |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.UserAPI.UpdateSelf(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.UserAPI.UpdateSelf(context.Background()).ManagedUser(managedUser).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `UserAPI.UpdateSelf``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `UpdateSelf`: UserPrincipal
+	// response from `UpdateSelf`: ManagedUser
 	fmt.Fprintf(os.Stdout, "Response from `UserAPI.UpdateSelf`: %v\n", resp)
 }
 ```
@@ -982,15 +980,15 @@ Other parameters are passed through a pointer to a apiUpdateSelfRequest struct v
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ManagedUser**](ManagedUser.md) |  | 
+ **managedUser** | [**ManagedUser**](ManagedUser.md) |  | 
 
 ### Return type
 
-[**UserPrincipal**](UserPrincipal.md)
+[**ManagedUser**](ManagedUser.md)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -1058,7 +1056,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -1126,7 +1124,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

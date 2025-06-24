@@ -4,14 +4,16 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Project** | **string** |  | [readonly] 
-**ProjectName** | Pointer to **string** |  | [optional] [readonly] 
-**ProjectVersion** | Pointer to **string** |  | [optional] [readonly] 
-**AutoCreate** | Pointer to **bool** |  | [optional] [readonly] 
-**ParentUUID** | Pointer to **string** |  | [optional] [readonly] 
-**ParentName** | Pointer to **string** |  | [optional] [readonly] 
-**ParentVersion** | Pointer to **string** |  | [optional] [readonly] 
-**Bom** | **string** | Base64 encoded BOM | [readonly] 
+**Project** | **string** |  | 
+**ProjectName** | Pointer to **string** |  | [optional] 
+**ProjectVersion** | Pointer to **string** |  | [optional] 
+**ProjectTags** | Pointer to [**[]Tag**](Tag.md) | Overwrite project tags. Modifying the tags of an existing project requires the PORTFOLIO_MANAGEMENT permission. | [optional] 
+**AutoCreate** | Pointer to **bool** |  | [optional] 
+**ParentUUID** | Pointer to **string** |  | [optional] 
+**ParentName** | Pointer to **string** |  | [optional] 
+**ParentVersion** | Pointer to **string** |  | [optional] 
+**IsLatestProjectVersion** | Pointer to **bool** |  | [optional] 
+**Bom** | **string** | Base64 encoded BOM | 
 
 ## Methods
 
@@ -101,6 +103,31 @@ SetProjectVersion sets ProjectVersion field to given value.
 `func (o *BomSubmitRequest) HasProjectVersion() bool`
 
 HasProjectVersion returns a boolean if a field has been set.
+
+### GetProjectTags
+
+`func (o *BomSubmitRequest) GetProjectTags() []Tag`
+
+GetProjectTags returns the ProjectTags field if non-nil, zero value otherwise.
+
+### GetProjectTagsOk
+
+`func (o *BomSubmitRequest) GetProjectTagsOk() (*[]Tag, bool)`
+
+GetProjectTagsOk returns a tuple with the ProjectTags field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetProjectTags
+
+`func (o *BomSubmitRequest) SetProjectTags(v []Tag)`
+
+SetProjectTags sets ProjectTags field to given value.
+
+### HasProjectTags
+
+`func (o *BomSubmitRequest) HasProjectTags() bool`
+
+HasProjectTags returns a boolean if a field has been set.
 
 ### GetAutoCreate
 
@@ -201,6 +228,31 @@ SetParentVersion sets ParentVersion field to given value.
 `func (o *BomSubmitRequest) HasParentVersion() bool`
 
 HasParentVersion returns a boolean if a field has been set.
+
+### GetIsLatestProjectVersion
+
+`func (o *BomSubmitRequest) GetIsLatestProjectVersion() bool`
+
+GetIsLatestProjectVersion returns the IsLatestProjectVersion field if non-nil, zero value otherwise.
+
+### GetIsLatestProjectVersionOk
+
+`func (o *BomSubmitRequest) GetIsLatestProjectVersionOk() (*bool, bool)`
+
+GetIsLatestProjectVersionOk returns a tuple with the IsLatestProjectVersion field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetIsLatestProjectVersion
+
+`func (o *BomSubmitRequest) SetIsLatestProjectVersion(v bool)`
+
+SetIsLatestProjectVersion sets IsLatestProjectVersion field to given value.
+
+### HasIsLatestProjectVersion
+
+`func (o *BomSubmitRequest) HasIsLatestProjectVersion() bool`
+
+HasIsLatestProjectVersion returns a boolean if a field has been set.
 
 ### GetBom
 

@@ -34,14 +34,14 @@ Name | Type | Description | Notes
 **PolicyViolationsOperationalTotal** | Pointer to **int32** |  | [optional] 
 **PolicyViolationsOperationalAudited** | Pointer to **int32** |  | [optional] 
 **PolicyViolationsOperationalUnaudited** | Pointer to **int32** |  | [optional] 
-**FirstOccurrence** | **float32** |  | 
-**LastOccurrence** | **float32** |  | 
+**FirstOccurrence** | **int64** | UNIX epoch timestamp in milliseconds | 
+**LastOccurrence** | **int64** | UNIX epoch timestamp in milliseconds | 
 
 ## Methods
 
 ### NewPortfolioMetrics
 
-`func NewPortfolioMetrics(critical int32, high int32, medium int32, low int32, firstOccurrence float32, lastOccurrence float32, ) *PortfolioMetrics`
+`func NewPortfolioMetrics(critical int32, high int32, medium int32, low int32, firstOccurrence int64, lastOccurrence int64, ) *PortfolioMetrics`
 
 NewPortfolioMetrics instantiates a new PortfolioMetrics object
 This constructor will assign default values to properties that have it defined,
@@ -788,40 +788,40 @@ HasPolicyViolationsOperationalUnaudited returns a boolean if a field has been se
 
 ### GetFirstOccurrence
 
-`func (o *PortfolioMetrics) GetFirstOccurrence() float32`
+`func (o *PortfolioMetrics) GetFirstOccurrence() int64`
 
 GetFirstOccurrence returns the FirstOccurrence field if non-nil, zero value otherwise.
 
 ### GetFirstOccurrenceOk
 
-`func (o *PortfolioMetrics) GetFirstOccurrenceOk() (*float32, bool)`
+`func (o *PortfolioMetrics) GetFirstOccurrenceOk() (*int64, bool)`
 
 GetFirstOccurrenceOk returns a tuple with the FirstOccurrence field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetFirstOccurrence
 
-`func (o *PortfolioMetrics) SetFirstOccurrence(v float32)`
+`func (o *PortfolioMetrics) SetFirstOccurrence(v int64)`
 
 SetFirstOccurrence sets FirstOccurrence field to given value.
 
 
 ### GetLastOccurrence
 
-`func (o *PortfolioMetrics) GetLastOccurrence() float32`
+`func (o *PortfolioMetrics) GetLastOccurrence() int64`
 
 GetLastOccurrence returns the LastOccurrence field if non-nil, zero value otherwise.
 
 ### GetLastOccurrenceOk
 
-`func (o *PortfolioMetrics) GetLastOccurrenceOk() (*float32, bool)`
+`func (o *PortfolioMetrics) GetLastOccurrenceOk() (*int64, bool)`
 
 GetLastOccurrenceOk returns a tuple with the LastOccurrence field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastOccurrence
 
-`func (o *PortfolioMetrics) SetLastOccurrence(v float32)`
+`func (o *PortfolioMetrics) SetLastOccurrence(v int64)`
 
 SetLastOccurrence sets LastOccurrence field to given value.
 

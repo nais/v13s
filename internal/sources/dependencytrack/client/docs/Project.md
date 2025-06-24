@@ -4,7 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Author** | Pointer to **string** |  | [optional] 
+**Authors** | Pointer to [**[]OrganizationalContact**](OrganizationalContact.md) |  | [optional] 
 **Publisher** | Pointer to **string** |  | [optional] 
 **Manufacturer** | Pointer to [**OrganizationalEntity**](OrganizationalEntity.md) |  | [optional] 
 **Supplier** | Pointer to [**OrganizationalEntity**](OrganizationalEntity.md) |  | [optional] 
@@ -13,22 +13,28 @@ Name | Type | Description | Notes
 **Description** | Pointer to **string** |  | [optional] 
 **Version** | Pointer to **string** |  | [optional] 
 **Classifier** | Pointer to **string** |  | [optional] 
+**CollectionLogic** | Pointer to **string** |  | [optional] 
+**CollectionTag** | Pointer to [**Tag**](Tag.md) |  | [optional] 
 **Cpe** | Pointer to **string** |  | [optional] 
 **Purl** | Pointer to **string** |  | [optional] 
 **SwidTagId** | Pointer to **string** |  | [optional] 
 **DirectDependencies** | Pointer to **string** |  | [optional] 
-**Uuid** | Pointer to **string** |  | [optional] 
+**Uuid** | **string** |  | 
 **Parent** | Pointer to [**Project**](Project.md) |  | [optional] 
 **Children** | Pointer to [**[]Project**](Project.md) |  | [optional] 
 **Properties** | Pointer to [**[]ProjectProperty**](ProjectProperty.md) |  | [optional] 
 **Tags** | Pointer to [**[]Tag**](Tag.md) |  | [optional] 
-**LastBomImport** | Pointer to **float32** |  | [optional] 
+**LastBomImport** | **int64** | UNIX epoch timestamp in milliseconds | 
 **LastBomImportFormat** | Pointer to **string** |  | [optional] 
 **LastInheritedRiskScore** | Pointer to **float64** |  | [optional] 
+**LastVulnerabilityAnalysis** | Pointer to **int64** | UNIX epoch timestamp in milliseconds | [optional] 
 **Active** | Pointer to **bool** |  | [optional] 
+**IsLatest** | Pointer to **bool** |  | [optional] 
+**AccessTeams** | Pointer to [**[]Team**](Team.md) |  | [optional] 
 **ExternalReferences** | Pointer to [**[]ExternalReference**](ExternalReference.md) |  | [optional] 
 **Metadata** | Pointer to [**ProjectMetadata**](ProjectMetadata.md) |  | [optional] 
 **Versions** | Pointer to [**[]ProjectVersion**](ProjectVersion.md) |  | [optional] 
+**Author** | Pointer to **string** |  | [optional] 
 **Metrics** | Pointer to [**ProjectMetrics**](ProjectMetrics.md) |  | [optional] 
 **BomRef** | Pointer to **string** |  | [optional] 
 
@@ -36,7 +42,7 @@ Name | Type | Description | Notes
 
 ### NewProject
 
-`func NewProject() *Project`
+`func NewProject(uuid string, lastBomImport int64, ) *Project`
 
 NewProject instantiates a new Project object
 This constructor will assign default values to properties that have it defined,
@@ -51,30 +57,30 @@ NewProjectWithDefaults instantiates a new Project object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
 
-### GetAuthor
+### GetAuthors
 
-`func (o *Project) GetAuthor() string`
+`func (o *Project) GetAuthors() []OrganizationalContact`
 
-GetAuthor returns the Author field if non-nil, zero value otherwise.
+GetAuthors returns the Authors field if non-nil, zero value otherwise.
 
-### GetAuthorOk
+### GetAuthorsOk
 
-`func (o *Project) GetAuthorOk() (*string, bool)`
+`func (o *Project) GetAuthorsOk() (*[]OrganizationalContact, bool)`
 
-GetAuthorOk returns a tuple with the Author field if it's non-nil, zero value otherwise
+GetAuthorsOk returns a tuple with the Authors field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
-### SetAuthor
+### SetAuthors
 
-`func (o *Project) SetAuthor(v string)`
+`func (o *Project) SetAuthors(v []OrganizationalContact)`
 
-SetAuthor sets Author field to given value.
+SetAuthors sets Authors field to given value.
 
-### HasAuthor
+### HasAuthors
 
-`func (o *Project) HasAuthor() bool`
+`func (o *Project) HasAuthors() bool`
 
-HasAuthor returns a boolean if a field has been set.
+HasAuthors returns a boolean if a field has been set.
 
 ### GetPublisher
 
@@ -276,6 +282,56 @@ SetClassifier sets Classifier field to given value.
 
 HasClassifier returns a boolean if a field has been set.
 
+### GetCollectionLogic
+
+`func (o *Project) GetCollectionLogic() string`
+
+GetCollectionLogic returns the CollectionLogic field if non-nil, zero value otherwise.
+
+### GetCollectionLogicOk
+
+`func (o *Project) GetCollectionLogicOk() (*string, bool)`
+
+GetCollectionLogicOk returns a tuple with the CollectionLogic field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCollectionLogic
+
+`func (o *Project) SetCollectionLogic(v string)`
+
+SetCollectionLogic sets CollectionLogic field to given value.
+
+### HasCollectionLogic
+
+`func (o *Project) HasCollectionLogic() bool`
+
+HasCollectionLogic returns a boolean if a field has been set.
+
+### GetCollectionTag
+
+`func (o *Project) GetCollectionTag() Tag`
+
+GetCollectionTag returns the CollectionTag field if non-nil, zero value otherwise.
+
+### GetCollectionTagOk
+
+`func (o *Project) GetCollectionTagOk() (*Tag, bool)`
+
+GetCollectionTagOk returns a tuple with the CollectionTag field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCollectionTag
+
+`func (o *Project) SetCollectionTag(v Tag)`
+
+SetCollectionTag sets CollectionTag field to given value.
+
+### HasCollectionTag
+
+`func (o *Project) HasCollectionTag() bool`
+
+HasCollectionTag returns a boolean if a field has been set.
+
 ### GetCpe
 
 `func (o *Project) GetCpe() string`
@@ -395,11 +451,6 @@ and a boolean to check if the value has been set.
 
 SetUuid sets Uuid field to given value.
 
-### HasUuid
-
-`func (o *Project) HasUuid() bool`
-
-HasUuid returns a boolean if a field has been set.
 
 ### GetParent
 
@@ -503,28 +554,23 @@ HasTags returns a boolean if a field has been set.
 
 ### GetLastBomImport
 
-`func (o *Project) GetLastBomImport() float32`
+`func (o *Project) GetLastBomImport() int64`
 
 GetLastBomImport returns the LastBomImport field if non-nil, zero value otherwise.
 
 ### GetLastBomImportOk
 
-`func (o *Project) GetLastBomImportOk() (*float32, bool)`
+`func (o *Project) GetLastBomImportOk() (*int64, bool)`
 
 GetLastBomImportOk returns a tuple with the LastBomImport field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
 ### SetLastBomImport
 
-`func (o *Project) SetLastBomImport(v float32)`
+`func (o *Project) SetLastBomImport(v int64)`
 
 SetLastBomImport sets LastBomImport field to given value.
 
-### HasLastBomImport
-
-`func (o *Project) HasLastBomImport() bool`
-
-HasLastBomImport returns a boolean if a field has been set.
 
 ### GetLastBomImportFormat
 
@@ -576,6 +622,31 @@ SetLastInheritedRiskScore sets LastInheritedRiskScore field to given value.
 
 HasLastInheritedRiskScore returns a boolean if a field has been set.
 
+### GetLastVulnerabilityAnalysis
+
+`func (o *Project) GetLastVulnerabilityAnalysis() int64`
+
+GetLastVulnerabilityAnalysis returns the LastVulnerabilityAnalysis field if non-nil, zero value otherwise.
+
+### GetLastVulnerabilityAnalysisOk
+
+`func (o *Project) GetLastVulnerabilityAnalysisOk() (*int64, bool)`
+
+GetLastVulnerabilityAnalysisOk returns a tuple with the LastVulnerabilityAnalysis field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetLastVulnerabilityAnalysis
+
+`func (o *Project) SetLastVulnerabilityAnalysis(v int64)`
+
+SetLastVulnerabilityAnalysis sets LastVulnerabilityAnalysis field to given value.
+
+### HasLastVulnerabilityAnalysis
+
+`func (o *Project) HasLastVulnerabilityAnalysis() bool`
+
+HasLastVulnerabilityAnalysis returns a boolean if a field has been set.
+
 ### GetActive
 
 `func (o *Project) GetActive() bool`
@@ -600,6 +671,56 @@ SetActive sets Active field to given value.
 `func (o *Project) HasActive() bool`
 
 HasActive returns a boolean if a field has been set.
+
+### GetIsLatest
+
+`func (o *Project) GetIsLatest() bool`
+
+GetIsLatest returns the IsLatest field if non-nil, zero value otherwise.
+
+### GetIsLatestOk
+
+`func (o *Project) GetIsLatestOk() (*bool, bool)`
+
+GetIsLatestOk returns a tuple with the IsLatest field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetIsLatest
+
+`func (o *Project) SetIsLatest(v bool)`
+
+SetIsLatest sets IsLatest field to given value.
+
+### HasIsLatest
+
+`func (o *Project) HasIsLatest() bool`
+
+HasIsLatest returns a boolean if a field has been set.
+
+### GetAccessTeams
+
+`func (o *Project) GetAccessTeams() []Team`
+
+GetAccessTeams returns the AccessTeams field if non-nil, zero value otherwise.
+
+### GetAccessTeamsOk
+
+`func (o *Project) GetAccessTeamsOk() (*[]Team, bool)`
+
+GetAccessTeamsOk returns a tuple with the AccessTeams field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAccessTeams
+
+`func (o *Project) SetAccessTeams(v []Team)`
+
+SetAccessTeams sets AccessTeams field to given value.
+
+### HasAccessTeams
+
+`func (o *Project) HasAccessTeams() bool`
+
+HasAccessTeams returns a boolean if a field has been set.
 
 ### GetExternalReferences
 
@@ -675,6 +796,31 @@ SetVersions sets Versions field to given value.
 `func (o *Project) HasVersions() bool`
 
 HasVersions returns a boolean if a field has been set.
+
+### GetAuthor
+
+`func (o *Project) GetAuthor() string`
+
+GetAuthor returns the Author field if non-nil, zero value otherwise.
+
+### GetAuthorOk
+
+`func (o *Project) GetAuthorOk() (*string, bool)`
+
+GetAuthorOk returns a tuple with the Author field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAuthor
+
+`func (o *Project) SetAuthor(v string)`
+
+SetAuthor sets Author field to given value.
+
+### HasAuthor
+
+`func (o *Project) HasAuthor() bool`
+
+HasAuthor returns a boolean if a field has been set.
 
 ### GetMetrics
 

@@ -30,7 +30,6 @@ type Config struct {
 
 type DependencyTrackConfig struct {
 	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
-	Team     string `envconfig:"DEPENDENCYTRACK_TEAM" default:"Administrators"`
 	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
 	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
 }

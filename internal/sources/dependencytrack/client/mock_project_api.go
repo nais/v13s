@@ -69,24 +69,24 @@ func (_c *MockProjectAPI_CloneProject_Call) RunAndReturn(run func(context.Contex
 }
 
 // CloneProjectExecute provides a mock function with given fields: r
-func (_m *MockProjectAPI) CloneProjectExecute(r ApiCloneProjectRequest) (*Project, *http.Response, error) {
+func (_m *MockProjectAPI) CloneProjectExecute(r ApiCloneProjectRequest) (*BomUploadResponse, *http.Response, error) {
 	ret := _m.Called(r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CloneProjectExecute")
 	}
 
-	var r0 *Project
+	var r0 *BomUploadResponse
 	var r1 *http.Response
 	var r2 error
-	if rf, ok := ret.Get(0).(func(ApiCloneProjectRequest) (*Project, *http.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(ApiCloneProjectRequest) (*BomUploadResponse, *http.Response, error)); ok {
 		return rf(r)
 	}
-	if rf, ok := ret.Get(0).(func(ApiCloneProjectRequest) *Project); ok {
+	if rf, ok := ret.Get(0).(func(ApiCloneProjectRequest) *BomUploadResponse); ok {
 		r0 = rf(r)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*Project)
+			r0 = ret.Get(0).(*BomUploadResponse)
 		}
 	}
 
@@ -125,12 +125,12 @@ func (_c *MockProjectAPI_CloneProjectExecute_Call) Run(run func(r ApiCloneProjec
 	return _c
 }
 
-func (_c *MockProjectAPI_CloneProjectExecute_Call) Return(_a0 *Project, _a1 *http.Response, _a2 error) *MockProjectAPI_CloneProjectExecute_Call {
+func (_c *MockProjectAPI_CloneProjectExecute_Call) Return(_a0 *BomUploadResponse, _a1 *http.Response, _a2 error) *MockProjectAPI_CloneProjectExecute_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockProjectAPI_CloneProjectExecute_Call) RunAndReturn(run func(ApiCloneProjectRequest) (*Project, *http.Response, error)) *MockProjectAPI_CloneProjectExecute_Call {
+func (_c *MockProjectAPI_CloneProjectExecute_Call) RunAndReturn(run func(ApiCloneProjectRequest) (*BomUploadResponse, *http.Response, error)) *MockProjectAPI_CloneProjectExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -349,6 +349,110 @@ func (_c *MockProjectAPI_DeleteProjectExecute_Call) Return(_a0 *http.Response, _
 }
 
 func (_c *MockProjectAPI_DeleteProjectExecute_Call) RunAndReturn(run func(ApiDeleteProjectRequest) (*http.Response, error)) *MockProjectAPI_DeleteProjectExecute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteProjects provides a mock function with given fields: ctx
+func (_m *MockProjectAPI) DeleteProjects(ctx context.Context) ApiDeleteProjectsRequest {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteProjects")
+	}
+
+	var r0 ApiDeleteProjectsRequest
+	if rf, ok := ret.Get(0).(func(context.Context) ApiDeleteProjectsRequest); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(ApiDeleteProjectsRequest)
+	}
+
+	return r0
+}
+
+// MockProjectAPI_DeleteProjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteProjects'
+type MockProjectAPI_DeleteProjects_Call struct {
+	*mock.Call
+}
+
+// DeleteProjects is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockProjectAPI_Expecter) DeleteProjects(ctx interface{}) *MockProjectAPI_DeleteProjects_Call {
+	return &MockProjectAPI_DeleteProjects_Call{Call: _e.mock.On("DeleteProjects", ctx)}
+}
+
+func (_c *MockProjectAPI_DeleteProjects_Call) Run(run func(ctx context.Context)) *MockProjectAPI_DeleteProjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockProjectAPI_DeleteProjects_Call) Return(_a0 ApiDeleteProjectsRequest) *MockProjectAPI_DeleteProjects_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProjectAPI_DeleteProjects_Call) RunAndReturn(run func(context.Context) ApiDeleteProjectsRequest) *MockProjectAPI_DeleteProjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteProjectsExecute provides a mock function with given fields: r
+func (_m *MockProjectAPI) DeleteProjectsExecute(r ApiDeleteProjectsRequest) (*http.Response, error) {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteProjectsExecute")
+	}
+
+	var r0 *http.Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(ApiDeleteProjectsRequest) (*http.Response, error)); ok {
+		return rf(r)
+	}
+	if rf, ok := ret.Get(0).(func(ApiDeleteProjectsRequest) *http.Response); ok {
+		r0 = rf(r)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Response)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiDeleteProjectsRequest) error); ok {
+		r1 = rf(r)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProjectAPI_DeleteProjectsExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteProjectsExecute'
+type MockProjectAPI_DeleteProjectsExecute_Call struct {
+	*mock.Call
+}
+
+// DeleteProjectsExecute is a helper method to define mock.On call
+//   - r ApiDeleteProjectsRequest
+func (_e *MockProjectAPI_Expecter) DeleteProjectsExecute(r interface{}) *MockProjectAPI_DeleteProjectsExecute_Call {
+	return &MockProjectAPI_DeleteProjectsExecute_Call{Call: _e.mock.On("DeleteProjectsExecute", r)}
+}
+
+func (_c *MockProjectAPI_DeleteProjectsExecute_Call) Run(run func(r ApiDeleteProjectsRequest)) *MockProjectAPI_DeleteProjectsExecute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ApiDeleteProjectsRequest))
+	})
+	return _c
+}
+
+func (_c *MockProjectAPI_DeleteProjectsExecute_Call) Return(_a0 *http.Response, _a1 error) *MockProjectAPI_DeleteProjectsExecute_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProjectAPI_DeleteProjectsExecute_Call) RunAndReturn(run func(ApiDeleteProjectsRequest) (*http.Response, error)) *MockProjectAPI_DeleteProjectsExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -693,6 +797,120 @@ func (_c *MockProjectAPI_GetChildrenProjectsExecute_Call) Return(_a0 []Project, 
 }
 
 func (_c *MockProjectAPI_GetChildrenProjectsExecute_Call) RunAndReturn(run func(ApiGetChildrenProjectsRequest) ([]Project, *http.Response, error)) *MockProjectAPI_GetChildrenProjectsExecute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetLatestProjectByName provides a mock function with given fields: ctx, name
+func (_m *MockProjectAPI) GetLatestProjectByName(ctx context.Context, name string) ApiGetLatestProjectByNameRequest {
+	ret := _m.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLatestProjectByName")
+	}
+
+	var r0 ApiGetLatestProjectByNameRequest
+	if rf, ok := ret.Get(0).(func(context.Context, string) ApiGetLatestProjectByNameRequest); ok {
+		r0 = rf(ctx, name)
+	} else {
+		r0 = ret.Get(0).(ApiGetLatestProjectByNameRequest)
+	}
+
+	return r0
+}
+
+// MockProjectAPI_GetLatestProjectByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestProjectByName'
+type MockProjectAPI_GetLatestProjectByName_Call struct {
+	*mock.Call
+}
+
+// GetLatestProjectByName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *MockProjectAPI_Expecter) GetLatestProjectByName(ctx interface{}, name interface{}) *MockProjectAPI_GetLatestProjectByName_Call {
+	return &MockProjectAPI_GetLatestProjectByName_Call{Call: _e.mock.On("GetLatestProjectByName", ctx, name)}
+}
+
+func (_c *MockProjectAPI_GetLatestProjectByName_Call) Run(run func(ctx context.Context, name string)) *MockProjectAPI_GetLatestProjectByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockProjectAPI_GetLatestProjectByName_Call) Return(_a0 ApiGetLatestProjectByNameRequest) *MockProjectAPI_GetLatestProjectByName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProjectAPI_GetLatestProjectByName_Call) RunAndReturn(run func(context.Context, string) ApiGetLatestProjectByNameRequest) *MockProjectAPI_GetLatestProjectByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetLatestProjectByNameExecute provides a mock function with given fields: r
+func (_m *MockProjectAPI) GetLatestProjectByNameExecute(r ApiGetLatestProjectByNameRequest) (*Project, *http.Response, error) {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLatestProjectByNameExecute")
+	}
+
+	var r0 *Project
+	var r1 *http.Response
+	var r2 error
+	if rf, ok := ret.Get(0).(func(ApiGetLatestProjectByNameRequest) (*Project, *http.Response, error)); ok {
+		return rf(r)
+	}
+	if rf, ok := ret.Get(0).(func(ApiGetLatestProjectByNameRequest) *Project); ok {
+		r0 = rf(r)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Project)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(ApiGetLatestProjectByNameRequest) *http.Response); ok {
+		r1 = rf(r)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*http.Response)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(ApiGetLatestProjectByNameRequest) error); ok {
+		r2 = rf(r)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockProjectAPI_GetLatestProjectByNameExecute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestProjectByNameExecute'
+type MockProjectAPI_GetLatestProjectByNameExecute_Call struct {
+	*mock.Call
+}
+
+// GetLatestProjectByNameExecute is a helper method to define mock.On call
+//   - r ApiGetLatestProjectByNameRequest
+func (_e *MockProjectAPI_Expecter) GetLatestProjectByNameExecute(r interface{}) *MockProjectAPI_GetLatestProjectByNameExecute_Call {
+	return &MockProjectAPI_GetLatestProjectByNameExecute_Call{Call: _e.mock.On("GetLatestProjectByNameExecute", r)}
+}
+
+func (_c *MockProjectAPI_GetLatestProjectByNameExecute_Call) Run(run func(r ApiGetLatestProjectByNameRequest)) *MockProjectAPI_GetLatestProjectByNameExecute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ApiGetLatestProjectByNameRequest))
+	})
+	return _c
+}
+
+func (_c *MockProjectAPI_GetLatestProjectByNameExecute_Call) Return(_a0 *Project, _a1 *http.Response, _a2 error) *MockProjectAPI_GetLatestProjectByNameExecute_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockProjectAPI_GetLatestProjectByNameExecute_Call) RunAndReturn(run func(ApiGetLatestProjectByNameRequest) (*Project, *http.Response, error)) *MockProjectAPI_GetLatestProjectByNameExecute_Call {
 	_c.Call.Return(run)
 	return _c
 }

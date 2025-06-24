@@ -8,6 +8,7 @@ Method | HTTP request | Description
 [**AddTeamToRule**](NotificationAPI.md#AddTeamToRule) | **Post** /v1/notification/rule/{ruleUuid}/team/{teamUuid} | Adds a team to a notification rule
 [**CreateNotificationPublisher**](NotificationAPI.md#CreateNotificationPublisher) | **Put** /v1/notification/publisher | Creates a new notification publisher
 [**CreateNotificationRule**](NotificationAPI.md#CreateNotificationRule) | **Put** /v1/notification/rule | Creates a new notification rule
+[**CreateScheduledNotificationRule**](NotificationAPI.md#CreateScheduledNotificationRule) | **Put** /v1/notification/rule/scheduled | Creates a new scheduled notification rule
 [**DeleteNotificationPublisher**](NotificationAPI.md#DeleteNotificationPublisher) | **Delete** /v1/notification/publisher/{notificationPublisherUuid} | Deletes a notification publisher and all related notification rules
 [**DeleteNotificationRule**](NotificationAPI.md#DeleteNotificationRule) | **Delete** /v1/notification/rule | Deletes a notification rule
 [**GetAllNotificationPublishers**](NotificationAPI.md#GetAllNotificationPublishers) | **Get** /v1/notification/publisher | Returns a list of all notification publishers
@@ -15,6 +16,7 @@ Method | HTTP request | Description
 [**RemoveProjectFromRule**](NotificationAPI.md#RemoveProjectFromRule) | **Delete** /v1/notification/rule/{ruleUuid}/project/{projectUuid} | Removes a project from a notification rule
 [**RemoveTeamFromRule**](NotificationAPI.md#RemoveTeamFromRule) | **Delete** /v1/notification/rule/{ruleUuid}/team/{teamUuid} | Removes a team from a notification rule
 [**RestoreDefaultTemplates**](NotificationAPI.md#RestoreDefaultTemplates) | **Post** /v1/notification/publisher/restoreDefaultTemplates | Restore the default notification publisher templates using the ones in the solution classpath
+[**TestNotificationRule**](NotificationAPI.md#TestNotificationRule) | **Post** /v1/notification/publisher/test/{uuid} | Dispatches a rule notification test
 [**TestSmtpPublisherConfig**](NotificationAPI.md#TestSmtpPublisherConfig) | **Post** /v1/notification/publisher/test/smtp | Dispatches a SMTP notification test
 [**UpdateNotificationPublisher**](NotificationAPI.md#UpdateNotificationPublisher) | **Post** /v1/notification/publisher | Updates a notification publisher
 [**UpdateNotificationRule**](NotificationAPI.md#UpdateNotificationRule) | **Post** /v1/notification/rule | Updates a notification rule
@@ -82,7 +84,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -155,7 +157,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -169,7 +171,7 @@ Name | Type | Description  | Notes
 
 ## CreateNotificationPublisher
 
-> NotificationPublisher CreateNotificationPublisher(ctx).Body(body).Execute()
+> NotificationPublisher CreateNotificationPublisher(ctx).NotificationPublisher(notificationPublisher).Execute()
 
 Creates a new notification publisher
 
@@ -188,11 +190,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewNotificationPublisher("Name_example", "PublisherClass_example", "TemplateMimeType_example", "Uuid_example") // NotificationPublisher |  (optional)
+	notificationPublisher := *openapiclient.NewNotificationPublisher("Name_example", "PublisherClass_example", "TemplateMimeType_example", "Uuid_example") // NotificationPublisher |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.NotificationAPI.CreateNotificationPublisher(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.NotificationAPI.CreateNotificationPublisher(context.Background()).NotificationPublisher(notificationPublisher).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.CreateNotificationPublisher``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -213,7 +215,7 @@ Other parameters are passed through a pointer to a apiCreateNotificationPublishe
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**NotificationPublisher**](NotificationPublisher.md) |  | 
+ **notificationPublisher** | [**NotificationPublisher**](NotificationPublisher.md) |  | 
 
 ### Return type
 
@@ -221,7 +223,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -235,7 +237,7 @@ Name | Type | Description  | Notes
 
 ## CreateNotificationRule
 
-> NotificationRule CreateNotificationRule(ctx).Body(body).Execute()
+> NotificationRule CreateNotificationRule(ctx).NotificationRule(notificationRule).Execute()
 
 Creates a new notification rule
 
@@ -254,11 +256,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewNotificationRule("Name_example", "Scope_example", "Uuid_example") // NotificationRule |  (optional)
+	notificationRule := *openapiclient.NewNotificationRule("Name_example", "Scope_example", "TriggerType_example", "Uuid_example") // NotificationRule |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.NotificationAPI.CreateNotificationRule(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.NotificationAPI.CreateNotificationRule(context.Background()).NotificationRule(notificationRule).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.CreateNotificationRule``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -279,7 +281,7 @@ Other parameters are passed through a pointer to a apiCreateNotificationRuleRequ
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**NotificationRule**](NotificationRule.md) |  | 
+ **notificationRule** | [**NotificationRule**](NotificationRule.md) |  | 
 
 ### Return type
 
@@ -287,7 +289,73 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CreateScheduledNotificationRule
+
+> NotificationRule CreateScheduledNotificationRule(ctx).CreateScheduledNotificationRuleRequest(createScheduledNotificationRuleRequest).Execute()
+
+Creates a new scheduled notification rule
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
+)
+
+func main() {
+	createScheduledNotificationRuleRequest := *openapiclient.NewCreateScheduledNotificationRuleRequest("Scope_example", "NotificationLevel_example", *openapiclient.NewPublisher("Uuid_example")) // CreateScheduledNotificationRuleRequest |  (optional)
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.NotificationAPI.CreateScheduledNotificationRule(context.Background()).CreateScheduledNotificationRuleRequest(createScheduledNotificationRuleRequest).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.CreateScheduledNotificationRule``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `CreateScheduledNotificationRule`: NotificationRule
+	fmt.Fprintf(os.Stdout, "Response from `NotificationAPI.CreateScheduledNotificationRule`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiCreateScheduledNotificationRuleRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **createScheduledNotificationRuleRequest** | [**CreateScheduledNotificationRuleRequest**](CreateScheduledNotificationRuleRequest.md) |  | 
+
+### Return type
+
+[**NotificationRule**](NotificationRule.md)
+
+### Authorization
+
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -355,7 +423,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -369,7 +437,7 @@ Name | Type | Description  | Notes
 
 ## DeleteNotificationRule
 
-> DeleteNotificationRule(ctx).Body(body).Execute()
+> DeleteNotificationRule(ctx).NotificationRule(notificationRule).Execute()
 
 Deletes a notification rule
 
@@ -388,11 +456,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewNotificationRule("Name_example", "Scope_example", "Uuid_example") // NotificationRule |  (optional)
+	notificationRule := *openapiclient.NewNotificationRule("Name_example", "Scope_example", "TriggerType_example", "Uuid_example") // NotificationRule |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.NotificationAPI.DeleteNotificationRule(context.Background()).Body(body).Execute()
+	r, err := apiClient.NotificationAPI.DeleteNotificationRule(context.Background()).NotificationRule(notificationRule).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.DeleteNotificationRule``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -411,7 +479,7 @@ Other parameters are passed through a pointer to a apiDeleteNotificationRuleRequ
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**NotificationRule**](NotificationRule.md) |  | 
+ **notificationRule** | [**NotificationRule**](NotificationRule.md) |  | 
 
 ### Return type
 
@@ -419,7 +487,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -480,7 +548,7 @@ Other parameters are passed through a pointer to a apiGetAllNotificationPublishe
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -494,7 +562,7 @@ Other parameters are passed through a pointer to a apiGetAllNotificationPublishe
 
 ## GetAllNotificationRules
 
-> []NotificationRule GetAllNotificationRules(ctx).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+> []NotificationRule GetAllNotificationRules(ctx).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).TriggerType(triggerType).Execute()
 
 Returns a list of all notification rules
 
@@ -513,16 +581,17 @@ import (
 )
 
 func main() {
-	pageNumber := TODO // interface{} | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to 1)
-	pageSize := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to 100)
-	offset := TODO // interface{} | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
-	limit := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
+	pageNumber := "pageNumber_example" // string | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to "1")
+	pageSize := "pageSize_example" // string | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to "100")
+	offset := "offset_example" // string | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
+	limit := "limit_example" // string | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
 	sortName := "sortName_example" // string | Name of the resource field to sort on. (optional)
 	sortOrder := "sortOrder_example" // string | Ordering of items when sorting with <code>sortName</code>. (optional)
+	triggerType := "triggerType_example" // string | The notification trigger type to filter on (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.NotificationAPI.GetAllNotificationRules(context.Background()).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+	resp, r, err := apiClient.NotificationAPI.GetAllNotificationRules(context.Background()).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).TriggerType(triggerType).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.GetAllNotificationRules``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -543,12 +612,13 @@ Other parameters are passed through a pointer to a apiGetAllNotificationRulesReq
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **pageNumber** | [**interface{}**](interface{}.md) | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to 1]
- **pageSize** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to 100]
- **offset** | [**interface{}**](interface{}.md) | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
- **limit** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
+ **pageNumber** | **string** | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to &quot;1&quot;]
+ **pageSize** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to &quot;100&quot;]
+ **offset** | **string** | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
+ **limit** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
  **sortName** | **string** | Name of the resource field to sort on. | 
  **sortOrder** | **string** | Ordering of items when sorting with &lt;code&gt;sortName&lt;/code&gt;. | 
+ **triggerType** | **string** | The notification trigger type to filter on | 
 
 ### Return type
 
@@ -556,7 +626,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -629,7 +699,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -702,7 +772,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -761,7 +831,75 @@ Other parameters are passed through a pointer to a apiRestoreDefaultTemplatesReq
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TestNotificationRule
+
+> TestNotificationRule(ctx, uuid).Execute()
+
+Dispatches a rule notification test
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
+)
+
+func main() {
+	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the rule to test
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	r, err := apiClient.NotificationAPI.TestNotificationRule(context.Background(), uuid).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.TestNotificationRule``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**uuid** | **string** | The UUID of the rule to test | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiTestNotificationRuleRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -825,7 +963,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -839,7 +977,7 @@ Name | Type | Description  | Notes
 
 ## UpdateNotificationPublisher
 
-> NotificationRule UpdateNotificationPublisher(ctx).Body(body).Execute()
+> NotificationPublisher UpdateNotificationPublisher(ctx).NotificationPublisher(notificationPublisher).Execute()
 
 Updates a notification publisher
 
@@ -858,16 +996,16 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewNotificationPublisher("Name_example", "PublisherClass_example", "TemplateMimeType_example", "Uuid_example") // NotificationPublisher |  (optional)
+	notificationPublisher := *openapiclient.NewNotificationPublisher("Name_example", "PublisherClass_example", "TemplateMimeType_example", "Uuid_example") // NotificationPublisher |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.NotificationAPI.UpdateNotificationPublisher(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.NotificationAPI.UpdateNotificationPublisher(context.Background()).NotificationPublisher(notificationPublisher).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.UpdateNotificationPublisher``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `UpdateNotificationPublisher`: NotificationRule
+	// response from `UpdateNotificationPublisher`: NotificationPublisher
 	fmt.Fprintf(os.Stdout, "Response from `NotificationAPI.UpdateNotificationPublisher`: %v\n", resp)
 }
 ```
@@ -883,15 +1021,15 @@ Other parameters are passed through a pointer to a apiUpdateNotificationPublishe
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**NotificationPublisher**](NotificationPublisher.md) |  | 
+ **notificationPublisher** | [**NotificationPublisher**](NotificationPublisher.md) |  | 
 
 ### Return type
 
-[**NotificationRule**](NotificationRule.md)
+[**NotificationPublisher**](NotificationPublisher.md)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -905,7 +1043,7 @@ Name | Type | Description  | Notes
 
 ## UpdateNotificationRule
 
-> NotificationRule UpdateNotificationRule(ctx).Body(body).Execute()
+> NotificationRule UpdateNotificationRule(ctx).NotificationRule(notificationRule).Execute()
 
 Updates a notification rule
 
@@ -924,11 +1062,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewNotificationRule("Name_example", "Scope_example", "Uuid_example") // NotificationRule |  (optional)
+	notificationRule := *openapiclient.NewNotificationRule("Name_example", "Scope_example", "TriggerType_example", "Uuid_example") // NotificationRule |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.NotificationAPI.UpdateNotificationRule(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.NotificationAPI.UpdateNotificationRule(context.Background()).NotificationRule(notificationRule).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `NotificationAPI.UpdateNotificationRule``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -949,7 +1087,7 @@ Other parameters are passed through a pointer to a apiUpdateNotificationRuleRequ
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**NotificationRule**](NotificationRule.md) |  | 
+ **notificationRule** | [**NotificationRule**](NotificationRule.md) |  | 
 
 ### Return type
 
@@ -957,7 +1095,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

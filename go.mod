@@ -8,7 +8,7 @@ require (
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.12.11
 	github.com/exaring/otelpgx v0.9.3
-	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/google/go-containerregistry v0.20.6
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
@@ -16,8 +16,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lestrrat-go/jwx/v2 v2.1.6
-	github.com/nais/liberator v0.0.0-20250602062459-b6e768f1fe5b
-	github.com/nais/v13s/pkg/api v0.0.0-20250618120747-fa3378c3bd3e
+	github.com/nais/liberator v0.0.0-20250623105725-462518f4de1a
+	github.com/nais/v13s/pkg/api v0.0.0-20250624075723-c0e6206ccfd4
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.24.3
@@ -48,9 +48,9 @@ require (
 	golang.org/x/sync v0.15.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
-	k8s.io/api v0.33.1
-	k8s.io/apimachinery v0.33.1
-	k8s.io/client-go v0.33.1
+	k8s.io/api v0.33.2
+	k8s.io/apimachinery v0.33.2
+	k8s.io/client-go v0.33.2
 	k8s.io/klog/v2 v2.130.1
 	riverqueue.com/riverui v0.11.0
 )
@@ -325,7 +325,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.33.1 // indirect
+	k8s.io/apiextensions-apiserver v0.33.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20250610211856-8b98d1ed966a // indirect
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 // indirect
 	modernc.org/libc v1.65.0 // indirect

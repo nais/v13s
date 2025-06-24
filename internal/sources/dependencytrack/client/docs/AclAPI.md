@@ -12,7 +12,7 @@ Method | HTTP request | Description
 
 ## AddMapping
 
-> AclMappingRequest AddMapping(ctx).Body(body).Execute()
+> AddMapping(ctx).AclMappingRequest(aclMappingRequest).Execute()
 
 Adds an ACL mapping
 
@@ -31,17 +31,15 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewAclMappingRequest("Team_example", "Project_example") // AclMappingRequest |  (optional)
+	aclMappingRequest := *openapiclient.NewAclMappingRequest("Team_example", "Project_example") // AclMappingRequest |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.AclAPI.AddMapping(context.Background()).Body(body).Execute()
+	r, err := apiClient.AclAPI.AddMapping(context.Background()).AclMappingRequest(aclMappingRequest).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `AclAPI.AddMapping``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `AddMapping`: AclMappingRequest
-	fmt.Fprintf(os.Stdout, "Response from `AclAPI.AddMapping`: %v\n", resp)
 }
 ```
 
@@ -56,20 +54,20 @@ Other parameters are passed through a pointer to a apiAddMappingRequest struct v
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**AclMappingRequest**](AclMappingRequest.md) |  | 
+ **aclMappingRequest** | [**AclMappingRequest**](AclMappingRequest.md) |  | 
 
 ### Return type
 
-[**AclMappingRequest**](AclMappingRequest.md)
+ (empty response body)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: application/json
+- **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -135,7 +133,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -149,7 +147,7 @@ Name | Type | Description  | Notes
 
 ## RetrieveProjects
 
-> []string RetrieveProjects(ctx, uuid).ExcludeInactive(excludeInactive).OnlyRoot(onlyRoot).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+> []Project RetrieveProjects(ctx, uuid).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).ExcludeInactive(excludeInactive).OnlyRoot(onlyRoot).Execute()
 
 Returns the projects assigned to the specified team
 
@@ -169,23 +167,23 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the team to retrieve mappings for
-	excludeInactive := true // bool | Optionally excludes inactive projects from being returned (optional)
-	onlyRoot := true // bool | Optionally excludes children projects from being returned (optional)
-	pageNumber := TODO // interface{} | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to 1)
-	pageSize := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to 100)
-	offset := TODO // interface{} | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
-	limit := TODO // interface{} | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
+	pageNumber := "pageNumber_example" // string | The page to return. To be used in conjunction with <code>pageSize</code>. (optional) (default to "1")
+	pageSize := "pageSize_example" // string | Number of elements to return per page. To be used in conjunction with <code>pageNumber</code>. (optional) (default to "100")
+	offset := "offset_example" // string | Offset to start returning elements from. To be used in conjunction with <code>limit</code>. (optional)
+	limit := "limit_example" // string | Number of elements to return per page. To be used in conjunction with <code>offset</code>. (optional)
 	sortName := "sortName_example" // string | Name of the resource field to sort on. (optional)
 	sortOrder := "sortOrder_example" // string | Ordering of items when sorting with <code>sortName</code>. (optional)
+	excludeInactive := true // bool | Optionally excludes inactive projects from being returned (optional)
+	onlyRoot := true // bool | Optionally excludes children projects from being returned (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.AclAPI.RetrieveProjects(context.Background(), uuid).ExcludeInactive(excludeInactive).OnlyRoot(onlyRoot).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).Execute()
+	resp, r, err := apiClient.AclAPI.RetrieveProjects(context.Background(), uuid).PageNumber(pageNumber).PageSize(pageSize).Offset(offset).Limit(limit).SortName(sortName).SortOrder(sortOrder).ExcludeInactive(excludeInactive).OnlyRoot(onlyRoot).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `AclAPI.RetrieveProjects``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `RetrieveProjects`: []string
+	// response from `RetrieveProjects`: []Project
 	fmt.Fprintf(os.Stdout, "Response from `AclAPI.RetrieveProjects`: %v\n", resp)
 }
 ```
@@ -206,22 +204,22 @@ Other parameters are passed through a pointer to a apiRetrieveProjectsRequest st
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **excludeInactive** | **bool** | Optionally excludes inactive projects from being returned | 
- **onlyRoot** | **bool** | Optionally excludes children projects from being returned | 
- **pageNumber** | [**interface{}**](interface{}.md) | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to 1]
- **pageSize** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to 100]
- **offset** | [**interface{}**](interface{}.md) | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
- **limit** | [**interface{}**](interface{}.md) | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
+ **pageNumber** | **string** | The page to return. To be used in conjunction with &lt;code&gt;pageSize&lt;/code&gt;. | [default to &quot;1&quot;]
+ **pageSize** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;pageNumber&lt;/code&gt;. | [default to &quot;100&quot;]
+ **offset** | **string** | Offset to start returning elements from. To be used in conjunction with &lt;code&gt;limit&lt;/code&gt;. | 
+ **limit** | **string** | Number of elements to return per page. To be used in conjunction with &lt;code&gt;offset&lt;/code&gt;. | 
  **sortName** | **string** | Name of the resource field to sort on. | 
  **sortOrder** | **string** | Ordering of items when sorting with &lt;code&gt;sortName&lt;/code&gt;. | 
+ **excludeInactive** | **bool** | Optionally excludes inactive projects from being returned | 
+ **onlyRoot** | **bool** | Optionally excludes children projects from being returned | 
 
 ### Return type
 
-**[]string**
+[**[]Project**](Project.md)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

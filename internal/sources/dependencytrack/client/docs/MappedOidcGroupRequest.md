@@ -4,14 +4,14 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Team** | Pointer to **string** |  | [optional] 
-**Group** | Pointer to **string** |  | [optional] 
+**Team** | **string** |  | 
+**Group** | **string** |  | 
 
 ## Methods
 
 ### NewMappedOidcGroupRequest
 
-`func NewMappedOidcGroupRequest() *MappedOidcGroupRequest`
+`func NewMappedOidcGroupRequest(team string, group string, ) *MappedOidcGroupRequest`
 
 NewMappedOidcGroupRequest instantiates a new MappedOidcGroupRequest object
 This constructor will assign default values to properties that have it defined,
@@ -45,11 +45,6 @@ and a boolean to check if the value has been set.
 
 SetTeam sets Team field to given value.
 
-### HasTeam
-
-`func (o *MappedOidcGroupRequest) HasTeam() bool`
-
-HasTeam returns a boolean if a field has been set.
 
 ### GetGroup
 
@@ -70,11 +65,6 @@ and a boolean to check if the value has been set.
 
 SetGroup sets Group field to given value.
 
-### HasGroup
-
-`func (o *MappedOidcGroupRequest) HasGroup() bool`
-
-HasGroup returns a boolean if a field has been set.
 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

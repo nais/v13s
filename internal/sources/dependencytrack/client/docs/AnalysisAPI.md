@@ -67,7 +67,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -81,7 +81,7 @@ Name | Type | Description  | Notes
 
 ## UpdateAnalysis
 
-> Analysis UpdateAnalysis(ctx).Body(body).Execute()
+> Analysis UpdateAnalysis(ctx).AnalysisRequest(analysisRequest).Execute()
 
 Records an analysis decision
 
@@ -100,11 +100,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewAnalysisRequest("Component_example", "Vulnerability_example") // AnalysisRequest |  (optional)
+	analysisRequest := *openapiclient.NewAnalysisRequest("Component_example", "Vulnerability_example") // AnalysisRequest |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.AnalysisAPI.UpdateAnalysis(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.AnalysisAPI.UpdateAnalysis(context.Background()).AnalysisRequest(analysisRequest).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `AnalysisAPI.UpdateAnalysis``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -125,7 +125,7 @@ Other parameters are passed through a pointer to a apiUpdateAnalysisRequest stru
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**AnalysisRequest**](AnalysisRequest.md) |  | 
+ **analysisRequest** | [**AnalysisRequest**](AnalysisRequest.md) |  | 
 
 ### Return type
 
@@ -133,7 +133,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

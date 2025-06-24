@@ -4,24 +4,25 @@ All URIs are relative to */api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**CreateTeam**](TeamAPI.md#CreateTeam) | **Put** /v1/team | Creates a new team along with an associated API key
-[**DeleteApiKey**](TeamAPI.md#DeleteApiKey) | **Delete** /v1/team/key/{apikey} | Deletes the specified API key
+[**AvailableTeams**](TeamAPI.md#AvailableTeams) | **Get** /v1/team/visible | Returns a list of Teams that are visible
+[**CreateTeam**](TeamAPI.md#CreateTeam) | **Put** /v1/team | Creates a new team
+[**DeleteApiKey**](TeamAPI.md#DeleteApiKey) | **Delete** /v1/team/key/{publicIdOrKey} | Deletes the specified API key
 [**DeleteTeam**](TeamAPI.md#DeleteTeam) | **Delete** /v1/team | Deletes a team
 [**GenerateApiKey**](TeamAPI.md#GenerateApiKey) | **Put** /v1/team/{uuid}/key | Generates an API key and returns its value
 [**GetSelf**](TeamAPI.md#GetSelf) | **Get** /v1/team/self | Returns information about the current team.
 [**GetTeam**](TeamAPI.md#GetTeam) | **Get** /v1/team/{uuid} | Returns a specific team
 [**GetTeams**](TeamAPI.md#GetTeams) | **Get** /v1/team | Returns a list of all teams
-[**RegenerateApiKey**](TeamAPI.md#RegenerateApiKey) | **Post** /v1/team/key/{apikey} | Regenerates an API key by removing the specified key, generating a new one and returning its value
-[**UpdateApiKeyComment**](TeamAPI.md#UpdateApiKeyComment) | **Post** /v1/team/key/{key}/comment | Updates an API key&#39;s comment
-[**UpdateTeam**](TeamAPI.md#UpdateTeam) | **Post** /v1/team | Updates a team&#39;s fields including
+[**RegenerateApiKey**](TeamAPI.md#RegenerateApiKey) | **Post** /v1/team/key/{publicIdOrKey} | Regenerates an API key by removing the specified key, generating a new one and returning its value
+[**UpdateApiKeyComment**](TeamAPI.md#UpdateApiKeyComment) | **Post** /v1/team/key/{publicIdOrKey}/comment | Updates an API key&#39;s comment
+[**UpdateTeam**](TeamAPI.md#UpdateTeam) | **Post** /v1/team | Updates a team&#39;s fields
 
 
 
-## CreateTeam
+## AvailableTeams
 
-> Team CreateTeam(ctx).Body(body).Execute()
+> []VisibleTeams AvailableTeams(ctx).Execute()
 
-Creates a new team along with an associated API key
+Returns a list of Teams that are visible
 
 
 
@@ -38,11 +39,72 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewTeam("Uuid_example") // Team |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.TeamAPI.CreateTeam(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.TeamAPI.AvailableTeams(context.Background()).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.AvailableTeams``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `AvailableTeams`: []VisibleTeams
+	fmt.Fprintf(os.Stdout, "Response from `TeamAPI.AvailableTeams`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiAvailableTeamsRequest struct via the builder pattern
+
+
+### Return type
+
+[**[]VisibleTeams**](VisibleTeams.md)
+
+### Authorization
+
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CreateTeam
+
+> Team CreateTeam(ctx).Team(team).Execute()
+
+Creates a new team
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/GIT_USER_ID/GIT_REPO_ID"
+)
+
+func main() {
+	team := *openapiclient.NewTeam("Uuid_example") // Team |  (optional)
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.TeamAPI.CreateTeam(context.Background()).Team(team).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.CreateTeam``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -63,7 +125,7 @@ Other parameters are passed through a pointer to a apiCreateTeamRequest struct v
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**Team**](Team.md) |  | 
+ **team** | [**Team**](Team.md) |  | 
 
 ### Return type
 
@@ -71,7 +133,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -85,7 +147,7 @@ Name | Type | Description  | Notes
 
 ## DeleteApiKey
 
-> DeleteApiKey(ctx, apikey).Execute()
+> DeleteApiKey(ctx, publicIdOrKey).Execute()
 
 Deletes the specified API key
 
@@ -104,11 +166,11 @@ import (
 )
 
 func main() {
-	apikey := "apikey_example" // string | The API key to delete
+	publicIdOrKey := "publicIdOrKey_example" // string | The public ID for the API key or for Legacy the full Key to delete
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.TeamAPI.DeleteApiKey(context.Background(), apikey).Execute()
+	r, err := apiClient.TeamAPI.DeleteApiKey(context.Background(), publicIdOrKey).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.DeleteApiKey``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -122,7 +184,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**apikey** | **string** | The API key to delete | 
+**publicIdOrKey** | **string** | The public ID for the API key or for Legacy the full Key to delete | 
 
 ### Other Parameters
 
@@ -139,7 +201,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -153,7 +215,7 @@ Name | Type | Description  | Notes
 
 ## DeleteTeam
 
-> DeleteTeam(ctx).Body(body).Execute()
+> DeleteTeam(ctx).Team(team).Execute()
 
 Deletes a team
 
@@ -172,11 +234,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewTeam("Uuid_example") // Team |  (optional)
+	team := *openapiclient.NewTeam("Uuid_example") // Team |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	r, err := apiClient.TeamAPI.DeleteTeam(context.Background()).Body(body).Execute()
+	r, err := apiClient.TeamAPI.DeleteTeam(context.Background()).Team(team).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.DeleteTeam``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -195,7 +257,7 @@ Other parameters are passed through a pointer to a apiDeleteTeamRequest struct v
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**Team**](Team.md) |  | 
+ **team** | [**Team**](Team.md) |  | 
 
 ### Return type
 
@@ -203,7 +265,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -273,7 +335,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -332,7 +394,7 @@ Other parameters are passed through a pointer to a apiGetSelfRequest struct via 
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -402,7 +464,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -463,7 +525,7 @@ Other parameters are passed through a pointer to a apiGetTeamsRequest struct via
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -477,7 +539,7 @@ Other parameters are passed through a pointer to a apiGetTeamsRequest struct via
 
 ## RegenerateApiKey
 
-> ApiKey RegenerateApiKey(ctx, apikey).Execute()
+> ApiKey RegenerateApiKey(ctx, publicIdOrKey).Execute()
 
 Regenerates an API key by removing the specified key, generating a new one and returning its value
 
@@ -496,11 +558,11 @@ import (
 )
 
 func main() {
-	apikey := "apikey_example" // string | The API key to regenerate
+	publicIdOrKey := "publicIdOrKey_example" // string | The public ID for the API key or for Legacy the complete Key to regenerate
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.TeamAPI.RegenerateApiKey(context.Background(), apikey).Execute()
+	resp, r, err := apiClient.TeamAPI.RegenerateApiKey(context.Background(), publicIdOrKey).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.RegenerateApiKey``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -516,7 +578,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**apikey** | **string** | The API key to regenerate | 
+**publicIdOrKey** | **string** | The public ID for the API key or for Legacy the complete Key to regenerate | 
 
 ### Other Parameters
 
@@ -533,7 +595,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -547,7 +609,7 @@ Name | Type | Description  | Notes
 
 ## UpdateApiKeyComment
 
-> ApiKey UpdateApiKeyComment(ctx, key).Body(body).Execute()
+> ApiKey UpdateApiKeyComment(ctx, publicIdOrKey).Body(body).Execute()
 
 Updates an API key's comment
 
@@ -566,12 +628,12 @@ import (
 )
 
 func main() {
-	key := "key_example" // string | 
+	publicIdOrKey := "publicIdOrKey_example" // string | The public ID for the API key or for Legacy the complete Key to comment on
 	body := "body_example" // string |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.TeamAPI.UpdateApiKeyComment(context.Background(), key).Body(body).Execute()
+	resp, r, err := apiClient.TeamAPI.UpdateApiKeyComment(context.Background(), publicIdOrKey).Body(body).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.UpdateApiKeyComment``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -587,7 +649,7 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**key** | **string** |  | 
+**publicIdOrKey** | **string** | The public ID for the API key or for Legacy the complete Key to comment on | 
 
 ### Other Parameters
 
@@ -605,7 +667,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -619,9 +681,9 @@ Name | Type | Description  | Notes
 
 ## UpdateTeam
 
-> Team UpdateTeam(ctx).Body(body).Execute()
+> Team UpdateTeam(ctx).Team(team).Execute()
 
-Updates a team's fields including
+Updates a team's fields
 
 
 
@@ -638,11 +700,11 @@ import (
 )
 
 func main() {
-	body := *openapiclient.NewTeam("Uuid_example") // Team |  (optional)
+	team := *openapiclient.NewTeam("Uuid_example") // Team |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.TeamAPI.UpdateTeam(context.Background()).Body(body).Execute()
+	resp, r, err := apiClient.TeamAPI.UpdateTeam(context.Background()).Team(team).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `TeamAPI.UpdateTeam``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -663,7 +725,7 @@ Other parameters are passed through a pointer to a apiUpdateTeamRequest struct v
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**Team**](Team.md) |  | 
+ **team** | [**Team**](Team.md) |  | 
 
 ### Return type
 
@@ -671,7 +733,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 

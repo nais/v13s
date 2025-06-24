@@ -4,13 +4,13 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Author** | Pointer to **string** |  | [optional] 
+**Authors** | Pointer to [**[]OrganizationalContact**](OrganizationalContact.md) |  | [optional] 
 **Publisher** | Pointer to **string** |  | [optional] 
 **Supplier** | Pointer to [**OrganizationalEntity**](OrganizationalEntity.md) |  | [optional] 
 **Group** | Pointer to **string** |  | [optional] 
 **Name** | Pointer to **string** |  | [optional] 
 **Version** | Pointer to **string** |  | [optional] 
-**Classifier** | Pointer to **string** |  | [optional] 
+**Classifier** | **string** |  | 
 **Filename** | Pointer to **string** |  | [optional] 
 **Extension** | Pointer to **string** |  | [optional] 
 **Md5** | Pointer to **string** |  | [optional] 
@@ -45,6 +45,7 @@ Name | Type | Description | Notes
 **LastInheritedRiskScore** | Pointer to **float64** |  | [optional] 
 **Notes** | Pointer to **string** |  | [optional] 
 **Uuid** | **string** |  | 
+**Author** | Pointer to **string** |  | [optional] 
 **Metrics** | Pointer to [**DependencyMetrics**](DependencyMetrics.md) |  | [optional] 
 **RepositoryMeta** | Pointer to [**RepositoryMetaComponent**](RepositoryMetaComponent.md) |  | [optional] 
 **DependencyGraph** | Pointer to **[]string** |  | [optional] 
@@ -55,7 +56,7 @@ Name | Type | Description | Notes
 
 ### NewComponent
 
-`func NewComponent(project Project, uuid string, ) *Component`
+`func NewComponent(classifier string, project Project, uuid string, ) *Component`
 
 NewComponent instantiates a new Component object
 This constructor will assign default values to properties that have it defined,
@@ -70,30 +71,30 @@ NewComponentWithDefaults instantiates a new Component object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
 
-### GetAuthor
+### GetAuthors
 
-`func (o *Component) GetAuthor() string`
+`func (o *Component) GetAuthors() []OrganizationalContact`
 
-GetAuthor returns the Author field if non-nil, zero value otherwise.
+GetAuthors returns the Authors field if non-nil, zero value otherwise.
 
-### GetAuthorOk
+### GetAuthorsOk
 
-`func (o *Component) GetAuthorOk() (*string, bool)`
+`func (o *Component) GetAuthorsOk() (*[]OrganizationalContact, bool)`
 
-GetAuthorOk returns a tuple with the Author field if it's non-nil, zero value otherwise
+GetAuthorsOk returns a tuple with the Authors field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
-### SetAuthor
+### SetAuthors
 
-`func (o *Component) SetAuthor(v string)`
+`func (o *Component) SetAuthors(v []OrganizationalContact)`
 
-SetAuthor sets Author field to given value.
+SetAuthors sets Authors field to given value.
 
-### HasAuthor
+### HasAuthors
 
-`func (o *Component) HasAuthor() bool`
+`func (o *Component) HasAuthors() bool`
 
-HasAuthor returns a boolean if a field has been set.
+HasAuthors returns a boolean if a field has been set.
 
 ### GetPublisher
 
@@ -239,11 +240,6 @@ and a boolean to check if the value has been set.
 
 SetClassifier sets Classifier field to given value.
 
-### HasClassifier
-
-`func (o *Component) HasClassifier() bool`
-
-HasClassifier returns a boolean if a field has been set.
 
 ### GetFilename
 
@@ -1084,6 +1080,31 @@ and a boolean to check if the value has been set.
 
 SetUuid sets Uuid field to given value.
 
+
+### GetAuthor
+
+`func (o *Component) GetAuthor() string`
+
+GetAuthor returns the Author field if non-nil, zero value otherwise.
+
+### GetAuthorOk
+
+`func (o *Component) GetAuthorOk() (*string, bool)`
+
+GetAuthorOk returns a tuple with the Author field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAuthor
+
+`func (o *Component) SetAuthor(v string)`
+
+SetAuthor sets Author field to given value.
+
+### HasAuthor
+
+`func (o *Component) HasAuthor() bool`
+
+HasAuthor returns a boolean if a field has been set.
 
 ### GetMetrics
 

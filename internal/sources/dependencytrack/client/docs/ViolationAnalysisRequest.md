@@ -6,8 +6,9 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Component** | **string** |  | 
 **PolicyViolation** | **string** |  | 
-**Comment** | Pointer to **string** |  | [optional] 
 **AnalysisState** | Pointer to **string** |  | [optional] 
+**Comment** | Pointer to **string** |  | [optional] 
+**IsSuppressed** | Pointer to **bool** |  | [optional] 
 **Suppressed** | Pointer to **bool** |  | [optional] 
 
 ## Methods
@@ -69,6 +70,31 @@ and a boolean to check if the value has been set.
 SetPolicyViolation sets PolicyViolation field to given value.
 
 
+### GetAnalysisState
+
+`func (o *ViolationAnalysisRequest) GetAnalysisState() string`
+
+GetAnalysisState returns the AnalysisState field if non-nil, zero value otherwise.
+
+### GetAnalysisStateOk
+
+`func (o *ViolationAnalysisRequest) GetAnalysisStateOk() (*string, bool)`
+
+GetAnalysisStateOk returns a tuple with the AnalysisState field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAnalysisState
+
+`func (o *ViolationAnalysisRequest) SetAnalysisState(v string)`
+
+SetAnalysisState sets AnalysisState field to given value.
+
+### HasAnalysisState
+
+`func (o *ViolationAnalysisRequest) HasAnalysisState() bool`
+
+HasAnalysisState returns a boolean if a field has been set.
+
 ### GetComment
 
 `func (o *ViolationAnalysisRequest) GetComment() string`
@@ -94,30 +120,30 @@ SetComment sets Comment field to given value.
 
 HasComment returns a boolean if a field has been set.
 
-### GetAnalysisState
+### GetIsSuppressed
 
-`func (o *ViolationAnalysisRequest) GetAnalysisState() string`
+`func (o *ViolationAnalysisRequest) GetIsSuppressed() bool`
 
-GetAnalysisState returns the AnalysisState field if non-nil, zero value otherwise.
+GetIsSuppressed returns the IsSuppressed field if non-nil, zero value otherwise.
 
-### GetAnalysisStateOk
+### GetIsSuppressedOk
 
-`func (o *ViolationAnalysisRequest) GetAnalysisStateOk() (*string, bool)`
+`func (o *ViolationAnalysisRequest) GetIsSuppressedOk() (*bool, bool)`
 
-GetAnalysisStateOk returns a tuple with the AnalysisState field if it's non-nil, zero value otherwise
+GetIsSuppressedOk returns a tuple with the IsSuppressed field if it's non-nil, zero value otherwise
 and a boolean to check if the value has been set.
 
-### SetAnalysisState
+### SetIsSuppressed
 
-`func (o *ViolationAnalysisRequest) SetAnalysisState(v string)`
+`func (o *ViolationAnalysisRequest) SetIsSuppressed(v bool)`
 
-SetAnalysisState sets AnalysisState field to given value.
+SetIsSuppressed sets IsSuppressed field to given value.
 
-### HasAnalysisState
+### HasIsSuppressed
 
-`func (o *ViolationAnalysisRequest) HasAnalysisState() bool`
+`func (o *ViolationAnalysisRequest) HasIsSuppressed() bool`
 
-HasAnalysisState returns a boolean if a field has been set.
+HasIsSuppressed returns a boolean if a field has been set.
 
 ### GetSuppressed
 

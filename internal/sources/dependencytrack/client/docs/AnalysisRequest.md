@@ -4,14 +4,15 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Project** | Pointer to **string** |  | [optional] [readonly] 
-**Component** | **string** |  | [readonly] 
-**Vulnerability** | **string** |  | [readonly] 
-**AnalysisState** | Pointer to **string** |  | [optional] [readonly] 
-**AnalysisJustification** | Pointer to **string** |  | [optional] [readonly] 
-**AnalysisResponse** | Pointer to **string** |  | [optional] [readonly] 
-**AnalysisDetails** | Pointer to **string** |  | [optional] [readonly] 
-**Comment** | Pointer to **string** |  | [optional] [readonly] 
+**Project** | Pointer to **string** |  | [optional] 
+**Component** | **string** |  | 
+**Vulnerability** | **string** |  | 
+**AnalysisState** | Pointer to **string** |  | [optional] 
+**AnalysisJustification** | Pointer to **string** |  | [optional] 
+**AnalysisResponse** | Pointer to **string** |  | [optional] 
+**AnalysisDetails** | Pointer to **string** |  | [optional] 
+**Comment** | Pointer to **string** |  | [optional] 
+**IsSuppressed** | Pointer to **bool** |  | [optional] 
 **Suppressed** | Pointer to **bool** |  | [optional] 
 
 ## Methods
@@ -222,6 +223,31 @@ SetComment sets Comment field to given value.
 `func (o *AnalysisRequest) HasComment() bool`
 
 HasComment returns a boolean if a field has been set.
+
+### GetIsSuppressed
+
+`func (o *AnalysisRequest) GetIsSuppressed() bool`
+
+GetIsSuppressed returns the IsSuppressed field if non-nil, zero value otherwise.
+
+### GetIsSuppressedOk
+
+`func (o *AnalysisRequest) GetIsSuppressedOk() (*bool, bool)`
+
+GetIsSuppressedOk returns a tuple with the IsSuppressed field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetIsSuppressed
+
+`func (o *AnalysisRequest) SetIsSuppressed(v bool)`
+
+SetIsSuppressed sets IsSuppressed field to given value.
+
+### HasIsSuppressed
+
+`func (o *AnalysisRequest) HasIsSuppressed() bool`
+
+HasIsSuppressed returns a boolean if a field has been set.
 
 ### GetSuppressed
 

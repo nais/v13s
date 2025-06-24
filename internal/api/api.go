@@ -47,7 +47,6 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	dpClient, err := dependencytrack.NewClient(
 		cfg.DependencyTrack.Url,
-		cfg.DependencyTrack.Team,
 		cfg.DependencyTrack.Username,
 		cfg.DependencyTrack.Password,
 		log.WithField("subsystem", "dp-client"),

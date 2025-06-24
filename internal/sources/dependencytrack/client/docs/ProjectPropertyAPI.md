@@ -13,7 +13,7 @@ Method | HTTP request | Description
 
 ## CreateProperty1
 
-> ProjectProperty CreateProperty1(ctx, uuid).Body(body).Execute()
+> ProjectProperty CreateProperty1(ctx, uuid).ProjectProperty(projectProperty).Execute()
 
 Creates a new project property
 
@@ -33,11 +33,11 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the project to create a property for
-	body := *openapiclient.NewProjectProperty("PropertyType_example") // ProjectProperty |  (optional)
+	projectProperty := *openapiclient.NewProjectProperty("PropertyType_example") // ProjectProperty |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ProjectPropertyAPI.CreateProperty1(context.Background(), uuid).Body(body).Execute()
+	resp, r, err := apiClient.ProjectPropertyAPI.CreateProperty1(context.Background(), uuid).ProjectProperty(projectProperty).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ProjectPropertyAPI.CreateProperty1``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -63,7 +63,7 @@ Other parameters are passed through a pointer to a apiCreateProperty1Request str
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**ProjectProperty**](ProjectProperty.md) |  | 
+ **projectProperty** | [**ProjectProperty**](ProjectProperty.md) |  | 
 
 ### Return type
 
@@ -71,7 +71,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -85,7 +85,7 @@ Name | Type | Description  | Notes
 
 ## DeleteProperty1
 
-> ProjectProperty DeleteProperty1(ctx, uuid).Body(body).Execute()
+> DeleteProperty1(ctx, uuid).ProjectProperty(projectProperty).Execute()
 
 Deletes a config property
 
@@ -105,17 +105,15 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the project to delete a property from
-	body := *openapiclient.NewProjectProperty("PropertyType_example") // ProjectProperty |  (optional)
+	projectProperty := *openapiclient.NewProjectProperty("PropertyType_example") // ProjectProperty |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ProjectPropertyAPI.DeleteProperty1(context.Background(), uuid).Body(body).Execute()
+	r, err := apiClient.ProjectPropertyAPI.DeleteProperty1(context.Background(), uuid).ProjectProperty(projectProperty).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ProjectPropertyAPI.DeleteProperty1``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `DeleteProperty1`: ProjectProperty
-	fmt.Fprintf(os.Stdout, "Response from `ProjectPropertyAPI.DeleteProperty1`: %v\n", resp)
 }
 ```
 
@@ -135,20 +133,20 @@ Other parameters are passed through a pointer to a apiDeleteProperty1Request str
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**ProjectProperty**](ProjectProperty.md) |  | 
+ **projectProperty** | [**ProjectProperty**](ProjectProperty.md) |  | 
 
 ### Return type
 
-[**ProjectProperty**](ProjectProperty.md)
+ (empty response body)
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
 - **Content-Type**: application/json
-- **Accept**: application/json
+- **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)
@@ -213,7 +211,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
@@ -227,7 +225,7 @@ Name | Type | Description  | Notes
 
 ## UpdateProperty
 
-> ProjectProperty UpdateProperty(ctx, uuid).Body(body).Execute()
+> ProjectProperty UpdateProperty(ctx, uuid).ProjectProperty(projectProperty).Execute()
 
 Updates a project property
 
@@ -247,11 +245,11 @@ import (
 
 func main() {
 	uuid := "38400000-8cf0-11bd-b23e-10b96e4ef00d" // string | The UUID of the project to create a property for
-	body := *openapiclient.NewProjectProperty("PropertyType_example") // ProjectProperty |  (optional)
+	projectProperty := *openapiclient.NewProjectProperty("PropertyType_example") // ProjectProperty |  (optional)
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.ProjectPropertyAPI.UpdateProperty(context.Background(), uuid).Body(body).Execute()
+	resp, r, err := apiClient.ProjectPropertyAPI.UpdateProperty(context.Background(), uuid).ProjectProperty(projectProperty).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `ProjectPropertyAPI.UpdateProperty``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
@@ -277,7 +275,7 @@ Other parameters are passed through a pointer to a apiUpdatePropertyRequest stru
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
- **body** | [**ProjectProperty**](ProjectProperty.md) |  | 
+ **projectProperty** | [**ProjectProperty**](ProjectProperty.md) |  | 
 
 ### Return type
 
@@ -285,7 +283,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[X-Api-Key](../README.md#X-Api-Key)
+[ApiKeyAuth](../README.md#ApiKeyAuth), [BearerAuth](../README.md#BearerAuth)
 
 ### HTTP request headers
 
