@@ -48,8 +48,6 @@ services:
       start_period: 20s
       timeout: 10s
     volumes:
-      # Optional volume mount to override default notification publisher templates
-      # - "/host/path/to/template/base/dir:/data/templates"
       - 'dependency-track:/data'
     restart: unless-stopped
 
@@ -85,6 +83,9 @@ services:
       - '4004:5000'
     volumes:
       - ./local/registry-data:/var/lib/registry
+      - ./local/registry-config.yml:/etc/docker/registry/config.yml
+    command:
+      - /etc/docker/registry/config.yml
 
   trivy:
     image: aquasec/trivy:0.63.0
@@ -110,4 +111,4 @@ services:
 volumes:
   pgdata:
   dependency-track:
-  trivy-cache: { }
+  trivy-cache:
