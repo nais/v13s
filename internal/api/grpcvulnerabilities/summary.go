@@ -133,7 +133,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		Unassigned:  row.Unassigned,
 		Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
 		RiskScore:   row.RiskScore,
-		LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
+		LastUpdated: timestamppb.New(row.UpdatedAt.Time),
 		HasSbom:     true,
 	}
 

@@ -53,7 +53,7 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	tbl := table.New("Workload Count", "SBOM Count", "Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Coverage", "Missing SBOMs")
+	tbl := table.New("Workload Count", "SBOM Count", "Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Coverage", "Missing SBOMs", "Last Updated")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	tbl.AddRow(
@@ -67,6 +67,7 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 		resp.GetVulnerabilitySummary().GetRiskScore(),
 		resp.GetCoverage(),
 		resp.GetWorkloadCount()-resp.GetSbomCount(),
+		resp.GetVulnerabilitySummary().LastUpdated.AsTime().Format(time.RFC3339),
 	)
 
 	tbl.Print()
