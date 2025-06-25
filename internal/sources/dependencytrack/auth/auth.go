@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -43,59 +44,68 @@ func NewUsernamePasswordSource(username Username, password Password, c *client.A
 	}
 }
 
-func (c *usernamePasswordSource) ContextHeaders(ctx context.Context) (context.Context, error) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+func newUsernamePasswordSourceWithToken(username Username, password Password, token string, c *client.APIClient, log *logrus.Entry) *usernamePasswordSource {
+	return &usernamePasswordSource{
+		username:    username,
+		password:    password,
+		accessToken: token,
+		client:      c,
+		log:         log,
+	}
+}
 
-	t, expired, err := c.checkAccessToken()
+func (ups *usernamePasswordSource) ContextHeaders(ctx context.Context) (context.Context, error) {
+	ups.lock.Lock()
+	defer ups.lock.Unlock()
+
+	t, expired, err := ups.checkAccessToken()
 	if err != nil {
 		return nil, err
 	}
 
 	if expired {
-		t, err = c.login(ctx)
+		t, err = ups.login(ctx)
 		if err != nil {
 			return nil, err
 		}
-		c.accessToken = t
-	} else {
-		c.accessToken = t
+		ups.accessToken = t
 	}
 
-	return context.WithValue(ctx, client.ContextAccessToken, c.accessToken), nil
+	return context.WithValue(ctx, client.ContextAccessToken, ups.accessToken), nil
 }
 
-func (c *usernamePasswordSource) checkAccessToken() (string, bool, error) {
-	if c.accessToken == "" {
+func (ups *usernamePasswordSource) checkAccessToken() (string, bool, error) {
+	if ups.accessToken == "" {
 		return "", true, nil
 	}
 
-	token, err := jwt.ParseString(c.accessToken, jwt.WithVerify(false))
+	token, err := jwt.ParseString(ups.accessToken, jwt.WithVerify(false))
 	if err != nil {
-		return "", false, fmt.Errorf("parsing accessToken: %w", err)
+		if errors.Is(err, jwt.ErrTokenExpired()) {
+			ups.log.Debug("access token is expired, will re-login")
+			return "", true, nil
+		}
+		return "", true, fmt.Errorf("checkAccessToken: failed to parse access token: %w", err)
 	}
-	return c.accessToken, token.Expiration().Before(time.Now().Add(-1 * time.Minute)), nil
+	expired := token.Expiration().Before(time.Now().Add(1 * time.Minute))
+	return ups.accessToken, expired, nil
 }
 
-func (c *usernamePasswordSource) login(ctx context.Context) (string, error) {
-	res, resp, err := c.client.UserAPI.ValidateCredentials(ctx).
-		Username(c.username).
-		Password(c.password).
+func (ups *usernamePasswordSource) login(ctx context.Context) (string, error) {
+	res, resp, err := ups.client.UserAPI.ValidateCredentials(ctx).
+		Username(ups.username).
+		Password(ups.password).
 		Execute()
 	if err != nil {
-		c.log.Errorf("failed to validate credentials: %v", resp)
+		ups.log.Errorf("failed to validate credentials: %v", resp)
 		return "", fmt.Errorf("failed to validate credentials: %w", err)
 	}
 
-	_, err = c.parseToken(res)
+	_, err = jwt.ParseString(res, jwt.WithVerify(false))
 	if err != nil {
-		return "", fmt.Errorf("could not parse token from body after login request: %w, response body: %s", err, res)
+		return "", fmt.Errorf("could not parse token from body after login request: %w (response body: %s)", err, res)
 	}
 
-	c.log.Info("Successfully logged in with username and password")
+	ups.log.Info("Successfully logged in with username and password")
 	return res, nil
-}
-
-func (c *usernamePasswordSource) parseToken(token string) (jwt.Token, error) {
-	return jwt.ParseString(token, jwt.WithVerify(false))
 }

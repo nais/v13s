@@ -8,6 +8,7 @@ const (
 	IssuerUrl = "https://token.actions.githubusercontent.com"
 )
 
+// CertificateIdentity TODO: should be relaxed, or support more identities as long as the attestation is verified and a supported bom
 type CertificateIdentity struct {
 	Organizations []string
 }
