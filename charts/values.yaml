@@ -39,3 +39,7 @@ resources:
     memory: 1Gi
 logLevel: info
 logFormat: json
+opentelemetry:
+  collector:
+    endpoint:
+  enabled: true

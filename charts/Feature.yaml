@@ -135,3 +135,17 @@ values:
     displayName: Memory requests
     config:
       type: string
+
+  opentelemetry.collector.endpoint:
+    displayName: OpenTelemetry collector endpoint
+    description: Endpoint for the OpenTelemetry collector
+    computed:
+      template: |
+        {{ .Env.otel_otlp_endpoint | quote }}
+    config:
+      type: string
+
+  opentelemetry.enabled:
+    displayName: Enable OpenTelemetry
+    config:
+      type: boolean
