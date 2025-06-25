@@ -126,14 +126,15 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	summary := &vulnerabilities.Summary{
-		Critical:   row.Critical,
-		High:       row.High,
-		Medium:     row.Medium,
-		Low:        row.Low,
-		Unassigned: row.Unassigned,
-		Total:      row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-		RiskScore:  row.RiskScore,
-		HasSbom:    true,
+		Critical:    row.Critical,
+		High:        row.High,
+		Medium:      row.Medium,
+		Low:         row.Low,
+		Unassigned:  row.Unassigned,
+		Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+		RiskScore:   row.RiskScore,
+		LastUpdated: timestamppb.New(row.UpdatedAt.Time),
+		HasSbom:     true,
 	}
 
 	var coverage float32
