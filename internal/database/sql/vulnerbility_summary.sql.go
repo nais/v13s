@@ -87,7 +87,8 @@ SELECT
     CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium,
     CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low,
     CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS risk_score
+    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS risk_score,
+    MAX(v.updated_at)::DATE AS summary_updated_at
 FROM filtered_workloads fw
          LEFT JOIN vulnerability_summary v
                    ON fw.image_name = v.image_name AND fw.image_tag = v.image_tag
@@ -109,6 +110,7 @@ type GetVulnerabilitySummaryRow struct {
 	Low              int32
 	Unassigned       int32
 	RiskScore        int32
+	SummaryUpdatedAt pgtype.Date
 }
 
 func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
@@ -128,6 +130,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		&i.Low,
 		&i.Unassigned,
 		&i.RiskScore,
+		&i.SummaryUpdatedAt,
 	)
 	return &i, err
 }
