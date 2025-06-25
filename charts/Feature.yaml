@@ -148,4 +148,4 @@ values:
   opentelemetry.enabled:
     displayName: Enable OpenTelemetry
     config:
-      type: boolean
+      type: bool
