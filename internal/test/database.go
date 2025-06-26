@@ -6,11 +6,10 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/database"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-
-	"github.com/nais/v13s/internal/database"
 )
 
 func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Pool {
@@ -22,7 +21,7 @@ func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Po
 		}
 		return getConnection(ctx, t, container, dsn, log)
 	}
-	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", log.WithField("component", "database"))
+	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:4002/v13s?sslmode=disable", log.WithField("component", "database"))
 	if err != nil {
 		t.Fatalf("failed to create database pool: %v", err)
 	}

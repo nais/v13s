@@ -13,6 +13,7 @@ import (
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -274,6 +275,33 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 	})
 	if supErr != nil {
 		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
+	}
+
+	vulns, err := s.source.GetVulnerabilities(ctx, vuln.ImageName, vuln.ImageTag, true)
+	if err != nil {
+		s.log.Errorf("get vulnerabilities for image %s:%s: %w", vuln.ImageName, vuln.ImageTag, err)
+	}
+
+	for _, v := range vulns {
+		if v.Cve.Id == vuln.CveID && v.Package == vuln.Package {
+			err = s.source.MaintainSuppressedVulnerabilities(ctx, []*sources.SuppressedVulnerability{
+				{
+					ImageName:    vuln.ImageName,
+					ImageTag:     vuln.ImageTag,
+					CveId:        vuln.CveID,
+					Package:      vuln.Package,
+					SuppressedBy: request.GetSuppressedBy(),
+					Reason:       request.GetReason(),
+					State:        request.GetState().String(),
+					Suppressed:   request.GetSuppress(),
+					Metadata:     v.Metadata,
+				},
+			})
+			if err != nil {
+				s.log.Errorf("maintain suppressed vulnerabilities: %w", err)
+			}
+			break
+		}
 	}
 
 	return &vulnerabilities.SuppressVulnerabilityResponse{
