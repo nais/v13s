@@ -76,15 +76,7 @@ func seedDependencyTrack(ctx context.Context) error {
 
 	imgPrefix := "ghcr.io/nais/nais-deploy-chicken-%d"
 	for i := 1; i < 9; i++ {
-		ref := &dependencytrack.WorkloadRef{
-			Cluster:   "dev",
-			Namespace: "devteam",
-			Type:      "app",
-			Name:      fmt.Sprintf("nais-deploy-chicken-%d", i),
-			ImageName: fmt.Sprintf(imgPrefix, i),
-			ImageTag:  "1",
-		}
-		_, err = c.CreateOrUpdateProjectWithSbom(ctx, att, ref)
+		_, err = c.CreateProjectWithSbom(ctx, att, fmt.Sprintf(imgPrefix, i), "1")
 		if err != nil {
 			return err
 		}

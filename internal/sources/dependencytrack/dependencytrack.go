@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/in-toto/in-toto-golang/in_toto"
@@ -23,23 +22,18 @@ import (
 
 var _ Client = &dependencyTrackClient{}
 
-var projectLocks sync.Map
 var projects = cache.New(5*time.Minute, 10*time.Minute)
 
 type Client interface {
 	GetFindings(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]client.Finding, error)
-	GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error)
 	GetProject(ctx context.Context, name, version string) (*client.Project, error)
 	GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error)
 	UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId, state string, suppressed bool) error
 	GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*client.Analysis, error)
 	TriggerAnalysis(ctx context.Context, uuid string) error
-	CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error)
-	UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error
-	CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error)
 	CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, imageName, imageTag string) (string, error)
+	CreateProject(ctx context.Context, imageName, imageTag string, tags []client.Tag) (*client.Project, error)
 	DeleteProject(ctx context.Context, uuid string) error
-	UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error)
 }
 
 type ClientError struct {
@@ -54,15 +48,6 @@ type dependencyTrackClient struct {
 	client *client.APIClient
 	auth   auth.Auth
 	log    *logrus.Entry
-}
-
-type WorkloadRef struct {
-	Cluster   string
-	Namespace string
-	Type      string
-	Name      string
-	ImageName string
-	ImageTag  string
 }
 
 func NewClient(url string, username auth.Username, password auth.Password, log *logrus.Entry) (Client, error) {
@@ -120,7 +105,7 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom 
 		return "", fmt.Errorf("project UUID is empty")
 	}
 
-	if err = c.UploadSbom(ctx, p.Uuid, sbom); err != nil {
+	if err = c.uploadSbom(ctx, p.Uuid, sbom); err != nil {
 		var clientErr *ClientError
 		if errors.As(err, &clientErr) {
 			if deleteErr := c.DeleteProject(ctx, p.Uuid); deleteErr != nil {
@@ -128,53 +113,6 @@ func (c *dependencyTrackClient) CreateProjectWithSbom(ctx context.Context, sbom 
 			}
 		}
 		return "", fmt.Errorf("failed to upload SBOM: %w", err)
-	}
-
-	return p.Uuid, nil
-}
-
-func (c *dependencyTrackClient) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *WorkloadRef) (string, error) {
-	tags := workloadRef.tags()
-	projectName := workloadRef.projectName()
-
-	key := projectName + ":" + workloadRef.ImageTag
-	var err error
-	var p *client.Project
-	l, _ := projectLocks.LoadOrStore(projectName+":"+workloadRef.ImageTag, &sync.Mutex{})
-	lock := l.(*sync.Mutex)
-	lock.Lock()
-	defer lock.Unlock()
-
-	pc, found := projects.Get(key)
-	if found {
-		p = pc.(*client.Project)
-	} else {
-		p, err = c.GetProject(ctx, projectName, workloadRef.ImageTag)
-		if err != nil {
-			return "", err
-		}
-		if p != nil {
-			projects.Set(key, p, cache.DefaultExpiration)
-		}
-	}
-
-	if p != nil {
-		p.Version = &workloadRef.ImageTag
-		p.Tags = append(p.Tags, workloadRef.tags()...)
-		p, err = c.UpdateProject(ctx, p)
-		if err != nil {
-			return "", fmt.Errorf("failed to update project: %w", err)
-		}
-		return p.Uuid, nil
-	}
-
-	p, err = c.CreateProject(ctx, projectName, workloadRef.ImageTag, tags)
-	if err != nil {
-		return "", fmt.Errorf("failed to create project: %w", err)
-	}
-
-	if err = c.UploadSbom(ctx, p.Uuid, sbom); err != nil {
-		return "", err
 	}
 
 	return p.Uuid, nil
@@ -210,22 +148,6 @@ func (c *dependencyTrackClient) CreateProject(ctx context.Context, name, version
 	}
 	projects.Set(name+":"+version, p, cache.DefaultExpiration)
 	return p, nil
-}
-
-func (c *dependencyTrackClient) UploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
-	b, err := json.Marshal(sbom.Predicate)
-	if err != nil {
-		return fmt.Errorf("failed to marshal sbom: %w", err)
-	}
-
-	return c.withAuthContext(ctx, func(apiKeyCtx context.Context) error {
-		req := c.client.BomAPI.UploadBom(apiKeyCtx).Bom(string(b)).Project(projectId).AutoCreate(false)
-		_, resp, err := req.Execute()
-		if err != nil {
-			return convertError(err, "UploadSbom", resp)
-		}
-		return nil
-	})
 }
 
 // GetFindings Is this function lacking pagination for all findings in a project or do we not need it?
@@ -283,24 +205,6 @@ func (c *dependencyTrackClient) GetProject(ctx context.Context, name, version st
 	})
 }
 
-func (c *dependencyTrackClient) GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error) {
-	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) ([]client.Project, error) {
-		return c.paginateProjects(apiKeyCtx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
-			pageNumber := (offset / limit) + 1
-			projects, resp, err := c.client.ProjectAPI.GetProjectsByTag(ctx, tag).
-				PageSize(strconv.Itoa(int(limit))).
-				PageNumber(strconv.Itoa(int(pageNumber))).
-				Execute()
-
-			if err != nil {
-				return nil, convertError(err, "GetProjectsByTag", resp)
-			}
-
-			return projects, err
-		})
-	})
-}
-
 func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
 	return withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) ([]client.Project, error) {
 		return c.paginateProjects(apiKeyCtx, limit, offset, func(ctx context.Context, offset int32) ([]client.Project, error) {
@@ -313,27 +217,6 @@ func (c *dependencyTrackClient) GetProjects(ctx context.Context, limit, offset i
 			return projects, convertError(err, "GetProjects", resp)
 		})
 	})
-}
-
-func (c *dependencyTrackClient) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
-	var allProjects []client.Project
-
-	for {
-		projects, err := callFunc(ctx, offset)
-		if err != nil {
-			return nil, err
-		}
-
-		allProjects = append(allProjects, projects...)
-
-		if len(projects) < int(limit) {
-			break
-		}
-
-		offset += limit
-	}
-
-	return allProjects, nil
 }
 
 func (c *dependencyTrackClient) UpdateFinding(
@@ -402,27 +285,48 @@ func (c *dependencyTrackClient) GetAnalysisTrailForImage(
 	})
 }
 
-func (c *dependencyTrackClient) UpdateProject(ctx context.Context, p *client.Project) (*client.Project, error) {
-	c.log.Debugf("updating project: %s", *p.Name+":"+*p.Version)
-	p, err := withAuthContextValue(c, ctx, func(apiKeyCtx context.Context) (*client.Project, error) {
-		project, resp, err := c.client.ProjectAPI.UpdateProject(apiKeyCtx).Project(*p).Execute()
-		if err != nil {
-			return nil, convertError(err, "UpdateProject", resp)
-		}
-		return project, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	projects.Set(p.Uuid, p, cache.DefaultExpiration)
-	return p, nil
-}
-
 func (c *dependencyTrackClient) DeleteProject(ctx context.Context, uuid string) error {
 	return c.withAuthContext(ctx, func(apiKeyCtx context.Context) error {
 		resp, err := c.client.ProjectAPI.DeleteProject(apiKeyCtx, uuid).Execute()
 		if err != nil {
 			return convertError(err, "DeleteProject", resp)
+		}
+		return nil
+	})
+}
+
+func (c *dependencyTrackClient) paginateProjects(ctx context.Context, limit, offset int32, callFunc func(ctx context.Context, offset int32) ([]client.Project, error)) ([]client.Project, error) {
+	var allProjects []client.Project
+
+	for {
+		projects, err := callFunc(ctx, offset)
+		if err != nil {
+			return nil, err
+		}
+
+		allProjects = append(allProjects, projects...)
+
+		if len(projects) < int(limit) {
+			break
+		}
+
+		offset += limit
+	}
+
+	return allProjects, nil
+}
+
+func (c *dependencyTrackClient) uploadSbom(ctx context.Context, projectId string, sbom *in_toto.CycloneDXStatement) error {
+	b, err := json.Marshal(sbom.Predicate)
+	if err != nil {
+		return fmt.Errorf("failed to marshal sbom: %w", err)
+	}
+
+	return c.withAuthContext(ctx, func(apiKeyCtx context.Context) error {
+		req := c.client.BomAPI.UploadBom(apiKeyCtx).Bom(string(b)).Project(projectId).AutoCreate(false)
+		_, resp, err := req.Execute()
+		if err != nil {
+			return convertError(err, "uploadSbom", resp)
 		}
 		return nil
 	})
@@ -468,22 +372,4 @@ func withAuthContextValue[T any](c *dependencyTrackClient, ctx context.Context, 
 		return zero, fmt.Errorf("auth error: %w", err)
 	}
 	return fn(apiKeyCtx)
-}
-
-func (w *WorkloadRef) projectName() string {
-	return w.ImageName
-}
-
-func (w *WorkloadRef) tags() []client.Tag {
-	stringTags := []string{
-		fmt.Sprintf("workload:%s", w.Cluster+"|"+w.Namespace+"|"+w.Type+"|"+w.Name),
-	}
-
-	tags := make([]client.Tag, 0)
-	for _, tag := range stringTags {
-		tags = append(tags, client.Tag{
-			Name: &tag,
-		})
-	}
-	return tags
 }

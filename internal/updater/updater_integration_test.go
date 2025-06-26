@@ -220,11 +220,6 @@ func (m MockDtrack) CreateProject(ctx context.Context, name, version string, tag
 	panic("implement me")
 }
 
-func (m MockDtrack) CreateOrUpdateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, workloadRef *dependencytrack.WorkloadRef) (string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (m MockDtrack) UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error) {
 	//TODO implement me
 	panic("implement me")

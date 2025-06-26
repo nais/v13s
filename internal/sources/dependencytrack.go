@@ -26,11 +26,10 @@ type dependencytrackSource struct {
 
 var _ Source = &dependencytrackSource{}
 
-type VulnerabilityMatch struct {
-	Finding  client.Finding
-	VulnId   string
-	VulnUuid string
-	Found    bool
+type dependencytrackVulnMetadata struct {
+	projectId         string
+	componentId       string
+	vulnerabilityUuid string
 }
 
 // TODO: add a cache? maybe for projects only?
@@ -148,33 +147,6 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 	return nil
 }
 
-func (d *dependencytrackSource) shouldUpdateFinding(an *client.Analysis, v *SuppressedVulnerability) bool {
-	if an == nil {
-		return true
-	}
-	if an.IsSuppressed != nil && *an.IsSuppressed != v.Suppressed {
-		return true
-	}
-	return an.AnalysisState != v.State
-}
-
-func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrackVulnMetadata, v *SuppressedVulnerability) error {
-	err := d.client.UpdateFinding(
-		ctx,
-		v.SuppressedBy,
-		v.Reason,
-		metadata.projectId,
-		metadata.componentId,
-		metadata.vulnerabilityUuid,
-		v.State,
-		v.Suppressed,
-	)
-	if err != nil {
-		return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
-	}
-	return nil
-}
-
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {
 	i := imageName
 	t := imageTag
@@ -206,6 +178,33 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 		Unassigned: *p.Metrics.Unassigned,
 		RiskScore:  int32(*p.Metrics.InheritedRiskScore),
 	}, nil
+}
+
+func (d *dependencytrackSource) shouldUpdateFinding(an *client.Analysis, v *SuppressedVulnerability) bool {
+	if an == nil {
+		return true
+	}
+	if an.IsSuppressed != nil && *an.IsSuppressed != v.Suppressed {
+		return true
+	}
+	return an.AnalysisState != v.State
+}
+
+func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrackVulnMetadata, v *SuppressedVulnerability) error {
+	err := d.client.UpdateFinding(
+		ctx,
+		v.SuppressedBy,
+		v.Reason,
+		metadata.projectId,
+		metadata.componentId,
+		metadata.vulnerabilityUuid,
+		v.State,
+		v.Suppressed,
+	)
+	if err != nil {
+		return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
+	}
+	return nil
 }
 
 func parseFinding(finding client.Finding) (*Vulnerability, error) {
@@ -335,137 +334,4 @@ func parseFinding(finding client.Finding) (*Vulnerability, error) {
 			vulnerabilityUuid: vulnerabilityUuid,
 		},
 	}, nil
-}
-
-type dependencytrackVulnMetadata struct {
-	projectId         string
-	componentId       string
-	vulnerabilityUuid string
-}
-
-func (d *dependencytrackSource) SuppressVulnerability(ctx context.Context, v *SuppressedVulnerability) error {
-	projects, err := d.getProjectsForImage(ctx, v.ImageName)
-	if err != nil {
-		return err
-	}
-
-	anyUpdateMade := false
-	for _, p := range projects {
-		updateMade, err := d.processProject(ctx, p, v)
-		if err != nil {
-			return err
-		}
-		if updateMade {
-			anyUpdateMade = true
-		}
-	}
-
-	if !anyUpdateMade {
-		d.log.Debugf("no updates made for vulnerability %s across any project", v.CveId)
-	}
-
-	return nil
-}
-
-func (d *dependencytrackSource) getProjectsForImage(ctx context.Context, imageName string) ([]client.Project, error) {
-	projects, err := d.client.GetProjectsByTag(ctx, fmt.Sprintf("project:%s", imageName), 10, 0)
-	if err != nil {
-		return nil, fmt.Errorf("getting projects: %w", err)
-	}
-	return projects, nil
-}
-
-func (d *dependencytrackSource) processProject(ctx context.Context, p client.Project, v *SuppressedVulnerability) (bool, error) {
-	findings, err := d.client.GetFindings(ctx, p.Uuid, v.CveId, true)
-	if err != nil {
-		return false, fmt.Errorf("getting findings for project %s: %w", p.Uuid, err)
-	}
-
-	match, err := d.findMatchingVulnerability(findings, v.CveId)
-	if err != nil {
-		return false, err
-	}
-
-	if !match.Found {
-		d.log.Warnf("vulnerability %s not found in project %s", v.CveId, p.Uuid)
-		return false, nil
-	}
-
-	componentId, err := d.getComponentId(match.Finding)
-	if err != nil {
-		return false, err
-	}
-
-	an, err := d.client.GetAnalysisTrailForImage(ctx, p.Uuid, componentId, match.VulnUuid)
-	if err != nil {
-		return false, err
-	}
-
-	if an == nil {
-		d.log.Warnf("no analysis trail found for vulnerability %s in project %s", v.CveId, p.Uuid)
-		return false, nil
-	}
-
-	needsUpdate := d.checkAndLogUpdates(an, v, p.Uuid)
-	if !needsUpdate {
-		d.log.Infof("no update needed for vulnerability %s in project %s", v.CveId, p.Uuid)
-		return false, nil
-	}
-
-	if err := d.client.UpdateFinding(ctx, v.SuppressedBy, v.Reason, p.Uuid, componentId, match.VulnUuid, v.State, v.Suppressed); err != nil {
-		return false, fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, p.Uuid, err)
-	}
-
-	return true, nil
-}
-
-func (d *dependencytrackSource) findMatchingVulnerability(findings []client.Finding, cveId string) (VulnerabilityMatch, error) {
-	var match VulnerabilityMatch
-
-	for _, f := range findings {
-		vulnData, vulnOk := f.GetVulnerabilityOk()
-		if vulnOk {
-			if vv, ok := vulnData["vulnId"].(string); ok {
-				match.VulnId = vv
-			}
-			if vu, ok := vulnData["uuid"].(string); ok {
-				match.VulnUuid = vu
-			}
-			if match.VulnId == cveId {
-				match.Finding = f
-				match.Found = true
-				return match, nil
-			}
-		}
-	}
-
-	return match, nil
-}
-
-func (d *dependencytrackSource) getComponentId(finding client.Finding) (string, error) {
-	component, componentOk := finding.GetComponentOk()
-	if !componentOk {
-		return "", fmt.Errorf("missing component data for finding")
-	}
-
-	componentId, componentIdOk := component["uuid"].(string)
-	if !componentIdOk {
-		return "", fmt.Errorf("missing component id for finding")
-	}
-	return componentId, nil
-}
-
-func (d *dependencytrackSource) checkAndLogUpdates(an *client.Analysis, v *SuppressedVulnerability, projectId string) bool {
-	needsUpdate := false
-	if *an.IsSuppressed != v.Suppressed {
-		d.log.Infof("vulnerability %s suppression status changed from %t to %t in project %s", v.CveId, *an.IsSuppressed, v.Suppressed, projectId)
-		needsUpdate = true
-	}
-
-	if an.AnalysisState != v.State {
-		d.log.Infof("vulnerability %s state changed from %s to %s in project %s", v.CveId, an.AnalysisState, v.State, projectId)
-		needsUpdate = true
-	}
-
-	return needsUpdate
 }

@@ -285,53 +285,6 @@ func (_c *MockSource_Name_Call) RunAndReturn(run func() string) *MockSource_Name
 	return _c
 }
 
-// SuppressVulnerability provides a mock function with given fields: ctx, suppressedVulnerability
-func (_m *MockSource) SuppressVulnerability(ctx context.Context, suppressedVulnerability *SuppressedVulnerability) error {
-	ret := _m.Called(ctx, suppressedVulnerability)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SuppressVulnerability")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *SuppressedVulnerability) error); ok {
-		r0 = rf(ctx, suppressedVulnerability)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockSource_SuppressVulnerability_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SuppressVulnerability'
-type MockSource_SuppressVulnerability_Call struct {
-	*mock.Call
-}
-
-// SuppressVulnerability is a helper method to define mock.On call
-//   - ctx context.Context
-//   - suppressedVulnerability *SuppressedVulnerability
-func (_e *MockSource_Expecter) SuppressVulnerability(ctx interface{}, suppressedVulnerability interface{}) *MockSource_SuppressVulnerability_Call {
-	return &MockSource_SuppressVulnerability_Call{Call: _e.mock.On("SuppressVulnerability", ctx, suppressedVulnerability)}
-}
-
-func (_c *MockSource_SuppressVulnerability_Call) Run(run func(ctx context.Context, suppressedVulnerability *SuppressedVulnerability)) *MockSource_SuppressVulnerability_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*SuppressedVulnerability))
-	})
-	return _c
-}
-
-func (_c *MockSource_SuppressVulnerability_Call) Return(_a0 error) *MockSource_SuppressVulnerability_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSource_SuppressVulnerability_Call) RunAndReturn(run func(context.Context, *SuppressedVulnerability) error) *MockSource_SuppressVulnerability_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // UploadAttestation provides a mock function with given fields: ctx, imageName, imageTag, att
 func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
 	ret := _m.Called(ctx, imageName, imageTag, att)

@@ -25,27 +25,6 @@ func TestGetFindings(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestGetProjectsByTag(t *testing.T) {
-	mockClient := new(MockClient)
-	ctx := context.Background()
-	tag := "test-tag"
-	limit := int32(3)
-	offset := int32(0)
-	projectNames := []string{"Project1", "Project2", "Project3"}
-	var sampleProjects []client.Project
-	for _, name := range projectNames {
-		sampleProjects = append(sampleProjects, client.Project{Name: &name})
-	}
-
-	mockClient.On("GetProjectsByTag", ctx, tag, limit, offset).Return(sampleProjects, nil)
-
-	projects, err := mockClient.GetProjectsByTag(ctx, tag, limit, offset)
-
-	assert.NoError(t, err)
-	assert.Equal(t, sampleProjects, projects)
-	mockClient.AssertExpectations(t)
-}
-
 func TestPaginateProjects(t *testing.T) {
 	mockClient := new(MockClient)
 	ctx := context.Background()
@@ -80,22 +59,4 @@ func TestPaginateProjects(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Len(t, projects, 0)
-}
-
-func TestGetProjectsByTag_Error(t *testing.T) {
-	mockClient := new(MockClient)
-	ctx := context.Background()
-	tag := "invalid-tag"
-	limit := int32(2)
-	offset := int32(0)
-
-	expectedErr := errors.New("API error")
-	mockClient.On("GetProjectsByTag", ctx, tag, limit, offset).Return(nil, expectedErr)
-
-	projects, err := mockClient.GetProjectsByTag(ctx, tag, limit, offset)
-
-	assert.Error(t, err)
-	assert.Nil(t, projects)
-	assert.Equal(t, expectedErr, err)
-	mockClient.AssertExpectations(t)
 }
