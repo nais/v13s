@@ -2,10 +2,31 @@ package sources
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
+
+type SourceConfig interface {
+	GetUrl() string
+}
+
+type DependencyTrackConfig struct {
+	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
+	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
+	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
+}
+
+func (d DependencyTrackConfig) GetUrl() string {
+	return d.Url
+}
+
+var _ SourceConfig = &DependencyTrackConfig{}
 
 type Source interface {
 	Name() string
@@ -15,6 +36,39 @@ type Source interface {
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
 	UploadAttestation(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement) (uuid.UUID, error)
 	Delete(ctx context.Context, imageName string, imageTag string) error
+}
+
+func New(config SourceConfig, log logrus.FieldLogger) (Source, error) {
+	switch cfg := config.(type) {
+	case DependencyTrackConfig:
+		c, err := dependencytrack.NewClient(
+			cfg.Url,
+			cfg.Username,
+			cfg.Password,
+			log.WithField("subsystem", "dp-client"),
+			// wrap the default transport with OpenTelemetry instrumentation
+			dependencytrack.WithHTTPClient(&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}),
+		)
+		if err != nil {
+			log.Fatalf("failed to create DependencyTrack client: %v", err)
+		}
+
+		return NewDependencytrackSource(c, log.WithField("source", "dependencytrack")), nil
+	default:
+		return nil, fmt.Errorf("unsupported source config type: %T", cfg)
+	}
+}
+
+func SetupSources(configs []SourceConfig, log logrus.FieldLogger) ([]Source, error) {
+	sources := make([]Source, 0)
+	for _, config := range configs {
+		s, err := New(config, log)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, s)
+	}
+	return sources, nil
 }
 
 type SourceId string

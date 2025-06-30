@@ -9,9 +9,9 @@ import (
 
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/joho/godotenv"
+	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources/dependencytrack"
 	log "github.com/sirupsen/logrus"
 )
 

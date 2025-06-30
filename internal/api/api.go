@@ -22,7 +22,6 @@ import (
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
-	"github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -45,17 +44,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer pool.Close()
 
-	dpClient, err := dependencytrack.NewClient(
-		cfg.DependencyTrack.Url,
-		cfg.DependencyTrack.Username,
-		cfg.DependencyTrack.Password,
-		log.WithField("subsystem", "dp-client"),
-	)
+	source, err := sources.New(cfg.DependencyTrack, log)
 	if err != nil {
-		log.Fatalf("Failed to create DependencyTrack client: %v", err)
+		log.Fatalf("Failed to create source: %v", err)
 	}
-
-	source := sources.NewDependencytrackSource(dpClient, log.WithField("subsystem", "dependencytrack"))
 
 	workloadEventQueue := &kubernetes.WorkloadEventQueue{
 		Updated: make(chan *model.Workload, 10000),
@@ -73,6 +65,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return fmt.Errorf("create metric meter: %w", err)
 	}
 	defer func() {
+		if tp == nil {
+			log.Warn("No tracer provider to shut down")
+			return
+		}
 		if err = tp.Shutdown(ctx); err != nil {
 			log.WithError(err).Warn("Failed to shut down tracer provider")
 		}

@@ -6,9 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/nais/dependencytrack/pkg/dependencytrack/client"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 )
 
 func TestParseFinding(t *testing.T) {

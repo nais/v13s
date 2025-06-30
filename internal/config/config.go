@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/nais/v13s/internal/sources"
 	"net/http"
 	"strings"
 	"time"
@@ -23,7 +24,7 @@ type Config struct {
 	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
 	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
-	DependencyTrack           DependencyTrackConfig
+	DependencyTrack           sources.DependencyTrackConfig
 	K8s                       K8sConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 }

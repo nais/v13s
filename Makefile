@@ -57,21 +57,6 @@ generate-proto:
 		--go_out=. \
 		--go-grpc_out=.
 
-generate-dp-track:
-	@echo "Generating Go code from the OpenAPI specification..."
-	@openapi-generator generate \
-        -i schema/dtrack.json \
-        -g go \
-        -o internal/sources/dependencytrack/client \
-        --global-property apiTests=false,modelTests=false \
-        --package-name client \
-        --additional-properties=withGoMod=false \
-        --additional-properties=generateInterfaces=true \
-        --additional-properties=packageName=client || { \
-			echo "Error: openapi-generator is not installed or failed to execute."; \
-			echo "Please visit https://openapi-generator.tech/docs/installation/ for installation instructions."; \
-			exit 1; \
-		}
 
 generate-sql:
 	go run github.com/sqlc-dev/sqlc/cmd/sqlc generate -f .configs/sqlc.yaml

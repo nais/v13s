@@ -15,11 +15,10 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20250626123045-e0be6f713036
 	github.com/nais/liberator v0.0.0-20250623105725-462518f4de1a
 	github.com/nais/v13s/pkg/api v0.0.0-20250624075723-c0e6206ccfd4
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/prometheus/client_golang v1.22.0
 	github.com/riverqueue/river v0.23.1
@@ -36,14 +35,14 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.37.0
 	github.com/vektra/mockery/v2 v2.53.4
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
-	go.opentelemetry.io/otel v1.36.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
+	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.36.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.58.0
-	go.opentelemetry.io/otel/metric v1.36.0
-	go.opentelemetry.io/otel/sdk v1.36.0
-	go.opentelemetry.io/otel/sdk/metric v1.36.0
+	go.opentelemetry.io/otel/metric v1.37.0
+	go.opentelemetry.io/otel/sdk v1.37.0
+	go.opentelemetry.io/otel/sdk/metric v1.37.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.15.0
 	google.golang.org/grpc v1.73.0
@@ -196,10 +195,11 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/lestrrat-go/blackmagic v1.0.3 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
+	github.com/lestrrat-go/jwx/v2 v2.1.6 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20240620165639-de9c06129bec // indirect
 	github.com/lufia/plan9stats v0.0.0-20250317134145-8bc96cf8fc35 // indirect
@@ -302,7 +302,7 @@ require (
 	gitlab.com/gitlab-org/api/client-go v0.130.1 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/otel/trace v1.36.0 // indirect
+	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
@@ -341,3 +341,5 @@ require (
 )
 
 replace github.com/nais/v13s/pkg/api => ./pkg/api
+
+//replace github.com/nais/dependencytrack/pkg/dependencytrack => ../dependencytrack/pkg/dependencytrack

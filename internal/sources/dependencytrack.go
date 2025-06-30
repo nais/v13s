@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
+	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/nais/dependencytrack/pkg/dependencytrack/client"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/sources/dependencytrack"
-	"github.com/nais/v13s/internal/sources/dependencytrack/client"
 	"github.com/sirupsen/logrus"
 )
 
