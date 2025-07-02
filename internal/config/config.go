@@ -2,13 +2,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/nais/v13s/internal/sources"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/nais/v13s/internal/sources"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"

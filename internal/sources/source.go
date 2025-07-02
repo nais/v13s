@@ -139,11 +139,6 @@ type VulnerabilitySummary struct {
 	RiskScore  int32
 }
 
-type Findings struct {
-	WorkloadRef     *Workload
-	Vulnerabilities []*Vulnerability
-}
-
 type SuppressedVulnerability struct {
 	ImageName    string
 	ImageTag     string

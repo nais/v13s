@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
+	"golang.org/x/sync/errgroup"
 )
 
 type ImageVulnerabilityData struct {
@@ -51,7 +50,7 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 	if err != nil {
 		return nil, err
 	}
-	u.log.Debugf("Got %d findings", len(findings))
+	u.log.Debugf("Got %d vulnerabilities", len(findings))
 
 	// sync suppressed vulnerabilities
 	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
