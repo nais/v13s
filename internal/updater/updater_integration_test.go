@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/nais/dependencytrack/pkg/dependencytrack/auth"
 	"github.com/nais/dependencytrack/pkg/dependencytrack/client"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -212,11 +213,156 @@ func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, project
 var _ dependencytrack.Client = (*MockDtrack)(nil)
 
 type MockDtrack struct {
-	projects []*client.Project
-	findings map[string][]client.Finding
+	projects        []*dependencytrack.Project
+	vulnerabilities map[string][]*dependencytrack.Vulnerability
 }
 
-func (m MockDtrack) CreateProject(ctx context.Context, name, version string, tags []client.Tag) (*client.Project, error) {
+func (m MockDtrack) AddToTeam(ctx context.Context, username, uuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) AllMetricsRefresh(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) ChangeAdminPassword(ctx context.Context, oldPassword, newPassword auth.Password) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) ConfigPropertyAggregate(ctx context.Context, property dependencytrack.ConfigProperty) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateAdminUser(ctx context.Context, username string, password auth.Password, teamUuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateAdminUsers(ctx context.Context, users []*dependencytrack.AdminUser, teamUuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateOidcUser(ctx context.Context, email string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateProject(ctx context.Context, imageName, imageTag string, tags []string) (*dependencytrack.Project, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) CreateTeam(ctx context.Context, teamName string, permissions []dependencytrack.Permission) (*dependencytrack.Team, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) DeleteManagedUser(ctx context.Context, username string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) DeleteOidcUser(ctx context.Context, username string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) DeleteTeam(ctx context.Context, uuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) DeleteUserMembership(ctx context.Context, teamUuid, username string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GenerateApiKey(ctx context.Context, uuid string) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*dependencytrack.Analysis, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetConfigProperties(ctx context.Context) ([]dependencytrack.ConfigProperty, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetEcosystems(ctx context.Context) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetVulnerabilities(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]*dependencytrack.Vulnerability, error) {
+	for _, p := range m.projects {
+		if p.Uuid == uuid {
+			return m.vulnerabilities[uuid], nil
+		}
+	}
+	return nil, fmt.Errorf("project not found")
+}
+
+func (m MockDtrack) GetOidcUser(ctx context.Context, username string) (*dependencytrack.User, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetOidcUsers(ctx context.Context) ([]*dependencytrack.User, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetTeam(ctx context.Context, team string) (*dependencytrack.Team, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetTeams(ctx context.Context) ([]*dependencytrack.Team, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) ProjectMetricsRefresh(ctx context.Context, uuid string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) RemoveAdminUser(ctx context.Context, username string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) RemoveAdminUsers(ctx context.Context, users []*dependencytrack.AdminUser) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) UpdateFinding(ctx context.Context, request dependencytrack.AnalysisRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) Version(ctx context.Context) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) AuthContext(ctx context.Context) (context.Context, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) Login(ctx context.Context, username, password string) (string, error) {
+	//TODO implement me
 	panic("implement me")
 }
 
@@ -245,74 +391,49 @@ func (m MockDtrack) TriggerAnalysis(ctx context.Context, uuid string) error {
 	panic("implement me")
 }
 
-func (m MockDtrack) UpdateFinding(ctx context.Context, suppressedBy, reason, projectId, componentId, vulnerabilityId string, state string, suppressed bool) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockDtrack) GetAnalysisTrailForImage(ctx context.Context, projectId, componentId, vulnerabilityId string) (*client.Analysis, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (m MockDtrack) AddFinding(projectName string, vulnName string) {
 	u := ""
 	for _, p := range m.projects {
-		if *p.Name == projectName {
+		if p.Name == projectName {
 			u = p.Uuid
 		}
 	}
-	findings := m.findings[u]
-	findings = append(findings, client.Finding{
-		Component: map[string]interface{}{
-			"purl": fmt.Sprintf("pkg:component-%s", vulnName),
+	findings := m.vulnerabilities[u]
+	findings = append(findings, &dependencytrack.Vulnerability{
+		Suppressed:    false,
+		LatestVersion: "123",
+		Metadata:      &dependencytrack.VulnMetadata{},
+		Cve: &dependencytrack.Cve{
+			Id:          fmt.Sprintf("CVE-%s", vulnName),
+			Description: "description",
+			Title:       "title",
+			Link:        fmt.Sprintf("https://nvd.nist.gov/vuln/detail/CVE-%s", vulnName),
+			Severity:    "CRITICAL",
+			References:  map[string]string{},
 		},
-		Vulnerability: map[string]interface{}{
-			"severity":    "CRITICAL",
-			"source":      "NVD",
-			"title":       "title",
-			"description": "description",
-			"vulnId":      fmt.Sprintf("CVE-%s", vulnName),
-		},
-		Analysis: map[string]interface{}{
-			"isSuppressed": false,
-		},
+		Package: fmt.Sprintf("pkg:component-%s", vulnName),
 	})
-	m.findings[u] = findings
+	m.vulnerabilities[u] = findings
 }
 
-func (m MockDtrack) GetFindings(ctx context.Context, uuid, vulnerabilityId string, suppressed bool) ([]client.Finding, error) {
+func (m MockDtrack) GetProject(ctx context.Context, name, version string) (*dependencytrack.Project, error) {
 	for _, p := range m.projects {
-		if p.Uuid == uuid {
-			return m.findings[uuid], nil
-		}
-	}
-	return nil, fmt.Errorf("project not found")
-}
-
-func (m MockDtrack) GetProjectsByTag(ctx context.Context, tag string, limit, offset int32) ([]client.Project, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockDtrack) GetProject(ctx context.Context, name, version string) (*client.Project, error) {
-	for _, p := range m.projects {
-		if *p.Name == name && *p.Version == version {
+		if p.Name == name && p.Version == version {
 			return p, nil
 		}
 	}
 	return nil, fmt.Errorf("project not found")
 }
 
-func (m MockDtrack) GetProjects(ctx context.Context, limit, offset int32) ([]client.Project, error) {
+func (m MockDtrack) GetProjects(ctx context.Context, limit, offset int32) ([]dependencytrack.Project, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
 func NewMock(projectNames []string) *MockDtrack {
-	mapFindings := make(map[string][]client.Finding)
+	mapFindings := make(map[string][]*dependencytrack.Vulnerability)
 
-	projects := make([]*client.Project, 0)
+	projects := make([]*dependencytrack.Project, 0)
 
 	for _, p := range projectNames {
 		id := uuid.New().String()
@@ -324,43 +445,42 @@ func NewMock(projectNames []string) *MockDtrack {
 		riskScore := float64(6)
 		version := "v1"
 
-		projects = append(projects, &client.Project{
-			Name:    &p,
-			Version: &version,
+		projects = append(projects, &dependencytrack.Project{
+			Name:    p,
+			Version: version,
 			Uuid:    id,
-			Metrics: &client.ProjectMetrics{
+			Metrics: &dependencytrack.ProjectMetric{
 				Critical:           critical,
 				High:               high,
 				Medium:             medium,
 				Low:                low,
-				Unassigned:         &unassigned,
-				InheritedRiskScore: &riskScore,
+				Unassigned:         unassigned,
+				InheritedRiskScore: riskScore,
 			},
 		})
 
-		findings := make([]client.Finding, 0)
+		findings := make([]*dependencytrack.Vulnerability, 0)
 		for j := 0; j < 4; j++ {
-			findings = append(findings, client.Finding{
-				Component: map[string]interface{}{
-					"purl": fmt.Sprintf("pkg:component-%d", j),
+			findings = append(findings, &dependencytrack.Vulnerability{
+				Suppressed:    false,
+				LatestVersion: "123",
+				Metadata:      &dependencytrack.VulnMetadata{},
+				Cve: &dependencytrack.Cve{
+					Id:          fmt.Sprintf("CVE-%s-%d", p, j),
+					Description: "description",
+					Title:       "title",
+					Link:        fmt.Sprintf("https://nvd.nist.gov/vuln/detail/CVE-%s-%d", p, j),
+					Severity:    "CRITICAL",
+					References:  map[string]string{},
 				},
-				Vulnerability: map[string]interface{}{
-					"severity":    "CRITICAL",
-					"source":      "NVD",
-					"title":       "title",
-					"description": "description",
-					"vulnId":      fmt.Sprintf("CVE-%s-%d", p, j),
-				},
-				Analysis: map[string]interface{}{
-					"isSuppressed": false,
-				},
+				Package: fmt.Sprintf("pkg:component-%d", j),
 			})
 		}
 		mapFindings[id] = findings
 	}
 
 	return &MockDtrack{
-		projects: projects,
-		findings: mapFindings,
+		projects:        projects,
+		vulnerabilities: mapFindings,
 	}
 }

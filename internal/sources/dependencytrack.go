@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
-	"github.com/nais/dependencytrack/pkg/dependencytrack/client"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 )
@@ -94,20 +93,38 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		return nil, ErrNoProject
 	}
 
-	findings, err := d.client.GetFindings(ctx, p.Uuid, "", includeSuppressed)
+	vulns, err := d.client.GetVulnerabilities(ctx, p.Uuid, "", includeSuppressed)
 	if err != nil {
 		return nil, fmt.Errorf("getting findings for project %s: %w", p.Uuid, err)
 	}
 
-	vulns := make([]*Vulnerability, 0)
-	for _, f := range findings {
-		v, err := parseFinding(f)
-		if err != nil {
-			return nil, err
+	vv := make([]*Vulnerability, 0, len(vulns))
+	for _, v := range vulns {
+		m := dependencytrackVulnMetadata{}
+		if v.Metadata != nil {
+			m.projectId = v.Metadata.ProjectId
+			m.componentId = v.Metadata.ComponentId
+			m.vulnerabilityUuid = v.Metadata.VulnerabilityUuid
+		} else {
+			d.log.Warnf("missing metadata for vulnerability, CveId '%s', Package '%s'", v.Cve.Id, v.Package)
 		}
-		vulns = append(vulns, v)
+		vv = append(vv, &Vulnerability{
+			Cve: &Cve{
+				Id:          v.Cve.Id,
+				Description: v.Cve.Description,
+				Title:       v.Cve.Title,
+				Link:        v.Cve.Link,
+				Severity:    Severity(v.Cve.Severity),
+				References:  v.Cve.References,
+			},
+			Package:       v.Package,
+			Suppressed:    v.Suppressed,
+			LatestVersion: v.LatestVersion,
+			Metadata:      m,
+		})
 	}
-	return vulns, nil
+
+	return vv, nil
 }
 
 func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
@@ -115,13 +132,13 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 	triggeredProjects := make(map[string]struct{})
 
 	for _, v := range suppressed {
-		metadata, ok := v.Metadata.(*dependencytrackVulnMetadata)
+		metadata, ok := v.Metadata.(*dependencytrack.VulnMetadata)
 		if !ok || metadata == nil {
 			d.log.Warnf("missing metadata for suppressed vulnerability, CveId '%s', Package '%s'", v.CveId, v.Package)
 			continue
 		}
 
-		an, err := d.client.GetAnalysisTrailForImage(ctx, metadata.projectId, metadata.componentId, metadata.vulnerabilityUuid)
+		an, err := d.client.GetAnalysisTrailForImage(ctx, metadata.ProjectId, metadata.ComponentId, metadata.VulnerabilityUuid)
 		if err != nil {
 			return err
 		}
@@ -131,9 +148,9 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 			if err := d.updateFinding(ctx, metadata, v); err != nil {
 				return err
 			}
-			triggeredProjects[metadata.projectId] = struct{}{}
+			triggeredProjects[metadata.ProjectId] = struct{}{}
 		} else {
-			d.log.Infof("vulnerability %s is already up to date in project %s", v.CveId, metadata.projectId)
+			d.log.Infof("vulnerability %s is already up to date in project %s", v.CveId, metadata.ProjectId)
 		}
 	}
 
@@ -175,12 +192,12 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 		High:       p.Metrics.High,
 		Medium:     p.Metrics.Medium,
 		Low:        p.Metrics.Low,
-		Unassigned: *p.Metrics.Unassigned,
-		RiskScore:  int32(*p.Metrics.InheritedRiskScore),
+		Unassigned: p.Metrics.Unassigned,
+		RiskScore:  int32(p.Metrics.InheritedRiskScore),
 	}, nil
 }
 
-func (d *dependencytrackSource) shouldUpdateFinding(an *client.Analysis, v *SuppressedVulnerability) bool {
+func (d *dependencytrackSource) shouldUpdateFinding(an *dependencytrack.Analysis, v *SuppressedVulnerability) bool {
 	if an == nil {
 		return true
 	}
@@ -190,148 +207,19 @@ func (d *dependencytrackSource) shouldUpdateFinding(an *client.Analysis, v *Supp
 	return an.AnalysisState != v.State
 }
 
-func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrackVulnMetadata, v *SuppressedVulnerability) error {
-	err := d.client.UpdateFinding(
-		ctx,
-		v.SuppressedBy,
-		v.Reason,
-		metadata.projectId,
-		metadata.componentId,
-		metadata.vulnerabilityUuid,
-		v.State,
-		v.Suppressed,
-	)
+func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrack.VulnMetadata, v *SuppressedVulnerability) error {
+	vReq := dependencytrack.AnalysisRequest{
+		SuppressedBy:    v.SuppressedBy,
+		Reason:          v.Reason,
+		ProjectId:       metadata.ProjectId,
+		ComponentId:     metadata.ComponentId,
+		VulnerabilityId: metadata.VulnerabilityUuid,
+		State:           v.State,
+		Suppressed:      v.Suppressed,
+	}
+	err := d.client.UpdateFinding(ctx, vReq)
 	if err != nil {
-		return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.projectId, err)
+		return fmt.Errorf("suppressing vulnerability %s in project %s: %w", v.CveId, metadata.ProjectId, err)
 	}
 	return nil
-}
-
-func parseFinding(finding client.Finding) (*Vulnerability, error) {
-	component, componentOk := finding.GetComponentOk()
-	if !componentOk {
-		return nil, fmt.Errorf("missing component for finding")
-	}
-
-	analysis, analysisOk := finding.GetAnalysisOk()
-	if !analysisOk {
-		return nil, fmt.Errorf("missing analysis for finding")
-	}
-
-	vulnData, vulnOk := finding.GetVulnerabilityOk()
-	if !vulnOk {
-		return nil, fmt.Errorf("missing vulnerability data for finding")
-	}
-
-	var severity Severity
-	if severityStr, ok := vulnData["severity"].(string); ok {
-		switch severityStr {
-		case "CRITICAL":
-			severity = SeverityCritical
-		case "HIGH":
-			severity = SeverityHigh
-		case "MEDIUM":
-			severity = SeverityMedium
-		case "LOW":
-			severity = SeverityLow
-		default:
-			severity = SeverityUnassigned
-		}
-	} else {
-		// default to unassigned if severity is missing or it is not a known value
-		severity = SeverityUnassigned
-	}
-
-	var vulnId string
-	if v, ok := vulnData["vulnId"].(string); ok {
-		vulnId = v
-	}
-
-	var projectId string
-	if p, ok := component["project"].(string); ok {
-		projectId = p
-	}
-	var componentId string
-	if c, ok := component["uuid"].(string); ok {
-		componentId = c
-	}
-	var vulnerabilityUuid string
-	if v, ok := vulnData["uuid"].(string); ok {
-		vulnerabilityUuid = v
-	}
-
-	var link string
-	if source, ok := vulnData["source"].(string); ok {
-		switch source {
-		case "NVD":
-			link = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", vulnId)
-		case "GITHUB":
-			link = fmt.Sprintf("https://github.com/advisories/%s", vulnId)
-		case "UBUNTU":
-			link = fmt.Sprintf("https://ubuntu.com/security/CVE-%s", vulnId)
-		case "OSSINDEX":
-			link = fmt.Sprintf("https://ossindex.sonatype.org/vuln/%s", vulnId)
-		case "DEBIAN":
-			link = fmt.Sprintf("https://security-tracker.debian.org/tracker/%s", vulnId)
-		}
-	}
-
-	suppressed := false
-	if s, ok := analysis["isSuppressed"].(bool); ok {
-		suppressed = s
-	}
-
-	title := ""
-	if t, ok := vulnData["title"].(string); ok && t != "" {
-		title = t
-	} else if cwe, ok := vulnData["cweName"].(string); ok {
-		title = cwe
-	}
-
-	desc := "unknown"
-	if d, ok := vulnData["description"].(string); ok {
-		desc = d
-	}
-
-	purl := ""
-	if p, ok := component["purl"].(string); ok {
-		purl = p
-	}
-
-	componentLatestVersion := ""
-	if lv, ok := component["latestVersion"].(string); ok {
-		componentLatestVersion = lv
-	}
-
-	references := map[string]string{}
-	if aliases, ok := vulnData["aliases"].([]interface{}); ok {
-		for _, a := range aliases {
-			if alias, ok := a.(map[string]interface{}); ok {
-				if cveId, ok := alias["cveId"].(string); ok {
-					if ghsaId, ok := alias["ghsaId"].(string); ok {
-						references[cveId] = ghsaId
-					}
-				}
-			}
-		}
-	}
-
-	return &Vulnerability{
-		Package:       purl,
-		Suppressed:    suppressed,
-		LatestVersion: componentLatestVersion,
-		Cve: &Cve{
-			Id:          vulnId,
-			Description: desc,
-			Title:       title,
-			Link:        link,
-			Severity:    severity,
-			References:  references,
-		},
-		Metadata: &dependencytrackVulnMetadata{
-			projectId:         projectId,
-			componentId:       componentId,
-			vulnerabilityUuid: vulnerabilityUuid,
-		},
-	}, nil
 }
