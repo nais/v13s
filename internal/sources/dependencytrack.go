@@ -31,7 +31,6 @@ type dependencytrackVulnMetadata struct {
 	vulnerabilityUuid string
 }
 
-// TODO: add a cache? maybe for projects only?
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
 	return &dependencytrackSource{
 		client: client,
