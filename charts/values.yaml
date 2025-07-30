@@ -3,7 +3,7 @@ image:
   repository: europe-north1-docker.pkg.dev/nais-io/nais/images
   name: v13s
   tag: tull
-  cloudsql_proxy: gcr.io/cloudsql-docker/gce-proxy:1.33.16
+  cloudsql_proxy: gcr.io/cloudsql-docker/gce-proxy:1.37.8
 serviceAccountEmail:
 serviceAccountName: v13s-sa
 updateInterval: 5m
