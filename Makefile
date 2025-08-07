@@ -1,6 +1,3 @@
-IGNORED_PATH := "internal/sources/dependencytrack/client"
-GO_PACKAGES := $(shell go list ./... | grep -v $(IGNORED_PATH))
-
 build:
 	go build -o bin/api ./cmd/api
 
@@ -21,7 +18,11 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-check: fmt vulncheck deadcode staticcheck goimport
+check: vet fmt vulncheck deadcode staticcheck goimport
+
+vet:
+	@echo "Running go vet..."
+	go vet ./...
 
 goimport:
 	@echo "Running goimport..."
@@ -29,15 +30,18 @@ goimport:
 
 fmt:
 	@echo "Running go fmt..."
-	go fmt $(GO_PACKAGES)
+	go fmt ./...
 
 staticcheck:
 	@echo "Running staticcheck..."
-	go run honnef.co/go/tools/cmd/staticcheck@latest -f=stylish  $(GO_PACKAGES)
+	go run honnef.co/go/tools/cmd/staticcheck@latest -f=stylish  ./...
 
+# -exclude=GO-2025-3770 Several
+# Sigstore-related modules (e.g., cosign, rekor, sigstore-go, timestamp-authority) are pulling in the vulnerable version
+# Ignore until we can update to a version that is not vulnerable
 vulncheck:
 	@echo "Running vulncheck..."
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./... | grep -v 'GO-2025-3770'
 
 deadcode:
 	@echo "Running deadcode..."
@@ -48,7 +52,7 @@ gosec:
 	@echo "Running gosec..."
 	go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude G404,G101,G115,G402 --exclude-generated -terse ./...
 
-generate: generate-proto generate-dp-track generate-sql generate-mocks
+generate: generate-proto generate-sql generate-mocks
 
 generate-proto:
 	protoc \

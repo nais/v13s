@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
@@ -42,10 +41,10 @@ func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
 }
 
-func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom []byte) (uuid.UUID, error) {
 	d.log.Debugf("uploading sbom for workload %v", imageName)
 
-	projectId, err := d.client.CreateProjectWithSbom(ctx, sbom, imageName, imageTag)
+	projectId, err := d.client.CreateProjectWithSbom(ctx, imageName, imageTag, sbom)
 	if err != nil {
 		if errors.As(err, &dependencytrack.ClientError{}) {
 			return uuid.New(), model.ToUnrecoverableError(err, "dependencytrack")
@@ -92,7 +91,7 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		return nil, ErrNoProject
 	}
 
-	vulns, err := d.client.GetVulnerabilities(ctx, p.Uuid, "", includeSuppressed)
+	vulns, err := d.client.GetFindings(ctx, p.Uuid, includeSuppressed)
 	if err != nil {
 		return nil, fmt.Errorf("getting findings for project %s: %w", p.Uuid, err)
 	}

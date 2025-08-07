@@ -217,6 +217,23 @@ type MockDtrack struct {
 	vulnerabilities map[string][]*dependencytrack.Vulnerability
 }
 
+func (m MockDtrack) CreateProjectWithSbom(ctx context.Context, imageName, imageTag string, sbom []byte) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockDtrack) GetFindings(ctx context.Context, uuid string, suppressed bool, filterSource ...string) ([]*dependencytrack.Vulnerability, error) {
+	for _, p := range m.projects {
+		if p.Uuid == uuid {
+			if findings, ok := m.vulnerabilities[uuid]; ok {
+				return findings, nil
+			}
+			return nil, fmt.Errorf("no vulnerabilities found for project with uuid %s", uuid)
+		}
+	}
+	return nil, fmt.Errorf("project not found with uuid %s", uuid)
+}
+
 func (m MockDtrack) AddToTeam(ctx context.Context, username, uuid string) error {
 	//TODO implement me
 	panic("implement me")
@@ -367,11 +384,6 @@ func (m MockDtrack) Login(ctx context.Context, username, password string) (strin
 }
 
 func (m MockDtrack) UpdateProject(ctx context.Context, project *client.Project) (*client.Project, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockDtrack) CreateProjectWithSbom(ctx context.Context, sbom *in_toto.CycloneDXStatement, imageName, imageTag string) (string, error) {
 	//TODO implement me
 	panic("implement me")
 }

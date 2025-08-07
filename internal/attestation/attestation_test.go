@@ -34,7 +34,7 @@ func TestGetAttestation_NoAttestation(t *testing.T) {
 
 func TestGetAttestation_Success(t *testing.T) {
 	dsse := loadDSSEFromFile(t, "testdata/cyclonedx-dsse.json")
-	_, err := ParseEnvelope(dsse)
+	st, err := ParseEnvelope(dsse)
 	require.NoError(t, err)
 	rBundle := loadRekorBundleFromFile(t, "testdata/rekor-bundle.json")
 
@@ -52,8 +52,8 @@ func TestGetAttestation_Success(t *testing.T) {
 	a, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
 	require.NoError(t, err)
 	require.NotNil(t, a)
-	require.NotNil(t, a.Statement)
-	require.Equal(t, in_toto.PredicateCycloneDX, a.Statement.PredicateType)
+	require.NotNil(t, a.Predicate)
+	require.Equal(t, in_toto.PredicateCycloneDX, st.PredicateType)
 
 	require.NotEmpty(t, a.Metadata, "metadata should not be empty")
 

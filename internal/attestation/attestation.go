@@ -73,8 +73,8 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 }
 
 type Attestation struct {
-	Statement *in_toto.CycloneDXStatement `json:"statement"`
-	Metadata  map[string]string           `json:"metadata"`
+	Predicate []byte            `json:"predicate"`
+	Metadata  map[string]string `json:"metadata"`
 }
 
 func (a *Attestation) Compress() ([]byte, error) {
@@ -145,8 +145,13 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, model.ToUnrecoverableError(fmt.Errorf("unsupported predicate type: %s", statement.PredicateType), "attestation")
 	}
 
+	predicate, err := json.Marshal(statement.Predicate)
+	if err != nil {
+		return nil, fmt.Errorf("marshal predicate: %v", err)
+	}
+
 	ret := &Attestation{
-		Statement: statement,
+		Predicate: predicate,
 	}
 
 	// TODO: find an easier way to get the metadata
