@@ -98,11 +98,13 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 
 	vv := make([]*Vulnerability, 0, len(vulns))
 	for _, v := range vulns {
-		m := dependencytrackVulnMetadata{}
+		var m *dependencytrack.VulnMetadata
 		if v.Metadata != nil {
-			m.projectId = v.Metadata.ProjectId
-			m.componentId = v.Metadata.ComponentId
-			m.vulnerabilityUuid = v.Metadata.VulnerabilityUuid
+			m = &dependencytrack.VulnMetadata{
+				ProjectId:         v.Metadata.ProjectId,
+				ComponentId:       v.Metadata.ComponentId,
+				VulnerabilityUuid: v.Metadata.VulnerabilityUuid,
+			}
 		} else {
 			d.log.Warnf("missing metadata for vulnerability, CveId '%s', Package '%s'", v.Cve.Id, v.Package)
 		}
