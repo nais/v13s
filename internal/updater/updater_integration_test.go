@@ -105,7 +105,6 @@ func TestUpdater(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("timeout waiting for updater to complete")
 		}
-		// time.Sleep(5 * updateSchedule.Interval)
 
 		for _, p := range projectNames {
 			imageName := p

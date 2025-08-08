@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/containerd/log"
@@ -29,6 +30,7 @@ type Updater struct {
 	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
 	doneChan                     chan struct{}
+	once                         sync.Once
 }
 
 func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
@@ -137,11 +139,9 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
 
 	if u.doneChan != nil {
-		select {
-		case <-u.doneChan:
-		default:
+		u.once.Do(func() {
 			close(u.doneChan)
-		}
+		})
 	}
 
 	return nil
