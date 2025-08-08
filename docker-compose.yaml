@@ -20,63 +20,6 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
 
-  swagger:
-    image: swaggerapi/swagger-ui
-    environment:
-      SWAGGER_JSON_URL: http://localhost:9010/api/openapi.json
-    ports:
-      - '9002:8080'
-
-  dtrack-apiserver:
-    image: dependencytrack/apiserver:4.13.2
-    deploy:
-      resources:
-        limits:
-          memory: 12288m
-        reservations:
-          memory: 8192m
-      restart_policy:
-        condition: on-failure
-    ports:
-      - '9010:8080'
-    environment:
-      - LOGGING_LEVEL=INFO
-    healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:8080 || exit 1
-      interval: 10s
-      retries: 5
-      start_period: 20s
-      timeout: 10s
-    volumes:
-      - 'dependency-track:/data'
-    restart: unless-stopped
-
-  dtrack-frontend:
-    image: dependencytrack/frontend:4.13.2
-    depends_on:
-      - dtrack-apiserver
-    environment:
-      - API_BASE_URL=http://localhost:9010
-    ports:
-      - "9020:8080"
-    restart: unless-stopped
-
-  bootstrap:
-    platform: linux/amd64
-    image: europe-north1-docker.pkg.dev/nais-io/nais/images/dependencytrack-bootstrap:latest
-    environment:
-      - BASE_URL=http://dtrack-apiserver:8080/
-      - DEFAULT_ADMIN_PASSWORD=admin
-      - ADMIN_PASSWORD=yolo
-      - TRIVY_API_TOKEN=my-token
-      - USERS_FILE=users.yaml
-      - TRIVY_BASE_URL=http://trivy:4005
-    depends_on:
-      dtrack-apiserver:
-        condition: service_healthy
-    volumes:
-      - ./local/users.yaml:/app/users.yaml
-
   registry:
     image: registry:latest
     ports:
@@ -86,18 +29,6 @@ services:
       - ./local/registry-config.yml:/etc/docker/registry/config.yml
     command:
       - /etc/docker/registry/config.yml
-
-  trivy:
-    image: aquasec/trivy:0.63.0
-    command:
-      - server
-      - --listen
-      - :4005
-      - --token
-      - my-token
-    volumes:
-      - "trivy-cache:/root/.cache/trivy"
-    restart: unless-stopped
 
   jaeger:
     image: jaegertracing/all-in-one:1.57
@@ -110,5 +41,4 @@ services:
 
 volumes:
   pgdata:
-  dependency-track:
   trivy-cache:

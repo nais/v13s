@@ -1,34 +1,171 @@
 package sources
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
+	"context"
+	"errors"
 	"testing"
 
-	"github.com/nais/dependencytrack/pkg/dependencytrack/client"
+	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	dependencytrackMock "github.com/nais/v13s/mocks/github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-func TestParseFinding(t *testing.T) {
-	b, err := os.ReadFile("testdata/finding.json")
+func TestMaintainSuppressedVulnerabilities(t *testing.T) {
+	ctx := context.Background()
+	log := logrus.NewEntry(logrus.New())
+
+	mockClient := new(dependencytrackMock.MockClient)
+
+	source := NewDependencytrackSource(mockClient, log)
+
+	metadata := &dependencytrack.VulnMetadata{
+		ProjectId:         "project-1",
+		ComponentId:       "component-1",
+		VulnerabilityUuid: "vuln-1",
+	}
+
+	suppressed := []*SuppressedVulnerability{
+		{
+			CveId:      "CVE-2025-0001",
+			Package:    "libfoo",
+			Suppressed: true,
+			State:      "NOT_AFFECTED",
+			Metadata:   metadata,
+		},
+	}
+
+	// Expect GetAnalysisTrailForImage to return analysis with different state
+	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
+		Return(&dependencytrack.Analysis{
+			AnalysisState: "NOT_AFFECTED",
+			IsSuppressed:  ptr(false),
+		}, nil)
+
+	// Expect UpdateFinding to be called
+	mockClient.On("UpdateFinding", ctx, mock.MatchedBy(func(req dependencytrack.AnalysisRequest) bool {
+		return req.ProjectId == "project-1" &&
+			req.ComponentId == "component-1" &&
+			req.VulnerabilityId == "vuln-1" &&
+			req.State == "NOT_AFFECTED" &&
+			req.Suppressed
+	})).Return(nil)
+
+	// Expect TriggerAnalysis
+	mockClient.On("TriggerAnalysis", ctx, "project-1").Return(nil)
+
+	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)
 	assert.NoError(t, err)
-	var f client.Finding
-	err = json.Unmarshal(b, &f)
+
+	mockClient.AssertExpectations(t)
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
+func TestMaintainSuppressedVulnerabilities_GetAnalysisError(t *testing.T) {
+	ctx := context.Background()
+	log := logrus.NewEntry(logrus.New())
+	mockClient := new(dependencytrackMock.MockClient)
+	source := NewDependencytrackSource(mockClient, log)
+
+	metadata := &dependencytrack.VulnMetadata{
+		ProjectId:         "project-1",
+		ComponentId:       "component-1",
+		VulnerabilityUuid: "vuln-1",
+	}
+
+	suppressed := []*SuppressedVulnerability{
+		{Metadata: metadata, CveId: "CVE-2025-0001", Suppressed: true},
+	}
+
+	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
+		Return(nil, errors.New("api failure"))
+
+	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)
+	assert.Error(t, err)
+
+	mockClient.AssertExpectations(t)
+}
+
+func TestMaintainSuppressedVulnerabilities_UpdateFindingError(t *testing.T) {
+	ctx := context.Background()
+	log := logrus.NewEntry(logrus.New())
+
+	mockClient := new(dependencytrackMock.MockClient)
+	source := NewDependencytrackSource(mockClient, log)
+
+	metadata := &dependencytrack.VulnMetadata{
+		ProjectId:         "project-1",
+		ComponentId:       "component-1",
+		VulnerabilityUuid: "vuln-1",
+	}
+
+	suppressed := []*SuppressedVulnerability{
+		{Metadata: metadata, CveId: "CVE-2025-0001", Suppressed: true, State: "NOT_AFFECTED"},
+	}
+
+	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
+		Return(&dependencytrack.Analysis{
+			AnalysisState: "ACTIVE", // different state to trigger update
+			IsSuppressed:  ptr(false),
+		}, nil)
+
+	mockClient.On("UpdateFinding", ctx, mock.Anything).
+		Return(errors.New("update failure"))
+
+	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)
+	assert.Error(t, err)
+
+	mockClient.AssertExpectations(t)
+}
+
+func TestMaintainSuppressedVulnerabilities_NoUpdateNeeded(t *testing.T) {
+	ctx := context.Background()
+	log := logrus.NewEntry(logrus.New())
+
+	mockClient := new(dependencytrackMock.MockClient)
+	source := NewDependencytrackSource(mockClient, log)
+
+	metadata := &dependencytrack.VulnMetadata{
+		ProjectId:         "project-1",
+		ComponentId:       "component-1",
+		VulnerabilityUuid: "vuln-1",
+	}
+
+	suppressed := []*SuppressedVulnerability{
+		{Metadata: metadata, CveId: "CVE-2025-0001", Suppressed: true, State: "NOT_AFFECTED"},
+	}
+
+	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
+		Return(&dependencytrack.Analysis{
+			AnalysisState: "NOT_AFFECTED",
+			IsSuppressed:  ptr(true),
+		}, nil)
+
+	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)
 	assert.NoError(t, err)
-	v, err := parseFinding(f)
+
+	// UpdateFinding and TriggerAnalysis should NOT be called
+	mockClient.AssertNotCalled(t, "UpdateFinding", mock.Anything, mock.Anything)
+	mockClient.AssertNotCalled(t, "TriggerAnalysis", mock.Anything, mock.Anything)
+
+	mockClient.AssertExpectations(t)
+}
+
+func TestMaintainSuppressedVulnerabilities_EmptyList(t *testing.T) {
+	ctx := context.Background()
+	log := logrus.NewEntry(logrus.New())
+
+	mockClient := new(dependencytrackMock.MockClient)
+	source := NewDependencytrackSource(mockClient, log)
+
+	var suppressed []*SuppressedVulnerability
+
+	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)
 	assert.NoError(t, err)
-	assert.Equal(t, "pkg:pypi/cryptography@43.0.1", v.Package)
-	assert.Equal(t, "GHSA-79v4-65xg-pq4g", v.Cve.Id)
-	assert.Equal(t, SeverityLow, v.Cve.Severity)
-	assert.Equal(t, "17170e88-cfcb-4900-b3fb-5b0be0a071a5", v.Metadata.(*dependencytrackVulnMetadata).projectId)
-	assert.Equal(t, "5b009251-5efd-4703-8579-49af6cd3d0c6", v.Metadata.(*dependencytrackVulnMetadata).componentId)
-	assert.Equal(t, "6fa86367-6014-427e-8300-69269c16025b", v.Metadata.(*dependencytrackVulnMetadata).vulnerabilityUuid)
-	assert.Equal(t, fmt.Sprintf("https://github.com/advisories/%s", "GHSA-79v4-65xg-pq4g"), v.Cve.Link)
-	assert.Equal(t, true, v.Suppressed)
-	fmt.Printf("%+v\n", v.Cve)
-	assert.Equal(t, "Vulnerable OpenSSL included in cryptography wheels", v.Cve.Title)
-	assert.Equal(t, "a loooong description", v.Cve.Description)
-	assert.Equal(t, "44.0.1", v.LatestVersion)
-	assert.Equal(t, 1, len(v.Cve.References))
+
+	mockClient.AssertExpectations(t)
 }

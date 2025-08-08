@@ -5,7 +5,7 @@ package sources
 import (
 	context "context"
 
-	in_toto "github.com/in-toto/in-toto-golang/in_toto"
+	sources "github.com/nais/v13s/internal/sources"
 	mock "github.com/stretchr/testify/mock"
 
 	uuid "github.com/google/uuid"
@@ -73,23 +73,23 @@ func (_c *MockSource_Delete_Call) RunAndReturn(run func(context.Context, string,
 }
 
 // GetVulnerabilities provides a mock function with given fields: ctx, imageName, imageTag, includeSuppressed
-func (_m *MockSource) GetVulnerabilities(ctx context.Context, imageName string, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
+func (_m *MockSource) GetVulnerabilities(ctx context.Context, imageName string, imageTag string, includeSuppressed bool) ([]*sources.Vulnerability, error) {
 	ret := _m.Called(ctx, imageName, imageTag, includeSuppressed)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetVulnerabilities")
 	}
 
-	var r0 []*Vulnerability
+	var r0 []*sources.Vulnerability
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) ([]*Vulnerability, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) ([]*sources.Vulnerability, error)); ok {
 		return rf(ctx, imageName, imageTag, includeSuppressed)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) []*Vulnerability); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) []*sources.Vulnerability); ok {
 		r0 = rf(ctx, imageName, imageTag, includeSuppressed)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*Vulnerability)
+			r0 = ret.Get(0).([]*sources.Vulnerability)
 		}
 	}
 
@@ -123,34 +123,34 @@ func (_c *MockSource_GetVulnerabilities_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockSource_GetVulnerabilities_Call) Return(_a0 []*Vulnerability, _a1 error) *MockSource_GetVulnerabilities_Call {
+func (_c *MockSource_GetVulnerabilities_Call) Return(_a0 []*sources.Vulnerability, _a1 error) *MockSource_GetVulnerabilities_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockSource_GetVulnerabilities_Call) RunAndReturn(run func(context.Context, string, string, bool) ([]*Vulnerability, error)) *MockSource_GetVulnerabilities_Call {
+func (_c *MockSource_GetVulnerabilities_Call) RunAndReturn(run func(context.Context, string, string, bool) ([]*sources.Vulnerability, error)) *MockSource_GetVulnerabilities_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetVulnerabilitySummary provides a mock function with given fields: ctx, imageName, imageTag
-func (_m *MockSource) GetVulnerabilitySummary(ctx context.Context, imageName string, imageTag string) (*VulnerabilitySummary, error) {
+func (_m *MockSource) GetVulnerabilitySummary(ctx context.Context, imageName string, imageTag string) (*sources.VulnerabilitySummary, error) {
 	ret := _m.Called(ctx, imageName, imageTag)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetVulnerabilitySummary")
 	}
 
-	var r0 *VulnerabilitySummary
+	var r0 *sources.VulnerabilitySummary
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*VulnerabilitySummary, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*sources.VulnerabilitySummary, error)); ok {
 		return rf(ctx, imageName, imageTag)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) *VulnerabilitySummary); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *sources.VulnerabilitySummary); ok {
 		r0 = rf(ctx, imageName, imageTag)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*VulnerabilitySummary)
+			r0 = ret.Get(0).(*sources.VulnerabilitySummary)
 		}
 	}
 
@@ -183,18 +183,18 @@ func (_c *MockSource_GetVulnerabilitySummary_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockSource_GetVulnerabilitySummary_Call) Return(_a0 *VulnerabilitySummary, _a1 error) *MockSource_GetVulnerabilitySummary_Call {
+func (_c *MockSource_GetVulnerabilitySummary_Call) Return(_a0 *sources.VulnerabilitySummary, _a1 error) *MockSource_GetVulnerabilitySummary_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockSource_GetVulnerabilitySummary_Call) RunAndReturn(run func(context.Context, string, string) (*VulnerabilitySummary, error)) *MockSource_GetVulnerabilitySummary_Call {
+func (_c *MockSource_GetVulnerabilitySummary_Call) RunAndReturn(run func(context.Context, string, string) (*sources.VulnerabilitySummary, error)) *MockSource_GetVulnerabilitySummary_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // MaintainSuppressedVulnerabilities provides a mock function with given fields: ctx, suppressed
-func (_m *MockSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
+func (_m *MockSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*sources.SuppressedVulnerability) error {
 	ret := _m.Called(ctx, suppressed)
 
 	if len(ret) == 0 {
@@ -202,7 +202,7 @@ func (_m *MockSource) MaintainSuppressedVulnerabilities(ctx context.Context, sup
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*SuppressedVulnerability) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []*sources.SuppressedVulnerability) error); ok {
 		r0 = rf(ctx, suppressed)
 	} else {
 		r0 = ret.Error(0)
@@ -218,14 +218,14 @@ type MockSource_MaintainSuppressedVulnerabilities_Call struct {
 
 // MaintainSuppressedVulnerabilities is a helper method to define mock.On call
 //   - ctx context.Context
-//   - suppressed []*SuppressedVulnerability
+//   - suppressed []*sources.SuppressedVulnerability
 func (_e *MockSource_Expecter) MaintainSuppressedVulnerabilities(ctx interface{}, suppressed interface{}) *MockSource_MaintainSuppressedVulnerabilities_Call {
 	return &MockSource_MaintainSuppressedVulnerabilities_Call{Call: _e.mock.On("MaintainSuppressedVulnerabilities", ctx, suppressed)}
 }
 
-func (_c *MockSource_MaintainSuppressedVulnerabilities_Call) Run(run func(ctx context.Context, suppressed []*SuppressedVulnerability)) *MockSource_MaintainSuppressedVulnerabilities_Call {
+func (_c *MockSource_MaintainSuppressedVulnerabilities_Call) Run(run func(ctx context.Context, suppressed []*sources.SuppressedVulnerability)) *MockSource_MaintainSuppressedVulnerabilities_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]*SuppressedVulnerability))
+		run(args[0].(context.Context), args[1].([]*sources.SuppressedVulnerability))
 	})
 	return _c
 }
@@ -235,7 +235,7 @@ func (_c *MockSource_MaintainSuppressedVulnerabilities_Call) Return(_a0 error) *
 	return _c
 }
 
-func (_c *MockSource_MaintainSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context, []*SuppressedVulnerability) error) *MockSource_MaintainSuppressedVulnerabilities_Call {
+func (_c *MockSource_MaintainSuppressedVulnerabilities_Call) RunAndReturn(run func(context.Context, []*sources.SuppressedVulnerability) error) *MockSource_MaintainSuppressedVulnerabilities_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -286,7 +286,7 @@ func (_c *MockSource_Name_Call) RunAndReturn(run func() string) *MockSource_Name
 }
 
 // UploadAttestation provides a mock function with given fields: ctx, imageName, imageTag, att
-func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement) (uuid.UUID, error) {
+func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (uuid.UUID, error) {
 	ret := _m.Called(ctx, imageName, imageTag, att)
 
 	if len(ret) == 0 {
@@ -295,10 +295,10 @@ func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, i
 
 	var r0 uuid.UUID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, *in_toto.CycloneDXStatement) (uuid.UUID, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte) (uuid.UUID, error)); ok {
 		return rf(ctx, imageName, imageTag, att)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, *in_toto.CycloneDXStatement) uuid.UUID); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte) uuid.UUID); ok {
 		r0 = rf(ctx, imageName, imageTag, att)
 	} else {
 		if ret.Get(0) != nil {
@@ -306,7 +306,7 @@ func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, i
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, *in_toto.CycloneDXStatement) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, []byte) error); ok {
 		r1 = rf(ctx, imageName, imageTag, att)
 	} else {
 		r1 = ret.Error(1)
@@ -324,14 +324,14 @@ type MockSource_UploadAttestation_Call struct {
 //   - ctx context.Context
 //   - imageName string
 //   - imageTag string
-//   - att *in_toto.CycloneDXStatement
+//   - att []byte
 func (_e *MockSource_Expecter) UploadAttestation(ctx interface{}, imageName interface{}, imageTag interface{}, att interface{}) *MockSource_UploadAttestation_Call {
 	return &MockSource_UploadAttestation_Call{Call: _e.mock.On("UploadAttestation", ctx, imageName, imageTag, att)}
 }
 
-func (_c *MockSource_UploadAttestation_Call) Run(run func(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement)) *MockSource_UploadAttestation_Call {
+func (_c *MockSource_UploadAttestation_Call) Run(run func(ctx context.Context, imageName string, imageTag string, att []byte)) *MockSource_UploadAttestation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(*in_toto.CycloneDXStatement))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]byte))
 	})
 	return _c
 }
@@ -341,7 +341,7 @@ func (_c *MockSource_UploadAttestation_Call) Return(_a0 uuid.UUID, _a1 error) *M
 	return _c
 }
 
-func (_c *MockSource_UploadAttestation_Call) RunAndReturn(run func(context.Context, string, string, *in_toto.CycloneDXStatement) (uuid.UUID, error)) *MockSource_UploadAttestation_Call {
+func (_c *MockSource_UploadAttestation_Call) RunAndReturn(run func(context.Context, string, string, []byte) (uuid.UUID, error)) *MockSource_UploadAttestation_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -351,8 +351,7 @@ func (_c *MockSource_UploadAttestation_Call) RunAndReturn(run func(context.Conte
 func NewMockSource(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockSource {
+}) *MockSource {
 	mock := &MockSource{}
 	mock.Mock.Test(t)
 

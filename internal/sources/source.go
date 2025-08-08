@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -34,7 +33,7 @@ type Source interface {
 	// TODO: add includeSuppressed bool
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
-	UploadAttestation(ctx context.Context, imageName string, imageTag string, att *in_toto.CycloneDXStatement) (uuid.UUID, error)
+	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (uuid.UUID, error)
 	Delete(ctx context.Context, imageName string, imageTag string) error
 }
 
@@ -137,11 +136,6 @@ type VulnerabilitySummary struct {
 	Low        int32
 	Unassigned int32
 	RiskScore  int32
-}
-
-type Findings struct {
-	WorkloadRef     *Workload
-	Vulnerabilities []*Vulnerability
 }
 
 type SuppressedVulnerability struct {

@@ -89,7 +89,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Statement)
+			id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to upload attestation to source")

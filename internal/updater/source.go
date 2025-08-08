@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
+	"golang.org/x/sync/errgroup"
 )
 
 type ImageVulnerabilityData struct {
@@ -47,11 +46,11 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 }
 
 func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*ImageVulnerabilityData, error) {
-	findings, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
+	vulnerabilities, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		return nil, err
 	}
-	u.log.Debugf("Got %d findings", len(findings))
+	u.log.Debugf("Got %d vulnerabilities", len(vulnerabilities))
 
 	// sync suppressed vulnerabilities
 	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
@@ -60,27 +59,27 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 	}
 
 	u.log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
-	filteredFindings := make([]*sources.SuppressedVulnerability, 0)
+	filteredVulnerabilities := make([]*sources.SuppressedVulnerability, 0)
 	for _, s := range suppressedVulns {
-		for _, f := range findings {
-			if f.Cve.Id == s.CveID && f.Package == s.Package && s.Suppressed != f.Suppressed {
-				filteredFindings = append(filteredFindings, &sources.SuppressedVulnerability{
+		for _, v := range vulnerabilities {
+			if v.Cve.Id == s.CveID && v.Package == s.Package && s.Suppressed != v.Suppressed {
+				filteredVulnerabilities = append(filteredVulnerabilities, &sources.SuppressedVulnerability{
 					ImageName:    imageName,
 					ImageTag:     imageTag,
-					CveId:        f.Cve.Id,
-					Package:      f.Package,
+					CveId:        v.Cve.Id,
+					Package:      v.Package,
 					Suppressed:   s.Suppressed,
 					Reason:       s.ReasonText,
 					SuppressedBy: s.SuppressedBy,
 					State:        vulnerabilitySuppressReasonToState(s.Reason),
-					Metadata:     f.Metadata,
+					Metadata:     v.Metadata,
 				})
 			}
 		}
 	}
 
 	// TODO: We have to wait for the analysis to be done before we can update summary
-	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredFindings)
+	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		ImageName:       imageName,
 		ImageTag:        imageTag,
 		Source:          source.Name(),
-		Vulnerabilities: findings,
+		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
 	}, nil
 }

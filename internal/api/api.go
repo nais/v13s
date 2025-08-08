@@ -106,6 +106,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			Type:     updater.SchedulerInterval,
 			Interval: cfg.UpdateInterval,
 		},
+		nil,
 		log.WithField("subsystem", "updater"),
 	)
 	u.Run(ctx)
