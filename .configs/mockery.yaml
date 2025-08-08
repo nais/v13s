@@ -1,8 +1,9 @@
 with-expecter: true
 disable-version-string: true
-inpackage: true
-dir: "{{.InterfaceDir}}"
+inpackage: false
+output: internal/mocks
 filename: "mock_{{.InterfaceNameSnake}}.go"
+issue-845-fix: true
 packages:
   github.com/nais/v13s/pkg/api/vulnerabilities:
     config:
@@ -21,9 +22,6 @@ packages:
   github.com/nais/v13s/internal/sources:
     interfaces:
       Source:
-  github.com/nais/v13s/internal/sources/dependencytrack:
+  github.com/nais/dependencytrack/pkg/dependencytrack:
     interfaces:
       Client:
-  github.com/nais/v13s/internal/sources/dependencytrack/client:
-    config:
-      include-regex: ".*API"

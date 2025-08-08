@@ -5,6 +5,7 @@ package management
 import (
 	context "context"
 
+	management "github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,27 +23,27 @@ func (_m *MockManagementServer) EXPECT() *MockManagementServer_Expecter {
 }
 
 // GetWorkloadJobs provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) GetWorkloadJobs(_a0 context.Context, _a1 *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error) {
+func (_m *MockManagementServer) GetWorkloadJobs(_a0 context.Context, _a1 *management.GetWorkloadJobsRequest) (*management.GetWorkloadJobsResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetWorkloadJobs")
 	}
 
-	var r0 *GetWorkloadJobsResponse
+	var r0 *management.GetWorkloadJobsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.GetWorkloadJobsRequest) (*management.GetWorkloadJobsResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadJobsRequest) *GetWorkloadJobsResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.GetWorkloadJobsRequest) *management.GetWorkloadJobsResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*GetWorkloadJobsResponse)
+			r0 = ret.Get(0).(*management.GetWorkloadJobsResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *GetWorkloadJobsRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *management.GetWorkloadJobsRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -58,50 +59,50 @@ type MockManagementServer_GetWorkloadJobs_Call struct {
 
 // GetWorkloadJobs is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *GetWorkloadJobsRequest
+//   - _a1 *management.GetWorkloadJobsRequest
 func (_e *MockManagementServer_Expecter) GetWorkloadJobs(_a0 interface{}, _a1 interface{}) *MockManagementServer_GetWorkloadJobs_Call {
 	return &MockManagementServer_GetWorkloadJobs_Call{Call: _e.mock.On("GetWorkloadJobs", _a0, _a1)}
 }
 
-func (_c *MockManagementServer_GetWorkloadJobs_Call) Run(run func(_a0 context.Context, _a1 *GetWorkloadJobsRequest)) *MockManagementServer_GetWorkloadJobs_Call {
+func (_c *MockManagementServer_GetWorkloadJobs_Call) Run(run func(_a0 context.Context, _a1 *management.GetWorkloadJobsRequest)) *MockManagementServer_GetWorkloadJobs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*GetWorkloadJobsRequest))
+		run(args[0].(context.Context), args[1].(*management.GetWorkloadJobsRequest))
 	})
 	return _c
 }
 
-func (_c *MockManagementServer_GetWorkloadJobs_Call) Return(_a0 *GetWorkloadJobsResponse, _a1 error) *MockManagementServer_GetWorkloadJobs_Call {
+func (_c *MockManagementServer_GetWorkloadJobs_Call) Return(_a0 *management.GetWorkloadJobsResponse, _a1 error) *MockManagementServer_GetWorkloadJobs_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockManagementServer_GetWorkloadJobs_Call) RunAndReturn(run func(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error)) *MockManagementServer_GetWorkloadJobs_Call {
+func (_c *MockManagementServer_GetWorkloadJobs_Call) RunAndReturn(run func(context.Context, *management.GetWorkloadJobsRequest) (*management.GetWorkloadJobsResponse, error)) *MockManagementServer_GetWorkloadJobs_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetWorkloadStatus provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) GetWorkloadStatus(_a0 context.Context, _a1 *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error) {
+func (_m *MockManagementServer) GetWorkloadStatus(_a0 context.Context, _a1 *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetWorkloadStatus")
 	}
 
-	var r0 *GetWorkloadStatusResponse
+	var r0 *management.GetWorkloadStatusResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *GetWorkloadStatusRequest) *GetWorkloadStatusResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.GetWorkloadStatusRequest) *management.GetWorkloadStatusResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*GetWorkloadStatusResponse)
+			r0 = ret.Get(0).(*management.GetWorkloadStatusResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *GetWorkloadStatusRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *management.GetWorkloadStatusRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -117,50 +118,50 @@ type MockManagementServer_GetWorkloadStatus_Call struct {
 
 // GetWorkloadStatus is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *GetWorkloadStatusRequest
+//   - _a1 *management.GetWorkloadStatusRequest
 func (_e *MockManagementServer_Expecter) GetWorkloadStatus(_a0 interface{}, _a1 interface{}) *MockManagementServer_GetWorkloadStatus_Call {
 	return &MockManagementServer_GetWorkloadStatus_Call{Call: _e.mock.On("GetWorkloadStatus", _a0, _a1)}
 }
 
-func (_c *MockManagementServer_GetWorkloadStatus_Call) Run(run func(_a0 context.Context, _a1 *GetWorkloadStatusRequest)) *MockManagementServer_GetWorkloadStatus_Call {
+func (_c *MockManagementServer_GetWorkloadStatus_Call) Run(run func(_a0 context.Context, _a1 *management.GetWorkloadStatusRequest)) *MockManagementServer_GetWorkloadStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*GetWorkloadStatusRequest))
+		run(args[0].(context.Context), args[1].(*management.GetWorkloadStatusRequest))
 	})
 	return _c
 }
 
-func (_c *MockManagementServer_GetWorkloadStatus_Call) Return(_a0 *GetWorkloadStatusResponse, _a1 error) *MockManagementServer_GetWorkloadStatus_Call {
+func (_c *MockManagementServer_GetWorkloadStatus_Call) Return(_a0 *management.GetWorkloadStatusResponse, _a1 error) *MockManagementServer_GetWorkloadStatus_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockManagementServer_GetWorkloadStatus_Call) RunAndReturn(run func(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)) *MockManagementServer_GetWorkloadStatus_Call {
+func (_c *MockManagementServer_GetWorkloadStatus_Call) RunAndReturn(run func(context.Context, *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error)) *MockManagementServer_GetWorkloadStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // RegisterWorkload provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) RegisterWorkload(_a0 context.Context, _a1 *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error) {
+func (_m *MockManagementServer) RegisterWorkload(_a0 context.Context, _a1 *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterWorkload")
 	}
 
-	var r0 *RegisterWorkloadResponse
+	var r0 *management.RegisterWorkloadResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *RegisterWorkloadRequest) *RegisterWorkloadResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.RegisterWorkloadRequest) *management.RegisterWorkloadResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*RegisterWorkloadResponse)
+			r0 = ret.Get(0).(*management.RegisterWorkloadResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *RegisterWorkloadRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *management.RegisterWorkloadRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -176,50 +177,50 @@ type MockManagementServer_RegisterWorkload_Call struct {
 
 // RegisterWorkload is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *RegisterWorkloadRequest
+//   - _a1 *management.RegisterWorkloadRequest
 func (_e *MockManagementServer_Expecter) RegisterWorkload(_a0 interface{}, _a1 interface{}) *MockManagementServer_RegisterWorkload_Call {
 	return &MockManagementServer_RegisterWorkload_Call{Call: _e.mock.On("RegisterWorkload", _a0, _a1)}
 }
 
-func (_c *MockManagementServer_RegisterWorkload_Call) Run(run func(_a0 context.Context, _a1 *RegisterWorkloadRequest)) *MockManagementServer_RegisterWorkload_Call {
+func (_c *MockManagementServer_RegisterWorkload_Call) Run(run func(_a0 context.Context, _a1 *management.RegisterWorkloadRequest)) *MockManagementServer_RegisterWorkload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*RegisterWorkloadRequest))
+		run(args[0].(context.Context), args[1].(*management.RegisterWorkloadRequest))
 	})
 	return _c
 }
 
-func (_c *MockManagementServer_RegisterWorkload_Call) Return(_a0 *RegisterWorkloadResponse, _a1 error) *MockManagementServer_RegisterWorkload_Call {
+func (_c *MockManagementServer_RegisterWorkload_Call) Return(_a0 *management.RegisterWorkloadResponse, _a1 error) *MockManagementServer_RegisterWorkload_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockManagementServer_RegisterWorkload_Call) RunAndReturn(run func(context.Context, *RegisterWorkloadRequest) (*RegisterWorkloadResponse, error)) *MockManagementServer_RegisterWorkload_Call {
+func (_c *MockManagementServer_RegisterWorkload_Call) RunAndReturn(run func(context.Context, *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error)) *MockManagementServer_RegisterWorkload_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Resync provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) Resync(_a0 context.Context, _a1 *ResyncRequest) (*ResyncResponse, error) {
+func (_m *MockManagementServer) Resync(_a0 context.Context, _a1 *management.ResyncRequest) (*management.ResyncResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Resync")
 	}
 
-	var r0 *ResyncResponse
+	var r0 *management.ResyncResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *ResyncRequest) (*ResyncResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.ResyncRequest) (*management.ResyncResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *ResyncRequest) *ResyncResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.ResyncRequest) *management.ResyncResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*ResyncResponse)
+			r0 = ret.Get(0).(*management.ResyncResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *ResyncRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *management.ResyncRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -235,50 +236,50 @@ type MockManagementServer_Resync_Call struct {
 
 // Resync is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *ResyncRequest
+//   - _a1 *management.ResyncRequest
 func (_e *MockManagementServer_Expecter) Resync(_a0 interface{}, _a1 interface{}) *MockManagementServer_Resync_Call {
 	return &MockManagementServer_Resync_Call{Call: _e.mock.On("Resync", _a0, _a1)}
 }
 
-func (_c *MockManagementServer_Resync_Call) Run(run func(_a0 context.Context, _a1 *ResyncRequest)) *MockManagementServer_Resync_Call {
+func (_c *MockManagementServer_Resync_Call) Run(run func(_a0 context.Context, _a1 *management.ResyncRequest)) *MockManagementServer_Resync_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*ResyncRequest))
+		run(args[0].(context.Context), args[1].(*management.ResyncRequest))
 	})
 	return _c
 }
 
-func (_c *MockManagementServer_Resync_Call) Return(_a0 *ResyncResponse, _a1 error) *MockManagementServer_Resync_Call {
+func (_c *MockManagementServer_Resync_Call) Return(_a0 *management.ResyncResponse, _a1 error) *MockManagementServer_Resync_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockManagementServer_Resync_Call) RunAndReturn(run func(context.Context, *ResyncRequest) (*ResyncResponse, error)) *MockManagementServer_Resync_Call {
+func (_c *MockManagementServer_Resync_Call) RunAndReturn(run func(context.Context, *management.ResyncRequest) (*management.ResyncResponse, error)) *MockManagementServer_Resync_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // TriggerSync provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) TriggerSync(_a0 context.Context, _a1 *TriggerSyncRequest) (*TriggerSyncResponse, error) {
+func (_m *MockManagementServer) TriggerSync(_a0 context.Context, _a1 *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for TriggerSync")
 	}
 
-	var r0 *TriggerSyncResponse
+	var r0 *management.TriggerSyncResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *TriggerSyncRequest) (*TriggerSyncResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *TriggerSyncRequest) *TriggerSyncResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *management.TriggerSyncRequest) *management.TriggerSyncResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*TriggerSyncResponse)
+			r0 = ret.Get(0).(*management.TriggerSyncResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *TriggerSyncRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *management.TriggerSyncRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -294,24 +295,24 @@ type MockManagementServer_TriggerSync_Call struct {
 
 // TriggerSync is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *TriggerSyncRequest
+//   - _a1 *management.TriggerSyncRequest
 func (_e *MockManagementServer_Expecter) TriggerSync(_a0 interface{}, _a1 interface{}) *MockManagementServer_TriggerSync_Call {
 	return &MockManagementServer_TriggerSync_Call{Call: _e.mock.On("TriggerSync", _a0, _a1)}
 }
 
-func (_c *MockManagementServer_TriggerSync_Call) Run(run func(_a0 context.Context, _a1 *TriggerSyncRequest)) *MockManagementServer_TriggerSync_Call {
+func (_c *MockManagementServer_TriggerSync_Call) Run(run func(_a0 context.Context, _a1 *management.TriggerSyncRequest)) *MockManagementServer_TriggerSync_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*TriggerSyncRequest))
+		run(args[0].(context.Context), args[1].(*management.TriggerSyncRequest))
 	})
 	return _c
 }
 
-func (_c *MockManagementServer_TriggerSync_Call) Return(_a0 *TriggerSyncResponse, _a1 error) *MockManagementServer_TriggerSync_Call {
+func (_c *MockManagementServer_TriggerSync_Call) Return(_a0 *management.TriggerSyncResponse, _a1 error) *MockManagementServer_TriggerSync_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockManagementServer_TriggerSync_Call) RunAndReturn(run func(context.Context, *TriggerSyncRequest) (*TriggerSyncResponse, error)) *MockManagementServer_TriggerSync_Call {
+func (_c *MockManagementServer_TriggerSync_Call) RunAndReturn(run func(context.Context, *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error)) *MockManagementServer_TriggerSync_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -353,8 +354,7 @@ func (_c *MockManagementServer_mustEmbedUnimplementedManagementServer_Call) RunA
 func NewMockManagementServer(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockManagementServer {
+}) *MockManagementServer {
 	mock := &MockManagementServer{}
 	mock.Mock.Test(t)
 

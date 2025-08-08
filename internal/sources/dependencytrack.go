@@ -24,12 +24,6 @@ type dependencytrackSource struct {
 
 var _ Source = &dependencytrackSource{}
 
-type dependencytrackVulnMetadata struct {
-	projectId         string
-	componentId       string
-	vulnerabilityUuid string
-}
-
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
 	return &dependencytrackSource{
 		client: client,

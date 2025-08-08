@@ -5,6 +5,8 @@ package attestation
 import (
 	context "context"
 
+	attestation "github.com/nais/v13s/internal/attestation"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,23 +24,23 @@ func (_m *MockVerifier) EXPECT() *MockVerifier_Expecter {
 }
 
 // GetAttestation provides a mock function with given fields: ctx, image
-func (_m *MockVerifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
+func (_m *MockVerifier) GetAttestation(ctx context.Context, image string) (*attestation.Attestation, error) {
 	ret := _m.Called(ctx, image)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAttestation")
 	}
 
-	var r0 *Attestation
+	var r0 *attestation.Attestation
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*Attestation, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*attestation.Attestation, error)); ok {
 		return rf(ctx, image)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *Attestation); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) *attestation.Attestation); ok {
 		r0 = rf(ctx, image)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*Attestation)
+			r0 = ret.Get(0).(*attestation.Attestation)
 		}
 	}
 
@@ -70,12 +72,12 @@ func (_c *MockVerifier_GetAttestation_Call) Run(run func(ctx context.Context, im
 	return _c
 }
 
-func (_c *MockVerifier_GetAttestation_Call) Return(_a0 *Attestation, _a1 error) *MockVerifier_GetAttestation_Call {
+func (_c *MockVerifier_GetAttestation_Call) Return(_a0 *attestation.Attestation, _a1 error) *MockVerifier_GetAttestation_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockVerifier_GetAttestation_Call) RunAndReturn(run func(context.Context, string) (*Attestation, error)) *MockVerifier_GetAttestation_Call {
+func (_c *MockVerifier_GetAttestation_Call) RunAndReturn(run func(context.Context, string) (*attestation.Attestation, error)) *MockVerifier_GetAttestation_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -85,8 +87,7 @@ func (_c *MockVerifier_GetAttestation_Call) RunAndReturn(run func(context.Contex
 func NewMockVerifier(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockVerifier {
+}) *MockVerifier {
 	mock := &MockVerifier{}
 	mock.Mock.Test(t)
 

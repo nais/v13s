@@ -28,9 +28,10 @@ type Updater struct {
 	resyncImagesOlderThanMinutes time.Duration
 	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
+	doneChan                     chan struct{}
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -41,6 +42,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 		source:                       source,
 		resyncImagesOlderThanMinutes: 60 * 12 * time.Minute, // 12 hours
 		updateSchedule:               schedule,
+		doneChan:                     doneChan,
 		log:                          log,
 	}
 }
@@ -96,7 +98,6 @@ func (u *Updater) Run(ctx context.Context) {
 	})
 }
 
-// ResyncImages Resync images that have state 'initialized' or 'resync'
 func (u *Updater) ResyncImages(ctx context.Context) error {
 	start := time.Now()
 
@@ -108,18 +109,15 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	ctx = NewDbContext(ctx, u.querier, u.log)
 
 	done := make(chan bool)
-	defer close(done)
-
 	batchCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 
 	ch := make(chan *ImageVulnerabilityData, 100)
 
 	go func() {
-
-		if err = u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
+		defer close(done)
+		if err := u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
 			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
-			//errchan <- err
 			done <- false
 		} else {
 			done <- true
@@ -127,15 +125,25 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 	}()
 
 	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
+	close(ch)
+
+	updateSuccess := <-done
+
 	if err != nil {
 		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
 		return err
 	}
 
-	close(ch)
-	updateSuccess := <-done
-
 	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
+
+	if u.doneChan != nil {
+		select {
+		case <-u.doneChan:
+		default:
+			close(u.doneChan)
+		}
+	}
+
 	return nil
 }
 
@@ -223,7 +231,6 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	if len(batch) == 0 {
 		return nil
 	}
-
 	errors := 0
 	errs := make([]error, 0)
 

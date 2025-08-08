@@ -1,6 +1,6 @@
 module github.com/nais/v13s
 
-go 1.24.4
+go 1.24.6
 
 require (
 	cloud.google.com/go/auth v0.16.2
