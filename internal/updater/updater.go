@@ -38,6 +38,10 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
 
+	if doneChan == nil {
+		doneChan = make(chan struct{})
+	}
+
 	return &Updater{
 		db:                           pool,
 		querier:                      sql.New(pool),

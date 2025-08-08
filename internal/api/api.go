@@ -99,7 +99,6 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("timed out waiting for watchers to be ready")
 	}
 
-	doneChanel := make(chan struct{})
 	u := updater.NewUpdater(
 		pool,
 		source,
@@ -107,7 +106,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			Type:     updater.SchedulerInterval,
 			Interval: cfg.UpdateInterval,
 		},
-		doneChanel,
+		nil,
 		log.WithField("subsystem", "updater"),
 	)
 	u.Run(ctx)
