@@ -30,8 +30,19 @@ message Metadata {
 
 message RegisterWorkloadResponse {}
 
-message TriggerSyncRequest {}
-message TriggerSyncResponse {}
+message TriggerSyncRequest {
+  string cluster = 1;
+  string namespace = 2;
+  string workload = 3;
+  string workload_type = 4;
+}
+message TriggerSyncResponse {
+  string cluster = 1;
+  string namespace = 2;
+  string workload = 3;
+  repeated string updated_workloads = 4; // List of workloads that were updated
+  bool success = 5; // Indicates if the sync was triggered successfully
+}
 
 message GetWorkloadStatusRequest {
   optional string cluster = 1;

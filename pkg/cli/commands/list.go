@@ -114,9 +114,9 @@ func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vuln
 		tbl.AddRow(
 			n.GetPackage(),
 			n.CveId,
-			n.Reason,
-			n.Suppress,
-			n.SuppressedBy,
+			*n.Reason,
+			*n.Suppress,
+			*n.SuppressedBy,
 			n.ImageName,
 		)
 	}

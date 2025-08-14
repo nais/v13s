@@ -85,15 +85,43 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 	return &management.RegisterWorkloadResponse{}, nil
 }
 
-func (s *Server) TriggerSync(_ context.Context, _ *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
+func (s *Server) TriggerSync(ctx context.Context, triggerReq *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
+	resp, err := s.Resync(ctx, &management.ResyncRequest{
+		Cluster:      p(triggerReq.Cluster),
+		Namespace:    p(triggerReq.Namespace),
+		Workload:     p(triggerReq.Workload),
+		WorkloadType: p(triggerReq.WorkloadType),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to resync workloads: %w", err)
+	}
+
+	if resp.NumWorkloads == 0 {
+		s.log.Info("No workloads to resync")
+		return &management.TriggerSyncResponse{}, nil
+	}
+
 	go func() {
-		err := s.updater.ResyncImages(s.parentCtx)
+		err = s.updater.ResyncImages(s.parentCtx)
 		if err != nil {
 			s.log.WithError(err).Error("Failed to resync images")
 		}
 	}()
 
-	return &management.TriggerSyncResponse{}, nil
+	return &management.TriggerSyncResponse{
+		Cluster:          triggerReq.Cluster,
+		Namespace:        triggerReq.Namespace,
+		Workload:         triggerReq.Workload,
+		UpdatedWorkloads: resp.Workloads,
+		Success:          resp.NumWorkloads > 0,
+	}, nil
+}
+
+func p(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {

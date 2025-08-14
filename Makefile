@@ -40,8 +40,11 @@ staticcheck:
 # Sigstore-related modules (e.g., cosign, rekor, sigstore-go, timestamp-authority) are pulling in the vulnerable version
 # Ignore until we can update to a version that is not vulnerable
 vulncheck:
-	@echo "Running vulncheck..."
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./... | grep -v 'GO-2025-3770'
+	@echo "Running vulncheck and showing only vulnerabilities with fixes..."
+	@go run golang.org/x/vuln/cmd/govulncheck@latest ./... \
+		| awk '/^GO:|^module:|Fixed in:/ {print}' \
+		| paste - - - \
+		| column -t -s $$'\t'
 
 deadcode:
 	@echo "Running deadcode..."

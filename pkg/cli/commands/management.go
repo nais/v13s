@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -24,39 +23,19 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 		{
 			Name:    "trigger",
 			Aliases: []string{"t"},
-			Usage:   "trigger a command",
+			Usage:   "trigger a sync command",
 			Commands: []*cli.Command{
 				{
 					Name:    "update",
 					Aliases: []string{"s"},
 					Usage:   "trigger sync of images",
+					Flags:   append(flag.CommonFlags(opts, "limit", "order", "since")),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
-						_, err := c.TriggerSync(ctx, &management.TriggerSyncRequest{})
-						return err
-					},
-				},
-				{
-					Name:    "resync",
-					Aliases: []string{"r"},
-					Usage:   "trigger resync of workloads",
-					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"), &cli.StringFlag{
-						Name:    "workload-state",
-						Aliases: []string{"ws"},
-						Value:   "",
-						Usage: "workload state, e.g. 'processing', 'initialized', 'updated', 'no_attestation', 'failed', 'unrecoverable', 'resync'" +
-							"Default is resync.",
-						Destination: &opts.WorkloadState,
-					},
-						&cli.StringFlag{
-							Name:    "image-state",
-							Aliases: []string{"is"},
-							Value:   "",
-							Usage: "image state, e.g. 'initialized', 'updated', 'untracked', 'failed', 'resync', 'outdated', 'unused'" +
-								"Default is resync.",
-							Destination: &opts.ImageState,
-						}),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return resync(ctx, c, opts)
+						err := trigger(ctx, c, opts)
+						if err != nil {
+							return fmt.Errorf("failed to trigger update: %w", err)
+						}
+						return nil
 					},
 				},
 			},
@@ -96,37 +75,58 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 	}
 }
 
-func resync(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) error {
-	// validate state
-	if err := validateState(opts.WorkloadState); err != nil {
-		return err
-	}
-
-	resp, err := c.Resync(ctx, &management.ResyncRequest{
-		Cluster:       p(opts.Cluster),
-		Namespace:     p(opts.Namespace),
-		Workload:      p(opts.Workload),
-		WorkloadType:  p(opts.WorkloadType),
-		WorkloadState: p(opts.WorkloadState),
-		ImageState:    p(opts.ImageState),
+func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) error {
+	resp, err := c.TriggerSync(ctx, &management.TriggerSyncRequest{
+		Cluster:      opts.Cluster,
+		Namespace:    opts.Namespace,
+		Workload:     opts.Workload,
+		WorkloadType: opts.WorkloadType,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to trigger resync: %w", err)
+		return fmt.Errorf("failed to trigger sync: %w", err)
 	}
 
+	if !resp.Success {
+		return fmt.Errorf(
+			"sync failed for cluster: %s, namespace: %s, workload: %s",
+			parseString(opts.Cluster),
+			parseString(opts.Namespace),
+			parseString(opts.Workload),
+		)
+	}
+
+	var headers []any
+	var row []string
+
+	if resp.Cluster != "" {
+		headers = append(headers, "Cluster")
+		row = append(row, resp.Cluster)
+	}
+	if resp.Namespace != "" {
+		headers = append(headers, "Namespace")
+		row = append(row, resp.Namespace)
+	}
+	if resp.Workload != "" {
+		headers = append(headers, "Workload")
+		row = append(row, resp.Workload)
+	}
+
+	headers = append(headers, "Updated Workloads", "Success")
+	row = append(row, strconv.Itoa(len(resp.UpdatedWorkloads)), strconv.FormatBool(resp.Success))
+
 	t := Table{
-		Headers: []any{"Cluster", "Namespace", "Type", "Workload"},
+		Headers: headers,
 	}
-	for _, w := range resp.Workloads {
-		parts := strings.Split(w, "/")
-		if len(parts) != 4 {
-			log.Warnf("unexpected workload format: %s", w)
-			continue
-		}
-		t.AddRow(parts...)
-	}
+	t.AddRow(row...)
 	t.Print()
 	return nil
+}
+
+func parseString(s string) string {
+	if s == "" {
+		return "<none>"
+	}
+	return s
 }
 
 func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
@@ -249,32 +249,6 @@ func (t *Table) Print() {
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	tbl.SetRows(t.Rows)
 	tbl.Print()
-}
-
-func p(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func validateState(workloadState string) error {
-	var validStates = []string{
-		"processing", "initialized", "updated", "no_attestation",
-		"failed", "unrecoverable", "resync",
-	}
-	validSet := make(map[string]struct{}, len(validStates))
-	for _, s := range validStates {
-		validSet[s] = struct{}{}
-	}
-
-	if workloadState != "" {
-		if _, ok := validSet[workloadState]; !ok {
-			return fmt.Errorf("invalid workload state: %q\nvalid states: %s",
-				workloadState, strings.Join(validStates, ", "))
-		}
-	}
-	return nil
 }
 
 func extractFilters(opts *flag.Options) (cluster, namespace, workload *string) {
