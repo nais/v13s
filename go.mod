@@ -20,9 +20,9 @@ require (
 	github.com/nais/v13s/pkg/api v0.0.0-20250806083613-ec6bcd58b397
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/prometheus/client_golang v1.23.0
-	github.com/riverqueue/river v0.23.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.23.1
-	github.com/riverqueue/river/rivertype v0.23.1
+	github.com/riverqueue/river v0.24.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.24.0
+	github.com/riverqueue/river/rivertype v0.24.0
 	github.com/riverqueue/rivercontrib/otelriver v0.5.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.9.1
@@ -50,7 +50,7 @@ require (
 	k8s.io/apimachinery v0.33.3
 	k8s.io/client-go v0.33.3
 	k8s.io/klog/v2 v2.130.1
-	riverqueue.com/riverui v0.11.0
+	riverqueue.com/riverui v0.12.2
 )
 
 require (
@@ -264,8 +264,8 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/apiframe v0.0.0-20250610015059-cd55037750a8 // indirect
-	github.com/riverqueue/river/riverdriver v0.23.1 // indirect
-	github.com/riverqueue/river/rivershared v0.23.1 // indirect
+	github.com/riverqueue/river/riverdriver v0.24.0 // indirect
+	github.com/riverqueue/river/rivershared v0.24.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sagikazarmark/locafero v0.9.0 // indirect
@@ -330,11 +330,11 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
-	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/term v0.33.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.35.0 // indirect
 	google.golang.org/api v0.242.0 // indirect
