@@ -9,8 +9,10 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
+	"github.com/nais/v13s/internal/manager/updater"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/workload"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
@@ -28,8 +30,8 @@ type WorkloadManager struct {
 	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
-	addDispatcher    *Dispatcher[*model.Workload]
-	deleteDispatcher *Dispatcher[*model.Workload]
+	addDispatcher    *workload.Dispatcher[*model.Workload]
+	deleteDispatcher *workload.Dispatcher[*model.Workload]
 	workloadCounter  metric.Int64UpDownCounter
 	log              logrus.FieldLogger
 }
@@ -68,6 +70,18 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		KindRemoveFromSource: {
 			MaxWorkers: 100,
 		},
+		updater.KindFetchVulnerabilityData: {
+			MaxWorkers: 100,
+		},
+		updater.KindMarkForResync: {
+			MaxWorkers: 100,
+		},
+		updater.KindMarkImagesAsUntracked: {
+			MaxWorkers: 100,
+		},
+		updater.KindRefreshVulnSummaryDaily: {
+			MaxWorkers: 10,
+		},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
@@ -79,6 +93,10 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
 	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
 	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
+	job.AddWorker(jobClient, &updater.FetchVulnerabilityDataWorker{db: db, source: source, log: log.WithField("subsystem", "fetch_vulnerability_data")})
+	job.AddWorker(jobClient, &updater.MarkAndResyncWorker{db: db, log: log.WithField("subsystem", "mark_for_resync")})
+	job.AddWorker(jobClient, &updater.MarkImagesAsUntrackedWorker{db: db, log: log.WithField("subsystem", "mark_images_as_untracked")})
+	job.AddWorker(jobClient, &updater.RefreshVulnSummaryDailyWorker{db: db, log: log.WithField("subsystem", "refresh_vulnerability_summary")})
 
 	m := &WorkloadManager{
 		db:              db,
@@ -90,9 +108,9 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		workloadCounter: udCounter,
 		log:             log,
 	}
-	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
+	m.addDispatcher = workload.NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
 	//m.addDispatcher.errorHook = m.handleError
-	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
+	m.deleteDispatcher = workload.NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
 
 	return m
 }
@@ -106,7 +124,7 @@ func (m *WorkloadManager) Start(ctx context.Context) {
 	m.deleteDispatcher.Start(ctx)
 }
 
-func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worker[*model.Workload] {
+func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) workload.Worker[*model.Workload] {
 	return func(ctx context.Context, workload *model.Workload) error {
 		return fn(ctx, workload)
 	}
