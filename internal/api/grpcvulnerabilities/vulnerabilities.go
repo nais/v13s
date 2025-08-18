@@ -65,6 +65,9 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
 				),
+				Created:       timestamppb.New(row.CreatedAt.Time),
+				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
+				LatestVersion: row.LatestVersion,
 				Cve: &vulnerabilities.Cve{
 					Id:          row.CveID,
 					Title:       row.CveTitle,
@@ -135,6 +138,8 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 				row.SuppressedBy,
 				row.SuppressedAt.Time,
 			),
+			Created:       timestamppb.New(row.CreatedAt.Time),
+			LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
 			LatestVersion: row.LatestVersion,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,

@@ -224,7 +224,7 @@ SELECT id,
        reason,
        reason_text,
        suppressed_by,
-       updated_at as suppressed_at,
+       suppressed_at,
        (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count
 FROM image_vulnerabilities
 ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
@@ -233,14 +233,14 @@ ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
          CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN package END DESC,
          CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN cve_id END ASC,
          CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN cve_id END DESC,
-         CASE
-             WHEN sqlc.narg('order_by') = 'suppressed_asc'
-                 THEN COALESCE(suppressed, FALSE) END ASC,
-         CASE
-             WHEN sqlc.narg('order_by') = 'suppressed_desc'
-                 THEN COALESCE(suppressed, FALSE) END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN COALESCE(suppressed, FALSE) END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'suppressed_desc' THEN COALESCE(suppressed, FALSE) END DESC,
          CASE WHEN sqlc.narg('order_by') = 'reason_asc' THEN reason END ASC,
          CASE WHEN sqlc.narg('order_by') = 'reason_desc' THEN reason END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'created_at_asc' THEN created_at END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'created_at_desc' THEN created_at END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'updated_at_asc' THEN updated_at END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN updated_at END DESC,
          severity, id ASC
     LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset')
@@ -254,6 +254,7 @@ SELECT v.id,
        w.cluster,
        v.image_name,
        v.image_tag,
+       v.latest_version,
        v.package,
        v.cve_id,
        v.created_at,
@@ -292,10 +293,14 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
     CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
     CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'created_at_asc' THEN v.created_at END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'created_at_desc' THEN v.created_at END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'updated_at_asc' THEN v.updated_at END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN v.updated_at END DESC,
     v.id ASC
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ;

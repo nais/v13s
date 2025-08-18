@@ -22,6 +22,7 @@ type Options struct {
 	ShowJobs      bool
 	WorkloadState string
 	ImageState    string
+	Suppressed    bool
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -75,6 +76,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "Specify a relative time (e.g. '1Y' for last year, '1M' for last month, '2D' for last 2 days, '12h' for last 12 hours, '30m' for last 30 minutes)",
 			Destination: &opts.Since,
+		},
+		&cli.BoolFlag{
+			Name:        "suppressed",
+			Aliases:     []string{"su"},
+			Value:       false,
+			Usage:       "show suppressed vulnerabilities",
+			Destination: &opts.Suppressed,
 		},
 	}
 	for _, f := range cFlags {
@@ -144,6 +152,10 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		}
 		sinceTime := time.Now().Add(-duration)
 		opts = append(opts, vulnerabilities.Since(sinceTime))
+	}
+
+	if o.Suppressed {
+		opts = append(opts, vulnerabilities.IncludeSuppressed())
 	}
 	return opts
 }

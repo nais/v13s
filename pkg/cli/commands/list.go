@@ -75,24 +75,61 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	if err != nil {
 		return err
 	}
+
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	tbl := table.New("Package", "CVE", "Title", "Severity")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	vulnTbl := table.New("Package", "CVE", "Title", "Severity", "Created", "Last Updated", "Suppressed")
+	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	var suppressions [][]string
 
 	for _, n := range resp.GetNodes() {
-		tbl.AddRow(
+		supressed := "No"
+		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
+			supressed = "Yes"
+		}
+		vulnTbl.AddRow(
 			n.GetPackage(),
 			n.Cve.Id,
 			n.Cve.Title,
 			n.Cve.Severity,
+			n.GetCreated().AsTime().Format(time.RFC3339),
+			n.GetLastUpdated().AsTime().Format(time.RFC3339),
+			supressed,
 		)
+
+		// Only add to suppression table if suppressed
+		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
+			suppressions = append(suppressions, []string{
+				n.Cve.Id,
+				n.GetPackage(),
+				n.GetLatestVersion(),
+				n.GetSuppression().GetSuppressedReason().String(),
+				n.GetSuppression().GetSuppressedBy(),
+				n.GetSuppression().GetLastUpdated().AsTime().Format(time.RFC3339),
+			})
+		}
 	}
 
-	tbl.Print()
-	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
+	vulnTbl.Print()
 
+	if len(suppressions) > 0 {
+		fmt.Println("\nSuppressed vulnerabilities:")
+		suppTbl := table.New("CVE", "Package", "Latest Version", "Reason", "Suppressed By", "Suppressed At")
+		suppTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		for _, row := range suppressions {
+			// Convert []string to []interface{}
+			rowInterface := make([]interface{}, len(row))
+			for i, v := range row {
+				rowInterface[i] = v
+			}
+			suppTbl.AddRow(rowInterface...)
+		}
+		suppTbl.Print()
+	}
+
+	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
 	return nil
 }
 
@@ -183,9 +220,10 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 }
 
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
-	err := pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
+	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
 		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+
 		resp, err := c.ListVulnerabilities(ctx, opts...)
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to list vulnerabilities: %w", err)
@@ -193,36 +231,54 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
+		workloadHeader := color.New(color.FgGreen, color.Bold).SprintfFunc()
+		workloadDetails := color.New(color.FgYellow).SprintfFunc()
 
-		tbl := table.New("Package", "CVE", "Severity", "Image", "Workload", "Type", "Namespace", "Cluster")
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
+		// Group vulnerabilities by workload
+		workloadMap := make(map[string][]*vulnerabilities.Finding)
 		for _, n := range resp.GetNodes() {
-			v := n.Vulnerability
 			w := n.WorkloadRef
-			parts := strings.Split(w.ImageName, "/")
-			image := fmt.Sprintf(".../%s:%s", parts[len(parts)-1], w.ImageTag)
-			tbl.AddRow(
-				v.GetPackage(),
-				v.GetCve().GetId(),
-				v.GetCve().GetSeverity(),
-				image,
-				w.Name,
-				w.Type,
-				w.Namespace,
-				w.Cluster,
-			)
+			key := fmt.Sprintf("%s/%s/%s/%s", w.Name, w.Type, w.Namespace, w.Cluster)
+			workloadMap[key] = append(workloadMap[key], n)
 		}
 
-		tbl.Print()
+		for _, findings := range workloadMap {
+			if len(findings) == 0 {
+				continue
+			}
+			w := findings[0].WorkloadRef
+
+			// Print workload details
+			fmt.Println(workloadHeader("\nWorkload: %s", w.Name))
+			fmt.Println(workloadDetails("Type: %s", w.Type))
+			fmt.Println(workloadDetails("Namespace: %s", w.Namespace))
+			fmt.Println(workloadDetails("Cluster: %s", w.Cluster))
+			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
+
+			// Print vulnerabilities table for this workload
+			tbl := table.New("Package", "CVE", "Severity", "Latest Version", "Last Updated", "Suppressed")
+			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+			for _, n := range findings {
+				v := n.Vulnerability
+				suppressed := "No"
+				if v.GetSuppression() != nil && v.GetSuppression().GetSuppressed() {
+					suppressed = "Yes"
+				}
+
+				tbl.AddRow(
+					v.GetPackage(),
+					v.GetCve().GetId(),
+					v.GetCve().GetSeverity(),
+					v.GetLatestVersion(),
+					v.GetLastUpdated().AsTime().Format(time.RFC3339),
+					suppressed,
+				)
+			}
+
+			tbl.Print()
+		}
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
-
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

@@ -250,6 +250,8 @@ message Vulnerability {
   Cve cve = 3;
   string latest_version = 4;
   optional Suppression suppression = 5;
+  optional google.protobuf.Timestamp created = 6;
+  optional google.protobuf.Timestamp last_updated = 7;
 }
 
 message Suppression {

@@ -452,6 +452,7 @@ SELECT v.id,
        w.cluster,
        v.image_name,
        v.image_tag,
+       v.latest_version,
        v.package,
        v.cve_id,
        v.created_at,
@@ -490,10 +491,14 @@ ORDER BY
     CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
     CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
     CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $8 = 'namespace_asc' THEN namespace END ASC,
-    CASE WHEN $8 = 'namespace_desc' THEN namespace END DESC,
-    CASE WHEN $8 = 'cluster_asc' THEN cluster END ASC,
-    CASE WHEN $8 = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN $8 = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN $8 = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN $8 = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN $8 = 'cluster_desc' THEN w.cluster END DESC,
+    CASE WHEN $8 = 'created_at_asc' THEN v.created_at END ASC,
+    CASE WHEN $8 = 'created_at_desc' THEN v.created_at END DESC,
+    CASE WHEN $8 = 'updated_at_asc' THEN v.updated_at END ASC,
+    CASE WHEN $8 = 'updated_at_desc' THEN v.updated_at END DESC,
     v.id ASC
 LIMIT $10 OFFSET $9
 `
@@ -512,26 +517,27 @@ type ListVulnerabilitiesParams struct {
 }
 
 type ListVulnerabilitiesRow struct {
-	ID           pgtype.UUID
-	WorkloadName string
-	WorkloadType string
-	Namespace    string
-	Cluster      string
-	ImageName    string
-	ImageTag     string
-	Package      string
-	CveID        string
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-	CveTitle     string
-	CveDesc      string
-	CveLink      string
-	Severity     int32
-	Suppressed   bool
-	Reason       NullVulnerabilitySuppressReason
-	ReasonText   *string
-	SuppressedBy *string
-	SuppressedAt pgtype.Timestamptz
+	ID            pgtype.UUID
+	WorkloadName  string
+	WorkloadType  string
+	Namespace     string
+	Cluster       string
+	ImageName     string
+	ImageTag      string
+	LatestVersion string
+	Package       string
+	CveID         string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -562,6 +568,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.Cluster,
 			&i.ImageName,
 			&i.ImageTag,
+			&i.LatestVersion,
 			&i.Package,
 			&i.CveID,
 			&i.CreatedAt,
@@ -633,7 +640,7 @@ SELECT id,
        reason,
        reason_text,
        suppressed_by,
-       updated_at as suppressed_at,
+       suppressed_at,
        (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count
 FROM image_vulnerabilities
 ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
@@ -642,14 +649,14 @@ ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
          CASE WHEN $1 = 'package_desc' THEN package END DESC,
          CASE WHEN $1 = 'cve_id_asc' THEN cve_id END ASC,
          CASE WHEN $1 = 'cve_id_desc' THEN cve_id END DESC,
-         CASE
-             WHEN $1 = 'suppressed_asc'
-                 THEN COALESCE(suppressed, FALSE) END ASC,
-         CASE
-             WHEN $1 = 'suppressed_desc'
-                 THEN COALESCE(suppressed, FALSE) END DESC,
+         CASE WHEN $1 = 'suppressed_asc' THEN COALESCE(suppressed, FALSE) END ASC,
+         CASE WHEN $1 = 'suppressed_desc' THEN COALESCE(suppressed, FALSE) END DESC,
          CASE WHEN $1 = 'reason_asc' THEN reason END ASC,
          CASE WHEN $1 = 'reason_desc' THEN reason END DESC,
+         CASE WHEN $1 = 'created_at_asc' THEN created_at END ASC,
+         CASE WHEN $1 = 'created_at_desc' THEN created_at END DESC,
+         CASE WHEN $1 = 'updated_at_asc' THEN updated_at END ASC,
+         CASE WHEN $1 = 'updated_at_desc' THEN updated_at END DESC,
          severity, id ASC
     LIMIT $3
 OFFSET $2
