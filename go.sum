@@ -1495,8 +1495,8 @@ github.com/riverqueue/river/riverdriver/riversqlite v0.23.1 h1:v5onNmGdbsmyQAIYG
 github.com/riverqueue/river/riverdriver/riversqlite v0.23.1/go.mod h1:yRc5N+kod5r4oIvHSK9GNDddP13zm1/VEFwG55pYhO8=
 github.com/riverqueue/river/rivershared v0.23.1 h1:ZC6ybv5KguD/mpLkaXrtUCES6FyKbGsavk25YNJdp0s=
 github.com/riverqueue/river/rivershared v0.23.1/go.mod h1:8/jFVQNfUesv5y+qQZ55XULMCOdM5yj9F4MG7/UA8LA=
-github.com/riverqueue/river/rivertype v0.23.1 h1:vaIIm54BVzvy2iXT/iP7isIPSv2k99DElJNI6hWQ1lc=
-github.com/riverqueue/river/rivertype v0.23.1/go.mod h1:lmdl3vLNDfchDWbYdW2uAocIuwIN+ZaXqAukdSCFqWs=
+github.com/riverqueue/river/rivertype v0.24.0 h1:xrQZm/h6U8TBPyTsQPYD5leOapuoBAcdz30bdBwTqOg=
+github.com/riverqueue/river/rivertype v0.24.0/go.mod h1:lmdl3vLNDfchDWbYdW2uAocIuwIN+ZaXqAukdSCFqWs=
 github.com/riverqueue/rivercontrib/otelriver v0.5.0 h1:dZF4Fy7/3RaIRsyCPdpIJtzEip0pCvoJ44YpSDum8e4=
 github.com/riverqueue/rivercontrib/otelriver v0.5.0/go.mod h1:rXANcBrlgRvg+auD3/O6Xfs59AWeWNpa/kim62mkxGo=
 github.com/riza-io/grpc-go v0.2.0 h1:2HxQKFVE7VuYstcJ8zqpN84VnAoJ4dCL6YFhJewNcHQ=
