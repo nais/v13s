@@ -37,6 +37,8 @@ const (
 	OrderByLow        OrderByField = "low"
 	OrderByUnassigned OrderByField = "unassigned"
 	OrderByRiskScore  OrderByField = "risk_score"
+	OrderByCreatedAt  OrderByField = "created_at"
+	OrderByUpdatedAt  OrderByField = "updated_at"
 )
 
 // Map of valid fields
@@ -55,6 +57,8 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderByLow:        {},
 	OrderByUnassigned: {},
 	OrderByRiskScore:  {},
+	OrderByCreatedAt:  {},
+	OrderByUpdatedAt:  {},
 }
 
 // String method for OrderByField
