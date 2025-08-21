@@ -17,7 +17,7 @@ type JobStatus = string
 
 const (
 	JobStatusSourceRefDeleteSkipped    JobStatus = "source_ref_delete_skipped"
-	JobStatusInitializeWorkloadSkipped           = "initialize_workload_skipped"
+	JobStatusInitializeWorkloadSkipped JobStatus = "initialize_workload_skipped"
 	JobStatusUnrecoverable             JobStatus = "unrecoverable"
 	JobStatusSourceRefExists           JobStatus = "source_ref_exists"
 	JobStatusNoAttestation             JobStatus = "no_attestation"
