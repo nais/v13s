@@ -19,7 +19,7 @@ const (
 	FetchVulnerabilityDataForImagesDefaultLimit = 10
 	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
 	RefreshVulnerabilitySummaryCronDailyView    = "30 4 * * *"   // every day at 6:30 AM CEST
-	MarkAsUntrackedAge                          = 30 * time.Minute
+	ImageMarkAge                                = 30 * time.Minute
 )
 
 type Updater struct {
@@ -64,7 +64,6 @@ func (u *Updater) Run(ctx context.Context) {
 			u.log.WithError(err).Error("Failed to mark images for resync")
 			return
 		}
-		u.log.Info("resyncing images")
 		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
 		}
@@ -105,6 +104,7 @@ func (u *Updater) Run(ctx context.Context) {
 }
 
 func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
+	u.log.Debug("resyncing images")
 	start := time.Now()
 
 	images, err := u.querier.GetImagesScheduledForSync(ctx)
@@ -152,6 +152,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 }
 
 func (u *Updater) MarkUnusedImages(ctx context.Context) error {
+	u.log.Debug("marking unused images")
 	err := u.querier.MarkUnusedImages(ctx, sql.MarkUnusedImagesParams{
 		ExcludedStates: []sql.ImageState{
 			sql.ImageStateResync,
@@ -159,7 +160,7 @@ func (u *Updater) MarkUnusedImages(ctx context.Context) error {
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-MarkAsUntrackedAge),
+			Time: time.Now().Add(-ImageMarkAge),
 		},
 	})
 	if err != nil {
@@ -175,7 +176,7 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-MarkAsUntrackedAge),
+			Time: time.Now().Add(-ImageMarkAge),
 		},
 	})
 }
