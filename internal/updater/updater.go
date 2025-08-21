@@ -20,6 +20,7 @@ const (
 	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
 	RefreshVulnerabilitySummaryCronDailyView    = "30 4 * * *"   // every day at 6:30 AM CEST
 	ImageMarkAge                                = 30 * time.Minute
+	ResyncImagesOlderThanMinutesDefault         = 60 * 12 * time.Minute // 12 hours
 )
 
 type Updater struct {
@@ -46,7 +47,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 		db:                           pool,
 		querier:                      sql.New(pool),
 		source:                       source,
-		resyncImagesOlderThanMinutes: 60 * 12 * time.Minute, // 12 hours
+		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
 		doneChan:                     doneChan,
 		log:                          log,
@@ -152,33 +153,43 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 }
 
 func (u *Updater) MarkUnusedImages(ctx context.Context) error {
-	u.log.Debug("marking unused images")
-	err := u.querier.MarkUnusedImages(ctx, sql.MarkUnusedImagesParams{
+	rowsAffected, err := u.querier.MarkUnusedImages(ctx, sql.MarkUnusedImagesParams{
 		ExcludedStates: []sql.ImageState{
 			sql.ImageStateResync,
 			sql.ImageStateFailed,
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-ImageMarkAge),
+			Time:  time.Now().Add(-ImageMarkAge),
+			Valid: true,
 		},
 	})
 	if err != nil {
+		u.log.WithError(err).Error("Failed to mark unused images")
 		return err
 	}
+
+	u.log.Debugf("MarkUnusedImages affected %d rows", rowsAffected)
 	return nil
 }
 
 func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
-	return u.querier.MarkImagesAsUntracked(ctx, sql.MarkImagesAsUntrackedParams{
+	rowsAffected, err := u.querier.MarkImagesAsUntracked(ctx, sql.MarkImagesAsUntrackedParams{
 		IncludedStates: []sql.ImageState{
 			sql.ImageStateResync,
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-ImageMarkAge),
+			Time:  time.Now().Add(-ImageMarkAge),
+			Valid: true,
 		},
 	})
+	if err != nil {
+		u.log.WithError(err).Error("Failed to mark images as untracked")
+		return err
+	}
+	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+	return nil
 }
 
 // MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'

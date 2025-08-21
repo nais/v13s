@@ -38,7 +38,7 @@ SET
 WHERE name = @name AND tag = @tag
 ;
 
--- name: MarkImagesAsUntracked :exec
+-- name: MarkImagesAsUntracked :execrows
 UPDATE images
 SET
     state = 'untracked',
@@ -47,7 +47,7 @@ WHERE state = ANY(@included_states::image_state[])
     AND updated_at < @threshold_time
 ;
 
--- name: MarkUnusedImages :exec
+-- name: MarkUnusedImages :execrows
 UPDATE images
 SET state      = 'unused',
     updated_at = NOW()

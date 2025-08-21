@@ -190,6 +190,174 @@ func TestUpdater(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateUpdated, image.State)
 	})
+
+	t.Run("images older than threshold should be marked as untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+
+		insertWorkloads(ctx, t, db, projectNames)
+
+		tx, err := pool.Begin(ctx)
+		assert.NoError(t, err)
+
+		// set image state to initialized
+		_, err = tx.Exec(ctx,
+			"UPDATE images SET state=$1 WHERE name=$2 AND tag=$3",
+			sql.ImageStateInitialized, imageName, imageVersion)
+		assert.NoError(t, err)
+
+		// set updated_at to 1 hour ago UTC
+		imageLastUpdated := time.Now().UTC().Add(-1 * time.Hour)
+		_, err = tx.Exec(ctx,
+			"UPDATE images SET updated_at=$1 WHERE name=$2 AND tag=$3",
+			imageLastUpdated, imageName, imageVersion)
+		assert.NoError(t, err)
+
+		err = tx.Commit(ctx)
+		assert.NoError(t, err)
+
+		// log current setup
+		fmt.Printf("Setup image: %s updated_at=%v\n", imageName, imageLastUpdated)
+
+		// print threshold used by updater
+		threshold := time.Now().UTC().Add(-updater.ImageMarkAge)
+		fmt.Printf("Threshold for untracking: %v\n", threshold)
+
+		done = make(chan struct{})
+		u = updater.NewUpdater(
+			pool,
+			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			updateSchedule,
+			done,
+			logrus.NewEntry(logrus.StandardLogger()),
+		)
+
+		err = u.MarkImagesAsUntracked(ctx)
+		assert.NoError(t, err)
+
+		// query all images after running updater
+		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images ORDER BY name")
+		for rows.Next() {
+			var n, s string
+			var t time.Time
+			rows.Scan(&n, &s, &t)
+			fmt.Printf("After updater: row: %s state=%s updated_at=%v older_than_threshold=%v\n",
+				n, s, t, t.Before(threshold))
+		}
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{
+			Name: imageName,
+			Tag:  imageVersion,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateUntracked, image.State)
+	})
+
+	t.Run("images older than threshold without workloads should be marked as unused", func(t *testing.T) {
+		err := db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		insertWorkloads(ctx, t, db, []string{"project-2", "project-3"}) // project-1 and project-4 will have no workloads
+
+		// manually insert/update images
+		projects := []string{"project-1", "project-2", "project-3", "project-4"}
+		for _, p := range projects {
+			_, err := pool.Exec(ctx,
+				"INSERT INTO images (name, tag, state, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (name, tag) DO UPDATE SET state=$3, updated_at=$4;",
+				p, "v1", sql.ImageStateInitialized, time.Now().Add(-2*updater.ImageMarkAge),
+			)
+			assert.NoError(t, err)
+		}
+
+		u = updater.NewUpdater(
+			pool,
+			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			updateSchedule,
+			make(chan struct{}),
+			logrus.NewEntry(logrus.StandardLogger()),
+		)
+
+		err = u.MarkUnusedImages(ctx)
+		assert.NoError(t, err)
+
+		// fetch all images and check state
+		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images ORDER BY name")
+		defer rows.Close()
+		for rows.Next() {
+			var name, state string
+			var updatedAt time.Time
+			rows.Scan(&name, &state, &updatedAt)
+			fmt.Printf("row: %s state=%s updated_at=%v\n", name, state, updatedAt)
+			switch name {
+			case "project-1", "project-4":
+				assert.Equal(t, sql.ImageStateUnused, sql.ImageState(state), "image without workload should be unused")
+			case "project-2", "project-3":
+				assert.Equal(t, sql.ImageStateInitialized, sql.ImageState(state), "image with workload should remain initialized")
+			}
+		}
+	})
+
+	t.Run("images older than threshold should be marked for resync", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, projectNames)
+
+		// set image state to something that is not excluded
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1 WHERE name = $2 AND tag = $3",
+			sql.ImageStateUpdated, imageName, imageVersion)
+		assert.NoError(t, err)
+
+		// set updated_at older than threshold
+		imageLastUpdated := time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault - time.Hour)
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET updated_at = $1 WHERE name = $2 AND tag = $3",
+			imageLastUpdated, imageName, imageVersion)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{
+			Name: imageName,
+			Tag:  imageVersion,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateUpdated, image.State)
+
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
+		defer cancel()
+
+		u := updater.NewUpdater(
+			pool,
+			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			updateSchedule,
+			make(chan struct{}),
+			logrus.NewEntry(logrus.StandardLogger()),
+		)
+
+		err = u.MarkForResync(updaterCtx)
+		assert.NoError(t, err)
+
+		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images")
+		for rows.Next() {
+			var n, s string
+			var t time.Time
+			rows.Scan(&n, &s, &t)
+			fmt.Printf("row: %s state=%s updated_at=%v\n", n, s, t)
+		}
+
+		// check that project-1 has been updated to 'resync'
+		image, err = db.GetImage(ctx, sql.GetImageParams{
+			Name: imageName,
+			Tag:  imageVersion,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State)
+	})
 }
 
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {

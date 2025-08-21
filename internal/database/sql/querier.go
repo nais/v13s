@@ -48,9 +48,9 @@ type Querier interface {
 	ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
-	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error
+	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
-	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error
+	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	ResetDatabase(ctx context.Context) error
