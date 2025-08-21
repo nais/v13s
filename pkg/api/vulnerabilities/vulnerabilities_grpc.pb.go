@@ -28,6 +28,7 @@ const (
 	Vulnerabilities_ListVulnerabilitySummaries_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitySummaries"
 	Vulnerabilities_ListVulnerabilitiesForImage_FullMethodName       = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitiesForImage"
 	Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName     = "/v13s.api.protobuf.Vulnerabilities/ListSuppressedVulnerabilities"
+	Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName  = "/v13s.api.protobuf.Vulnerabilities/ListCriticalVulnerabilitiesSince"
 	Vulnerabilities_GetVulnerabilitySummary_FullMethodName           = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
 	Vulnerabilities_GetVulnerabilitySummaryTimeSeries_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryTimeSeries"
 	Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName   = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryForImage"
@@ -47,6 +48,7 @@ type VulnerabilitiesClient interface {
 	ListVulnerabilitySummaries(ctx context.Context, in *ListVulnerabilitySummariesRequest, opts ...grpc.CallOption) (*ListVulnerabilitySummariesResponse, error)
 	ListVulnerabilitiesForImage(ctx context.Context, in *ListVulnerabilitiesForImageRequest, opts ...grpc.CallOption) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, in *ListSuppressedVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListSuppressedVulnerabilitiesResponse, error)
+	ListCriticalVulnerabilitiesSince(ctx context.Context, in *ListCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListCriticalVulnerabilitiesSinceResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
 	// Examples:
 	// Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
@@ -103,6 +105,16 @@ func (c *vulnerabilitiesClient) ListSuppressedVulnerabilities(ctx context.Contex
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSuppressedVulnerabilitiesResponse)
 	err := c.cc.Invoke(ctx, Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vulnerabilitiesClient) ListCriticalVulnerabilitiesSince(ctx context.Context, in *ListCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListCriticalVulnerabilitiesSinceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCriticalVulnerabilitiesSinceResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +183,7 @@ type VulnerabilitiesServer interface {
 	ListVulnerabilitySummaries(context.Context, *ListVulnerabilitySummariesRequest) (*ListVulnerabilitySummariesResponse, error)
 	ListVulnerabilitiesForImage(context.Context, *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)
+	ListCriticalVulnerabilitiesSince(context.Context, *ListCriticalVulnerabilitiesSinceRequest) (*ListCriticalVulnerabilitiesSinceResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
 	// Examples:
 	// Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
@@ -204,6 +217,9 @@ func (UnimplementedVulnerabilitiesServer) ListVulnerabilitiesForImage(context.Co
 }
 func (UnimplementedVulnerabilitiesServer) ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSuppressedVulnerabilities not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) ListCriticalVulnerabilitiesSince(context.Context, *ListCriticalVulnerabilitiesSinceRequest) (*ListCriticalVulnerabilitiesSinceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListCriticalVulnerabilitiesSince not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummary not implemented")
@@ -309,6 +325,24 @@ func _Vulnerabilities_ListSuppressedVulnerabilities_Handler(srv interface{}, ctx
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VulnerabilitiesServer).ListSuppressedVulnerabilities(ctx, req.(*ListSuppressedVulnerabilitiesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Vulnerabilities_ListCriticalVulnerabilitiesSince_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCriticalVulnerabilitiesSinceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).ListCriticalVulnerabilitiesSince(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).ListCriticalVulnerabilitiesSince(ctx, req.(*ListCriticalVulnerabilitiesSinceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -425,6 +459,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSuppressedVulnerabilities",
 			Handler:    _Vulnerabilities_ListSuppressedVulnerabilities_Handler,
+		},
+		{
+			MethodName: "ListCriticalVulnerabilitiesSince",
+			Handler:    _Vulnerabilities_ListCriticalVulnerabilitiesSince_Handler,
 		},
 		{
 			MethodName: "GetVulnerabilitySummary",

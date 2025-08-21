@@ -297,10 +297,12 @@ WITH updated AS (
 UPDATE workloads
 SET state      = $1,
     updated_at = NOW()
-WHERE ($2::TEXT IS NULL OR cluster = $2::TEXT)
-  AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
-  AND ($4::TEXT IS NULL OR workload_type = $4::TEXT)
-  AND ($5::TEXT IS NULL OR name = $5::TEXT)
+WHERE (
+    ($2::TEXT IS NOT NULL AND cluster = $2::TEXT)
+        OR ($3::TEXT IS NOT NULL AND namespace = $3::TEXT)
+        OR ($4::TEXT IS NOT NULL AND workload_type = $4::TEXT)
+        OR ($5::TEXT IS NOT NULL AND name = $5::TEXT)
+    )
   AND state = $6
     RETURNING id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 )

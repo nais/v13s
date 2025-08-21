@@ -89,14 +89,14 @@ VALUES ($1,
                cve_desc  = EXCLUDED.cve_desc,
                cve_link  = EXCLUDED.cve_link,
                severity  = EXCLUDED.severity,
-               refs      = EXCLUDED.refs
-       WHERE NOT (
-           cve.cve_title = EXCLUDED.cve_title
-         AND cve.cve_desc = EXCLUDED.cve_desc
-         AND cve.cve_link = EXCLUDED.cve_link
-         AND cve.severity = EXCLUDED.severity
-         AND cve.refs = EXCLUDED.refs
-           )
+               refs      = EXCLUDED.refs,
+               updated_at = NOW()
+   WHERE
+           cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
+           cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
+           cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
+           cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
+           cve.refs       IS DISTINCT FROM EXCLUDED.refs
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -158,17 +158,49 @@ INSERT INTO vulnerabilities(image_name,
                             package,
                             cve_id,
                             source,
-                            latest_version)
+                            latest_version,
+                            last_severity,
+                            became_critical_at
+)
 VALUES ($1,
         $2,
         $3,
         $4,
         $5,
-        $6)
-ON CONFLICT (image_name, image_tag, package, cve_id)
+        $6,
+        $7,
+        CASE
+            WHEN $7 = 0
+                THEN COALESCE($8, NOW())
+            ELSE $8
+        END
+       )
+    ON CONFLICT (image_name, image_tag, package, cve_id)
 DO UPDATE
-    SET latest_version = EXCLUDED.latest_version
-    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
+           SET
+               latest_version = EXCLUDED.latest_version,
+           updated_at = NOW(),
+           last_severity = CASE
+           WHEN vulnerabilities.last_severity IS DISTINCT FROM EXCLUDED.last_severity
+           THEN EXCLUDED.last_severity
+           ELSE vulnerabilities.last_severity
+END,
+    became_critical_at = CASE
+    -- Initial insert: EXCLUDED.last_severity=0 and vuln.became_critical_at IS NULL
+    WHEN vulnerabilities.became_critical_at IS NULL AND EXCLUDED.last_severity = 0
+    THEN COALESCE(vulnerabilities.created_at, NOW())
+
+    -- Severity transition from non-critical → critical
+    WHEN EXCLUDED.last_severity = 0 AND vulnerabilities.last_severity IS DISTINCT FROM 0
+    THEN NOW()
+
+       -- Already critical: set to created_at
+    WHEN vulnerabilities.last_severity = 0
+    THEN vulnerabilities.created_at
+
+    -- Otherwise, keep old value
+    ELSE vulnerabilities.became_critical_at
+END
 `
 
 type BatchUpsertVulnerabilitiesBatchResults struct {
@@ -178,12 +210,14 @@ type BatchUpsertVulnerabilitiesBatchResults struct {
 }
 
 type BatchUpsertVulnerabilitiesParams struct {
-	ImageName     string
-	ImageTag      string
-	Package       string
-	CveID         string
-	Source        string
-	LatestVersion string
+	ImageName        string
+	ImageTag         string
+	Package          string
+	CveID            string
+	Source           string
+	LatestVersion    string
+	LastSeverity     *int32
+	BecameCriticalAt interface{}
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -196,6 +230,8 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.CveID,
 			a.Source,
 			a.LatestVersion,
+			a.LastSeverity,
+			a.BecameCriticalAt,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

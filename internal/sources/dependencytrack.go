@@ -75,6 +75,21 @@ func (d *dependencytrackSource) Delete(ctx context.Context, imageName string, im
 	return nil
 }
 
+func (d *dependencytrackSource) ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error) {
+	d.log.Debugf("getting project for image %s:%s", imageName, imageTag)
+	p, err := d.client.GetProject(ctx, imageName, imageTag)
+	if err != nil {
+		return false, fmt.Errorf("getting project: %w", err)
+	}
+
+	if p == nil {
+		d.log.Debugf("no project found for image %s:%s", imageName, imageTag)
+		return false, ErrNoProject
+	}
+
+	return true, nil
+}
+
 func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
 	p, err := d.client.GetProject(ctx, imageName, imageTag)
 	if err != nil {

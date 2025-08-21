@@ -10,6 +10,7 @@ import (
 
 	"github.com/emicklei/pgtalk/convert"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -65,15 +66,19 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
 				),
-				Created:       timestamppb.New(row.CreatedAt.Time),
-				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
-				LatestVersion: row.LatestVersion,
+				Created:          timestamppb.New(row.CreatedAt.Time),
+				LastUpdated:      timestamppb.New(row.UpdatedAt.Time),
+				LatestVersion:    row.LatestVersion,
+				LastSeverity:     row.LastSeverity,
+				BecameCriticalAt: timestamppb.New(row.CriticalSince.Time),
 				Cve: &vulnerabilities.Cve{
 					Id:          row.CveID,
 					Title:       row.CveTitle,
 					Description: row.CveDesc,
 					Link:        row.CveLink,
 					Severity:    vulnerabilities.Severity(row.Severity),
+					Created:     timestamppb.New(row.CveCreatedAt.Time),
+					LastUpdated: timestamppb.New(row.CveUpdatedAt.Time),
 				},
 			},
 		}
@@ -138,9 +143,11 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 				row.SuppressedBy,
 				row.SuppressedAt.Time,
 			),
-			Created:       timestamppb.New(row.CreatedAt.Time),
-			LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
-			LatestVersion: row.LatestVersion,
+			Created:          timestamppb.New(row.CreatedAt.Time),
+			LastUpdated:      timestamppb.New(row.UpdatedAt.Time),
+			LatestVersion:    row.LatestVersion,
+			LastSeverity:     row.LastSeverity,
+			BecameCriticalAt: timestamppb.New(row.BecameCriticalAt.Time),
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
@@ -148,6 +155,8 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 				Link:        row.CveLink,
 				Severity:    vulnerabilities.Severity(row.Severity),
 				References:  refs,
+				Created:     timestamppb.New(row.CveCreatedAt.Time),
+				LastUpdated: timestamppb.New(row.CveUpdatedAt.Time),
 			},
 		}
 	})
@@ -159,6 +168,103 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
 		Nodes:    nodes,
+		PageInfo: pageInfo,
+	}, nil
+}
+
+func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) (*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, error) {
+	// TODO: add input validation for request, especially for filter values
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.GetFilter() == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	since := pgtype.Timestamptz{}
+	if request.GetSince() != nil {
+		since.Time = request.GetSince().AsTime()
+		since.Valid = true
+	}
+
+	v, err := s.querier.ListCriticalVulnerabilitiesSince(ctx, sql.ListCriticalVulnerabilitiesSinceParams{
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
+		WorkloadName:      request.GetFilter().Workload,
+		ImageName:         request.GetFilter().ImageName,
+		ImageTag:          request.GetFilter().ImageTag,
+		IncludeSuppressed: request.IncludeSuppressed,
+		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		Since:             since,
+		Limit:             limit,
+		Offset:            offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
+	}
+
+	vulnz := collections.Map(v, func(row *sql.ListCriticalVulnerabilitiesSinceRow) *vulnerabilities.Finding {
+
+		return &vulnerabilities.Finding{
+			WorkloadRef: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
+			},
+			Vulnerability: &vulnerabilities.Vulnerability{
+				Id:      row.ID.String(),
+				Package: row.Package,
+				Suppression: toSuppression(
+					row.Suppressed,
+					row.Reason.VulnerabilitySuppressReason,
+					row.ReasonText,
+					row.SuppressedBy,
+					row.SuppressedAt.Time,
+				),
+				Created:          timestamppb.New(row.CreatedAt.Time),
+				LastUpdated:      timestamppb.New(row.UpdatedAt.Time),
+				LatestVersion:    row.LatestVersion,
+				LastSeverity:     row.LastSeverity,
+				BecameCriticalAt: timestamppb.New(row.CriticalSince.Time),
+				Cve: &vulnerabilities.Cve{
+					Id:          row.CveID,
+					Title:       row.CveTitle,
+					Description: row.CveDesc,
+					Link:        row.CveLink,
+					Severity:    vulnerabilities.Severity(row.Severity),
+					Created:     timestamppb.New(row.CveCreatedAt.Time),
+					LastUpdated: timestamppb.New(row.CveUpdatedAt.Time),
+				},
+			},
+		}
+	})
+
+	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
+		WorkloadName:      request.GetFilter().Workload,
+		IncludeSuppressed: request.IncludeSuppressed,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
+	}
+
+	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	if err != nil {
+		return nil, err
+	}
+
+	return &vulnerabilities.ListCriticalVulnerabilitiesSinceResponse{
+		Filter:   request.GetFilter(),
+		Nodes:    vulnz,
 		PageInfo: pageInfo,
 	}, nil
 }

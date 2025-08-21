@@ -102,7 +102,7 @@ func (s *Server) TriggerSync(ctx context.Context, triggerReq *management.Trigger
 	}
 
 	go func() {
-		err = s.updater.ResyncImages(s.parentCtx)
+		err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
 		if err != nil {
 			s.log.WithError(err).Error("Failed to resync images")
 		}

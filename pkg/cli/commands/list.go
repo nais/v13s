@@ -242,6 +242,9 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			workloadMap[key] = append(workloadMap[key], n)
 		}
 
+		fmt.Println(workloadHeader("Total vulnerabilities found: %d", resp.PageInfo.TotalCount))
+		fmt.Println(workloadDetails("Total workloads with vulnerabilities: %d", len(workloadMap)))
+
 		for _, findings := range workloadMap {
 			if len(findings) == 0 {
 				continue
@@ -256,7 +259,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
 
 			// Print vulnerabilities table for this workload
-			tbl := table.New("Package", "CVE", "Severity", "Latest Version", "Last Updated", "Suppressed")
+			tbl := table.New("Package", "CVE", "Severity", "CVE Last Updated", "Last Severity", "Critical Sins", "Latest Version", "Suppressed", "Time Since Update")
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 			for _, n := range findings {
@@ -270,9 +273,12 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetPackage(),
 					v.GetCve().GetId(),
 					v.GetCve().GetSeverity(),
+					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
+					v.GetLastSeverity(),
+					timeSinceCreation(v.GetCreated().AsTime(), v.GetBecameCriticalAt().AsTime()),
 					v.GetLatestVersion(),
-					v.GetLastUpdated().AsTime().Format(time.RFC3339),
 					suppressed,
+					timeSinceCreation(v.GetCreated().AsTime(), v.GetLastUpdated().AsTime()),
 				)
 			}
 
@@ -281,4 +287,25 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 	})
+}
+
+func timeSinceCreation(created, lastUpdated time.Time) string {
+	if lastUpdated.IsZero() || created.IsZero() {
+		return "unknown"
+	}
+
+	duration := lastUpdated.Sub(created)
+
+	days := int(duration.Hours()) / 24
+	hours := int(duration.Hours()) % 24
+	minutes := int(duration.Minutes()) % 60
+
+	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd %dh", days, hours)
+	case hours > 0:
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	default:
+		return fmt.Sprintf("%dm", minutes)
+	}
 }

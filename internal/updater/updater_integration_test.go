@@ -96,7 +96,7 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		insertWorkloads(ctx, t, db, projectNames)
-		err = u.ResyncImages(updaterCtx)
+		err = u.ResyncImageVulnerabilities(updaterCtx)
 		assert.NoError(t, err)
 
 		select {

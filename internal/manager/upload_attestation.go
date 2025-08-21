@@ -77,40 +77,62 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		return fmt.Errorf("failed to update image metadata: %w", err)
 	}
 
-	// TODO: handle concurrency locking
-	_, err = u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
+	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,
 		SourceType: u.source.Name(),
 	})
+
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("failed to check source ref: %w", err)
+	}
+
 	if err == nil {
-		recordOutput(ctx, JobStatusSourceRefExists)
-	}
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
-			if err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, "failed to upload attestation to source")
-				return handleJobErr(err)
-			}
-
-			err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
-				SourceID: pgtype.UUID{
-					Bytes: id,
-					Valid: true,
-				},
-				ImageName:  imageName,
-				ImageTag:   imageTag,
-				SourceType: u.source.Name(),
-			})
-			if err != nil {
-				return err
-			}
-			recordOutput(ctx, JobStatusAttestationUploaded)
+		// sourceRef exists → check if the project actually exists
+		exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
+		if err != nil {
+			return fmt.Errorf("failed to verify project existence: %w", err)
 		}
+		if exists {
+			recordOutput(ctx, JobStatusSourceRefExists)
+			return nil
+		}
+
+		// project does not exist → delete stale sourceRef
+		if err := u.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+			ImageName:  imageName,
+			ImageTag:   imageTag,
+			SourceType: u.source.Name(),
+		}); err != nil {
+			return fmt.Errorf("failed to delete stale sourceRef: %w", err)
+		}
+		logrus.WithFields(logrus.Fields{
+			"image": imageName,
+			"tag":   imageTag,
+		}).Warn("deleted stale sourceRef; will attempt to create new project")
 	}
+
+	// Upload attestation and create new sourceRef
+	id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to upload attestation to source")
+		return handleJobErr(err)
+	}
+
+	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+		SourceID: pgtype.UUID{
+			Bytes: id,
+			Valid: true,
+		},
+		ImageName:  imageName,
+		ImageTag:   imageTag,
+		SourceType: u.source.Name(),
+	})
+	if err != nil {
+		return err
+	}
+	recordOutput(ctx, JobStatusAttestationUploaded)
 
 	rows, err := u.db.ListUnusedImages(ctx, &imageName)
 	if err != nil {

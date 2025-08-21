@@ -29,6 +29,7 @@ var _ SourceConfig = &DependencyTrackConfig{}
 
 type Source interface {
 	Name() string
+	ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error)
 	GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
 	// TODO: add includeSuppressed bool
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)

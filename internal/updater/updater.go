@@ -65,7 +65,7 @@ func (u *Updater) Run(ctx context.Context) {
 			return
 		}
 		u.log.Info("resyncing images")
-		if err := u.ResyncImages(ctx); err != nil {
+		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
 		}
 	})
@@ -104,7 +104,7 @@ func (u *Updater) Run(ctx context.Context) {
 	})
 }
 
-func (u *Updater) ResyncImages(ctx context.Context) error {
+func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 	start := time.Now()
 
 	images, err := u.querier.GetImagesScheduledForSync(ctx)

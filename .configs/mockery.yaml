@@ -1,7 +1,6 @@
 with-expecter: true
 disable-version-string: true
 inpackage: false
-output: internal/mocks
 filename: "mock_{{.InterfaceNameSnake}}.go"
 issue-845-fix: true
 packages:
