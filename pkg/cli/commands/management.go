@@ -102,9 +102,7 @@ func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) 
 		return fmt.Errorf("failed to trigger sync: %w", err)
 	}
 
-	if len(resp.Workloads) == 0 {
-		return fmt.Errorf(
-			"sync failed for cluster: %s, namespace: %s, workload: %s",
+			"no workloads found or affected for cluster: %s, namespace: %s, workload: %s",
 			parseString(opts.Cluster),
 			parseString(opts.Namespace),
 			parseString(opts.Workload),
