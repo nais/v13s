@@ -239,7 +239,7 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 	}
 
 	if len(workloads) == 0 {
-		fmt.Println("[INFO] No workloads to resync")
+		fmt.Println("no workloads to resync")
 		return &management.ResyncResponse{}, nil
 	}
 
