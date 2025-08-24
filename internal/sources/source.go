@@ -28,14 +28,14 @@ func (d DependencyTrackConfig) GetUrl() string {
 var _ SourceConfig = &DependencyTrackConfig{}
 
 type Source interface {
+	Delete(ctx context.Context, imageName string, imageTag string) error
+	GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
+	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
+	IsTaskInProgress(ctx context.Context, processToken string) (bool, error)
+	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
 	Name() string
 	ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error)
-	GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
-	// TODO: add includeSuppressed bool
-	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
-	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
-	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (uuid.UUID, error)
-	Delete(ctx context.Context, imageName string, imageTag string) error
+	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (*UploadAttestationResponse, error)
 }
 
 func New(config SourceConfig, log logrus.FieldLogger) (Source, error) {
@@ -149,4 +149,9 @@ type SuppressedVulnerability struct {
 	State        string
 	Suppressed   bool
 	Metadata     VulnerabilityMetadata
+}
+
+type UploadAttestationResponse struct {
+	AttestationId uuid.UUID
+	ProcessToken  string
 }

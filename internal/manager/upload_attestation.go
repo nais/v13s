@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	KindUploadAttestation = "upload_attestation"
+	KindUploadAttestation            = "upload_attestation"
+	UploadAttestationByPeriodMinutes = 2 * time.Minute
 )
 
 type UploadAttestationJob struct {
@@ -37,7 +38,7 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 		Queue: KindUploadAttestation,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
+			ByPeriod: UploadAttestationByPeriodMinutes,
 		},
 		MaxAttempts: 4,
 	}
@@ -63,19 +64,6 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
-	att, err := attestation.Decompress(job.Args.Attestation)
-	if err != nil {
-		return fmt.Errorf("failed to decompress attestation: %w", err)
-	}
-
-	err = u.db.UpdateImage(ctx, sql.UpdateImageParams{
-		Name:     imageName,
-		Tag:      imageTag,
-		Metadata: att.Metadata,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update image metadata: %w", err)
-	}
 
 	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
 		ImageName:  imageName,
@@ -112,8 +100,13 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		}).Warn("deleted stale sourceRef; will attempt to create new project")
 	}
 
+	att, err := attestation.Decompress(job.Args.Attestation)
+	if err != nil {
+		return fmt.Errorf("failed to decompress attestation: %w", err)
+	}
+
 	// Upload attestation and create new sourceRef
-	id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	uploadRes, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
@@ -122,7 +115,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
 		SourceID: pgtype.UUID{
-			Bytes: id,
+			Bytes: uploadRes.AttestationId,
 			Valid: true,
 		},
 		ImageName:  imageName,
@@ -132,20 +125,26 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	if err != nil {
 		return err
 	}
-	recordOutput(ctx, JobStatusAttestationUploaded)
 
-	rows, err := u.db.ListUnusedImages(ctx, &imageName)
+	err = u.db.UpdateImage(ctx, sql.UpdateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: att.Metadata,
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to set ReadyForResyncAt: %w", err)
 	}
-	for _, row := range rows {
-		err = u.jobClient.AddJob(ctx, &RemoveFromSourceJob{
-			ImageName: row.Name,
-			ImageTag:  row.Tag,
-		})
-		if err != nil {
-			return err
-		}
+
+	// enqueue finalize job
+	err = u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+		ProcessToken: uploadRes.ProcessToken,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
 	}
+
+	recordOutput(ctx, JobStatusAttestationUploaded)
 	return nil
 }

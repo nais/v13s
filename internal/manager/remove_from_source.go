@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	KindRemoveFromSource = "remove_from_source"
+	KindRemoveFromSource            = "remove_from_source"
+	RemoveFromSourceByPeriodMinutes = 5 * time.Minute
 )
 
 type RemoveFromSourceJob struct {
@@ -31,9 +32,9 @@ func (u RemoveFromSourceJob) InsertOpts() river.InsertOpts {
 		Queue: KindRemoveFromSource,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
+			ByPeriod: RemoveFromSourceByPeriodMinutes,
 		},
-		MaxAttempts: 4,
+		MaxAttempts: 8,
 	}
 }
 

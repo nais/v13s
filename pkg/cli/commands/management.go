@@ -29,7 +29,13 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					Name:    "update",
 					Aliases: []string{"s"},
 					Usage:   "trigger sync of images",
-					Flags:   append(flag.CommonFlags(opts, "limit", "order", "since")),
+					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"),
+						&cli.StringFlag{
+							Name:        "image-state",
+							Aliases:     []string{"i"},
+							Usage:       "filter by image state",
+							Destination: &opts.ImageState,
+						}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						err := trigger(ctx, c, opts)
 						if err != nil {
@@ -76,17 +82,27 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 }
 
 func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) error {
-	resp, err := c.TriggerSync(ctx, &management.TriggerSyncRequest{
-		Cluster:      opts.Cluster,
-		Namespace:    opts.Namespace,
-		Workload:     opts.Workload,
-		WorkloadType: opts.WorkloadType,
+	var cluster, namespace, workload = extractFilters(opts)
+	var workloadType *string
+	var imageState *string
+	if opts.WorkloadType != "" {
+		workloadType = &opts.WorkloadType
+	}
+	if opts.ImageState != "" {
+		imageState = &opts.ImageState
+	}
+	resp, err := c.Resync(ctx, &management.ResyncRequest{
+		Cluster:      cluster,
+		Namespace:    namespace,
+		Workload:     workload,
+		WorkloadType: workloadType,
+		ImageState:   imageState,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to trigger sync: %w", err)
 	}
 
-	if !resp.Success {
+	if len(resp.Workloads) == 0 {
 		return fmt.Errorf(
 			"sync failed for cluster: %s, namespace: %s, workload: %s",
 			parseString(opts.Cluster),
@@ -98,21 +114,8 @@ func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) 
 	var headers []any
 	var row []string
 
-	if resp.Cluster != "" {
-		headers = append(headers, "Cluster")
-		row = append(row, resp.Cluster)
-	}
-	if resp.Namespace != "" {
-		headers = append(headers, "Namespace")
-		row = append(row, resp.Namespace)
-	}
-	if resp.Workload != "" {
-		headers = append(headers, "Workload")
-		row = append(row, resp.Workload)
-	}
-
 	headers = append(headers, "Updated Workloads", "Success")
-	row = append(row, strconv.Itoa(len(resp.UpdatedWorkloads)), strconv.FormatBool(resp.Success))
+	row = append(row, strconv.Itoa(len(resp.Workloads)), strconv.FormatBool(len(resp.Workloads) > 0))
 
 	t := Table{
 		Headers: headers,

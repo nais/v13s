@@ -19,13 +19,16 @@ SELECT * FROM images WHERE name = @name AND tag = @tag;
 -- name: GetImagesScheduledForSync :many
 SELECT *
 FROM images
-WHERE state IN ('initialized', 'resync')
+WHERE ready_for_resync_at IS NOT NULL
+  AND ready_for_resync_at <= NOW()
+  AND state IN ('initialized', 'resync')
 ORDER BY updated_at DESC;
 
 -- name: UpdateImageState :exec
 UPDATE images
 SET
     state = @state,
+    ready_for_resync_at = @ready_for_resync_at,
     updated_at = NOW()
 WHERE name = @name AND tag = @tag
 ;
@@ -62,6 +65,23 @@ FROM images
 WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
    AND (sqlc.narg('name')::TEXT IS NULL OR name = sqlc.narg('name')::TEXT)
 ORDER BY updated_at;
+
+-- name: ListImagesWithWorkloadsByState :many
+SELECT
+    i.name AS image_name,
+    i.tag AS image_tag,
+    w.name AS workload_name,
+    w.cluster AS workload_cluster,
+    w.namespace AS workload_namespace,
+    w.workload_type AS workload_type
+FROM images i
+         JOIN workloads w
+              ON w.image_name = i.name
+                  AND w.image_tag = i.tag
+WHERE i.state = @state::image_state
+  AND (sqlc.narg('name')::TEXT IS NULL OR i.name = sqlc.narg('name')::TEXT)
+  AND (sqlc.narg('tag')::TEXT IS NULL OR i.tag = sqlc.narg('tag')::TEXT)
+ORDER BY i.updated_at, w.name;
 
 -- name: MarkImagesForResync :exec
 UPDATE images

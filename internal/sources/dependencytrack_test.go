@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
-	dependencytrackMock "github.com/nais/v13s/mocks/github.com/nais/dependencytrack/pkg/dependencytrack"
+	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

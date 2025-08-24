@@ -30,7 +30,7 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 }
 
 const getImage = `-- name: GetImage :one
-SELECT name, tag, metadata, state, created_at, updated_at FROM images WHERE name = $1 AND tag = $2
+SELECT name, tag, metadata, state, created_at, updated_at, ready_for_resync_at FROM images WHERE name = $1 AND tag = $2
 `
 
 type GetImageParams struct {
@@ -48,14 +48,17 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReadyForResyncAt,
 	)
 	return &i, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
-SELECT name, tag, metadata, state, created_at, updated_at
+SELECT name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM images
-WHERE state IN ('initialized', 'resync')
+WHERE ready_for_resync_at IS NOT NULL
+  AND ready_for_resync_at <= NOW()
+  AND state IN ('initialized', 'resync')
 ORDER BY updated_at DESC
 `
 
@@ -75,6 +78,67 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReadyForResyncAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImagesWithWorkloadsByState = `-- name: ListImagesWithWorkloadsByState :many
+SELECT
+    i.name AS image_name,
+    i.tag AS image_tag,
+    w.name AS workload_name,
+    w.cluster AS workload_cluster,
+    w.namespace AS workload_namespace,
+    w.workload_type AS workload_type
+FROM images i
+         JOIN workloads w
+              ON w.image_name = i.name
+                  AND w.image_tag = i.tag
+WHERE i.state = $1::image_state
+  AND ($2::TEXT IS NULL OR i.name = $2::TEXT)
+  AND ($3::TEXT IS NULL OR i.tag = $3::TEXT)
+ORDER BY i.updated_at, w.name
+`
+
+type ListImagesWithWorkloadsByStateParams struct {
+	State ImageState
+	Name  *string
+	Tag   *string
+}
+
+type ListImagesWithWorkloadsByStateRow struct {
+	ImageName         string
+	ImageTag          string
+	WorkloadName      string
+	WorkloadCluster   string
+	WorkloadNamespace string
+	WorkloadType      string
+}
+
+func (q *Queries) ListImagesWithWorkloadsByState(ctx context.Context, arg ListImagesWithWorkloadsByStateParams) ([]*ListImagesWithWorkloadsByStateRow, error) {
+	rows, err := q.db.Query(ctx, listImagesWithWorkloadsByState, arg.State, arg.Name, arg.Tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListImagesWithWorkloadsByStateRow{}
+	for rows.Next() {
+		var i ListImagesWithWorkloadsByStateRow
+		if err := rows.Scan(
+			&i.ImageName,
+			&i.ImageTag,
+			&i.WorkloadName,
+			&i.WorkloadCluster,
+			&i.WorkloadNamespace,
+			&i.WorkloadType,
 		); err != nil {
 			return nil, err
 		}
@@ -208,18 +272,25 @@ const updateImageState = `-- name: UpdateImageState :exec
 UPDATE images
 SET
     state = $1,
+    ready_for_resync_at = $2,
     updated_at = NOW()
-WHERE name = $2 AND tag = $3
+WHERE name = $3 AND tag = $4
 `
 
 type UpdateImageStateParams struct {
-	State ImageState
-	Name  string
-	Tag   string
+	State            ImageState
+	ReadyForResyncAt pgtype.Timestamptz
+	Name             string
+	Tag              string
 }
 
 func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error {
-	_, err := q.db.Exec(ctx, updateImageState, arg.State, arg.Name, arg.Tag)
+	_, err := q.db.Exec(ctx, updateImageState,
+		arg.State,
+		arg.ReadyForResyncAt,
+		arg.Name,
+		arg.Tag,
+	)
 	return err
 }
 

@@ -3,7 +3,9 @@ package grpcmgmt
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -83,45 +85,6 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 	//s.updater.QueueImage(s.parentCtx, request.ImageName, request.ImageTag)
 
 	return &management.RegisterWorkloadResponse{}, nil
-}
-
-func (s *Server) TriggerSync(ctx context.Context, triggerReq *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
-	resp, err := s.Resync(ctx, &management.ResyncRequest{
-		Cluster:      p(triggerReq.Cluster),
-		Namespace:    p(triggerReq.Namespace),
-		Workload:     p(triggerReq.Workload),
-		WorkloadType: p(triggerReq.WorkloadType),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to resync workloads: %w", err)
-	}
-
-	if resp.NumWorkloads == 0 {
-		s.log.Info("No workloads to resync")
-		return &management.TriggerSyncResponse{}, nil
-	}
-
-	go func() {
-		err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
-		if err != nil {
-			s.log.WithError(err).Error("Failed to resync images")
-		}
-	}()
-
-	return &management.TriggerSyncResponse{
-		Cluster:          triggerReq.Cluster,
-		Namespace:        triggerReq.Namespace,
-		Workload:         triggerReq.Workload,
-		UpdatedWorkloads: resp.Workloads,
-		Success:          resp.NumWorkloads > 0,
-	}, nil
-}
-
-func p(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }
 
 func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
@@ -262,18 +225,33 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			State: imageState,
 			Name:  workload.ImageName,
 			Tag:   workload.ImageTag,
+			ReadyForResyncAt: pgtype.Timestamptz{
+				Time:  time.Now(),
+				Valid: true,
+			},
 		})
-
 		if err != nil {
-			s.log.WithError(err).Error("failed to update image state")
 			return nil, err
 		}
 
-		workloads = append(workloads, fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
+		workloads = append(workloads,
+			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
 	}
-	s.log.WithField("num workloads", len(workloads)).Info("added workloads to job queue")
+
+	if len(workloads) == 0 {
+		fmt.Println("[INFO] No workloads to resync")
+		return &management.ResyncResponse{}, nil
+	}
+
+	go func() {
+		err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
+		if err != nil {
+			fmt.Printf("[ERROR] failed to resync images: %v\n", err)
+		}
+	}()
+
 	return &management.ResyncResponse{
 		NumWorkloads: int32(len(workloads)),
 		Workloads:    workloads,
-	}, err
+	}, nil
 }

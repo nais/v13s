@@ -18,9 +18,10 @@ import (
 const (
 	FetchVulnerabilityDataForImagesDefaultLimit = 10
 	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
+	MarkUnusedCronInterval                      = "*/30 * * * *" // every 10 minutes
 	RefreshVulnerabilitySummaryCronDailyView    = "30 4 * * *"   // every day at 6:30 AM CEST
 	ImageMarkAge                                = 30 * time.Minute
-	ResyncImagesOlderThanMinutesDefault         = 60 * 12 * time.Minute // 12 hours
+	ResyncImagesOlderThanMinutesDefault         = 30 * 12 * time.Minute // 30 * 12 minutes = 6 hours, default for resyncing images
 )
 
 type Updater struct {
@@ -57,16 +58,18 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 // Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, u.updateSchedule, "mark and resync images", u.log, func() {
-		if err := u.MarkUnusedImages(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to mark images as unused")
-			return
-		}
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
 			return
 		}
 		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, "mark unused images", u.log, func() {
+		if err := u.MarkUnusedImages(ctx); err != nil {
+			u.log.WithError(err).Error("Failed to mark unused images")
 		}
 	})
 

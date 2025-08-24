@@ -84,22 +84,24 @@ func (_c *MockClient_CreateProject_Call) RunAndReturn(run func(context.Context, 
 }
 
 // CreateProjectWithSbom provides a mock function with given fields: ctx, imageName, imageTag, sbom
-func (_m *MockClient) CreateProjectWithSbom(ctx context.Context, imageName string, imageTag string, sbom []byte) (string, error) {
+func (_m *MockClient) CreateProjectWithSbom(ctx context.Context, imageName string, imageTag string, sbom []byte) (*dependencytrack.UploadSbomResponse, error) {
 	ret := _m.Called(ctx, imageName, imageTag, sbom)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateProjectWithSbom")
 	}
 
-	var r0 string
+	var r0 *dependencytrack.UploadSbomResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte) (*dependencytrack.UploadSbomResponse, error)); ok {
 		return rf(ctx, imageName, imageTag, sbom)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []byte) *dependencytrack.UploadSbomResponse); ok {
 		r0 = rf(ctx, imageName, imageTag, sbom)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*dependencytrack.UploadSbomResponse)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string, string, []byte) error); ok {
@@ -132,12 +134,12 @@ func (_c *MockClient_CreateProjectWithSbom_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockClient_CreateProjectWithSbom_Call) Return(_a0 string, _a1 error) *MockClient_CreateProjectWithSbom_Call {
+func (_c *MockClient_CreateProjectWithSbom_Call) Return(_a0 *dependencytrack.UploadSbomResponse, _a1 error) *MockClient_CreateProjectWithSbom_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClient_CreateProjectWithSbom_Call) RunAndReturn(run func(context.Context, string, string, []byte) (string, error)) *MockClient_CreateProjectWithSbom_Call {
+func (_c *MockClient_CreateProjectWithSbom_Call) RunAndReturn(run func(context.Context, string, string, []byte) (*dependencytrack.UploadSbomResponse, error)) *MockClient_CreateProjectWithSbom_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -441,6 +443,63 @@ func (_c *MockClient_GetProjects_Call) Return(_a0 []dependencytrack.Project, _a1
 }
 
 func (_c *MockClient_GetProjects_Call) RunAndReturn(run func(context.Context, int32, int32) ([]dependencytrack.Project, error)) *MockClient_GetProjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsTaskInProgress provides a mock function with given fields: ctx, uuid
+func (_m *MockClient) IsTaskInProgress(ctx context.Context, uuid string) (bool, error) {
+	ret := _m.Called(ctx, uuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsTaskInProgress")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
+		return rf(ctx, uuid)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
+		r0 = rf(ctx, uuid)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, uuid)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_IsTaskInProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsTaskInProgress'
+type MockClient_IsTaskInProgress_Call struct {
+	*mock.Call
+}
+
+// IsTaskInProgress is a helper method to define mock.On call
+//   - ctx context.Context
+//   - uuid string
+func (_e *MockClient_Expecter) IsTaskInProgress(ctx interface{}, uuid interface{}) *MockClient_IsTaskInProgress_Call {
+	return &MockClient_IsTaskInProgress_Call{Call: _e.mock.On("IsTaskInProgress", ctx, uuid)}
+}
+
+func (_c *MockClient_IsTaskInProgress_Call) Run(run func(ctx context.Context, uuid string)) *MockClient_IsTaskInProgress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_IsTaskInProgress_Call) Return(_a0 bool, _a1 error) *MockClient_IsTaskInProgress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_IsTaskInProgress_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockClient_IsTaskInProgress_Call {
 	_c.Call.Return(run)
 	return _c
 }

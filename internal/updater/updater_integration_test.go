@@ -8,19 +8,21 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/manager"
+	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
-	dependencytrackMock "github.com/nais/v13s/mocks/github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
-// TODO: add tests for VulnerabilitySummary upserted too
 func TestUpdater(t *testing.T) {
 	ctx := context.Background()
 
@@ -96,6 +98,12 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		insertWorkloads(ctx, t, db, projectNames)
+		_, err = pool.Exec(ctx, `
+    		UPDATE images
+    		SET metadata = '{}', ready_for_resync_at = NOW()
+    		WHERE state = 'initialized'`)
+		require.NoError(t, err)
+
 		err = u.ResyncImageVulnerabilities(updaterCtx)
 		assert.NoError(t, err)
 
@@ -136,6 +144,12 @@ func TestUpdater(t *testing.T) {
 		assert.NoError(t, err)
 
 		insertWorkloads(ctx, t, db, projectNames)
+		_, err = pool.Exec(ctx, `
+    		UPDATE images
+    		SET metadata = '{}', ready_for_resync_at = NOW()
+    		WHERE state = 'initialized'`)
+		require.NoError(t, err)
+
 		_, err = pool.Exec(
 			ctx,
 			"UPDATE images SET state = $1 WHERE state = $2;",
@@ -357,6 +371,57 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateResync, image.State)
+	})
+
+	t.Run("images ready for resync after SBOM upload", func(t *testing.T) {
+		ctx = context.Background()
+
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageTag := "v1"
+
+		err = db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// Set ReadyForResyncAt to 5 minutes ago
+		readyAt := time.Now().Add(-manager.FinalizeAttestationScheduledForResyncMinutes)
+		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateResync,
+			ReadyForResyncAt: pgtype.Timestamptz{
+				Time:  readyAt,
+				Valid: true,
+			},
+		})
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State)
+		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
+
+		u = updater.NewUpdater(
+			pool,
+			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			updateSchedule,
+			nil,
+			logrus.NewEntry(logrus.StandardLogger()),
+		)
+
+		images, err := db.GetImagesScheduledForSync(ctx)
+		assert.NoError(t, err)
+
+		// Check that the image is selected for resync
+		assert.Len(t, images, 1)
+		assert.Equal(t, imageName, images[0].Name)
+		assert.Equal(t, imageTag, images[0].Tag)
 	})
 }
 
