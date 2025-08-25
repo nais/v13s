@@ -14,6 +14,9 @@ tidy:
 test:
 	go test -cover ./...
 
+integration_test:
+	go test -count=1 ./... -tags integration_test -run TestUpdater
+
 test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
