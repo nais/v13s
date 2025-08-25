@@ -68,7 +68,7 @@ jobs:
         run: |-
           yq e '.image.tag = "${{ steps.build-push-sign.outputs.version }}"' -i ./charts/values.yaml
 
-      - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # ratchet:azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # ratchet:azure/setup-helm@v4
         name: "Setup Helm"
         with:
           version: "v3.15.1"
