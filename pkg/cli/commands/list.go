@@ -56,9 +56,53 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 						return listSummaries(ctx, cmd, c, opts)
 					},
 				},
+				{
+					Name:  "critical",
+					Usage: "list workloads that have had critical vulnerabilities since a given time",
+					Flags: append(flag.CommonFlags(opts, "limit", "order")),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return ListCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
+					},
+				},
 			},
 		},
 	}
+}
+
+func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+	opts := flag.ParseOptions(cmd, o)
+	start := time.Now()
+	resp, err := c.ListCriticalVulnerabilitiesSince(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("Workload", "CVE", "Severity", "Became Critical At")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, n := range resp.GetNodes() {
+		var becameCritical string
+		if n.Vulnerability.BecameCriticalAt != nil {
+			t := n.Vulnerability.BecameCriticalAt.AsTime()
+			becameCritical = t.Format(time.RFC3339)
+		} else {
+			becameCritical = "-" // or "N/A" if nil
+		}
+		tbl.AddRow(
+			n.WorkloadRef.Name,
+			n.Vulnerability.LastSeverity,
+			n.Vulnerability.Cve.Id,
+			becameCritical,
+		)
+	}
+
+	tbl.Print()
+	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
+
+	return nil
 }
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {

@@ -158,6 +158,51 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 	return &i, err
 }
 
+const getWorkloadVulnerability = `-- name: GetWorkloadVulnerability :one
+SELECT workload_id,
+       package,
+       cve_id,
+       last_severity,
+       first_seen,
+       became_critical_at,
+       updated_at
+FROM workload_vulnerabilities
+WHERE workload_id = $1
+  AND package = $2
+  AND cve_id = $3
+`
+
+type GetWorkloadVulnerabilityParams struct {
+	WorkloadID pgtype.UUID
+	Package    string
+	CveID      string
+}
+
+type GetWorkloadVulnerabilityRow struct {
+	WorkloadID       pgtype.UUID
+	Package          string
+	CveID            string
+	LastSeverity     int32
+	FirstSeen        pgtype.Timestamptz
+	BecameCriticalAt pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+func (q *Queries) GetWorkloadVulnerability(ctx context.Context, arg GetWorkloadVulnerabilityParams) (*GetWorkloadVulnerabilityRow, error) {
+	row := q.db.QueryRow(ctx, getWorkloadVulnerability, arg.WorkloadID, arg.Package, arg.CveID)
+	var i GetWorkloadVulnerabilityRow
+	err := row.Scan(
+		&i.WorkloadID,
+		&i.Package,
+		&i.CveID,
+		&i.LastSeverity,
+		&i.FirstSeen,
+		&i.BecameCriticalAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const initializeWorkload = `-- name: InitializeWorkload :one
 INSERT INTO workloads(name,
                       workload_type,
@@ -249,11 +294,11 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 }
 
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads
 WHERE image_name = $1
   AND image_tag = $2
-ORDER BY (name, cluster, updated_at) DESC
+ORDER BY name DESC, cluster DESC, updated_at DESC
 `
 
 type ListWorkloadsByImageParams struct {
@@ -261,15 +306,27 @@ type ListWorkloadsByImageParams struct {
 	ImageTag  string
 }
 
-func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error) {
+type ListWorkloadsByImageRow struct {
+	ID           pgtype.UUID
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error) {
 	rows, err := q.db.Query(ctx, listWorkloadsByImage, arg.ImageName, arg.ImageTag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*Workload{}
+	items := []*ListWorkloadsByImageRow{}
 	for rows.Next() {
-		var i Workload
+		var i ListWorkloadsByImageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -280,7 +337,6 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 			&i.ImageTag,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.State,
 		); err != nil {
 			return nil, err
 		}

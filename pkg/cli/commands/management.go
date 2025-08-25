@@ -102,13 +102,6 @@ func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) 
 		return fmt.Errorf("failed to trigger sync: %w", err)
 	}
 
-			"no workloads found or affected for cluster: %s, namespace: %s, workload: %s",
-			parseString(opts.Cluster),
-			parseString(opts.Namespace),
-			parseString(opts.Workload),
-		)
-	}
-
 	var headers []any
 	var row []string
 
@@ -121,13 +114,6 @@ func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) 
 	t.AddRow(row...)
 	t.Print()
 	return nil
-}
-
-func parseString(s string) string {
-	if s == "" {
-		return "<none>"
-	}
-	return s
 }
 
 func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {

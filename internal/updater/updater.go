@@ -257,6 +257,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	summaries := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
+	workloadVulnz := make([]sql.BatchUpsertWorkloadVulnerabilitiesParams, 0)
 
 	for _, i := range batch {
 		cves = append(cves, i.ToCveSqlParams()...)
@@ -267,6 +268,9 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 			Name:  i.ImageName,
 			Tag:   i.ImageTag,
 		})
+		for _, wv := range i.ToWorkloadVulnerabilitiesSqlParams() {
+			workloadVulnz = append(workloadVulnz, wv)
+		}
 	}
 
 	start := time.Now()
@@ -336,5 +340,25 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 			"num_errors": errors,
 		}).Infof("upserted batch of image states (updated)")
 	}
+
+	if len(workloadVulnz) > 0 {
+		start = time.Now()
+		errors = 0
+		u.querier.BatchUpsertWorkloadVulnerabilities(ctx, workloadVulnz).Exec(func(i int, err error) {
+			if err != nil {
+				u.log.WithError(err).Debug("failed to batch upsert workload vulnerabilities")
+				batchErr = err
+				errors++
+				errs = append(errs, err)
+			}
+		})
+		upserted = len(workloadVulnz) - errors
+		u.log.WithError(batchErr).WithFields(logrus.Fields{
+			"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
+			"num_rows":   upserted,
+			"num_errors": errors,
+		}).Infof("upserted batch of workload vulnerabilities")
+	}
+
 	return errs
 }

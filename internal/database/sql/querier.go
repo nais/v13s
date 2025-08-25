@@ -14,6 +14,7 @@ type Querier interface {
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
+	BatchUpsertWorkloadVulnerabilities(ctx context.Context, arg []BatchUpsertWorkloadVulnerabilitiesParams) *BatchUpsertWorkloadVulnerabilitiesBatchResults
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
@@ -34,6 +35,7 @@ type Querier interface {
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
+	GetWorkloadVulnerability(ctx context.Context, arg GetWorkloadVulnerabilityParams) (*GetWorkloadVulnerabilityRow, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
 	ListCriticalVulnerabilitiesSince(ctx context.Context, arg ListCriticalVulnerabilitiesSinceParams) ([]*ListCriticalVulnerabilitiesSinceRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
@@ -47,7 +49,7 @@ type Querier interface {
 	ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)
 	ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
-	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error)
+	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)

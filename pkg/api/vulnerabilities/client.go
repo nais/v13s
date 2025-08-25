@@ -14,7 +14,7 @@ type Client interface {
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
-	ListVulnerabilitiesSinceCritical(ctx context.Context, opts ...Option) (*ListCriticalVulnerabilitiesSinceResponse, error)
+	ListCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListCriticalVulnerabilitiesSinceResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
@@ -94,7 +94,7 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 	}, o.CallOptions...)
 }
 
-func (c *client) ListVulnerabilitiesSinceCritical(ctx context.Context, opts ...Option) (*ListCriticalVulnerabilitiesSinceResponse, error) {
+func (c *client) ListCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListCriticalVulnerabilitiesSinceResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListCriticalVulnerabilitiesSince(ctx, &ListCriticalVulnerabilitiesSinceRequest{
 		Filter:            o.Filter,

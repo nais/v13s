@@ -385,58 +385,59 @@ WHERE v.image_name = @image_name
 ;
 
 -- name: ListCriticalVulnerabilitiesSince :many
-SELECT v.id,
-       w.name                         AS workload_name,
-       w.workload_type,
-       w.namespace,
-       w.cluster,
-       v.image_name,
-       v.image_tag,
-       v.latest_version,
-       v.package,
-       v.cve_id,
-       v.created_at,
-       v.updated_at,
-       v.became_critical_at,
-       COALESCE(v.became_critical_at, v.created_at) AS critical_since,
-       v.last_severity,
-       c.cve_title,
-       c.cve_desc,
-       c.cve_link,
-       c.severity AS severity,
-       c.created_at AS cve_created_at,
-       c.updated_at AS cve_updated_at,
-       COALESCE(sv.suppressed, FALSE) AS suppressed,
-       sv.reason,
-       sv.reason_text,
-       sv.suppressed_by,
-       sv.updated_at as suppressed_at
-FROM vulnerabilities v
+SELECT
+    v.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    v.package,
+    v.cve_id,
+    v.first_seen,
+    v.updated_at,
+    v.became_critical_at,
+    COALESCE(v.became_critical_at, v.first_seen) AS critical_since,
+    v.last_severity,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity AS severity,
+    c.created_at AS cve_created_at,
+    c.updated_at AS cve_updated_at,
+    COALESCE(sv.suppressed, FALSE) AS suppressed,
+    sv.reason,
+    sv.reason_text,
+    sv.suppressed_by,
+    sv.updated_at AS suppressed_at
+FROM workload_vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
-         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         JOIN workloads w ON v.workload_id = w.id
          LEFT JOIN suppressed_vulnerabilities sv
-                   ON v.image_name = sv.image_name
-                       AND v.package = sv.package
+                   ON v.package = sv.package
                        AND v.cve_id = sv.cve_id
-WHERE (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
-  AND (CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+                       AND w.image_name = sv.image_name
+WHERE (v.last_severity = 0) -- only critical
+  AND (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w . cluster = sqlc . narg ( 'cluster' ) : : TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w . namespace = sqlc . narg ( 'namespace' ) : : TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w . workload_type = sqlc . narg ( 'workload_type' ) : : TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w . name = sqlc . narg ( 'workload_name' ) : : TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN w . image_name = sqlc . narg ( 'image_name' ) : : TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-  AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
-     OR COALESCE(v.became_critical_at, v.created_at) > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
-ORDER BY
-    CASE WHEN sqlc.narg('order_by') = 'became_critical_at_asc' THEN COALESCE(v.became_critical_at, v.created_at) END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'became_critical_at_desc' THEN COALESCE(v.became_critical_at, v.created_at) END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
-    v.id ASC
-LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+  AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL OR COALESCE(v.became_critical_at, v.first_seen) > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
+ORDER BY CASE
+             WHEN sqlc.narg('order_by') = 'became_critical_at_asc' THEN COALESCE(v.became_critical_at, v.first_seen) END
+    ASC,
+         CASE
+             WHEN sqlc.narg('order_by') = 'became_critical_at_desc'
+                 THEN COALESCE(v.became_critical_at, v.first_seen) END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN c.severity END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
+         v.id ASC LIMIT sqlc.arg('limit')
+OFFSET sqlc.arg('offset');

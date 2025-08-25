@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
@@ -341,6 +342,85 @@ func (b *BatchUpsertVulnerabilitySummaryBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *BatchUpsertVulnerabilitySummaryBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const batchUpsertWorkloadVulnerabilities = `-- name: BatchUpsertWorkloadVulnerabilities :batchexec
+INSERT INTO workload_vulnerabilities(workload_id,
+                                     package,
+                                     cve_id,
+                                     last_severity,
+                                     first_seen,
+                                     became_critical_at)
+VALUES ($1,
+        $2,
+        $3,
+        $4,
+        NOW(),
+        CASE
+            WHEN $4 = 0 THEN NOW() -- new critical vulnerability
+            ELSE NULL -- non-critical
+            END) ON CONFLICT (workload_id, package, cve_id) DO
+UPDATE
+    SET
+        last_severity = EXCLUDED.last_severity,
+    updated_at = NOW(),
+    first_seen = COALESCE (workload_vulnerabilities.first_seen, EXCLUDED.first_seen),
+    became_critical_at = CASE
+    WHEN workload_vulnerabilities.became_critical_at IS NULL AND EXCLUDED.last_severity = 0
+    THEN COALESCE (workload_vulnerabilities.first_seen, NOW()) -- set to first_seen if already critical
+    WHEN workload_vulnerabilities.became_critical_at IS NOT NULL AND EXCLUDED.last_severity = 0
+    THEN LEAST(workload_vulnerabilities.became_critical_at, COALESCE (workload_vulnerabilities.first_seen, NOW()))
+    ELSE workload_vulnerabilities.became_critical_at
+END
+`
+
+type BatchUpsertWorkloadVulnerabilitiesBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BatchUpsertWorkloadVulnerabilitiesParams struct {
+	WorkloadID   pgtype.UUID
+	Package      string
+	CveID        string
+	LastSeverity int32
+}
+
+func (q *Queries) BatchUpsertWorkloadVulnerabilities(ctx context.Context, arg []BatchUpsertWorkloadVulnerabilitiesParams) *BatchUpsertWorkloadVulnerabilitiesBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.WorkloadID,
+			a.Package,
+			a.CveID,
+			a.LastSeverity,
+		}
+		batch.Queue(batchUpsertWorkloadVulnerabilities, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BatchUpsertWorkloadVulnerabilitiesBatchResults{br, len(arg), false}
+}
+
+func (b *BatchUpsertWorkloadVulnerabilitiesBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BatchUpsertWorkloadVulnerabilitiesBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }
