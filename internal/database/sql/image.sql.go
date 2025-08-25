@@ -90,66 +90,6 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 	return items, nil
 }
 
-const listImagesWithWorkloadsByState = `-- name: ListImagesWithWorkloadsByState :many
-SELECT
-    i.name AS image_name,
-    i.tag AS image_tag,
-    w.name AS workload_name,
-    w.cluster AS workload_cluster,
-    w.namespace AS workload_namespace,
-    w.workload_type AS workload_type
-FROM images i
-         JOIN workloads w
-              ON w.image_name = i.name
-                  AND w.image_tag = i.tag
-WHERE i.state = $1::image_state
-  AND ($2::TEXT IS NULL OR i.name = $2::TEXT)
-  AND ($3::TEXT IS NULL OR i.tag = $3::TEXT)
-ORDER BY i.updated_at, w.name
-`
-
-type ListImagesWithWorkloadsByStateParams struct {
-	State ImageState
-	Name  *string
-	Tag   *string
-}
-
-type ListImagesWithWorkloadsByStateRow struct {
-	ImageName         string
-	ImageTag          string
-	WorkloadName      string
-	WorkloadCluster   string
-	WorkloadNamespace string
-	WorkloadType      string
-}
-
-func (q *Queries) ListImagesWithWorkloadsByState(ctx context.Context, arg ListImagesWithWorkloadsByStateParams) ([]*ListImagesWithWorkloadsByStateRow, error) {
-	rows, err := q.db.Query(ctx, listImagesWithWorkloadsByState, arg.State, arg.Name, arg.Tag)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*ListImagesWithWorkloadsByStateRow{}
-	for rows.Next() {
-		var i ListImagesWithWorkloadsByStateRow
-		if err := rows.Scan(
-			&i.ImageName,
-			&i.ImageTag,
-			&i.WorkloadName,
-			&i.WorkloadCluster,
-			&i.WorkloadNamespace,
-			&i.WorkloadType,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listUnusedImages = `-- name: ListUnusedImages :many
 SELECT name, tag
 FROM images

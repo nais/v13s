@@ -1517,65 +1517,6 @@ func (_c *MockQuerier_ListCriticalVulnerabilitiesSince_Call) RunAndReturn(run fu
 	return _c
 }
 
-// ListImagesWithWorkloadsByState provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) ListImagesWithWorkloadsByState(ctx context.Context, arg sql.ListImagesWithWorkloadsByStateParams) ([]*sql.ListImagesWithWorkloadsByStateRow, error) {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListImagesWithWorkloadsByState")
-	}
-
-	var r0 []*sql.ListImagesWithWorkloadsByStateRow
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagesWithWorkloadsByStateParams) ([]*sql.ListImagesWithWorkloadsByStateRow, error)); ok {
-		return rf(ctx, arg)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagesWithWorkloadsByStateParams) []*sql.ListImagesWithWorkloadsByStateRow); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*sql.ListImagesWithWorkloadsByStateRow)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, sql.ListImagesWithWorkloadsByStateParams) error); ok {
-		r1 = rf(ctx, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_ListImagesWithWorkloadsByState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListImagesWithWorkloadsByState'
-type MockQuerier_ListImagesWithWorkloadsByState_Call struct {
-	*mock.Call
-}
-
-// ListImagesWithWorkloadsByState is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg sql.ListImagesWithWorkloadsByStateParams
-func (_e *MockQuerier_Expecter) ListImagesWithWorkloadsByState(ctx interface{}, arg interface{}) *MockQuerier_ListImagesWithWorkloadsByState_Call {
-	return &MockQuerier_ListImagesWithWorkloadsByState_Call{Call: _e.mock.On("ListImagesWithWorkloadsByState", ctx, arg)}
-}
-
-func (_c *MockQuerier_ListImagesWithWorkloadsByState_Call) Run(run func(ctx context.Context, arg sql.ListImagesWithWorkloadsByStateParams)) *MockQuerier_ListImagesWithWorkloadsByState_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(sql.ListImagesWithWorkloadsByStateParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_ListImagesWithWorkloadsByState_Call) Return(_a0 []*sql.ListImagesWithWorkloadsByStateRow, _a1 error) *MockQuerier_ListImagesWithWorkloadsByState_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_ListImagesWithWorkloadsByState_Call) RunAndReturn(run func(context.Context, sql.ListImagesWithWorkloadsByStateParams) ([]*sql.ListImagesWithWorkloadsByStateRow, error)) *MockQuerier_ListImagesWithWorkloadsByState_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListJobsForWorkload provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListJobsForWorkload(ctx context.Context, arg sql.ListJobsForWorkloadParams) ([]*sql.ListJobsForWorkloadRow, error) {
 	ret := _m.Called(ctx, arg)
