@@ -11,8 +11,13 @@ tidy:
 	@echo "Running go mod tidy for all modules..."
 	find . -name go.mod -execdir go mod tidy \;
 
+test-all:  test test-integration
+
 test:
 	go test -cover ./...
+
+test-integration:
+	go test -count=1 ./... -tags integration_test -run TestUpdater
 
 test-coverage:
 	go test -coverprofile=coverage.out ./...

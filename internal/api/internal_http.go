@@ -81,7 +81,7 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 	return wg.Wait()
 }
 
-func riverUI(ctx context.Context, dbUrl string) *riverui.Server {
+func riverUI(ctx context.Context, dbUrl string) *riverui.Handler {
 	pool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		logrus.Errorf("%v", err)
@@ -99,13 +99,12 @@ func riverUI(ctx context.Context, dbUrl string) *riverui.Server {
 		return nil
 	}
 
-	opts := &riverui.ServerOpts{
-		Client: riverClient,
-		DB:     pool,
-		Logger: logger,
-		Prefix: "/riverui", // mount the UI and its APIs under /riverui
+	opts := &riverui.HandlerOpts{
+		Endpoints: riverui.NewEndpoints(riverClient, nil),
+		Logger:    logger,
+		Prefix:    "/riverui", // mount the UI and its APIs under /riverui
 	}
-	server, err := riverui.NewServer(opts)
+	server, err := riverui.NewHandler(opts)
 	if err != nil {
 		logrus.Errorf("%v", err)
 		return nil

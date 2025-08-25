@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	KindUploadAttestation = "upload_attestation"
+	KindUploadAttestation            = "upload_attestation"
+	UploadAttestationByPeriodMinutes = 2 * time.Minute
 )
 
 type UploadAttestationJob struct {
@@ -37,7 +38,7 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 		Queue: KindUploadAttestation,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
+			ByPeriod: UploadAttestationByPeriodMinutes,
 		},
 		MaxAttempts: 4,
 	}
@@ -63,9 +64,66 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
+
+	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
+		ImageName:  imageName,
+		ImageTag:   imageTag,
+		SourceType: u.source.Name(),
+	})
+
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("failed to check source ref: %w", err)
+	}
+
+	if err == nil {
+		// sourceRef exists → check if the project actually exists
+		exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
+		if err != nil {
+			return fmt.Errorf("failed to verify project existence: %w", err)
+		}
+		if exists {
+			recordOutput(ctx, JobStatusSourceRefExists)
+			return nil
+		}
+
+		// project does not exist → delete stale sourceRef
+		if err := u.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+			ImageName:  imageName,
+			ImageTag:   imageTag,
+			SourceType: u.source.Name(),
+		}); err != nil {
+			return fmt.Errorf("failed to delete stale sourceRef: %w", err)
+		}
+		logrus.WithFields(logrus.Fields{
+			"image": imageName,
+			"tag":   imageTag,
+		}).Warn("deleted stale sourceRef; will attempt to create new project")
+	}
+
 	att, err := attestation.Decompress(job.Args.Attestation)
 	if err != nil {
 		return fmt.Errorf("failed to decompress attestation: %w", err)
+	}
+
+	// Upload attestation and create new sourceRef
+	uploadRes, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to upload attestation to source")
+		return handleJobErr(err)
+	}
+
+	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+		SourceID: pgtype.UUID{
+			Bytes: uploadRes.AttestationId,
+			Valid: true,
+		},
+		ImageName:  imageName,
+		ImageTag:   imageTag,
+		SourceType: u.source.Name(),
+	})
+	if err != nil {
+		return err
 	}
 
 	err = u.db.UpdateImage(ctx, sql.UpdateImageParams{
@@ -74,56 +132,19 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		Metadata: att.Metadata,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update image metadata: %w", err)
+		return fmt.Errorf("failed to set ReadyForResyncAt: %w", err)
 	}
 
-	// TODO: handle concurrency locking
-	_, err = u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
-		ImageName:  imageName,
-		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+	// enqueue finalize job
+	err = u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+		ProcessToken: uploadRes.ProcessToken,
 	})
-	if err == nil {
-		recordOutput(ctx, JobStatusSourceRefExists)
-	}
-
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			id, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
-			if err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, "failed to upload attestation to source")
-				return handleJobErr(err)
-			}
-
-			err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
-				SourceID: pgtype.UUID{
-					Bytes: id,
-					Valid: true,
-				},
-				ImageName:  imageName,
-				ImageTag:   imageTag,
-				SourceType: u.source.Name(),
-			})
-			if err != nil {
-				return err
-			}
-			recordOutput(ctx, JobStatusAttestationUploaded)
-		}
+		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
 	}
 
-	rows, err := u.db.ListUnusedImages(ctx, &imageName)
-	if err != nil {
-		return err
-	}
-	for _, row := range rows {
-		err = u.jobClient.AddJob(ctx, &RemoveFromSourceJob{
-			ImageName: row.Name,
-			ImageTag:  row.Tag,
-		})
-		if err != nil {
-			return err
-		}
-	}
+	recordOutput(ctx, JobStatusAttestationUploaded)
 	return nil
 }

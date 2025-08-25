@@ -19,13 +19,16 @@ SELECT * FROM images WHERE name = @name AND tag = @tag;
 -- name: GetImagesScheduledForSync :many
 SELECT *
 FROM images
-WHERE state IN ('initialized', 'resync')
+WHERE ready_for_resync_at IS NOT NULL
+  AND ready_for_resync_at <= NOW()
+  AND state IN ('initialized', 'resync')
 ORDER BY updated_at DESC;
 
 -- name: UpdateImageState :exec
 UPDATE images
 SET
     state = @state,
+    ready_for_resync_at = @ready_for_resync_at,
     updated_at = NOW()
 WHERE name = @name AND tag = @tag
 ;
@@ -38,7 +41,7 @@ SET
 WHERE name = @name AND tag = @tag
 ;
 
--- name: MarkImagesAsUntracked :exec
+-- name: MarkImagesAsUntracked :execrows
 UPDATE images
 SET
     state = 'untracked',
@@ -47,7 +50,7 @@ WHERE state = ANY(@included_states::image_state[])
     AND updated_at < @threshold_time
 ;
 
--- name: MarkUnusedImages :exec
+-- name: MarkUnusedImages :execrows
 UPDATE images
 SET state      = 'unused',
     updated_at = NOW()

@@ -58,10 +58,12 @@ WITH updated AS (
 UPDATE workloads
 SET state      = @state,
     updated_at = NOW()
-WHERE (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
-  AND (sqlc.narg('namespace')::TEXT IS NULL OR namespace = sqlc.narg('namespace')::TEXT)
-  AND (sqlc.narg('workload_type')::TEXT IS NULL OR workload_type = sqlc.narg('workload_type')::TEXT)
-  AND (sqlc.narg('workload_name')::TEXT IS NULL OR name = sqlc.narg('workload_name')::TEXT)
+WHERE (
+    (sqlc.narg('cluster')::TEXT IS NOT NULL AND cluster = sqlc.narg('cluster')::TEXT)
+        OR (sqlc.narg('namespace')::TEXT IS NOT NULL AND namespace = sqlc.narg('namespace')::TEXT)
+        OR (sqlc.narg('workload_type')::TEXT IS NOT NULL AND workload_type = sqlc.narg('workload_type')::TEXT)
+        OR (sqlc.narg('workload_name')::TEXT IS NOT NULL AND name = sqlc.narg('workload_name')::TEXT)
+    )
   AND state = @old_state
     RETURNING *
 )
@@ -118,14 +120,57 @@ VALUES (@name,
 
 
 -- name: ListWorkloadsByImage :many
-SELECT *
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads
 WHERE image_name = @image_name
   AND image_tag = @image_tag
-ORDER BY (name, cluster, updated_at) DESC;
+ORDER BY name DESC, cluster DESC, updated_at DESC;
 
 -- name: ListWorkloadsByCluster :many
 SELECT *
 FROM workloads
 WHERE cluster = @cluster
 ORDER BY (name, namespace, cluster, updated_at) DESC;
+
+
+-- name: GetWorkloadVulnerability :one
+SELECT workload_id,
+       package,
+       cve_id,
+       last_severity,
+       first_seen,
+       became_critical_at,
+       updated_at
+FROM workload_vulnerabilities
+WHERE workload_id = $1
+  AND package = $2
+  AND cve_id = $3;
+
+-- name: BatchUpsertWorkloadVulnerabilities :batchexec
+INSERT INTO workload_vulnerabilities(workload_id,
+                                     package,
+                                     cve_id,
+                                     last_severity,
+                                     first_seen,
+                                     became_critical_at)
+VALUES (@workload_id,
+        @package,
+        @cve_id,
+        @last_severity,
+        NOW(),
+        CASE
+            WHEN @last_severity = 0 THEN NOW() -- new critical vulnerability
+            ELSE NULL -- non-critical
+            END) ON CONFLICT (workload_id, package, cve_id) DO
+UPDATE
+    SET
+        last_severity = EXCLUDED.last_severity,
+    updated_at = NOW(),
+    first_seen = COALESCE (workload_vulnerabilities.first_seen, EXCLUDED.first_seen),
+    became_critical_at = CASE
+    WHEN workload_vulnerabilities.became_critical_at IS NULL AND EXCLUDED.last_severity = 0
+    THEN COALESCE (workload_vulnerabilities.first_seen, NOW()) -- set to first_seen if already critical
+    WHEN workload_vulnerabilities.became_critical_at IS NOT NULL AND EXCLUDED.last_severity = 0
+    THEN LEAST(workload_vulnerabilities.became_critical_at, COALESCE (workload_vulnerabilities.first_seen, NOW()))
+    ELSE workload_vulnerabilities.became_critical_at
+END;

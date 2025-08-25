@@ -8,7 +8,6 @@ option go_package = "./pkg/api/vulnerabilities/management";
 
 service Management{
   rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
-  rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
   rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
   rpc GetWorkloadJobs(GetWorkloadJobsRequest) returns (GetWorkloadJobsResponse);
   rpc Resync(ResyncRequest) returns (ResyncResponse);
@@ -29,20 +28,6 @@ message Metadata {
 }
 
 message RegisterWorkloadResponse {}
-
-message TriggerSyncRequest {
-  string cluster = 1;
-  string namespace = 2;
-  string workload = 3;
-  string workload_type = 4;
-}
-message TriggerSyncResponse {
-  string cluster = 1;
-  string namespace = 2;
-  string workload = 3;
-  repeated string updated_workloads = 4; // List of workloads that were updated
-  bool success = 5; // Indicates if the sync was triggered successfully
-}
 
 message GetWorkloadStatusRequest {
   optional string cluster = 1;

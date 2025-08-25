@@ -27,10 +27,11 @@ func TestMarkImagesAsUnused(t *testing.T) {
 	t.Run("image used by workload should not be marked as unused", func(t *testing.T) {
 		createTestdata(t, db, "testimage1", "v1", true)
 
-		err = db.MarkUnusedImages(ctx,
+		affectedRows, err := db.MarkUnusedImages(ctx,
 			sql.MarkUnusedImagesParams{
 				ThresholdTime: pgtype.Timestamptz{
-					Time: time.Now().Add(-updater.MarkAsUntrackedAge),
+					Time:  time.Now().Add(-updater.ImageMarkAge),
+					Valid: true,
 				},
 				ExcludedStates: []sql.ImageState{
 					sql.ImageStateResync,
@@ -43,6 +44,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 			Tag:  "v1",
 		})
 		assert.NoError(t, err)
+		assert.Equal(t, int64(0), affectedRows)
 		assert.NotEqual(t, sql.ImageStateUnused, image.State)
 	})
 
@@ -62,10 +64,11 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		err = db.MarkUnusedImages(ctx,
+		affectedRows, err := db.MarkUnusedImages(ctx,
 			sql.MarkUnusedImagesParams{
 				ThresholdTime: pgtype.Timestamptz{
-					Time: time.Now().Add(-updater.MarkAsUntrackedAge),
+					Time:  time.Now().Add(-updater.ImageMarkAge),
+					Valid: true,
 				},
 				ExcludedStates: []sql.ImageState{
 					sql.ImageStateResync,
@@ -79,6 +82,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 			Tag:  "v1",
 		})
 		assert.NoError(t, err)
+		assert.Equal(t, int64(0), affectedRows)
 		assert.NotEqual(t, sql.ImageStateUnused, image.State)
 	})
 
@@ -91,7 +95,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		err = db.MarkUnusedImages(ctx,
+		affectedRows, err := db.MarkUnusedImages(ctx,
 			sql.MarkUnusedImagesParams{
 				ThresholdTime: pgtype.Timestamptz{
 					Time:  time.Now().Add(1 * time.Minute),
@@ -109,6 +113,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
+		assert.Equal(t, int64(1), affectedRows)
 		assert.Equal(t, sql.ImageStateUnused, image.State)
 	})
 

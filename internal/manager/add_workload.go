@@ -60,7 +60,7 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			recordOutput(ctx, JobStatusSkipped)
+			recordOutput(ctx, JobStatusInitializeWorkloadSkipped)
 			a.log.WithField("workload", workload).Debug("workload already initialized, skipping")
 			return nil
 		}

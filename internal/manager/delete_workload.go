@@ -49,7 +49,7 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			recordOutput(ctx, JobStatusSkipped)
+			recordOutput(ctx, JobStatusSourceRefDeleteSkipped)
 			return nil
 		}
 		return err
