@@ -656,7 +656,7 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 	})
 }
 
-func TestServer_ListVulnerabilitiesSinceCritical(t *testing.T) {
+func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
 		namespaces:            []string{"namespace-1"},
@@ -698,55 +698,55 @@ func TestServer_ListVulnerabilitiesSinceCritical(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "workload-1",
+		WorkloadType: "app",
+		Namespace:    "namespace-1",
+		Cluster:      "cluster-1",
+	})
+	assert.NoError(t, err)
+
 	// Step 1: Insert vulnerabilities with non-critical severity
 	mediumSeverity := int32(2)
-	initialVulns := []sql.BatchUpsertVulnerabilitiesParams{
+	initialVulns := []sql.BatchUpsertWorkloadVulnerabilitiesParams{
 		{
-			ImageName:     "image-1",
-			ImageTag:      "v1.0",
-			Package:       "pkg-1",
-			CveID:         "CVE-2023-1234",
-			Source:        "test-source",
-			LatestVersion: "1.0.1",
-			LastSeverity:  &mediumSeverity,
+			WorkloadID:   w.ID,
+			Package:      "pkg-1",
+			CveID:        "CVE-2023-1234",
+			LastSeverity: mediumSeverity,
 		},
 		{
-			ImageName:     "image-1",
-			ImageTag:      "v1.0",
-			Package:       "pkg-2",
-			CveID:         "CVE-2023-5678",
-			Source:        "test-source",
-			LatestVersion: "1.0.1",
-			LastSeverity:  &mediumSeverity,
+			WorkloadID:   w.ID,
+			Package:      "pkg-2",
+			CveID:        "CVE-2023-5678",
+			LastSeverity: mediumSeverity,
 		},
 	}
-	db.BatchUpsertVulnerabilities(ctx, initialVulns).Exec(func(i int, err error) {
+	db.BatchUpsertWorkloadVulnerabilities(ctx, initialVulns).Exec(func(i int, err error) {
 		assert.NoError(t, err)
 	})
 
 	// Step 2: Upsert vulnerabilities with critical severity → triggers became_critical_at
 	criticalSeverity := int32(0)
-	criticalVulns := []sql.BatchUpsertVulnerabilitiesParams{
+	criticalVulns := []sql.BatchUpsertWorkloadVulnerabilitiesParams{
 		{
-			ImageName:     "image-1",
-			ImageTag:      "v1.0",
-			Package:       "pkg-1",
-			CveID:         "CVE-2023-1234",
-			Source:        "test-source",
-			LatestVersion: "1.0.1",
-			LastSeverity:  &criticalSeverity,
+			WorkloadID:   w.ID,
+			Package:      "pkg-1",
+			CveID:        "CVE-2023-1234",
+			LastSeverity: criticalSeverity,
 		},
 		{
-			ImageName:     "image-1",
-			ImageTag:      "v1.0",
-			Package:       "pkg-2",
-			CveID:         "CVE-2023-5678",
-			Source:        "test-source",
-			LatestVersion: "1.0.1",
-			LastSeverity:  &criticalSeverity,
+			WorkloadID:   w.ID,
+			Package:      "pkg-2",
+			CveID:        "CVE-2023-5678",
+			LastSeverity: criticalSeverity,
 		},
 	}
-	db.BatchUpsertVulnerabilities(ctx, criticalVulns).Exec(func(i int, err error) {
+	//db.BatchUpsertVulnerabilities(ctx, criticalVulns).Exec(func(i int, err error) {
+	//	assert.NoError(t, err)
+	//})
+
+	db.BatchUpsertWorkloadVulnerabilities(ctx, criticalVulns).Exec(func(i int, err error) {
 		assert.NoError(t, err)
 	})
 
@@ -757,7 +757,7 @@ func TestServer_ListVulnerabilitiesSinceCritical(t *testing.T) {
 
 	now := time.Now().UTC()
 	t.Run("list vulnerabilities became critical in the last 7 days", func(t *testing.T) {
-		resp, err := client.ListVulnerabilitiesSinceCritical(
+		resp, err := client.ListCriticalVulnerabilitiesSince(
 			ctx,
 			vulnerabilities.Since(now.Add(-7*24*time.Hour)),
 		)
@@ -766,7 +766,7 @@ func TestServer_ListVulnerabilitiesSinceCritical(t *testing.T) {
 	})
 
 	t.Run("list vulnerabilities became critical in the last 1 day", func(t *testing.T) {
-		resp, err := client.ListVulnerabilitiesSinceCritical(
+		resp, err := client.ListCriticalVulnerabilitiesSince(
 			ctx,
 			vulnerabilities.Since(now.Add(-24*time.Hour)),
 		)

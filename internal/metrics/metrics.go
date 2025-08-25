@@ -37,7 +37,7 @@ func NewMeterProvider(ctx context.Context, c ...promClient.Collector) (*metric.M
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
 	}
-	for _, collector := range c {
+	for _, collector := range append(c, Collectors()...) {
 		if err := reg.Register(collector); err != nil {
 			return nil, nil, nil, fmt.Errorf("registering collector: %w", err)
 		}

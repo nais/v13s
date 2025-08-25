@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"golang.org/x/sync/errgroup"
 )
@@ -16,7 +17,14 @@ type ImageVulnerabilityData struct {
 	Source          string
 	Vulnerabilities []*sources.Vulnerability
 	Summary         *sources.VulnerabilitySummary
-	WorkloadIDs     []pgtype.UUID
+	Workloads       []Workload
+}
+
+type Workload struct {
+	ID        pgtype.UUID
+	Namespace string
+	Name      string
+	Type      string
 }
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
@@ -98,9 +106,14 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 	if err != nil {
 		return nil, err
 	}
-	workloadIDs := make([]pgtype.UUID, 0, len(workloads))
+	ws := make([]Workload, 0, len(workloads))
 	for _, w := range workloads {
-		workloadIDs = append(workloadIDs, w.ID)
+		ws = append(ws, Workload{
+			ID:        w.ID,
+			Namespace: w.Namespace,
+			Name:      w.Name,
+			Type:      w.WorkloadType,
+		})
 	}
 
 	return &ImageVulnerabilityData{
@@ -109,7 +122,7 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		Source:          source.Name(),
 		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
-		WorkloadIDs:     workloadIDs,
+		Workloads:       ws,
 	}, nil
 }
 
@@ -161,6 +174,10 @@ func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVul
 }
 
 func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpsertVulnerabilitySummaryParams {
+	for _, w := range i.Workloads {
+		metrics.WorkloadRiskScore.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(i.Summary.RiskScore))
+	}
+
 	return sql.BatchUpsertVulnerabilitySummaryParams{
 		ImageName:  i.ImageName,
 		ImageTag:   i.ImageTag,
@@ -174,17 +191,22 @@ func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpse
 }
 
 func (i *ImageVulnerabilityData) ToWorkloadVulnerabilitiesSqlParams() []sql.BatchUpsertWorkloadVulnerabilitiesParams {
-	params := make([]sql.BatchUpsertWorkloadVulnerabilitiesParams, 0, len(i.WorkloadIDs)*len(i.Vulnerabilities))
-
-	for _, wID := range i.WorkloadIDs {
+	params := make([]sql.BatchUpsertWorkloadVulnerabilitiesParams, 0)
+	for _, w := range i.Workloads {
+		critical := 0
 		for _, v := range i.Vulnerabilities {
+			severity := v.Cve.Severity.ToInt32()
 			params = append(params, sql.BatchUpsertWorkloadVulnerabilitiesParams{
-				WorkloadID:   wID,
+				WorkloadID:   w.ID,
 				Package:      v.Package,
 				CveID:        v.Cve.Id,
-				LastSeverity: v.Cve.Severity.ToInt32(),
+				LastSeverity: severity,
 			})
+			if severity == 0 {
+				critical++
+			}
 		}
+		metrics.WorkloadCriticalCount.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(critical))
 	}
 
 	return params

@@ -268,9 +268,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 			Name:  i.ImageName,
 			Tag:   i.ImageTag,
 		})
-		for _, wv := range i.ToWorkloadVulnerabilitiesSqlParams() {
-			workloadVulnz = append(workloadVulnz, wv)
-		}
+		workloadVulnz = append(workloadVulnz, i.ToWorkloadVulnerabilitiesSqlParams()...)
 	}
 
 	start := time.Now()
