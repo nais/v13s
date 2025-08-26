@@ -428,45 +428,45 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		initialVuln := sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     "my-image",
-			ImageTag:      "v1.0.0",
-			Package:       "mypkg",
-			CveID:         "CVE-2023-1234",
-			Source:        "test-source",
-			LatestVersion: "1.2.3",
-			LastSeverity:  &initialSeverity,
+		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+		})
+		assert.NoError(t, err)
+
+		initialVuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
+			WorkloadID: w.ID,
+			Package:    "mypkg",
+			CveID:      "CVE-2023-1234",
 		}
-		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{initialVuln}).Exec(func(i int, err error) {
+		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{initialVuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Update severity to critical
 		newSeverity := int32(0)
-		updatedVuln := sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     "my-image",
-			ImageTag:      "v1.0.0",
-			Package:       "mypkg",
-			CveID:         "CVE-2023-1234",
-			Source:        "test-source",
-			LatestVersion: "1.2.3",
-			LastSeverity:  &newSeverity,
+		updatedVuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
+			WorkloadID:   w.ID,
+			Package:      "mypkg",
+			CveID:        "CVE-2023-1234",
+			LastSeverity: newSeverity,
 		}
-		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{updatedVuln}).Exec(func(i int, err error) {
+		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{updatedVuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Fetch after updating
-		afterUpdate, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
-			ImageName: "my-image",
-			ImageTag:  "v1.0.0",
-			Package:   "mypkg",
-			CveID:     "CVE-2023-1234",
+		afterUpdate, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
+			WorkloadID: w.ID,
+			Package:    "mypkg",
+			CveID:      "CVE-2023-1234",
 		})
 		assert.NoError(t, err)
 
 		// Verify severity updated
-		assert.Equal(t, int32(0), *afterUpdate.LastSeverity)
+		assert.Equal(t, int32(0), afterUpdate.LastSeverity)
 
 		// Verify became_critical_at updated to NOW (allowing a 2-second tolerance)
 		assert.WithinDuration(t, time.Now(), afterUpdate.BecameCriticalAt.Time, 2*time.Second)
@@ -484,39 +484,43 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 		}}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
-		// Insert with NULL severity
-		var nilSeverity *int32
-		vuln := sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     "my-image",
-			ImageTag:      "v1.0.0",
-			Package:       "mypkg",
-			CveID:         "CVE-2023-5678",
-			Source:        "test-source",
-			LatestVersion: "1.2.3",
-			LastSeverity:  nilSeverity,
+
+		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+		})
+		assert.NoError(t, err)
+
+		var nilSeverity int32
+		vuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
+			WorkloadID:   w.ID,
+			Package:      "mypkg",
+			CveID:        "CVE-2023-5678",
+			LastSeverity: nilSeverity,
 		}
-		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Upsert with critical severity
 		criticalSeverity := int32(0)
-		vuln.LastSeverity = &criticalSeverity
-		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		vuln.LastSeverity = criticalSeverity
+		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
-		result, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
-			ImageName: "my-image",
-			ImageTag:  "v1.0.0",
-			Package:   "mypkg",
-			CveID:     "CVE-2023-5678",
+		result, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
+			WorkloadID: w.ID,
+			Package:    "mypkg",
+			CveID:      "CVE-2023-5678",
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, criticalSeverity, *result.LastSeverity)
-		assert.Equal(t, result.CreatedAt.Time, result.BecameCriticalAt.Time,
-			"became_critical_at should initialize to created_at for first-time critical")
+		assert.Equal(t, criticalSeverity, result.LastSeverity)
+		assert.Equal(t, result.FirstSeen.Time, result.BecameCriticalAt.Time,
+			"first_seen and became_critical_at should be equal when first-time critical")
 	})
 
 	t.Run("Already critical → critical", func(t *testing.T) {
@@ -539,42 +543,45 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+		})
+		assert.NoError(t, err)
+
 		// Insert with critical severity
-		vuln := sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     "my-image",
-			ImageTag:      "v1.0.2",
-			Package:       "mypkg",
-			CveID:         "CVE-2023-9012",
-			Source:        "test-source",
-			LatestVersion: "1.2.3",
-			LastSeverity:  &criticalSeverity,
+		vuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
+			WorkloadID:   w.ID,
+			Package:      "mypkg",
+			CveID:        "CVE-2023-9012",
+			LastSeverity: criticalSeverity,
 		}
-		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Fetch to get became_critical_at
-		beforeUpdate, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
-			ImageName: "my-image",
-			ImageTag:  "v1.0.2",
-			Package:   "mypkg",
-			CveID:     "CVE-2023-9012",
+		beforeUpdate, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
+			WorkloadID: w.ID,
+			Package:    "mypkg",
+			CveID:      "CVE-2023-9012",
 		})
 		assert.NoError(t, err)
 		originalCriticalAt := beforeUpdate.BecameCriticalAt
 		fmt.Println("BecameCriticalAt:", beforeUpdate.BecameCriticalAt)
 
 		// Re-upsert with same critical severity
-		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Fetch again
-		afterUpdate, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
-			ImageName: "my-image",
-			ImageTag:  "v1.0.2",
-			Package:   "mypkg",
-			CveID:     "CVE-2023-9012",
+		afterUpdate, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
+			WorkloadID: w.ID,
+			Package:    "mypkg",
+			CveID:      "CVE-2023-9012",
 		})
 		assert.NoError(t, err)
 

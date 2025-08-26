@@ -164,7 +164,7 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 }
 
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, became_critical_at
+SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at
 FROM vulnerabilities
 WHERE image_name = $1
   AND image_tag = $2
@@ -197,8 +197,6 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.LatestVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.LastSeverity,
-		&i.BecameCriticalAt,
 	)
 	return &i, err
 }
@@ -291,7 +289,7 @@ SELECT
     w.image_name,
     v.package,
     v.cve_id,
-    v.first_seen AS created_at,
+    v.first_seen,
     v.updated_at,
     v.became_critical_at,
     COALESCE(v.became_critical_at, v.first_seen) AS critical_since,
@@ -322,19 +320,22 @@ WHERE (v.last_severity = 0) -- only critical
   AND (CASE WHEN $5::TEXT IS NOT NULL THEN w.image_name = $5::TEXT ELSE TRUE END)
   AND ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
   AND ($7::TIMESTAMP WITH TIME ZONE IS NULL OR COALESCE(v.became_critical_at, v.first_seen) > $7::TIMESTAMP WITH TIME ZONE)
-ORDER BY
-    CASE WHEN $8 = 'became_critical_at_asc' THEN COALESCE(v.became_critical_at, v.first_seen) END ASC,
-    CASE WHEN $8 = 'became_critical_at_desc' THEN COALESCE(v.became_critical_at, v.first_seen) END DESC,
-    CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $8 = 'namespace_asc' THEN w.namespace END ASC,
-    CASE WHEN $8 = 'namespace_desc' THEN w.namespace END DESC,
-    CASE WHEN $8 = 'cluster_asc' THEN w.cluster END ASC,
-    CASE WHEN $8 = 'cluster_desc' THEN w.cluster END DESC,
-    v.id ASC
-    LIMIT $10 OFFSET $9
+ORDER BY CASE
+             WHEN $8 = 'became_critical_at_asc' THEN COALESCE(v.became_critical_at, v.first_seen) END
+    ASC,
+         CASE
+             WHEN $8 = 'became_critical_at_desc'
+                 THEN COALESCE(v.became_critical_at, v.first_seen) END DESC,
+         CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
+         CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
+         CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
+         CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
+         CASE WHEN $8 = 'namespace_asc' THEN w.namespace END ASC,
+         CASE WHEN $8 = 'namespace_desc' THEN w.namespace END DESC,
+         CASE WHEN $8 = 'cluster_asc' THEN w.cluster END ASC,
+         CASE WHEN $8 = 'cluster_desc' THEN w.cluster END DESC,
+         v.id ASC LIMIT $10
+OFFSET $9
 `
 
 type ListCriticalVulnerabilitiesSinceParams struct {
@@ -359,7 +360,7 @@ type ListCriticalVulnerabilitiesSinceRow struct {
 	ImageName        string
 	Package          string
 	CveID            string
-	CreatedAt        pgtype.Timestamptz
+	FirstSeen        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	BecameCriticalAt pgtype.Timestamptz
 	CriticalSince    pgtype.Timestamptz
@@ -406,7 +407,7 @@ func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg List
 			&i.ImageName,
 			&i.Package,
 			&i.CveID,
-			&i.CreatedAt,
+			&i.FirstSeen,
 			&i.UpdatedAt,
 			&i.BecameCriticalAt,
 			&i.CriticalSince,
@@ -434,7 +435,7 @@ func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg List
 }
 
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
-SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.became_critical_at, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
+SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
@@ -471,37 +472,35 @@ type ListSuppressedVulnerabilitiesParams struct {
 }
 
 type ListSuppressedVulnerabilitiesRow struct {
-	ID               pgtype.UUID
-	ImageName        string
-	Package          string
-	CveID            string
-	Suppressed       bool
-	Reason           VulnerabilitySuppressReason
-	ReasonText       string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	SuppressedBy     string
-	ID_2             pgtype.UUID
-	ImageName_2      string
-	ImageTag         string
-	Package_2        string
-	CveID_2          string
-	Source           string
-	LatestVersion    string
-	CreatedAt_2      pgtype.Timestamptz
-	UpdatedAt_2      pgtype.Timestamptz
-	LastSeverity     *int32
-	BecameCriticalAt pgtype.Timestamptz
-	CveID_3          string
-	CveTitle         string
-	CveDesc          string
-	CveLink          string
-	Severity         int32
-	Refs             typeext.MapStringString
-	CreatedAt_3      pgtype.Timestamptz
-	UpdatedAt_3      pgtype.Timestamptz
-	Cluster          string
-	Namespace        string
+	ID            pgtype.UUID
+	ImageName     string
+	Package       string
+	CveID         string
+	Suppressed    bool
+	Reason        VulnerabilitySuppressReason
+	ReasonText    string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	SuppressedBy  string
+	ID_2          pgtype.UUID
+	ImageName_2   string
+	ImageTag      string
+	Package_2     string
+	CveID_2       string
+	Source        string
+	LatestVersion string
+	CreatedAt_2   pgtype.Timestamptz
+	UpdatedAt_2   pgtype.Timestamptz
+	CveID_3       string
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	Refs          typeext.MapStringString
+	CreatedAt_3   pgtype.Timestamptz
+	UpdatedAt_3   pgtype.Timestamptz
+	Cluster       string
+	Namespace     string
 }
 
 func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error) {
@@ -541,8 +540,6 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.LatestVersion,
 			&i.CreatedAt_2,
 			&i.UpdatedAt_2,
-			&i.LastSeverity,
-			&i.BecameCriticalAt,
 			&i.CveID_3,
 			&i.CveTitle,
 			&i.CveDesc,
@@ -615,9 +612,6 @@ SELECT v.id,
        v.cve_id,
        v.created_at,
        v.updated_at,
-       v.became_critical_at,
-       COALESCE(v.became_critical_at, v.created_at) AS critical_since,
-       v.last_severity,
        c.cve_title,
        c.cve_desc,
        c.cve_link,
@@ -680,32 +674,29 @@ type ListVulnerabilitiesParams struct {
 }
 
 type ListVulnerabilitiesRow struct {
-	ID               pgtype.UUID
-	WorkloadName     string
-	WorkloadType     string
-	Namespace        string
-	Cluster          string
-	ImageName        string
-	ImageTag         string
-	LatestVersion    string
-	Package          string
-	CveID            string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	BecameCriticalAt pgtype.Timestamptz
-	CriticalSince    pgtype.Timestamptz
-	LastSeverity     *int32
-	CveTitle         string
-	CveDesc          string
-	CveLink          string
-	Severity         int32
-	CveCreatedAt     pgtype.Timestamptz
-	CveUpdatedAt     pgtype.Timestamptz
-	Suppressed       bool
-	Reason           NullVulnerabilitySuppressReason
-	ReasonText       *string
-	SuppressedBy     *string
-	SuppressedAt     pgtype.Timestamptz
+	ID            pgtype.UUID
+	WorkloadName  string
+	WorkloadType  string
+	Namespace     string
+	Cluster       string
+	ImageName     string
+	ImageTag      string
+	LatestVersion string
+	Package       string
+	CveID         string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	CveCreatedAt  pgtype.Timestamptz
+	CveUpdatedAt  pgtype.Timestamptz
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -741,9 +732,6 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.CveID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.BecameCriticalAt,
-			&i.CriticalSince,
-			&i.LastSeverity,
 			&i.CveTitle,
 			&i.CveDesc,
 			&i.CveLink,
@@ -776,8 +764,6 @@ WITH image_vulnerabilities AS (
           v.latest_version,
           v.created_at,
           v.updated_at,
-          v.became_critical_at,
-          v.last_severity,
           c.cve_title,
           c.cve_desc,
           c.cve_link,
@@ -816,8 +802,6 @@ SELECT id,
        cve_refs as cve_refs,
        cve_created_at,
        cve_updated_at,
-       became_critical_at,
-       last_severity,
        COALESCE(suppressed, FALSE) AS suppressed,
        reason,
        reason_text,
@@ -854,29 +838,27 @@ type ListVulnerabilitiesForImageParams struct {
 }
 
 type ListVulnerabilitiesForImageRow struct {
-	ID               pgtype.UUID
-	ImageName        string
-	ImageTag         string
-	Package          string
-	CveID            string
-	LatestVersion    string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	CveTitle         string
-	CveDesc          string
-	CveLink          string
-	Severity         int32
-	CveRefs          []byte
-	CveCreatedAt     pgtype.Timestamptz
-	CveUpdatedAt     pgtype.Timestamptz
-	BecameCriticalAt pgtype.Timestamptz
-	LastSeverity     *int32
-	Suppressed       bool
-	Reason           NullVulnerabilitySuppressReason
-	ReasonText       *string
-	SuppressedBy     *string
-	SuppressedAt     pgtype.Timestamptz
-	TotalCount       int64
+	ID            pgtype.UUID
+	ImageName     string
+	ImageTag      string
+	Package       string
+	CveID         string
+	LatestVersion string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	CveRefs       []byte
+	CveCreatedAt  pgtype.Timestamptz
+	CveUpdatedAt  pgtype.Timestamptz
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
+	TotalCount    int64
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
@@ -911,8 +893,6 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.CveRefs,
 			&i.CveCreatedAt,
 			&i.CveUpdatedAt,
-			&i.BecameCriticalAt,
-			&i.LastSeverity,
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,

@@ -80,7 +80,7 @@ func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c v
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	tbl := table.New("Workload", "CVE", "Severity", "Became Critical At")
+	tbl := table.New("Workload", "CVE", "Last Severity", "Became Critical At")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, n := range resp.GetNodes() {
@@ -93,8 +93,8 @@ func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c v
 		}
 		tbl.AddRow(
 			n.WorkloadRef.Name,
-			n.Vulnerability.LastSeverity,
 			n.Vulnerability.Cve.Id,
+			*n.Vulnerability.LastSeverity,
 			becameCritical,
 		)
 	}

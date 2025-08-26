@@ -159,7 +159,6 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVulnerabilitiesParams {
 	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	for _, v := range i.Vulnerabilities {
-		lastSeverity := v.Cve.Severity.ToInt32()
 		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
 			ImageName:     i.ImageName,
 			ImageTag:      i.ImageTag,
@@ -167,7 +166,6 @@ func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVul
 			CveID:         v.Cve.Id,
 			Source:        i.Source,
 			LatestVersion: v.LatestVersion,
-			LastSeverity:  &lastSeverity,
 		})
 	}
 	return params
