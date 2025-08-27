@@ -687,7 +687,6 @@ func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		var image, pkg string
@@ -706,10 +705,11 @@ func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 		}
 
 		_, err := pool.Exec(ctx, `
-        UPDATE vulnerabilities
-        SET became_critical_at = $1
-        WHERE image_name = $2 AND package = $3
-    `, newTime, image, pkg)
+    UPDATE vulnerabilities
+    SET became_critical_at = $1,
+        last_severity = 0
+    WHERE image_name = $2 AND package = $3
+`, newTime, image, pkg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -719,9 +719,16 @@ func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 	defer rows.Close()
 
 	t.Run("last 7 days", func(t *testing.T) {
-		resp, err := client.ListCriticalVulnerabilitiesSince(ctx, vulnerabilities.Since(now.Add(-7*24*time.Hour)))
+		resp, err := client.ListCriticalVulnerabilitiesSince(ctx,
+			vulnerabilities.Since(now.Add(-7*24*time.Hour)),
+			vulnerabilities.Order(vulnerabilities.OrderByBecameCriticalAt, vulnerabilities.Direction_DESC),
+		)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(resp.Nodes))
+		t0 := resp.Nodes[0].Vulnerability.CriticalSince.AsTime().UTC()
+		t1 := resp.Nodes[1].Vulnerability.CriticalSince.AsTime().UTC()
+		assert.True(t, t0.After(t1))
+		assert.True(t, t1.Before(t0))
 	})
 
 	r, err = client.ListVulnerabilities(ctx)
@@ -735,7 +742,7 @@ func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 			fmt.Printf("Resp Node: pkg=%s became_critical_at=%v severity=%d\n",
 				n.Vulnerability.Package,
 				n.Vulnerability.CriticalSince.AsTime(),
-				n.Vulnerability.LastSeverity,
+				*n.Vulnerability.LastSeverity,
 			)
 		}
 

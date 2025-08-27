@@ -164,15 +164,14 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 }
 
 const getEarliestCriticalAtForVulnerability = `-- name: GetEarliestCriticalAtForVulnerability :one
-SELECT COALESCE(
-               (SELECT MIN(became_critical_at)
-                FROM vulnerabilities
-                WHERE image_name = $1
-                  AND package = $2
-                  AND cve_id = $3
-                  AND became_critical_at IS NOT NULL),
-               NOW()
+SELECT LEAST(
+               COALESCE(MIN(v.became_critical_at), 'infinity'::timestamptz),
+               COALESCE(MIN(v.created_at), 'infinity'::timestamptz)
        ) AS earliest_critical_at
+FROM vulnerabilities v
+WHERE v.image_name = $1
+  AND v.package = $2
+  AND v.cve_id = $3
 `
 
 type GetEarliestCriticalAtForVulnerabilityParams struct {
@@ -340,7 +339,8 @@ FROM vulnerabilities v
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
                        AND v.cve_id = sv.cve_id
-WHERE (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
+WHERE v.became_critical_at IS NOT NULL AND v.last_severity = 0
+  AND (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
   AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.workload_type = $3::TEXT ELSE TRUE END)
   AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.name = $4::TEXT ELSE TRUE END)
@@ -349,16 +349,15 @@ WHERE (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
   AND ($8::timestamptz IS NULL OR v.became_critical_at > $8::timestamptz)
 ORDER BY
-    CASE WHEN $9 = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN $9 = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN $9 = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN $9 = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN $9 = 'namespace_asc' THEN w.namespace END ASC,
-    CASE WHEN $9 = 'namespace_desc' THEN w.namespace END DESC,
-    CASE WHEN $9 = 'cluster_asc' THEN w.cluster END ASC,
-    CASE WHEN $9 = 'cluster_desc' THEN w.cluster END DESC,
-    v.id ASC
-    LIMIT $11
+         CASE WHEN $9 = 'became_critical_at_desc' THEN v.became_critical_at END DESC,
+         CASE WHEN $9 = 'became_critical_at_asc' THEN v.became_critical_at END ASC,
+         CASE WHEN $9 = 'workload_asc' THEN w.name END ASC,
+         CASE WHEN $9 = 'workload_desc' THEN w.name END DESC,
+         CASE WHEN $9 = 'namespace_asc' THEN w.namespace END ASC,
+         CASE WHEN $9 = 'namespace_desc' THEN w.namespace END DESC,
+         CASE WHEN $9 = 'cluster_asc' THEN w.cluster END ASC,
+         CASE WHEN $9 = 'cluster_desc' THEN w.cluster END DESC,
+         v.id ASC LIMIT $11
 OFFSET $10
 `
 
@@ -404,7 +403,6 @@ type ListCriticalVulnerabilitiesSinceRow struct {
 	SuppressedAt     pgtype.Timestamptz
 }
 
-// WHERE v.last_severity = 0
 func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg ListCriticalVulnerabilitiesSinceParams) ([]*ListCriticalVulnerabilitiesSinceRow, error) {
 	rows, err := q.db.Query(ctx, listCriticalVulnerabilitiesSince,
 		arg.Cluster,

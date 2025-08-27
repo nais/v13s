@@ -61,15 +61,14 @@ SET
 END;
 
 -- name: GetEarliestCriticalAtForVulnerability :one
-SELECT COALESCE(
-               (SELECT MIN(became_critical_at)
-                FROM vulnerabilities
-                WHERE image_name = $1
-                  AND package = $2
-                  AND cve_id = $3
-                  AND became_critical_at IS NOT NULL),
-               NOW()
+SELECT LEAST(
+               COALESCE(MIN(v.became_critical_at), 'infinity'::timestamptz),
+               COALESCE(MIN(v.created_at), 'infinity'::timestamptz)
        ) AS earliest_critical_at
+FROM vulnerabilities v
+WHERE v.image_name = $1
+  AND v.package = $2
+  AND v.cve_id = $3
 ;
 
 -- name: GetCve :one
@@ -406,7 +405,7 @@ FROM vulnerabilities v
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
                        AND v.cve_id = sv.cve_id
-WHERE v.last_severity = 0
+WHERE v.became_critical_at IS NOT NULL AND v.last_severity = 0
   AND (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
@@ -416,14 +415,13 @@ WHERE v.last_severity = 0
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
   AND (sqlc.narg('since')::timestamptz IS NULL OR v.became_critical_at > sqlc.narg('since')::timestamptz)
 ORDER BY
-    CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN c.severity END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN c.severity END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
-    v.id ASC
-    LIMIT sqlc.arg('limit')
+         CASE WHEN sqlc.narg('order_by') = 'became_critical_at_desc' THEN v.became_critical_at END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'became_critical_at_asc' THEN v.became_critical_at END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
+         v.id ASC LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');

@@ -36,7 +36,6 @@ type Querier interface {
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
-	// WHERE v.last_severity = 0
 	ListCriticalVulnerabilitiesSince(ctx context.Context, arg ListCriticalVulnerabilitiesSinceParams) ([]*ListCriticalVulnerabilitiesSinceRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)

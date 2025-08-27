@@ -169,7 +169,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 }
 
 func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) (*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, error) {
-	// TODO: add input validation for request, especially for filter values
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -192,7 +191,7 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
 		IncludeSuppressed: request.IncludeSuppressed,
-		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByBecameCriticalAt),
 		Since:             since,
 		Limit:             limit,
 		Offset:            offset,
