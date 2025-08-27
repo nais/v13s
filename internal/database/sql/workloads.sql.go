@@ -158,51 +158,6 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 	return &i, err
 }
 
-const getWorkloadVulnerability = `-- name: GetWorkloadVulnerability :one
-SELECT workload_id,
-       package,
-       cve_id,
-       last_severity,
-       first_seen,
-       became_critical_at,
-       updated_at
-FROM workload_vulnerabilities
-WHERE workload_id = $1
-  AND package = $2
-  AND cve_id = $3
-`
-
-type GetWorkloadVulnerabilityParams struct {
-	WorkloadID pgtype.UUID
-	Package    string
-	CveID      string
-}
-
-type GetWorkloadVulnerabilityRow struct {
-	WorkloadID       pgtype.UUID
-	Package          string
-	CveID            string
-	LastSeverity     int32
-	FirstSeen        pgtype.Timestamptz
-	BecameCriticalAt pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-}
-
-func (q *Queries) GetWorkloadVulnerability(ctx context.Context, arg GetWorkloadVulnerabilityParams) (*GetWorkloadVulnerabilityRow, error) {
-	row := q.db.QueryRow(ctx, getWorkloadVulnerability, arg.WorkloadID, arg.Package, arg.CveID)
-	var i GetWorkloadVulnerabilityRow
-	err := row.Scan(
-		&i.WorkloadID,
-		&i.Package,
-		&i.CveID,
-		&i.LastSeverity,
-		&i.FirstSeen,
-		&i.BecameCriticalAt,
-		&i.UpdatedAt,
-	)
-	return &i, err
-}
-
 const initializeWorkload = `-- name: InitializeWorkload :one
 INSERT INTO workloads(name,
                       workload_type,

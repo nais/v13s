@@ -181,7 +181,7 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
-		since.Time = request.GetSince().AsTime()
+		since.Time = request.GetSince().AsTime().UTC()
 		since.Valid = true
 	}
 
@@ -221,10 +221,10 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
 				),
-				Created:          timestamppb.New(row.CriticalSince.Time),
-				LastUpdated:      timestamppb.New(row.UpdatedAt.Time),
-				LastSeverity:     &row.LastSeverity,
-				BecameCriticalAt: timestamppb.New(row.BecameCriticalAt.Time),
+				Created:       timestamppb.New(row.CreatedAt.Time),
+				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
+				CriticalSince: timestamppb.New(row.BecameCriticalAt.Time),
+				LastSeverity:  &row.LastSeverity,
 				Cve: &vulnerabilities.Cve{
 					Id:          row.CveID,
 					Title:       row.CveTitle,

@@ -154,22 +154,37 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 }
 
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
-INSERT INTO vulnerabilities(image_name,
-                            image_tag,
-                            package,
-                            cve_id,
-                            source,
-                            latest_version)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6)
-ON CONFLICT (image_name, image_tag, package, cve_id)
-DO UPDATE
-    SET latest_version = EXCLUDED.latest_version
-    WHERE vulnerabilities.latest_version IS DISTINCT FROM EXCLUDED.latest_version
+INSERT INTO vulnerabilities (
+    image_name,
+    image_tag,
+    package,
+    cve_id,
+    source,
+    latest_version,
+    last_severity,
+    became_critical_at
+)
+VALUES (
+           $1,
+           $2,
+           $3,
+           $4,
+           $5,
+           $6,
+           $7,
+           $8
+       ) ON CONFLICT (image_name, image_tag, package, cve_id) DO UPDATE
+SET
+    latest_version = EXCLUDED.latest_version,
+    updated_at = NOW(),
+    -- always update severity
+    last_severity = EXCLUDED.last_severity,
+    became_critical_at = CASE
+    WHEN EXCLUDED.became_critical_at IS NOT NULL THEN EXCLUDED.became_critical_at
+    WHEN vulnerabilities.became_critical_at IS NOT NULL THEN vulnerabilities.became_critical_at
+    WHEN EXCLUDED.last_severity = 0 THEN NOW()
+    ELSE NULL
+END
 `
 
 type BatchUpsertVulnerabilitiesBatchResults struct {
@@ -179,12 +194,14 @@ type BatchUpsertVulnerabilitiesBatchResults struct {
 }
 
 type BatchUpsertVulnerabilitiesParams struct {
-	ImageName     string
-	ImageTag      string
-	Package       string
-	CveID         string
-	Source        string
-	LatestVersion string
+	ImageName        string
+	ImageTag         string
+	Package          string
+	CveID            string
+	Source           string
+	LatestVersion    string
+	LastSeverity     int32
+	BecameCriticalAt pgtype.Timestamptz
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -197,6 +214,8 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.CveID,
 			a.Source,
 			a.LatestVersion,
+			a.LastSeverity,
+			a.BecameCriticalAt,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}
@@ -306,85 +325,6 @@ func (b *BatchUpsertVulnerabilitySummaryBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *BatchUpsertVulnerabilitySummaryBatchResults) Close() error {
-	b.closed = true
-	return b.br.Close()
-}
-
-const batchUpsertWorkloadVulnerabilities = `-- name: BatchUpsertWorkloadVulnerabilities :batchexec
-INSERT INTO workload_vulnerabilities(workload_id,
-                                     package,
-                                     cve_id,
-                                     last_severity,
-                                     first_seen,
-                                     became_critical_at)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        NOW(),
-        CASE
-            WHEN $4 = 0 THEN NOW() -- new critical vulnerability
-            ELSE NULL -- non-critical
-            END) ON CONFLICT (workload_id, package, cve_id) DO
-UPDATE
-    SET
-        last_severity = EXCLUDED.last_severity,
-    updated_at = NOW(),
-    first_seen = COALESCE (workload_vulnerabilities.first_seen, EXCLUDED.first_seen),
-    became_critical_at = CASE
-    WHEN workload_vulnerabilities.became_critical_at IS NULL AND EXCLUDED.last_severity = 0
-    THEN COALESCE (workload_vulnerabilities.first_seen, NOW()) -- set to first_seen if already critical
-    WHEN workload_vulnerabilities.became_critical_at IS NOT NULL AND EXCLUDED.last_severity = 0
-    THEN LEAST(workload_vulnerabilities.became_critical_at, COALESCE (workload_vulnerabilities.first_seen, NOW()))
-    ELSE workload_vulnerabilities.became_critical_at
-END
-`
-
-type BatchUpsertWorkloadVulnerabilitiesBatchResults struct {
-	br     pgx.BatchResults
-	tot    int
-	closed bool
-}
-
-type BatchUpsertWorkloadVulnerabilitiesParams struct {
-	WorkloadID   pgtype.UUID
-	Package      string
-	CveID        string
-	LastSeverity int32
-}
-
-func (q *Queries) BatchUpsertWorkloadVulnerabilities(ctx context.Context, arg []BatchUpsertWorkloadVulnerabilitiesParams) *BatchUpsertWorkloadVulnerabilitiesBatchResults {
-	batch := &pgx.Batch{}
-	for _, a := range arg {
-		vals := []interface{}{
-			a.WorkloadID,
-			a.Package,
-			a.CveID,
-			a.LastSeverity,
-		}
-		batch.Queue(batchUpsertWorkloadVulnerabilities, vals...)
-	}
-	br := q.db.SendBatch(ctx, batch)
-	return &BatchUpsertWorkloadVulnerabilitiesBatchResults{br, len(arg), false}
-}
-
-func (b *BatchUpsertWorkloadVulnerabilitiesBatchResults) Exec(f func(int, error)) {
-	defer b.br.Close()
-	for t := 0; t < b.tot; t++ {
-		if b.closed {
-			if f != nil {
-				f(t, ErrBatchAlreadyClosed)
-			}
-			continue
-		}
-		_, err := b.br.Exec()
-		if f != nil {
-			f(t, err)
-		}
-	}
-}
-
-func (b *BatchUpsertWorkloadVulnerabilitiesBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

@@ -80,13 +80,13 @@ func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c v
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	tbl := table.New("Workload", "CVE", "Last Severity", "Became Critical At")
+	tbl := table.New("Workload", "CVE", "Last Severity", "CriticalSince", "Created")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, n := range resp.GetNodes() {
 		var becameCritical string
-		if n.Vulnerability.BecameCriticalAt != nil {
-			t := n.Vulnerability.BecameCriticalAt.AsTime()
+		if n.Vulnerability.CriticalSince != nil {
+			t := n.Vulnerability.CriticalSince.AsTime()
 			becameCritical = t.Format(time.RFC3339)
 		} else {
 			becameCritical = "-" // or "N/A" if nil
@@ -96,6 +96,7 @@ func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c v
 			n.Vulnerability.Cve.Id,
 			*n.Vulnerability.LastSeverity,
 			becameCritical,
+			n.Vulnerability.Created.AsTime().Format(time.RFC3339),
 		)
 	}
 
@@ -319,7 +320,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetCve().GetSeverity(),
 					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
 					v.GetLastSeverity(),
-					timeSinceCreation(v.GetCreated().AsTime(), v.GetBecameCriticalAt().AsTime()),
+					timeSinceCreation(v.GetCreated().AsTime(), v.CriticalSince.AsTime()),
 					v.GetLatestVersion(),
 					suppressed,
 					timeSinceCreation(v.GetCreated().AsTime(), v.GetLastUpdated().AsTime()),

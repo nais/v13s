@@ -2,11 +2,11 @@ package updater
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"golang.org/x/sync/errgroup"
 )
@@ -141,6 +141,70 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	}
 }
 
+func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerabilityData) []sql.BatchUpsertVulnerabilitiesParams {
+	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+	for _, v := range i.Vulnerabilities {
+		severity := v.Cve.Severity.ToInt32()
+		becameCriticalAt, err := u.determineBecameCriticalAt(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		if err != nil {
+			u.log.Errorf("determine becameCriticalAt: %v", err)
+		}
+		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     i.ImageName,
+			ImageTag:      i.ImageTag,
+			Package:       v.Package,
+			CveID:         v.Cve.Id,
+			Source:        i.Source,
+			LatestVersion: v.LatestVersion,
+			LastSeverity:  severity,
+			BecameCriticalAt: pgtype.Timestamptz{
+				Time: func() time.Time {
+					if becameCriticalAt != nil {
+						return *becameCriticalAt
+					}
+					return time.Time{}
+				}(),
+				Valid: becameCriticalAt != nil,
+			},
+		})
+	}
+	return params
+}
+
+func (u *Updater) determineBecameCriticalAt(ctx context.Context, imageName, pkg, cveID string, lastSeverity int32) (*time.Time, error) {
+	if lastSeverity != 0 {
+		// Not critical → no timestamp
+		return nil, nil
+	}
+
+	// Query DB for earliest known critical timestamp for this vuln across all tags
+	earliest, err := u.querier.GetEarliestCriticalAtForVulnerability(ctx, sql.GetEarliestCriticalAtForVulnerabilityParams{
+		ImageName: imageName,
+		Package:   pkg,
+		CveID:     cveID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert interface{} result to *time.Time
+	switch t := earliest.(type) {
+	case time.Time:
+		u.log.Debugf("1 existing earliest critical at for %s:%s %s/%s: %s", imageName, pkg, cveID, t.Location(), t.String())
+		return &t, nil
+	case *time.Time:
+		u.log.Debugf("2 existing earliest critical at for %s:%s %s/%s: %s", imageName, pkg, cveID, t.Location(), t.String())
+		return t, nil
+	case nil:
+		u.log.Debugf("no existing earliest critical at for %s:%s %s", imageName, pkg, cveID)
+		// No previous critical timestamp → use NOW()
+		now := time.Now().UTC()
+		return &now, nil
+	default:
+		return nil, fmt.Errorf("unexpected type for earliest critical at: %T", t)
+	}
+}
+
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 	params := make([]sql.BatchUpsertCveParams, 0)
 	for _, v := range i.Vulnerabilities {
@@ -156,26 +220,7 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 	return params
 }
 
-func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVulnerabilitiesParams {
-	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-	for _, v := range i.Vulnerabilities {
-		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     i.ImageName,
-			ImageTag:      i.ImageTag,
-			Package:       v.Package,
-			CveID:         v.Cve.Id,
-			Source:        i.Source,
-			LatestVersion: v.LatestVersion,
-		})
-	}
-	return params
-}
-
 func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpsertVulnerabilitySummaryParams {
-	for _, w := range i.Workloads {
-		metrics.WorkloadRiskScore.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(i.Summary.RiskScore))
-	}
-
 	return sql.BatchUpsertVulnerabilitySummaryParams{
 		ImageName:  i.ImageName,
 		ImageTag:   i.ImageTag,
@@ -186,26 +231,4 @@ func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpse
 		Unassigned: i.Summary.Unassigned,
 		RiskScore:  i.Summary.RiskScore,
 	}
-}
-
-func (i *ImageVulnerabilityData) ToWorkloadVulnerabilitiesSqlParams() []sql.BatchUpsertWorkloadVulnerabilitiesParams {
-	params := make([]sql.BatchUpsertWorkloadVulnerabilitiesParams, 0)
-	for _, w := range i.Workloads {
-		critical := 0
-		for _, v := range i.Vulnerabilities {
-			severity := v.Cve.Severity.ToInt32()
-			params = append(params, sql.BatchUpsertWorkloadVulnerabilitiesParams{
-				WorkloadID:   w.ID,
-				Package:      v.Package,
-				CveID:        v.Cve.Id,
-				LastSeverity: severity,
-			})
-			if severity == 0 {
-				critical++
-			}
-		}
-		metrics.WorkloadCriticalCount.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(critical))
-	}
-
-	return params
 }

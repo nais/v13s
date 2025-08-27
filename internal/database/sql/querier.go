@@ -14,7 +14,6 @@ type Querier interface {
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
-	BatchUpsertWorkloadVulnerabilities(ctx context.Context, arg []BatchUpsertWorkloadVulnerabilitiesParams) *BatchUpsertWorkloadVulnerabilitiesBatchResults
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
@@ -25,6 +24,7 @@ type Querier interface {
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
 	GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
+	GetEarliestCriticalAtForVulnerability(ctx context.Context, arg GetEarliestCriticalAtForVulnerabilityParams) (interface{}, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
@@ -35,8 +35,8 @@ type Querier interface {
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
-	GetWorkloadVulnerability(ctx context.Context, arg GetWorkloadVulnerabilityParams) (*GetWorkloadVulnerabilityRow, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
+	// WHERE v.last_severity = 0
 	ListCriticalVulnerabilitiesSince(ctx context.Context, arg ListCriticalVulnerabilitiesSinceParams) ([]*ListCriticalVulnerabilitiesSinceRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)

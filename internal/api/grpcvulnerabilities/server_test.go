@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
@@ -35,7 +36,7 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		workloadsPerNamespace: 4,
 		vulnsPerWorkload:      4,
 	}
-	ctx, db, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerabilities for every cluster", func(t *testing.T) {
@@ -178,7 +179,7 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list vulnerabilities for a specific image", func(t *testing.T) {
@@ -199,7 +200,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
@@ -231,7 +232,7 @@ func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	// get vulnerabilities for workload-1
@@ -269,7 +270,7 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      1,
 	}
-	ctx, db, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	imageName := "image-cluster-1-namespace-1-workload-1"
@@ -346,7 +347,7 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      1,
 	}
-	ctx, db, _, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	// Insert a CVE with initial severity
@@ -404,7 +405,7 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      1,
 	}
-	ctx, db, _, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	// Create image
@@ -428,45 +429,46 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
-			Name:         "workload-1",
-			WorkloadType: "app",
-			Namespace:    "namespace-1",
-			Cluster:      "cluster-1",
-		})
-		assert.NoError(t, err)
-
-		initialVuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
-			WorkloadID: w.ID,
-			Package:    "mypkg",
-			CveID:      "CVE-2023-1234",
+		initialVuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:        "my-image",
+			ImageTag:         "v1.0.0",
+			Package:          "mypkg",
+			CveID:            "CVE-2023-1234",
+			Source:           "test-source",
+			LatestVersion:    "1.2.3",
+			LastSeverity:     2,
+			BecameCriticalAt: pgtype.Timestamptz{}, // Initially NULL
 		}
-		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{initialVuln}).Exec(func(i int, err error) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{initialVuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Update severity to critical
-		newSeverity := int32(0)
-		updatedVuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
-			WorkloadID:   w.ID,
-			Package:      "mypkg",
-			CveID:        "CVE-2023-1234",
-			LastSeverity: newSeverity,
+		updatedVuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     "my-image",
+			ImageTag:      "v1.0.0",
+			Package:       "mypkg",
+			CveID:         "CVE-2023-1234",
+			Source:        "test-source",
+			LatestVersion: "1.2.3",
+			LastSeverity:  0, // Critical severity
+			BecameCriticalAt: pgtype.Timestamptz{
+				Time:  time.Now(),
+				Valid: true,
+			},
 		}
-		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{updatedVuln}).Exec(func(i int, err error) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{updatedVuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Fetch after updating
-		afterUpdate, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
-			WorkloadID: w.ID,
-			Package:    "mypkg",
-			CveID:      "CVE-2023-1234",
+		afterUpdate, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.0",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-1234",
 		})
 		assert.NoError(t, err)
-
-		// Verify severity updated
-		assert.Equal(t, int32(0), afterUpdate.LastSeverity)
 
 		// Verify became_critical_at updated to NOW (allowing a 2-second tolerance)
 		assert.WithinDuration(t, time.Now(), afterUpdate.BecameCriticalAt.Time, 2*time.Second)
@@ -485,42 +487,34 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
-			Name:         "workload-1",
-			WorkloadType: "app",
-			Namespace:    "namespace-1",
-			Cluster:      "cluster-1",
-		})
-		assert.NoError(t, err)
-
-		var nilSeverity int32
-		vuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
-			WorkloadID:   w.ID,
-			Package:      "mypkg",
-			CveID:        "CVE-2023-5678",
-			LastSeverity: nilSeverity,
+		vuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     "my-image",
+			ImageTag:      "v1.0.0",
+			Package:       "mypkg",
+			CveID:         "CVE-2023-5678",
+			Source:        "test-source",
+			LatestVersion: "1.2.3",
+			LastSeverity:  initialSeverity,
 		}
-		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Upsert with critical severity
-		criticalSeverity := int32(0)
-		vuln.LastSeverity = criticalSeverity
-		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
-		result, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
-			WorkloadID: w.ID,
-			Package:    "mypkg",
-			CveID:      "CVE-2023-5678",
+		result, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.0",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-5678",
 		})
 		assert.NoError(t, err)
 
-		assert.Equal(t, criticalSeverity, result.LastSeverity)
-		assert.Equal(t, result.FirstSeen.Time, result.BecameCriticalAt.Time,
-			"first_seen and became_critical_at should be equal when first-time critical")
+		assert.Equal(t, int32(0), result.LastSeverity, "severity should be critical")
+		assert.WithinDuration(t, result.CreatedAt.Time, result.BecameCriticalAt.Time, time.Millisecond)
 	})
 
 	t.Run("Already critical → critical", func(t *testing.T) {
@@ -543,45 +537,47 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
-			Name:         "workload-1",
-			WorkloadType: "app",
-			Namespace:    "namespace-1",
-			Cluster:      "cluster-1",
-		})
-		assert.NoError(t, err)
-
 		// Insert with critical severity
-		vuln := sql.BatchUpsertWorkloadVulnerabilitiesParams{
-			WorkloadID:   w.ID,
-			Package:      "mypkg",
-			CveID:        "CVE-2023-9012",
-			LastSeverity: criticalSeverity,
+		vuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     "my-image",
+			ImageTag:      "v1.0.2",
+			Package:       "mypkg",
+			CveID:         "CVE-2023-9012",
+			Source:        "test-source",
+			LatestVersion: "1.2.3",
+			LastSeverity:  criticalSeverity,
+			BecameCriticalAt: pgtype.Timestamptz{
+				Time:  time.Now().Add(-1 * time.Hour), // Set to 1 hour ago
+				Valid: true,
+			},
 		}
-		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Fetch to get became_critical_at
-		beforeUpdate, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
-			WorkloadID: w.ID,
-			Package:    "mypkg",
-			CveID:      "CVE-2023-9012",
+		beforeUpdate, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.2",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-9012",
 		})
 		assert.NoError(t, err)
+
 		originalCriticalAt := beforeUpdate.BecameCriticalAt
 		fmt.Println("BecameCriticalAt:", beforeUpdate.BecameCriticalAt)
 
 		// Re-upsert with same critical severity
-		db.BatchUpsertWorkloadVulnerabilities(ctx, []sql.BatchUpsertWorkloadVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
 			assert.NoError(t, err)
 		})
 
 		// Fetch again
-		afterUpdate, err := db.GetWorkloadVulnerability(ctx, sql.GetWorkloadVulnerabilityParams{
-			WorkloadID: w.ID,
-			Package:    "mypkg",
-			CveID:      "CVE-2023-9012",
+		afterUpdate, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.2",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-9012",
 		})
 		assert.NoError(t, err)
 
@@ -598,7 +594,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		vulnsPerWorkload:      4,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for every cluster", func(t *testing.T) {
@@ -621,7 +617,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
@@ -645,7 +641,7 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	vuln, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
@@ -671,7 +667,7 @@ func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 		vulnsPerWorkload:      2,
 	}
 
-	ctx, db, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	// Insert image
@@ -682,107 +678,73 @@ func TestServer_ListCriticalVulnerabilitiesSince(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Insert CVEs
-	cves := []sql.BatchUpsertCveParams{
-		{
-			CveID:    "CVE-2023-1234",
-			CveTitle: "Test CVE 1",
-			CveDesc:  "Description for CVE-2023-1234",
-			CveLink:  "http://example.com/CVE-2023-1234",
-			Severity: 0, // Critical
-			Refs:     map[string]string{},
-		},
-		{
-			CveID:    "CVE-2023-5678",
-			CveTitle: "Test CVE 2",
-			CveDesc:  "Description for CVE-2023-5678",
-			CveLink:  "http://example.com/CVE-2023-5678",
-			Severity: 0, // Critical
-			Refs:     map[string]string{},
-		},
-	}
-	db.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
-		assert.NoError(t, err)
-	})
-
-	w, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
-		Name:         "workload-1",
-		WorkloadType: "app",
-		Namespace:    "namespace-1",
-		Cluster:      "cluster-1",
-	})
-	assert.NoError(t, err)
-
-	// Step 1: Insert vulnerabilities with non-critical severity
-	mediumSeverity := int32(2)
-	initialVulns := []sql.BatchUpsertWorkloadVulnerabilitiesParams{
-		{
-			WorkloadID:   w.ID,
-			Package:      "pkg-1",
-			CveID:        "CVE-2023-1234",
-			LastSeverity: mediumSeverity,
-		},
-		{
-			WorkloadID:   w.ID,
-			Package:      "pkg-2",
-			CveID:        "CVE-2023-5678",
-			LastSeverity: mediumSeverity,
-		},
-	}
-	db.BatchUpsertWorkloadVulnerabilities(ctx, initialVulns).Exec(func(i int, err error) {
-		assert.NoError(t, err)
-	})
-
-	// Step 2: Upsert vulnerabilities with critical severity → triggers became_critical_at
-	criticalSeverity := int32(0)
-	criticalVulns := []sql.BatchUpsertWorkloadVulnerabilitiesParams{
-		{
-			WorkloadID:   w.ID,
-			Package:      "pkg-1",
-			CveID:        "CVE-2023-1234",
-			LastSeverity: criticalSeverity,
-		},
-		{
-			WorkloadID:   w.ID,
-			Package:      "pkg-2",
-			CveID:        "CVE-2023-5678",
-			LastSeverity: criticalSeverity,
-		},
-	}
-	//db.BatchUpsertVulnerabilities(ctx, criticalVulns).Exec(func(i int, err error) {
-	//	assert.NoError(t, err)
-	//})
-
-	db.BatchUpsertWorkloadVulnerabilities(ctx, criticalVulns).Exec(func(i int, err error) {
-		assert.NoError(t, err)
-	})
-
-	// Fetch all vulnerabilities
+	now := time.Now()
 	r, err := client.ListVulnerabilities(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(r.Nodes))
 
-	now := time.Now().UTC()
-	t.Run("list vulnerabilities became critical in the last 7 days", func(t *testing.T) {
-		resp, err := client.ListCriticalVulnerabilitiesSince(
-			ctx,
-			vulnerabilities.Since(now.Add(-7*24*time.Hour)),
-		)
+	rows, err := pool.Query(ctx, "SELECT image_name, package FROM vulnerabilities")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var image, pkg string
+		if err := rows.Scan(&image, &pkg); err != nil {
+			t.Fatal(err)
+		}
+
+		var newTime time.Time
+		switch pkg {
+		case "package-CWE-1-1":
+			newTime = time.Now().Add(-12 * time.Hour) // 12 hours ago
+		case "package-CWE-1-2":
+			newTime = time.Now().Add(-48 * time.Hour) // 24 hours ago
+		default:
+			continue // skip anything else
+		}
+
+		_, err := pool.Exec(ctx, `
+        UPDATE vulnerabilities
+        SET became_critical_at = $1
+        WHERE image_name = $2 AND package = $3
+    `, newTime, image, pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Println("Updated:", image, pkg, "to", newTime)
+	}
+	defer rows.Close()
+
+	t.Run("last 7 days", func(t *testing.T) {
+		resp, err := client.ListCriticalVulnerabilitiesSince(ctx, vulnerabilities.Since(now.Add(-7*24*time.Hour)))
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resp.Nodes)) // Both vulnerabilities are recent
+		assert.Equal(t, 2, len(resp.Nodes))
 	})
 
-	t.Run("list vulnerabilities became critical in the last 1 day", func(t *testing.T) {
-		resp, err := client.ListCriticalVulnerabilitiesSince(
-			ctx,
-			vulnerabilities.Since(now.Add(-24*time.Hour)),
-		)
+	r, err = client.ListVulnerabilities(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Nodes))
+
+	t.Run("last 1 day", func(t *testing.T) {
+		resp, err := client.ListCriticalVulnerabilitiesSince(ctx, vulnerabilities.Since(now.Add(-24*time.Hour)))
+
+		for _, n := range resp.Nodes {
+			fmt.Printf("Resp Node: pkg=%s became_critical_at=%v severity=%d\n",
+				n.Vulnerability.Package,
+				n.Vulnerability.CriticalSince.AsTime(),
+				n.Vulnerability.LastSeverity,
+			)
+		}
+
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resp.Nodes)) // Still should match since just upserted
+		assert.Equal(t, 1, len(resp.Nodes)) // only 12h-old vuln
 	})
 }
 
-func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, vulnerabilities.Client, func()) {
+func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
 	db := sql.New(pool)
@@ -797,7 +759,7 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.
 	err = seedDb(t, db, workloads)
 	assert.NoError(t, err)
 
-	return ctx, db, client, func() {
+	return ctx, db, pool, client, func() {
 		cleanup()
 		pool.Close()
 	}
@@ -897,6 +859,11 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 				Package:       v.Package,
 				CveID:         v.CveID,
 				LatestVersion: "2",
+				LastSeverity:  cve.Severity,
+				BecameCriticalAt: pgtype.Timestamptz{
+					Time:  time.Now(),
+					Valid: true,
+				},
 			})
 			sumParams = append(sumParams, sql.BatchUpsertVulnerabilitySummaryParams{
 				ImageName:  v.ImageName,

@@ -271,7 +271,7 @@ message Vulnerability {
   optional Suppression suppression = 6;
   optional google.protobuf.Timestamp created = 7;
   optional google.protobuf.Timestamp last_updated = 8;
-  optional google.protobuf.Timestamp became_critical_at = 9;
+  optional google.protobuf.Timestamp critical_since = 9;
 }
 
 message Suppression {

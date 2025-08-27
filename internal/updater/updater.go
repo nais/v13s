@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
@@ -257,18 +258,21 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	summaries := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
-	workloadVulnz := make([]sql.BatchUpsertWorkloadVulnerabilitiesParams, 0)
 
 	for _, i := range batch {
 		cves = append(cves, i.ToCveSqlParams()...)
-		vulns = append(vulns, i.ToVulnerabilitySqlParams()...)
+		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
 		summaries = append(summaries, i.ToVulnerabilitySummarySqlParams())
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
 			State: sql.ImageStateUpdated,
 			Name:  i.ImageName,
 			Tag:   i.ImageTag,
 		})
-		workloadVulnz = append(workloadVulnz, i.ToWorkloadVulnerabilitiesSqlParams()...)
+
+		for _, w := range i.Workloads {
+			metrics.WorkloadRiskScore.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(i.Summary.RiskScore))
+			metrics.WorkloadCriticalCount.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(i.Summary.Critical))
+		}
 	}
 
 	start := time.Now()
@@ -338,25 +342,5 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 			"num_errors": errors,
 		}).Infof("upserted batch of image states (updated)")
 	}
-
-	if len(workloadVulnz) > 0 {
-		start = time.Now()
-		errors = 0
-		u.querier.BatchUpsertWorkloadVulnerabilities(ctx, workloadVulnz).Exec(func(i int, err error) {
-			if err != nil {
-				u.log.WithError(err).Debug("failed to batch upsert workload vulnerabilities")
-				batchErr = err
-				errors++
-				errs = append(errs, err)
-			}
-		})
-		upserted = len(workloadVulnz) - errors
-		u.log.WithError(batchErr).WithFields(logrus.Fields{
-			"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-			"num_rows":   upserted,
-			"num_errors": errors,
-		}).Infof("upserted batch of workload vulnerabilities")
-	}
-
 	return errs
 }

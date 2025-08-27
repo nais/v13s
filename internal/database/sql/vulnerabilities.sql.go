@@ -163,8 +163,33 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 	return &i, err
 }
 
+const getEarliestCriticalAtForVulnerability = `-- name: GetEarliestCriticalAtForVulnerability :one
+SELECT COALESCE(
+               (SELECT MIN(became_critical_at)
+                FROM vulnerabilities
+                WHERE image_name = $1
+                  AND package = $2
+                  AND cve_id = $3
+                  AND became_critical_at IS NOT NULL),
+               NOW()
+       ) AS earliest_critical_at
+`
+
+type GetEarliestCriticalAtForVulnerabilityParams struct {
+	ImageName string
+	Package   string
+	CveID     string
+}
+
+func (q *Queries) GetEarliestCriticalAtForVulnerability(ctx context.Context, arg GetEarliestCriticalAtForVulnerabilityParams) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getEarliestCriticalAtForVulnerability, arg.ImageName, arg.Package, arg.CveID)
+	var earliest_critical_at interface{}
+	err := row.Scan(&earliest_critical_at)
+	return earliest_critical_at, err
+}
+
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at
+SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, became_critical_at, last_severity
 FROM vulnerabilities
 WHERE image_name = $1
   AND image_tag = $2
@@ -197,6 +222,8 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.LatestVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BecameCriticalAt,
+		&i.LastSeverity,
 	)
 	return &i, err
 }
@@ -286,13 +313,14 @@ SELECT
     w.workload_type,
     w.namespace,
     w.cluster,
-    w.image_name,
+    v.image_name,
+    v.image_tag,
+    v.latest_version,
     v.package,
     v.cve_id,
-    v.first_seen,
+    v.created_at,
     v.updated_at,
     v.became_critical_at,
-    COALESCE(v.became_critical_at, v.first_seen) AS critical_since,
     v.last_severity,
     c.cve_title,
     c.cve_desc,
@@ -305,37 +333,33 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
-FROM workload_vulnerabilities v
+FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
-         JOIN workloads w ON v.workload_id = w.id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
          LEFT JOIN suppressed_vulnerabilities sv
-                   ON v.package = sv.package
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
                        AND v.cve_id = sv.cve_id
-                       AND w.image_name = sv.image_name
-WHERE (v.last_severity = 0) -- only critical
-  AND (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
+WHERE (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
   AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
   AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.workload_type = $3::TEXT ELSE TRUE END)
   AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.name = $4::TEXT ELSE TRUE END)
-  AND (CASE WHEN $5::TEXT IS NOT NULL THEN w.image_name = $5::TEXT ELSE TRUE END)
-  AND ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-  AND ($7::TIMESTAMP WITH TIME ZONE IS NULL OR COALESCE(v.became_critical_at, v.first_seen) > $7::TIMESTAMP WITH TIME ZONE)
-ORDER BY CASE
-             WHEN $8 = 'became_critical_at_asc' THEN COALESCE(v.became_critical_at, v.first_seen) END
-    ASC,
-         CASE
-             WHEN $8 = 'became_critical_at_desc'
-                 THEN COALESCE(v.became_critical_at, v.first_seen) END DESC,
-         CASE WHEN $8 = 'severity_asc' THEN c.severity END ASC,
-         CASE WHEN $8 = 'severity_desc' THEN c.severity END DESC,
-         CASE WHEN $8 = 'workload_asc' THEN w.name END ASC,
-         CASE WHEN $8 = 'workload_desc' THEN w.name END DESC,
-         CASE WHEN $8 = 'namespace_asc' THEN w.namespace END ASC,
-         CASE WHEN $8 = 'namespace_desc' THEN w.namespace END DESC,
-         CASE WHEN $8 = 'cluster_asc' THEN w.cluster END ASC,
-         CASE WHEN $8 = 'cluster_desc' THEN w.cluster END DESC,
-         v.id ASC LIMIT $10
-OFFSET $9
+  AND (CASE WHEN $5::TEXT IS NOT NULL THEN v.image_name = $5::TEXT ELSE TRUE END)
+  AND (CASE WHEN $6::TEXT IS NOT NULL THEN v.image_tag = $6::TEXT ELSE TRUE END)
+  AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+  AND ($8::timestamptz IS NULL OR v.became_critical_at > $8::timestamptz)
+ORDER BY
+    CASE WHEN $9 = 'severity_asc' THEN c.severity END ASC,
+    CASE WHEN $9 = 'severity_desc' THEN c.severity END DESC,
+    CASE WHEN $9 = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN $9 = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN $9 = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN $9 = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN $9 = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN $9 = 'cluster_desc' THEN w.cluster END DESC,
+    v.id ASC
+    LIMIT $11
+OFFSET $10
 `
 
 type ListCriticalVulnerabilitiesSinceParams struct {
@@ -344,6 +368,7 @@ type ListCriticalVulnerabilitiesSinceParams struct {
 	WorkloadType      *string
 	WorkloadName      *string
 	ImageName         *string
+	ImageTag          *string
 	IncludeSuppressed *bool
 	Since             pgtype.Timestamptz
 	OrderBy           interface{}
@@ -358,12 +383,13 @@ type ListCriticalVulnerabilitiesSinceRow struct {
 	Namespace        string
 	Cluster          string
 	ImageName        string
+	ImageTag         string
+	LatestVersion    string
 	Package          string
 	CveID            string
-	FirstSeen        pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	BecameCriticalAt pgtype.Timestamptz
-	CriticalSince    pgtype.Timestamptz
 	LastSeverity     int32
 	CveTitle         string
 	CveDesc          string
@@ -378,6 +404,7 @@ type ListCriticalVulnerabilitiesSinceRow struct {
 	SuppressedAt     pgtype.Timestamptz
 }
 
+// WHERE v.last_severity = 0
 func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg ListCriticalVulnerabilitiesSinceParams) ([]*ListCriticalVulnerabilitiesSinceRow, error) {
 	rows, err := q.db.Query(ctx, listCriticalVulnerabilitiesSince,
 		arg.Cluster,
@@ -385,6 +412,7 @@ func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg List
 		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.ImageName,
+		arg.ImageTag,
 		arg.IncludeSuppressed,
 		arg.Since,
 		arg.OrderBy,
@@ -405,12 +433,13 @@ func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg List
 			&i.Namespace,
 			&i.Cluster,
 			&i.ImageName,
+			&i.ImageTag,
+			&i.LatestVersion,
 			&i.Package,
 			&i.CveID,
-			&i.FirstSeen,
+			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.BecameCriticalAt,
-			&i.CriticalSince,
 			&i.LastSeverity,
 			&i.CveTitle,
 			&i.CveDesc,
@@ -435,7 +464,7 @@ func (q *Queries) ListCriticalVulnerabilitiesSince(ctx context.Context, arg List
 }
 
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
-SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
+SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.became_critical_at, v.last_severity, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
@@ -472,35 +501,37 @@ type ListSuppressedVulnerabilitiesParams struct {
 }
 
 type ListSuppressedVulnerabilitiesRow struct {
-	ID            pgtype.UUID
-	ImageName     string
-	Package       string
-	CveID         string
-	Suppressed    bool
-	Reason        VulnerabilitySuppressReason
-	ReasonText    string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	SuppressedBy  string
-	ID_2          pgtype.UUID
-	ImageName_2   string
-	ImageTag      string
-	Package_2     string
-	CveID_2       string
-	Source        string
-	LatestVersion string
-	CreatedAt_2   pgtype.Timestamptz
-	UpdatedAt_2   pgtype.Timestamptz
-	CveID_3       string
-	CveTitle      string
-	CveDesc       string
-	CveLink       string
-	Severity      int32
-	Refs          typeext.MapStringString
-	CreatedAt_3   pgtype.Timestamptz
-	UpdatedAt_3   pgtype.Timestamptz
-	Cluster       string
-	Namespace     string
+	ID               pgtype.UUID
+	ImageName        string
+	Package          string
+	CveID            string
+	Suppressed       bool
+	Reason           VulnerabilitySuppressReason
+	ReasonText       string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	SuppressedBy     string
+	ID_2             pgtype.UUID
+	ImageName_2      string
+	ImageTag         string
+	Package_2        string
+	CveID_2          string
+	Source           string
+	LatestVersion    string
+	CreatedAt_2      pgtype.Timestamptz
+	UpdatedAt_2      pgtype.Timestamptz
+	BecameCriticalAt pgtype.Timestamptz
+	LastSeverity     int32
+	CveID_3          string
+	CveTitle         string
+	CveDesc          string
+	CveLink          string
+	Severity         int32
+	Refs             typeext.MapStringString
+	CreatedAt_3      pgtype.Timestamptz
+	UpdatedAt_3      pgtype.Timestamptz
+	Cluster          string
+	Namespace        string
 }
 
 func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error) {
@@ -540,6 +571,8 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.LatestVersion,
 			&i.CreatedAt_2,
 			&i.UpdatedAt_2,
+			&i.BecameCriticalAt,
+			&i.LastSeverity,
 			&i.CveID_3,
 			&i.CveTitle,
 			&i.CveDesc,

@@ -16,7 +16,7 @@ import (
 
 const (
 	KindFinalizeAttestation                      = "finalize_attestation"
-	FinalizeAttestationScheduledForResyncMinutes = 2 * time.Minute
+	FinalizeAttestationScheduledForResyncMinutes = 1 * time.Minute
 	FinalizeAttestationScheduledWaitSecond       = 30 * time.Second
 )
 
