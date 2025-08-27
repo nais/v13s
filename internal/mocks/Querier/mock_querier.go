@@ -816,24 +816,22 @@ func (_c *MockQuerier_GetCve_Call) RunAndReturn(run func(context.Context, string
 }
 
 // GetEarliestCriticalAtForVulnerability provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) GetEarliestCriticalAtForVulnerability(ctx context.Context, arg sql.GetEarliestCriticalAtForVulnerabilityParams) (interface{}, error) {
+func (_m *MockQuerier) GetEarliestCriticalAtForVulnerability(ctx context.Context, arg sql.GetEarliestCriticalAtForVulnerabilityParams) (pgtype.Timestamptz, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetEarliestCriticalAtForVulnerability")
 	}
 
-	var r0 interface{}
+	var r0 pgtype.Timestamptz
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) (pgtype.Timestamptz, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) pgtype.Timestamptz); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
+		r0 = ret.Get(0).(pgtype.Timestamptz)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) error); ok {
@@ -864,12 +862,12 @@ func (_c *MockQuerier_GetEarliestCriticalAtForVulnerability_Call) Run(run func(c
 	return _c
 }
 
-func (_c *MockQuerier_GetEarliestCriticalAtForVulnerability_Call) Return(_a0 interface{}, _a1 error) *MockQuerier_GetEarliestCriticalAtForVulnerability_Call {
+func (_c *MockQuerier_GetEarliestCriticalAtForVulnerability_Call) Return(_a0 pgtype.Timestamptz, _a1 error) *MockQuerier_GetEarliestCriticalAtForVulnerability_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_GetEarliestCriticalAtForVulnerability_Call) RunAndReturn(run func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) (interface{}, error)) *MockQuerier_GetEarliestCriticalAtForVulnerability_Call {
+func (_c *MockQuerier_GetEarliestCriticalAtForVulnerability_Call) RunAndReturn(run func(context.Context, sql.GetEarliestCriticalAtForVulnerabilityParams) (pgtype.Timestamptz, error)) *MockQuerier_GetEarliestCriticalAtForVulnerability_Call {
 	_c.Call.Return(run)
 	return _c
 }

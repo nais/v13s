@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -145,33 +144,25 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	for _, v := range i.Vulnerabilities {
 		severity := v.Cve.Severity.ToInt32()
-		becameCriticalAt, err := u.determineBecameCriticalAt(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		becameCriticalAt, err := u.DetermineBecameCriticalAt(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
 		if err != nil {
 			u.log.Errorf("determine becameCriticalAt: %v", err)
 		}
 		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     i.ImageName,
-			ImageTag:      i.ImageTag,
-			Package:       v.Package,
-			CveID:         v.Cve.Id,
-			Source:        i.Source,
-			LatestVersion: v.LatestVersion,
-			LastSeverity:  severity,
-			BecameCriticalAt: pgtype.Timestamptz{
-				Time: func() time.Time {
-					if becameCriticalAt != nil {
-						return *becameCriticalAt
-					}
-					return time.Time{}
-				}(),
-				Valid: becameCriticalAt != nil,
-			},
+			ImageName:        i.ImageName,
+			ImageTag:         i.ImageTag,
+			Package:          v.Package,
+			CveID:            v.Cve.Id,
+			Source:           i.Source,
+			LatestVersion:    v.LatestVersion,
+			LastSeverity:     severity,
+			BecameCriticalAt: toPgTimestamptz(becameCriticalAt),
 		})
 	}
 	return params
 }
 
-func (u *Updater) determineBecameCriticalAt(ctx context.Context, imageName, pkg, cveID string, lastSeverity int32) (*time.Time, error) {
+func (u *Updater) DetermineBecameCriticalAt(ctx context.Context, imageName, pkg, cveID string, lastSeverity int32) (*time.Time, error) {
 	if lastSeverity != 0 {
 		// Not critical → no timestamp
 		return nil, nil
@@ -187,21 +178,21 @@ func (u *Updater) determineBecameCriticalAt(ctx context.Context, imageName, pkg,
 		return nil, err
 	}
 
-	// Convert interface{} result to *time.Time
-	switch t := earliest.(type) {
-	case time.Time:
-		u.log.Debugf("1 existing earliest critical at for %s:%s %s/%s: %s", imageName, pkg, cveID, t.Location(), t.String())
-		return &t, nil
-	case *time.Time:
-		u.log.Debugf("2 existing earliest critical at for %s:%s %s/%s: %s", imageName, pkg, cveID, t.Location(), t.String())
-		return t, nil
-	case nil:
-		u.log.Debugf("no existing earliest critical at for %s:%s %s", imageName, pkg, cveID)
-		// No previous critical timestamp → use NOW()
-		now := time.Now().UTC()
-		return &now, nil
-	default:
-		return nil, fmt.Errorf("unexpected type for earliest critical at: %T", t)
+	if earliest.Valid {
+		u.log.Debugf("Vulnerability %s in package %s for image %s became critical at %s", cveID, pkg, imageName, earliest.Time)
+		return &earliest.Time, nil
+	}
+
+	return nil, nil
+}
+
+func toPgTimestamptz(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{Valid: false}
+	}
+	return pgtype.Timestamptz{
+		Time:  *t,
+		Valid: true,
 	}
 }
 

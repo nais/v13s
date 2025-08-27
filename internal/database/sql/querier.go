@@ -24,7 +24,7 @@ type Querier interface {
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
 	GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
-	GetEarliestCriticalAtForVulnerability(ctx context.Context, arg GetEarliestCriticalAtForVulnerabilityParams) (interface{}, error)
+	GetEarliestCriticalAtForVulnerability(ctx context.Context, arg GetEarliestCriticalAtForVulnerabilityParams) (pgtype.Timestamptz, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)

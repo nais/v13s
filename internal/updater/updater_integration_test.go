@@ -425,6 +425,85 @@ func TestUpdater(t *testing.T) {
 	})
 }
 
+func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+	imageName := "image-1"
+	imageTag := "v1"
+	pkg := "pkg-1"
+	cveID := "CVE-123"
+
+	_, err := pool.Exec(ctx, `
+    INSERT INTO images (name, tag, state, metadata, created_at, updated_at)
+    VALUES ($1, $2, 'initialized', '{}', NOW(), NOW())
+`, imageName, imageTag)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+    INSERT INTO cve (
+        cve_id, cve_title, cve_desc, cve_link, severity, refs
+    ) VALUES ($1, $2, $3, $4, $5, $6)
+`, cveID, "Test title", "Test description", "https://example.com", 0, "{}")
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+    INSERT INTO vulnerabilities (image_name, image_tag, package, cve_id, source, latest_version, last_severity, created_at)
+    VALUES ($1, $2, $3, $4, 'source', '1.0', 0, NOW())
+`, imageName, imageTag, pkg, cveID)
+	require.NoError(t, err)
+
+	t.Run("returns earliest became_critical_at if lastSeverity is 0", func(t *testing.T) {
+		ts := time.Now().Add(-1 * time.Hour)
+		_, err := pool.Exec(ctx, `
+			UPDATE vulnerabilities
+			SET became_critical_at = $1
+			WHERE image_name = $2 AND package = $3 AND cve_id = $4
+		`, ts, imageName, pkg, cveID)
+		require.NoError(t, err)
+
+		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
+		require.NoError(t, err)
+		assert.NotNil(t, got)
+		assert.WithinDuration(t, ts, *got, time.Second)
+	})
+
+	t.Run("returns nil if lastSeverity is not 0", func(t *testing.T) {
+		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 5)
+		require.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("returns created_at if no critical timestamp exists", func(t *testing.T) {
+		// Remove became_critical_at
+		_, err := pool.Exec(ctx, `
+        UPDATE vulnerabilities
+        SET became_critical_at = NULL
+        WHERE image_name = $1 AND package = $2 AND cve_id = $3
+    `, imageName, pkg, cveID)
+		require.NoError(t, err)
+
+		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		var createdAt time.Time
+		err = pool.QueryRow(ctx, `
+        SELECT created_at
+        FROM vulnerabilities
+        WHERE image_name = $1 AND package = $2 AND cve_id = $3
+    `, imageName, pkg, cveID).Scan(&createdAt)
+		require.NoError(t, err)
+
+		assert.Equal(t, createdAt.UTC(), (*got).UTC())
+	})
+}
+
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {
 	for _, p := range projectNames {
 		err := db.CreateImage(ctx, sql.CreateImageParams{
