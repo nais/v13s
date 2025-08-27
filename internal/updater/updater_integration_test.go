@@ -502,6 +502,45 @@ func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
 
 		assert.Equal(t, createdAt.UTC(), (*got).UTC())
 	})
+
+	t.Run("sets became_critical_at when newly critical", func(t *testing.T) {
+		imageTag2 := "v2"
+		_, err := pool.Exec(ctx, `
+			INSERT INTO images (name, tag, state, metadata, created_at, updated_at)
+			VALUES ($1, $2, 'initialized', '{}', NOW(), NOW())
+		`, imageName, imageTag2)
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx, `
+			INSERT INTO vulnerabilities (image_name, image_tag, package, cve_id, source, latest_version, last_severity, created_at)
+			VALUES ($1, $2, $3, $4, 'source', '1.0', 5, NOW())
+		`, imageName, imageTag2, pkg, cveID)
+		require.NoError(t, err)
+
+		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		// Should be ~now
+		assert.WithinDuration(t, time.Now(), *got, 5*time.Second)
+	})
+
+	t.Run("does not overwrite existing became_critical_at", func(t *testing.T) {
+		ts := time.Now().Add(-1 * time.Hour)
+		_, err := pool.Exec(ctx, `
+			UPDATE vulnerabilities
+			SET became_critical_at = $1, last_severity = 0
+			WHERE image_name = $2 AND package = $3 AND cve_id = $4
+		`, ts, imageName, pkg, cveID)
+		require.NoError(t, err)
+
+		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		// Should return the original timestamp (not "now")
+		assert.WithinDuration(t, ts, *got, time.Second)
+	})
 }
 
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {

@@ -148,16 +148,23 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 		if err != nil {
 			u.log.Errorf("determine becameCriticalAt: %v", err)
 		}
-		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:        i.ImageName,
-			ImageTag:         i.ImageTag,
-			Package:          v.Package,
-			CveID:            v.Cve.Id,
-			Source:           i.Source,
-			LatestVersion:    v.LatestVersion,
-			LastSeverity:     severity,
-			BecameCriticalAt: toPgTimestamptz(becameCriticalAt),
-		})
+		batch := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     i.ImageName,
+			ImageTag:      i.ImageTag,
+			Package:       v.Package,
+			CveID:         v.Cve.Id,
+			Source:        i.Source,
+			LatestVersion: v.LatestVersion,
+			LastSeverity:  severity,
+		}
+
+		if becameCriticalAt != nil {
+			batch.BecameCriticalAt = pgtype.Timestamptz{
+				Time:  *becameCriticalAt,
+				Valid: true,
+			}
+		}
+		params = append(params, batch)
 	}
 	return params
 }
@@ -183,17 +190,8 @@ func (u *Updater) DetermineBecameCriticalAt(ctx context.Context, imageName, pkg,
 		return &earliest.Time, nil
 	}
 
-	return nil, nil
-}
-
-func toPgTimestamptz(t *time.Time) pgtype.Timestamptz {
-	if t == nil {
-		return pgtype.Timestamptz{Valid: false}
-	}
-	return pgtype.Timestamptz{
-		Time:  *t,
-		Valid: true,
-	}
+	now := time.Now().UTC()
+	return &now, nil
 }
 
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {

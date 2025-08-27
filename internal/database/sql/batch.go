@@ -177,7 +177,6 @@ VALUES (
 SET
     latest_version = EXCLUDED.latest_version,
     updated_at = NOW(),
-    -- always update severity
     last_severity = EXCLUDED.last_severity,
     became_critical_at = CASE
     WHEN EXCLUDED.became_critical_at IS NOT NULL THEN EXCLUDED.became_critical_at
