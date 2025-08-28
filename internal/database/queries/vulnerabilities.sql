@@ -82,13 +82,37 @@ WHERE cve_id = @cve_id
 ;
 
 -- name: GetVulnerability :one
-SELECT *
-FROM vulnerabilities
-WHERE image_name = @image_name
-  AND image_tag = @image_tag
-  AND package = @package
-  AND cve_id = @cve_id
-;
+SELECT v.id,
+       v.image_name,
+       v.image_tag,
+       v.package,
+       v.latest_version,
+       v.source,
+       v.cve_id,
+       v.last_severity,
+       v.became_critical_at,
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity AS severity,
+       c.refs,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       sv.reason,
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at AS suppressed_at
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.image_name = @image_name
+  AND v.image_tag = @image_tag
+  AND v.package = @package
+  AND v.cve_id = @cve_id;
 
 -- name: GetVulnerabilityById :one
 SELECT v.id,

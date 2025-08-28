@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -37,7 +38,7 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 							Destination: &opts.ImageState,
 						}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
-						err := trigger(ctx, c, opts)
+						err := trigger(ctx, opts, c)
 						if err != nil {
 							return fmt.Errorf("failed to trigger update: %w", err)
 						}
@@ -78,10 +79,75 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 				return downloadSbom(ctx, cmd)
 			},
 		},
+		{
+			Name:    "suppress",
+			Aliases: []string{"sp"},
+			Usage:   "suppress a vulnerability for a workload",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:        "package",
+					Aliases:     []string{"pkg"},
+					Value:       "",
+					Usage:       "package name to identify the vulnerability",
+					Destination: &opts.Package,
+				},
+				&cli.StringFlag{
+					Name:        "cve-id",
+					Aliases:     []string{"cve"},
+					Value:       "",
+					Usage:       "CVE ID to identify the vulnerability",
+					Destination: &opts.CveId,
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return suppressVulnerability(ctx, cmd, opts, c)
+			},
+		},
 	}
 }
 
-func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) error {
+func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Options, c vulnerabilities.Client) error {
+	imageName := ""
+	imageTag := ""
+	if cmd.Args().Len() <= 0 {
+		return fmt.Errorf("image must be provided as the first argument in the format 'name:tag'")
+	}
+
+	arg := cmd.Args().First()
+	if strings.Contains(arg, ":") && strings.Contains(arg, "/") {
+		parts := strings.Split(arg, ":")
+		imageName = parts[0]
+		imageTag = parts[1]
+	} else {
+		return fmt.Errorf("invalid image format, expected 'name:tag'")
+	}
+
+	if opts.Package == "" || opts.CveId == "" {
+		return fmt.Errorf("both package and cve-id must be provided to identify the vulnerability")
+	}
+
+	vuln, err := c.GetVulnerability(ctx, imageName, imageTag, opts.Package, opts.CveId)
+	if err != nil {
+		return fmt.Errorf("failed to get vulnerability: %w", err)
+	}
+
+	err = c.SuppressVulnerability(
+		ctx,
+		vuln.Vulnerability.Id,
+		"Suppressing via CLI",
+		"cli-user",
+		vulnerabilities.SuppressState_FALSE_POSITIVE,
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to suppress vulnerability: %w", err)
+	}
+
+	fmt.Printf("Vulnerability %s suppressed successfully\n", vuln.Vulnerability.Id)
+	return nil
+}
+
+func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
 	var cluster, namespace, workload = extractFilters(opts)
 	var workloadType *string
 	var imageState *string

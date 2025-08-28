@@ -312,6 +312,10 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 	assert.NotEmpty(t, afterFirstList)
 	afterFirstUpdatedAt := afterFirstList[0].UpdatedAt.Time
 
+	imageAfterFirst, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+	assert.NoError(t, err)
+	assert.Equal(t, sql.ImageStateResync, imageAfterFirst.State, "image state should be Resync after first suppression")
+
 	if !beforeUpdatedAt.IsZero() {
 		assert.True(t, afterFirstUpdatedAt.After(beforeUpdatedAt),
 			"expected updated_at to change after first suppression, before=%s after=%s",
@@ -334,6 +338,10 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, afterSecondList)
 	afterSecondUpdatedAt := afterSecondList[0].UpdatedAt.Time
+
+	imageAfterSecond, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+	assert.NoError(t, err)
+	assert.Equal(t, sql.ImageStateResync, imageAfterSecond.State, "image state should remain Resync on idempotent suppression")
 
 	assert.Equal(t, afterFirstUpdatedAt, afterSecondUpdatedAt,
 		"expected updated_at to stay the same on idempotent suppression, first=%s second=%s",

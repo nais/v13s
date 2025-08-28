@@ -44,6 +44,7 @@ service Vulnerabilities {
 
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
   rpc GetVulnerabilityById(GetVulnerabilityByIdRequest) returns (GetVulnerabilityByIdResponse);
+  rpc GetVulnerability(GetVulnerabilityRequest) returns (GetVulnerabilityResponse);
 }
 
 message ListVulnerabilitiesForImageRequest {
@@ -162,6 +163,17 @@ message GetVulnerabilityByIdRequest{
 }
 
 message GetVulnerabilityByIdResponse{
+  Vulnerability vulnerability = 1;
+}
+
+message GetVulnerabilityRequest {
+  string image_name = 1;
+  string image_tag = 2;
+  string package = 3;
+  string cve_id = 4;
+}
+
+message GetVulnerabilityResponse {
   Vulnerability vulnerability = 1;
 }
 

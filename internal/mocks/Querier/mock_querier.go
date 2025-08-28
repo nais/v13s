@@ -1105,23 +1105,23 @@ func (_c *MockQuerier_GetSourceRef_Call) RunAndReturn(run func(context.Context, 
 }
 
 // GetVulnerability provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) GetVulnerability(ctx context.Context, arg sql.GetVulnerabilityParams) (*sql.Vulnerability, error) {
+func (_m *MockQuerier) GetVulnerability(ctx context.Context, arg sql.GetVulnerabilityParams) (*sql.GetVulnerabilityRow, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetVulnerability")
 	}
 
-	var r0 *sql.Vulnerability
+	var r0 *sql.GetVulnerabilityRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilityParams) (*sql.Vulnerability, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilityParams) (*sql.GetVulnerabilityRow, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilityParams) *sql.Vulnerability); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilityParams) *sql.GetVulnerabilityRow); ok {
 		r0 = rf(ctx, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*sql.Vulnerability)
+			r0 = ret.Get(0).(*sql.GetVulnerabilityRow)
 		}
 	}
 
@@ -1153,12 +1153,12 @@ func (_c *MockQuerier_GetVulnerability_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockQuerier_GetVulnerability_Call) Return(_a0 *sql.Vulnerability, _a1 error) *MockQuerier_GetVulnerability_Call {
+func (_c *MockQuerier_GetVulnerability_Call) Return(_a0 *sql.GetVulnerabilityRow, _a1 error) *MockQuerier_GetVulnerability_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_GetVulnerability_Call) RunAndReturn(run func(context.Context, sql.GetVulnerabilityParams) (*sql.Vulnerability, error)) *MockQuerier_GetVulnerability_Call {
+func (_c *MockQuerier_GetVulnerability_Call) RunAndReturn(run func(context.Context, sql.GetVulnerabilityParams) (*sql.GetVulnerabilityRow, error)) *MockQuerier_GetVulnerability_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -23,6 +23,8 @@ type Options struct {
 	WorkloadState string
 	ImageState    string
 	Suppressed    bool
+	Package       string
+	CveId         string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {

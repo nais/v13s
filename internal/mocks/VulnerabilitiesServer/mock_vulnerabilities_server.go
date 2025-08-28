@@ -22,6 +22,65 @@ func (_m *MockVulnerabilitiesServer) EXPECT() *MockVulnerabilitiesServer_Expecte
 	return &MockVulnerabilitiesServer_Expecter{mock: &_m.Mock}
 }
 
+// GetVulnerability provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) GetVulnerability(_a0 context.Context, _a1 *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerability")
+	}
+
+	var r0 *vulnerabilities.GetVulnerabilityResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.GetVulnerabilityRequest) *vulnerabilities.GetVulnerabilityResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vulnerabilities.GetVulnerabilityResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.GetVulnerabilityRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_GetVulnerability_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerability'
+type MockVulnerabilitiesServer_GetVulnerability_Call struct {
+	*mock.Call
+}
+
+// GetVulnerability is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *vulnerabilities.GetVulnerabilityRequest
+func (_e *MockVulnerabilitiesServer_Expecter) GetVulnerability(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_GetVulnerability_Call {
+	return &MockVulnerabilitiesServer_GetVulnerability_Call{Call: _e.mock.On("GetVulnerability", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_GetVulnerability_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.GetVulnerabilityRequest)) *MockVulnerabilitiesServer_GetVulnerability_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*vulnerabilities.GetVulnerabilityRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetVulnerability_Call) Return(_a0 *vulnerabilities.GetVulnerabilityResponse, _a1 error) *MockVulnerabilitiesServer_GetVulnerability_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetVulnerability_Call) RunAndReturn(run func(context.Context, *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error)) *MockVulnerabilitiesServer_GetVulnerability_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVulnerabilityById provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) GetVulnerabilityById(_a0 context.Context, _a1 *vulnerabilities.GetVulnerabilityByIdRequest) (*vulnerabilities.GetVulnerabilityByIdResponse, error) {
 	ret := _m.Called(_a0, _a1)

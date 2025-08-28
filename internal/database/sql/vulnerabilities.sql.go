@@ -193,12 +193,37 @@ func (q *Queries) GetEarliestCriticalAtForVulnerability(ctx context.Context, arg
 }
 
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, became_critical_at, last_severity
-FROM vulnerabilities
-WHERE image_name = $1
-  AND image_tag = $2
-  AND package = $3
-  AND cve_id = $4
+SELECT v.id,
+       v.image_name,
+       v.image_tag,
+       v.package,
+       v.latest_version,
+       v.source,
+       v.cve_id,
+       v.last_severity,
+       v.became_critical_at,
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity AS severity,
+       c.refs,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       sv.reason,
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at AS suppressed_at
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.image_name = $1
+  AND v.image_tag = $2
+  AND v.package = $3
+  AND v.cve_id = $4
 `
 
 type GetVulnerabilityParams struct {
@@ -208,26 +233,60 @@ type GetVulnerabilityParams struct {
 	CveID     string
 }
 
-func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error) {
+type GetVulnerabilityRow struct {
+	ID               pgtype.UUID
+	ImageName        string
+	ImageTag         string
+	Package          string
+	LatestVersion    string
+	Source           string
+	CveID            string
+	LastSeverity     int32
+	BecameCriticalAt pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	CveTitle         string
+	CveDesc          string
+	CveLink          string
+	Severity         int32
+	Refs             typeext.MapStringString
+	Suppressed       bool
+	Reason           NullVulnerabilitySuppressReason
+	ReasonText       *string
+	SuppressedBy     *string
+	SuppressedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerability,
 		arg.ImageName,
 		arg.ImageTag,
 		arg.Package,
 		arg.CveID,
 	)
-	var i Vulnerability
+	var i GetVulnerabilityRow
 	err := row.Scan(
 		&i.ID,
 		&i.ImageName,
 		&i.ImageTag,
 		&i.Package,
-		&i.CveID,
-		&i.Source,
 		&i.LatestVersion,
+		&i.Source,
+		&i.CveID,
+		&i.LastSeverity,
+		&i.BecameCriticalAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.BecameCriticalAt,
-		&i.LastSeverity,
+		&i.CveTitle,
+		&i.CveDesc,
+		&i.CveLink,
+		&i.Severity,
+		&i.Refs,
+		&i.Suppressed,
+		&i.Reason,
+		&i.ReasonText,
+		&i.SuppressedBy,
+		&i.SuppressedAt,
 	)
 	return &i, err
 }

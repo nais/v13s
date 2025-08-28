@@ -130,9 +130,9 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	var suppressions [][]string
 
 	for _, n := range resp.GetNodes() {
-		supressed := "No"
+		suppressed := "No"
 		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
-			supressed = "Yes"
+			suppressed = "Yes"
 		}
 		vulnTbl.AddRow(
 			n.GetPackage(),
@@ -141,7 +141,7 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 			n.Cve.Severity,
 			n.GetCreated().AsTime().Format(time.RFC3339),
 			n.GetLastUpdated().AsTime().Format(time.RFC3339),
-			supressed,
+			suppressed,
 		)
 
 		// Only add to suppression table if suppressed

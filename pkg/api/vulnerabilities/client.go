@@ -18,6 +18,7 @@ type Client interface {
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
+	GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
 	management.ManagementClient
@@ -128,6 +129,15 @@ func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName,
 	return c.v.GetVulnerabilitySummaryForImage(ctx, &GetVulnerabilitySummaryForImageRequest{
 		ImageName: imageName,
 		ImageTag:  imageTag,
+	})
+}
+
+func (c *client) GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error) {
+	return c.v.GetVulnerability(ctx, &GetVulnerabilityRequest{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		Package:   pkg,
+		CveId:     cveId,
 	})
 }
 

@@ -357,6 +357,38 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 	}, nil
 }
 
+func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error) {
+	row, err := s.querier.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+		ImageName: request.ImageName,
+		ImageTag:  request.ImageTag,
+		Package:   request.Package,
+		CveID:     request.CveId,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("vulnerability not found")
+		}
+		return nil, fmt.Errorf("get vulnerability: %w", err)
+	}
+
+	return &vulnerabilities.GetVulnerabilityResponse{
+		Vulnerability: &vulnerabilities.Vulnerability{
+			Id:            row.ID.String(),
+			Package:       row.Package,
+			Suppression:   toSuppression(row.Suppressed, row.Reason.VulnerabilitySuppressReason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
+			LatestVersion: row.LatestVersion,
+			Cve: &vulnerabilities.Cve{
+				Id:          row.CveID,
+				Title:       row.CveTitle,
+				Description: row.CveDesc,
+				Link:        row.CveLink,
+				Severity:    vulnerabilities.Severity(row.Severity),
+				References:  row.Refs,
+			},
+		},
+	}, nil
+}
+
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
 	uuid := convert.StringToUUID(request.Id)
 	vuln, err := s.querier.GetVulnerabilityById(ctx, uuid)
@@ -377,6 +409,19 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 	})
 	if supErr != nil {
 		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
+	}
+
+	err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		State: sql.ImageStateResync,
+		Name:  vuln.ImageName,
+		Tag:   vuln.ImageTag,
+		ReadyForResyncAt: pgtype.Timestamptz{
+			Time:  time.Now(),
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &vulnerabilities.SuppressVulnerabilityResponse{
