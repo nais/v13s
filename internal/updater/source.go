@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"golang.org/x/sync/errgroup"
@@ -15,6 +16,14 @@ type ImageVulnerabilityData struct {
 	Source          string
 	Vulnerabilities []*sources.Vulnerability
 	Summary         *sources.VulnerabilitySummary
+	Workloads       []Workload
+}
+
+type Workload struct {
+	ID        pgtype.UUID
+	Namespace string
+	Name      string
+	Type      string
 }
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
@@ -89,12 +98,30 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		return nil, err
 	}
 
+	workloads, err := u.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	if err != nil {
+		return nil, err
+	}
+	ws := make([]Workload, 0, len(workloads))
+	for _, w := range workloads {
+		ws = append(ws, Workload{
+			ID:        w.ID,
+			Namespace: w.Namespace,
+			Name:      w.Name,
+			Type:      w.WorkloadType,
+		})
+	}
+
 	return &ImageVulnerabilityData{
 		ImageName:       imageName,
 		ImageTag:        imageTag,
 		Source:          source.Name(),
 		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
+		Workloads:       ws,
 	}, nil
 }
 
@@ -113,6 +140,60 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	}
 }
 
+func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerabilityData) []sql.BatchUpsertVulnerabilitiesParams {
+	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+	for _, v := range i.Vulnerabilities {
+		severity := v.Cve.Severity.ToInt32()
+		becameCriticalAt, err := u.DetermineBecameCriticalAt(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		if err != nil {
+			u.log.Errorf("determine becameCriticalAt: %v", err)
+		}
+		batch := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     i.ImageName,
+			ImageTag:      i.ImageTag,
+			Package:       v.Package,
+			CveID:         v.Cve.Id,
+			Source:        i.Source,
+			LatestVersion: v.LatestVersion,
+			LastSeverity:  severity,
+		}
+
+		if becameCriticalAt != nil {
+			batch.BecameCriticalAt = pgtype.Timestamptz{
+				Time:  *becameCriticalAt,
+				Valid: true,
+			}
+		}
+		params = append(params, batch)
+	}
+	return params
+}
+
+func (u *Updater) DetermineBecameCriticalAt(ctx context.Context, imageName, pkg, cveID string, lastSeverity int32) (*time.Time, error) {
+	if lastSeverity != 0 {
+		// Not critical → no timestamp
+		return nil, nil
+	}
+
+	// Query DB for earliest known critical timestamp for this vuln across all tags
+	earliest, err := u.querier.GetEarliestCriticalAtForVulnerability(ctx, sql.GetEarliestCriticalAtForVulnerabilityParams{
+		ImageName: imageName,
+		Package:   pkg,
+		CveID:     cveID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if earliest.Valid {
+		u.log.Debugf("Vulnerability %s in package %s for image %s became critical at %s", cveID, pkg, imageName, earliest.Time)
+		return &earliest.Time, nil
+	}
+
+	now := time.Now().UTC()
+	return &now, nil
+}
+
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 	params := make([]sql.BatchUpsertCveParams, 0)
 	for _, v := range i.Vulnerabilities {
@@ -123,21 +204,6 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 			CveLink:  v.Cve.Link,
 			Severity: v.Cve.Severity.ToInt32(),
 			Refs:     v.Cve.References,
-		})
-	}
-	return params
-}
-
-func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVulnerabilitiesParams {
-	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-	for _, v := range i.Vulnerabilities {
-		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     i.ImageName,
-			ImageTag:      i.ImageTag,
-			Package:       v.Package,
-			CveID:         v.Cve.Id,
-			Source:        i.Source,
-			LatestVersion: v.LatestVersion,
 		})
 	}
 	return params

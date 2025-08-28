@@ -58,10 +58,12 @@ WITH updated AS (
 UPDATE workloads
 SET state      = @state,
     updated_at = NOW()
-WHERE (sqlc.narg('cluster')::TEXT IS NULL OR cluster = sqlc.narg('cluster')::TEXT)
-  AND (sqlc.narg('namespace')::TEXT IS NULL OR namespace = sqlc.narg('namespace')::TEXT)
-  AND (sqlc.narg('workload_type')::TEXT IS NULL OR workload_type = sqlc.narg('workload_type')::TEXT)
-  AND (sqlc.narg('workload_name')::TEXT IS NULL OR name = sqlc.narg('workload_name')::TEXT)
+WHERE (
+    (sqlc.narg('cluster')::TEXT IS NOT NULL AND cluster = sqlc.narg('cluster')::TEXT)
+        OR (sqlc.narg('namespace')::TEXT IS NOT NULL AND namespace = sqlc.narg('namespace')::TEXT)
+        OR (sqlc.narg('workload_type')::TEXT IS NOT NULL AND workload_type = sqlc.narg('workload_type')::TEXT)
+        OR (sqlc.narg('workload_name')::TEXT IS NOT NULL AND name = sqlc.narg('workload_name')::TEXT)
+    )
   AND state = @old_state
     RETURNING *
 )
@@ -118,11 +120,11 @@ VALUES (@name,
 
 
 -- name: ListWorkloadsByImage :many
-SELECT *
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads
 WHERE image_name = @image_name
   AND image_tag = @image_tag
-ORDER BY (name, cluster, updated_at) DESC;
+ORDER BY name DESC, cluster DESC, updated_at DESC;
 
 -- name: ListWorkloadsByCluster :many
 SELECT *

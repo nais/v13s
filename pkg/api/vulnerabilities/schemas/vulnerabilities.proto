@@ -24,6 +24,7 @@ service Vulnerabilities {
   rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
   rpc ListVulnerabilitiesForImage(ListVulnerabilitiesForImageRequest) returns (ListVulnerabilitiesForImageResponse);
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
+  rpc ListCriticalVulnerabilitiesSince(ListCriticalVulnerabilitiesSinceRequest) returns (ListCriticalVulnerabilitiesSinceResponse);
 
   // Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Examples:
@@ -96,6 +97,21 @@ message ListSuppressedVulnerabilitiesRequest {
 message ListSuppressedVulnerabilitiesResponse {
   repeated SuppressedVulnerability nodes = 1;
   PageInfo page_info = 2;
+}
+
+message ListCriticalVulnerabilitiesSinceRequest {
+  Filter filter = 1;
+  optional bool include_suppressed = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+  optional OrderBy order_by = 6;
+  optional google.protobuf.Timestamp since = 7;
+}
+
+message ListCriticalVulnerabilitiesSinceResponse {
+  Filter filter = 1;
+  repeated Finding nodes = 2;
+  PageInfo page_info = 3;
 }
 
 message GetVulnerabilitySummaryForImageRequest {
@@ -241,6 +257,8 @@ message Cve {
   string link = 4;
   Severity severity = 5;
   map<string, string> references = 6;
+  optional google.protobuf.Timestamp created = 7;
+  optional google.protobuf.Timestamp last_updated = 8;
 }
 
 // TODO: should it be grouped by package like now or Cve?
@@ -249,9 +267,11 @@ message Vulnerability {
   string package = 2;
   Cve cve = 3;
   string latest_version = 4;
-  optional Suppression suppression = 5;
-  optional google.protobuf.Timestamp created = 6;
-  optional google.protobuf.Timestamp last_updated = 7;
+  optional int32 last_severity = 5;
+  optional Suppression suppression = 6;
+  optional google.protobuf.Timestamp created = 7;
+  optional google.protobuf.Timestamp last_updated = 8;
+  optional google.protobuf.Timestamp critical_since = 9;
 }
 
 message Suppression {

@@ -56,9 +56,54 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 						return listSummaries(ctx, cmd, c, opts)
 					},
 				},
+				{
+					Name:  "critical",
+					Usage: "list workloads that have had critical vulnerabilities since a given time",
+					Flags: append(flag.CommonFlags(opts, "limit", "order")),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return ListCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
+					},
+				},
 			},
 		},
 	}
+}
+
+func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+	opts := flag.ParseOptions(cmd, o)
+	start := time.Now()
+	resp, err := c.ListCriticalVulnerabilitiesSince(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New("Workload", "CVE", "Last Severity", "CriticalSince", "Created")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, n := range resp.GetNodes() {
+		var becameCritical string
+		if n.Vulnerability.CriticalSince != nil {
+			t := n.Vulnerability.CriticalSince.AsTime()
+			becameCritical = t.Format(time.RFC3339)
+		} else {
+			becameCritical = "-" // or "N/A" if nil
+		}
+		tbl.AddRow(
+			n.WorkloadRef.Name,
+			n.Vulnerability.Cve.Id,
+			*n.Vulnerability.LastSeverity,
+			becameCritical,
+			n.Vulnerability.Created.AsTime().Format(time.RFC3339),
+		)
+	}
+
+	tbl.Print()
+	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
+
+	return nil
 }
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
@@ -242,6 +287,9 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			workloadMap[key] = append(workloadMap[key], n)
 		}
 
+		fmt.Println(workloadHeader("Total vulnerabilities found: %d", resp.PageInfo.TotalCount))
+		fmt.Println(workloadDetails("Total workloads with vulnerabilities: %d", len(workloadMap)))
+
 		for _, findings := range workloadMap {
 			if len(findings) == 0 {
 				continue
@@ -256,7 +304,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
 
 			// Print vulnerabilities table for this workload
-			tbl := table.New("Package", "CVE", "Severity", "Latest Version", "Last Updated", "Suppressed")
+			tbl := table.New("Package", "CVE", "Severity", "CVE Last Updated", "Last Severity", "Critical Sins", "Latest Version", "Suppressed", "Time Since Update")
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 			for _, n := range findings {
@@ -270,9 +318,12 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetPackage(),
 					v.GetCve().GetId(),
 					v.GetCve().GetSeverity(),
+					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
+					v.GetLastSeverity(),
+					timeSinceCreation(v.GetCreated().AsTime(), v.CriticalSince.AsTime()),
 					v.GetLatestVersion(),
-					v.GetLastUpdated().AsTime().Format(time.RFC3339),
 					suppressed,
+					timeSinceCreation(v.GetCreated().AsTime(), v.GetLastUpdated().AsTime()),
 				)
 			}
 
@@ -281,4 +332,25 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 	})
+}
+
+func timeSinceCreation(created, lastUpdated time.Time) string {
+	if lastUpdated.IsZero() || created.IsZero() {
+		return "unknown"
+	}
+
+	duration := lastUpdated.Sub(created)
+
+	days := int(duration.Hours()) / 24
+	hours := int(duration.Hours()) % 24
+	minutes := int(duration.Minutes()) % 60
+
+	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd %dh", days, hours)
+	case hours > 0:
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	default:
+		return fmt.Sprintf("%dm", minutes)
+	}
 }

@@ -30,7 +30,7 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 }
 
 const getImage = `-- name: GetImage :one
-SELECT name, tag, metadata, state, created_at, updated_at FROM images WHERE name = $1 AND tag = $2
+SELECT name, tag, metadata, state, created_at, updated_at, ready_for_resync_at FROM images WHERE name = $1 AND tag = $2
 `
 
 type GetImageParams struct {
@@ -48,14 +48,17 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReadyForResyncAt,
 	)
 	return &i, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
-SELECT name, tag, metadata, state, created_at, updated_at
+SELECT name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM images
-WHERE state IN ('initialized', 'resync')
+WHERE ready_for_resync_at IS NOT NULL
+  AND ready_for_resync_at <= NOW()
+  AND state IN ('initialized', 'resync')
 ORDER BY updated_at DESC
 `
 
@@ -75,6 +78,7 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReadyForResyncAt,
 		); err != nil {
 			return nil, err
 		}
@@ -119,7 +123,7 @@ func (q *Queries) ListUnusedImages(ctx context.Context, name *string) ([]*ListUn
 	return items, nil
 }
 
-const markImagesAsUntracked = `-- name: MarkImagesAsUntracked :exec
+const markImagesAsUntracked = `-- name: MarkImagesAsUntracked :execrows
 UPDATE images
 SET
     state = 'untracked',
@@ -133,9 +137,12 @@ type MarkImagesAsUntrackedParams struct {
 	ThresholdTime  pgtype.Timestamptz
 }
 
-func (q *Queries) MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) error {
-	_, err := q.db.Exec(ctx, markImagesAsUntracked, arg.IncludedStates, arg.ThresholdTime)
-	return err
+func (q *Queries) MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markImagesAsUntracked, arg.IncludedStates, arg.ThresholdTime)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markImagesForResync = `-- name: MarkImagesForResync :exec
@@ -160,7 +167,7 @@ func (q *Queries) MarkImagesForResync(ctx context.Context, arg MarkImagesForResy
 	return err
 }
 
-const markUnusedImages = `-- name: MarkUnusedImages :exec
+const markUnusedImages = `-- name: MarkUnusedImages :execrows
 UPDATE images
 SET state      = 'unused',
     updated_at = NOW()
@@ -175,9 +182,12 @@ type MarkUnusedImagesParams struct {
 	ExcludedStates []ImageState
 }
 
-func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) error {
-	_, err := q.db.Exec(ctx, markUnusedImages, arg.ThresholdTime, arg.ExcludedStates)
-	return err
+func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markUnusedImages, arg.ThresholdTime, arg.ExcludedStates)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateImage = `-- name: UpdateImage :exec
@@ -202,18 +212,25 @@ const updateImageState = `-- name: UpdateImageState :exec
 UPDATE images
 SET
     state = $1,
+    ready_for_resync_at = $2,
     updated_at = NOW()
-WHERE name = $2 AND tag = $3
+WHERE name = $3 AND tag = $4
 `
 
 type UpdateImageStateParams struct {
-	State ImageState
-	Name  string
-	Tag   string
+	State            ImageState
+	ReadyForResyncAt pgtype.Timestamptz
+	Name             string
+	Tag              string
 }
 
 func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error {
-	_, err := q.db.Exec(ctx, updateImageState, arg.State, arg.Name, arg.Tag)
+	_, err := q.db.Exec(ctx, updateImageState,
+		arg.State,
+		arg.ReadyForResyncAt,
+		arg.Name,
+		arg.Tag,
+	)
 	return err
 }
 
