@@ -1385,8 +1385,8 @@ github.com/mozillazg/docker-credential-acr-helper v0.4.0 h1:Uoh3Z9CcpEDnLiozDx+D
 github.com/mozillazg/docker-credential-acr-helper v0.4.0/go.mod h1:2kiicb3OlPytmlNC9XGkLvVC+f0qTiJw3f/mhmeeQBg=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20250825063347-9004910e056c h1:pqIL8Ir8ljOc7DIwiqLdw1/YlbXh0FxHveNfeoe0cDg=
-github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20250825063347-9004910e056c/go.mod h1:5FyW5p54cOHFmXNXXeIrQV8rYEhS24MW0TfCN79z0Lg=
+github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20250829073838-4c7617a2c3c6 h1:G5r+T6Yj9pijPIJQCYb9JiPZYI5GoPcckx787gNpIR8=
+github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20250829073838-4c7617a2c3c6/go.mod h1:5FyW5p54cOHFmXNXXeIrQV8rYEhS24MW0TfCN79z0Lg=
 github.com/nais/liberator v0.0.0-20250821133646-1700494e093c h1:l6eemDXuppDFA2DnkOgjK/LOrcNVR8OBUtgomnGRJmc=
 github.com/nais/liberator v0.0.0-20250821133646-1700494e093c/go.mod h1:p6EA7AKqzH798N7yvG8GDHVMzzkpORoxoyfcFz5Oa7c=
 github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdhx/f4=

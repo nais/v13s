@@ -95,7 +95,7 @@ func (d *dependencytrackSource) ProjectExists(ctx context.Context, imageName, im
 
 	if p == nil {
 		d.log.Debugf("no project found for image %s:%s", imageName, imageTag)
-		return false, ErrNoProject
+		return false, nil
 	}
 
 	return true, nil

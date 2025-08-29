@@ -94,7 +94,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		}); err != nil {
 			return fmt.Errorf("failed to delete stale sourceRef: %w", err)
 		}
-		logrus.WithFields(logrus.Fields{
+		u.log.WithFields(logrus.Fields{
 			"image": imageName,
 			"tag":   imageTag,
 		}).Warn("deleted stale sourceRef; will attempt to create new project")
@@ -106,11 +106,14 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	// Upload attestation and create new sourceRef
-	uploadRes, err := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
-	if err != nil {
-		span.RecordError(err)
+	uploadRes, upErr := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	if upErr != nil {
+		span.RecordError(upErr)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
-		return handleJobErr(err)
+		// TODO: consider creating a table to track sbom upload failures
+		// can be used to alert teams of persistent upload failures
+		// now we just delete the dangling project and try again
+		return handleJobErr(upErr)
 	}
 
 	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
