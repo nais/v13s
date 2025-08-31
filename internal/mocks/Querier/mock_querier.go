@@ -1045,6 +1045,63 @@ func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) RunAndRet
 	return _c
 }
 
+// GetMeanHoursToFixCriticalVulnsForWorkload provides a mock function with given fields: ctx, workloadID
+func (_m *MockQuerier) GetMeanHoursToFixCriticalVulnsForWorkload(ctx context.Context, workloadID pgtype.UUID) (float64, error) {
+	ret := _m.Called(ctx, workloadID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMeanHoursToFixCriticalVulnsForWorkload")
+	}
+
+	var r0 float64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.UUID) (float64, error)); ok {
+		return rf(ctx, workloadID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.UUID) float64); ok {
+		r0 = rf(ctx, workloadID)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, pgtype.UUID) error); ok {
+		r1 = rf(ctx, workloadID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMeanHoursToFixCriticalVulnsForWorkload'
+type MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call struct {
+	*mock.Call
+}
+
+// GetMeanHoursToFixCriticalVulnsForWorkload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - workloadID pgtype.UUID
+func (_e *MockQuerier_Expecter) GetMeanHoursToFixCriticalVulnsForWorkload(ctx interface{}, workloadID interface{}) *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call {
+	return &MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call{Call: _e.mock.On("GetMeanHoursToFixCriticalVulnsForWorkload", ctx, workloadID)}
+}
+
+func (_c *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call) Run(run func(ctx context.Context, workloadID pgtype.UUID)) *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(pgtype.UUID))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call) Return(_a0 float64, _a1 error) *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call) RunAndReturn(run func(context.Context, pgtype.UUID) (float64, error)) *MockQuerier_GetMeanHoursToFixCriticalVulnsForWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSourceRef provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetSourceRef(ctx context.Context, arg sql.GetSourceRefParams) (*sql.SourceRef, error) {
 	ret := _m.Called(ctx, arg)
@@ -1454,6 +1511,63 @@ func (_c *MockQuerier_GetWorkload_Call) Return(_a0 *sql.Workload, _a1 error) *Mo
 }
 
 func (_c *MockQuerier_GetWorkload_Call) RunAndReturn(run func(context.Context, sql.GetWorkloadParams) (*sql.Workload, error)) *MockQuerier_GetWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetWorkloadCriticalVulnBecameCriticalAt provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetWorkloadCriticalVulnBecameCriticalAt(ctx context.Context, arg sql.GetWorkloadCriticalVulnBecameCriticalAtParams) (pgtype.Timestamptz, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWorkloadCriticalVulnBecameCriticalAt")
+	}
+
+	var r0 pgtype.Timestamptz
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetWorkloadCriticalVulnBecameCriticalAtParams) (pgtype.Timestamptz, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetWorkloadCriticalVulnBecameCriticalAtParams) pgtype.Timestamptz); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(pgtype.Timestamptz)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetWorkloadCriticalVulnBecameCriticalAtParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkloadCriticalVulnBecameCriticalAt'
+type MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call struct {
+	*mock.Call
+}
+
+// GetWorkloadCriticalVulnBecameCriticalAt is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetWorkloadCriticalVulnBecameCriticalAtParams
+func (_e *MockQuerier_Expecter) GetWorkloadCriticalVulnBecameCriticalAt(ctx interface{}, arg interface{}) *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call {
+	return &MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call{Call: _e.mock.On("GetWorkloadCriticalVulnBecameCriticalAt", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call) Run(run func(ctx context.Context, arg sql.GetWorkloadCriticalVulnBecameCriticalAtParams)) *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetWorkloadCriticalVulnBecameCriticalAtParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call) Return(_a0 pgtype.Timestamptz, _a1 error) *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call) RunAndReturn(run func(context.Context, sql.GetWorkloadCriticalVulnBecameCriticalAtParams) (pgtype.Timestamptz, error)) *MockQuerier_GetWorkloadCriticalVulnBecameCriticalAt_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2582,6 +2696,53 @@ func (_c *MockQuerier_ResetDatabase_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
+// ResolveWorkloadVulnerabilitiesForImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ResolveWorkloadVulnerabilitiesForImage(ctx context.Context, arg sql.ResolveWorkloadVulnerabilitiesForImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveWorkloadVulnerabilitiesForImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ResolveWorkloadVulnerabilitiesForImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveWorkloadVulnerabilitiesForImage'
+type MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call struct {
+	*mock.Call
+}
+
+// ResolveWorkloadVulnerabilitiesForImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ResolveWorkloadVulnerabilitiesForImageParams
+func (_e *MockQuerier_Expecter) ResolveWorkloadVulnerabilitiesForImage(ctx interface{}, arg interface{}) *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call {
+	return &MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call{Call: _e.mock.On("ResolveWorkloadVulnerabilitiesForImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call) Run(run func(ctx context.Context, arg sql.ResolveWorkloadVulnerabilitiesForImageParams)) *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ResolveWorkloadVulnerabilitiesForImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call) Return(_a0 error) *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, sql.ResolveWorkloadVulnerabilitiesForImageParams) error) *MockQuerier_ResolveWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetWorkloadState provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) SetWorkloadState(ctx context.Context, arg sql.SetWorkloadStateParams) ([]*sql.SetWorkloadStateRow, error) {
 	ret := _m.Called(ctx, arg)
@@ -2684,6 +2845,53 @@ func (_c *MockQuerier_SuppressVulnerability_Call) Return(_a0 error) *MockQuerier
 }
 
 func (_c *MockQuerier_SuppressVulnerability_Call) RunAndReturn(run func(context.Context, sql.SuppressVulnerabilityParams) error) *MockQuerier_SuppressVulnerability_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SyncWorkloadVulnerabilitiesForImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) SyncWorkloadVulnerabilitiesForImage(ctx context.Context, arg sql.SyncWorkloadVulnerabilitiesForImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncWorkloadVulnerabilitiesForImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.SyncWorkloadVulnerabilitiesForImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SyncWorkloadVulnerabilitiesForImage'
+type MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call struct {
+	*mock.Call
+}
+
+// SyncWorkloadVulnerabilitiesForImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.SyncWorkloadVulnerabilitiesForImageParams
+func (_e *MockQuerier_Expecter) SyncWorkloadVulnerabilitiesForImage(ctx interface{}, arg interface{}) *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call {
+	return &MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call{Call: _e.mock.On("SyncWorkloadVulnerabilitiesForImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call) Run(run func(ctx context.Context, arg sql.SyncWorkloadVulnerabilitiesForImageParams)) *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.SyncWorkloadVulnerabilitiesForImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call) Return(_a0 error) *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, sql.SyncWorkloadVulnerabilitiesForImageParams) error) *MockQuerier_SyncWorkloadVulnerabilitiesForImage_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -222,6 +222,7 @@ WITH filtered_workloads AS (
     )
 SELECT
     w.name AS workload_name,
+    w.id,
     w.workload_type,
     w.namespace,
     w.cluster,
@@ -249,6 +250,7 @@ type ListWorkloadStatusParams struct {
 
 type ListWorkloadStatusRow struct {
 	WorkloadName      string
+	ID                pgtype.UUID
 	WorkloadType      string
 	Namespace         string
 	Cluster           string
@@ -279,6 +281,7 @@ func (q *Queries) ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatus
 		var i ListWorkloadStatusRow
 		if err := rows.Scan(
 			&i.WorkloadName,
+			&i.ID,
 			&i.WorkloadType,
 			&i.Namespace,
 			&i.Cluster,

@@ -112,6 +112,7 @@ func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkl
 	workloads := make([]*management.WorkloadStatus, 0, len(rows))
 	for _, row := range rows {
 		workloads = append(workloads, &management.WorkloadStatus{
+			WorkloadId:        row.ID.String(),
 			Workload:          row.WorkloadName,
 			WorkloadType:      row.WorkloadType,
 			Namespace:         row.Namespace,
@@ -244,7 +245,7 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 	}
 
 	go func() {
-		err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
+		_, err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
 		if err != nil {
 			fmt.Printf("failed to resync images: %v\n", err)
 		}

@@ -187,6 +187,7 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {
 	i := imageName
 	t := imageTag
+	// TODO: remove this hack when we have a better way to handle test images
 	if strings.Contains("nais-deploy-chicken", imageName) {
 		i = "europe-north1-docker.pkg.dev/nais-io/nais/images/testapp"
 		t = "latest"

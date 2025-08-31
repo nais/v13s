@@ -91,6 +91,7 @@ WITH filtered_workloads AS (
     )
 SELECT
     w.name AS workload_name,
+    w.id,
     w.workload_type,
     w.namespace,
     w.cluster,
