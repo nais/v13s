@@ -3,22 +3,24 @@ INSERT INTO workload_vulnerabilities (workload_id, vulnerability_id, created_at,
 SELECT
     w.id,
     v.id,
-    w.created_at,
+    NOW(),
     CASE
-        WHEN v.last_severity = 0 THEN COALESCE(v.became_critical_at, NOW())
+        WHEN v.last_severity = 0 THEN w.updated_at
         ELSE NULL
         END
 FROM workloads w
          JOIN vulnerabilities v
-              ON w.image_name = v.image_name
-                  AND w.image_tag = v.image_tag
+              ON w.image_name = v.image_name AND w.image_tag = v.image_tag
          LEFT JOIN workload_vulnerabilities wv
-                   ON wv.workload_id = w.id
-                       AND wv.vulnerability_id = v.id
+                   ON wv.workload_id = w.id AND wv.vulnerability_id = v.id
 WHERE wv.id IS NULL
   AND w.image_name = $1
-  AND w.image_tag  = $2
-;
+  AND w.image_tag = $2
+  AND v.last_severity = 0
+    ON CONFLICT (workload_id, vulnerability_id) DO UPDATE
+                                                       SET became_critical_at = EXCLUDED.became_critical_at
+                                                   WHERE workload_vulnerabilities.became_critical_at IS NULL
+                                                     AND EXCLUDED.became_critical_at IS NOT NULL;
 
 -- name: ResolveWorkloadVulnerabilitiesForImage :exec
 UPDATE workload_vulnerabilities wv
@@ -68,7 +70,7 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.na
   AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-  AND (sqlc.narg('since')::timestamptz IS NULL OR v.became_critical_at > sqlc.narg('since')::timestamptz)
+  AND (sqlc.narg('since')::timestamptz IS NULL OR wv.became_critical_at > sqlc.narg('since')::timestamptz)
 ORDER BY w.id, v.cve_id, v.package LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 ;

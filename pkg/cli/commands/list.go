@@ -61,7 +61,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Usage: "list workloads that have had critical vulnerabilities since a given time",
 					Flags: append(flag.CommonFlags(opts, "limit", "order")),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return ListWorkloadCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
+						return listWorkloadCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
 					},
 				},
 			},
@@ -69,7 +69,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 	}
 }
 
-func ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+func listWorkloadCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	opts := flag.ParseOptions(cmd, o)
 	start := time.Now()
 	resp, err := c.ListWorkloadCriticalVulnerabilitiesSince(ctx, opts...)
