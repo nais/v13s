@@ -206,11 +206,14 @@ const listWorkloadStatus = `-- name: ListWorkloadStatus :many
 WITH filtered_workloads AS (
     SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
     FROM workloads
-    WHERE
-        ($1::TEXT IS NULL OR cluster = $1::TEXT)
-      AND ($2::TEXT IS NULL OR namespace = $2::TEXT)
-      AND ($3::TEXT[] IS NULL OR workload_type = ANY($3::TEXT[]))
-      AND ($4::TEXT IS NULL OR name = $4::TEXT)
+    WHERE (CASE WHEN $1::TEXT is not null THEN w.cluster = $1::TEXT ELSE TRUE END)
+      AND (CASE WHEN $2::TEXT is not null THEN w.namespace = $2::TEXT ELSE TRUE END)
+      AND (CASE
+               WHEN $3::TEXT is not null THEN w.workload_type = $3::TEXT
+        ELSE TRUE END)
+      AND (CASE
+               WHEN $4::TEXT is not null THEN w.name = $4::TEXT
+        ELSE TRUE END)
 ),
      total_count AS (
          SELECT COUNT(*) AS total FROM filtered_workloads
@@ -240,12 +243,12 @@ ORDER BY w.id
 `
 
 type ListWorkloadStatusParams struct {
-	Cluster       *string
-	Namespace     *string
-	WorkloadTypes []string
-	WorkloadName  *string
-	Offset        int32
-	Limit         int32
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+	WorkloadName *string
+	Offset       int32
+	Limit        int32
 }
 
 type ListWorkloadStatusRow struct {
@@ -267,7 +270,7 @@ func (q *Queries) ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatus
 	rows, err := q.db.Query(ctx, listWorkloadStatus,
 		arg.Cluster,
 		arg.Namespace,
-		arg.WorkloadTypes,
+		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.Offset,
 		arg.Limit,

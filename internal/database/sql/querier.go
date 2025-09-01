@@ -16,6 +16,7 @@ type Querier interface {
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
+	CountWorkloadVulnerabilities(ctx context.Context, arg CountWorkloadVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
 	CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
@@ -28,7 +29,6 @@ type Querier interface {
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
-	GetMeanHoursToFixCriticalVulnsForWorkload(ctx context.Context, workloadID pgtype.UUID) (float64, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
@@ -36,7 +36,6 @@ type Querier interface {
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
-	GetWorkloadCriticalVulnBecameCriticalAt(ctx context.Context, arg GetWorkloadCriticalVulnBecameCriticalAtParams) (pgtype.Timestamptz, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
 	ListCriticalVulnerabilitiesSince(ctx context.Context, arg ListCriticalVulnerabilitiesSinceParams) ([]*ListCriticalVulnerabilitiesSinceRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
@@ -49,8 +48,10 @@ type Querier interface {
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
 	ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)
 	ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)
+	ListWorkloadVulnerabilitiesBecameCriticalSince(ctx context.Context, arg ListWorkloadVulnerabilitiesBecameCriticalSinceParams) ([]*ListWorkloadVulnerabilitiesBecameCriticalSinceRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error)
+	ListWorkloadsMeanHoursToFixCriticalVulns(ctx context.Context, arg ListWorkloadsMeanHoursToFixCriticalVulnsParams) ([]*ListWorkloadsMeanHoursToFixCriticalVulnsRow, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)

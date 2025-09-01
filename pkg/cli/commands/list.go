@@ -61,7 +61,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Usage: "list workloads that have had critical vulnerabilities since a given time",
 					Flags: append(flag.CommonFlags(opts, "limit", "order")),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return ListCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
+						return ListWorkloadCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
 					},
 				},
 			},
@@ -69,10 +69,10 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 	}
 }
 
-func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+func ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	opts := flag.ParseOptions(cmd, o)
 	start := time.Now()
-	resp, err := c.ListCriticalVulnerabilitiesSince(ctx, opts...)
+	resp, err := c.ListWorkloadCriticalVulnerabilitiesSince(ctx, opts...)
 	if err != nil {
 		return err
 	}
@@ -80,23 +80,28 @@ func ListCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c v
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	tbl := table.New("Workload", "CVE", "Last Severity", "CriticalSince", "Created")
+	tbl := table.New("Workload", "CVE", "CriticalSince", "Resolved")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, n := range resp.GetNodes() {
 		var becameCritical string
-		if n.Vulnerability.CriticalSince != nil {
-			t := n.Vulnerability.CriticalSince.AsTime()
+		if n.Vulnerability.GetBecameCriticalAt() != nil {
+			t := n.Vulnerability.GetBecameCriticalAt().AsTime()
 			becameCritical = t.Format(time.RFC3339)
 		} else {
 			becameCritical = "-" // or "N/A" if nil
 		}
+
+		resolved := "-"
+		if n.Vulnerability.GetResolvedAt() != nil {
+			t := n.Vulnerability.GetResolvedAt().AsTime()
+			resolved = t.Format(time.RFC3339)
+		}
 		tbl.AddRow(
 			n.WorkloadRef.Name,
 			n.Vulnerability.Cve.Id,
-			*n.Vulnerability.LastSeverity,
 			becameCritical,
-			n.Vulnerability.Created.AsTime().Format(time.RFC3339),
+			resolved,
 		)
 	}
 

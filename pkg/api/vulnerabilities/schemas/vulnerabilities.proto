@@ -26,6 +26,8 @@ service Vulnerabilities {
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
   rpc ListCriticalVulnerabilitiesSince(ListCriticalVulnerabilitiesSinceRequest) returns (ListCriticalVulnerabilitiesSinceResponse);
 
+  rpc ListWorkloadCriticalVulnerabilitiesSince(ListWorkloadCriticalVulnerabilitiesSinceRequest) returns (ListWorkloadCriticalVulnerabilitiesSinceResponse);
+
   // Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Examples:
   // Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
@@ -112,6 +114,20 @@ message ListCriticalVulnerabilitiesSinceRequest {
 message ListCriticalVulnerabilitiesSinceResponse {
   Filter filter = 1;
   repeated Finding nodes = 2;
+  PageInfo page_info = 3;
+}
+
+message ListWorkloadCriticalVulnerabilitiesSinceRequest {
+  Filter filter = 1;
+  optional bool include_suppressed = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+  optional google.protobuf.Timestamp since = 5;
+}
+
+message ListWorkloadCriticalVulnerabilitiesSinceResponse {
+  Filter filter = 1;
+  repeated WorkloadCriticalVulnerabilityFinding nodes = 2;
   PageInfo page_info = 3;
 }
 
@@ -298,4 +314,19 @@ message Finding {
   Workload workload_ref = 1;
   Vulnerability vulnerability = 2;
   optional google.protobuf.Timestamp last_updated = 3;
+}
+
+message WorkloadCriticalVulnerabilityFinding {
+  Workload workload_ref = 1;
+  WorkloadCriticalVulnerability vulnerability = 2;
+}
+
+message WorkloadCriticalVulnerability {
+  string id = 1;
+  string package = 2;
+  Cve cve = 3;
+  optional Suppression suppression = 6;
+  optional google.protobuf.Timestamp created_at = 7;
+  optional google.protobuf.Timestamp became_critical_at = 8;
+  optional google.protobuf.Timestamp resolved_at = 9;
 }

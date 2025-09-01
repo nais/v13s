@@ -727,19 +727,17 @@ func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
 	})
 }
 
-func TestWorkloadVulnerabilitiesMetrics(t *testing.T) {
+func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
 
+	querier := sql.New(pool)
+
 	imageName := "image-1"
 	imageTag := "v1"
-	pkg := "pkg-1"
-	cveID := "CVE-123"
-
-	querier := sql.New(pool)
 	err := querier.CreateImage(ctx, sql.CreateImageParams{
 		Name:     imageName,
 		Tag:      imageTag,
@@ -747,89 +745,99 @@ func TestWorkloadVulnerabilitiesMetrics(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	cveID := "CVE-123"
+	pkg := "pkg-1"
 	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
-		{
-			CveID:    cveID,
-			CveTitle: "Test title",
-			CveDesc:  "Test description",
-			CveLink:  "https://example.com",
-			Severity: 0,
-			Refs:     typeext.MapStringString{},
-		},
-	}).Exec(func(i int, err error) {
-		require.NoError(t, err)
-	})
+		{CveID: cveID, CveTitle: "title", CveDesc: "desc", CveLink: "https://example.com", Severity: 0, Refs: typeext.MapStringString{}},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-	wlName := "wl-1"
-	wlCluster := "cl-1"
-	wlNamespace := "ns-1"
-	wl, err := querier.CreateWorkload(ctx, sql.CreateWorkloadParams{
-		Name:         wlName,
-		WorkloadType: "deployment",
-		Namespace:    wlNamespace,
-		Cluster:      wlCluster,
-		ImageName:    imageName,
-		ImageTag:     imageTag,
-	})
-	require.NoError(t, err)
+	workloads := []struct {
+		Name      string
+		Namespace string
+		Cluster   string
+		Type      string
+	}{
+		{"wl-1", "ns-1", "cl-1", "deployment"},
+		{"wl-2", "ns-1", "cl-1", "statefulset"},
+	}
+
+	var workloadIDs []pgtype.UUID
+	for _, wl := range workloads {
+		w, err := querier.CreateWorkload(ctx, sql.CreateWorkloadParams{
+			Name:         wl.Name,
+			WorkloadType: wl.Type,
+			Namespace:    wl.Namespace,
+			Cluster:      wl.Cluster,
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		require.NoError(t, err)
+		workloadIDs = append(workloadIDs, w.ID)
+	}
 
 	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
-		{
-			ImageName:        imageName,
-			ImageTag:         imageTag,
-			Package:          pkg,
-			CveID:            cveID,
-			Source:           "source",
-			LatestVersion:    "1.0",
-			LastSeverity:     0,
-			BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
-		},
-	}).Exec(func(i int, err error) {
-		require.NoError(t, err)
-	})
+		{ImageName: imageName, ImageTag: imageTag, Package: pkg, CveID: cveID, Source: "src", LatestVersion: "1.0", LastSeverity: 0},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
 
+	tsCritical := time.Now().Add(-2 * time.Hour)
+	tsResolved := time.Now().Add(-30 * time.Minute)
+	_, err = pool.Exec(ctx, `
+        UPDATE vulnerabilities
+        SET became_critical_at = $1
+        WHERE image_name = $2 AND image_tag = $3 AND cve_id = $4 AND package = $5
+    `, tsCritical, imageName, imageTag, cveID, pkg)
+	require.NoError(t, err)
+
+	// --- Sync vulnerabilities to workloads ---
 	require.NoError(t, querier.SyncWorkloadVulnerabilitiesForImage(ctx, sql.SyncWorkloadVulnerabilitiesForImageParams{
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	}))
 
-	// Set became_critical_at and resolved_at for testing
-	tsCritical := time.Now().Add(-2 * time.Hour)
-	tsResolved := time.Now().Add(-30 * time.Minute)
-	_, err = pool.Exec(ctx, `
-        UPDATE workload_vulnerabilities
-        SET became_critical_at = $1, resolved_at = $2
-        WHERE workload_id = $3
-    `, tsCritical, tsResolved, wl.ID)
-	require.NoError(t, err)
-
-	gotCritical, err := querier.GetWorkloadCriticalVulnBecameCriticalAt(ctx, sql.GetWorkloadCriticalVulnBecameCriticalAtParams{
-		ID:      wl.ID,
-		CveID:   cveID,
-		Package: pkg,
-	})
-	require.NoError(t, err)
-	assert.WithinDuration(t, tsCritical, gotCritical.Time, time.Second)
-
-	wp := sql.GetWorkloadParams{
-		Name:         wlName,
-		Namespace:    wlNamespace,
-		Cluster:      wlCluster,
-		WorkloadType: wl.WorkloadType,
+	for _, wid := range workloadIDs {
+		_, err = pool.Exec(ctx, `
+            UPDATE workload_vulnerabilities
+            SET resolved_at = $1
+            WHERE workload_id = $2
+        `, tsResolved, wid)
+		require.NoError(t, err)
 	}
 
-	w, err := querier.GetWorkload(ctx, wp)
+	ns := "ns-1"
+	filtered, err := querier.ListWorkloadVulnerabilitiesBecameCriticalSince(ctx, sql.ListWorkloadVulnerabilitiesBecameCriticalSinceParams{
+		Namespace: &ns,
+		Since: pgtype.Timestamptz{
+			Time:  tsCritical.Add(-1 * time.Minute),
+			Valid: true,
+		},
+		Offset: 0,
+		Limit:  100,
+	})
 	require.NoError(t, err)
-	require.NotNil(t, w)
+	require.Len(t, filtered, 2, "expected 2 workloads with critical vulnerabilities")
+	for _, f := range filtered {
+		assert.Contains(t, workloadIDs, f.WorkloadID)
+		assert.WithinDuration(t, tsCritical, f.BecameCriticalAt.Time, time.Second)
+	}
 
-	meanHours, err := querier.GetMeanHoursToFixCriticalVulnsForWorkload(
+	meanHours, err := querier.ListWorkloadsMeanHoursToFixCriticalVulns(
 		ctx,
-		w.ID,
+		sql.ListWorkloadsMeanHoursToFixCriticalVulnsParams{
+			Namespace: &ns,
+			Offset:    0,
+			Limit:     100,
+		},
 	)
-	require.NoError(t, err)
 
-	expectedHours := tsResolved.Sub(tsCritical).Hours()
-	assert.InDelta(t, expectedHours, meanHours, 0.01)
+	require.NoError(t, err)
+	require.Len(t, meanHours, 2, "expected 2 workloads with MHTF")
+
+	for _, m := range meanHours {
+		require.NoError(t, err)
+		expectedHours := tsResolved.Sub(tsCritical).Hours()
+		assert.InDelta(t, expectedHours, m.MeanHoursToFix, 0.01)
+		fmt.Println(m.WorkloadName, m.MeanHoursToFix, "hours")
+	}
 }
 
 func addFinding(findings map[string][]*dependencytrack.Vulnerability, projectUUID, cveID string) {
