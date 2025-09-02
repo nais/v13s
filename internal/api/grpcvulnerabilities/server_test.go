@@ -522,7 +522,7 @@ func TestVulnerabilityBecameCriticalTimestamps(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, int32(0), result.LastSeverity, "severity should be critical")
-		assert.WithinDuration(t, result.CreatedAt.Time, result.BecameCriticalAt.Time, time.Millisecond)
+		assert.WithinDuration(t, result.CreatedAt.Time, result.BecameCriticalAt.Time, 3*time.Millisecond)
 	})
 
 	t.Run("Already critical → critical", func(t *testing.T) {

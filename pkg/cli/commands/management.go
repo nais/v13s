@@ -51,7 +51,7 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 			Name:    "status",
 			Aliases: []string{"st"},
 			Usage:   "get workload status",
-			Flags: append(flag.CommonFlags(opts, "limit", "order", "since"), &cli.BoolFlag{
+			Flags: append(flag.CommonFlags(opts, "order", "since"), &cli.BoolFlag{
 				Name:        "show-jobs",
 				Aliases:     []string{"j"},
 				Usage:       "show jobs associated with the workload",
@@ -148,12 +148,8 @@ func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Opt
 }
 
 func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload = extractFilters(opts)
-	var workloadType *string
+	var cluster, namespace, workload, workloadType = extractFilters(opts)
 	var imageState *string
-	if opts.WorkloadType != "" {
-		workloadType = &opts.WorkloadType
-	}
 	if opts.ImageState != "" {
 		imageState = &opts.ImageState
 	}
@@ -183,15 +179,20 @@ func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) 
 }
 
 func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload = extractFilters(opts)
+	var cluster, namespace, workload, workloadType = extractFilters(opts)
+
+	if opts.Limit <= 0 {
+		opts.Limit = 30
+	}
 
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
-			Cluster:   cluster,
-			Namespace: namespace,
-			Workload:  workload,
-			Limit:     int32(opts.Limit),
-			Offset:    int32(offset),
+			Cluster:      cluster,
+			Namespace:    namespace,
+			Workload:     workload,
+			WorkloadType: workloadType,
+			Limit:        int32(opts.Limit),
+			Offset:       int32(offset),
 		})
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get workload status: %w", err)
@@ -224,7 +225,7 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 }
 
 func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload = extractFilters(opts)
+	var cluster, namespace, workload, _ = extractFilters(opts)
 
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadJobs(ctx, &management.GetWorkloadJobsRequest{
@@ -304,7 +305,7 @@ func (t *Table) Print() {
 	tbl.Print()
 }
 
-func extractFilters(opts *flag.Options) (cluster, namespace, workload *string) {
+func extractFilters(opts *flag.Options) (cluster, namespace, workload, workloadType *string) {
 	if opts.Cluster != "" {
 		cluster = &opts.Cluster
 	}
@@ -313,6 +314,9 @@ func extractFilters(opts *flag.Options) (cluster, namespace, workload *string) {
 	}
 	if opts.Workload != "" {
 		workload = &opts.Workload
+	}
+	if opts.WorkloadType != "" {
+		workloadType = &opts.WorkloadType
 	}
 	return
 }

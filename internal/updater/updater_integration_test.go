@@ -7,11 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/manager"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	"github.com/nais/v13s/internal/sources"
@@ -104,7 +106,7 @@ func TestUpdater(t *testing.T) {
     		WHERE state = 'initialized'`)
 		require.NoError(t, err)
 
-		err = u.ResyncImageVulnerabilities(updaterCtx)
+		_, err = u.ResyncImageVulnerabilities(updaterCtx)
 		assert.NoError(t, err)
 
 		select {
@@ -439,24 +441,41 @@ func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
 	pkg := "pkg-1"
 	cveID := "CVE-123"
 
-	_, err := pool.Exec(ctx, `
-    INSERT INTO images (name, tag, state, metadata, created_at, updated_at)
-    VALUES ($1, $2, 'initialized', '{}', NOW(), NOW())
-`, imageName, imageTag)
+	querier := sql.New(pool)
+	err := querier.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `
-    INSERT INTO cve (
-        cve_id, cve_title, cve_desc, cve_link, severity, refs
-    ) VALUES ($1, $2, $3, $4, $5, $6)
-`, cveID, "Test title", "Test description", "https://example.com", 0, "{}")
-	require.NoError(t, err)
+	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:    cveID,
+			CveTitle: "Test title",
+			CveDesc:  "Test description",
+			CveLink:  "https://example.com",
+			Severity: 0,
+			Refs:     typeext.MapStringString{},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
 
-	_, err = pool.Exec(ctx, `
-    INSERT INTO vulnerabilities (image_name, image_tag, package, cve_id, source, latest_version, last_severity, created_at)
-    VALUES ($1, $2, $3, $4, 'source', '1.0', 0, NOW())
-`, imageName, imageTag, pkg, cveID)
-	require.NoError(t, err)
+	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName:        imageName,
+			ImageTag:         imageTag,
+			Package:          pkg,
+			CveID:            cveID,
+			Source:           "source",
+			LatestVersion:    "1.0",
+			LastSeverity:     0,
+			BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
 
 	t.Run("returns earliest became_critical_at if lastSeverity is 0", func(t *testing.T) {
 		ts := time.Now().Add(-1 * time.Hour)
@@ -511,11 +530,20 @@ func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
 		`, imageName, imageTag2)
 		require.NoError(t, err)
 
-		_, err = pool.Exec(ctx, `
-			INSERT INTO vulnerabilities (image_name, image_tag, package, cve_id, source, latest_version, last_severity, created_at)
-			VALUES ($1, $2, $3, $4, 'source', '1.0', 5, NOW())
-		`, imageName, imageTag2, pkg, cveID)
-		require.NoError(t, err)
+		querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{
+				ImageName:        imageName,
+				ImageTag:         imageTag,
+				Package:          pkg,
+				CveID:            cveID,
+				Source:           "source",
+				LatestVersion:    "1.0",
+				LastSeverity:     0,
+				BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+			},
+		}).Exec(func(i int, err error) {
+			require.NoError(t, err)
+		})
 
 		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
 		require.NoError(t, err)
@@ -564,6 +592,337 @@ func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, project
 			assert.NoError(t, err)
 		}
 	}
+}
+
+func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+	imageName := "image-1"
+	imageTag := "v1"
+	pkg := "pkg-1"
+	cveID := "CVE-123"
+
+	querier := sql.New(pool)
+	err := querier.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:    cveID,
+			CveTitle: "Test title",
+			CveDesc:  "Test description",
+			CveLink:  "https://example.com",
+			Severity: 0,
+			Refs:     typeext.MapStringString{},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	workload1 := uuid.New()
+	workload2 := uuid.New()
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO workloads (id, name, cluster, namespace, workload_type, image_name, image_tag, created_at)
+		VALUES
+		($1, 'workload-1', 'test', 'default', 'deployment', $2, $3, NOW()),
+		($4, 'workload-2', 'test', 'default', 'deployment', $2, $3, NOW())
+	`, workload1, imageName, imageTag, workload2)
+	require.NoError(t, err)
+
+	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName:        imageName,
+			ImageTag:         imageTag,
+			Package:          pkg,
+			CveID:            cveID,
+			Source:           "source",
+			LatestVersion:    "1.0",
+			LastSeverity:     0,
+			BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	t.Run("inserts workload vulnerabilities for workloads with matching image", func(t *testing.T) {
+		images := []*sql.Image{{Name: imageName, Tag: imageTag}}
+		err := u.SyncWorkloadVulnerabilities(ctx, images)
+		require.NoError(t, err)
+
+		var count int
+		err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM workload_vulnerabilities`).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("sets resolved_at when vulnerabilities removed from image", func(t *testing.T) {
+		// Remove vulnerability for this image
+		_, err := pool.Exec(ctx, `DELETE FROM vulnerabilities WHERE image_name = $1 AND image_tag = $2`, imageName, imageTag)
+		require.NoError(t, err)
+
+		images := []*sql.Image{{Name: imageName, Tag: imageTag}}
+		err = u.SyncWorkloadVulnerabilities(ctx, images)
+		require.NoError(t, err)
+
+		rows, err := pool.Query(ctx, `
+			SELECT resolved_at
+			FROM workload_vulnerabilities
+			WHERE workload_id IN ($1, $2)
+		`, workload1, workload2)
+		require.NoError(t, err)
+		defer rows.Close()
+
+		for rows.Next() {
+			var resolved pgtype.Timestamptz
+			err := rows.Scan(&resolved)
+			require.NoError(t, err)
+			assert.NotNil(t, resolved.Time)
+		}
+	})
+}
+
+func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	querier := sql.New(pool)
+
+	imageName := "image-1"
+	imageTag := "v1"
+	cveID := "CVE-123"
+	pkg := "pkg-1"
+
+	err := querier.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: cveID, CveTitle: "title", CveDesc: "desc", CveLink: "https://example.com", Severity: 0, Refs: typeext.MapStringString{}},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+	tsCritical := time.Now().Add(-2 * time.Hour)
+	workloads := []struct {
+		Name      string
+		Namespace string
+		Cluster   string
+		Type      string
+	}{
+		{"wl-1", "ns-1", "cl-1", "deployment"},
+		{"wl-2", "ns-1", "cl-1", "statefulset"},
+	}
+
+	var workloadIDs []pgtype.UUID
+	for _, wl := range workloads {
+		w, err := querier.CreateWorkload(ctx, sql.CreateWorkloadParams{
+			Name:         wl.Name,
+			WorkloadType: wl.Type,
+			Namespace:    wl.Namespace,
+			Cluster:      wl.Cluster,
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx, `
+			UPDATE workloads
+			SET updated_at = $1
+			WHERE id = $2
+		`, tsCritical, w.ID)
+		require.NoError(t, err)
+
+		workloadIDs = append(workloadIDs, w.ID)
+	}
+
+	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName:     imageName,
+			ImageTag:      imageTag,
+			Package:       pkg,
+			CveID:         cveID,
+			Source:        "src",
+			LatestVersion: "1.0",
+			LastSeverity:  0,
+		},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+	// Sync vulnerabilities for the image
+	require.NoError(t, querier.SyncWorkloadVulnerabilitiesForImage(ctx,
+		sql.SyncWorkloadVulnerabilitiesForImageParams{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			CreatedAt: pgtype.Timestamptz{ // pass fixed tsCritical
+				Time:  tsCritical,
+				Valid: true,
+			},
+		},
+	))
+
+	// Set resolved_at
+	tsResolved := time.Now().Add(-30 * time.Minute)
+	for _, wid := range workloadIDs {
+		_, err = pool.Exec(ctx, `
+			UPDATE workload_vulnerabilities
+			SET resolved_at = $1
+			WHERE workload_id = $2
+		`, tsResolved, wid)
+		require.NoError(t, err)
+	}
+
+	ns := "ns-1"
+	resolved := true
+	filtered, err := querier.ListWorkloadVulnerabilitiesBecameCriticalSince(ctx,
+		sql.ListWorkloadVulnerabilitiesBecameCriticalSinceParams{
+			Namespace: &ns,
+			Since: pgtype.Timestamptz{
+				Time:  tsCritical.Add(-1 * time.Minute),
+				Valid: true,
+			},
+			Offset: 0,
+			Limit:  100,
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, filtered, 0, "default to not show any workloads if resolved, expected 0 workloads with critical vulnerabilities")
+
+	// include resolved workloads
+	// Verify workloads that became critical since tsCritical - 1min
+	filtered, err = querier.ListWorkloadVulnerabilitiesBecameCriticalSince(ctx,
+		sql.ListWorkloadVulnerabilitiesBecameCriticalSinceParams{
+			Namespace: &ns,
+			Since: pgtype.Timestamptz{
+				Time:  tsCritical.Add(-1 * time.Minute),
+				Valid: true,
+			},
+			IncludeUnresolved: &resolved,
+			Offset:            0,
+			Limit:             100,
+		})
+	require.NoError(t, err)
+	require.Len(t, filtered, 2, "expected 2 workloads with critical vulnerabilities")
+
+	for _, f := range filtered {
+		assert.Contains(t, workloadIDs, f.WorkloadID)
+		assert.WithinDuration(t, tsCritical, f.BecameCriticalAt.Time, 2*time.Second)
+	}
+
+	// Compute mean hours to fix
+	meanHours, err := querier.ListWorkloadsMeanHoursToFixCriticalVulns(ctx,
+		sql.ListWorkloadsMeanHoursToFixCriticalVulnsParams{
+			Namespace: &ns,
+			Offset:    0,
+			Limit:     100,
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, meanHours, 2, "expected 2 workloads with MHTF")
+
+	for _, m := range meanHours {
+		expectedHours := tsResolved.Sub(tsCritical).Hours()
+		assert.InDelta(t, expectedHours, m.MeanHoursToFix, 0.05)
+		fmt.Println(m.WorkloadName, m.MeanHoursToFix, "hours")
+	}
+}
+
+func TestSyncWorkloadVulnerabilities_NewCriticalOnly(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	querier := sql.New(pool)
+
+	imageName := "image-1"
+	imageTag := "v1"
+	cveExisting := "CVE-OLD"
+	cveNew := "CVE-NEW"
+	pkg := "pkg-1"
+
+	err := querier.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	w1, err := querier.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "wl-1",
+		Namespace:    "ns-1",
+		Cluster:      "cl-1",
+		WorkloadType: "deployment",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	require.NoError(t, err)
+
+	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: cveExisting, CveTitle: "Existing CVE", CveDesc: "desc", CveLink: "https://example.com", Severity: 0, Refs: typeext.MapStringString{}},
+		{CveID: cveNew, CveTitle: "New CVE", CveDesc: "desc", CveLink: "https://example.com", Severity: 0, Refs: typeext.MapStringString{}},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: imageName, ImageTag: imageTag, Package: pkg, CveID: cveExisting, Source: "src", LastSeverity: 0},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+	require.NoError(t, querier.SyncWorkloadVulnerabilitiesForImage(ctx, sql.SyncWorkloadVulnerabilitiesForImageParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	}))
+
+	var count int
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM workload_vulnerabilities WHERE workload_id = $1`, w1.ID).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+
+	// Insert new critical vulnerability
+	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: imageName, ImageTag: imageTag, Package: pkg, CveID: cveNew, Source: "src", LastSeverity: 0},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+	// Sync again, should add only the new vulnerability
+	require.NoError(t, querier.SyncWorkloadVulnerabilitiesForImage(ctx, sql.SyncWorkloadVulnerabilitiesForImageParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	}))
+
+	// Verify both vulnerabilities are tracked
+	rows, err := pool.Query(ctx, `
+		SELECT v.cve_id, wv.became_critical_at
+		FROM workload_vulnerabilities wv
+		JOIN vulnerabilities v ON wv.vulnerability_id = v.id
+		WHERE wv.workload_id = $1
+	`, w1.ID)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var seen []string
+	for rows.Next() {
+		var cveID string
+		var becameCritical pgtype.Timestamptz
+		err := rows.Scan(&cveID, &becameCritical)
+		require.NoError(t, err)
+		require.True(t, becameCritical.Valid, "became_critical_at should be set")
+		seen = append(seen, cveID)
+	}
+
+	require.ElementsMatch(t, []string{cveExisting, cveNew}, seen)
 }
 
 func addFinding(findings map[string][]*dependencytrack.Vulnerability, projectUUID, cveID string) {

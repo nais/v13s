@@ -58,13 +58,20 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 
 // Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
-	go runScheduled(ctx, u.updateSchedule, "mark and resync images", u.log, func() {
+	go runScheduled(ctx, u.updateSchedule, "mark and resync images and sync workload vulnerabilities", u.log, func() {
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
 			return
 		}
-		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
+		images, err := u.ResyncImageVulnerabilities(ctx)
+		if err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
+		}
+
+		if len(images) > 0 {
+			if err := u.SyncWorkloadVulnerabilities(ctx, images); err != nil {
+				u.log.WithError(err).Error("Failed to sync workload vulnerabilities")
+			}
 		}
 	})
 
@@ -108,13 +115,38 @@ func (u *Updater) Run(ctx context.Context) {
 	})
 }
 
-func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
+func (u *Updater) SyncWorkloadVulnerabilities(ctx context.Context, images []*sql.Image) error {
+	start := time.Now()
+	for _, img := range images {
+		err := u.querier.SyncWorkloadVulnerabilitiesForImage(ctx, sql.SyncWorkloadVulnerabilitiesForImageParams{
+			ImageName: img.Name,
+			ImageTag:  img.Tag,
+		})
+		if err != nil {
+			u.log.WithError(err).Error("failed to sync workload vulnerabilities")
+			return err
+		}
+
+		err = u.querier.ResolveWorkloadVulnerabilitiesForImage(ctx, sql.ResolveWorkloadVulnerabilitiesForImageParams{
+			ImageName: img.Name,
+			ImageTag:  img.Tag,
+		})
+		if err != nil {
+			u.log.WithError(err).Error("failed to resolve workload vulnerabilities")
+		}
+	}
+
+	u.log.Infof("workload vulnerabilities synced in %fs", time.Since(start).Seconds())
+	return nil
+}
+
+func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) ([]*sql.Image, error) {
 	u.log.Debug("resyncing images")
 	start := time.Now()
 
 	images, err := u.querier.GetImagesScheduledForSync(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx = NewDbContext(ctx, u.querier, u.log)
@@ -142,7 +174,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	if err != nil {
 		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
-		return err
+		return nil, err
 	}
 
 	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
@@ -153,7 +185,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 		})
 	}
 
-	return nil
+	return images, nil
 }
 
 func (u *Updater) MarkUnusedImages(ctx context.Context) error {

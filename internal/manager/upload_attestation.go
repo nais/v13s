@@ -82,6 +82,19 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 			return fmt.Errorf("failed to verify project existence: %w", err)
 		}
 		if exists {
+			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				Name:  imageName,
+				Tag:   imageTag,
+				State: sql.ImageStateResync,
+				ReadyForResyncAt: pgtype.Timestamptz{
+					Time:  time.Now().Add(FinalizeAttestationScheduledForResyncMinutes),
+					Valid: true,
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update image state: %w", err)
+			}
+
 			recordOutput(ctx, JobStatusSourceRefExists)
 			return nil
 		}

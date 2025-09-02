@@ -87,7 +87,6 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		}
 	}
 
-	// TODO: We have to wait for the analysis to be done before we can update summary
 	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
 	if err != nil {
 		return nil, err
