@@ -75,14 +75,10 @@ ORDER BY w.id;
 WITH filtered_workloads AS (
     SELECT *
     FROM workloads
-    WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
-      AND (CASE WHEN sqlc.narg('namespace')::TEXT is not null THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
-      AND (CASE
-               WHEN sqlc.narg('workload_type')::TEXT is not null THEN w.workload_type = sqlc.narg('workload_type')::TEXT
-        ELSE TRUE END)
-      AND (CASE
-               WHEN sqlc.narg('workload_name')::TEXT is not null THEN w.name = sqlc.narg('workload_name')::TEXT
-        ELSE TRUE END)
+    WHERE (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+      AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+      AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+      AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
 ),
      total_count AS (
          SELECT COUNT(*) AS total FROM filtered_workloads

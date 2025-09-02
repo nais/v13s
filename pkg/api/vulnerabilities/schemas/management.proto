@@ -33,8 +33,9 @@ message GetWorkloadStatusRequest {
   optional string cluster = 1;
   optional string namespace = 2;
   optional string workload = 3;
-  int32 limit = 4;
-  int32 offset = 5;
+  optional string workload_type = 4;
+  int32 limit = 5;
+  int32 offset = 6;
 }
 
 message WorkloadStatus {

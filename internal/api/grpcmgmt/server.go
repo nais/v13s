@@ -89,6 +89,14 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 
 func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
 	workloadType := "app"
+	if req.WorkloadType != nil {
+		workloadType = *req.WorkloadType
+	}
+
+	if req.Limit == 0 {
+		req.Limit = 30
+	}
+
 	rows, err := s.querier.ListWorkloadStatus(ctx, sql.ListWorkloadStatusParams{
 		Cluster:      req.Cluster,
 		Namespace:    req.Namespace,
