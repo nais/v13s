@@ -218,39 +218,36 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			return nil, err
 		}
 
-		imageState := sql.ImageStateResync
 		if request.ImageState != nil {
-			imageState = sql.ImageState(*request.ImageState)
+			err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				State: sql.ImageState(*request.ImageState),
+				Name:  workload.ImageName,
+				Tag:   workload.ImageTag,
+				ReadyForResyncAt: pgtype.Timestamptz{
+					Time:  time.Now(),
+					Valid: true,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			workloads = append(workloads,
+				fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
 		}
 
-		err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-			State: imageState,
-			Name:  workload.ImageName,
-			Tag:   workload.ImageTag,
-			ReadyForResyncAt: pgtype.Timestamptz{
-				Time:  time.Now(),
-				Valid: true,
-			},
-		})
-		if err != nil {
-			return nil, err
+		if len(workloads) == 0 {
+			s.log.Debugf("no workloads to resync")
+			return &management.ResyncResponse{}, nil
 		}
 
-		workloads = append(workloads,
-			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
+		go func() {
+			_, err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
+			if err != nil {
+				fmt.Printf("failed to resync images: %v\n", err)
+			}
+		}()
 	}
-
-	if len(workloads) == 0 {
-		s.log.Debugf("no workloads to resync")
-		return &management.ResyncResponse{}, nil
-	}
-
-	go func() {
-		_, err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
-		if err != nil {
-			fmt.Printf("failed to resync images: %v\n", err)
-		}
-	}()
 
 	return &management.ResyncResponse{
 		NumWorkloads: int32(len(workloads)),

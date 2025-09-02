@@ -1,26 +1,30 @@
 -- name: SyncWorkloadVulnerabilitiesForImage :exec
-INSERT INTO workload_vulnerabilities (workload_id, vulnerability_id, created_at, became_critical_at)
+INSERT INTO workload_vulnerabilities (
+    workload_id,
+    vulnerability_id,
+    created_at,
+    became_critical_at
+)
 SELECT
     w.id,
     v.id,
-    NOW(),
+    COALESCE(sqlc.arg(created_at), now()) AS created_at,
     CASE
-        WHEN v.last_severity = 0 THEN w.updated_at
+        WHEN v.last_severity = 0 THEN COALESCE(sqlc.arg(created_at), now())
         ELSE NULL
-        END
+        END AS became_critical_at
 FROM workloads w
          JOIN vulnerabilities v
-              ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+              ON w.image_name = v.image_name
+                  AND w.image_tag = v.image_tag
          LEFT JOIN workload_vulnerabilities wv
-                   ON wv.workload_id = w.id AND wv.vulnerability_id = v.id
+                   ON wv.workload_id = w.id
+                       AND wv.vulnerability_id = v.id
 WHERE wv.id IS NULL
+  AND v.last_severity = 0
   AND w.image_name = $1
   AND w.image_tag = $2
-  AND v.last_severity = 0
-    ON CONFLICT (workload_id, vulnerability_id) DO UPDATE
-                                                       SET became_critical_at = EXCLUDED.became_critical_at
-                                                   WHERE workload_vulnerabilities.became_critical_at IS NULL
-                                                     AND EXCLUDED.became_critical_at IS NOT NULL;
+;
 
 -- name: ResolveWorkloadVulnerabilitiesForImage :exec
 UPDATE workload_vulnerabilities wv
