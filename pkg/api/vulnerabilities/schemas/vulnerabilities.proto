@@ -120,9 +120,10 @@ message ListCriticalVulnerabilitiesSinceResponse {
 message ListWorkloadCriticalVulnerabilitiesSinceRequest {
   Filter filter = 1;
   optional bool include_suppressed = 2;
-  int32 limit = 3;
-  int32 offset = 4;
-  optional google.protobuf.Timestamp since = 5;
+  optional bool include_resolved = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+  optional google.protobuf.Timestamp since = 6;
 }
 
 message ListWorkloadCriticalVulnerabilitiesSinceResponse {

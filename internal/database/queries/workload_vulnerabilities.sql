@@ -74,8 +74,10 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.na
   AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+  AND (sqlc.narg('include_unresolved')::BOOLEAN IS TRUE OR wv.resolved_at IS NULL)
   AND (sqlc.narg('since')::timestamptz IS NULL OR wv.became_critical_at > sqlc.narg('since')::timestamptz)
-ORDER BY w.id, v.cve_id, v.package LIMIT sqlc.arg('limit')
+ORDER BY w.id, v.cve_id, v.package
+    LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 ;
 

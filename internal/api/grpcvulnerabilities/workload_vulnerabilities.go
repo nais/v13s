@@ -34,6 +34,7 @@ func (s *Server) ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, r
 		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
+		IncludeUnresolved: request.IncludeResolved,
 		Since:             since,
 		Limit:             limit,
 		Offset:            offset,

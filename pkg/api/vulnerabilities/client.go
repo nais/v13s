@@ -116,6 +116,7 @@ func (c *client) ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, o
 		Offset:            o.Offset,
 		Since:             o.Since,
 		IncludeSuppressed: &o.IncludeSuppressed,
+		IncludeResolved:   &o.IncludeUnresolved,
 	}, o.CallOptions...)
 }
 

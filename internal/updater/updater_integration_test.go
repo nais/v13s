@@ -706,7 +706,6 @@ func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 	cveID := "CVE-123"
 	pkg := "pkg-1"
 
-	// Insert image
 	err := querier.CreateImage(ctx, sql.CreateImageParams{
 		Name:     imageName,
 		Tag:      imageTag,
@@ -714,12 +713,10 @@ func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Insert CVE
 	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
 		{CveID: cveID, CveTitle: "title", CveDesc: "desc", CveLink: "https://example.com", Severity: 0, Refs: typeext.MapStringString{}},
 	}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-	// Create workloads
 	tsCritical := time.Now().Add(-2 * time.Hour)
 	workloads := []struct {
 		Name      string
@@ -743,7 +740,6 @@ func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Set updated_at explicitly
 		_, err = pool.Exec(ctx, `
 			UPDATE workloads
 			SET updated_at = $1
@@ -754,7 +750,6 @@ func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 		workloadIDs = append(workloadIDs, w.ID)
 	}
 
-	// Insert vulnerability
 	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
 			ImageName:     imageName,
@@ -790,8 +785,8 @@ func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Verify workloads that became critical since tsCritical - 1min
 	ns := "ns-1"
+	resolved := true
 	filtered, err := querier.ListWorkloadVulnerabilitiesBecameCriticalSince(ctx,
 		sql.ListWorkloadVulnerabilitiesBecameCriticalSinceParams{
 			Namespace: &ns,
@@ -803,6 +798,22 @@ func TestWorkloadVulnerabilitiesMetrics_PerWorkload(t *testing.T) {
 			Limit:  100,
 		},
 	)
+	require.NoError(t, err)
+	require.Len(t, filtered, 0, "default to not show any workloads if resolved, expected 0 workloads with critical vulnerabilities")
+
+	// include resolved workloads
+	// Verify workloads that became critical since tsCritical - 1min
+	filtered, err = querier.ListWorkloadVulnerabilitiesBecameCriticalSince(ctx,
+		sql.ListWorkloadVulnerabilitiesBecameCriticalSinceParams{
+			Namespace: &ns,
+			Since: pgtype.Timestamptz{
+				Time:  tsCritical.Add(-1 * time.Minute),
+				Valid: true,
+			},
+			IncludeUnresolved: &resolved,
+			Offset:            0,
+			Limit:             100,
+		})
 	require.NoError(t, err)
 	require.Len(t, filtered, 2, "expected 2 workloads with critical vulnerabilities")
 

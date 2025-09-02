@@ -59,7 +59,14 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				{
 					Name:  "critical",
 					Usage: "list workloads that have had critical vulnerabilities since a given time",
-					Flags: append(flag.CommonFlags(opts, "limit", "order")),
+					Flags: append(flag.CommonFlags(opts, "limit", "order"),
+						&cli.BoolFlag{
+							Name:        "unresolved",
+							Aliases:     []string{"u"},
+							Value:       false,
+							Usage:       "only show vulnerabilities that are still unresolved",
+							Destination: &opts.Unresolved,
+						}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listWorkloadCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
 					},

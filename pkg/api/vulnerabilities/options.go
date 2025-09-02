@@ -77,9 +77,10 @@ func (o OrderByField) IsValid() bool {
 const DefaultLimit = 50
 
 type Options struct {
-	Filter            *Filter
 	CallOptions       []grpc.CallOption
+	Filter            *Filter
 	IncludeSuppressed bool
+	IncludeUnresolved bool
 	Limit             int32
 	Offset            int32
 	OrderBy           *OrderBy
@@ -131,6 +132,8 @@ func GetOrderBy(opts ...Option) *OrderBy {
 func GetSince(opts ...Option) *timestamppb.Timestamp {
 	return applyOptions(opts...).Since
 }
+
+func GetIncludedUnresolved(opts ...Option) bool { return applyOptions(opts...).IncludeUnresolved }
 
 // TODO: document the Options
 func CallOptions(opts ...grpc.CallOption) Option {
@@ -218,6 +221,12 @@ func Order(field OrderByField, direction Direction) Option {
 func Since(t time.Time) Option {
 	return newFuncOption(func(o *Options) {
 		o.Since = timestamppb.New(t)
+	})
+}
+
+func IncludeUnresolved() Option {
+	return newFuncOption(func(o *Options) {
+		o.IncludeUnresolved = true
 	})
 }
 

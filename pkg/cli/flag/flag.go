@@ -25,6 +25,7 @@ type Options struct {
 	Suppressed    bool
 	Package       string
 	CveId         string
+	Unresolved    bool
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -158,6 +159,10 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 
 	if o.Suppressed {
 		opts = append(opts, vulnerabilities.IncludeSuppressed())
+	}
+	fmt.Println(o.Unresolved)
+	if o.Unresolved {
+		opts = append(opts, vulnerabilities.IncludeUnresolved())
 	}
 	return opts
 }
