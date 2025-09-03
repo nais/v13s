@@ -703,6 +703,7 @@ SELECT v.id,
        v.image_name,
        v.image_tag,
        v.latest_version,
+       v.became_critical_at AS critical_since,
        v.package,
        v.cve_id,
        v.created_at,
@@ -777,6 +778,7 @@ type ListVulnerabilitiesRow struct {
 	ImageName     string
 	ImageTag      string
 	LatestVersion string
+	CriticalSince pgtype.Timestamptz
 	Package       string
 	CveID         string
 	CreatedAt     pgtype.Timestamptz
@@ -823,6 +825,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.ImageName,
 			&i.ImageTag,
 			&i.LatestVersion,
+			&i.CriticalSince,
 			&i.Package,
 			&i.CveID,
 			&i.CreatedAt,
@@ -859,6 +862,7 @@ WITH image_vulnerabilities AS (
           v.latest_version,
           v.created_at,
           v.updated_at,
+          v.became_critical_at,
           c.cve_title,
           c.cve_desc,
           c.cve_link,
@@ -890,6 +894,7 @@ SELECT id,
        latest_version,
        created_at,
        updated_at,
+       became_critical_at AS critical_since,
        cve_title,
        cve_desc,
        cve_link,
@@ -941,6 +946,7 @@ type ListVulnerabilitiesForImageRow struct {
 	LatestVersion string
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	CriticalSince pgtype.Timestamptz
 	CveTitle      string
 	CveDesc       string
 	CveLink       string
@@ -981,6 +987,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.LatestVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CriticalSince,
 			&i.CveTitle,
 			&i.CveDesc,
 			&i.CveLink,
