@@ -96,20 +96,6 @@ func (s *SyncImageWorker) Work(ctx context.Context, job *river.Job[SyncImageJob]
 
 	data, err := s.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, s.source)
 	if err != nil {
-		// TODO: handle ErrNoMetrics and ErrNoProject separately?
-		//if errors.Is(err, sources.ErrNoProject) {
-		//	s.log.Infof("no project found for image %s:%s, marking as unused", img.ImageName, img.ImageTag)
-		//	if err2 := s.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
-		//		Name:  img.ImageName,
-		//		Tag:   img.ImageTag,
-		//		State: sql.ImageStateUnused, // will prevent further sync attempts until manually reset
-		//	}); err2 != nil {
-		//		s.log.WithError(err2).Error("failed to mark image as unused")
-		//	}
-		//	recordOutput(ctx, JobStatusImageMarkedUnused)
-		//	return nil
-		//}
-
 		s.log.WithError(err).Error("fetch failed")
 		return err
 	}
