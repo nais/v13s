@@ -51,6 +51,7 @@ type Querier interface {
 	ListWorkloadVulnerabilitiesBecameCriticalSince(ctx context.Context, arg ListWorkloadVulnerabilitiesBecameCriticalSinceParams) ([]*ListWorkloadVulnerabilitiesBecameCriticalSinceRow, error)
 	ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error)
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error)
+	ListWorkloadsForVulnerabilityById(ctx context.Context, vulnerabilityID pgtype.UUID) ([]*ListWorkloadsForVulnerabilityByIdRow, error)
 	ListWorkloadsMeanHoursToFixCriticalVulns(ctx context.Context, arg ListWorkloadsMeanHoursToFixCriticalVulnsParams) ([]*ListWorkloadsMeanHoursToFixCriticalVulnsRow, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error

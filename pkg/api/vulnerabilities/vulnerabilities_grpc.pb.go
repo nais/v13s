@@ -30,6 +30,7 @@ const (
 	Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName            = "/v13s.api.protobuf.Vulnerabilities/ListSuppressedVulnerabilities"
 	Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName         = "/v13s.api.protobuf.Vulnerabilities/ListCriticalVulnerabilitiesSince"
 	Vulnerabilities_ListWorkloadCriticalVulnerabilitiesSince_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadCriticalVulnerabilitiesSince"
+	Vulnerabilities_ListWorkloadsForVulnerabilityById_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadsForVulnerabilityById"
 	Vulnerabilities_GetVulnerabilitySummary_FullMethodName                  = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
 	Vulnerabilities_GetVulnerabilitySummaryTimeSeries_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryTimeSeries"
 	Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName          = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryForImage"
@@ -52,6 +53,7 @@ type VulnerabilitiesClient interface {
 	ListSuppressedVulnerabilities(ctx context.Context, in *ListSuppressedVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListCriticalVulnerabilitiesSince(ctx context.Context, in *ListCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, in *ListWorkloadCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
+	ListWorkloadsForVulnerabilityById(ctx context.Context, in *ListWorkloadsForVulnerabilityByIdRequest, opts ...grpc.CallOption) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
 	// Examples:
 	// Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
@@ -135,6 +137,16 @@ func (c *vulnerabilitiesClient) ListWorkloadCriticalVulnerabilitiesSince(ctx con
 	return out, nil
 }
 
+func (c *vulnerabilitiesClient) ListWorkloadsForVulnerabilityById(ctx context.Context, in *ListWorkloadsForVulnerabilityByIdRequest, opts ...grpc.CallOption) (*ListWorkloadsForVulnerabilityByIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWorkloadsForVulnerabilityByIdResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListWorkloadsForVulnerabilityById_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vulnerabilitiesClient) GetVulnerabilitySummary(ctx context.Context, in *GetVulnerabilitySummaryRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetVulnerabilitySummaryResponse)
@@ -209,6 +221,7 @@ type VulnerabilitiesServer interface {
 	ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListCriticalVulnerabilitiesSince(context.Context, *ListCriticalVulnerabilitiesSinceRequest) (*ListCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(context.Context, *ListWorkloadCriticalVulnerabilitiesSinceRequest) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
+	ListWorkloadsForVulnerabilityById(context.Context, *ListWorkloadsForVulnerabilityByIdRequest) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
 	// Examples:
 	// Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
@@ -249,6 +262,9 @@ func (UnimplementedVulnerabilitiesServer) ListCriticalVulnerabilitiesSince(conte
 }
 func (UnimplementedVulnerabilitiesServer) ListWorkloadCriticalVulnerabilitiesSince(context.Context, *ListWorkloadCriticalVulnerabilitiesSinceRequest) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadCriticalVulnerabilitiesSince not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) ListWorkloadsForVulnerabilityById(context.Context, *ListWorkloadsForVulnerabilityByIdRequest) (*ListWorkloadsForVulnerabilityByIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadsForVulnerabilityById not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummary not implemented")
@@ -397,6 +413,24 @@ func _Vulnerabilities_ListWorkloadCriticalVulnerabilitiesSince_Handler(srv inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Vulnerabilities_ListWorkloadsForVulnerabilityById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkloadsForVulnerabilityByIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).ListWorkloadsForVulnerabilityById(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_ListWorkloadsForVulnerabilityById_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).ListWorkloadsForVulnerabilityById(ctx, req.(*ListWorkloadsForVulnerabilityByIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Vulnerabilities_GetVulnerabilitySummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetVulnerabilitySummaryRequest)
 	if err := dec(in); err != nil {
@@ -535,6 +569,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWorkloadCriticalVulnerabilitiesSince",
 			Handler:    _Vulnerabilities_ListWorkloadCriticalVulnerabilitiesSince_Handler,
+		},
+		{
+			MethodName: "ListWorkloadsForVulnerabilityById",
+			Handler:    _Vulnerabilities_ListWorkloadsForVulnerabilityById_Handler,
 		},
 		{
 			MethodName: "GetVulnerabilitySummary",

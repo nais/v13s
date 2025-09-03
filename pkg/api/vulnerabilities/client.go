@@ -16,6 +16,7 @@ type Client interface {
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	ListCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
+	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
@@ -118,6 +119,12 @@ func (c *client) ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, o
 		IncludeSuppressed: &o.IncludeSuppressed,
 		IncludeResolved:   &o.IncludeUnresolved,
 	}, o.CallOptions...)
+}
+
+func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error) {
+	return c.v.ListWorkloadsForVulnerabilityById(ctx, &ListWorkloadsForVulnerabilityByIdRequest{
+		Id: id,
+	})
 }
 
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {

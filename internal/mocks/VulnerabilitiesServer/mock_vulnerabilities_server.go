@@ -671,6 +671,65 @@ func (_c *MockVulnerabilitiesServer_ListWorkloadCriticalVulnerabilitiesSince_Cal
 	return _c
 }
 
+// ListWorkloadsForVulnerabilityById provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListWorkloadsForVulnerabilityById(_a0 context.Context, _a1 *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadsForVulnerabilityById")
+	}
+
+	var r0 *vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) *vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadsForVulnerabilityById'
+type MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadsForVulnerabilityById is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListWorkloadsForVulnerabilityById(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call {
+	return &MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call{Call: _e.mock.On("ListWorkloadsForVulnerabilityById", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest)) *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call) Return(_a0 *vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, _a1 error) *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, error)) *MockVulnerabilitiesServer_ListWorkloadsForVulnerabilityById_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SuppressVulnerability provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) SuppressVulnerability(_a0 context.Context, _a1 *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
 	ret := _m.Called(_a0, _a1)

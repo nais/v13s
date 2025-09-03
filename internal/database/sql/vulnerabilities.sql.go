@@ -1012,6 +1012,54 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 	return items, nil
 }
 
+const listWorkloadsForVulnerabilityById = `-- name: ListWorkloadsForVulnerabilityById :many
+SELECT w.id,
+       w.cluster,
+       w.namespace,
+       w.name,
+       w.workload_type
+FROM workloads w
+         JOIN vulnerabilities v
+              ON v.image_name = w.image_name
+                  AND v.image_tag = w.image_tag
+WHERE v.id = $1
+ORDER BY w.cluster, w.namespace, w.name
+`
+
+type ListWorkloadsForVulnerabilityByIdRow struct {
+	ID           pgtype.UUID
+	Cluster      string
+	Namespace    string
+	Name         string
+	WorkloadType string
+}
+
+func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnerabilityID pgtype.UUID) ([]*ListWorkloadsForVulnerabilityByIdRow, error) {
+	rows, err := q.db.Query(ctx, listWorkloadsForVulnerabilityById, vulnerabilityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListWorkloadsForVulnerabilityByIdRow{}
+	for rows.Next() {
+		var i ListWorkloadsForVulnerabilityByIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Cluster,
+			&i.Namespace,
+			&i.Name,
+			&i.WorkloadType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const suppressVulnerability = `-- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,

@@ -143,6 +143,19 @@ FROM vulnerabilities v
 WHERE v.id = @id
 ;
 
+-- name: ListWorkloadsForVulnerabilityById :many
+SELECT w.id,
+       w.cluster,
+       w.namespace,
+       w.name,
+       w.workload_type
+FROM workloads w
+         JOIN vulnerabilities v
+              ON v.image_name = w.image_name
+                  AND v.image_tag = w.image_tag
+WHERE v.id = @vulnerability_id
+ORDER BY w.cluster, w.namespace, w.name;
+
 -- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,

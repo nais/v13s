@@ -28,6 +28,8 @@ service Vulnerabilities {
 
   rpc ListWorkloadCriticalVulnerabilitiesSince(ListWorkloadCriticalVulnerabilitiesSinceRequest) returns (ListWorkloadCriticalVulnerabilitiesSinceResponse);
 
+  rpc ListWorkloadsForVulnerabilityById(ListWorkloadsForVulnerabilityByIdRequest) returns (ListWorkloadsForVulnerabilityByIdResponse);
+
   // Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Examples:
   // Only supplying a namespace will give the total summary for all workloads in that namespace across all clusters
@@ -130,6 +132,15 @@ message ListWorkloadCriticalVulnerabilitiesSinceResponse {
   Filter filter = 1;
   repeated WorkloadCriticalVulnerabilityFinding nodes = 2;
   PageInfo page_info = 3;
+}
+
+message ListWorkloadsForVulnerabilityByIdRequest {
+  string id = 1;
+}
+
+message ListWorkloadsForVulnerabilityByIdResponse {
+  string id = 1;
+  repeated Workload workloadRef = 2;
 }
 
 message GetVulnerabilitySummaryForImageRequest {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/emicklei/pgtalk/convert"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
@@ -356,6 +357,33 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 				References:  row.Refs,
 			},
 		},
+	}, nil
+}
+
+func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, error) {
+	id := pgtype.UUID{
+		Bytes: uuid.MustParse(request.Id),
+		Valid: true,
+	}
+
+	row, err := s.querier.ListWorkloadsForVulnerabilityById(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("vulnerability not found")
+		}
+		return nil, fmt.Errorf("list workloads for vulnerability by id: %w", err)
+	}
+
+	workloads := collections.Map(row, func(r *sql.ListWorkloadsForVulnerabilityByIdRow) *vulnerabilities.Workload {
+		return &vulnerabilities.Workload{
+			Cluster:   r.Cluster,
+			Namespace: r.Namespace,
+			Name:      r.Name,
+			Type:      r.WorkloadType,
+		}
+	})
+	return &vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse{
+		WorkloadRef: workloads,
 	}, nil
 }
 
