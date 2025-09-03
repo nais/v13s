@@ -71,18 +71,26 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		KindFinalizeAttestation: {
 			MaxWorkers: 100,
 		},
+		KindSyncImage: {
+			MaxWorkers: 50,
+		},
+		KindSyncWorkloadVulnerabilities: {
+			MaxWorkers: 50,
+		},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
 	if err != nil {
 		log.Fatalf("Failed to create job client: %v", err)
 	}
-	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "add_workload")})
-	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", "get_attestation")})
-	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
-	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
-	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
-	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
+	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", KindAddWorkload)})
+	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", KindGetAttestation)})
+	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindUploadAttestation)})
+	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", KindRemoveFromSource)})
+	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindDeleteWorkload)})
+	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindFinalizeAttestation)})
+	job.AddWorker(jobClient, &SyncImageWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindSyncImage)})
+	job.AddWorker(jobClient, &SyncWorkloadVulnerabilitiesWorker{db: db, log: log.WithField("subsystem", KindSyncWorkloadVulnerabilities)})
 
 	m := &WorkloadManager{
 		db:              db,
@@ -130,6 +138,17 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Workload) error {
 	err := m.jobClient.AddJob(ctx, &DeleteWorkloadJob{
 		Workload: workload,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *WorkloadManager) SyncImage(ctx context.Context, imageName, imageTag string) error {
+	err := m.jobClient.AddJob(ctx, &SyncImageJob{
+		ImageName: imageName,
+		ImageTag:  imageTag,
 	})
 	if err != nil {
 		return err

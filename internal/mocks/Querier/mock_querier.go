@@ -754,6 +754,53 @@ func (_c *MockQuerier_DeleteWorkload_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// DowngradeWorkloadVulnerabilitiesForImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) DowngradeWorkloadVulnerabilitiesForImage(ctx context.Context, arg sql.DowngradeWorkloadVulnerabilitiesForImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DowngradeWorkloadVulnerabilitiesForImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DowngradeWorkloadVulnerabilitiesForImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DowngradeWorkloadVulnerabilitiesForImage'
+type MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call struct {
+	*mock.Call
+}
+
+// DowngradeWorkloadVulnerabilitiesForImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.DowngradeWorkloadVulnerabilitiesForImageParams
+func (_e *MockQuerier_Expecter) DowngradeWorkloadVulnerabilitiesForImage(ctx interface{}, arg interface{}) *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call {
+	return &MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call{Call: _e.mock.On("DowngradeWorkloadVulnerabilitiesForImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call) Run(run func(ctx context.Context, arg sql.DowngradeWorkloadVulnerabilitiesForImageParams)) *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.DowngradeWorkloadVulnerabilitiesForImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call) Return(_a0 error) *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call) RunAndReturn(run func(context.Context, sql.DowngradeWorkloadVulnerabilitiesForImageParams) error) *MockQuerier_DowngradeWorkloadVulnerabilitiesForImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GenerateVulnerabilitySummaryForImage provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg sql.GenerateVulnerabilitySummaryForImageParams) (*sql.GenerateVulnerabilitySummaryForImageRow, error) {
 	ret := _m.Called(ctx, arg)

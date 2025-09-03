@@ -54,7 +54,7 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		attribute.String("image.tag", job.Args.ImageTag),
 	)
 
-	// 1. Delete from external source
+	// Delete from external source
 	if err := r.source.Delete(ctx, job.Args.ImageName, job.Args.ImageTag); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to delete workload from source")
@@ -62,7 +62,7 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		return handleJobErr(err)
 	}
 
-	// 2. Delete DB ref
+	// Delete DB ref
 	err := r.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
 		ImageName:  job.Args.ImageName,
 		ImageTag:   job.Args.ImageTag,
@@ -76,6 +76,15 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		}
 		r.log.WithError(err).Error("failed to delete source ref")
 		return handleJobErr(err)
+	}
+
+	// after successfully deleting from source and DB
+	if err := r.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		Name:  job.Args.ImageName,
+		Tag:   job.Args.ImageTag,
+		State: sql.ImageStateUnused,
+	}); err != nil {
+		r.log.WithError(err).Error("failed to mark image as unused")
 	}
 
 	recordOutput(ctx, JobStatusSourceRefDeleted)

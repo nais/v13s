@@ -8,7 +8,7 @@ const (
 	Namespace = "v13s"
 )
 
-var labels = []string{"workload_name", "workload_namespace", "workload_type"}
+var labels = []string{"workload_cluster", "workload_namespace", "workload_name", "workload_type"}
 
 var WorkloadRiskScore = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{

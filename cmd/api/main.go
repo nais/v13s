@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -27,7 +26,7 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("No .env file found")
+		log.WithError(err).Warnf(".env file not found, continuing with default and input envs")
 	}
 
 	cfg, err := config.NewConfig()

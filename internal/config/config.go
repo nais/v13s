@@ -52,7 +52,7 @@ func (k *K8sConfig) AllClusterNames() []string {
 func NewConfig() (*Config, error) {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("No .env file found")
+		return nil, fmt.Errorf("no .env file found: %w", err)
 	}
 
 	cfg := &Config{}

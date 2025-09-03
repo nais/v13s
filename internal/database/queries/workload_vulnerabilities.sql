@@ -42,6 +42,24 @@ WHERE wv.workload_id = w.id
   AND w.image_tag  = $2
 ;
 
+-- name: DowngradeWorkloadVulnerabilitiesForImage :exec
+UPDATE workload_vulnerabilities wv
+SET downgraded_at = NOW()
+    FROM workloads w
+WHERE wv.workload_id = w.id
+  AND wv.vulnerability_id IN (
+    SELECT v.id
+    FROM vulnerabilities v
+    WHERE v.image_name = w.image_name
+  AND v.image_tag  = w.image_tag
+  AND v.last_severity > 0 -- vuln exists but no longer critical
+    )
+  AND wv.resolved_at IS NULL
+  AND wv.downgraded_at IS NULL
+  AND w.image_name = $1
+  AND w.image_tag  = $2
+;
+
 -- name: ListWorkloadVulnerabilitiesBecameCriticalSince :many
 SELECT
     w.id AS workload_id,

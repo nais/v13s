@@ -43,6 +43,34 @@ func (q *Queries) CountWorkloadVulnerabilities(ctx context.Context, arg CountWor
 	return total, err
 }
 
+const downgradeWorkloadVulnerabilitiesForImage = `-- name: DowngradeWorkloadVulnerabilitiesForImage :exec
+UPDATE workload_vulnerabilities wv
+SET downgraded_at = NOW()
+    FROM workloads w
+WHERE wv.workload_id = w.id
+  AND wv.vulnerability_id IN (
+    SELECT v.id
+    FROM vulnerabilities v
+    WHERE v.image_name = w.image_name
+  AND v.image_tag  = w.image_tag
+  AND v.last_severity > 0 -- vuln exists but no longer critical
+    )
+  AND wv.resolved_at IS NULL
+  AND wv.downgraded_at IS NULL
+  AND w.image_name = $1
+  AND w.image_tag  = $2
+`
+
+type DowngradeWorkloadVulnerabilitiesForImageParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) DowngradeWorkloadVulnerabilitiesForImage(ctx context.Context, arg DowngradeWorkloadVulnerabilitiesForImageParams) error {
+	_, err := q.db.Exec(ctx, downgradeWorkloadVulnerabilitiesForImage, arg.ImageName, arg.ImageTag)
+	return err
+}
+
 const listWorkloadVulnerabilitiesBecameCriticalSince = `-- name: ListWorkloadVulnerabilitiesBecameCriticalSince :many
 SELECT
     w.id AS workload_id,

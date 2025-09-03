@@ -108,6 +108,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		},
 		nil,
 		log.WithField("subsystem", "updater"),
+		mgr,
 	)
 	u.Run(ctx)
 
