@@ -360,7 +360,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 	}, nil
 }
 
-func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, error) {
+func (s *Server) ListWorkloadsForVulnerabilityById(ctx context.Context, request *vulnerabilities.ListWorkloadsForVulnerabilityByIdRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse, error) {
 	id := pgtype.UUID{
 		Bytes: uuid.MustParse(request.Id),
 		Valid: true,
