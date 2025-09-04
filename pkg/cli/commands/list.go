@@ -136,7 +136,7 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	vulnTbl := table.New("Package", "CVE", "Title", "Severity", "Created", "Last Updated", "Suppressed")
+	vulnTbl := table.New("Package", "CVE", "Title", "Severity", "Severity Since", "Created", "Last Updated", "Suppressed")
 	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	var suppressions [][]string
@@ -151,6 +151,7 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 			n.Cve.Id,
 			n.Cve.Title,
 			n.Cve.Severity,
+			n.SeveritySince.AsTime().Format(time.RFC3339),
 			n.GetCreated().AsTime().Format(time.RFC3339),
 			n.GetLastUpdated().AsTime().Format(time.RFC3339),
 			suppressed,
@@ -316,7 +317,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
 
 			// Print vulnerabilities table for this workload
-			tbl := table.New("Package", "CVE", "Severity", "CVE Last Updated", "Last Severity", "Critical Sins", "Latest Version", "Suppressed", "Time Since Update")
+			tbl := table.New("Package", "CVE", "Severity", "CVE Last Updated", "Last Severity", "Severity Sins", "Latest Version", "Suppressed", "Time Since Update")
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 			for _, n := range findings {
@@ -332,7 +333,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetCve().GetSeverity(),
 					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
 					v.GetLastSeverity(),
-					timeSinceCreation(v.GetCreated().AsTime(), v.CriticalSince.AsTime()),
+					timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),
 					v.GetLatestVersion(),
 					suppressed,
 					timeSinceCreation(v.GetCreated().AsTime(), v.GetLastUpdated().AsTime()),

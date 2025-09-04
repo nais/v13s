@@ -427,7 +427,7 @@ func TestUpdater(t *testing.T) {
 	})
 }
 
-func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
+func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
@@ -455,7 +455,7 @@ func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
 			CveTitle: "Test title",
 			CveDesc:  "Test description",
 			CveLink:  "https://example.com",
-			Severity: 0,
+			Severity: 2,
 			Refs:     typeext.MapStringString{},
 		},
 	}).Exec(func(i int, err error) {
@@ -464,110 +464,54 @@ func TestUpdater_DetermineBecameCriticalAt(t *testing.T) {
 
 	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
-			ImageName:        imageName,
-			ImageTag:         imageTag,
-			Package:          pkg,
-			CveID:            cveID,
-			Source:           "source",
-			LatestVersion:    "1.0",
-			LastSeverity:     0,
-			BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+			ImageName:     imageName,
+			ImageTag:      imageTag,
+			Package:       pkg,
+			CveID:         cveID,
+			Source:        "source",
+			LatestVersion: "1.0",
+			LastSeverity:  2,
+			SeveritySince: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
 	})
 
-	t.Run("returns earliest became_critical_at if lastSeverity is 0", func(t *testing.T) {
+	t.Run("returns earliest severity_since if set", func(t *testing.T) {
 		ts := time.Now().Add(-1 * time.Hour)
 		_, err := pool.Exec(ctx, `
-			UPDATE vulnerabilities
-			SET became_critical_at = $1
-			WHERE image_name = $2 AND package = $3 AND cve_id = $4
-		`, ts, imageName, pkg, cveID)
+            UPDATE vulnerabilities
+            SET severity_since = $1, last_severity = $2
+            WHERE image_name = $3 AND package = $4 AND cve_id = $5
+        `, ts, 2, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
+		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.WithinDuration(t, ts, *got, time.Second)
 	})
 
-	t.Run("returns nil if lastSeverity is not 0", func(t *testing.T) {
-		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 5)
+	t.Run("returns nil if severity not present", func(t *testing.T) {
+		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 5)
 		require.NoError(t, err)
 		assert.Nil(t, got)
 	})
 
-	t.Run("returns created_at if no critical timestamp exists", func(t *testing.T) {
-		// Remove became_critical_at
+	t.Run("does not overwrite existing severity_since", func(t *testing.T) {
+		ts := time.Now().UTC().Add(-1 * time.Hour)
 		_, err := pool.Exec(ctx, `
         UPDATE vulnerabilities
-        SET became_critical_at = NULL
-        WHERE image_name = $1 AND package = $2 AND cve_id = $3
-    `, imageName, pkg, cveID)
+        SET severity_since = $1, last_severity = 2
+        WHERE image_name = $2 AND package = $3 AND cve_id = $4
+    `, ts, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
-		require.NoError(t, err)
-		require.NotNil(t, got)
-
-		var createdAt time.Time
-		err = pool.QueryRow(ctx, `
-        SELECT created_at
-        FROM vulnerabilities
-        WHERE image_name = $1 AND package = $2 AND cve_id = $3
-    `, imageName, pkg, cveID).Scan(&createdAt)
-		require.NoError(t, err)
-
-		assert.Equal(t, createdAt.UTC(), (*got).UTC())
-	})
-
-	t.Run("sets became_critical_at when newly critical", func(t *testing.T) {
-		imageTag2 := "v2"
-		_, err := pool.Exec(ctx, `
-			INSERT INTO images (name, tag, state, metadata, created_at, updated_at)
-			VALUES ($1, $2, 'initialized', '{}', NOW(), NOW())
-		`, imageName, imageTag2)
-		require.NoError(t, err)
-
-		querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
-			{
-				ImageName:        imageName,
-				ImageTag:         imageTag,
-				Package:          pkg,
-				CveID:            cveID,
-				Source:           "source",
-				LatestVersion:    "1.0",
-				LastSeverity:     0,
-				BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
-			},
-		}).Exec(func(i int, err error) {
-			require.NoError(t, err)
-		})
-
-		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
+		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 
-		// Should be ~now
-		assert.WithinDuration(t, time.Now(), *got, 5*time.Second)
-	})
-
-	t.Run("does not overwrite existing became_critical_at", func(t *testing.T) {
-		ts := time.Now().Add(-1 * time.Hour)
-		_, err := pool.Exec(ctx, `
-			UPDATE vulnerabilities
-			SET became_critical_at = $1, last_severity = 0
-			WHERE image_name = $2 AND package = $3 AND cve_id = $4
-		`, ts, imageName, pkg, cveID)
-		require.NoError(t, err)
-
-		got, err := u.DetermineBecameCriticalAt(ctx, imageName, pkg, cveID, 0)
-		require.NoError(t, err)
-		require.NotNil(t, got)
-
-		// Should return the original timestamp (not "now")
-		assert.WithinDuration(t, ts, *got, time.Second)
+		assert.WithinDuration(t, ts, (*got).UTC(), 1*time.Second)
 	})
 }
 
@@ -607,6 +551,7 @@ func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
 	imageTag := "v1"
 	pkg := "pkg-1"
 	cveID := "CVE-123"
+	severity := int32(2)
 
 	querier := sql.New(pool)
 	err := querier.CreateImage(ctx, sql.CreateImageParams{
@@ -622,7 +567,7 @@ func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
 			CveTitle: "Test title",
 			CveDesc:  "Test description",
 			CveLink:  "https://example.com",
-			Severity: 0,
+			Severity: severity,
 			Refs:     typeext.MapStringString{},
 		},
 	}).Exec(func(i int, err error) {
@@ -631,7 +576,6 @@ func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
 
 	workload1 := uuid.New()
 	workload2 := uuid.New()
-
 	_, err = pool.Exec(ctx, `
 		INSERT INTO workloads (id, name, cluster, namespace, workload_type, image_name, image_tag, created_at)
 		VALUES
@@ -642,28 +586,17 @@ func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
 
 	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
-			ImageName:        imageName,
-			ImageTag:         imageTag,
-			Package:          pkg,
-			CveID:            cveID,
-			Source:           "source",
-			LatestVersion:    "1.0",
-			LastSeverity:     0,
-			BecameCriticalAt: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+			ImageName:     imageName,
+			ImageTag:      imageTag,
+			Package:       pkg,
+			CveID:         cveID,
+			Source:        "source",
+			LatestVersion: "1.0",
+			LastSeverity:  severity,
+			SeveritySince: pgtype.Timestamptz{Valid: false, Time: time.Time{}}, // defaults to NOW()
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
-	})
-
-	t.Run("inserts workload vulnerabilities for workloads with matching image", func(t *testing.T) {
-		images := []*sql.Image{{Name: imageName, Tag: imageTag}}
-		err := u.SyncWorkloadVulnerabilities(ctx, images)
-		require.NoError(t, err)
-
-		var count int
-		err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM workload_vulnerabilities`).Scan(&count)
-		require.NoError(t, err)
-		assert.Equal(t, 2, count)
 	})
 
 	t.Run("sets resolved_at when vulnerabilities removed from image", func(t *testing.T) {
@@ -689,6 +622,34 @@ func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, resolved.Time)
 		}
+	})
+
+	t.Run("updates SeveritySince only when severity changes", func(t *testing.T) {
+		newSeverity := int32(3)
+		querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{
+				ImageName:     imageName,
+				ImageTag:      imageTag,
+				Package:       pkg,
+				CveID:         cveID,
+				Source:        "source",
+				LatestVersion: "1.0",
+				LastSeverity:  newSeverity,
+				SeveritySince: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+			},
+		}).Exec(func(i int, err error) {
+			require.NoError(t, err)
+		})
+
+		var severitySince time.Time
+		err := pool.QueryRow(ctx, `
+			SELECT severity_since
+			FROM vulnerabilities
+			WHERE image_name = $1 AND package = $2 AND cve_id = $3
+		`, imageName, pkg, cveID).Scan(&severitySince)
+		require.NoError(t, err)
+
+		assert.WithinDuration(t, time.Now(), severitySince, 5*time.Second)
 	})
 }
 

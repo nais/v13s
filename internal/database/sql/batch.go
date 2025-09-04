@@ -162,7 +162,7 @@ INSERT INTO vulnerabilities (
     source,
     latest_version,
     last_severity,
-    became_critical_at
+    severity_since
 )
 VALUES (
            $1,
@@ -172,17 +172,17 @@ VALUES (
            $5,
            $6,
            $7,
-           $8
-       ) ON CONFLICT (image_name, image_tag, package, cve_id) DO UPDATE
-SET
-    latest_version = EXCLUDED.latest_version,
+           COALESCE($8::timestamptz, NOW()))
+ON CONFLICT (image_name, image_tag, package, cve_id) DO
+UPDATE
+    SET
+        latest_version = EXCLUDED.latest_version,
     updated_at = NOW(),
     last_severity = EXCLUDED.last_severity,
-    became_critical_at = CASE
-    WHEN EXCLUDED.became_critical_at IS NOT NULL THEN EXCLUDED.became_critical_at
-    WHEN vulnerabilities.became_critical_at IS NOT NULL THEN vulnerabilities.became_critical_at
-    WHEN EXCLUDED.last_severity = 0 THEN NOW()
-    ELSE NULL
+    severity_since = CASE
+    WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
+    THEN COALESCE (EXCLUDED.severity_since, NOW())
+    ELSE vulnerabilities.severity_since
 END
 `
 
@@ -193,14 +193,14 @@ type BatchUpsertVulnerabilitiesBatchResults struct {
 }
 
 type BatchUpsertVulnerabilitiesParams struct {
-	ImageName        string
-	ImageTag         string
-	Package          string
-	CveID            string
-	Source           string
-	LatestVersion    string
-	LastSeverity     int32
-	BecameCriticalAt pgtype.Timestamptz
+	ImageName     string
+	ImageTag      string
+	Package       string
+	CveID         string
+	Source        string
+	LatestVersion string
+	LastSeverity  int32
+	SeveritySince pgtype.Timestamptz
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -214,7 +214,7 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.Source,
 			a.LatestVersion,
 			a.LastSeverity,
-			a.BecameCriticalAt,
+			a.SeveritySince,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

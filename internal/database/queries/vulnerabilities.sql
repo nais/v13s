@@ -36,7 +36,7 @@ INSERT INTO vulnerabilities (
     source,
     latest_version,
     last_severity,
-    became_critical_at
+    severity_since
 )
 VALUES (
            @image_name,
@@ -46,33 +46,26 @@ VALUES (
            @source,
            @latest_version,
            @last_severity,
-           @became_critical_at
-       ) ON CONFLICT (image_name, image_tag, package, cve_id) DO UPDATE
-SET
-    latest_version = EXCLUDED.latest_version,
+           COALESCE(@severity_since::timestamptz, NOW()))
+ON CONFLICT (image_name, image_tag, package, cve_id) DO
+UPDATE
+    SET
+        latest_version = EXCLUDED.latest_version,
     updated_at = NOW(),
     last_severity = EXCLUDED.last_severity,
-    became_critical_at = CASE
-    WHEN EXCLUDED.became_critical_at IS NOT NULL THEN EXCLUDED.became_critical_at
-    WHEN vulnerabilities.became_critical_at IS NOT NULL THEN vulnerabilities.became_critical_at
-    WHEN EXCLUDED.last_severity = 0 THEN NOW()
-    ELSE NULL
+    severity_since = CASE
+    WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
+    THEN COALESCE (EXCLUDED.severity_since, NOW())
+    ELSE vulnerabilities.severity_since
 END;
 
--- name: GetEarliestCriticalAtForVulnerability :one
-SELECT (COALESCE(
-        (SELECT MIN(v1.became_critical_at)
-         FROM vulnerabilities v1
-         WHERE v1.image_name = $1
-           AND v1.package = $2
-           AND v1.cve_id = $3
-           AND v1.became_critical_at IS NOT NULL),
-        (SELECT MIN(v2.created_at)
-         FROM vulnerabilities v2
-         WHERE v2.image_name = $1
-           AND v2.package = $2
-           AND v2.cve_id = $3)
-        )::timestamptz) AS earliest_critical_at
+-- name: GetEarliestSeveritySinceForVulnerability :one
+SELECT MIN(severity_since)::timestamptz AS earliest_severity_since
+FROM vulnerabilities
+WHERE image_name = $1
+  AND package = $2
+  AND cve_id = $3
+  AND last_severity = $4
 ;
 
 -- name: GetCve :one
@@ -90,7 +83,7 @@ SELECT v.id,
        v.source,
        v.cve_id,
        v.last_severity,
-       v.became_critical_at,
+       v.severity_since,
        v.created_at,
        v.updated_at,
        c.cve_title,
@@ -260,7 +253,7 @@ WITH image_vulnerabilities AS (
           v.latest_version,
           v.created_at,
           v.updated_at,
-          v.became_critical_at,
+          v.severity_since,
           c.cve_title,
           c.cve_desc,
           c.cve_link,
@@ -292,7 +285,7 @@ SELECT id,
        latest_version,
        created_at,
        updated_at,
-       became_critical_at AS critical_since,
+       severity_since,
        cve_title,
        cve_desc,
        cve_link,
@@ -335,7 +328,7 @@ SELECT v.id,
        v.image_name,
        v.image_tag,
        v.latest_version,
-       v.became_critical_at AS critical_since,
+       v.severity_since,
        v.package,
        v.cve_id,
        v.created_at,
@@ -415,7 +408,7 @@ WHERE v.image_name = @image_name
     AND v.image_tag = @image_tag
 ;
 
--- name: ListCriticalVulnerabilitiesSince :many
+-- name: ListSeverityVulnerabilitiesSince :many
 SELECT
     v.id,
     w.name AS workload_name,
@@ -429,7 +422,7 @@ SELECT
     v.cve_id,
     v.created_at,
     v.updated_at,
-    v.became_critical_at,
+    v.severity_since,
     v.last_severity,
     c.cve_title,
     c.cve_desc,
@@ -449,7 +442,7 @@ FROM vulnerabilities v
                    ON v.image_name = sv.image_name
                        AND v.package = sv.package
                        AND v.cve_id = sv.cve_id
-WHERE v.became_critical_at IS NOT NULL AND v.last_severity = 0
+WHERE v.severity_since IS NOT NULL
   AND (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
@@ -457,10 +450,10 @@ WHERE v.became_critical_at IS NOT NULL AND v.last_severity = 0
   AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
   AND (CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
   AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-  AND (sqlc.narg('since')::timestamptz IS NULL OR v.became_critical_at > sqlc.narg('since')::timestamptz)
+  AND (sqlc.narg('since')::timestamptz IS NULL OR v.severity_since > sqlc.narg('since')::timestamptz)
 ORDER BY
-         CASE WHEN sqlc.narg('order_by') = 'became_critical_at_desc' THEN v.became_critical_at END DESC,
-         CASE WHEN sqlc.narg('order_by') = 'became_critical_at_asc' THEN v.became_critical_at END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN v.severity_since END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN v.severity_since END ASC,
          CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
          CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
          CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
