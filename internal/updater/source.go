@@ -143,9 +143,9 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	for _, v := range i.Vulnerabilities {
 		severity := v.Cve.Severity.ToInt32()
-		becameCriticalAt, err := u.DetermineBecameCriticalAt(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		severitySince, err := u.DetermineSeveritySince(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
 		if err != nil {
-			u.log.Errorf("determine becameCriticalAt: %v", err)
+			u.log.Errorf("determine severitySince: %v", err)
 		}
 		batch := sql.BatchUpsertVulnerabilitiesParams{
 			ImageName:     i.ImageName,
@@ -157,9 +157,9 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 			LastSeverity:  severity,
 		}
 
-		if becameCriticalAt != nil {
-			batch.BecameCriticalAt = pgtype.Timestamptz{
-				Time:  *becameCriticalAt,
+		if severitySince != nil {
+			batch.SeveritySince = pgtype.Timestamptz{
+				Time:  *severitySince,
 				Valid: true,
 			}
 		}
@@ -168,29 +168,29 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 	return params
 }
 
-func (u *Updater) DetermineBecameCriticalAt(ctx context.Context, imageName, pkg, cveID string, lastSeverity int32) (*time.Time, error) {
-	if lastSeverity != 0 {
-		// Not critical → no timestamp
-		return nil, nil
-	}
+func (u *Updater) DetermineSeveritySince(
+	ctx context.Context,
+	imageName, pkg, cveID string,
+	lastSeverity int32,
+) (*time.Time, error) {
 
-	// Query DB for earliest known critical timestamp for this vuln across all tags
-	earliest, err := u.querier.GetEarliestCriticalAtForVulnerability(ctx, sql.GetEarliestCriticalAtForVulnerabilityParams{
-		ImageName: imageName,
-		Package:   pkg,
-		CveID:     cveID,
-	})
+	earliest, err := u.querier.GetEarliestSeveritySinceForVulnerability(ctx,
+		sql.GetEarliestSeveritySinceForVulnerabilityParams{
+			ImageName:    imageName,
+			Package:      pkg,
+			CveID:        cveID,
+			LastSeverity: lastSeverity,
+		})
 	if err != nil {
 		return nil, err
 	}
 
 	if earliest.Valid {
-		u.log.Debugf("Vulnerability %s in package %s for image %s became critical at %s", cveID, pkg, imageName, earliest.Time)
-		return &earliest.Time, nil
+		t := earliest.Time.UTC()
+		return &t, nil
 	}
 
-	now := time.Now().UTC()
-	return &now, nil
+	return nil, nil
 }
 
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {

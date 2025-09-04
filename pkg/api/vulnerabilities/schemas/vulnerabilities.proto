@@ -24,7 +24,7 @@ service Vulnerabilities {
   rpc ListVulnerabilitySummaries(ListVulnerabilitySummariesRequest) returns (ListVulnerabilitySummariesResponse);
   rpc ListVulnerabilitiesForImage(ListVulnerabilitiesForImageRequest) returns (ListVulnerabilitiesForImageResponse);
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
-  rpc ListCriticalVulnerabilitiesSince(ListCriticalVulnerabilitiesSinceRequest) returns (ListCriticalVulnerabilitiesSinceResponse);
+  rpc ListSeverityVulnerabilitiesSince(ListSeverityVulnerabilitiesSinceRequest) returns (ListSeverityVulnerabilitiesSinceResponse);
 
   rpc ListWorkloadCriticalVulnerabilitiesSince(ListWorkloadCriticalVulnerabilitiesSinceRequest) returns (ListWorkloadCriticalVulnerabilitiesSinceResponse);
 
@@ -104,7 +104,7 @@ message ListSuppressedVulnerabilitiesResponse {
   PageInfo page_info = 2;
 }
 
-message ListCriticalVulnerabilitiesSinceRequest {
+message ListSeverityVulnerabilitiesSinceRequest {
   Filter filter = 1;
   optional bool include_suppressed = 3;
   int32 limit = 4;
@@ -113,7 +113,7 @@ message ListCriticalVulnerabilitiesSinceRequest {
   optional google.protobuf.Timestamp since = 7;
 }
 
-message ListCriticalVulnerabilitiesSinceResponse {
+message ListSeverityVulnerabilitiesSinceResponse {
   Filter filter = 1;
   repeated Finding nodes = 2;
   PageInfo page_info = 3;
@@ -311,7 +311,7 @@ message Vulnerability {
   optional Suppression suppression = 6;
   optional google.protobuf.Timestamp created = 7;
   optional google.protobuf.Timestamp last_updated = 8;
-  optional google.protobuf.Timestamp critical_since = 9;
+  optional google.protobuf.Timestamp severity_since = 9;
 }
 
 message Suppression {

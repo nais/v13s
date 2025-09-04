@@ -28,7 +28,7 @@ const (
 	Vulnerabilities_ListVulnerabilitySummaries_FullMethodName               = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitySummaries"
 	Vulnerabilities_ListVulnerabilitiesForImage_FullMethodName              = "/v13s.api.protobuf.Vulnerabilities/ListVulnerabilitiesForImage"
 	Vulnerabilities_ListSuppressedVulnerabilities_FullMethodName            = "/v13s.api.protobuf.Vulnerabilities/ListSuppressedVulnerabilities"
-	Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName         = "/v13s.api.protobuf.Vulnerabilities/ListCriticalVulnerabilitiesSince"
+	Vulnerabilities_ListSeverityVulnerabilitiesSince_FullMethodName         = "/v13s.api.protobuf.Vulnerabilities/ListSeverityVulnerabilitiesSince"
 	Vulnerabilities_ListWorkloadCriticalVulnerabilitiesSince_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadCriticalVulnerabilitiesSince"
 	Vulnerabilities_ListWorkloadsForVulnerabilityById_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadsForVulnerabilityById"
 	Vulnerabilities_GetVulnerabilitySummary_FullMethodName                  = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
@@ -51,7 +51,7 @@ type VulnerabilitiesClient interface {
 	ListVulnerabilitySummaries(ctx context.Context, in *ListVulnerabilitySummariesRequest, opts ...grpc.CallOption) (*ListVulnerabilitySummariesResponse, error)
 	ListVulnerabilitiesForImage(ctx context.Context, in *ListVulnerabilitiesForImageRequest, opts ...grpc.CallOption) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, in *ListSuppressedVulnerabilitiesRequest, opts ...grpc.CallOption) (*ListSuppressedVulnerabilitiesResponse, error)
-	ListCriticalVulnerabilitiesSince(ctx context.Context, in *ListCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListCriticalVulnerabilitiesSinceResponse, error)
+	ListSeverityVulnerabilitiesSince(ctx context.Context, in *ListSeverityVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, in *ListWorkloadCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, in *ListWorkloadsForVulnerabilityByIdRequest, opts ...grpc.CallOption) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
@@ -117,10 +117,10 @@ func (c *vulnerabilitiesClient) ListSuppressedVulnerabilities(ctx context.Contex
 	return out, nil
 }
 
-func (c *vulnerabilitiesClient) ListCriticalVulnerabilitiesSince(ctx context.Context, in *ListCriticalVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListCriticalVulnerabilitiesSinceResponse, error) {
+func (c *vulnerabilitiesClient) ListSeverityVulnerabilitiesSince(ctx context.Context, in *ListSeverityVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListSeverityVulnerabilitiesSinceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListCriticalVulnerabilitiesSinceResponse)
-	err := c.cc.Invoke(ctx, Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName, in, out, cOpts...)
+	out := new(ListSeverityVulnerabilitiesSinceResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListSeverityVulnerabilitiesSince_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ type VulnerabilitiesServer interface {
 	ListVulnerabilitySummaries(context.Context, *ListVulnerabilitySummariesRequest) (*ListVulnerabilitySummariesResponse, error)
 	ListVulnerabilitiesForImage(context.Context, *ListVulnerabilitiesForImageRequest) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error)
-	ListCriticalVulnerabilitiesSince(context.Context, *ListCriticalVulnerabilitiesSinceRequest) (*ListCriticalVulnerabilitiesSinceResponse, error)
+	ListSeverityVulnerabilitiesSince(context.Context, *ListSeverityVulnerabilitiesSinceRequest) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(context.Context, *ListWorkloadCriticalVulnerabilitiesSinceRequest) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(context.Context, *ListWorkloadsForVulnerabilityByIdRequest) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
@@ -257,8 +257,8 @@ func (UnimplementedVulnerabilitiesServer) ListVulnerabilitiesForImage(context.Co
 func (UnimplementedVulnerabilitiesServer) ListSuppressedVulnerabilities(context.Context, *ListSuppressedVulnerabilitiesRequest) (*ListSuppressedVulnerabilitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSuppressedVulnerabilities not implemented")
 }
-func (UnimplementedVulnerabilitiesServer) ListCriticalVulnerabilitiesSince(context.Context, *ListCriticalVulnerabilitiesSinceRequest) (*ListCriticalVulnerabilitiesSinceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListCriticalVulnerabilitiesSince not implemented")
+func (UnimplementedVulnerabilitiesServer) ListSeverityVulnerabilitiesSince(context.Context, *ListSeverityVulnerabilitiesSinceRequest) (*ListSeverityVulnerabilitiesSinceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSeverityVulnerabilitiesSince not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) ListWorkloadCriticalVulnerabilitiesSince(context.Context, *ListWorkloadCriticalVulnerabilitiesSinceRequest) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadCriticalVulnerabilitiesSince not implemented")
@@ -377,20 +377,20 @@ func _Vulnerabilities_ListSuppressedVulnerabilities_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Vulnerabilities_ListCriticalVulnerabilitiesSince_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListCriticalVulnerabilitiesSinceRequest)
+func _Vulnerabilities_ListSeverityVulnerabilitiesSince_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSeverityVulnerabilitiesSinceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(VulnerabilitiesServer).ListCriticalVulnerabilitiesSince(ctx, in)
+		return srv.(VulnerabilitiesServer).ListSeverityVulnerabilitiesSince(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Vulnerabilities_ListCriticalVulnerabilitiesSince_FullMethodName,
+		FullMethod: Vulnerabilities_ListSeverityVulnerabilitiesSince_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).ListCriticalVulnerabilitiesSince(ctx, req.(*ListCriticalVulnerabilitiesSinceRequest))
+		return srv.(VulnerabilitiesServer).ListSeverityVulnerabilitiesSince(ctx, req.(*ListSeverityVulnerabilitiesSinceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -563,8 +563,8 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Vulnerabilities_ListSuppressedVulnerabilities_Handler,
 		},
 		{
-			MethodName: "ListCriticalVulnerabilitiesSince",
-			Handler:    _Vulnerabilities_ListCriticalVulnerabilitiesSince_Handler,
+			MethodName: "ListSeverityVulnerabilitiesSince",
+			Handler:    _Vulnerabilities_ListSeverityVulnerabilitiesSince_Handler,
 		},
 		{
 			MethodName: "ListWorkloadCriticalVulnerabilitiesSince",

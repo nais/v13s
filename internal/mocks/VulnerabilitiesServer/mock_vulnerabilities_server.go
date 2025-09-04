@@ -317,28 +317,28 @@ func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryTimeSeries_Call) RunA
 	return _c
 }
 
-// ListCriticalVulnerabilitiesSince provides a mock function with given fields: _a0, _a1
-func (_m *MockVulnerabilitiesServer) ListCriticalVulnerabilitiesSince(_a0 context.Context, _a1 *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) (*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, error) {
+// ListSeverityVulnerabilitiesSince provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListSeverityVulnerabilitiesSince(_a0 context.Context, _a1 *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest) (*vulnerabilities.ListSeverityVulnerabilitiesSinceResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListCriticalVulnerabilitiesSince")
+		panic("no return value specified for ListSeverityVulnerabilitiesSince")
 	}
 
-	var r0 *vulnerabilities.ListCriticalVulnerabilitiesSinceResponse
+	var r0 *vulnerabilities.ListSeverityVulnerabilitiesSinceResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) (*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest) (*vulnerabilities.ListSeverityVulnerabilitiesSinceResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) *vulnerabilities.ListCriticalVulnerabilitiesSinceResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest) *vulnerabilities.ListSeverityVulnerabilitiesSinceResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse)
+			r0 = ret.Get(0).(*vulnerabilities.ListSeverityVulnerabilitiesSinceResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -347,31 +347,31 @@ func (_m *MockVulnerabilitiesServer) ListCriticalVulnerabilitiesSince(_a0 contex
 	return r0, r1
 }
 
-// MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCriticalVulnerabilitiesSince'
-type MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call struct {
+// MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSeverityVulnerabilitiesSince'
+type MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call struct {
 	*mock.Call
 }
 
-// ListCriticalVulnerabilitiesSince is a helper method to define mock.On call
+// ListSeverityVulnerabilitiesSince is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest
-func (_e *MockVulnerabilitiesServer_Expecter) ListCriticalVulnerabilitiesSince(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call {
-	return &MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call{Call: _e.mock.On("ListCriticalVulnerabilitiesSince", _a0, _a1)}
+//   - _a1 *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListSeverityVulnerabilitiesSince(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call {
+	return &MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call{Call: _e.mock.On("ListSeverityVulnerabilitiesSince", _a0, _a1)}
 }
 
-func (_c *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest)) *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call {
+func (_c *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest)) *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*vulnerabilities.ListCriticalVulnerabilitiesSinceRequest))
+		run(args[0].(context.Context), args[1].(*vulnerabilities.ListSeverityVulnerabilitiesSinceRequest))
 	})
 	return _c
 }
 
-func (_c *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call) Return(_a0 *vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, _a1 error) *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call {
+func (_c *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call) Return(_a0 *vulnerabilities.ListSeverityVulnerabilitiesSinceResponse, _a1 error) *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) (*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, error)) *MockVulnerabilitiesServer_ListCriticalVulnerabilitiesSince_Call {
+func (_c *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest) (*vulnerabilities.ListSeverityVulnerabilitiesSinceResponse, error)) *MockVulnerabilitiesServer_ListSeverityVulnerabilitiesSince_Call {
 	_c.Call.Return(run)
 	return _c
 }
