@@ -492,10 +492,10 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 		assert.WithinDuration(t, ts, *got, time.Second)
 	})
 
-	t.Run("returns nil if severity not present", func(t *testing.T) {
+	t.Run("returns timestamp if severity not present", func(t *testing.T) {
 		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 5)
 		require.NoError(t, err)
-		assert.Nil(t, got)
+		assert.NotNil(t, got)
 	})
 
 	t.Run("does not overwrite existing severity_since", func(t *testing.T) {

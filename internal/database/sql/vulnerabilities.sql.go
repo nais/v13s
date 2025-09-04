@@ -164,12 +164,21 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 }
 
 const getEarliestSeveritySinceForVulnerability = `-- name: GetEarliestSeveritySinceForVulnerability :one
-SELECT MIN(severity_since)::timestamptz AS earliest_severity_since
-FROM vulnerabilities
-WHERE image_name = $1
-  AND package = $2
-  AND cve_id = $3
-  AND last_severity = $4
+SELECT (COALESCE(
+        (SELECT MIN(v1.severity_since)
+         FROM vulnerabilities v1
+         WHERE v1.image_name = $1
+           AND v1.package = $2
+           AND v1.cve_id = $3
+           AND v1.last_severity = $4
+           AND v1.severity_since IS NOT NULL),
+        (SELECT MIN(v2.created_at)
+         FROM vulnerabilities v2
+         WHERE v2.image_name = $1
+           AND v2.package = $2
+           AND v2.cve_id = $3
+         AND v2.last_severity = $4)
+        )::timestamptz) AS earliest_severity_since
 `
 
 type GetEarliestSeveritySinceForVulnerabilityParams struct {

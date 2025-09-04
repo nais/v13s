@@ -174,13 +174,12 @@ func (u *Updater) DetermineSeveritySince(
 	lastSeverity int32,
 ) (*time.Time, error) {
 
-	earliest, err := u.querier.GetEarliestSeveritySinceForVulnerability(ctx,
-		sql.GetEarliestSeveritySinceForVulnerabilityParams{
-			ImageName:    imageName,
-			Package:      pkg,
-			CveID:        cveID,
-			LastSeverity: lastSeverity,
-		})
+	earliest, err := u.querier.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
+		ImageName:    imageName,
+		Package:      pkg,
+		CveID:        cveID,
+		LastSeverity: lastSeverity,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +189,8 @@ func (u *Updater) DetermineSeveritySince(
 		return &t, nil
 	}
 
-	return nil, nil
+	now := time.Now().UTC()
+	return &now, nil
 }
 
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
