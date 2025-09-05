@@ -104,13 +104,13 @@ func (s *SyncImageWorker) Work(ctx context.Context, job *river.Job[SyncImageJob]
 		return err
 	}
 
-	if err := s.jobClient.AddJob(ctx, &SyncWorkloadVulnerabilitiesJob{
-		ImageName: img.ImageName,
-		ImageTag:  img.ImageTag,
-	}); err != nil {
-		s.log.WithError(err).Errorf("failed to enqueue sync workload job for %s:%s", img.ImageName, img.ImageTag)
-		// don't return error image job considered done
-	}
+	//if err := s.jobClient.AddJob(ctx, &SyncWorkloadVulnerabilitiesJob{
+	//	ImageName: img.ImageName,
+	//	ImageTag:  img.ImageTag,
+	//}); err != nil {
+	//	s.log.WithError(err).Errorf("failed to enqueue sync workload job for %s:%s", img.ImageName, img.ImageTag)
+	//	// don't return error image job considered done
+	//}
 
 	recordOutput(ctx, JobStatusImageSynced)
 	return nil
@@ -216,7 +216,13 @@ func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnera
 
 	for _, i := range batch {
 		cves = append(cves, i.ToCveSqlParams()...)
-		vulns = append(vulns, s.ToVulnerabilitySqlParams(ctx, i)...)
+		v, err := ToVulnerabilitySqlParams(ctx, s.db, i)
+		if err != nil {
+			countError++
+			errs = append(errs, err)
+			continue
+		}
+		vulns = append(vulns, v...)
 		summaries = append(summaries, i.ToVulnerabilitySummarySqlParams())
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
 			State: sql.ImageStateUpdated,
@@ -304,13 +310,13 @@ func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnera
 	return fmt.Errorf("%d countError occurred during batch upsert: %v", len(errs), errs)
 }
 
-func (s *SyncImageWorker) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerabilityData) []sql.BatchUpsertVulnerabilitiesParams {
+func ToVulnerabilitySqlParams(ctx context.Context, db sql.Querier, i *ImageVulnerabilityData) ([]sql.BatchUpsertVulnerabilitiesParams, error) {
 	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	for _, v := range i.Vulnerabilities {
 		severity := v.Cve.Severity.ToInt32()
-		becameCriticalAt, err := s.DetermineBecameCriticalAt(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		severitySince, err := DetermineSeveritySince(ctx, db, i.ImageName, v.Package, v.Cve.Id, severity)
 		if err != nil {
-			s.log.Errorf("determine becameCriticalAt: %v", err)
+			return nil, err
 		}
 		batch := sql.BatchUpsertVulnerabilitiesParams{
 			ImageName:     i.ImageName,
@@ -322,15 +328,15 @@ func (s *SyncImageWorker) ToVulnerabilitySqlParams(ctx context.Context, i *Image
 			LastSeverity:  severity,
 		}
 
-		if becameCriticalAt != nil {
-			batch.BecameCriticalAt = pgtype.Timestamptz{
-				Time:  *becameCriticalAt,
+		if severitySince != nil {
+			batch.SeveritySince = pgtype.Timestamptz{
+				Time:  *severitySince,
 				Valid: true,
 			}
 		}
 		params = append(params, batch)
 	}
-	return params
+	return params, nil
 }
 
 func sortCveParams(params []sql.BatchUpsertCveParams) {
@@ -354,25 +360,26 @@ func sortVulnerabilityParams(params []sql.BatchUpsertVulnerabilitiesParams) {
 	})
 }
 
-func (s *SyncImageWorker) DetermineBecameCriticalAt(ctx context.Context, imageName, pkg, cveID string, lastSeverity int32) (*time.Time, error) {
-	if lastSeverity != 0 {
-		// Not critical → no timestamp
-		return nil, nil
-	}
+func DetermineSeveritySince(
+	ctx context.Context,
+	querier sql.Querier,
+	imageName, pkg, cveID string,
+	lastSeverity int32,
+) (*time.Time, error) {
 
-	// Query DB for earliest known critical timestamp for this vuln across all tags
-	earliest, err := s.db.GetEarliestCriticalAtForVulnerability(ctx, sql.GetEarliestCriticalAtForVulnerabilityParams{
-		ImageName: imageName,
-		Package:   pkg,
-		CveID:     cveID,
+	earliest, err := querier.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
+		ImageName:    imageName,
+		Package:      pkg,
+		CveID:        cveID,
+		LastSeverity: lastSeverity,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	if earliest.Valid {
-		s.log.Debugf("Vulnerability %s in package %s for image %s became critical at %s", cveID, pkg, imageName, earliest.Time)
-		return &earliest.Time, nil
+		t := earliest.Time.UTC()
+		return &t, nil
 	}
 
 	now := time.Now().UTC()

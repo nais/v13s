@@ -70,7 +70,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				Created:       timestamppb.New(row.CreatedAt.Time),
 				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
 				LatestVersion: row.LatestVersion,
-				CriticalSince: timestamppb.New(row.CriticalSince.Time),
+				SeveritySince: timestamppb.New(row.SeveritySince.Time),
 				Cve: &vulnerabilities.Cve{
 					Id:          row.CveID,
 					Title:       row.CveTitle,
@@ -146,7 +146,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 			Created:       timestamppb.New(row.CreatedAt.Time),
 			LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
 			LatestVersion: row.LatestVersion,
-			CriticalSince: timestamppb.New(row.CriticalSince.Time),
+			SeveritySince: timestamppb.New(row.SeveritySince.Time),
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
@@ -171,7 +171,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}, nil
 }
 
-func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *vulnerabilities.ListCriticalVulnerabilitiesSinceRequest) (*vulnerabilities.ListCriticalVulnerabilitiesSinceResponse, error) {
+func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *vulnerabilities.ListSeverityVulnerabilitiesSinceRequest) (*vulnerabilities.ListSeverityVulnerabilitiesSinceResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -187,14 +187,14 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 		since.Valid = true
 	}
 
-	v, err := s.querier.ListCriticalVulnerabilitiesSince(ctx, sql.ListCriticalVulnerabilitiesSinceParams{
+	v, err := s.querier.ListSeverityVulnerabilitiesSince(ctx, sql.ListSeverityVulnerabilitiesSinceParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
 		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
 		IncludeSuppressed: request.IncludeSuppressed,
-		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByBecameCriticalAt),
+		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeveritySince),
 		Since:             since,
 		Limit:             limit,
 		Offset:            offset,
@@ -203,7 +203,7 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
 	}
 
-	vulnz := collections.Map(v, func(row *sql.ListCriticalVulnerabilitiesSinceRow) *vulnerabilities.Finding {
+	vulnz := collections.Map(v, func(row *sql.ListSeverityVulnerabilitiesSinceRow) *vulnerabilities.Finding {
 
 		return &vulnerabilities.Finding{
 			WorkloadRef: &vulnerabilities.Workload{
@@ -225,7 +225,7 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 				),
 				Created:       timestamppb.New(row.CreatedAt.Time),
 				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
-				CriticalSince: timestamppb.New(row.BecameCriticalAt.Time),
+				SeveritySince: timestamppb.New(row.SeveritySince.Time),
 				LastSeverity:  &row.LastSeverity,
 				Cve: &vulnerabilities.Cve{
 					Id:          row.CveID,
@@ -257,7 +257,7 @@ func (s *Server) ListCriticalVulnerabilitiesSince(ctx context.Context, request *
 		return nil, err
 	}
 
-	return &vulnerabilities.ListCriticalVulnerabilitiesSinceResponse{
+	return &vulnerabilities.ListSeverityVulnerabilitiesSinceResponse{
 		Filter:   request.GetFilter(),
 		Nodes:    vulnz,
 		PageInfo: pageInfo,
@@ -333,8 +333,8 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 }
 
 func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilities.GetVulnerabilityByIdRequest) (*vulnerabilities.GetVulnerabilityByIdResponse, error) {
-	uuid := convert.StringToUUID(request.Id)
-	row, err := s.querier.GetVulnerabilityById(ctx, uuid)
+	uuId := convert.StringToUUID(request.Id)
+	row, err := s.querier.GetVulnerabilityById(ctx, uuId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("vulnerability not found")
@@ -420,8 +420,8 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 }
 
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
-	uuid := convert.StringToUUID(request.Id)
-	vuln, err := s.querier.GetVulnerabilityById(ctx, uuid)
+	uuId := convert.StringToUUID(request.Id)
+	vuln, err := s.querier.GetVulnerabilityById(ctx, uuId)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("get suppressed vulnerability: %w", err)
