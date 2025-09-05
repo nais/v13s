@@ -121,6 +121,8 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		Offset:            offset,
 		Limit:             limit,
 		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		Since:             timestamptzFromProto(request.GetSince()),
+		Severity:          toInt32Ptr(request.Severity),
 	})
 
 	if err != nil {
@@ -181,12 +183,6 @@ func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	since := pgtype.Timestamptz{}
-	if request.GetSince() != nil {
-		since.Time = request.GetSince().AsTime().UTC()
-		since.Valid = true
-	}
-
 	v, err := s.querier.ListSeverityVulnerabilitiesSince(ctx, sql.ListSeverityVulnerabilitiesSinceParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
@@ -195,7 +191,7 @@ func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *
 		ImageName:         request.GetFilter().ImageName,
 		IncludeSuppressed: request.IncludeSuppressed,
 		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeveritySince),
-		Since:             since,
+		Since:             timestamptzFromProto(request.GetSince()),
 		Limit:             limit,
 		Offset:            offset,
 	})
@@ -514,4 +510,22 @@ func str(s *string, def string) string {
 		return def
 	}
 	return *s
+}
+
+func timestamptzFromProto(ts *timestamppb.Timestamp) pgtype.Timestamptz {
+	if ts == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{
+		Time:  ts.AsTime().UTC(),
+		Valid: true,
+	}
+}
+
+func toInt32Ptr(s *vulnerabilities.Severity) *int32 {
+	if s == nil {
+		return nil
+	}
+	v := int32(*s)
+	return &v
 }

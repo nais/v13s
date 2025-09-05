@@ -85,6 +85,7 @@ type Options struct {
 	Offset            int32
 	OrderBy           *OrderBy
 	Since             *timestamppb.Timestamp
+	Severity          *Severity
 }
 
 type funcOption struct {
@@ -227,6 +228,12 @@ func Since(t time.Time) Option {
 func IncludeUnresolved() Option {
 	return newFuncOption(func(o *Options) {
 		o.IncludeUnresolved = true
+	})
+}
+
+func SeverityFilter(sev Severity) Option {
+	return newFuncOption(func(o *Options) {
+		o.Severity = &sev
 	})
 }
 

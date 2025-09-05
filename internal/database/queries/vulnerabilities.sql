@@ -285,6 +285,8 @@ WITH image_vulnerabilities AS (
     WHERE v.image_name = @image_name
      AND v.image_tag = @image_tag
      AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+     AND (sqlc.narg('since')::timestamptz IS NULL OR v.severity_since > sqlc.narg('since')::timestamptz)
+     AND (sqlc.narg('severity')::INT IS NULL OR c.severity = sqlc.narg('severity')::INT)
 )
 SELECT id,
        image_name,

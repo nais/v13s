@@ -26,6 +26,7 @@ type Options struct {
 	Package       string
 	CveId         string
 	Unresolved    bool
+	Severity      string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -86,6 +87,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Value:       false,
 			Usage:       "show suppressed vulnerabilities",
 			Destination: &opts.Suppressed,
+		},
+		&cli.StringFlag{
+			Name:        "severity",
+			Aliases:     []string{"se"},
+			Value:       "",
+			Usage:       "filter by severity (e.g. 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNASSIGNED')",
+			Destination: &opts.Severity,
 		},
 	}
 	for _, f := range cFlags {
@@ -160,9 +168,28 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 	if o.Suppressed {
 		opts = append(opts, vulnerabilities.IncludeSuppressed())
 	}
-	fmt.Println(o.Unresolved)
 	if o.Unresolved {
 		opts = append(opts, vulnerabilities.IncludeUnresolved())
+	}
+	severity := vulnerabilities.Severity_CRITICAL
+	if o.Severity != "" {
+		switch strings.ToUpper(o.Severity) {
+		case "CRITICAL":
+			severity = vulnerabilities.Severity_CRITICAL
+		case "HIGH":
+			severity = vulnerabilities.Severity_HIGH
+		case "MEDIUM":
+			severity = vulnerabilities.Severity_MEDIUM
+		case "LOW":
+			severity = vulnerabilities.Severity_LOW
+		case "UNASSIGNED":
+			severity = vulnerabilities.Severity_UNASSIGNED
+		default:
+			log.Fatalf("invalid severity: %s"+
+				" valid values are CRITICAL, HIGH, MEDIUM, LOW, UNASSIGNED", o.Severity)
+
+		}
+		opts = append(opts, vulnerabilities.SeverityFilter(severity))
 	}
 	return opts
 }

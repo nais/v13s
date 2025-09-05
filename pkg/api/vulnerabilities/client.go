@@ -73,6 +73,8 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 		Limit:             o.Limit,
 		Offset:            o.Offset,
 		OrderBy:           o.OrderBy,
+		Since:             o.Since,
+		Severity:          o.Severity,
 	}, o.CallOptions...)
 }
 

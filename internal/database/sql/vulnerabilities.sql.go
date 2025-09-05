@@ -893,6 +893,8 @@ WITH image_vulnerabilities AS (
     WHERE v.image_name = $4
      AND v.image_tag = $5
      AND ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+     AND ($7::timestamptz IS NULL OR v.severity_since > $7::timestamptz)
+     AND ($8::INT IS NULL OR c.severity = $8::INT)
 )
 SELECT id,
        image_name,
@@ -943,6 +945,8 @@ type ListVulnerabilitiesForImageParams struct {
 	ImageName         string
 	ImageTag          string
 	IncludeSuppressed *bool
+	Since             pgtype.Timestamptz
+	Severity          *int32
 }
 
 type ListVulnerabilitiesForImageRow struct {
@@ -978,6 +982,8 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
+		arg.Since,
+		arg.Severity,
 	)
 	if err != nil {
 		return nil, err

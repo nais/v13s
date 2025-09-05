@@ -224,6 +224,113 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 	})
 }
 
+func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      3,
+	}
+
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
+
+	t.Run("filter by severity", func(t *testing.T) {
+		severity := vulnerabilities.Severity_HIGH
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.SeverityFilter(severity),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
+		}
+	})
+
+	t.Run("filter by since", func(t *testing.T) {
+		sinceTime := time.Now().Add(-1 * time.Hour)
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.Since(sinceTime),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.True(t,
+				v.GetSeveritySince().AsTime().After(sinceTime) || v.GetSeveritySince().AsTime().Equal(sinceTime),
+				"vulnerability severity_since should be after or equal to filter",
+			)
+		}
+	})
+
+	t.Run("filter by severity and since together", func(t *testing.T) {
+		severity := vulnerabilities.Severity_HIGH
+		sinceTime := time.Now().Add(-1 * time.Hour)
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.SeverityFilter(severity),
+			vulnerabilities.Since(sinceTime),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
+			assert.True(t,
+				v.GetSeveritySince().AsTime().After(sinceTime) || v.GetSeveritySince().AsTime().Equal(sinceTime),
+				"vulnerability severity_since should be after or equal to filter",
+			)
+		}
+	})
+	t.Run("filter including suppressed", func(t *testing.T) {
+		severity := vulnerabilities.Severity_HIGH
+		sinceTime := time.Now().Add(-1 * time.Hour)
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.SeverityFilter(severity),
+			vulnerabilities.Since(sinceTime),
+			vulnerabilities.IncludeSuppressed(),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.True(t,
+				v.GetSeveritySince().AsTime().After(sinceTime) || v.GetSeveritySince().AsTime().Equal(sinceTime),
+				"vulnerability severity_since should be after or equal to filter",
+			)
+			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
+			assert.True(t, v.GetSuppression().GetSuppressed() || !v.GetSuppression().GetSuppressed(), "suppressed field should be present")
+		}
+	})
+}
+
 func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},

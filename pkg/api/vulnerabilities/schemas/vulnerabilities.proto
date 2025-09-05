@@ -58,6 +58,8 @@ message ListVulnerabilitiesForImageRequest {
   int32 limit = 4;
   int32 offset = 5;
   optional OrderBy order_by = 6;
+  optional google.protobuf.Timestamp since = 7;
+  optional Severity severity = 8;
 }
 
 message ListVulnerabilitiesForImageResponse {
