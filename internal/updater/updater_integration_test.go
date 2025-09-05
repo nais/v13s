@@ -165,9 +165,6 @@ func TestUpdater(t *testing.T) {
 	})
 
 	t.Run("images older than interval should be marked with resync and vulnerabilities updated", func(t *testing.T) {
-		//err = db.ResetDatabase(ctx)
-		//assert.NoError(t, err)
-
 		insertWorkloads(ctx, t, db, projectNames)
 		_, err = pool.Exec(ctx, `
     		UPDATE images
@@ -194,12 +191,6 @@ func TestUpdater(t *testing.T) {
 			imageVersion,
 		)
 		assert.NoError(t, err)
-
-		// range from 1 to 5 to simulate 5 vulns
-		//for i := 1; i <= 5; i++ {
-		//	cveID := fmt.Sprintf("CVE-%s-%d", imageName, i)
-		//	addFinding(findings, projectNames[0], cveID)
-		//}
 
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
@@ -258,13 +249,11 @@ func TestUpdater(t *testing.T) {
 		tx, err := pool.Begin(ctx)
 		assert.NoError(t, err)
 
-		// set image state to initialized
 		_, err = tx.Exec(ctx,
 			"UPDATE images SET state=$1 WHERE name=$2 AND tag=$3",
 			sql.ImageStateInitialized, imageName, imageVersion)
 		assert.NoError(t, err)
 
-		// set updated_at to 1 hour ago UTC
 		imageLastUpdated := time.Now().UTC().Add(-1 * time.Hour)
 		_, err = tx.Exec(ctx,
 			"UPDATE images SET updated_at=$1 WHERE name=$2 AND tag=$3",
@@ -274,10 +263,8 @@ func TestUpdater(t *testing.T) {
 		err = tx.Commit(ctx)
 		assert.NoError(t, err)
 
-		// log current setup
 		fmt.Printf("Setup image: %s updated_at=%v\n", imageName, imageLastUpdated)
 
-		// print threshold used by updater
 		threshold := time.Now().UTC().Add(-updater.ImageMarkAge)
 		fmt.Printf("Threshold for untracking: %v\n", threshold)
 
@@ -287,7 +274,6 @@ func TestUpdater(t *testing.T) {
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
 
-		// query all images after running updater
 		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images ORDER BY name")
 		for rows.Next() {
 			var n, s string
@@ -311,7 +297,6 @@ func TestUpdater(t *testing.T) {
 
 		insertWorkloads(ctx, t, db, []string{"project-2", "project-3"}) // project-1 and project-4 will have no workloads
 
-		// manually insert/update images
 		projects := []string{"project-1", "project-2", "project-3", "project-4"}
 		for _, p := range projects {
 			_, err := pool.Exec(ctx,
@@ -326,7 +311,6 @@ func TestUpdater(t *testing.T) {
 		err = u.MarkUnusedImages(ctx)
 		assert.NoError(t, err)
 
-		// fetch all images and check state
 		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images ORDER BY name")
 		defer rows.Close()
 		for rows.Next() {
@@ -351,13 +335,11 @@ func TestUpdater(t *testing.T) {
 		imageVersion := "v1"
 		insertWorkloads(ctx, t, db, projectNames)
 
-		// set image state to something that is not excluded
 		_, err = pool.Exec(ctx,
 			"UPDATE images SET state = $1 WHERE name = $2 AND tag = $3",
 			sql.ImageStateUpdated, imageName, imageVersion)
 		assert.NoError(t, err)
 
-		// set updated_at older than threshold
 		imageLastUpdated := time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault - time.Hour)
 		_, err = pool.Exec(ctx,
 			"UPDATE images SET updated_at = $1 WHERE name = $2 AND tag = $3",
@@ -387,7 +369,6 @@ func TestUpdater(t *testing.T) {
 			fmt.Printf("row: %s state=%s updated_at=%v\n", n, s, t)
 		}
 
-		// check that project-1 has been updated to 'resync'
 		image, err = db.GetImage(ctx, sql.GetImageParams{
 			Name: imageName,
 			Tag:  imageVersion,
@@ -412,7 +393,6 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		// Set ReadyForResyncAt to 5 minutes ago
 		readyAt := time.Now().Add(-manager.FinalizeAttestationScheduledForResyncMinutes)
 		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
@@ -435,7 +415,6 @@ func TestUpdater(t *testing.T) {
 		images, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)
 
-		// Check that the image is selected for resync
 		assert.Len(t, images, 1)
 		assert.Equal(t, imageName, images[0].Name)
 		assert.Equal(t, imageTag, images[0].Tag)
