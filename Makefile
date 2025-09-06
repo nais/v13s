@@ -14,7 +14,7 @@ tidy:
 test-all:  test test-integration
 
 test:
-	go test -cover ./...
+	go test -v -cover ./...
 
 test-integration:
 	go test -count=1 ./... -tags integration_test -run TestUpdater
