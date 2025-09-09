@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: {{ .Release.Name }}-workload-vulnerability-alerts
-  namespace: nais-system
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/name: {{ .Chart.Name }}
@@ -10,12 +10,12 @@ spec:
   groups:
     - name: workload-vulnerability-alerts
       rules:
-        - alert: WorkloadCriticalVulnerabilities
-          expr: v13s_workload_vulnerabilities{severity="CRITICAL", workload_namespace="nais-system"} > 0
-          for: 5m
+        - alert: "workload critical vulnerabilities"
+          expr: v13s_workload_vulnerabilities{severity="CRITICAL", workload_namespace="{{ .Release.Namespace }}"} > 0
+          for: 10m
           labels:
             namespace: nais-system
-            severity: info
+            severity: warning
             channel: nais-alerts-info
             alert_type: custom
           annotations:
