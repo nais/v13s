@@ -18,7 +18,7 @@ type Workload struct {
 }
 
 type Vulnerability struct {
-	vuln *sql.Vulnerability
+	vuln *sql.GetVulnerabilityRow
 	cve  *sql.Cve
 }
 
@@ -70,7 +70,7 @@ func generateVulnerabilities(numVulns, workloadIndex int, imageName string, imag
 // createVulnerability generates a predictable vulnerability instance
 func createVulnerability(cveID string, imageName string, imageTag string) *Vulnerability {
 	return &Vulnerability{
-		vuln: &sql.Vulnerability{
+		vuln: &sql.GetVulnerabilityRow{
 			ImageName: imageName,
 			ImageTag:  imageTag,
 			Package:   fmt.Sprintf("package-%s", cveID),

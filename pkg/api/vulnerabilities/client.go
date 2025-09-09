@@ -14,9 +14,13 @@ type Client interface {
 	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...Option) (*ListVulnerabilitiesForImageResponse, error)
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
+	ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error)
+	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
+	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
+	GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
 	management.ManagementClient
@@ -69,6 +73,8 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 		Limit:             o.Limit,
 		Offset:            o.Offset,
 		OrderBy:           o.OrderBy,
+		Since:             o.Since,
+		Severity:          o.Severity,
 	}, o.CallOptions...)
 }
 
@@ -91,6 +97,36 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 		OrderBy: o.OrderBy,
 		Since:   o.Since,
 	}, o.CallOptions...)
+}
+
+func (c *client) ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.ListSeverityVulnerabilitiesSince(ctx, &ListSeverityVulnerabilitiesSinceRequest{
+		Filter:            o.Filter,
+		Limit:             o.Limit,
+		Offset:            o.Offset,
+		OrderBy:           o.OrderBy,
+		Since:             o.Since,
+		IncludeSuppressed: &o.IncludeSuppressed,
+	}, o.CallOptions...)
+}
+
+func (c *client) ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.ListWorkloadCriticalVulnerabilitiesSince(ctx, &ListWorkloadCriticalVulnerabilitiesSinceRequest{
+		Filter:            o.Filter,
+		Limit:             o.Limit,
+		Offset:            o.Offset,
+		Since:             o.Since,
+		IncludeSuppressed: &o.IncludeSuppressed,
+		IncludeResolved:   &o.IncludeUnresolved,
+	}, o.CallOptions...)
+}
+
+func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error) {
+	return c.v.ListWorkloadsForVulnerabilityById(ctx, &ListWorkloadsForVulnerabilityByIdRequest{
+		Id: id,
+	})
 }
 
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
@@ -118,6 +154,15 @@ func (c *client) GetVulnerabilitySummaryForImage(ctx context.Context, imageName,
 	})
 }
 
+func (c *client) GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error) {
+	return c.v.GetVulnerability(ctx, &GetVulnerabilityRequest{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		Package:   pkg,
+		CveId:     cveId,
+	})
+}
+
 func (c *client) GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error) {
 	return c.v.GetVulnerabilityById(ctx, &GetVulnerabilityByIdRequest{
 		Id: id,
@@ -137,10 +182,6 @@ func (c *client) SuppressVulnerability(ctx context.Context, id, reason, suppress
 
 func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWorkloadRequest, opts ...grpc.CallOption) (*management.RegisterWorkloadResponse, error) {
 	return c.m.RegisterWorkload(ctx, in, opts...)
-}
-
-func (c *client) TriggerSync(ctx context.Context, in *management.TriggerSyncRequest, opts ...grpc.CallOption) (*management.TriggerSyncResponse, error) {
-	return c.m.TriggerSync(ctx, in, opts...)
 }
 
 func (c *client) GetWorkloadStatus(ctx context.Context, in *management.GetWorkloadStatusRequest, opts ...grpc.CallOption) (*management.GetWorkloadStatusResponse, error) {

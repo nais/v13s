@@ -249,11 +249,11 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 }
 
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
 FROM workloads
 WHERE image_name = $1
   AND image_tag = $2
-ORDER BY (name, cluster, updated_at) DESC
+ORDER BY name DESC, cluster DESC, updated_at DESC
 `
 
 type ListWorkloadsByImageParams struct {
@@ -261,15 +261,27 @@ type ListWorkloadsByImageParams struct {
 	ImageTag  string
 }
 
-func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*Workload, error) {
+type ListWorkloadsByImageRow struct {
+	ID           pgtype.UUID
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error) {
 	rows, err := q.db.Query(ctx, listWorkloadsByImage, arg.ImageName, arg.ImageTag)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*Workload{}
+	items := []*ListWorkloadsByImageRow{}
 	for rows.Next() {
-		var i Workload
+		var i ListWorkloadsByImageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -280,7 +292,6 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 			&i.ImageTag,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.State,
 		); err != nil {
 			return nil, err
 		}
@@ -297,10 +308,12 @@ WITH updated AS (
 UPDATE workloads
 SET state      = $1,
     updated_at = NOW()
-WHERE ($2::TEXT IS NULL OR cluster = $2::TEXT)
-  AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
-  AND ($4::TEXT IS NULL OR workload_type = $4::TEXT)
-  AND ($5::TEXT IS NULL OR name = $5::TEXT)
+WHERE (
+    ($2::TEXT IS NOT NULL AND cluster = $2::TEXT)
+        OR ($3::TEXT IS NOT NULL AND namespace = $3::TEXT)
+        OR ($4::TEXT IS NOT NULL AND workload_type = $4::TEXT)
+        OR ($5::TEXT IS NOT NULL AND name = $5::TEXT)
+    )
   AND state = $6
     RETURNING id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 )

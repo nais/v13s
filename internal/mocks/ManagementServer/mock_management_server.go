@@ -258,65 +258,6 @@ func (_c *MockManagementServer_Resync_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// TriggerSync provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) TriggerSync(_a0 context.Context, _a1 *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
-	ret := _m.Called(_a0, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for TriggerSync")
-	}
-
-	var r0 *management.TriggerSyncResponse
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error)); ok {
-		return rf(_a0, _a1)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *management.TriggerSyncRequest) *management.TriggerSyncResponse); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*management.TriggerSyncResponse)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *management.TriggerSyncRequest) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockManagementServer_TriggerSync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TriggerSync'
-type MockManagementServer_TriggerSync_Call struct {
-	*mock.Call
-}
-
-// TriggerSync is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 *management.TriggerSyncRequest
-func (_e *MockManagementServer_Expecter) TriggerSync(_a0 interface{}, _a1 interface{}) *MockManagementServer_TriggerSync_Call {
-	return &MockManagementServer_TriggerSync_Call{Call: _e.mock.On("TriggerSync", _a0, _a1)}
-}
-
-func (_c *MockManagementServer_TriggerSync_Call) Run(run func(_a0 context.Context, _a1 *management.TriggerSyncRequest)) *MockManagementServer_TriggerSync_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*management.TriggerSyncRequest))
-	})
-	return _c
-}
-
-func (_c *MockManagementServer_TriggerSync_Call) Return(_a0 *management.TriggerSyncResponse, _a1 error) *MockManagementServer_TriggerSync_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockManagementServer_TriggerSync_Call) RunAndReturn(run func(context.Context, *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error)) *MockManagementServer_TriggerSync_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // mustEmbedUnimplementedManagementServer provides a mock function with no fields
 func (_m *MockManagementServer) mustEmbedUnimplementedManagementServer() {
 	_m.Called()
@@ -354,7 +295,8 @@ func (_c *MockManagementServer_mustEmbedUnimplementedManagementServer_Call) RunA
 func NewMockManagementServer(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockManagementServer {
+},
+) *MockManagementServer {
 	mock := &MockManagementServer{}
 	mock.Mock.Test(t)
 

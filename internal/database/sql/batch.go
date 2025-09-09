@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
@@ -89,14 +90,14 @@ VALUES ($1,
                cve_desc  = EXCLUDED.cve_desc,
                cve_link  = EXCLUDED.cve_link,
                severity  = EXCLUDED.severity,
-               refs      = EXCLUDED.refs
-       WHERE NOT (
-           cve.cve_title = EXCLUDED.cve_title
-         AND cve.cve_desc = EXCLUDED.cve_desc
-         AND cve.cve_link = EXCLUDED.cve_link
-         AND cve.severity = EXCLUDED.severity
-         AND cve.refs = EXCLUDED.refs
-           )
+               refs      = EXCLUDED.refs,
+               updated_at = NOW()
+   WHERE
+           cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
+           cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
+           cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
+           cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
+           cve.refs       IS DISTINCT FROM EXCLUDED.refs
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -153,22 +154,36 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 }
 
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
-INSERT INTO vulnerabilities(image_name,
-                            image_tag,
-                            package,
-                            cve_id,
-                            source,
-                            latest_version)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6)
-ON CONFLICT (image_name, image_tag, package, cve_id)
-DO UPDATE
-    SET latest_version = EXCLUDED.latest_version
-    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
+INSERT INTO vulnerabilities (
+    image_name,
+    image_tag,
+    package,
+    cve_id,
+    source,
+    latest_version,
+    last_severity,
+    severity_since
+)
+VALUES (
+           $1,
+           $2,
+           $3,
+           $4,
+           $5,
+           $6,
+           $7,
+           COALESCE($8::timestamptz, NOW()))
+ON CONFLICT (image_name, image_tag, package, cve_id) DO
+UPDATE
+    SET
+        latest_version = EXCLUDED.latest_version,
+    updated_at = NOW(),
+    last_severity = EXCLUDED.last_severity,
+    severity_since = CASE
+    WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
+    THEN COALESCE (EXCLUDED.severity_since, NOW())
+    ELSE vulnerabilities.severity_since
+END
 `
 
 type BatchUpsertVulnerabilitiesBatchResults struct {
@@ -184,6 +199,8 @@ type BatchUpsertVulnerabilitiesParams struct {
 	CveID         string
 	Source        string
 	LatestVersion string
+	LastSeverity  int32
+	SeveritySince pgtype.Timestamptz
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -196,6 +213,8 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.CveID,
 			a.Source,
 			a.LatestVersion,
+			a.LastSeverity,
+			a.SeveritySince,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

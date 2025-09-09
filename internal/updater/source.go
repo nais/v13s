@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"golang.org/x/sync/errgroup"
@@ -15,6 +16,7 @@ type ImageVulnerabilityData struct {
 	Source          string
 	Vulnerabilities []*sources.Vulnerability
 	Summary         *sources.VulnerabilitySummary
+	Workloads       []*sql.ListWorkloadsByImageRow
 }
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
@@ -78,7 +80,6 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		}
 	}
 
-	// TODO: We have to wait for the analysis to be done before we can update summary
 	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
 	if err != nil {
 		return nil, err
@@ -89,12 +90,21 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		return nil, err
 	}
 
+	workloads, err := u.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &ImageVulnerabilityData{
 		ImageName:       imageName,
 		ImageTag:        imageTag,
 		Source:          source.Name(),
 		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
+		Workloads:       workloads,
 	}, nil
 }
 
@@ -113,6 +123,60 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	}
 }
 
+func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerabilityData) []sql.BatchUpsertVulnerabilitiesParams {
+	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+	for _, v := range i.Vulnerabilities {
+		severity := v.Cve.Severity.ToInt32()
+		severitySince, err := u.DetermineSeveritySince(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		if err != nil {
+			u.log.Errorf("determine severitySince: %v", err)
+		}
+		batch := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     i.ImageName,
+			ImageTag:      i.ImageTag,
+			Package:       v.Package,
+			CveID:         v.Cve.Id,
+			Source:        i.Source,
+			LatestVersion: v.LatestVersion,
+			LastSeverity:  severity,
+		}
+
+		if severitySince != nil {
+			batch.SeveritySince = pgtype.Timestamptz{
+				Time:  *severitySince,
+				Valid: true,
+			}
+		}
+		params = append(params, batch)
+	}
+	return params
+}
+
+func (u *Updater) DetermineSeveritySince(
+	ctx context.Context,
+	imageName, pkg, cveID string,
+	lastSeverity int32,
+) (*time.Time, error) {
+
+	earliest, err := u.querier.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
+		ImageName:    imageName,
+		Package:      pkg,
+		CveID:        cveID,
+		LastSeverity: lastSeverity,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if earliest.Valid {
+		t := earliest.Time.UTC()
+		return &t, nil
+	}
+
+	now := time.Now().UTC()
+	return &now, nil
+}
+
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 	params := make([]sql.BatchUpsertCveParams, 0)
 	for _, v := range i.Vulnerabilities {
@@ -123,21 +187,6 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 			CveLink:  v.Cve.Link,
 			Severity: v.Cve.Severity.ToInt32(),
 			Refs:     v.Cve.References,
-		})
-	}
-	return params
-}
-
-func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams() []sql.BatchUpsertVulnerabilitiesParams {
-	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-	for _, v := range i.Vulnerabilities {
-		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
-			ImageName:     i.ImageName,
-			ImageTag:      i.ImageTag,
-			Package:       v.Package,
-			CveID:         v.Cve.Id,
-			Source:        i.Source,
-			LatestVersion: v.LatestVersion,
 		})
 	}
 	return params

@@ -22,7 +22,7 @@ type InformerManager struct {
 	cacheSyncs []cache.InformerSynced
 	log        logrus.FieldLogger
 	// TODO: not in use
-	//resourceCounter metric.Int64UpDownCounter
+	// resourceCounter metric.Int64UpDownCounter
 }
 
 type clusterManager struct {
@@ -74,11 +74,24 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 		infs := map[schema.GroupVersionResource]cache.SharedIndexInformer{}
 		for _, gvr := range gvrs {
 			// Check if the resource is available in the cluster.
-			_, err = discoveryClient.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
+			resList, err := discoveryClient.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
 			if err != nil {
-				log.WithError(err).Warnf("resource %s not available in cluster %s", gvr.String(), cluster)
+				log.WithError(err).Warnf("group version %s not available in cluster %s", gvr.String(), cluster)
+			}
+
+			found := false
+			for _, apiRes := range resList.APIResources {
+				if apiRes.Name == gvr.Resource {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				log.Warnf("resource %s not available in cluster %s", gvr.String(), cluster)
 				continue
 			}
+
 			informer := factory.ForResource(gvr).Informer()
 			log.WithFields(logrus.Fields{
 				"cluster":  cluster,

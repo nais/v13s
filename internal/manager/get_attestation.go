@@ -79,6 +79,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 
 	if err != nil {
 		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
+		var unrecoverableError model.UnrecoverableError
 		// TODO: handle no attestation found vs error in verifying
 		if errors.As(err, &noMatchAttestationError) {
 			if err.Error() != "no matching attestations: " {
@@ -94,11 +95,41 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			if err != nil {
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
+
+			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				State: sql.ImageStateFailed,
+				Name:  imageName,
+				Tag:   imageTag,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to set image state: %w", err)
+			}
 			recordOutput(ctx, JobStatusNoAttestation)
 			if job.Args.WorkloadType == model.WorkloadTypeApp {
 				return noMatchAttestationError
 			}
 			return river.JobCancel(noMatchAttestationError)
+		} else if errors.As(err, &unrecoverableError) {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			g.log.WithError(err).Error("unrecoverable error while getting attestation")
+			recordOutput(ctx, JobStatusUnrecoverable)
+			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+				State: sql.WorkloadStateUnrecoverable,
+				ID:    job.Args.WorkloadId,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to set workload state: %w", err)
+			}
+			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				State: sql.ImageStateFailed,
+				Name:  imageName,
+				Tag:   imageTag,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to set image state: %w", err)
+			}
+			return river.JobCancel(unrecoverableError)
 		} else {
 			return handleJobErr(err)
 		}

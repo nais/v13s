@@ -17,33 +17,64 @@ VALUES (@cve_id,
                cve_desc  = EXCLUDED.cve_desc,
                cve_link  = EXCLUDED.cve_link,
                severity  = EXCLUDED.severity,
-               refs      = EXCLUDED.refs
-       WHERE NOT (
-           cve.cve_title = EXCLUDED.cve_title
-         AND cve.cve_desc = EXCLUDED.cve_desc
-         AND cve.cve_link = EXCLUDED.cve_link
-         AND cve.severity = EXCLUDED.severity
-         AND cve.refs = EXCLUDED.refs
-           )
+               refs      = EXCLUDED.refs,
+               updated_at = NOW()
+   WHERE
+           cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
+           cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
+           cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
+           cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
+           cve.refs       IS DISTINCT FROM EXCLUDED.refs
 ;
 
 -- name: BatchUpsertVulnerabilities :batchexec
-INSERT INTO vulnerabilities(image_name,
-                            image_tag,
-                            package,
-                            cve_id,
-                            source,
-                            latest_version)
-VALUES (@image_name,
-        @image_tag,
-        @package,
-        @cve_id,
-        @source,
-        @latest_version)
-ON CONFLICT (image_name, image_tag, package, cve_id)
-DO UPDATE
-    SET latest_version = EXCLUDED.latest_version
-    WHERE vulnerabilities.latest_version <> EXCLUDED.latest_version
+INSERT INTO vulnerabilities (
+    image_name,
+    image_tag,
+    package,
+    cve_id,
+    source,
+    latest_version,
+    last_severity,
+    severity_since
+)
+VALUES (
+           @image_name,
+           @image_tag,
+           @package,
+           @cve_id,
+           @source,
+           @latest_version,
+           @last_severity,
+           COALESCE(@severity_since::timestamptz, NOW()))
+ON CONFLICT (image_name, image_tag, package, cve_id) DO
+UPDATE
+    SET
+        latest_version = EXCLUDED.latest_version,
+    updated_at = NOW(),
+    last_severity = EXCLUDED.last_severity,
+    severity_since = CASE
+    WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
+    THEN COALESCE (EXCLUDED.severity_since, NOW())
+    ELSE vulnerabilities.severity_since
+END;
+
+-- name: GetEarliestSeveritySinceForVulnerability :one
+SELECT (COALESCE(
+        (SELECT MIN(v1.severity_since)
+         FROM vulnerabilities v1
+         WHERE v1.image_name = $1
+           AND v1.package = $2
+           AND v1.cve_id = $3
+           AND v1.last_severity = $4
+           AND v1.severity_since IS NOT NULL),
+        (SELECT MIN(v2.created_at)
+         FROM vulnerabilities v2
+         WHERE v2.image_name = $1
+           AND v2.package = $2
+           AND v2.cve_id = $3
+         AND v2.last_severity = $4)
+        )::timestamptz) AS earliest_severity_since
 ;
 
 -- name: GetCve :one
@@ -53,13 +84,37 @@ WHERE cve_id = @cve_id
 ;
 
 -- name: GetVulnerability :one
-SELECT *
-FROM vulnerabilities
-WHERE image_name = @image_name
-  AND image_tag = @image_tag
-  AND package = @package
-  AND cve_id = @cve_id
-;
+SELECT v.id,
+       v.image_name,
+       v.image_tag,
+       v.package,
+       v.latest_version,
+       v.source,
+       v.cve_id,
+       v.last_severity,
+       v.severity_since,
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity AS severity,
+       c.refs,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       sv.reason,
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at AS suppressed_at
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.image_name = @image_name
+  AND v.image_tag = @image_tag
+  AND v.package = @package
+  AND v.cve_id = @cve_id;
 
 -- name: GetVulnerabilityById :one
 SELECT v.id,
@@ -90,6 +145,19 @@ FROM vulnerabilities v
 WHERE v.id = @id
 ;
 
+-- name: ListWorkloadsForVulnerabilityById :many
+SELECT w.id,
+       w.cluster,
+       w.namespace,
+       w.name,
+       w.workload_type
+FROM workloads w
+         JOIN vulnerabilities v
+              ON v.image_name = w.image_name
+                  AND v.image_tag = w.image_tag
+WHERE v.id = @vulnerability_id
+ORDER BY w.cluster, w.namespace, w.name;
+
 -- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,
@@ -107,10 +175,17 @@ VALUES (@image_name,
         @reason_text) ON CONFLICT
 ON CONSTRAINT image_name_package_cve_id DO
 UPDATE
-    SET suppressed = @suppressed,
-    suppressed_by = @suppressed_by,
-    reason = @reason,
-    reason_text = @reason_text
+    SET
+        suppressed = EXCLUDED.suppressed,
+    suppressed_by = EXCLUDED.suppressed_by,
+    reason = EXCLUDED.reason,
+    reason_text = EXCLUDED.reason_text,
+    updated_at = NOW()
+WHERE
+    suppressed_vulnerabilities.suppressed     IS DISTINCT FROM EXCLUDED.suppressed OR
+    suppressed_vulnerabilities.suppressed_by  IS DISTINCT FROM EXCLUDED.suppressed_by OR
+    suppressed_vulnerabilities.reason         IS DISTINCT FROM EXCLUDED.reason OR
+    suppressed_vulnerabilities.reason_text    IS DISTINCT FROM EXCLUDED.reason_text;
 ;
 
 -- name: ListSuppressedVulnerabilities :many
@@ -187,11 +262,14 @@ WITH image_vulnerabilities AS (
           v.latest_version,
           v.created_at,
           v.updated_at,
+          v.severity_since,
           c.cve_title,
           c.cve_desc,
           c.cve_link,
           c.severity,
           c.refs::JSONB AS cve_refs,
+          c.created_at AS cve_created_at,
+          c.updated_at AS cve_updated_at,
           COALESCE(sv.suppressed, FALSE) AS suppressed,
           sv.reason,
           sv.reason_text,
@@ -199,6 +277,7 @@ WITH image_vulnerabilities AS (
           sv.updated_at as suppressed_at
     FROM vulnerabilities v
             JOIN cve c ON v.cve_id = c.cve_id
+            JOIN images i ON v.image_name = i.name AND v.image_tag = i.tag
             LEFT JOIN suppressed_vulnerabilities sv
                       ON v.image_name = sv.image_name
                           AND v.package = sv.package
@@ -206,6 +285,8 @@ WITH image_vulnerabilities AS (
     WHERE v.image_name = @image_name
      AND v.image_tag = @image_tag
      AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+     AND (sqlc.narg('since')::timestamptz IS NULL OR v.severity_since > sqlc.narg('since')::timestamptz)
+     AND (sqlc.narg('severity')::INT IS NULL OR c.severity = sqlc.narg('severity')::INT)
 )
 SELECT id,
        image_name,
@@ -215,11 +296,14 @@ SELECT id,
        latest_version,
        created_at,
        updated_at,
+       severity_since,
        cve_title,
        cve_desc,
        cve_link,
        severity,
        cve_refs as cve_refs,
+       cve_created_at,
+       cve_updated_at,
        COALESCE(suppressed, FALSE) AS suppressed,
        reason,
        reason_text,
@@ -229,6 +313,8 @@ SELECT id,
 FROM image_vulnerabilities
 ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
          CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN severity END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN severity_since END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN severity_since END DESC,
          CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN package END ASC,
          CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN package END DESC,
          CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN cve_id END ASC,
@@ -255,6 +341,7 @@ SELECT v.id,
        v.image_name,
        v.image_tag,
        v.latest_version,
+       v.severity_since,
        v.package,
        v.cve_id,
        v.created_at,
@@ -263,6 +350,8 @@ SELECT v.id,
        c.cve_desc,
        c.cve_link,
        c.severity AS severity,
+       c.created_at AS cve_created_at,
+       c.updated_at AS cve_updated_at,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
        sv.reason_text,
@@ -331,3 +420,58 @@ FROM vulnerabilities v
 WHERE v.image_name = @image_name
     AND v.image_tag = @image_tag
 ;
+
+-- name: ListSeverityVulnerabilitiesSince :many
+SELECT
+    v.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    v.image_name,
+    v.image_tag,
+    v.latest_version,
+    v.package,
+    v.cve_id,
+    v.created_at,
+    v.updated_at,
+    v.severity_since,
+    v.last_severity,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity AS severity,
+    c.created_at AS cve_created_at,
+    c.updated_at AS cve_updated_at,
+    COALESCE(sv.suppressed, FALSE) AS suppressed,
+    sv.reason,
+    sv.reason_text,
+    sv.suppressed_by,
+    sv.updated_at AS suppressed_at
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.severity_since IS NOT NULL
+  AND (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+  AND (CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+  AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+  AND (sqlc.narg('since')::timestamptz IS NULL OR v.severity_since > sqlc.narg('since')::timestamptz)
+ORDER BY
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN v.severity_since END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN v.severity_since END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
+         v.id ASC LIMIT sqlc.arg('limit')
+OFFSET sqlc.arg('offset');

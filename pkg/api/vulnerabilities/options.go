@@ -23,42 +23,44 @@ const (
 )
 
 const (
-	OrderBySeverity   OrderByField = "severity"
-	OrderByPackage    OrderByField = "package"
-	OrderByCveId      OrderByField = "cve_id"
-	OrderBySuppressed OrderByField = "suppressed"
-	OrderByReason     OrderByField = "reason"
-	OrderByCluster    OrderByField = "cluster"
-	OrderByNamespace  OrderByField = "namespace"
-	OrderByWorkload   OrderByField = "workload"
-	OrderByCritical   OrderByField = "critical"
-	OrderByHigh       OrderByField = "high"
-	OrderByMedium     OrderByField = "medium"
-	OrderByLow        OrderByField = "low"
-	OrderByUnassigned OrderByField = "unassigned"
-	OrderByRiskScore  OrderByField = "risk_score"
-	OrderByCreatedAt  OrderByField = "created_at"
-	OrderByUpdatedAt  OrderByField = "updated_at"
+	OrderBySeverity      OrderByField = "severity"
+	OrderByPackage       OrderByField = "package"
+	OrderByCveId         OrderByField = "cve_id"
+	OrderBySuppressed    OrderByField = "suppressed"
+	OrderByReason        OrderByField = "reason"
+	OrderByCluster       OrderByField = "cluster"
+	OrderByNamespace     OrderByField = "namespace"
+	OrderByWorkload      OrderByField = "workload"
+	OrderByCritical      OrderByField = "critical"
+	OrderByHigh          OrderByField = "high"
+	OrderByMedium        OrderByField = "medium"
+	OrderByLow           OrderByField = "low"
+	OrderByUnassigned    OrderByField = "unassigned"
+	OrderByRiskScore     OrderByField = "risk_score"
+	OrderByCreatedAt     OrderByField = "created_at"
+	OrderByUpdatedAt     OrderByField = "updated_at"
+	OrderBySeveritySince OrderByField = "severity_since"
 )
 
 // Map of valid fields
 var validOrderByFields = map[OrderByField]struct{}{
-	OrderBySeverity:   {},
-	OrderByPackage:    {},
-	OrderByCveId:      {},
-	OrderBySuppressed: {},
-	OrderByReason:     {},
-	OrderByCluster:    {},
-	OrderByNamespace:  {},
-	OrderByWorkload:   {},
-	OrderByCritical:   {},
-	OrderByHigh:       {},
-	OrderByMedium:     {},
-	OrderByLow:        {},
-	OrderByUnassigned: {},
-	OrderByRiskScore:  {},
-	OrderByCreatedAt:  {},
-	OrderByUpdatedAt:  {},
+	OrderBySeverity:      {},
+	OrderByPackage:       {},
+	OrderByCveId:         {},
+	OrderBySuppressed:    {},
+	OrderByReason:        {},
+	OrderByCluster:       {},
+	OrderByNamespace:     {},
+	OrderByWorkload:      {},
+	OrderByCritical:      {},
+	OrderByHigh:          {},
+	OrderByMedium:        {},
+	OrderByLow:           {},
+	OrderByUnassigned:    {},
+	OrderByRiskScore:     {},
+	OrderByCreatedAt:     {},
+	OrderByUpdatedAt:     {},
+	OrderBySeveritySince: {},
 }
 
 // String method for OrderByField
@@ -75,13 +77,15 @@ func (o OrderByField) IsValid() bool {
 const DefaultLimit = 50
 
 type Options struct {
-	Filter            *Filter
 	CallOptions       []grpc.CallOption
+	Filter            *Filter
 	IncludeSuppressed bool
+	IncludeUnresolved bool
 	Limit             int32
 	Offset            int32
 	OrderBy           *OrderBy
 	Since             *timestamppb.Timestamp
+	Severity          *Severity
 }
 
 type funcOption struct {
@@ -129,6 +133,8 @@ func GetOrderBy(opts ...Option) *OrderBy {
 func GetSince(opts ...Option) *timestamppb.Timestamp {
 	return applyOptions(opts...).Since
 }
+
+func GetIncludedUnresolved(opts ...Option) bool { return applyOptions(opts...).IncludeUnresolved }
 
 // TODO: document the Options
 func CallOptions(opts ...grpc.CallOption) Option {
@@ -216,6 +222,18 @@ func Order(field OrderByField, direction Direction) Option {
 func Since(t time.Time) Option {
 	return newFuncOption(func(o *Options) {
 		o.Since = timestamppb.New(t)
+	})
+}
+
+func IncludeUnresolved() Option {
+	return newFuncOption(func(o *Options) {
+		o.IncludeUnresolved = true
+	})
+}
+
+func SeverityFilter(sev Severity) Option {
+	return newFuncOption(func(o *Options) {
+		o.Severity = &sev
 	})
 }
 
