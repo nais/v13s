@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
@@ -18,8 +19,10 @@ import (
 const (
 	FetchVulnerabilityDataForImagesDefaultLimit = 10
 	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
+	MarkUnusedCronInterval                      = "*/30 * * * *" // every 10 minutes
 	RefreshVulnerabilitySummaryCronDailyView    = "30 4 * * *"   // every day at 6:30 AM CEST
-	MarkAsUntrackedAge                          = 30 * time.Minute
+	ImageMarkAge                                = 30 * time.Minute
+	ResyncImagesOlderThanMinutesDefault         = 30 * 12 * time.Minute // 30 * 12 minutes = 6 hours, default for resyncing images
 )
 
 type Updater struct {
@@ -46,7 +49,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 		db:                           pool,
 		querier:                      sql.New(pool),
 		source:                       source,
-		resyncImagesOlderThanMinutes: 60 * 12 * time.Minute, // 12 hours
+		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
 		doneChan:                     doneChan,
 		log:                          log,
@@ -55,18 +58,26 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 
 // Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
-	go runScheduled(ctx, u.updateSchedule, "mark and resync images", u.log, func() {
-		if err := u.MarkUnusedImages(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to mark images as unused")
-			return
-		}
+	go runScheduled(ctx, u.updateSchedule, "mark and resync images and sync workload vulnerabilities", u.log, func() {
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
 			return
 		}
-		u.log.Info("resyncing images")
-		if err := u.ResyncImages(ctx); err != nil {
+		images, err := u.ResyncImageVulnerabilities(ctx)
+		if err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
+		}
+
+		if len(images) > 0 {
+			if err := u.SyncWorkloadVulnerabilities(ctx, images); err != nil {
+				u.log.WithError(err).Error("Failed to sync workload vulnerabilities")
+			}
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, "mark unused images", u.log, func() {
+		if err := u.MarkUnusedImages(ctx); err != nil {
+			u.log.WithError(err).Error("Failed to mark unused images")
 		}
 	})
 
@@ -104,12 +115,38 @@ func (u *Updater) Run(ctx context.Context) {
 	})
 }
 
-func (u *Updater) ResyncImages(ctx context.Context) error {
+func (u *Updater) SyncWorkloadVulnerabilities(ctx context.Context, images []*sql.Image) error {
+	start := time.Now()
+	for _, img := range images {
+		err := u.querier.SyncWorkloadVulnerabilitiesForImage(ctx, sql.SyncWorkloadVulnerabilitiesForImageParams{
+			ImageName: img.Name,
+			ImageTag:  img.Tag,
+		})
+		if err != nil {
+			u.log.WithError(err).Error("failed to sync workload vulnerabilities")
+			return err
+		}
+
+		err = u.querier.ResolveWorkloadVulnerabilitiesForImage(ctx, sql.ResolveWorkloadVulnerabilitiesForImageParams{
+			ImageName: img.Name,
+			ImageTag:  img.Tag,
+		})
+		if err != nil {
+			u.log.WithError(err).Error("failed to resolve workload vulnerabilities")
+		}
+	}
+
+	u.log.Infof("workload vulnerabilities synced in %fs", time.Since(start).Seconds())
+	return nil
+}
+
+func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) ([]*sql.Image, error) {
+	u.log.Debug("resyncing images")
 	start := time.Now()
 
 	images, err := u.querier.GetImagesScheduledForSync(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx = NewDbContext(ctx, u.querier, u.log)
@@ -137,7 +174,7 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 
 	if err != nil {
 		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
-		return err
+		return nil, err
 	}
 
 	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
@@ -148,36 +185,47 @@ func (u *Updater) ResyncImages(ctx context.Context) error {
 		})
 	}
 
-	return nil
+	return images, nil
 }
 
 func (u *Updater) MarkUnusedImages(ctx context.Context) error {
-	err := u.querier.MarkUnusedImages(ctx, sql.MarkUnusedImagesParams{
+	rowsAffected, err := u.querier.MarkUnusedImages(ctx, sql.MarkUnusedImagesParams{
 		ExcludedStates: []sql.ImageState{
 			sql.ImageStateResync,
 			sql.ImageStateFailed,
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-MarkAsUntrackedAge),
+			Time:  time.Now().Add(-ImageMarkAge),
+			Valid: true,
 		},
 	})
 	if err != nil {
+		u.log.WithError(err).Error("Failed to mark unused images")
 		return err
 	}
+
+	u.log.Debugf("MarkUnusedImages affected %d rows", rowsAffected)
 	return nil
 }
 
 func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
-	return u.querier.MarkImagesAsUntracked(ctx, sql.MarkImagesAsUntrackedParams{
+	rowsAffected, err := u.querier.MarkImagesAsUntracked(ctx, sql.MarkImagesAsUntrackedParams{
 		IncludedStates: []sql.ImageState{
 			sql.ImageStateResync,
 			sql.ImageStateInitialized,
 		},
 		ThresholdTime: pgtype.Timestamptz{
-			Time: time.Now().Add(-MarkAsUntrackedAge),
+			Time:  time.Now().Add(-ImageMarkAge),
+			Valid: true,
 		},
 	})
+	if err != nil {
+		u.log.WithError(err).Error("Failed to mark images as untracked")
+		return err
+	}
+	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+	return nil
 }
 
 // MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'
@@ -245,13 +293,15 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 
 	for _, i := range batch {
 		cves = append(cves, i.ToCveSqlParams()...)
-		vulns = append(vulns, i.ToVulnerabilitySqlParams()...)
+		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
 		summaries = append(summaries, i.ToVulnerabilitySummarySqlParams())
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
 			State: sql.ImageStateUpdated,
 			Name:  i.ImageName,
 			Tag:   i.ImageTag,
 		})
+
+		metrics.SetWorkloadMetrics(i.Workloads, i.Summary)
 	}
 
 	start := time.Now()

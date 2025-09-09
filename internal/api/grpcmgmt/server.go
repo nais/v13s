@@ -3,7 +3,9 @@ package grpcmgmt
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -85,53 +87,23 @@ func (s *Server) RegisterWorkload(ctx context.Context, request *management.Regis
 	return &management.RegisterWorkloadResponse{}, nil
 }
 
-func (s *Server) TriggerSync(ctx context.Context, triggerReq *management.TriggerSyncRequest) (*management.TriggerSyncResponse, error) {
-	resp, err := s.Resync(ctx, &management.ResyncRequest{
-		Cluster:      p(triggerReq.Cluster),
-		Namespace:    p(triggerReq.Namespace),
-		Workload:     p(triggerReq.Workload),
-		WorkloadType: p(triggerReq.WorkloadType),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to resync workloads: %w", err)
-	}
-
-	if resp.NumWorkloads == 0 {
-		s.log.Info("No workloads to resync")
-		return &management.TriggerSyncResponse{}, nil
-	}
-
-	go func() {
-		err = s.updater.ResyncImages(s.parentCtx)
-		if err != nil {
-			s.log.WithError(err).Error("Failed to resync images")
-		}
-	}()
-
-	return &management.TriggerSyncResponse{
-		Cluster:          triggerReq.Cluster,
-		Namespace:        triggerReq.Namespace,
-		Workload:         triggerReq.Workload,
-		UpdatedWorkloads: resp.Workloads,
-		Success:          resp.NumWorkloads > 0,
-	}, nil
-}
-
-func p(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
+	workloadType := "app"
+	if req.WorkloadType != nil {
+		workloadType = *req.WorkloadType
+	}
+
+	if req.Limit == 0 {
+		req.Limit = 30
+	}
+
 	rows, err := s.querier.ListWorkloadStatus(ctx, sql.ListWorkloadStatusParams{
-		Cluster:       req.Cluster,
-		Namespace:     req.Namespace,
-		WorkloadName:  req.Workload,
-		WorkloadTypes: []string{"app"},
-		Limit:         req.Limit,
-		Offset:        req.Offset,
+		Cluster:      req.Cluster,
+		Namespace:    req.Namespace,
+		WorkloadName: req.Workload,
+		WorkloadType: &workloadType,
+		Limit:        req.Limit,
+		Offset:       req.Offset,
 	})
 	if err != nil {
 		s.log.WithError(err).Error("Failed to get workload status")
@@ -149,6 +121,7 @@ func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkl
 	workloads := make([]*management.WorkloadStatus, 0, len(rows))
 	for _, row := range rows {
 		workloads = append(workloads, &management.WorkloadStatus{
+			WorkloadId:        row.ID.String(),
 			Workload:          row.WorkloadName,
 			WorkloadType:      row.WorkloadType,
 			Namespace:         row.Namespace,
@@ -253,27 +226,39 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			return nil, err
 		}
 
-		imageState := sql.ImageStateResync
+		workloads = append(workloads,
+			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
+
 		if request.ImageState != nil {
-			imageState = sql.ImageState(*request.ImageState)
+			err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				State: sql.ImageState(*request.ImageState),
+				Name:  workload.ImageName,
+				Tag:   workload.ImageTag,
+				ReadyForResyncAt: pgtype.Timestamptz{
+					Time:  time.Now(),
+					Valid: true,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			go func() {
+				_, err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
+				if err != nil {
+					fmt.Printf("failed to resync images: %v\n", err)
+				}
+			}()
 		}
 
-		err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-			State: imageState,
-			Name:  workload.ImageName,
-			Tag:   workload.ImageTag,
-		})
-
-		if err != nil {
-			s.log.WithError(err).Error("failed to update image state")
-			return nil, err
+		if len(workloads) == 0 {
+			s.log.Debugf("no workloads to resync")
+			return &management.ResyncResponse{}, nil
 		}
-
-		workloads = append(workloads, fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
 	}
-	s.log.WithField("num workloads", len(workloads)).Info("added workloads to job queue")
+
 	return &management.ResyncResponse{
 		NumWorkloads: int32(len(workloads)),
 		Workloads:    workloads,
-	}, err
+	}, nil
 }

@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-workload-vulnerability-alerts
+  namespace: nais-system
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  groups:
+    - name: workload-vulnerability-alerts
+      rules:
+        - alert: WorkloadCriticalVulnerabilities
+          expr: v13s_workload_vulnerabilities{severity="CRITICAL", workload_namespace="nais-system"} > 0
+          for: 5m
+          labels:
+            namespace: nais-system
+            severity: info
+            channel: nais-alerts-info
+            alert_type: custom
+          annotations:
+            summary: |
+              {{ ":rotating_light: CRITICAL vulnerabilities in workload `{{ $labels.workload_name }}`" }}
+            description: |
+              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` has {{ $value | printf \"%.0f\" }} critical vulnerabilities. Please investigate immediately." }}
+            consequence: Potential security risk; workload may be exploitable
+            action: |
+              Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
+              https://salsa.{{ .Values.fasit.tenant }}.cloud.nais.io/projects?searchText=%2Fnais%2F

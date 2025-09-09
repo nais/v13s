@@ -35,25 +35,36 @@ func (d *dependencytrackSource) Name() string {
 	return DependencytrackSourceName
 }
 
-func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom []byte) (uuid.UUID, error) {
+func (d *dependencytrackSource) IsTaskInProgress(ctx context.Context, tokenProcess string) (bool, error) {
+	_, err := uuid.Parse(tokenProcess)
+	if err != nil {
+		return false, fmt.Errorf("parsing token process UUID: %w", err)
+	}
+	return d.client.IsTaskInProgress(ctx, tokenProcess)
+}
+
+func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom []byte) (*UploadAttestationResponse, error) {
 	d.log.Debugf("uploading sbom for workload %v", imageName)
 
-	projectId, err := d.client.CreateProjectWithSbom(ctx, imageName, imageTag, sbom)
+	res, err := d.client.CreateProjectWithSbom(ctx, imageName, imageTag, sbom)
 	if err != nil {
 		if errors.As(err, &dependencytrack.ClientError{}) {
-			return uuid.New(), model.ToUnrecoverableError(err, "dependencytrack")
+			return nil, model.ToUnrecoverableError(err, "dependencytrack")
 		}
 		if errors.As(err, &dependencytrack.ServerError{}) {
-			return uuid.New(), model.ToRecoverableError(err, "dependencytrack")
+			return nil, model.ToRecoverableError(err, "dependencytrack")
 		}
-		return uuid.New(), fmt.Errorf("creating project with sbom: %w", err)
+		return nil, fmt.Errorf("creating project with sbom: %w", err)
 	}
 
-	id, err := uuid.Parse(projectId)
+	id, err := uuid.Parse(res.Uuid)
 	if err != nil {
-		return uuid.New(), fmt.Errorf("parsing project id: %w", err)
+		return nil, fmt.Errorf("parsing project id: %w", err)
 	}
-	return id, nil
+	return &UploadAttestationResponse{
+		AttestationId: id,
+		ProcessToken:  res.Token,
+	}, nil
 }
 
 func (d *dependencytrackSource) Delete(ctx context.Context, imageName string, imageTag string) error {
@@ -73,6 +84,21 @@ func (d *dependencytrackSource) Delete(ctx context.Context, imageName string, im
 
 	d.log.Debugf("deleted project %s:%s", imageName, imageTag)
 	return nil
+}
+
+func (d *dependencytrackSource) ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error) {
+	d.log.Debugf("getting project for image %s:%s", imageName, imageTag)
+	p, err := d.client.GetProject(ctx, imageName, imageTag)
+	if err != nil {
+		return false, fmt.Errorf("getting project: %w", err)
+	}
+
+	if p == nil {
+		d.log.Debugf("no project found for image %s:%s", imageName, imageTag)
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
@@ -161,6 +187,7 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {
 	i := imageName
 	t := imageTag
+	// TODO: remove this hack when we have a better way to handle test images
 	if strings.Contains("nais-deploy-chicken", imageName) {
 		i = "europe-north1-docker.pkg.dev/nais-io/nais/images/testapp"
 		t = "latest"

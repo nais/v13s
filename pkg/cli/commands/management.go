@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -29,9 +30,15 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					Name:    "update",
 					Aliases: []string{"s"},
 					Usage:   "trigger sync of images",
-					Flags:   append(flag.CommonFlags(opts, "limit", "order", "since")),
+					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"),
+						&cli.StringFlag{
+							Name:        "image-state",
+							Aliases:     []string{"i"},
+							Usage:       "filter by image state",
+							Destination: &opts.ImageState,
+						}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
-						err := trigger(ctx, c, opts)
+						err := trigger(ctx, opts, c)
 						if err != nil {
 							return fmt.Errorf("failed to trigger update: %w", err)
 						}
@@ -44,7 +51,7 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 			Name:    "status",
 			Aliases: []string{"st"},
 			Usage:   "get workload status",
-			Flags: append(flag.CommonFlags(opts, "limit", "order", "since"), &cli.BoolFlag{
+			Flags: append(flag.CommonFlags(opts, "order", "since"), &cli.BoolFlag{
 				Name:        "show-jobs",
 				Aliases:     []string{"j"},
 				Usage:       "show jobs associated with the workload",
@@ -72,47 +79,96 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 				return downloadSbom(ctx, cmd)
 			},
 		},
+		{
+			Name:    "suppress",
+			Aliases: []string{"sp"},
+			Usage:   "suppress a vulnerability for a workload",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:        "package",
+					Aliases:     []string{"pkg"},
+					Value:       "",
+					Usage:       "package name to identify the vulnerability",
+					Destination: &opts.Package,
+				},
+				&cli.StringFlag{
+					Name:        "cve-id",
+					Aliases:     []string{"cve"},
+					Value:       "",
+					Usage:       "CVE ID to identify the vulnerability",
+					Destination: &opts.CveId,
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return suppressVulnerability(ctx, cmd, opts, c)
+			},
+		},
 	}
 }
 
-func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) error {
-	resp, err := c.TriggerSync(ctx, &management.TriggerSyncRequest{
-		Cluster:      opts.Cluster,
-		Namespace:    opts.Namespace,
-		Workload:     opts.Workload,
-		WorkloadType: opts.WorkloadType,
+func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Options, c vulnerabilities.Client) error {
+	imageName := ""
+	imageTag := ""
+	if cmd.Args().Len() <= 0 {
+		return fmt.Errorf("image must be provided as the first argument in the format 'name:tag'")
+	}
+
+	arg := cmd.Args().First()
+	if strings.Contains(arg, ":") && strings.Contains(arg, "/") {
+		parts := strings.Split(arg, ":")
+		imageName = parts[0]
+		imageTag = parts[1]
+	} else {
+		return fmt.Errorf("invalid image format, expected 'name:tag'")
+	}
+
+	if opts.Package == "" || opts.CveId == "" {
+		return fmt.Errorf("both package and cve-id must be provided to identify the vulnerability")
+	}
+
+	vuln, err := c.GetVulnerability(ctx, imageName, imageTag, opts.Package, opts.CveId)
+	if err != nil {
+		return fmt.Errorf("failed to get vulnerability: %w", err)
+	}
+
+	err = c.SuppressVulnerability(
+		ctx,
+		vuln.Vulnerability.Id,
+		"Suppressing via CLI",
+		"cli-user",
+		vulnerabilities.SuppressState_FALSE_POSITIVE,
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to suppress vulnerability: %w", err)
+	}
+
+	fmt.Printf("Vulnerability %s suppressed successfully\n", vuln.Vulnerability.Id)
+	return nil
+}
+
+func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
+	var cluster, namespace, workload, workloadType = extractFilters(opts)
+	var imageState *string
+	if opts.ImageState != "" {
+		imageState = &opts.ImageState
+	}
+	resp, err := c.Resync(ctx, &management.ResyncRequest{
+		Cluster:      cluster,
+		Namespace:    namespace,
+		Workload:     workload,
+		WorkloadType: workloadType,
+		ImageState:   imageState,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to trigger sync: %w", err)
 	}
 
-	if !resp.Success {
-		return fmt.Errorf(
-			"sync failed for cluster: %s, namespace: %s, workload: %s",
-			parseString(opts.Cluster),
-			parseString(opts.Namespace),
-			parseString(opts.Workload),
-		)
-	}
-
 	var headers []any
 	var row []string
 
-	if resp.Cluster != "" {
-		headers = append(headers, "Cluster")
-		row = append(row, resp.Cluster)
-	}
-	if resp.Namespace != "" {
-		headers = append(headers, "Namespace")
-		row = append(row, resp.Namespace)
-	}
-	if resp.Workload != "" {
-		headers = append(headers, "Workload")
-		row = append(row, resp.Workload)
-	}
-
 	headers = append(headers, "Updated Workloads", "Success")
-	row = append(row, strconv.Itoa(len(resp.UpdatedWorkloads)), strconv.FormatBool(resp.Success))
+	row = append(row, strconv.Itoa(len(resp.Workloads)), strconv.FormatBool(len(resp.Workloads) > 0))
 
 	t := Table{
 		Headers: headers,
@@ -122,23 +178,21 @@ func trigger(ctx context.Context, c vulnerabilities.Client, opts *flag.Options) 
 	return nil
 }
 
-func parseString(s string) string {
-	if s == "" {
-		return "<none>"
-	}
-	return s
-}
-
 func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload = extractFilters(opts)
+	var cluster, namespace, workload, workloadType = extractFilters(opts)
+
+	if opts.Limit <= 0 {
+		opts.Limit = 30
+	}
 
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadStatus(ctx, &management.GetWorkloadStatusRequest{
-			Cluster:   cluster,
-			Namespace: namespace,
-			Workload:  workload,
-			Limit:     int32(opts.Limit),
-			Offset:    int32(offset),
+			Cluster:      cluster,
+			Namespace:    namespace,
+			Workload:     workload,
+			WorkloadType: workloadType,
+			Limit:        int32(opts.Limit),
+			Offset:       int32(offset),
 		})
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get workload status: %w", err)
@@ -171,7 +225,7 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 }
 
 func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload = extractFilters(opts)
+	var cluster, namespace, workload, _ = extractFilters(opts)
 
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadJobs(ctx, &management.GetWorkloadJobsRequest{
@@ -251,7 +305,7 @@ func (t *Table) Print() {
 	tbl.Print()
 }
 
-func extractFilters(opts *flag.Options) (cluster, namespace, workload *string) {
+func extractFilters(opts *flag.Options) (cluster, namespace, workload, workloadType *string) {
 	if opts.Cluster != "" {
 		cluster = &opts.Cluster
 	}
@@ -260,6 +314,9 @@ func extractFilters(opts *flag.Options) (cluster, namespace, workload *string) {
 	}
 	if opts.Workload != "" {
 		workload = &opts.Workload
+	}
+	if opts.WorkloadType != "" {
+		workloadType = &opts.WorkloadType
 	}
 	return
 }

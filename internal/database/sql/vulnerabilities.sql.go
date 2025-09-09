@@ -163,13 +163,75 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 	return &i, err
 }
 
+const getEarliestSeveritySinceForVulnerability = `-- name: GetEarliestSeveritySinceForVulnerability :one
+SELECT (COALESCE(
+        (SELECT MIN(v1.severity_since)
+         FROM vulnerabilities v1
+         WHERE v1.image_name = $1
+           AND v1.package = $2
+           AND v1.cve_id = $3
+           AND v1.last_severity = $4
+           AND v1.severity_since IS NOT NULL),
+        (SELECT MIN(v2.created_at)
+         FROM vulnerabilities v2
+         WHERE v2.image_name = $1
+           AND v2.package = $2
+           AND v2.cve_id = $3
+         AND v2.last_severity = $4)
+        )::timestamptz) AS earliest_severity_since
+`
+
+type GetEarliestSeveritySinceForVulnerabilityParams struct {
+	ImageName    string
+	Package      string
+	CveID        string
+	LastSeverity int32
+}
+
+func (q *Queries) GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getEarliestSeveritySinceForVulnerability,
+		arg.ImageName,
+		arg.Package,
+		arg.CveID,
+		arg.LastSeverity,
+	)
+	var earliest_severity_since pgtype.Timestamptz
+	err := row.Scan(&earliest_severity_since)
+	return earliest_severity_since, err
+}
+
 const getVulnerability = `-- name: GetVulnerability :one
-SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at
-FROM vulnerabilities
-WHERE image_name = $1
-  AND image_tag = $2
-  AND package = $3
-  AND cve_id = $4
+SELECT v.id,
+       v.image_name,
+       v.image_tag,
+       v.package,
+       v.latest_version,
+       v.source,
+       v.cve_id,
+       v.last_severity,
+       v.severity_since,
+       v.created_at,
+       v.updated_at,
+       c.cve_title,
+       c.cve_desc,
+       c.cve_link,
+       c.severity AS severity,
+       c.refs,
+       COALESCE(sv.suppressed, FALSE) AS suppressed,
+       sv.reason,
+       sv.reason_text,
+       sv.suppressed_by,
+       sv.updated_at AS suppressed_at
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.image_name = $1
+  AND v.image_tag = $2
+  AND v.package = $3
+  AND v.cve_id = $4
 `
 
 type GetVulnerabilityParams struct {
@@ -179,24 +241,60 @@ type GetVulnerabilityParams struct {
 	CveID     string
 }
 
-func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*Vulnerability, error) {
+type GetVulnerabilityRow struct {
+	ID            pgtype.UUID
+	ImageName     string
+	ImageTag      string
+	Package       string
+	LatestVersion string
+	Source        string
+	CveID         string
+	LastSeverity  int32
+	SeveritySince pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	Refs          typeext.MapStringString
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerability,
 		arg.ImageName,
 		arg.ImageTag,
 		arg.Package,
 		arg.CveID,
 	)
-	var i Vulnerability
+	var i GetVulnerabilityRow
 	err := row.Scan(
 		&i.ID,
 		&i.ImageName,
 		&i.ImageTag,
 		&i.Package,
-		&i.CveID,
-		&i.Source,
 		&i.LatestVersion,
+		&i.Source,
+		&i.CveID,
+		&i.LastSeverity,
+		&i.SeveritySince,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CveTitle,
+		&i.CveDesc,
+		&i.CveLink,
+		&i.Severity,
+		&i.Refs,
+		&i.Suppressed,
+		&i.Reason,
+		&i.ReasonText,
+		&i.SuppressedBy,
+		&i.SuppressedAt,
 	)
 	return &i, err
 }
@@ -279,8 +377,164 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 	return &i, err
 }
 
+const listSeverityVulnerabilitiesSince = `-- name: ListSeverityVulnerabilitiesSince :many
+SELECT
+    v.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    v.image_name,
+    v.image_tag,
+    v.latest_version,
+    v.package,
+    v.cve_id,
+    v.created_at,
+    v.updated_at,
+    v.severity_since,
+    v.last_severity,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity AS severity,
+    c.created_at AS cve_created_at,
+    c.updated_at AS cve_updated_at,
+    COALESCE(sv.suppressed, FALSE) AS suppressed,
+    sv.reason,
+    sv.reason_text,
+    sv.suppressed_by,
+    sv.updated_at AS suppressed_at
+FROM vulnerabilities v
+         JOIN cve c ON v.cve_id = c.cve_id
+         JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
+         LEFT JOIN suppressed_vulnerabilities sv
+                   ON v.image_name = sv.image_name
+                       AND v.package = sv.package
+                       AND v.cve_id = sv.cve_id
+WHERE v.severity_since IS NOT NULL
+  AND (CASE WHEN $1::TEXT IS NOT NULL THEN w.cluster = $1::TEXT ELSE TRUE END)
+  AND (CASE WHEN $2::TEXT IS NOT NULL THEN w.namespace = $2::TEXT ELSE TRUE END)
+  AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.workload_type = $3::TEXT ELSE TRUE END)
+  AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.name = $4::TEXT ELSE TRUE END)
+  AND (CASE WHEN $5::TEXT IS NOT NULL THEN v.image_name = $5::TEXT ELSE TRUE END)
+  AND (CASE WHEN $6::TEXT IS NOT NULL THEN v.image_tag = $6::TEXT ELSE TRUE END)
+  AND ($7::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+  AND ($8::timestamptz IS NULL OR v.severity_since > $8::timestamptz)
+ORDER BY
+         CASE WHEN $9 = 'severity_since_desc' THEN v.severity_since END DESC,
+         CASE WHEN $9 = 'severity_since_asc' THEN v.severity_since END ASC,
+         CASE WHEN $9 = 'workload_asc' THEN w.name END ASC,
+         CASE WHEN $9 = 'workload_desc' THEN w.name END DESC,
+         CASE WHEN $9 = 'namespace_asc' THEN w.namespace END ASC,
+         CASE WHEN $9 = 'namespace_desc' THEN w.namespace END DESC,
+         CASE WHEN $9 = 'cluster_asc' THEN w.cluster END ASC,
+         CASE WHEN $9 = 'cluster_desc' THEN w.cluster END DESC,
+         v.id ASC LIMIT $11
+OFFSET $10
+`
+
+type ListSeverityVulnerabilitiesSinceParams struct {
+	Cluster           *string
+	Namespace         *string
+	WorkloadType      *string
+	WorkloadName      *string
+	ImageName         *string
+	ImageTag          *string
+	IncludeSuppressed *bool
+	Since             pgtype.Timestamptz
+	OrderBy           interface{}
+	Offset            int32
+	Limit             int32
+}
+
+type ListSeverityVulnerabilitiesSinceRow struct {
+	ID            pgtype.UUID
+	WorkloadName  string
+	WorkloadType  string
+	Namespace     string
+	Cluster       string
+	ImageName     string
+	ImageTag      string
+	LatestVersion string
+	Package       string
+	CveID         string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	SeveritySince pgtype.Timestamptz
+	LastSeverity  int32
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	CveCreatedAt  pgtype.Timestamptz
+	CveUpdatedAt  pgtype.Timestamptz
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) ListSeverityVulnerabilitiesSince(ctx context.Context, arg ListSeverityVulnerabilitiesSinceParams) ([]*ListSeverityVulnerabilitiesSinceRow, error) {
+	rows, err := q.db.Query(ctx, listSeverityVulnerabilitiesSince,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.IncludeSuppressed,
+		arg.Since,
+		arg.OrderBy,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListSeverityVulnerabilitiesSinceRow{}
+	for rows.Next() {
+		var i ListSeverityVulnerabilitiesSinceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.LatestVersion,
+			&i.Package,
+			&i.CveID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SeveritySince,
+			&i.LastSeverity,
+			&i.CveTitle,
+			&i.CveDesc,
+			&i.CveLink,
+			&i.Severity,
+			&i.CveCreatedAt,
+			&i.CveUpdatedAt,
+			&i.Suppressed,
+			&i.Reason,
+			&i.ReasonText,
+			&i.SuppressedBy,
+			&i.SuppressedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
-SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
+SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
@@ -336,6 +590,8 @@ type ListSuppressedVulnerabilitiesRow struct {
 	LatestVersion string
 	CreatedAt_2   pgtype.Timestamptz
 	UpdatedAt_2   pgtype.Timestamptz
+	LastSeverity  int32
+	SeveritySince pgtype.Timestamptz
 	CveID_3       string
 	CveTitle      string
 	CveDesc       string
@@ -385,6 +641,8 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.LatestVersion,
 			&i.CreatedAt_2,
 			&i.UpdatedAt_2,
+			&i.LastSeverity,
+			&i.SeveritySince,
 			&i.CveID_3,
 			&i.CveTitle,
 			&i.CveDesc,
@@ -453,6 +711,7 @@ SELECT v.id,
        v.image_name,
        v.image_tag,
        v.latest_version,
+       v.severity_since,
        v.package,
        v.cve_id,
        v.created_at,
@@ -461,6 +720,8 @@ SELECT v.id,
        c.cve_desc,
        c.cve_link,
        c.severity AS severity,
+       c.created_at AS cve_created_at,
+       c.updated_at AS cve_updated_at,
        COALESCE(sv.suppressed, FALSE) AS suppressed,
        sv.reason,
        sv.reason_text,
@@ -525,6 +786,7 @@ type ListVulnerabilitiesRow struct {
 	ImageName     string
 	ImageTag      string
 	LatestVersion string
+	SeveritySince pgtype.Timestamptz
 	Package       string
 	CveID         string
 	CreatedAt     pgtype.Timestamptz
@@ -533,6 +795,8 @@ type ListVulnerabilitiesRow struct {
 	CveDesc       string
 	CveLink       string
 	Severity      int32
+	CveCreatedAt  pgtype.Timestamptz
+	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
 	Reason        NullVulnerabilitySuppressReason
 	ReasonText    *string
@@ -569,6 +833,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.ImageName,
 			&i.ImageTag,
 			&i.LatestVersion,
+			&i.SeveritySince,
 			&i.Package,
 			&i.CveID,
 			&i.CreatedAt,
@@ -577,6 +842,8 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.CveDesc,
 			&i.CveLink,
 			&i.Severity,
+			&i.CveCreatedAt,
+			&i.CveUpdatedAt,
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,
@@ -603,11 +870,14 @@ WITH image_vulnerabilities AS (
           v.latest_version,
           v.created_at,
           v.updated_at,
+          v.severity_since,
           c.cve_title,
           c.cve_desc,
           c.cve_link,
           c.severity,
           c.refs::JSONB AS cve_refs,
+          c.created_at AS cve_created_at,
+          c.updated_at AS cve_updated_at,
           COALESCE(sv.suppressed, FALSE) AS suppressed,
           sv.reason,
           sv.reason_text,
@@ -615,6 +885,7 @@ WITH image_vulnerabilities AS (
           sv.updated_at as suppressed_at
     FROM vulnerabilities v
             JOIN cve c ON v.cve_id = c.cve_id
+            JOIN images i ON v.image_name = i.name AND v.image_tag = i.tag
             LEFT JOIN suppressed_vulnerabilities sv
                       ON v.image_name = sv.image_name
                           AND v.package = sv.package
@@ -622,6 +893,8 @@ WITH image_vulnerabilities AS (
     WHERE v.image_name = $4
      AND v.image_tag = $5
      AND ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+     AND ($7::timestamptz IS NULL OR v.severity_since > $7::timestamptz)
+     AND ($8::INT IS NULL OR c.severity = $8::INT)
 )
 SELECT id,
        image_name,
@@ -631,11 +904,14 @@ SELECT id,
        latest_version,
        created_at,
        updated_at,
+       severity_since,
        cve_title,
        cve_desc,
        cve_link,
        severity,
        cve_refs as cve_refs,
+       cve_created_at,
+       cve_updated_at,
        COALESCE(suppressed, FALSE) AS suppressed,
        reason,
        reason_text,
@@ -645,6 +921,8 @@ SELECT id,
 FROM image_vulnerabilities
 ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
          CASE WHEN $1 = 'severity_desc' THEN severity END DESC,
+         CASE WHEN $1 = 'severity_since_asc' THEN severity_since END ASC,
+         CASE WHEN $1 = 'severity_since_desc' THEN severity_since END DESC,
          CASE WHEN $1 = 'package_asc' THEN package END ASC,
          CASE WHEN $1 = 'package_desc' THEN package END DESC,
          CASE WHEN $1 = 'cve_id_asc' THEN cve_id END ASC,
@@ -669,6 +947,8 @@ type ListVulnerabilitiesForImageParams struct {
 	ImageName         string
 	ImageTag          string
 	IncludeSuppressed *bool
+	Since             pgtype.Timestamptz
+	Severity          *int32
 }
 
 type ListVulnerabilitiesForImageRow struct {
@@ -680,11 +960,14 @@ type ListVulnerabilitiesForImageRow struct {
 	LatestVersion string
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	SeveritySince pgtype.Timestamptz
 	CveTitle      string
 	CveDesc       string
 	CveLink       string
 	Severity      int32
 	CveRefs       []byte
+	CveCreatedAt  pgtype.Timestamptz
+	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
 	Reason        NullVulnerabilitySuppressReason
 	ReasonText    *string
@@ -701,6 +984,8 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
+		arg.Since,
+		arg.Severity,
 	)
 	if err != nil {
 		return nil, err
@@ -718,17 +1003,68 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.LatestVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SeveritySince,
 			&i.CveTitle,
 			&i.CveDesc,
 			&i.CveLink,
 			&i.Severity,
 			&i.CveRefs,
+			&i.CveCreatedAt,
+			&i.CveUpdatedAt,
 			&i.Suppressed,
 			&i.Reason,
 			&i.ReasonText,
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkloadsForVulnerabilityById = `-- name: ListWorkloadsForVulnerabilityById :many
+SELECT w.id,
+       w.cluster,
+       w.namespace,
+       w.name,
+       w.workload_type
+FROM workloads w
+         JOIN vulnerabilities v
+              ON v.image_name = w.image_name
+                  AND v.image_tag = w.image_tag
+WHERE v.id = $1
+ORDER BY w.cluster, w.namespace, w.name
+`
+
+type ListWorkloadsForVulnerabilityByIdRow struct {
+	ID           pgtype.UUID
+	Cluster      string
+	Namespace    string
+	Name         string
+	WorkloadType string
+}
+
+func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnerabilityID pgtype.UUID) ([]*ListWorkloadsForVulnerabilityByIdRow, error) {
+	rows, err := q.db.Query(ctx, listWorkloadsForVulnerabilityById, vulnerabilityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListWorkloadsForVulnerabilityByIdRow{}
+	for rows.Next() {
+		var i ListWorkloadsForVulnerabilityByIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Cluster,
+			&i.Namespace,
+			&i.Name,
+			&i.WorkloadType,
 		); err != nil {
 			return nil, err
 		}
@@ -757,10 +1093,17 @@ VALUES ($1,
         $7) ON CONFLICT
 ON CONSTRAINT image_name_package_cve_id DO
 UPDATE
-    SET suppressed = $4,
-    suppressed_by = $5,
-    reason = $6,
-    reason_text = $7
+    SET
+        suppressed = EXCLUDED.suppressed,
+    suppressed_by = EXCLUDED.suppressed_by,
+    reason = EXCLUDED.reason,
+    reason_text = EXCLUDED.reason_text,
+    updated_at = NOW()
+WHERE
+    suppressed_vulnerabilities.suppressed     IS DISTINCT FROM EXCLUDED.suppressed OR
+    suppressed_vulnerabilities.suppressed_by  IS DISTINCT FROM EXCLUDED.suppressed_by OR
+    suppressed_vulnerabilities.reason         IS DISTINCT FROM EXCLUDED.reason OR
+    suppressed_vulnerabilities.reason_text    IS DISTINCT FROM EXCLUDED.reason_text
 `
 
 type SuppressVulnerabilityParams struct {

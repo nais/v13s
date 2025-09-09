@@ -5,16 +5,21 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -34,7 +39,7 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		workloadsPerNamespace: 4,
 		vulnsPerWorkload:      4,
 	}
-	ctx, db, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerabilities for every cluster", func(t *testing.T) {
@@ -177,7 +182,7 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list vulnerabilities for a specific image", func(t *testing.T) {
@@ -198,7 +203,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
@@ -222,6 +227,113 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 	})
 }
 
+func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      3,
+	}
+
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
+
+	t.Run("filter by severity", func(t *testing.T) {
+		severity := vulnerabilities.Severity_HIGH
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.SeverityFilter(severity),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
+		}
+	})
+
+	t.Run("filter by since", func(t *testing.T) {
+		sinceTime := time.Now().Add(-1 * time.Hour)
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.Since(sinceTime),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.True(t,
+				v.GetSeveritySince().AsTime().After(sinceTime) || v.GetSeveritySince().AsTime().Equal(sinceTime),
+				"vulnerability severity_since should be after or equal to filter",
+			)
+		}
+	})
+
+	t.Run("filter by severity and since together", func(t *testing.T) {
+		severity := vulnerabilities.Severity_HIGH
+		sinceTime := time.Now().Add(-1 * time.Hour)
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.SeverityFilter(severity),
+			vulnerabilities.Since(sinceTime),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
+			assert.True(t,
+				v.GetSeveritySince().AsTime().After(sinceTime) || v.GetSeveritySince().AsTime().Equal(sinceTime),
+				"vulnerability severity_since should be after or equal to filter",
+			)
+		}
+	})
+	t.Run("filter including suppressed", func(t *testing.T) {
+		severity := vulnerabilities.Severity_HIGH
+		sinceTime := time.Now().Add(-1 * time.Hour)
+
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.SeverityFilter(severity),
+			vulnerabilities.Since(sinceTime),
+			vulnerabilities.IncludeSuppressed(),
+			vulnerabilities.Limit(100),
+			vulnerabilities.Offset(0),
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.True(t,
+				v.GetSeveritySince().AsTime().After(sinceTime) || v.GetSeveritySince().AsTime().Equal(sinceTime),
+				"vulnerability severity_since should be after or equal to filter",
+			)
+			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
+			assert.True(t, v.GetSuppression().GetSuppressed() || !v.GetSuppression().GetSuppressed(), "suppressed field should be present")
+		}
+	})
+}
+
 func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
@@ -230,7 +342,7 @@ func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	// get vulnerabilities for workload-1
@@ -259,11 +371,276 @@ func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 		assert.Equal(t, "not affected", resp.Nodes[0].GetReason())
 		assert.Equal(t, "test-user", resp.Nodes[0].GetSuppressedBy())
 	})
+}
 
-	t.Run("Get suppressed vulnerabilities for a specific image", func(t *testing.T) {
-		resp, err := client.GetVulnerabilityById(ctx, vulns.Nodes[0].GetId())
+func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
+
+	vulns, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag)
+	assert.NoError(t, err)
+	assert.Len(t, vulns.Nodes, 1)
+
+	vulnID := vulns.Nodes[0].GetId()
+
+	// fetch suppression records before
+	beforeList, err := db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+	assert.NoError(t, err)
+
+	var beforeUpdatedAt time.Time
+	if len(beforeList) > 0 {
+		beforeUpdatedAt = beforeList[0].UpdatedAt.Time
+	} else {
+		// No suppression exists yet
+		beforeUpdatedAt = time.Time{}
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	// --- First suppression should bump updated_at ---
+	err = client.SuppressVulnerability(
+		ctx,
+		vulnID,
+		"not affected",
+		"test-user",
+		vulnerabilities.SuppressState_FALSE_POSITIVE,
+		true,
+	)
+	assert.NoError(t, err)
+
+	afterFirstList, err := db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, afterFirstList)
+	afterFirstUpdatedAt := afterFirstList[0].UpdatedAt.Time
+
+	imageAfterFirst, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+	assert.NoError(t, err)
+	assert.Equal(t, sql.ImageStateResync, imageAfterFirst.State, "image state should be Resync after first suppression")
+
+	if !beforeUpdatedAt.IsZero() {
+		assert.True(t, afterFirstUpdatedAt.After(beforeUpdatedAt),
+			"expected updated_at to change after first suppression, before=%s after=%s",
+			beforeUpdatedAt, afterFirstUpdatedAt)
+	}
+
+	// --- Second suppression with identical values should NOT bump updated_at ---
+	time.Sleep(10 * time.Millisecond)
+	err = client.SuppressVulnerability(
+		ctx,
+		vulnID,
+		"not affected", // same reason
+		"test-user",    // same user
+		vulnerabilities.SuppressState_FALSE_POSITIVE,
+		true, // already suppressed
+	)
+	assert.NoError(t, err)
+
+	afterSecondList, err := db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, afterSecondList)
+	afterSecondUpdatedAt := afterSecondList[0].UpdatedAt.Time
+
+	imageAfterSecond, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+	assert.NoError(t, err)
+	assert.Equal(t, sql.ImageStateResync, imageAfterSecond.State, "image state should remain Resync on idempotent suppression")
+
+	assert.Equal(t, afterFirstUpdatedAt, afterSecondUpdatedAt,
+		"expected updated_at to stay the same on idempotent suppression, first=%s second=%s",
+		afterFirstUpdatedAt, afterSecondUpdatedAt)
+}
+
+func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	// Insert a CVE with initial severity
+	initialCve := sql.BatchUpsertCveParams{
+		CveID:    "CVE-2023-1234",
+		CveTitle: "Test CVE",
+		CveDesc:  "Initial description",
+		CveLink:  "http://example.com",
+		Severity: 2, // Initial severity set to Medium
+		Refs:     map[string]string{},
+	}
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{initialCve}).Exec(func(i int, err error) {
 		assert.NoError(t, err)
-		assert.Equal(t, true, resp.GetVulnerability().GetSuppression().Suppressed)
+	})
+
+	// Fetch the CVE and record timestamps
+	cve, err := db.GetCve(ctx, "CVE-2023-1234")
+	assert.NoError(t, err)
+	initialCreatedAt := cve.CreatedAt
+	initialUpdatedAt := cve.UpdatedAt
+
+	// Ensure timestamps are set
+	assert.False(t, initialCreatedAt.Time.IsZero(), "created_at should not be zero")
+	assert.False(t, initialUpdatedAt.Time.IsZero(), "updated_at should not be zero")
+
+	// Update the CVE with a new severity
+	updatedCve := sql.BatchUpsertCveParams{
+		CveID:    "CVE-2023-1234",
+		CveTitle: "Test CVE",
+		CveDesc:  "Updated description",
+		CveLink:  "http://example.com",
+		Severity: 1, // Update severity to High
+		Refs:     map[string]string{},
+	}
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{updatedCve}).Exec(func(i int, err error) {
+		assert.NoError(t, err)
+	})
+
+	// Fetch the updated CVE and verify changes
+	updatedCveRecord, err := db.GetCve(ctx, "CVE-2023-1234")
+	assert.NoError(t, err)
+
+	// Verify severity is updated
+	assert.Equal(t, int32(1), updatedCveRecord.Severity, "Severity should be updated to High")
+
+	// Verify timestamps
+	assert.Equal(t, initialCreatedAt, updatedCveRecord.CreatedAt, "created_at should remain unchanged")
+	assert.True(t, updatedCveRecord.UpdatedAt.Time.After(initialUpdatedAt.Time), "updated_at should be updated")
+}
+
+func TestVulnerabilitySeveritySince(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	// Create image
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "my-image",
+		Tag:      "v1.0.0",
+		Metadata: map[string]string{},
+	})
+	assert.NoError(t, err)
+
+	t.Run("Non-critical → new severity", func(t *testing.T) {
+		initialSeverity := int32(2)
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+			CveID:    "CVE-2023-1234",
+			CveTitle: "Test CVE",
+			CveDesc:  "Initial description",
+			CveLink:  "http://example.com",
+			Severity: initialSeverity,
+			Refs:     map[string]string{},
+		}}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		initialVuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     "my-image",
+			ImageTag:      "v1.0.0",
+			Package:       "mypkg",
+			CveID:         "CVE-2023-1234",
+			Source:        "test-source",
+			LatestVersion: "1.2.3",
+			LastSeverity:  initialSeverity,
+			SeveritySince: pgtype.Timestamptz{}, // NULL
+		}
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{initialVuln}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		updatedSeverity := int32(3) // High
+		updatedVuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     "my-image",
+			ImageTag:      "v1.0.0",
+			Package:       "mypkg",
+			CveID:         "CVE-2023-1234",
+			Source:        "test-source",
+			LatestVersion: "1.2.3",
+			LastSeverity:  updatedSeverity,
+			SeveritySince: pgtype.Timestamptz{
+				Time:  time.Now(),
+				Valid: true,
+			},
+		}
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{updatedVuln}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		got, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.0",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-1234",
+		})
+		assert.NoError(t, err)
+		assert.True(t, got.SeveritySince.Valid)
+		assert.WithinDuration(t, time.Now(), got.SeveritySince.Time, 2*time.Second)
+	})
+
+	t.Run("returns nil if severity not present", func(t *testing.T) {
+		got, err := db.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
+			ImageName:    "my-image",
+			Package:      "mypkg",
+			CveID:        "CVE-unknown",
+			LastSeverity: 5,
+		})
+		assert.NoError(t, err)
+
+		assert.False(t, got.Valid, "expected severity_since to be null (invalid)")
+	})
+
+	t.Run("does not overwrite existing severity_since", func(t *testing.T) {
+		initialSeverity := int32(2)
+		vuln := sql.BatchUpsertVulnerabilitiesParams{
+			ImageName:     "my-image",
+			ImageTag:      "v1.0.0",
+			Package:       "mypkg",
+			CveID:         "CVE-2023-1234",
+			Source:        "test-source",
+			LatestVersion: "1.2.3",
+			LastSeverity:  initialSeverity,
+			SeveritySince: pgtype.Timestamptz{
+				Time:  time.Now().Add(-1 * time.Hour),
+				Valid: true,
+			},
+		}
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		before, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.0",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-1234",
+		})
+		assert.NoError(t, err)
+
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{vuln}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		after, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: "my-image",
+			ImageTag:  "v1.0.0",
+			Package:   "mypkg",
+			CveID:     "CVE-2023-1234",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, before.SeveritySince, after.SeveritySince)
 	})
 }
 
@@ -275,7 +652,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		vulnsPerWorkload:      4,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for every cluster", func(t *testing.T) {
@@ -298,7 +675,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
@@ -322,7 +699,7 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	vuln, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
@@ -331,7 +708,6 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 		CveID:     "CWE-1-1",
 		Package:   "package-CWE-1-1",
 	})
-
 	assert.NoError(t, err)
 
 	t.Run("get vulnerability by id", func(t *testing.T) {
@@ -341,7 +717,281 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 	})
 }
 
-func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, vulnerabilities.Client, func()) {
+func TestServer_ListSeverityVulnerabilitiesSince(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      2,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "image-1",
+		Tag:      "v1.0",
+		Metadata: map[string]string{},
+	})
+	assert.NoError(t, err)
+
+	now := time.Now()
+	r, err := client.ListVulnerabilities(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Nodes))
+
+	rows, err := pool.Query(ctx, "SELECT image_name, package FROM vulnerabilities")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var image, pkg string
+		if err := rows.Scan(&image, &pkg); err != nil {
+			t.Fatal(err)
+		}
+
+		var newTime time.Time
+		switch pkg {
+		case "package-CWE-1-1":
+			newTime = time.Now().Add(-12 * time.Hour) // 12 hours ago
+		case "package-CWE-1-2":
+			newTime = time.Now().Add(-48 * time.Hour) // 48 hours ago
+		default:
+			continue
+		}
+
+		_, err := pool.Exec(ctx, `
+            UPDATE vulnerabilities
+            SET severity_since = $1,
+                last_severity = 0
+            WHERE image_name = $2 AND package = $3
+        `, newTime, image, pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Println("Updated:", image, pkg, "to", newTime)
+	}
+
+	t.Run("last 7 days", func(t *testing.T) {
+		resp, err := client.ListSeverityVulnerabilitiesSince(ctx,
+			vulnerabilities.Since(now.Add(-7*24*time.Hour)),
+			vulnerabilities.Order(vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC),
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(resp.Nodes))
+
+		t0 := resp.Nodes[0].Vulnerability.SeveritySince.AsTime().UTC()
+		t1 := resp.Nodes[1].Vulnerability.SeveritySince.AsTime().UTC()
+		assert.True(t, t0.After(t1))
+		assert.True(t, t1.Before(t0))
+	})
+
+	t.Run("last 1 day", func(t *testing.T) {
+		resp, err := client.ListSeverityVulnerabilitiesSince(ctx,
+			vulnerabilities.Since(now.Add(-24*time.Hour)),
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(resp.Nodes)) // only the 12h-old vuln
+
+		for _, n := range resp.Nodes {
+			fmt.Printf("Resp Node: pkg=%s severity_since=%v severity=%d\n",
+				n.Vulnerability.Package,
+				n.Vulnerability.SeveritySince.AsTime(),
+				*n.Vulnerability.LastSeverity,
+			)
+		}
+	})
+}
+
+func TestSanitizeOrderBy(t *testing.T) {
+	tests := []struct {
+		name     string
+		orderBy  *vulnerabilities.OrderBy
+		defaultF vulnerabilities.OrderByField
+		expected string
+	}{
+		{
+			name:     "nil orderBy uses default asc",
+			orderBy:  nil,
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "package_asc",
+		},
+		{
+			name: "valid non-severity asc",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderByPackage),
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "package_asc",
+		},
+		{
+			name: "valid non-severity desc",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderByUpdatedAt),
+				Direction: vulnerabilities.Direction_DESC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "updated_at_desc",
+		},
+		{
+			name: "invalid field falls back to default",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     "not_a_field",
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "package_asc",
+		},
+		{
+			name: "severity asc flips to desc (critical first)",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderBySeverity),
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "severity_desc",
+		},
+		{
+			name: "severity desc flips to asc (weakest first)",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderBySeverity),
+				Direction: vulnerabilities.Direction_DESC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "severity_asc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := grpcvulnerabilities.SanitizeOrderBy(tt.orderBy, tt.defaultF)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      3,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "image-1",
+		Tag:      "v1.0",
+		Metadata: map[string]string{},
+	}))
+
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: "CVE-111", CveTitle: "title-111", CveDesc: "desc", CveLink: "link", Severity: 0, Refs: typeext.MapStringString{}},
+		{CveID: "CVE-222", CveTitle: "title-222", CveDesc: "desc", CveLink: "link", Severity: 1, Refs: typeext.MapStringString{}},
+		{CveID: "CVE-333", CveTitle: "title-333", CveDesc: "desc", CveLink: "link", Severity: 2, Refs: typeext.MapStringString{}},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	_, err := pool.Exec(ctx, `
+		UPDATE vulnerabilities
+		SET 
+			severity_since = CASE package
+				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '1 hour'
+				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '2 hour'
+				WHEN 'package-CWE-1-3' THEN NOW() - INTERVAL '3 hour'
+			END,
+			created_at = CASE package
+				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '3 hour'
+				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '2 hour'
+				WHEN 'package-CWE-1-3' THEN NOW() - INTERVAL '1 hour'
+			END,
+			updated_at = CASE package
+				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '2 hour'
+				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '1 hour'
+				WHEN 'package-CWE-1-3' THEN NOW()
+			END
+		WHERE image_name = 'image-1' AND image_tag = 'v1.0'
+	`)
+	require.NoError(t, err)
+
+	err = db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+		ImageName:    "image-1",
+		Package:      "package-A",
+		CveID:        "CVE-111",
+		Suppressed:   true,
+		SuppressedBy: "tester",
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower("resolved")),
+		ReasonText:   "unit test suppression",
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		orderBy   vulnerabilities.OrderByField
+		dir       vulnerabilities.Direction
+		extract   func(v *vulnerabilities.Vulnerability) any
+		isNumeric bool
+	}{
+		{"package asc", vulnerabilities.OrderByPackage, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Package }, false},
+		{"package desc", vulnerabilities.OrderByPackage, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Package }, false},
+		{"severity asc", vulnerabilities.OrderBySeverity, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Cve.GetSeverity() }, true},
+		{"severity desc", vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Cve.GetSeverity() }, true},
+		{"severity_since asc", vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.SeveritySince.AsTime().Unix() }, true},
+		{"severity_since desc", vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.SeveritySince.AsTime().Unix() }, true},
+		{"created_at asc", vulnerabilities.OrderByCreatedAt, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Created.AsTime().Unix() }, true},
+		{"created_at desc", vulnerabilities.OrderByCreatedAt, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Created.AsTime().Unix() }, true},
+		{"updated_at asc", vulnerabilities.OrderByUpdatedAt, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.LastUpdated.AsTime().Unix() }, true},
+		{"updated_at desc", vulnerabilities.OrderByUpdatedAt, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.LastUpdated.AsTime().Unix() }, true},
+		{"suppressed asc", vulnerabilities.OrderBySuppressed, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any {
+			if v.Suppression == nil || !v.Suppression.Suppressed {
+				return int32(0)
+			}
+			return int32(1)
+		}, true},
+		{"suppressed desc", vulnerabilities.OrderBySuppressed, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any {
+			if v.Suppression == nil || !v.Suppression.Suppressed {
+				return int32(0)
+			}
+			return int32(1)
+		}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.ListVulnerabilities(ctx, vulnerabilities.Order(tt.orderBy, tt.dir), vulnerabilities.IncludeSuppressed())
+			require.NoError(t, err)
+			require.NotEmpty(t, resp.Nodes)
+
+			got := make([]any, len(resp.Nodes))
+			for i, n := range resp.Nodes {
+				got[i] = tt.extract(n.Vulnerability)
+			}
+
+			for i := 1; i < len(got); i++ {
+				if tt.isNumeric {
+					if tt.dir == vulnerabilities.Direction_ASC {
+						assert.LessOrEqual(t, got[i-1], got[i])
+					} else {
+						assert.GreaterOrEqual(t, got[i-1], got[i])
+					}
+				} else {
+					prevID := resp.Nodes[i-1].Vulnerability.Id
+					currID := resp.Nodes[i].Vulnerability.Id
+					assert.Less(t, prevID, currID)
+				}
+			}
+		})
+	}
+}
+
+func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
 	db := sql.New(pool)
@@ -356,7 +1006,7 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.
 	err = seedDb(t, db, workloads)
 	assert.NoError(t, err)
 
-	return ctx, db, client, func() {
+	return ctx, db, pool, client, func() {
 		cleanup()
 		pool.Close()
 	}
@@ -456,6 +1106,11 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 				Package:       v.Package,
 				CveID:         v.CveID,
 				LatestVersion: "2",
+				LastSeverity:  cve.Severity,
+				SeveritySince: pgtype.Timestamptz{
+					Time:  time.Now(),
+					Valid: true,
+				},
 			})
 			sumParams = append(sumParams, sql.BatchUpsertVulnerabilitySummaryParams{
 				ImageName:  v.ImageName,

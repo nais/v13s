@@ -311,12 +311,13 @@ type Cve struct {
 }
 
 type Image struct {
-	Name      string
-	Tag       string
-	Metadata  typeext.MapStringString
-	State     ImageState
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	Name             string
+	Tag              string
+	Metadata         typeext.MapStringString
+	State            ImageState
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	ReadyForResyncAt pgtype.Timestamptz
 }
 
 type RiverJob struct {
@@ -361,18 +362,6 @@ type SuppressedVulnerability struct {
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 	SuppressedBy string
-}
-
-type Vulnerability struct {
-	ID            pgtype.UUID
-	ImageName     string
-	ImageTag      string
-	Package       string
-	CveID         string
-	Source        string
-	LatestVersion string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
 }
 
 type VulnerabilitySummary struct {
