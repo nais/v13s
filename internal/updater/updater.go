@@ -301,10 +301,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 			Tag:   i.ImageTag,
 		})
 
-		for _, w := range i.Workloads {
-			metrics.WorkloadRiskScore.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(i.Summary.RiskScore))
-			metrics.WorkloadCriticalCount.WithLabelValues(w.Name, w.Namespace, w.Type).Set(float64(i.Summary.Critical))
-		}
+		metrics.SetWorkloadMetrics(i.Workloads, i.Summary)
 	}
 
 	start := time.Now()

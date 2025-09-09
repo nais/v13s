@@ -921,6 +921,8 @@ SELECT id,
 FROM image_vulnerabilities
 ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
          CASE WHEN $1 = 'severity_desc' THEN severity END DESC,
+         CASE WHEN $1 = 'severity_since_asc' THEN severity_since END ASC,
+         CASE WHEN $1 = 'severity_since_desc' THEN severity_since END DESC,
          CASE WHEN $1 = 'package_asc' THEN package END ASC,
          CASE WHEN $1 = 'package_desc' THEN package END DESC,
          CASE WHEN $1 = 'cve_id_asc' THEN cve_id END ASC,

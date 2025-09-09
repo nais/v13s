@@ -313,6 +313,8 @@ SELECT id,
 FROM image_vulnerabilities
 ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
          CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN severity END DESC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN severity_since END ASC,
+         CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN severity_since END DESC,
          CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN package END ASC,
          CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN package END DESC,
          CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN cve_id END ASC,

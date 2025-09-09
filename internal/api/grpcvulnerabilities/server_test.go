@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,10 +14,12 @@ import (
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -801,6 +804,191 @@ func TestServer_ListSeverityVulnerabilitiesSince(t *testing.T) {
 			)
 		}
 	})
+}
+
+func TestSanitizeOrderBy(t *testing.T) {
+	tests := []struct {
+		name     string
+		orderBy  *vulnerabilities.OrderBy
+		defaultF vulnerabilities.OrderByField
+		expected string
+	}{
+		{
+			name:     "nil orderBy uses default asc",
+			orderBy:  nil,
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "package_asc",
+		},
+		{
+			name: "valid non-severity asc",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderByPackage),
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "package_asc",
+		},
+		{
+			name: "valid non-severity desc",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderByUpdatedAt),
+				Direction: vulnerabilities.Direction_DESC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "updated_at_desc",
+		},
+		{
+			name: "invalid field falls back to default",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     "not_a_field",
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "package_asc",
+		},
+		{
+			name: "severity asc flips to desc (critical first)",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderBySeverity),
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "severity_desc",
+		},
+		{
+			name: "severity desc flips to asc (weakest first)",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderBySeverity),
+				Direction: vulnerabilities.Direction_DESC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "severity_asc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := grpcvulnerabilities.SanitizeOrderBy(tt.orderBy, tt.defaultF)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      3,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "image-1",
+		Tag:      "v1.0",
+		Metadata: map[string]string{},
+	}))
+
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: "CVE-111", CveTitle: "title-111", CveDesc: "desc", CveLink: "link", Severity: 0, Refs: typeext.MapStringString{}},
+		{CveID: "CVE-222", CveTitle: "title-222", CveDesc: "desc", CveLink: "link", Severity: 1, Refs: typeext.MapStringString{}},
+		{CveID: "CVE-333", CveTitle: "title-333", CveDesc: "desc", CveLink: "link", Severity: 2, Refs: typeext.MapStringString{}},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	_, err := pool.Exec(ctx, `
+		UPDATE vulnerabilities
+		SET 
+			severity_since = CASE package
+				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '1 hour'
+				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '2 hour'
+				WHEN 'package-CWE-1-3' THEN NOW() - INTERVAL '3 hour'
+			END,
+			created_at = CASE package
+				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '3 hour'
+				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '2 hour'
+				WHEN 'package-CWE-1-3' THEN NOW() - INTERVAL '1 hour'
+			END,
+			updated_at = CASE package
+				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '2 hour'
+				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '1 hour'
+				WHEN 'package-CWE-1-3' THEN NOW()
+			END
+		WHERE image_name = 'image-1' AND image_tag = 'v1.0'
+	`)
+	require.NoError(t, err)
+
+	err = db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+		ImageName:    "image-1",
+		Package:      "package-A",
+		CveID:        "CVE-111",
+		Suppressed:   true,
+		SuppressedBy: "tester",
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower("resolved")),
+		ReasonText:   "unit test suppression",
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		orderBy   vulnerabilities.OrderByField
+		dir       vulnerabilities.Direction
+		extract   func(v *vulnerabilities.Vulnerability) any
+		isNumeric bool
+	}{
+		{"package asc", vulnerabilities.OrderByPackage, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Package }, false},
+		{"package desc", vulnerabilities.OrderByPackage, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Package }, false},
+		{"severity asc", vulnerabilities.OrderBySeverity, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Cve.GetSeverity() }, true},
+		{"severity desc", vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Cve.GetSeverity() }, true},
+		{"severity_since asc", vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.SeveritySince.AsTime().Unix() }, true},
+		{"severity_since desc", vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.SeveritySince.AsTime().Unix() }, true},
+		{"created_at asc", vulnerabilities.OrderByCreatedAt, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Created.AsTime().Unix() }, true},
+		{"created_at desc", vulnerabilities.OrderByCreatedAt, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Created.AsTime().Unix() }, true},
+		{"updated_at asc", vulnerabilities.OrderByUpdatedAt, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.LastUpdated.AsTime().Unix() }, true},
+		{"updated_at desc", vulnerabilities.OrderByUpdatedAt, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.LastUpdated.AsTime().Unix() }, true},
+		{"suppressed asc", vulnerabilities.OrderBySuppressed, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any {
+			if v.Suppression == nil || !v.Suppression.Suppressed {
+				return int32(0)
+			}
+			return int32(1)
+		}, true},
+		{"suppressed desc", vulnerabilities.OrderBySuppressed, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any {
+			if v.Suppression == nil || !v.Suppression.Suppressed {
+				return int32(0)
+			}
+			return int32(1)
+		}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.ListVulnerabilities(ctx, vulnerabilities.Order(tt.orderBy, tt.dir), vulnerabilities.IncludeSuppressed())
+			require.NoError(t, err)
+			require.NotEmpty(t, resp.Nodes)
+
+			got := make([]any, len(resp.Nodes))
+			for i, n := range resp.Nodes {
+				got[i] = tt.extract(n.Vulnerability)
+			}
+
+			for i := 1; i < len(got); i++ {
+				if tt.isNumeric {
+					if tt.dir == vulnerabilities.Direction_ASC {
+						assert.LessOrEqual(t, got[i-1], got[i])
+					} else {
+						assert.GreaterOrEqual(t, got[i-1], got[i])
+					}
+				} else {
+					prevID := resp.Nodes[i-1].Vulnerability.Id
+					currID := resp.Nodes[i].Vulnerability.Id
+					assert.Less(t, prevID, currID)
+				}
+			}
+		})
+	}
 }
 
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {

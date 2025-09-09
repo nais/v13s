@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-vulnerability-alerts
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  groups:
+    - name: vulnerability-alerts
+      rules:
+        - alert: NamespaceCriticalVulnerabilities
+          expr: |
+            sum by(workload_namespace, workload_name) (v13s_workload_vulnerabilities{severity="CRITICAL"}) > 0
+          for: 5m
+          labels:
+            namespace: nais-system
+            severity: critical
+          annotations:
+            summary: ":rotating_light: CRITICAL vulnerabilities in namespace {{`{{ $labels.workload_namespace }}`}}"
+            description: |
+              Namespace *{{`{{ $labels.workload_namespace }}`}}* has {{`{{ $value | printf "%.0f" }}`}} critical vulnerabilities.
+              Affected workloads: {{`{{ $labels.workload_name | join "," }}`}}.
+              Please investigate immediately.
+            consequence: "Potential security risk; workloads may be exploitable"
+            action: |
+              Check vulnerabilities in Salsa: [Salsa link](https://salsa.{{ .Values.fasit.tenant }}.cloud.nais.io/projects?searchText=%2Fnais%2F)
+              Consider patching or redeploying affected workloads.
+
+        #- alert: NamespaceHighVulnerabilities
+        #  expr: sum by(workload_namespace, workload_name) (v13s_workload_vulnerabilities{severity="HIGH"}) > 0
+        #  for: 10m
+        #  labels:
+        #    severity: warning
+        #  annotations:
+        #    summary: ":warning: HIGH vulnerabilities in namespace {{`{{ $labels.workload_namespace }}`}}"
+        #    description: |
+        #      Namespace *{{`{{ $labels.workload_namespace }}`}}* has {{`{{ $value | printf "%.0f" }}`}} high vulnerabilities.
+        #      Affected workloads: {{`{{ $labels.workload_name | join "," }}`}}
+        #      Please review and prioritize fixes.
+        #    link: "https://salsa.{{ .Values.fasit.tenant }}.cloud.nais.io/projects?searchText=%2Fnais%2F"

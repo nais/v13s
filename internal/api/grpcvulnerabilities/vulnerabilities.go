@@ -38,7 +38,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
 		IncludeSuppressed: request.IncludeSuppressed,
-		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Limit:             limit,
 		Offset:            offset,
 	})
@@ -120,7 +120,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		IncludeSuppressed: &request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
-		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Since:             timestamptzFromProto(request.GetSince()),
 		Severity:          toInt32Ptr(request.Severity),
 	})
@@ -190,7 +190,7 @@ func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
 		IncludeSuppressed: request.IncludeSuppressed,
-		OrderBy:           sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeveritySince),
+		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeveritySince),
 		Since:             timestamptzFromProto(request.GetSince()),
 		Limit:             limit,
 		Offset:            offset,
@@ -274,7 +274,7 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 		ImageTag:  filter.ImageTag,
 		Offset:    offset,
 		Limit:     limit,
-		OrderBy:   sanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		OrderBy:   SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 	})
 
 	if err != nil {
@@ -456,7 +456,11 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 	}, nil
 }
 
-func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilities.OrderByField) string {
+// SanitizeOrderBy
+// Special case: Severity is inverted (0 = Critical, 2 = Medium).
+// Users expect "asc" = weakest → strongest, so we flip direction here
+// to make SQL ordering intuitive.
+func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilities.OrderByField) string {
 	if orderBy == nil {
 		orderBy = &vulnerabilities.OrderBy{
 			Field:     string(defaultOrder),
@@ -468,9 +472,18 @@ func sanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 	if orderBy.Direction == vulnerabilities.Direction_DESC {
 		direction = "desc"
 	}
+
 	field := vulnerabilities.OrderByField(strings.ToLower(orderBy.Field))
 	if !field.IsValid() {
 		field = defaultOrder
+	}
+
+	if field == vulnerabilities.OrderBySeverity {
+		if direction == "asc" {
+			direction = "desc"
+		} else {
+			direction = "asc"
+		}
 	}
 
 	return fmt.Sprintf("%s_%s", field.String(), direction)

@@ -16,14 +16,7 @@ type ImageVulnerabilityData struct {
 	Source          string
 	Vulnerabilities []*sources.Vulnerability
 	Summary         *sources.VulnerabilitySummary
-	Workloads       []Workload
-}
-
-type Workload struct {
-	ID        pgtype.UUID
-	Namespace string
-	Name      string
-	Type      string
+	Workloads       []*sql.ListWorkloadsByImageRow
 }
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
@@ -104,15 +97,6 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 	if err != nil {
 		return nil, err
 	}
-	ws := make([]Workload, 0, len(workloads))
-	for _, w := range workloads {
-		ws = append(ws, Workload{
-			ID:        w.ID,
-			Namespace: w.Namespace,
-			Name:      w.Name,
-			Type:      w.WorkloadType,
-		})
-	}
 
 	return &ImageVulnerabilityData{
 		ImageName:       imageName,
@@ -120,7 +104,7 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		Source:          source.Name(),
 		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
-		Workloads:       ws,
+		Workloads:       workloads,
 	}, nil
 }
 
