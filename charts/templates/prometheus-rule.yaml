@@ -14,7 +14,8 @@ spec:
           for: 5m
           labels:
             namespace: nais-system
-            severity: warning
+            severity: info
+            channel: nais-alerts-info
           annotations:
             summary: |
               {{ ":rotating_light: CRITICAL vulnerabilities in workload `{{ $labels.workload_name }}`" }}
