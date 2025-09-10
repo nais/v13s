@@ -11,7 +11,13 @@ spec:
     - name: namespace-vulnerability-alerts
       rules:
         - alert: "namespace critical vulnerabilities"
-          expr: max by (workload_name, workload_namespace, workload_cluster) (v13s_workload_vulnerabilities{severity="CRITICAL", workload_namespace="{{ .Release.Namespace }}"}) > 0
+          expr: max by (workload_name, workload_namespace, workload_cluster) (
+            v13s_workload_vulnerabilities{
+            severity="CRITICAL",
+            workload_namespace="{{ .Release.Namespace }}",
+            workload_type!="job"
+            }
+            ) > 0
           for: 10m
           labels:
             namespace: nais-system
@@ -29,7 +35,12 @@ spec:
               Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
 
         - alert: "namespace high risk-score"
-          expr: max by (workload_name, workload_namespace, workload_cluster) (v13s_workload_risk_score{workload_namespace="{{ .Release.Namespace }}"}) > 150
+          expr: max by (workload_name, workload_namespace, workload_cluster) (
+            v13s_workload_risk_score{
+            workload_namespace="{{ .Release.Namespace }}",
+            workload_type!="job"
+            }
+            ) > 150
           for: 10m
           labels:
             namespace: nais-system
