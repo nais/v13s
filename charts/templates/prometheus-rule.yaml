@@ -20,13 +20,13 @@ spec:
             alert_type: custom
           annotations:
             summary: |
-              {{ ":rotating_light: CRITICAL vulnerabilities in namespace `{{ $labels.workload_namespace }}` and cluster `{{ $labels.workload_cluster }}`" }}
+              {{ ":rotating_light: CRITICAL vulnerabilities in namespace `{{ $labels.workload_namespace }}`" }}
             description: |
               {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` and cluster `{{ $labels.workload_cluster }}` has {{ $value | printf \"%.0f\" }} critical vulnerabilities. Please investigate immediately." }}
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Potential security risk; workload may be exploitable
             action: |
               Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
 
         - alert: "namespace high risk-score"
           expr: max by (workload_name, workload_namespace, workload_cluster) (v13s_workload_risk_score{workload_namespace="{{ .Release.Namespace }}"}) > 150
@@ -38,10 +38,10 @@ spec:
             alert_type: custom
           annotations:
             summary: |
-              {{ ":warning: High risk score for namespace `{{ $labels.workload_namespace }}` and cluster `{{ $labels.workload_cluster }}`" }}
+              {{ ":warning: High risk score for namespace `{{ $labels.workload_namespace }}`" }}
             description: |
               {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` and cluster `{{ $labels.workload_cluster }}` has a risk score of {{ $value | printf \"%.0f\" }}. Please review and mitigate potential security or operational issues." }}
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Potential security or operational risk
             action: |
               Investigate the workload and consider patching, redeploying, or other mitigations as needed.
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText=%2Fnais%2F
