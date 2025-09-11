@@ -17,8 +17,8 @@ type Client interface {
 	ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
-	ListMeanTimeToFixPerSeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixPerSeverityResponse, error)
-	ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, opts ...Option) (*ListWorkloadSeveritiesWithMeanTimeToFixResponse, error)
+	ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error)
+	ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
@@ -131,16 +131,16 @@ func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id strin
 	})
 }
 
-func (c *client) ListMeanTimeToFixPerSeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixPerSeverityResponse, error) {
+func (c *client) ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error) {
 	o := applyOptions(opts...)
-	return c.v.ListMeanTimeToFixPerSeverity(ctx, &ListMeanTimeToFixPerSeverityRequest{
+	return c.v.ListMeanTimeToFixTrendBySeverity(ctx, &ListMeanTimeToFixTrendBySeverityRequest{
 		Filter: o.Filter,
 	}, o.CallOptions...)
 }
 
-func (c *client) ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, opts ...Option) (*ListWorkloadSeveritiesWithMeanTimeToFixResponse, error) {
+func (c *client) ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error) {
 	o := applyOptions(opts...)
-	return c.v.ListWorkloadSeveritiesWithMeanTimeToFix(ctx, &ListWorkloadSeveritiesWithMeanTimeToFixRequest{
+	return c.v.ListWorkloadMTTFBySeverity(ctx, &ListWorkloadMTTFBySeverityRequest{
 		Filter: o.Filter,
 	}, o.CallOptions...)
 }

@@ -39,8 +39,8 @@ service Vulnerabilities {
   // Supplying all filters will give the summary for that specific workload
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
   rpc GetVulnerabilitySummaryTimeSeries(GetVulnerabilitySummaryTimeSeriesRequest) returns (GetVulnerabilitySummaryTimeSeriesResponse);
-  rpc ListMeanTimeToFixPerSeverity(ListMeanTimeToFixPerSeverityRequest) returns (ListMeanTimeToFixPerSeverityResponse);
-  rpc ListWorkloadSeveritiesWithMeanTimeToFix(ListWorkloadSeveritiesWithMeanTimeToFixRequest) returns (ListWorkloadSeveritiesWithMeanTimeToFixResponse);
+  rpc ListMeanTimeToFixTrendBySeverity(ListMeanTimeToFixTrendBySeverityRequest) returns (ListMeanTimeToFixTrendBySeverityResponse);
+  rpc ListWorkloadMTTFBySeverity(ListWorkloadMTTFBySeverityRequest) returns (ListWorkloadMTTFBySeverityResponse);
 
   rpc GetVulnerabilitySummaryForImage(GetVulnerabilitySummaryForImageRequest) returns (GetVulnerabilitySummaryForImageResponse);
 
@@ -147,44 +147,47 @@ message ListWorkloadsForVulnerabilityByIdResponse {
   repeated Workload workloadRef = 2;
 }
 
-message ListMeanTimeToFixPerSeverityRequest {
+message ListMeanTimeToFixTrendBySeverityRequest {
   Filter filter = 1;
 }
 
-message ListMeanTimeToFixPerSeverityResponse {
+message ListMeanTimeToFixTrendBySeverityResponse {
   Filter filter = 1;
-  repeated MeanTimeToFixPerSeverity nodes = 2;
+  repeated MeanTimeToFixTrendPoint nodes = 2;
 }
 
-message MeanTimeToFixPerSeverity {
+message MeanTimeToFixTrendPoint {
   Severity severity = 1;
   int32 mean_time_to_fix_days = 2;
   int32 fixed_count = 3;
   google.protobuf.Timestamp snapshot_time = 4;
 }
 
-message ListWorkloadSeveritiesWithMeanTimeToFixRequest {
+message ListWorkloadMTTFBySeverityRequest {
   Filter filter = 1;
 }
 
-message ListWorkloadSeveritiesWithMeanTimeToFixResponse {
+message ListWorkloadMTTFBySeverityResponse {
   Filter filter = 1;
-  repeated WorkloadFix nodes = 2;
+  repeated WorkloadWithFixes workloads = 2;
 }
 
-message WorkloadFix {
+message WorkloadWithFixes {
   string workload_id = 1;
   string workload_cluster = 2;
   string workload_namespace = 3;
   string workload_name = 4;
-  Severity severity = 5;
-  optional google.protobuf.Timestamp introduced_at = 6;
-  optional google.protobuf.Timestamp fixed_at = 7;
-  optional int32 fix_duration_days = 8;
-  bool is_fixed = 9;
-  int32 mean_time_to_fix_days = 10;
-  int32 fixed_count =11;
-  google.protobuf.Timestamp snapshot_time = 13;
+  repeated WorkloadFix fixes = 5;
+}
+
+message WorkloadFix {
+  Severity severity = 1;
+  optional google.protobuf.Timestamp introduced_at = 2;
+  optional google.protobuf.Timestamp fixed_at = 3;
+  optional int32 fix_duration_days = 4;
+  int32 mean_time_to_fix_days = 5;
+  int32 fixed_count = 6;
+  optional google.protobuf.Timestamp snapshot_time = 7;
 }
 
 message GetVulnerabilitySummaryForImageRequest {

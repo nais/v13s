@@ -17,6 +17,8 @@ import (
 )
 
 const (
+
+	// TODO: fix this
 	FetchVulnerabilityDataForImagesDefaultLimit        = 10
 	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
@@ -119,7 +121,7 @@ func (u *Updater) Run(ctx context.Context) {
 		now := time.Now()
 		u.log.Info("starting refresh of workload vulnerability lifetimes")
 
-		if err := u.querier.RefreshWorkloadVulnerabilityLifetimes(ctx); err != nil {
+		if err := u.querier.UpsertVulnerabilityLifetimes(ctx); err != nil {
 			u.log.WithError(err).Error("failed to refresh workload vulnerability lifetimes")
 			return
 		}

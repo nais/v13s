@@ -1,4 +1,4 @@
--- name: RefreshWorkloadVulnerabilityLifetimes :exec
+-- name: UpsertVulnerabilityLifetimes :exec
 INSERT INTO vuln_fix_summary (
     workload_id,
     severity,
@@ -24,12 +24,12 @@ UPDATE
     is_fixed = EXCLUDED.is_fixed,
     snapshot_date = EXCLUDED.snapshot_date;
 
--- name: ListMeanTimeToFixPerSeverity :many
+-- name: ListMeanTimeToFixTrendBySeverity :many
 SELECT
     v.severity,
-    v.snapshot_date,
-    AVG(v.fix_duration) AS mean_time_to_fix_days,
-    COUNT(*)::INT AS fixed_count
+    v.snapshot_date      AS snapshot_time,
+    AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
+    COUNT(*)::INT        AS fixed_count
 FROM vuln_fix_summary v
          JOIN workloads w ON w.id = v.workload_id
 WHERE v.is_fixed = true
@@ -41,17 +41,18 @@ AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_na
 GROUP BY v.snapshot_date, v.severity
 ORDER BY v.snapshot_date, v.severity;
 
--- name: ListWorkloadSeveritiesWithMeanTimeToFix :many
+-- name: ListWorkloadSeverityFixStats :many
 SELECT
     v.workload_id,
-    w.name AS workload_name,
-    w.namespace,
-    w.cluster,
+    w.name       AS workload_name,
+    w.namespace  AS workload_namespace,
+    w.cluster    AS workload_cluster,
     v.severity,
-    MIN(v.introduced_at)::date AS first_introduced_date,
-    MAX(v.fixed_at)::date AS last_fixed_date,
+    MIN(v.introduced_at)::date AS introduced_date,
+    MAX(v.fixed_at)::date AS fixed_at,
     COUNT(*) FILTER (WHERE v.is_fixed)::INT AS fixed_count,
-    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT AS mean_time_to_fix_days_for_severity
+    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT mean_time_to_fix_days,
+    MAX(v.snapshot_date)::timestamptz AS snapshot_time
 FROM vuln_fix_summary v
          JOIN workloads w ON w.id = v.workload_id
 WHERE (
@@ -61,4 +62,4 @@ WHERE (
               AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
           )
 GROUP BY v.workload_id, w.name, w.namespace, w.cluster, v.severity
-ORDER BY first_introduced_date DESC;
+ORDER BY introduced_date DESC;

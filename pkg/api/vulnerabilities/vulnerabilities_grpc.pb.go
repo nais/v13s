@@ -33,8 +33,8 @@ const (
 	Vulnerabilities_ListWorkloadsForVulnerabilityById_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadsForVulnerabilityById"
 	Vulnerabilities_GetVulnerabilitySummary_FullMethodName                  = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
 	Vulnerabilities_GetVulnerabilitySummaryTimeSeries_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryTimeSeries"
-	Vulnerabilities_ListMeanTimeToFixPerSeverity_FullMethodName             = "/v13s.api.protobuf.Vulnerabilities/ListMeanTimeToFixPerSeverity"
-	Vulnerabilities_ListWorkloadSeveritiesWithMeanTimeToFix_FullMethodName  = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadSeveritiesWithMeanTimeToFix"
+	Vulnerabilities_ListMeanTimeToFixTrendBySeverity_FullMethodName         = "/v13s.api.protobuf.Vulnerabilities/ListMeanTimeToFixTrendBySeverity"
+	Vulnerabilities_ListWorkloadMTTFBySeverity_FullMethodName               = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadMTTFBySeverity"
 	Vulnerabilities_GetVulnerabilitySummaryForImage_FullMethodName          = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummaryForImage"
 	Vulnerabilities_SuppressVulnerability_FullMethodName                    = "/v13s.api.protobuf.Vulnerabilities/SuppressVulnerability"
 	Vulnerabilities_GetVulnerabilityById_FullMethodName                     = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilityById"
@@ -65,8 +65,8 @@ type VulnerabilitiesClient interface {
 	// Supplying all filters will give the summary for that specific workload
 	GetVulnerabilitySummary(ctx context.Context, in *GetVulnerabilitySummaryRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, in *GetVulnerabilitySummaryTimeSeriesRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
-	ListMeanTimeToFixPerSeverity(ctx context.Context, in *ListMeanTimeToFixPerSeverityRequest, opts ...grpc.CallOption) (*ListMeanTimeToFixPerSeverityResponse, error)
-	ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, in *ListWorkloadSeveritiesWithMeanTimeToFixRequest, opts ...grpc.CallOption) (*ListWorkloadSeveritiesWithMeanTimeToFixResponse, error)
+	ListMeanTimeToFixTrendBySeverity(ctx context.Context, in *ListMeanTimeToFixTrendBySeverityRequest, opts ...grpc.CallOption) (*ListMeanTimeToFixTrendBySeverityResponse, error)
+	ListWorkloadMTTFBySeverity(ctx context.Context, in *ListWorkloadMTTFBySeverityRequest, opts ...grpc.CallOption) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, in *GetVulnerabilitySummaryForImageRequest, opts ...grpc.CallOption) (*GetVulnerabilitySummaryForImageResponse, error)
 	SuppressVulnerability(ctx context.Context, in *SuppressVulnerabilityRequest, opts ...grpc.CallOption) (*SuppressVulnerabilityResponse, error)
 	GetVulnerabilityById(ctx context.Context, in *GetVulnerabilityByIdRequest, opts ...grpc.CallOption) (*GetVulnerabilityByIdResponse, error)
@@ -171,20 +171,20 @@ func (c *vulnerabilitiesClient) GetVulnerabilitySummaryTimeSeries(ctx context.Co
 	return out, nil
 }
 
-func (c *vulnerabilitiesClient) ListMeanTimeToFixPerSeverity(ctx context.Context, in *ListMeanTimeToFixPerSeverityRequest, opts ...grpc.CallOption) (*ListMeanTimeToFixPerSeverityResponse, error) {
+func (c *vulnerabilitiesClient) ListMeanTimeToFixTrendBySeverity(ctx context.Context, in *ListMeanTimeToFixTrendBySeverityRequest, opts ...grpc.CallOption) (*ListMeanTimeToFixTrendBySeverityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListMeanTimeToFixPerSeverityResponse)
-	err := c.cc.Invoke(ctx, Vulnerabilities_ListMeanTimeToFixPerSeverity_FullMethodName, in, out, cOpts...)
+	out := new(ListMeanTimeToFixTrendBySeverityResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListMeanTimeToFixTrendBySeverity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *vulnerabilitiesClient) ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, in *ListWorkloadSeveritiesWithMeanTimeToFixRequest, opts ...grpc.CallOption) (*ListWorkloadSeveritiesWithMeanTimeToFixResponse, error) {
+func (c *vulnerabilitiesClient) ListWorkloadMTTFBySeverity(ctx context.Context, in *ListWorkloadMTTFBySeverityRequest, opts ...grpc.CallOption) (*ListWorkloadMTTFBySeverityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListWorkloadSeveritiesWithMeanTimeToFixResponse)
-	err := c.cc.Invoke(ctx, Vulnerabilities_ListWorkloadSeveritiesWithMeanTimeToFix_FullMethodName, in, out, cOpts...)
+	out := new(ListWorkloadMTTFBySeverityResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListWorkloadMTTFBySeverity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -255,8 +255,8 @@ type VulnerabilitiesServer interface {
 	// Supplying all filters will give the summary for that specific workload
 	GetVulnerabilitySummary(context.Context, *GetVulnerabilitySummaryRequest) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(context.Context, *GetVulnerabilitySummaryTimeSeriesRequest) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
-	ListMeanTimeToFixPerSeverity(context.Context, *ListMeanTimeToFixPerSeverityRequest) (*ListMeanTimeToFixPerSeverityResponse, error)
-	ListWorkloadSeveritiesWithMeanTimeToFix(context.Context, *ListWorkloadSeveritiesWithMeanTimeToFixRequest) (*ListWorkloadSeveritiesWithMeanTimeToFixResponse, error)
+	ListMeanTimeToFixTrendBySeverity(context.Context, *ListMeanTimeToFixTrendBySeverityRequest) (*ListMeanTimeToFixTrendBySeverityResponse, error)
+	ListWorkloadMTTFBySeverity(context.Context, *ListWorkloadMTTFBySeverityRequest) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummaryForImage(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error)
 	SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)
 	GetVulnerabilityById(context.Context, *GetVulnerabilityByIdRequest) (*GetVulnerabilityByIdResponse, error)
@@ -298,11 +298,11 @@ func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummary(context.Contex
 func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummaryTimeSeries(context.Context, *GetVulnerabilitySummaryTimeSeriesRequest) (*GetVulnerabilitySummaryTimeSeriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummaryTimeSeries not implemented")
 }
-func (UnimplementedVulnerabilitiesServer) ListMeanTimeToFixPerSeverity(context.Context, *ListMeanTimeToFixPerSeverityRequest) (*ListMeanTimeToFixPerSeverityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListMeanTimeToFixPerSeverity not implemented")
+func (UnimplementedVulnerabilitiesServer) ListMeanTimeToFixTrendBySeverity(context.Context, *ListMeanTimeToFixTrendBySeverityRequest) (*ListMeanTimeToFixTrendBySeverityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMeanTimeToFixTrendBySeverity not implemented")
 }
-func (UnimplementedVulnerabilitiesServer) ListWorkloadSeveritiesWithMeanTimeToFix(context.Context, *ListWorkloadSeveritiesWithMeanTimeToFixRequest) (*ListWorkloadSeveritiesWithMeanTimeToFixResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadSeveritiesWithMeanTimeToFix not implemented")
+func (UnimplementedVulnerabilitiesServer) ListWorkloadMTTFBySeverity(context.Context, *ListWorkloadMTTFBySeverityRequest) (*ListWorkloadMTTFBySeverityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadMTTFBySeverity not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) GetVulnerabilitySummaryForImage(context.Context, *GetVulnerabilitySummaryForImageRequest) (*GetVulnerabilitySummaryForImageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVulnerabilitySummaryForImage not implemented")
@@ -499,38 +499,38 @@ func _Vulnerabilities_GetVulnerabilitySummaryTimeSeries_Handler(srv interface{},
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Vulnerabilities_ListMeanTimeToFixPerSeverity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListMeanTimeToFixPerSeverityRequest)
+func _Vulnerabilities_ListMeanTimeToFixTrendBySeverity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMeanTimeToFixTrendBySeverityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(VulnerabilitiesServer).ListMeanTimeToFixPerSeverity(ctx, in)
+		return srv.(VulnerabilitiesServer).ListMeanTimeToFixTrendBySeverity(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Vulnerabilities_ListMeanTimeToFixPerSeverity_FullMethodName,
+		FullMethod: Vulnerabilities_ListMeanTimeToFixTrendBySeverity_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).ListMeanTimeToFixPerSeverity(ctx, req.(*ListMeanTimeToFixPerSeverityRequest))
+		return srv.(VulnerabilitiesServer).ListMeanTimeToFixTrendBySeverity(ctx, req.(*ListMeanTimeToFixTrendBySeverityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Vulnerabilities_ListWorkloadSeveritiesWithMeanTimeToFix_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWorkloadSeveritiesWithMeanTimeToFixRequest)
+func _Vulnerabilities_ListWorkloadMTTFBySeverity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkloadMTTFBySeverityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(VulnerabilitiesServer).ListWorkloadSeveritiesWithMeanTimeToFix(ctx, in)
+		return srv.(VulnerabilitiesServer).ListWorkloadMTTFBySeverity(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Vulnerabilities_ListWorkloadSeveritiesWithMeanTimeToFix_FullMethodName,
+		FullMethod: Vulnerabilities_ListWorkloadMTTFBySeverity_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VulnerabilitiesServer).ListWorkloadSeveritiesWithMeanTimeToFix(ctx, req.(*ListWorkloadSeveritiesWithMeanTimeToFixRequest))
+		return srv.(VulnerabilitiesServer).ListWorkloadMTTFBySeverity(ctx, req.(*ListWorkloadMTTFBySeverityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -651,12 +651,12 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Vulnerabilities_GetVulnerabilitySummaryTimeSeries_Handler,
 		},
 		{
-			MethodName: "ListMeanTimeToFixPerSeverity",
-			Handler:    _Vulnerabilities_ListMeanTimeToFixPerSeverity_Handler,
+			MethodName: "ListMeanTimeToFixTrendBySeverity",
+			Handler:    _Vulnerabilities_ListMeanTimeToFixTrendBySeverity_Handler,
 		},
 		{
-			MethodName: "ListWorkloadSeveritiesWithMeanTimeToFix",
-			Handler:    _Vulnerabilities_ListWorkloadSeveritiesWithMeanTimeToFix_Handler,
+			MethodName: "ListWorkloadMTTFBySeverity",
+			Handler:    _Vulnerabilities_ListWorkloadMTTFBySeverity_Handler,
 		},
 		{
 			MethodName: "GetVulnerabilitySummaryForImage",

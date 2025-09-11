@@ -317,28 +317,28 @@ func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryTimeSeries_Call) RunA
 	return _c
 }
 
-// ListMeanTimeToFixPerSeverity provides a mock function with given fields: _a0, _a1
-func (_m *MockVulnerabilitiesServer) ListMeanTimeToFixPerSeverity(_a0 context.Context, _a1 *vulnerabilities.ListMeanTimeToFixPerSeverityRequest) (*vulnerabilities.ListMeanTimeToFixPerSeverityResponse, error) {
+// ListMeanTimeToFixTrendBySeverity provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListMeanTimeToFixTrendBySeverity(_a0 context.Context, _a1 *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) (*vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListMeanTimeToFixPerSeverity")
+		panic("no return value specified for ListMeanTimeToFixTrendBySeverity")
 	}
 
-	var r0 *vulnerabilities.ListMeanTimeToFixPerSeverityResponse
+	var r0 *vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListMeanTimeToFixPerSeverityRequest) (*vulnerabilities.ListMeanTimeToFixPerSeverityResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) (*vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListMeanTimeToFixPerSeverityRequest) *vulnerabilities.ListMeanTimeToFixPerSeverityResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) *vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*vulnerabilities.ListMeanTimeToFixPerSeverityResponse)
+			r0 = ret.Get(0).(*vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListMeanTimeToFixPerSeverityRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -347,31 +347,31 @@ func (_m *MockVulnerabilitiesServer) ListMeanTimeToFixPerSeverity(_a0 context.Co
 	return r0, r1
 }
 
-// MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListMeanTimeToFixPerSeverity'
-type MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call struct {
+// MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListMeanTimeToFixTrendBySeverity'
+type MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call struct {
 	*mock.Call
 }
 
-// ListMeanTimeToFixPerSeverity is a helper method to define mock.On call
+// ListMeanTimeToFixTrendBySeverity is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *vulnerabilities.ListMeanTimeToFixPerSeverityRequest
-func (_e *MockVulnerabilitiesServer_Expecter) ListMeanTimeToFixPerSeverity(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call {
-	return &MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call{Call: _e.mock.On("ListMeanTimeToFixPerSeverity", _a0, _a1)}
+//   - _a1 *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListMeanTimeToFixTrendBySeverity(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call {
+	return &MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call{Call: _e.mock.On("ListMeanTimeToFixTrendBySeverity", _a0, _a1)}
 }
 
-func (_c *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListMeanTimeToFixPerSeverityRequest)) *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call {
+func (_c *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest)) *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*vulnerabilities.ListMeanTimeToFixPerSeverityRequest))
+		run(args[0].(context.Context), args[1].(*vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest))
 	})
 	return _c
 }
 
-func (_c *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call) Return(_a0 *vulnerabilities.ListMeanTimeToFixPerSeverityResponse, _a1 error) *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call {
+func (_c *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call) Return(_a0 *vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse, _a1 error) *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListMeanTimeToFixPerSeverityRequest) (*vulnerabilities.ListMeanTimeToFixPerSeverityResponse, error)) *MockVulnerabilitiesServer_ListMeanTimeToFixPerSeverity_Call {
+func (_c *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) (*vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse, error)) *MockVulnerabilitiesServer_ListMeanTimeToFixTrendBySeverity_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -730,28 +730,28 @@ func (_c *MockVulnerabilitiesServer_ListWorkloadCriticalVulnerabilitiesSince_Cal
 	return _c
 }
 
-// ListWorkloadSeveritiesWithMeanTimeToFix provides a mock function with given fields: _a0, _a1
-func (_m *MockVulnerabilitiesServer) ListWorkloadSeveritiesWithMeanTimeToFix(_a0 context.Context, _a1 *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest) (*vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse, error) {
+// ListWorkloadMTTFBySeverity provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListWorkloadMTTFBySeverity(_a0 context.Context, _a1 *vulnerabilities.ListWorkloadMTTFBySeverityRequest) (*vulnerabilities.ListWorkloadMTTFBySeverityResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListWorkloadSeveritiesWithMeanTimeToFix")
+		panic("no return value specified for ListWorkloadMTTFBySeverity")
 	}
 
-	var r0 *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse
+	var r0 *vulnerabilities.ListWorkloadMTTFBySeverityResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest) (*vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListWorkloadMTTFBySeverityRequest) (*vulnerabilities.ListWorkloadMTTFBySeverityResponse, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest) *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListWorkloadMTTFBySeverityRequest) *vulnerabilities.ListWorkloadMTTFBySeverityResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse)
+			r0 = ret.Get(0).(*vulnerabilities.ListWorkloadMTTFBySeverityResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListWorkloadMTTFBySeverityRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -760,31 +760,31 @@ func (_m *MockVulnerabilitiesServer) ListWorkloadSeveritiesWithMeanTimeToFix(_a0
 	return r0, r1
 }
 
-// MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadSeveritiesWithMeanTimeToFix'
-type MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call struct {
+// MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadMTTFBySeverity'
+type MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call struct {
 	*mock.Call
 }
 
-// ListWorkloadSeveritiesWithMeanTimeToFix is a helper method to define mock.On call
+// ListWorkloadMTTFBySeverity is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest
-func (_e *MockVulnerabilitiesServer_Expecter) ListWorkloadSeveritiesWithMeanTimeToFix(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
-	return &MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call{Call: _e.mock.On("ListWorkloadSeveritiesWithMeanTimeToFix", _a0, _a1)}
+//   - _a1 *vulnerabilities.ListWorkloadMTTFBySeverityRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListWorkloadMTTFBySeverity(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call {
+	return &MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call{Call: _e.mock.On("ListWorkloadMTTFBySeverity", _a0, _a1)}
 }
 
-func (_c *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest)) *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
+func (_c *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListWorkloadMTTFBySeverityRequest)) *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest))
+		run(args[0].(context.Context), args[1].(*vulnerabilities.ListWorkloadMTTFBySeverityRequest))
 	})
 	return _c
 }
 
-func (_c *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call) Return(_a0 *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse, _a1 error) *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
+func (_c *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call) Return(_a0 *vulnerabilities.ListWorkloadMTTFBySeverityResponse, _a1 error) *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest) (*vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse, error)) *MockVulnerabilitiesServer_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
+func (_c *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListWorkloadMTTFBySeverityRequest) (*vulnerabilities.ListWorkloadMTTFBySeverityResponse, error)) *MockVulnerabilitiesServer_ListWorkloadMTTFBySeverity_Call {
 	_c.Call.Return(run)
 	return _c
 }

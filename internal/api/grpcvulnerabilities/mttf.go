@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *Server) ListMeanTimeToFixPerSeverity(ctx context.Context, request *vulnerabilities.ListMeanTimeToFixPerSeverityRequest) (*vulnerabilities.ListMeanTimeToFixPerSeverityResponse, error) {
+func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) (*vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
@@ -21,7 +21,7 @@ func (s *Server) ListMeanTimeToFixPerSeverity(ctx context.Context, request *vuln
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
 	}
 
-	metrics, err := s.querier.ListMeanTimeToFixPerSeverity(ctx, sql.ListMeanTimeToFixPerSeverityParams{
+	metrics, err := s.querier.ListMeanTimeToFixTrendBySeverity(ctx, sql.ListMeanTimeToFixTrendBySeverityParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
@@ -31,22 +31,22 @@ func (s *Server) ListMeanTimeToFixPerSeverity(ctx context.Context, request *vuln
 		return nil, fmt.Errorf("failed to list mean time to fix per severity: %w", err)
 	}
 
-	ms := collections.Map(metrics, func(row *sql.ListMeanTimeToFixPerSeverityRow) *vulnerabilities.MeanTimeToFixPerSeverity {
-		return &vulnerabilities.MeanTimeToFixPerSeverity{
+	ms := collections.Map(metrics, func(row *sql.ListMeanTimeToFixTrendBySeverityRow) *vulnerabilities.MeanTimeToFixTrendPoint {
+		return &vulnerabilities.MeanTimeToFixTrendPoint{
 			Severity:          vulnerabilities.Severity(vulnerabilities.Severity_value[strings.ToUpper(row.Severity)]),
-			MeanTimeToFixDays: int32(row.MeanTimeToFixDays),
-			SnapshotTime:      timestamppb.New(row.SnapshotDate.Time),
+			MeanTimeToFixDays: row.MeanTimeToFixDays,
+			SnapshotTime:      timestamppb.New(row.SnapshotTime.Time),
 			FixedCount:        row.FixedCount,
 		}
 	})
 
-	return &vulnerabilities.ListMeanTimeToFixPerSeverityResponse{
+	return &vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse{
 		Filter: request.GetFilter(),
 		Nodes:  ms,
 	}, nil
 }
 
-func (s *Server) ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, request *vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixRequest) (*vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse, error) {
+func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulnerabilities.ListWorkloadMTTFBySeverityRequest) (*vulnerabilities.ListWorkloadMTTFBySeverityResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
@@ -56,7 +56,7 @@ func (s *Server) ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, re
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
 	}
 
-	severities, err := s.querier.ListWorkloadSeveritiesWithMeanTimeToFix(ctx, sql.ListWorkloadSeveritiesWithMeanTimeToFixParams{
+	rows, err := s.querier.ListWorkloadSeverityFixStats(ctx, sql.ListWorkloadSeverityFixStatsParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
@@ -66,22 +66,41 @@ func (s *Server) ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, re
 		return nil, fmt.Errorf("failed to list workload severities with mean time to fix: %w", err)
 	}
 
-	wf := collections.Map(severities, func(row *sql.ListWorkloadSeveritiesWithMeanTimeToFixRow) *vulnerabilities.WorkloadFix {
-		return &vulnerabilities.WorkloadFix{
-			WorkloadId:        row.WorkloadID.String(),
-			WorkloadCluster:   row.Cluster,
-			WorkloadName:      row.WorkloadName,
-			WorkloadNamespace: row.Namespace,
-			Severity:          vulnerabilities.Severity(vulnerabilities.Severity_value[strings.ToUpper(row.Severity)]),
-			IntroducedAt:      timestamppb.New(row.FirstIntroducedDate.Time),
-			FixedAt:           timestamppb.New(row.LastFixedDate.Time),
-			FixedCount:        row.FixedCount,
-			MeanTimeToFixDays: row.MeanTimeToFixDaysForSeverity,
+	workloadMap := make(map[string][]*sql.ListWorkloadSeverityFixStatsRow)
+	for _, row := range rows {
+		wid := row.WorkloadID.String()
+		workloadMap[wid] = append(workloadMap[wid], row)
+	}
+
+	grouped := make([][]*sql.ListWorkloadSeverityFixStatsRow, 0, len(workloadMap))
+	for _, rows := range workloadMap {
+		grouped = append(grouped, rows)
+	}
+
+	wf := collections.Map(grouped, func(rows []*sql.ListWorkloadSeverityFixStatsRow) *vulnerabilities.WorkloadWithFixes {
+		first := rows[0]
+		fixes := collections.Map(rows, func(row *sql.ListWorkloadSeverityFixStatsRow) *vulnerabilities.WorkloadFix {
+			return &vulnerabilities.WorkloadFix{
+				Severity:          vulnerabilities.Severity(vulnerabilities.Severity_value[strings.ToUpper(row.Severity)]),
+				IntroducedAt:      timestamppb.New(row.IntroducedDate.Time),
+				FixedAt:           timestamppb.New(row.FixedAt.Time),
+				FixedCount:        row.FixedCount,
+				MeanTimeToFixDays: row.MeanTimeToFixDays,
+				SnapshotTime:      timestamppb.New(row.SnapshotTime.Time),
+			}
+		})
+
+		return &vulnerabilities.WorkloadWithFixes{
+			WorkloadId:        first.WorkloadID.String(),
+			WorkloadCluster:   first.WorkloadCluster,
+			WorkloadNamespace: first.WorkloadNamespace,
+			WorkloadName:      first.WorkloadName,
+			Fixes:             fixes,
 		}
 	})
 
-	return &vulnerabilities.ListWorkloadSeveritiesWithMeanTimeToFixResponse{
-		Filter: request.GetFilter(),
-		Nodes:  wf,
+	return &vulnerabilities.ListWorkloadMTTFBySeverityResponse{
+		Filter:    request.GetFilter(),
+		Workloads: wf,
 	}, nil
 }
