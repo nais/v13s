@@ -103,7 +103,41 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 				return suppressVulnerability(ctx, cmd, opts, c)
 			},
 		},
+		{
+			Name:  "workload",
+			Usage: "workload related commands",
+			Commands: []*cli.Command{
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Usage:   "delete workload(s) and associated resources if not used by other workloads",
+					Flags:   append(flag.CommonFlags(opts, "l", "o", "s", "su", "se")),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return deleteWorkload(ctx, opts, c)
+					},
+				},
+			},
+		},
 	}
+}
+
+func deleteWorkload(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
+	var cluster, namespace, workload, workloadType = extractFilters(opts)
+	if workload == nil || namespace == nil || cluster == nil {
+		return fmt.Errorf("cluster, namespace, and workload must be provided to delete a workload")
+	}
+
+	_, err := c.DeleteWorkload(ctx, &management.DeleteWorkloadRequest{
+		Cluster:      *cluster,
+		Namespace:    *namespace,
+		Workload:     *workload,
+		WorkloadType: workloadType,
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("workload %s/%s/%s deleted successfully\n", *cluster, *namespace, *workload)
+	return nil
 }
 
 func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Options, c vulnerabilities.Client) error {

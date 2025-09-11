@@ -1631,6 +1631,65 @@ func (_c *MockQuerier_ListJobsForWorkload_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// ListMeanTimeToFixPerSeverity provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListMeanTimeToFixPerSeverity(ctx context.Context, arg sql.ListMeanTimeToFixPerSeverityParams) ([]*sql.ListMeanTimeToFixPerSeverityRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListMeanTimeToFixPerSeverity")
+	}
+
+	var r0 []*sql.ListMeanTimeToFixPerSeverityRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListMeanTimeToFixPerSeverityParams) ([]*sql.ListMeanTimeToFixPerSeverityRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListMeanTimeToFixPerSeverityParams) []*sql.ListMeanTimeToFixPerSeverityRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListMeanTimeToFixPerSeverityRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListMeanTimeToFixPerSeverityParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListMeanTimeToFixPerSeverity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListMeanTimeToFixPerSeverity'
+type MockQuerier_ListMeanTimeToFixPerSeverity_Call struct {
+	*mock.Call
+}
+
+// ListMeanTimeToFixPerSeverity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListMeanTimeToFixPerSeverityParams
+func (_e *MockQuerier_Expecter) ListMeanTimeToFixPerSeverity(ctx interface{}, arg interface{}) *MockQuerier_ListMeanTimeToFixPerSeverity_Call {
+	return &MockQuerier_ListMeanTimeToFixPerSeverity_Call{Call: _e.mock.On("ListMeanTimeToFixPerSeverity", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListMeanTimeToFixPerSeverity_Call) Run(run func(ctx context.Context, arg sql.ListMeanTimeToFixPerSeverityParams)) *MockQuerier_ListMeanTimeToFixPerSeverity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListMeanTimeToFixPerSeverityParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListMeanTimeToFixPerSeverity_Call) Return(_a0 []*sql.ListMeanTimeToFixPerSeverityRow, _a1 error) *MockQuerier_ListMeanTimeToFixPerSeverity_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListMeanTimeToFixPerSeverity_Call) RunAndReturn(run func(context.Context, sql.ListMeanTimeToFixPerSeverityParams) ([]*sql.ListMeanTimeToFixPerSeverityRow, error)) *MockQuerier_ListMeanTimeToFixPerSeverity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListRiverJobs provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListRiverJobs(ctx context.Context, arg sql.ListRiverJobsParams) ([]*sql.RiverJob, error) {
 	ret := _m.Called(ctx, arg)
@@ -2099,6 +2158,65 @@ func (_c *MockQuerier_ListVulnerabilitySummaries_Call) Return(_a0 []*sql.ListVul
 }
 
 func (_c *MockQuerier_ListVulnerabilitySummaries_Call) RunAndReturn(run func(context.Context, sql.ListVulnerabilitySummariesParams) ([]*sql.ListVulnerabilitySummariesRow, error)) *MockQuerier_ListVulnerabilitySummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListWorkloadSeveritiesWithMeanTimeToFix provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, arg sql.ListWorkloadSeveritiesWithMeanTimeToFixParams) ([]*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadSeveritiesWithMeanTimeToFix")
+	}
+
+	var r0 []*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListWorkloadSeveritiesWithMeanTimeToFixParams) ([]*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListWorkloadSeveritiesWithMeanTimeToFixParams) []*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListWorkloadSeveritiesWithMeanTimeToFixParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadSeveritiesWithMeanTimeToFix'
+type MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadSeveritiesWithMeanTimeToFix is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListWorkloadSeveritiesWithMeanTimeToFixParams
+func (_e *MockQuerier_Expecter) ListWorkloadSeveritiesWithMeanTimeToFix(ctx interface{}, arg interface{}) *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
+	return &MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call{Call: _e.mock.On("ListWorkloadSeveritiesWithMeanTimeToFix", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call) Run(run func(ctx context.Context, arg sql.ListWorkloadSeveritiesWithMeanTimeToFixParams)) *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListWorkloadSeveritiesWithMeanTimeToFixParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call) Return(_a0 []*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow, _a1 error) *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call) RunAndReturn(run func(context.Context, sql.ListWorkloadSeveritiesWithMeanTimeToFixParams) ([]*sql.ListWorkloadSeveritiesWithMeanTimeToFixRow, error)) *MockQuerier_ListWorkloadSeveritiesWithMeanTimeToFix_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2766,6 +2884,52 @@ func (_c *MockQuerier_RefreshVulnerabilitySummaryForDate_Call) Return(_a0 error)
 }
 
 func (_c *MockQuerier_RefreshVulnerabilitySummaryForDate_Call) RunAndReturn(run func(context.Context, pgtype.Date) error) *MockQuerier_RefreshVulnerabilitySummaryForDate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RefreshWorkloadVulnerabilityLifetimes provides a mock function with given fields: ctx
+func (_m *MockQuerier) RefreshWorkloadVulnerabilityLifetimes(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshWorkloadVulnerabilityLifetimes")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshWorkloadVulnerabilityLifetimes'
+type MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call struct {
+	*mock.Call
+}
+
+// RefreshWorkloadVulnerabilityLifetimes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) RefreshWorkloadVulnerabilityLifetimes(ctx interface{}) *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call {
+	return &MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call{Call: _e.mock.On("RefreshWorkloadVulnerabilityLifetimes", ctx)}
+}
+
+func (_c *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call) Run(run func(ctx context.Context)) *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call) Return(_a0 error) *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_RefreshWorkloadVulnerabilityLifetimes_Call {
 	_c.Call.Return(run)
 	return _c
 }

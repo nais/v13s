@@ -11,6 +11,7 @@ service Management{
   rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
   rpc GetWorkloadJobs(GetWorkloadJobsRequest) returns (GetWorkloadJobsResponse);
   rpc Resync(ResyncRequest) returns (ResyncResponse);
+  rpc DeleteWorkload(DeleteWorkloadRequest) returns (DeleteWorkloadResponse);
 }
 
 message RegisterWorkloadRequest {
@@ -98,3 +99,12 @@ message ResyncResponse {
   int32 num_workloads = 1;
   repeated string workloads = 2; // List of workload identifiers that were resynced
 }
+
+message DeleteWorkloadRequest {
+  string cluster = 1;
+  string namespace = 2;
+  string workload = 3;
+  optional string workload_type = 4;
+}
+
+message DeleteWorkloadResponse {}

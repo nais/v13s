@@ -22,6 +22,65 @@ func (_m *MockManagementServer) EXPECT() *MockManagementServer_Expecter {
 	return &MockManagementServer_Expecter{mock: &_m.Mock}
 }
 
+// DeleteWorkload provides a mock function with given fields: _a0, _a1
+func (_m *MockManagementServer) DeleteWorkload(_a0 context.Context, _a1 *management.DeleteWorkloadRequest) (*management.DeleteWorkloadResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteWorkload")
+	}
+
+	var r0 *management.DeleteWorkloadResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *management.DeleteWorkloadRequest) (*management.DeleteWorkloadResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *management.DeleteWorkloadRequest) *management.DeleteWorkloadResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*management.DeleteWorkloadResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *management.DeleteWorkloadRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockManagementServer_DeleteWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteWorkload'
+type MockManagementServer_DeleteWorkload_Call struct {
+	*mock.Call
+}
+
+// DeleteWorkload is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *management.DeleteWorkloadRequest
+func (_e *MockManagementServer_Expecter) DeleteWorkload(_a0 interface{}, _a1 interface{}) *MockManagementServer_DeleteWorkload_Call {
+	return &MockManagementServer_DeleteWorkload_Call{Call: _e.mock.On("DeleteWorkload", _a0, _a1)}
+}
+
+func (_c *MockManagementServer_DeleteWorkload_Call) Run(run func(_a0 context.Context, _a1 *management.DeleteWorkloadRequest)) *MockManagementServer_DeleteWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*management.DeleteWorkloadRequest))
+	})
+	return _c
+}
+
+func (_c *MockManagementServer_DeleteWorkload_Call) Return(_a0 *management.DeleteWorkloadResponse, _a1 error) *MockManagementServer_DeleteWorkload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockManagementServer_DeleteWorkload_Call) RunAndReturn(run func(context.Context, *management.DeleteWorkloadRequest) (*management.DeleteWorkloadResponse, error)) *MockManagementServer_DeleteWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetWorkloadJobs provides a mock function with given fields: _a0, _a1
 func (_m *MockManagementServer) GetWorkloadJobs(_a0 context.Context, _a1 *management.GetWorkloadJobsRequest) (*management.GetWorkloadJobsResponse, error) {
 	ret := _m.Called(_a0, _a1)

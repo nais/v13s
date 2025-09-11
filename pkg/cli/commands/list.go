@@ -71,6 +71,22 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 						return listWorkloadCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
 					},
 				},
+				{
+					Name:  "mttf",
+					Usage: "list mean time to fix (MTTF) for workload severities",
+					Flags: flag.CommonFlags(opts, "l", "o", "s", "su"),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return listWorkloadSeveritiesWithMTTF(ctx, cmd, c, opts)
+					},
+				},
+				{
+					Name:  "mttf-summary",
+					Usage: "list mean time to fix (MTTF) per severity over time",
+					Flags: flag.CommonFlags(opts, "l", "o", "s", "su"),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return listMeanTimeToFixPerSeverity(ctx, cmd, c, opts)
+					},
+				},
 			},
 		},
 	}
@@ -345,6 +361,67 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 	})
+}
+
+func listWorkloadSeveritiesWithMTTF(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, opts *flag.Options) error {
+	resp, err := c.ListWorkloadSeveritiesWithMeanTimeToFix(ctx, flag.ParseOptions(cmd, opts)...)
+	if err != nil {
+		return fmt.Errorf("failed to list workload severities with MTTF: %w", err)
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New(
+		"Workload", "Cluster", "Namespace", "Severity", "Introduced At", "Last Fixed At", "Fix Duration (days)", "Fixed", "Fix Count")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, n := range resp.GetNodes() {
+		lastFixed := "N/A"
+		if n.FixedAt != nil && !n.FixedAt.AsTime().IsZero() {
+			lastFixed = n.FixedAt.AsTime().Format("2006-01-02")
+		}
+		tbl.AddRow(
+			n.WorkloadName,
+			n.WorkloadCluster,
+			n.WorkloadNamespace,
+			n.Severity.String(),
+			n.IntroducedAt.AsTime().Format("2006-01-02"),
+			lastFixed,
+			n.MeanTimeToFixDays,
+			n.FixedAt != nil && !n.FixedAt.AsTime().IsZero(),
+			n.FixedCount,
+		)
+	}
+
+	tbl.Print()
+	return nil
+}
+
+func listMeanTimeToFixPerSeverity(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, opts *flag.Options) error {
+	resp, err := c.ListMeanTimeToFixPerSeverity(ctx, flag.ParseOptions(cmd, opts)...)
+	if err != nil {
+		return fmt.Errorf("failed to list mean time to fix per severity: %w", err)
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	tbl := table.New(
+		"Severity", "Snapshot Date", "Mean Time To Fix (days)", "Fixed Count")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+	for _, n := range resp.GetNodes() {
+		tbl.AddRow(
+			n.Severity.String(),
+			n.SnapshotTime.AsTime().Format("2006-01-02"),
+			n.MeanTimeToFixDays,
+			n.FixedCount,
+		)
+	}
+
+	tbl.Print()
+	return nil
 }
 
 func timeSinceCreation(created, lastUpdated time.Time) string {

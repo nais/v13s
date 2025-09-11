@@ -17,12 +17,13 @@ import (
 )
 
 const (
-	FetchVulnerabilityDataForImagesDefaultLimit = 10
-	MarkUntrackedCronInterval                   = "*/20 * * * *" // every 20 minutes
-	MarkUnusedCronInterval                      = "*/30 * * * *" // every 10 minutes
-	RefreshVulnerabilitySummaryCronDailyView    = "30 4 * * *"   // every day at 6:30 AM CEST
-	ImageMarkAge                                = 30 * time.Minute
-	ResyncImagesOlderThanMinutesDefault         = 30 * 12 * time.Minute // 30 * 12 minutes = 6 hours, default for resyncing images
+	FetchVulnerabilityDataForImagesDefaultLimit        = 10
+	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
+	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
+	RefreshVulnerabilitySummaryCronDailyView           = "*/3 * * * *"  // every 3 minutes
+	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "*/5 * * * *"  // every 5 minutes
+	ImageMarkAge                                       = 30 * time.Minute
+	ResyncImagesOlderThanMinutesDefault                = 30 * 12 * time.Minute // 30 * 12 minutes = 6 hours, default for resyncing images
 )
 
 type Updater struct {
@@ -112,6 +113,18 @@ func (u *Updater) Run(ctx context.Context) {
 		if err = u.querier.RefreshVulnerabilitySummaryDailyView(ctx); err != nil {
 			u.log.WithError(err).Error("failed to refresh vulnerability summary daily view")
 		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshWorkloadVulnerabilityLifetimesCronDailyView}, "refresh workload vulnerability lifetimes", u.log, func() {
+		now := time.Now()
+		u.log.Info("starting refresh of workload vulnerability lifetimes")
+
+		if err := u.querier.RefreshWorkloadVulnerabilityLifetimes(ctx); err != nil {
+			u.log.WithError(err).Error("failed to refresh workload vulnerability lifetimes")
+			return
+		}
+
+		u.log.Infof("workload vulnerability lifetimes refreshed successfully, took %f seconds", time.Since(now).Seconds())
 	})
 }
 

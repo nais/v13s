@@ -17,7 +17,7 @@ import (
 
 const (
 	KindRemoveFromSource            = "remove_from_source"
-	RemoveFromSourceByPeriodMinutes = 5 * time.Minute
+	RemoveFromSourceByPeriodMinutes = 2 * time.Minute
 )
 
 type RemoveFromSourceJob struct {

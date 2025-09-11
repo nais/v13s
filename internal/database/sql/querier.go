@@ -38,6 +38,7 @@ type Querier interface {
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
+	ListMeanTimeToFixPerSeverity(ctx context.Context, arg ListMeanTimeToFixPerSeverityParams) ([]*ListMeanTimeToFixPerSeverityRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
 	ListSeverityVulnerabilitiesSince(ctx context.Context, arg ListSeverityVulnerabilitiesSinceParams) ([]*ListSeverityVulnerabilitiesSinceRow, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
@@ -46,6 +47,7 @@ type Querier interface {
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
+	ListWorkloadSeveritiesWithMeanTimeToFix(ctx context.Context, arg ListWorkloadSeveritiesWithMeanTimeToFixParams) ([]*ListWorkloadSeveritiesWithMeanTimeToFixRow, error)
 	ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)
 	ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)
 	ListWorkloadVulnerabilitiesBecameCriticalSince(ctx context.Context, arg ListWorkloadVulnerabilitiesBecameCriticalSinceParams) ([]*ListWorkloadVulnerabilitiesBecameCriticalSinceRow, error)
@@ -58,6 +60,7 @@ type Querier interface {
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
+	RefreshWorkloadVulnerabilityLifetimes(ctx context.Context) error
 	ResetDatabase(ctx context.Context) error
 	ResolveWorkloadVulnerabilitiesForImage(ctx context.Context, arg ResolveWorkloadVulnerabilitiesForImageParams) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
