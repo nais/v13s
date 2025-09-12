@@ -15,7 +15,6 @@ type Client interface {
 	ListSuppressedVulnerabilities(ctx context.Context, opts ...Option) (*ListSuppressedVulnerabilitiesResponse, error)
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error)
-	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error)
 	ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error)
@@ -110,18 +109,6 @@ func (c *client) ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...O
 		OrderBy:           o.OrderBy,
 		Since:             o.Since,
 		IncludeSuppressed: &o.IncludeSuppressed,
-	}, o.CallOptions...)
-}
-
-func (c *client) ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error) {
-	o := applyOptions(opts...)
-	return c.v.ListWorkloadCriticalVulnerabilitiesSince(ctx, &ListWorkloadCriticalVulnerabilitiesSinceRequest{
-		Filter:            o.Filter,
-		Limit:             o.Limit,
-		Offset:            o.Offset,
-		Since:             o.Since,
-		IncludeSuppressed: &o.IncludeSuppressed,
-		IncludeResolved:   &o.IncludeUnresolved,
 	}, o.CallOptions...)
 }
 
