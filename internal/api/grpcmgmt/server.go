@@ -248,7 +248,7 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			}
 
 			go func() {
-				_, err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
+				err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
 				if err != nil {
 					fmt.Printf("failed to resync images: %v\n", err)
 				}

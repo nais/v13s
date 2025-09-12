@@ -57,21 +57,6 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					},
 				},
 				{
-					Name:  "critical",
-					Usage: "list workloads that have had critical vulnerabilities since a given time",
-					Flags: append(flag.CommonFlags(opts, "limit", "order"),
-						&cli.BoolFlag{
-							Name:        "unresolved",
-							Aliases:     []string{"u"},
-							Value:       false,
-							Usage:       "only show vulnerabilities that are still unresolved",
-							Destination: &opts.Unresolved,
-						}),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return listWorkloadCriticalVulnerabilitiesSince(ctx, cmd, c, opts)
-					},
-				},
-				{
 					Name:  "mttf",
 					Usage: "list mean time to fix (MTTF) for workload severities",
 					Flags: flag.CommonFlags(opts, "l", "o", "s", "su"),
@@ -90,48 +75,6 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 			},
 		},
 	}
-}
-
-func listWorkloadCriticalVulnerabilitiesSince(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
-	opts := flag.ParseOptions(cmd, o)
-	start := time.Now()
-	resp, err := c.ListWorkloadCriticalVulnerabilitiesSince(ctx, opts...)
-	if err != nil {
-		return err
-	}
-
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-	tbl := table.New("Workload", "CVE", "CriticalSince", "Resolved")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-	for _, n := range resp.GetNodes() {
-		var becameCritical string
-		if n.Vulnerability.GetBecameCriticalAt() != nil {
-			t := n.Vulnerability.GetBecameCriticalAt().AsTime()
-			becameCritical = t.Format(time.RFC3339)
-		} else {
-			becameCritical = "-"
-		}
-
-		resolved := "-"
-		if n.Vulnerability.GetResolvedAt() != nil {
-			t := n.Vulnerability.GetResolvedAt().AsTime()
-			resolved = t.Format(time.RFC3339)
-		}
-		tbl.AddRow(
-			n.WorkloadRef.Name,
-			n.Vulnerability.Cve.Id,
-			becameCritical,
-			resolved,
-		)
-	}
-
-	tbl.Print()
-	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
-
-	return nil
 }
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
