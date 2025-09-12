@@ -21,10 +21,9 @@ const (
 	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
 	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
-	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "*/30 * * * *" // every 30 minutes
-	// RefreshWorkloadVulnerabilityLifetimesCronDailyView = "* 5 * * *"    // every day at 7:00 AM CEST
-	ImageMarkAge                        = 30 * time.Minute
-	ResyncImagesOlderThanMinutesDefault = 30 * 12 * time.Minute // 30 * 12 minutes = 6 hours, default for resyncing images
+	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
+	ImageMarkAge                                       = 30 * time.Minute
+	ResyncImagesOlderThanMinutesDefault                = 30 * 12 * time.Minute // 30 * 12 minutes = 6 hours, default for resyncing images
 )
 
 type Updater struct {
