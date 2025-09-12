@@ -23,6 +23,7 @@ const (
 	Management_GetWorkloadStatus_FullMethodName = "/v13s.api.protobuf.Management/GetWorkloadStatus"
 	Management_GetWorkloadJobs_FullMethodName   = "/v13s.api.protobuf.Management/GetWorkloadJobs"
 	Management_Resync_FullMethodName            = "/v13s.api.protobuf.Management/Resync"
+	Management_DeleteWorkload_FullMethodName    = "/v13s.api.protobuf.Management/DeleteWorkload"
 )
 
 // ManagementClient is the client API for Management service.
@@ -33,6 +34,7 @@ type ManagementClient interface {
 	GetWorkloadStatus(ctx context.Context, in *GetWorkloadStatusRequest, opts ...grpc.CallOption) (*GetWorkloadStatusResponse, error)
 	GetWorkloadJobs(ctx context.Context, in *GetWorkloadJobsRequest, opts ...grpc.CallOption) (*GetWorkloadJobsResponse, error)
 	Resync(ctx context.Context, in *ResyncRequest, opts ...grpc.CallOption) (*ResyncResponse, error)
+	DeleteWorkload(ctx context.Context, in *DeleteWorkloadRequest, opts ...grpc.CallOption) (*DeleteWorkloadResponse, error)
 }
 
 type managementClient struct {
@@ -83,6 +85,16 @@ func (c *managementClient) Resync(ctx context.Context, in *ResyncRequest, opts .
 	return out, nil
 }
 
+func (c *managementClient) DeleteWorkload(ctx context.Context, in *DeleteWorkloadRequest, opts ...grpc.CallOption) (*DeleteWorkloadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteWorkloadResponse)
+	err := c.cc.Invoke(ctx, Management_DeleteWorkload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ManagementServer is the server API for Management service.
 // All implementations must embed UnimplementedManagementServer
 // for forward compatibility.
@@ -91,6 +103,7 @@ type ManagementServer interface {
 	GetWorkloadStatus(context.Context, *GetWorkloadStatusRequest) (*GetWorkloadStatusResponse, error)
 	GetWorkloadJobs(context.Context, *GetWorkloadJobsRequest) (*GetWorkloadJobsResponse, error)
 	Resync(context.Context, *ResyncRequest) (*ResyncResponse, error)
+	DeleteWorkload(context.Context, *DeleteWorkloadRequest) (*DeleteWorkloadResponse, error)
 	mustEmbedUnimplementedManagementServer()
 }
 
@@ -112,6 +125,9 @@ func (UnimplementedManagementServer) GetWorkloadJobs(context.Context, *GetWorklo
 }
 func (UnimplementedManagementServer) Resync(context.Context, *ResyncRequest) (*ResyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Resync not implemented")
+}
+func (UnimplementedManagementServer) DeleteWorkload(context.Context, *DeleteWorkloadRequest) (*DeleteWorkloadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkload not implemented")
 }
 func (UnimplementedManagementServer) mustEmbedUnimplementedManagementServer() {}
 func (UnimplementedManagementServer) testEmbeddedByValue()                    {}
@@ -206,6 +222,24 @@ func _Management_Resync_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Management_DeleteWorkload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorkloadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServer).DeleteWorkload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Management_DeleteWorkload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServer).DeleteWorkload(ctx, req.(*DeleteWorkloadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Management_ServiceDesc is the grpc.ServiceDesc for Management service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +262,10 @@ var Management_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Resync",
 			Handler:    _Management_Resync_Handler,
+		},
+		{
+			MethodName: "DeleteWorkload",
+			Handler:    _Management_DeleteWorkload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

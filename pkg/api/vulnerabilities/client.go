@@ -17,6 +17,8 @@ type Client interface {
 	ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadCriticalVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListWorkloadCriticalVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
+	ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error)
+	ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
@@ -129,6 +131,20 @@ func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id strin
 	})
 }
 
+func (c *client) ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.ListMeanTimeToFixTrendBySeverity(ctx, &ListMeanTimeToFixTrendBySeverityRequest{
+		Filter: o.Filter,
+	}, o.CallOptions...)
+}
+
+func (c *client) ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.ListWorkloadMTTFBySeverity(ctx, &ListWorkloadMTTFBySeverityRequest{
+		Filter: o.Filter,
+	}, o.CallOptions...)
+}
+
 func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.GetVulnerabilitySummary(
@@ -194,4 +210,8 @@ func (c *client) GetWorkloadJobs(ctx context.Context, in *management.GetWorkload
 
 func (c *client) Resync(ctx context.Context, in *management.ResyncRequest, opts ...grpc.CallOption) (*management.ResyncResponse, error) {
 	return c.m.Resync(ctx, in, opts...)
+}
+
+func (c *client) DeleteWorkload(ctx context.Context, in *management.DeleteWorkloadRequest, opts ...grpc.CallOption) (*management.DeleteWorkloadResponse, error) {
+	return c.m.DeleteWorkload(ctx, in, opts...)
 }

@@ -27,6 +27,7 @@ type Options struct {
 	CveId         string
 	Unresolved    bool
 	Severity      string
+	Output        string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -97,18 +98,22 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 		},
 	}
 	for _, f := range cFlags {
-		exclude := false
-		for _, e := range excludes {
-			if f.String() == e {
-				exclude = true
-				break
-			}
-		}
-		if !exclude {
+		if !shouldExclude(f, excludes) {
 			flags = append(flags, f)
 		}
 	}
 	return flags
+}
+
+func shouldExclude(f cli.Flag, excludes []string) bool {
+	for _, e := range excludes {
+		for _, n := range f.Names() {
+			if n == e {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {

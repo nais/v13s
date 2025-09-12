@@ -2,9 +2,11 @@ package grpcmgmt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
@@ -14,6 +16,8 @@ import (
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -261,4 +265,42 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 		NumWorkloads: int32(len(workloads)),
 		Workloads:    workloads,
 	}, nil
+}
+
+func (s *Server) DeleteWorkload(ctx context.Context, request *management.DeleteWorkloadRequest) (*management.DeleteWorkloadResponse, error) {
+	workloadType := model.WorkloadTypeApp
+	if request.WorkloadType != nil {
+		workloadType = model.WorkloadType(*request.WorkloadType)
+	}
+
+	w, err := s.querier.GetWorkload(ctx, sql.GetWorkloadParams{
+		Cluster:      request.Cluster,
+		Namespace:    request.Namespace,
+		Name:         request.Workload,
+		WorkloadType: string(workloadType),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Errorf(codes.NotFound, "workload %s/%s/%s not found", request.Cluster, request.Namespace, request.Workload)
+		}
+		s.log.WithError(err).Error("failed to get workload")
+		return nil, err
+	}
+
+	workload := &model.Workload{
+		Cluster:   request.Cluster,
+		Namespace: request.Namespace,
+		Name:      request.Workload,
+		Type:      workloadType,
+		ImageName: w.ImageName,
+		ImageTag:  w.ImageTag,
+	}
+
+	err = s.mgr.DeleteWorkload(ctx, workload)
+	if err != nil {
+		s.log.WithError(err).Error("failed to delete workload")
+		return nil, err
+	}
+
+	return &management.DeleteWorkloadResponse{}, nil
 }

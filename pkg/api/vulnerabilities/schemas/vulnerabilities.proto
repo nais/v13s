@@ -39,6 +39,8 @@ service Vulnerabilities {
   // Supplying all filters will give the summary for that specific workload
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
   rpc GetVulnerabilitySummaryTimeSeries(GetVulnerabilitySummaryTimeSeriesRequest) returns (GetVulnerabilitySummaryTimeSeriesResponse);
+  rpc ListMeanTimeToFixTrendBySeverity(ListMeanTimeToFixTrendBySeverityRequest) returns (ListMeanTimeToFixTrendBySeverityResponse);
+  rpc ListWorkloadMTTFBySeverity(ListWorkloadMTTFBySeverityRequest) returns (ListWorkloadMTTFBySeverityResponse);
 
   rpc GetVulnerabilitySummaryForImage(GetVulnerabilitySummaryForImageRequest) returns (GetVulnerabilitySummaryForImageResponse);
 
@@ -143,6 +145,49 @@ message ListWorkloadsForVulnerabilityByIdRequest {
 message ListWorkloadsForVulnerabilityByIdResponse {
   string id = 1;
   repeated Workload workloadRef = 2;
+}
+
+message ListMeanTimeToFixTrendBySeverityRequest {
+  Filter filter = 1;
+}
+
+message ListMeanTimeToFixTrendBySeverityResponse {
+  Filter filter = 1;
+  repeated MeanTimeToFixTrendPoint nodes = 2;
+}
+
+message MeanTimeToFixTrendPoint {
+  Severity severity = 1;
+  int32 mean_time_to_fix_days = 2;
+  int32 fixed_count = 3;
+  google.protobuf.Timestamp snapshot_time = 4;
+}
+
+message ListWorkloadMTTFBySeverityRequest {
+  Filter filter = 1;
+}
+
+message ListWorkloadMTTFBySeverityResponse {
+  Filter filter = 1;
+  repeated WorkloadWithFixes workloads = 2;
+}
+
+message WorkloadWithFixes {
+  string workload_id = 1;
+  string workload_cluster = 2;
+  string workload_namespace = 3;
+  string workload_name = 4;
+  repeated WorkloadFix fixes = 5;
+}
+
+message WorkloadFix {
+  Severity severity = 1;
+  optional google.protobuf.Timestamp introduced_at = 2;
+  optional google.protobuf.Timestamp fixed_at = 3;
+  optional int32 fix_duration_days = 4;
+  int32 mean_time_to_fix_days = 5;
+  int32 fixed_count = 6;
+  optional google.protobuf.Timestamp snapshot_time = 7;
 }
 
 message GetVulnerabilitySummaryForImageRequest {
