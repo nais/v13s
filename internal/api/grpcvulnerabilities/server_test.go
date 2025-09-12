@@ -991,6 +991,208 @@ func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
 	}
 }
 
+func TestServer_ListMeanTimeToFixTrend_MultiWorkload(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1", "cluster-2"},
+		namespaces:            []string{"namespace-1", "namespace-2"},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	now := time.Now()
+
+	for _, c := range cfg.clusters {
+		workloads, err := db.ListWorkloadsByCluster(ctx, c)
+		require.NoError(t, err)
+		require.NotEmpty(t, workloads)
+		for _, w := range workloads {
+			vulns := []struct {
+				Severity     int
+				IntroducedAt time.Time
+				FixedAt      *time.Time
+			}{
+				{0, now.Add(-10 * 24 * time.Hour), ptrTime(now.Add(-5 * 24 * time.Hour))},
+				{1, now.Add(-7 * 24 * time.Hour), ptrTime(now.Add(-2 * 24 * time.Hour))},
+			}
+
+			for _, v := range vulns {
+				fixed := v.FixedAt != nil
+				var fixedAt pgtype.Date
+				fixDuration := 0
+				if fixed {
+					fixDuration = int(v.FixedAt.Sub(v.IntroducedAt).Hours() / 24)
+				}
+
+				_, err := pool.Exec(ctx, `
+   		 		INSERT INTO vuln_fix_summary (
+        		workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
+    			) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				`, w.ID, v.Severity, v.IntroducedAt, fixedAt, fixDuration, fixed, now)
+				require.NoError(t, err)
+			}
+		}
+	}
+
+	err := db.UpsertVulnerabilityLifetimes(ctx)
+	require.NoError(t, err)
+
+	t.Run("all clusters", func(t *testing.T) {
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(resp.Nodes), 1)
+
+		for _, n := range resp.Nodes {
+			fmt.Printf("Severity %d -> mean time to fix: %d days, fixed count: %d\n",
+				n.Severity, n.MeanTimeToFixDays, n.FixedCount)
+			assert.True(t, n.FixedCount > 0)
+			assert.True(t, n.MeanTimeToFixDays > 0)
+		}
+	})
+
+	t.Run("filter by cluster-1", func(t *testing.T) {
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.ClusterFilter("cluster-1"))
+		require.NoError(t, err)
+		for _, n := range resp.Nodes {
+			assert.True(t, n.FixedCount > 0)
+		}
+	})
+
+	t.Run("filter by namespace-2", func(t *testing.T) {
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.NamespaceFilter("namespace-2"))
+		require.NoError(t, err)
+		for _, n := range resp.Nodes {
+			assert.True(t, n.FixedCount > 0)
+		}
+	})
+
+	t.Run("filter by workload type app", func(t *testing.T) {
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.WorkloadTypeFilter("app"))
+		require.NoError(t, err)
+		for _, n := range resp.Nodes {
+			assert.True(t, n.FixedCount > 0)
+		}
+	})
+
+	t.Run("filter by workload name workload-A", func(t *testing.T) {
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.WorkloadFilter("workload-A"))
+		require.NoError(t, err)
+		for _, n := range resp.Nodes {
+			assert.True(t, n.FixedCount > 0)
+		}
+	})
+}
+
+func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1", "cluster-2"},
+		namespaces:            []string{"namespace-1", "namespace-2"},
+		workloadsPerNamespace: 1,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	now := time.Now()
+
+	type vuln struct {
+		Severity     int
+		IntroducedAt time.Time
+		FixedAt      *time.Time
+	}
+
+	type expectedStat struct {
+		FixedCount        int32
+		MeanTimeToFixDays int32
+	}
+	expected := map[string]expectedStat{}
+
+	for _, c := range cfg.clusters {
+		workloads, err := db.ListWorkloadsByCluster(ctx, c)
+		require.NoError(t, err)
+		require.NotEmpty(t, workloads)
+
+		for _, w := range workloads {
+			vulns := []vuln{
+				// Fixed critical and high severities
+				{0, now.Add(-10 * 24 * time.Hour), ptrTime(now.Add(-5 * 24 * time.Hour))},
+				{1, now.Add(-7 * 24 * time.Hour), ptrTime(now.Add(-2 * 24 * time.Hour))},
+				// Unfixed medium severity
+				{2, now.Add(-3 * 24 * time.Hour), nil},
+			}
+
+			for _, v := range vulns {
+				fixed := v.FixedAt != nil
+				var fixedAt pgtype.Date
+				fixDuration := int32(0)
+				if fixed {
+					fixedAt = pgtype.Date{Time: v.FixedAt.UTC(), Valid: true}
+					fixDuration = int32(v.FixedAt.Sub(v.IntroducedAt).Hours() / 24)
+				}
+
+				_, err := pool.Exec(ctx, `
+					INSERT INTO vuln_fix_summary (
+						workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
+					) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				`, w.ID, v.Severity, v.IntroducedAt, fixedAt, fixDuration, fixed, now)
+				require.NoError(t, err)
+
+				key := fmt.Sprintf("%s-%d", w.ID, v.Severity)
+				expected[key] = expectedStat{
+					FixedCount:        0,
+					MeanTimeToFixDays: 0,
+				}
+				if fixed {
+					expected[key] = expectedStat{
+						FixedCount:        1,
+						MeanTimeToFixDays: fixDuration,
+					}
+				}
+			}
+		}
+	}
+
+	err := db.UpsertVulnerabilityLifetimes(ctx)
+	require.NoError(t, err)
+
+	filterTests := []struct {
+		name   string
+		option vulnerabilities.Option
+	}{
+		{"cluster-1", vulnerabilities.ClusterFilter("cluster-1")},
+		{"namespace-2", vulnerabilities.NamespaceFilter("namespace-2")},
+		{"workload type app", vulnerabilities.WorkloadTypeFilter("app")},
+		{"workload name workload-A", vulnerabilities.WorkloadFilter("workload-1")},
+	}
+
+	for _, tt := range filterTests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.ListWorkloadMTTFBySeverity(ctx, tt.option)
+			require.NoError(t, err)
+			assert.NotEmpty(t, resp.GetWorkloads())
+
+			for _, n := range resp.GetWorkloads() {
+				for _, f := range n.GetFixes() {
+					key := fmt.Sprintf("%s-%d", n.WorkloadId, f.Severity)
+					exp, ok := expected[key]
+					require.True(t, ok, "unexpected workload/severity combination: %s", key)
+
+					assert.Equal(t, exp.FixedCount, f.FixedCount, "workload=%s severity=%d", n.WorkloadName, f.Severity)
+					assert.Equal(t, exp.MeanTimeToFixDays, f.MeanTimeToFixDays, "workload=%s severity=%d", n.WorkloadName, f.Severity)
+
+					if f.FixedCount == 0 {
+						assert.Equal(t, int32(0), f.MeanTimeToFixDays, "unfixed vuln should have 0 mean duration")
+					}
+				}
+			}
+		})
+	}
+}
+
+func ptrTime(t time.Time) *time.Time { return &t }
+
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)

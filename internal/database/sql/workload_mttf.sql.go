@@ -35,7 +35,7 @@ type ListMeanTimeToFixTrendBySeverityParams struct {
 }
 
 type ListMeanTimeToFixTrendBySeverityRow struct {
-	Severity          string
+	Severity          int32
 	SnapshotTime      pgtype.Date
 	MeanTimeToFixDays int32
 	FixedCount        int32
@@ -107,7 +107,7 @@ type ListWorkloadSeverityFixStatsRow struct {
 	WorkloadName      string
 	WorkloadNamespace string
 	WorkloadCluster   string
-	Severity          string
+	Severity          int32
 	IntroducedDate    pgtype.Date
 	FixedAt           pgtype.Date
 	FixedCount        int32

@@ -3,7 +3,6 @@ package grpcvulnerabilities
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -33,7 +32,7 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 
 	ms := collections.Map(metrics, func(row *sql.ListMeanTimeToFixTrendBySeverityRow) *vulnerabilities.MeanTimeToFixTrendPoint {
 		return &vulnerabilities.MeanTimeToFixTrendPoint{
-			Severity:          vulnerabilities.Severity(vulnerabilities.Severity_value[strings.ToUpper(row.Severity)]),
+			Severity:          vulnerabilities.Severity(row.Severity),
 			MeanTimeToFixDays: row.MeanTimeToFixDays,
 			SnapshotTime:      timestamppb.New(row.SnapshotTime.Time),
 			FixedCount:        row.FixedCount,
@@ -81,7 +80,7 @@ func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulner
 		first := rows[0]
 		fixes := collections.Map(rows, func(row *sql.ListWorkloadSeverityFixStatsRow) *vulnerabilities.WorkloadFix {
 			return &vulnerabilities.WorkloadFix{
-				Severity:          vulnerabilities.Severity(vulnerabilities.Severity_value[strings.ToUpper(row.Severity)]),
+				Severity:          vulnerabilities.Severity(row.Severity),
 				IntroducedAt:      timestamppb.New(row.IntroducedDate.Time),
 				FixedAt:           timestamppb.New(row.FixedAt.Time),
 				FixedCount:        row.FixedCount,

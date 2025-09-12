@@ -373,7 +373,7 @@ func listWorkloadMTTFBySeverity(ctx context.Context, cmd *cli.Command, c vulnera
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	tbl := table.New(
-		"Workload", "Cluster", "Namespace", "Severity", "Introduced At", "Last Fixed At", "Fixed", "Fix Duration (days)", "Fix Count", "Snapshot Date")
+		"Workload", "Cluster", "Namespace", "Severity", "Introduced At", "Fixed At", "Fixed", "Fix Duration (days)", "Fix Count", "Snapshot Date")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, workload := range resp.GetWorkloads() {

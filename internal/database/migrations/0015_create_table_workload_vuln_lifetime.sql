@@ -2,8 +2,8 @@
 
 CREATE TABLE vuln_fix_summary
 (
-    workload_id   UUID REFERENCES workloads (id),
-    severity      TEXT    NOT NULL,
+    workload_id   UUID REFERENCES workloads (id) ON DELETE CASCADE,
+    severity      INT    NOT NULL,
     introduced_at DATE    NOT NULL,
     fixed_at      DATE,
     fix_duration  INT,
@@ -14,19 +14,19 @@ CREATE TABLE vuln_fix_summary
 
 CREATE OR REPLACE VIEW vuln_upsert_data AS
 WITH vuln_events AS (
-    SELECT workload_id, snapshot_date, 'critical' AS severity, critical AS count
+    SELECT workload_id, snapshot_date, 0 AS severity, critical AS count
     FROM vuln_daily_by_workload
     UNION ALL
-    SELECT workload_id, snapshot_date, 'high', high
+    SELECT workload_id, snapshot_date, 1, high
     FROM vuln_daily_by_workload
     UNION ALL
-    SELECT workload_id, snapshot_date, 'medium', medium
+    SELECT workload_id, snapshot_date, 2, medium
     FROM vuln_daily_by_workload
     UNION ALL
-    SELECT workload_id, snapshot_date, 'low', low
+    SELECT workload_id, snapshot_date, 3, low
     FROM vuln_daily_by_workload
     UNION ALL
-    SELECT workload_id, snapshot_date, 'unassigned', unassigned
+    SELECT workload_id, snapshot_date, 4, unassigned
     FROM vuln_daily_by_workload
 ),
 vuln_events_with_lag AS (
@@ -35,18 +35,12 @@ vuln_events_with_lag AS (
     FROM vuln_events
 ),
 introduced AS (
-    SELECT
-        workload_id,
-        severity,
-        snapshot_date AS introduced_at
+    SELECT workload_id, severity, snapshot_date AS introduced_at
     FROM vuln_events_with_lag
     WHERE count > 0 AND (prev_count = 0 OR prev_count IS NULL)
 ),
 fixed AS (
-    SELECT
-        workload_id,
-        severity,
-        snapshot_date AS fixed_at
+    SELECT workload_id, severity, snapshot_date AS fixed_at
     FROM vuln_events_with_lag
     WHERE count = 0 AND prev_count > 0
 )
