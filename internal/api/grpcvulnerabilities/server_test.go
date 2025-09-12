@@ -991,7 +991,7 @@ func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
 	}
 }
 
-func TestServer_ListMeanTimeToFixTrend_MultiWorkload(t *testing.T) {
+func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1", "cluster-2"},
 		namespaces:            []string{"namespace-1", "namespace-2"},
