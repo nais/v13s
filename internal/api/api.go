@@ -93,7 +93,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer informerMgr.Stop()
 
-	syncCtx, cancelSync := context.WithTimeout(ctx, 20*time.Second)
+	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
 	if !informerMgr.WaitForReady(syncCtx) {
 		log.Fatalf("timed out waiting for watchers to be ready")
