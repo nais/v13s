@@ -27,6 +27,7 @@ type Options struct {
 	CveId         string
 	Unresolved    bool
 	Severity      string
+	Output        string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -75,8 +76,17 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 			Name:    "sbom",
 			Aliases: []string{"s"},
 			Usage:   "download sbom",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:        "output",
+					Aliases:     []string{"o"},
+					Value:       "",
+					Usage:       "output format (json, raw)",
+					Destination: &opts.Output,
+				},
+			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return downloadSbom(ctx, cmd)
+				return downloadSbom(ctx, cmd, opts)
 			},
 		},
 		{
@@ -297,7 +307,7 @@ func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabili
 	return nil
 }
 
-func downloadSbom(ctx context.Context, cmd *cli.Command) error {
+func downloadSbom(ctx context.Context, cmd *cli.Command, opts *flag.Options) error {
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image")
 	}
@@ -313,11 +323,24 @@ func downloadSbom(ctx context.Context, cmd *cli.Command) error {
 	if att == nil {
 		return fmt.Errorf("no attestation found for image %s", cmd.Args().First())
 	}
-	out, err := json.MarshalIndent(att.Statement.Predicate, "", "  ")
+
+	out, err := json.MarshalIndent(att.Predicate, "", "  ")
 	if err != nil {
 		return err
 	}
+
+	if opts.Output == "json" {
+		sbomBytes, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(string(out), `"`, ""))
+		if err != nil {
+			return fmt.Errorf("failed to decode sbom: %w", err)
+		}
+
+		fmt.Println(string(sbomBytes))
+		return nil
+	}
+
 	fmt.Println(string(out))
+
 	return nil
 }
 
