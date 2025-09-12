@@ -162,14 +162,16 @@ INSERT INTO vuln_fix_summary (
     snapshot_date
 )
 SELECT
-    workload_id,
-    severity,
-    introduced_at,
-    fixed_at,
-    fix_duration,
-    is_fixed,
-    snapshot_date
-FROM vuln_upsert_data ON CONFLICT (workload_id, severity, introduced_at) DO
+    v.workload_id,
+    v.severity,
+    v.introduced_at,
+    v.fixed_at,
+    v.fix_duration,
+    v.is_fixed,
+    v.snapshot_date
+FROM vuln_upsert_data v
+         JOIN workloads w ON w.id = v.workload_id
+    ON CONFLICT (workload_id, severity, introduced_at) DO
 UPDATE
     SET
         fixed_at = EXCLUDED.fixed_at,
