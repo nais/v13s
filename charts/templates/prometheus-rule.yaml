@@ -40,7 +40,7 @@ spec:
             workload_namespace="{{ .Release.Namespace }}",
             workload_type!="job"
             }
-            ) > 150
+            ) > 250
           for: 10m
           labels:
             namespace: nais-system
