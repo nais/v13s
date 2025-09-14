@@ -2,22 +2,19 @@ package updater
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/metrics"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	FetchVulnerabilityDataForImagesDefaultLimit        = 10
 	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
 	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
@@ -33,11 +30,12 @@ type Updater struct {
 	resyncImagesOlderThanMinutes time.Duration
 	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
+	mgr                          *manager.WorkloadManager
 	doneChan                     chan struct{}
 	once                         sync.Once
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, doneChan chan struct{}, mgr *manager.WorkloadManager, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -52,6 +50,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
+		mgr:                          mgr,
 		doneChan:                     doneChan,
 		log:                          log,
 	}
@@ -123,49 +122,17 @@ func (u *Updater) Run(ctx context.Context) {
 
 func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 	u.log.Debug("resyncing images")
-	start := time.Now()
-
 	images, err := u.querier.GetImagesScheduledForSync(ctx)
 	if err != nil {
 		return err
 	}
 
-	ctx = NewDbContext(ctx, u.querier, u.log)
-
-	done := make(chan bool)
-	batchCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
-	defer cancel()
-
-	ch := make(chan *ImageVulnerabilityData, 100)
-
-	go func() {
-		defer close(done)
-		if err := u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
-			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
-			done <- false
-		} else {
-			done <- true
+	for _, img := range images {
+		err = u.mgr.SyncImage(ctx, img.Name, img.Tag)
+		if err != nil {
+			u.log.WithError(err).Errorf("failed to enqueue sync job for %s:%s", img.Name, img.Tag)
 		}
-	}()
-
-	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
-	close(ch)
-
-	updateSuccess := <-done
-
-	if err != nil {
-		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
-		return err
 	}
-
-	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
-
-	if u.doneChan != nil {
-		u.once.Do(func() {
-			close(u.doneChan)
-		})
-	}
-
 	return nil
 }
 
@@ -229,128 +196,4 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 		return err
 	}
 	return nil
-}
-
-func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVulnerabilityData) error {
-	start := time.Now()
-
-	errs := make([]error, 0)
-	for {
-		batch, err := collections.ReadChannel(ctx, ch, 100)
-		if err != nil {
-			return err
-		}
-
-		if len(batch) == 0 {
-			break
-		}
-
-		errs = u.upsertBatch(ctx, batch)
-	}
-
-	if len(errs) > 0 {
-		u.log.Debugf("errors during batch upsert: %v", errs)
-	}
-
-	u.log.WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_errors": len(errs),
-	}).Infof("vulnerability data has been updated")
-
-	return nil
-}
-
-func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityData) []error {
-	if len(batch) == 0 {
-		return nil
-	}
-	errors := 0
-	errs := make([]error, 0)
-
-	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
-	cves := make([]sql.BatchUpsertCveParams, 0)
-	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-	summaries := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
-
-	for _, i := range batch {
-		cves = append(cves, i.ToCveSqlParams()...)
-		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
-		summaries = append(summaries, i.ToVulnerabilitySummarySqlParams())
-		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
-			State: sql.ImageStateUpdated,
-			Name:  i.ImageName,
-			Tag:   i.ImageTag,
-		})
-
-		metrics.SetWorkloadMetrics(i.Workloads, i.Summary)
-	}
-
-	start := time.Now()
-	var batchErr error
-	u.querier.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
-		if err != nil {
-			u.log.WithError(err).Debug("failed to batch upsert cves")
-			batchErr = err
-			errors++
-			errs = append(errs, err)
-		}
-	})
-	upserted := len(cves) - errors
-	u.log.WithError(batchErr).WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_rows":   upserted,
-		"num_errors": errors,
-	}).Infof("upserted batch of cves")
-
-	start = time.Now()
-	errors = 0
-	u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec(func(i int, err error) {
-		if err != nil {
-			u.log.WithError(err).Debug("failed to batch upsert vulnerabilities")
-			batchErr = err
-			errors++
-			errs = append(errs, err)
-		}
-	})
-	upserted = len(vulns) - errors
-	u.log.WithError(batchErr).WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_rows":   upserted,
-		"num_errors": errors,
-	}).Infof("upserted batch of vulnerabilities")
-
-	start = time.Now()
-	errors = 0
-	u.querier.BatchUpsertVulnerabilitySummary(ctx, summaries).Exec(func(i int, err error) {
-		if err != nil {
-			u.log.WithError(err).Debug("failed to batch upsert vulnerability summary")
-			batchErr = err
-			errors++
-			errs = append(errs, err)
-		}
-	})
-	upserted = len(summaries) - errors
-	u.log.WithError(batchErr).WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_rows":   upserted,
-		"num_errors": errors,
-	}).Infof("upserted batch of summaries")
-
-	if len(errs) == 0 {
-		start = time.Now()
-		u.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
-			if err != nil {
-				u.log.WithError(err).Debug("failed to batch update image state")
-				batchErr = err
-				errors++
-				errs = append(errs, err)
-			}
-		})
-		u.log.WithError(batchErr).WithFields(logrus.Fields{
-			"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-			"num_rows":   upserted,
-			"num_errors": errors,
-		}).Infof("upserted batch of image states (updated)")
-	}
-	return errs
 }
