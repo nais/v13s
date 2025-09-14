@@ -71,18 +71,22 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		KindFinalizeAttestation: {
 			MaxWorkers: 100,
 		},
+		KindSyncImage: {
+			MaxWorkers: 50,
+		},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
 	if err != nil {
 		log.Fatalf("Failed to create job client: %v", err)
 	}
-	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "add_workload")})
-	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", "get_attestation")})
-	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
-	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
-	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
-	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
+	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", KindAddWorkload)})
+	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", KindGetAttestation)})
+	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindUploadAttestation)})
+	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", KindRemoveFromSource)})
+	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindDeleteWorkload)})
+	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindFinalizeAttestation)})
+	job.AddWorker(jobClient, &SyncImageWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindSyncImage)})
 
 	m := &WorkloadManager{
 		db:              db,
@@ -137,54 +141,16 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 	return nil
 }
 
-/*func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
-	m.log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
-	state := sql.WorkloadStateFailed
-	subsystem := WorkloadEventSubsystemUnknown
-	eventType := WorkloadEventFailed
-
-	var uErr model.UnrecoverableError
-	if errors.As(originalErr, &uErr) {
-		m.log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
-		subsystem = uErr.Subsystem
-		state = sql.WorkloadStateUnrecoverable
-		eventType = WorkloadEventUnrecoverable
-	}
-
-	var rErr model.RecoverableError
-	if errors.As(originalErr, &rErr) {
-		m.log.WithField("workload", workload.String()).Error("recoverable error, marking workload as failed")
-		subsystem = rErr.Subsystem
-		state = sql.WorkloadStateFailed
-		eventType = WorkloadEventRecoverable
-	}
-
-	err := m.db.AddWorkloadEvent(ctx, sql.AddWorkloadEventParams{
-		Name:         workload.Name,
-		Cluster:      workload.Cluster,
-		Namespace:    workload.Namespace,
-		WorkloadType: string(workload.Type),
-		EventType:    string(eventType),
-		EventData:    originalErr.Error(),
-		Subsystem:    subsystem,
+func (m *WorkloadManager) SyncImage(ctx context.Context, imageName, imageTag string) error {
+	err := m.jobClient.AddJob(ctx, &SyncImageJob{
+		ImageName: imageName,
+		ImageTag:  imageTag,
 	})
 	if err != nil {
-		m.log.WithError(err).WithField("workload", workload).Error("failed to add workload event")
+		return err
 	}
-
-	err = m.db.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
-		Name:         workload.Name,
-		Cluster:      workload.Cluster,
-		Namespace:    workload.Namespace,
-		WorkloadType: string(workload.Type),
-		ImageName:    workload.ImageName,
-		ImageTag:     workload.ImageTag,
-		State:        state,
-	})
-	if err != nil {
-		m.log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
-	}
-}*/
+	return nil
+}
 
 func (m *WorkloadManager) Stop(ctx context.Context) error {
 	return m.jobClient.Stop(ctx)

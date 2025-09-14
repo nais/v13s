@@ -78,6 +78,15 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		return handleJobErr(err)
 	}
 
+	// after successfully deleting from source and DB
+	if err := r.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		Name:  job.Args.ImageName,
+		Tag:   job.Args.ImageTag,
+		State: sql.ImageStateUnused,
+	}); err != nil {
+		r.log.WithError(err).Error("failed to mark image as unused")
+	}
+
 	recordOutput(ctx, JobStatusSourceRefDeleted)
 	return nil
 }

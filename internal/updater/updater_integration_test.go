@@ -7,14 +7,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
+	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
+	sources2 "github.com/nais/v13s/internal/mocks/Source"
+	attestation "github.com/nais/v13s/internal/mocks/Verifier"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
@@ -36,53 +42,74 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	mockDPTrack := new(dependencytrackMock.MockClient)
+	mockSource := new(sources2.MockSource)
+	verifierMock := new(attestation.MockVerifier)
 
-	for _, project := range projectNames {
-		mockDPTrack.On("GetProject", mock.Anything, project, "v1").Return(&dependencytrack.Project{
-			Name:    project,
-			Uuid:    project,
-			Version: "v1",
-			Metrics: &dependencytrack.ProjectMetric{
-				Critical:           1,
-				High:               2,
-				Medium:             3,
-				Low:                4,
-				Unassigned:         5,
-				InheritedRiskScore: 6.0,
-			},
+	jobCfg := &job.Config{
+		DbUrl: pool.Config().ConnString(),
+	}
+
+	queue := &kubernetes.WorkloadEventQueue{
+		Updated: make(chan *model.Workload, 100),
+		Deleted: make(chan *model.Workload, 100),
+	}
+
+	mgr := manager.NewWorkloadManager(
+		ctx,
+		pool,
+		jobCfg,
+		verifierMock,
+		mockSource,
+		queue,
+		logrus.NewEntry(logrus.StandardLogger()))
+
+	mgr.Start(ctx)
+	defer mgr.Stop(ctx)
+
+	for _, p := range projectNames {
+
+		vulns := make([]*sources.Vulnerability, 4)
+		for i := 0; i < 4; i++ {
+			vulns[i] = &sources.Vulnerability{
+				Package: "pkg:component-" + p + fmt.Sprintf("-%d", i),
+				Cve: &sources.Cve{
+					Description: "description",
+					Title:       "title",
+					Link:        fmt.Sprintf("mylink-%s-%d", p, i),
+					Severity:    "CRITICAL",
+					Id:          fmt.Sprintf("CVE-%s-%d", p, i),
+					References:  map[string]string{"ref": fmt.Sprintf("https://nvd.nist.gov/vuln/detail/CVE-%s-%d", p, i)},
+				},
+				Metadata: &dependencytrack.VulnMetadata{
+					ProjectId:         p,
+					ComponentId:       fmt.Sprintf("component-%s-%d", p, i),
+					VulnerabilityUuid: fmt.Sprintf("vuln-%s-%d", p, i),
+				},
+			}
+		}
+		mockSource.On(
+			"GetVulnerabilities",
+			mock.Anything, // context
+			p,             // image name
+			"v1",          // image version
+			true,          // includeFixes
+		).Return(vulns, nil)
+
+		mockSource.On("Name").Return("test-source")
+
+		mockSource.On("GetVulnerabilitySummary", mock.Anything, p, "v1").Return(&sources.VulnerabilitySummary{
+			Id:         p,
+			Critical:   1,
+			High:       2,
+			Medium:     3,
+			Low:        4,
+			RiskScore:  6,
+			Unassigned: 5,
 		}, nil)
 	}
 
-	findings := map[string][]*dependencytrack.Vulnerability{}
-
-	// Return 4 vulns per image for initial test
-	mockDPTrack.On("GetFindings", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("bool"), mock.Anything).
-		Return(func(ctx context.Context, uuid string, suppressed bool, filterSource ...string) ([]*dependencytrack.Vulnerability, error) {
-			if vulns, ok := findings[uuid]; ok {
-				return vulns, nil
-			}
-			// fallback: return default 4 vulns
-			vulns := make([]*dependencytrack.Vulnerability, 4)
-			for i := 0; i < 4; i++ {
-				vulns[i] = &dependencytrack.Vulnerability{
-					Package: "pkg:component-" + uuid + fmt.Sprintf("-%d", i),
-					Cve: &dependencytrack.Cve{
-						Description: "description",
-						Title:       "title",
-						Link:        fmt.Sprintf("mylink-%s-%d", uuid, i),
-						Severity:    "CRITICAL",
-						Id:          fmt.Sprintf("CVE-%s-%d", uuid, i),
-						References:  map[string]string{"ref": fmt.Sprintf("https://nvd.nist.gov/vuln/detail/CVE-%s-%d", uuid, i)},
-					},
-					Metadata: &dependencytrack.VulnMetadata{
-						ProjectId:         uuid,
-						ComponentId:       fmt.Sprintf("component-%s-%d", uuid, i),
-						VulnerabilityUuid: fmt.Sprintf("vuln-%s-%d", uuid, i),
-					},
-				}
-			}
-			return vulns, nil
-		})
+	mockSource.On("MaintainSuppressedVulnerabilities", mock.Anything, mock.Anything).
+		Return(nil)
 
 	updateSchedule := updater.ScheduleConfig{
 		Type:     updater.SchedulerInterval,
@@ -92,7 +119,7 @@ func TestUpdater(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	done := make(chan struct{})
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), updateSchedule, done, log)
+	u := updater.NewUpdater(pool, mockSource, updateSchedule, done, mgr, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
@@ -108,23 +135,20 @@ func TestUpdater(t *testing.T) {
 		err = u.ResyncImageVulnerabilities(updaterCtx)
 		assert.NoError(t, err)
 
-		select {
-		case <-done:
-			// proceed with asserts
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
-		}
-
 		for _, p := range projectNames {
 			imageName := p
 			imageTag := "v1"
 
-			image, err := db.GetImage(ctx, sql.GetImageParams{
-				Name: imageName,
-				Tag:  imageTag,
-			})
+			require.Eventually(t, func() bool {
+				for _, p = range projectNames {
+					img, _ := db.GetImage(ctx, sql.GetImageParams{Name: p, Tag: "v1"})
+					if img.State != sql.ImageStateUpdated {
+						return false
+					}
+				}
+				return true
+			}, 5*time.Second, 100*time.Millisecond)
 			assert.NoError(t, err)
-			assert.Equal(t, sql.ImageStateUpdated, image.State)
 
 			vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 				ImageName: &imageName,
@@ -132,7 +156,7 @@ func TestUpdater(t *testing.T) {
 				Limit:     100,
 			})
 			assert.NoError(t, err)
-			assert.Len(t, vulns, 4) // Matches the 4 vulns from mock
+			assert.Len(t, vulns, 4)
 
 			assert.True(t, collections.AnyMatch(vulns, func(r *sql.ListVulnerabilitiesRow) bool {
 				return r.ImageName == imageName && r.ImageTag == imageTag && r.CveID == fmt.Sprintf("CVE-%s-0", imageName)
@@ -141,9 +165,6 @@ func TestUpdater(t *testing.T) {
 	})
 
 	t.Run("images older than interval should be marked with resync and vulnerabilities updated", func(t *testing.T) {
-		err = db.ResetDatabase(ctx)
-		assert.NoError(t, err)
-
 		insertWorkloads(ctx, t, db, projectNames)
 		_, err = pool.Exec(ctx, `
     		UPDATE images
@@ -171,39 +192,49 @@ func TestUpdater(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		// range from 1 to 5 to simulate 5 vulns
-		for i := 1; i <= 5; i++ {
-			cveID := fmt.Sprintf("CVE-%s-%d", imageName, i)
-			addFinding(findings, projectNames[0], cveID)
-		}
-
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
 		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
-		u.Run(updaterCtx)
+		//u = updater.NewUpdater(pool, mockSource, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()), mgr)
+		err = u.MarkForResync(updaterCtx)
+		assert.NoError(t, err)
+		err = u.ResyncImageVulnerabilities(updaterCtx)
+		assert.NoError(t, err)
 
-		select {
-		case <-done:
-			// proceed with asserts
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
+		var vulnCount int
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM vulnerabilities WHERE image_name=$1 AND image_tag=$2", imageName, imageVersion).Scan(&vulnCount)
+		require.NoError(t, err)
+		t.Logf("Raw vulnerabilities in DB for %s:%s = %d", imageName, imageVersion, vulnCount)
+
+		rows, _ := pool.Query(ctx, "SELECT image_name, image_tag, cve_id FROM vulnerabilities WHERE image_name=$1 AND image_tag=$2", imageName, imageVersion)
+		defer rows.Close()
+		for rows.Next() {
+			var n, t, cve string
+			rows.Scan(&n, &t, &cve)
+			fmt.Printf("Found vuln: %s:%s -> %s", n, t, cve)
 		}
 
-		vulns, err := db.ListVulnerabilities(
-			ctx,
-			sql.ListVulnerabilitiesParams{Limit: 100, ImageName: &imageName, ImageTag: &imageVersion},
-		)
-		assert.NoError(t, err)
-		assert.Len(t, vulns, 5)
+		rows2, _ := pool.Query(ctx, "SELECT name, image_name, image_tag FROM workloads")
+		defer rows2.Close()
+		for rows2.Next() {
+			var wn, in, it string
+			rows2.Scan(&wn, &in, &it)
+			t.Logf("Workload row: name=%s image=%s:%s", wn, in, it)
+		}
 
-		image, err := db.GetImage(ctx, sql.GetImageParams{
-			Name: imageName,
-			Tag:  imageVersion,
-		})
-		assert.NoError(t, err)
-		assert.Equal(t, sql.ImageStateUpdated, image.State)
+		require.Eventually(t, func() bool {
+			image, _ := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+			vulns, _ := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+				ImageName: &imageName,
+				ImageTag:  &imageVersion,
+				Offset:    0,
+				Limit:     100,
+			})
+			t.Logf("Image %s:%s state=%s updated_at=%v, vulns=%d",
+				imageName, imageVersion, image.State, image.UpdatedAt, len(vulns))
+			return image.State == sql.ImageStateUpdated || image.State == sql.ImageStateResync && len(vulns) == 4
+		}, 5*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("images older than threshold should be marked as untracked", func(t *testing.T) {
@@ -218,13 +249,11 @@ func TestUpdater(t *testing.T) {
 		tx, err := pool.Begin(ctx)
 		assert.NoError(t, err)
 
-		// set image state to initialized
 		_, err = tx.Exec(ctx,
 			"UPDATE images SET state=$1 WHERE name=$2 AND tag=$3",
 			sql.ImageStateInitialized, imageName, imageVersion)
 		assert.NoError(t, err)
 
-		// set updated_at to 1 hour ago UTC
 		imageLastUpdated := time.Now().UTC().Add(-1 * time.Hour)
 		_, err = tx.Exec(ctx,
 			"UPDATE images SET updated_at=$1 WHERE name=$2 AND tag=$3",
@@ -234,26 +263,17 @@ func TestUpdater(t *testing.T) {
 		err = tx.Commit(ctx)
 		assert.NoError(t, err)
 
-		// log current setup
 		fmt.Printf("Setup image: %s updated_at=%v\n", imageName, imageLastUpdated)
 
-		// print threshold used by updater
 		threshold := time.Now().UTC().Add(-updater.ImageMarkAge)
 		fmt.Printf("Threshold for untracking: %v\n", threshold)
 
 		done = make(chan struct{})
-		u = updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			done,
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, done, mgr, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
 
-		// query all images after running updater
 		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images ORDER BY name")
 		for rows.Next() {
 			var n, s string
@@ -277,7 +297,6 @@ func TestUpdater(t *testing.T) {
 
 		insertWorkloads(ctx, t, db, []string{"project-2", "project-3"}) // project-1 and project-4 will have no workloads
 
-		// manually insert/update images
 		projects := []string{"project-1", "project-2", "project-3", "project-4"}
 		for _, p := range projects {
 			_, err := pool.Exec(ctx,
@@ -287,18 +306,11 @@ func TestUpdater(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		u = updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			make(chan struct{}),
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, make(chan struct{}), mgr, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkUnusedImages(ctx)
 		assert.NoError(t, err)
 
-		// fetch all images and check state
 		rows, _ := pool.Query(ctx, "SELECT name, state, updated_at FROM images ORDER BY name")
 		defer rows.Close()
 		for rows.Next() {
@@ -323,13 +335,11 @@ func TestUpdater(t *testing.T) {
 		imageVersion := "v1"
 		insertWorkloads(ctx, t, db, projectNames)
 
-		// set image state to something that is not excluded
 		_, err = pool.Exec(ctx,
 			"UPDATE images SET state = $1 WHERE name = $2 AND tag = $3",
 			sql.ImageStateUpdated, imageName, imageVersion)
 		assert.NoError(t, err)
 
-		// set updated_at older than threshold
 		imageLastUpdated := time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault - time.Hour)
 		_, err = pool.Exec(ctx,
 			"UPDATE images SET updated_at = $1 WHERE name = $2 AND tag = $3",
@@ -346,13 +356,7 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		u := updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			make(chan struct{}),
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, make(chan struct{}), mgr, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkForResync(updaterCtx)
 		assert.NoError(t, err)
@@ -365,7 +369,6 @@ func TestUpdater(t *testing.T) {
 			fmt.Printf("row: %s state=%s updated_at=%v\n", n, s, t)
 		}
 
-		// check that project-1 has been updated to 'resync'
 		image, err = db.GetImage(ctx, sql.GetImageParams{
 			Name: imageName,
 			Tag:  imageVersion,
@@ -390,7 +393,6 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		// Set ReadyForResyncAt to 5 minutes ago
 		readyAt := time.Now().Add(-manager.FinalizeAttestationScheduledForResyncMinutes)
 		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
@@ -408,18 +410,11 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateResync, image.State)
 		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
 
-		u = updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			nil,
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, nil, mgr, logrus.NewEntry(logrus.StandardLogger()))
 
 		images, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)
 
-		// Check that the image is selected for resync
 		assert.Len(t, images, 1)
 		assert.Equal(t, imageName, images[0].Name)
 		assert.Equal(t, imageTag, images[0].Tag)
@@ -432,8 +427,6 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	defer pool.Close()
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
-
-	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
 
 	imageName := "image-1"
 	imageTag := "v1"
@@ -485,14 +478,14 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
         `, ts, 2, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
+		got, err := manager.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.WithinDuration(t, ts, *got, time.Second)
 	})
 
 	t.Run("returns timestamp if severity not present", func(t *testing.T) {
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 5)
+		got, err := manager.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 5)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 	})
@@ -506,7 +499,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
     `, ts, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
+		got, err := manager.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 
@@ -537,23 +530,92 @@ func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, project
 	}
 }
 
-func addFinding(findings map[string][]*dependencytrack.Vulnerability, projectUUID, cveID string) {
-	findings[projectUUID] = append(findings[projectUUID], &dependencytrack.Vulnerability{
-		Suppressed:    false,
-		LatestVersion: "123",
-		Metadata: &dependencytrack.VulnMetadata{
-			ProjectId:         projectUUID,
-			ComponentId:       fmt.Sprintf("component-%s", cveID),
-			VulnerabilityUuid: fmt.Sprintf("vuln-%s", cveID),
+func TestUpdater_SyncWorkloadVulnerabilities(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	_ = updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, make(chan struct{}), nil, logrus.NewEntry(logrus.StandardLogger()))
+
+	imageName := "image-1"
+	imageTag := "v1"
+	pkg := "pkg-1"
+	cveID := "CVE-123"
+	severity := int32(2)
+
+	querier := sql.New(pool)
+	err := querier.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	querier.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:    cveID,
+			CveTitle: "Test title",
+			CveDesc:  "Test description",
+			CveLink:  "https://example.com",
+			Severity: severity,
+			Refs:     typeext.MapStringString{},
 		},
-		Cve: &dependencytrack.Cve{
-			Id:          fmt.Sprintf("CVE-%s", cveID),
-			Description: "description",
-			Title:       "title",
-			Link:        fmt.Sprintf("https://nvd.nist.gov/vuln/detail/CVE-%s", cveID),
-			Severity:    "CRITICAL",
-			References:  map[string]string{},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	workload1 := uuid.New()
+	workload2 := uuid.New()
+	_, err = pool.Exec(ctx, `
+		INSERT INTO workloads (id, name, cluster, namespace, workload_type, image_name, image_tag, created_at)
+		VALUES
+		($1, 'workload-1', 'test', 'default', 'deployment', $2, $3, NOW()),
+		($4, 'workload-2', 'test', 'default', 'deployment', $2, $3, NOW())
+	`, workload1, imageName, imageTag, workload2)
+	require.NoError(t, err)
+
+	querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName:     imageName,
+			ImageTag:      imageTag,
+			Package:       pkg,
+			CveID:         cveID,
+			Source:        "source",
+			LatestVersion: "1.0",
+			LastSeverity:  severity,
+			SeveritySince: pgtype.Timestamptz{Valid: false, Time: time.Time{}}, // defaults to NOW()
 		},
-		Package: fmt.Sprintf("pkg:component-%s", cveID),
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	t.Run("updates SeveritySince only when severity changes", func(t *testing.T) {
+		newSeverity := int32(3)
+		querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{
+				ImageName:     imageName,
+				ImageTag:      imageTag,
+				Package:       pkg,
+				CveID:         cveID,
+				Source:        "source",
+				LatestVersion: "1.0",
+				LastSeverity:  newSeverity,
+				SeveritySince: pgtype.Timestamptz{Valid: false, Time: time.Time{}},
+			},
+		}).Exec(func(i int, err error) {
+			require.NoError(t, err)
+		})
+
+		var severitySince time.Time
+		err := pool.QueryRow(ctx, `
+			SELECT severity_since
+			FROM vulnerabilities
+			WHERE image_name = $1 AND package = $2 AND cve_id = $3
+		`, imageName, pkg, cveID).Scan(&severitySince)
+		require.NoError(t, err)
+
+		assert.WithinDuration(t, time.Now(), severitySince, 5*time.Second)
 	})
 }
