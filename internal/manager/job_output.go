@@ -16,19 +16,20 @@ type JobOutput struct {
 type JobStatus = string
 
 const (
-	JobStatusSourceRefDeleteSkipped     JobStatus = "source_ref_delete_skipped"
-	JobStatusInitializeWorkloadSkipped  JobStatus = "initialize_workload_skipped"
-	JobStatusUnrecoverable              JobStatus = "unrecoverable"
-	JobStatusSourceRefExists            JobStatus = "source_ref_exists"
-	JobStatusNoAttestation              JobStatus = "no_attestation"
 	JobStatusAttestationDownloaded      JobStatus = "attestation_downloaded"
 	JobStatusAttestationUploaded        JobStatus = "attestation_uploaded"
-	JobStatusUploadAttestationFinalized JobStatus = "upload_attestation_finalized"
-	JobStatusUpdated                    JobStatus = "updated"
+	JobStatusImageMetadataFetched       JobStatus = "image_metadata_fetched"
 	JobStatusImageRemovedFromSource     JobStatus = "image_removed_from_source"
 	JobStatusImageStillInUse            JobStatus = "image_still_in_use"
-	JobStatusSourceRefDeleted           JobStatus = "source_ref_deleted"
 	JobStatusImageSynced                JobStatus = "image_synced"
+	JobStatusInitializeWorkloadSkipped  JobStatus = "initialize_workload_skipped"
+	JobStatusNoAttestation              JobStatus = "no_attestation"
+	JobStatusSourceRefDeleted           JobStatus = "source_ref_deleted"
+	JobStatusSourceRefDeleteSkipped     JobStatus = "source_ref_delete_skipped"
+	JobStatusSourceRefExists            JobStatus = "source_ref_exists"
+	JobStatusUnrecoverable              JobStatus = "unrecoverable"
+	JobStatusUpdated                    JobStatus = "updated"
+	JobStatusUploadAttestationFinalized JobStatus = "upload_attestation_finalized"
 )
 
 func recordOutput(ctx context.Context, status JobStatus) {
