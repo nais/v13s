@@ -71,7 +71,10 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		KindFinalizeAttestation: {
 			MaxWorkers: 100,
 		},
-		KindSyncImage: {
+		KindUpsertImage: {
+			MaxWorkers: 50,
+		},
+		KindFetchImage: {
 			MaxWorkers: 50,
 		},
 	}
@@ -86,7 +89,8 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", KindRemoveFromSource)})
 	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindDeleteWorkload)})
 	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindFinalizeAttestation)})
-	job.AddWorker(jobClient, &SyncImageWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindSyncImage)})
+	job.AddWorker(jobClient, &FetchImageWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", KindFetchImage)})
+	job.AddWorker(jobClient, &UpsertImageWorker{db: db, log: log.WithField("subsystem", KindUpsertImage)})
 
 	m := &WorkloadManager{
 		db:              db,
@@ -142,7 +146,7 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 }
 
 func (m *WorkloadManager) SyncImage(ctx context.Context, imageName, imageTag string) error {
-	err := m.jobClient.AddJob(ctx, &SyncImageJob{
+	err := m.jobClient.AddJob(ctx, &FetchImageJob{
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	})

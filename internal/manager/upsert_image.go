@@ -9,19 +9,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
-const KindSyncImage = "sync_image"
-
-type SyncImageJob struct {
-	ImageName string
-	ImageTag  string
-}
+const KindUpsertImage = "upsert_image"
 
 type ImageVulnerabilityData struct {
 	ImageName       string
@@ -60,47 +54,30 @@ func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpse
 	}
 }
 
-type Workload struct {
-	ID        pgtype.UUID
-	Cluster   string
-	Namespace string
-	Name      string
-	Type      string
+type UpsertImageJob struct {
+	Data *ImageVulnerabilityData
 }
 
-func (SyncImageJob) Kind() string { return KindSyncImage }
+func (UpsertImageJob) Kind() string { return KindUpsertImage }
 
-func (SyncImageJob) InsertOpts() river.InsertOpts {
+func (UpsertImageJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		Queue: KindSyncImage,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,            // avoid duplicate jobs for same image
-			ByPeriod: 2 * time.Minute, // throttle re-syncs
-		},
+		Queue:       KindUpsertImage,
 		MaxAttempts: 3,
 	}
 }
 
-type SyncImageWorker struct {
-	db        sql.Querier
-	source    sources.Source
-	log       logrus.FieldLogger
-	jobClient job.Client
-	river.WorkerDefaults[SyncImageJob]
+type UpsertImageWorker struct {
+	db  sql.Querier
+	log logrus.FieldLogger
+	river.WorkerDefaults[UpsertImageJob]
 }
 
-func (s *SyncImageWorker) Work(ctx context.Context, job *river.Job[SyncImageJob]) error {
-	img := job.Args
+func (u *UpsertImageWorker) Work(ctx context.Context, job *river.Job[UpsertImageJob]) error {
+	data := job.Args.Data
+	u.log.Infof("upserting vulnerabilities for %s:%s", data.ImageName, data.ImageTag)
 
-	s.log.Infof("syncing vulnerabilities for %s:%s", img.ImageName, img.ImageTag)
-
-	data, err := s.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, s.source)
-	if err != nil {
-		s.log.WithError(err).Error("fetch failed")
-		return err
-	}
-
-	if err := s.upsertBatch(ctx, []*ImageVulnerabilityData{data}); err != nil {
+	if err := u.upsertBatch(ctx, data); err != nil {
 		return err
 	}
 
@@ -108,84 +85,8 @@ func (s *SyncImageWorker) Work(ctx context.Context, job *river.Job[SyncImageJob]
 	return nil
 }
 
-func (s *SyncImageWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*ImageVulnerabilityData, error) {
-	vulnerabilities, err := s.source.GetVulnerabilities(ctx, imageName, imageTag, true)
-	if err != nil {
-		return nil, err
-	}
-	s.log.Debugf("Got %d vulnerabilities", len(vulnerabilities))
-
-	// sync suppressed vulnerabilities
-	suppressedVulns, err := s.db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
-	if err != nil {
-		return nil, err
-	}
-
-	s.log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
-	filteredVulnerabilities := make([]*sources.SuppressedVulnerability, 0)
-	for _, sup := range suppressedVulns {
-		for _, v := range vulnerabilities {
-			if v.Cve.Id == sup.CveID && v.Package == sup.Package && sup.Suppressed != v.Suppressed {
-				filteredVulnerabilities = append(filteredVulnerabilities, &sources.SuppressedVulnerability{
-					ImageName:    imageName,
-					ImageTag:     imageTag,
-					CveId:        v.Cve.Id,
-					Package:      v.Package,
-					Suppressed:   sup.Suppressed,
-					Reason:       sup.ReasonText,
-					SuppressedBy: sup.SuppressedBy,
-					State:        vulnerabilitySuppressReasonToState(sup.Reason),
-					Metadata:     v.Metadata,
-				})
-			}
-		}
-	}
-
-	err = s.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
-	if err != nil {
-		return nil, err
-	}
-
-	summary, err := s.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
-	if err != nil {
-		return nil, err
-	}
-
-	workloads, err := s.db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
-		ImageName: imageName,
-		ImageTag:  imageTag,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &ImageVulnerabilityData{
-		ImageName:       imageName,
-		ImageTag:        imageTag,
-		Source:          source.Name(),
-		Vulnerabilities: vulnerabilities,
-		Summary:         summary,
-		Workloads:       workloads,
-	}, nil
-}
-
-func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
-	switch reason {
-	case sql.VulnerabilitySuppressReasonFalsePositive:
-		return "FALSE_POSITIVE"
-	case sql.VulnerabilitySuppressReasonInTriage:
-		return "IN_TRIAGE"
-	case sql.VulnerabilitySuppressReasonNotAffected:
-		return "NOT_AFFECTED"
-	case sql.VulnerabilitySuppressReasonResolved:
-		return "RESOLVED"
-	default:
-		return "NOT_SET"
-	}
-}
-
-func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityData) error {
-	if len(batch) == 0 {
+func (u *UpsertImageWorker) upsertBatch(ctx context.Context, data *ImageVulnerabilityData) error {
+	if data == nil {
 		return nil
 	}
 	countError := 0
@@ -196,40 +97,37 @@ func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnera
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	summaries := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
 
-	for _, i := range batch {
-		cves = append(cves, i.ToCveSqlParams()...)
-		v, err := ToVulnerabilitySqlParams(ctx, s.db, i)
-		if err != nil {
-			countError++
-			errs = append(errs, err)
-			continue
-		}
-		vulns = append(vulns, v...)
-		summaries = append(summaries, i.ToVulnerabilitySummarySqlParams())
-		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
-			State: sql.ImageStateUpdated,
-			Name:  i.ImageName,
-			Tag:   i.ImageTag,
-		})
-
-		metrics.SetWorkloadMetrics(i.Workloads, i.Summary)
+	cves = append(cves, data.ToCveSqlParams()...)
+	v, err := ToVulnerabilitySqlParams(ctx, u.db, data)
+	if err != nil {
+		countError++
+		errs = append(errs, err)
 	}
+	vulns = append(vulns, v...)
+	summaries = append(summaries, data.ToVulnerabilitySummarySqlParams())
+	imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
+		State: sql.ImageStateUpdated,
+		Name:  data.ImageName,
+		Tag:   data.ImageTag,
+	})
+
+	metrics.SetWorkloadMetrics(data.Workloads, data.Summary)
 
 	sortCveParams(cves)
 	sortVulnerabilityParams(vulns)
 
 	start := time.Now()
 	var batchErr error
-	s.db.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
+	u.db.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
 		if err != nil {
-			s.log.WithError(err).Debug("failed to batch upsert cves")
+			u.log.WithError(err).Debug("failed to batch upsert cves")
 			batchErr = err
 			countError++
 			errs = append(errs, err)
 		}
 	})
 	upserted := len(cves) - countError
-	s.log.WithError(batchErr).WithFields(logrus.Fields{
+	u.log.WithError(batchErr).WithFields(logrus.Fields{
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   upserted,
 		"num_errors": countError,
@@ -237,16 +135,16 @@ func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnera
 
 	start = time.Now()
 	countError = 0
-	s.db.BatchUpsertVulnerabilities(ctx, vulns).Exec(func(i int, err error) {
+	u.db.BatchUpsertVulnerabilities(ctx, vulns).Exec(func(i int, err error) {
 		if err != nil {
-			s.log.WithError(err).Debug("failed to batch upsert vulnerabilities")
+			u.log.WithError(err).Debug("failed to batch upsert vulnerabilities")
 			batchErr = err
 			countError++
 			errs = append(errs, err)
 		}
 	})
 	upserted = len(vulns) - countError
-	s.log.WithError(batchErr).WithFields(logrus.Fields{
+	u.log.WithError(batchErr).WithFields(logrus.Fields{
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   upserted,
 		"num_errors": countError,
@@ -254,16 +152,16 @@ func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnera
 
 	start = time.Now()
 	countError = 0
-	s.db.BatchUpsertVulnerabilitySummary(ctx, summaries).Exec(func(i int, err error) {
+	u.db.BatchUpsertVulnerabilitySummary(ctx, summaries).Exec(func(i int, err error) {
 		if err != nil {
-			s.log.WithError(err).Debug("failed to batch upsert vulnerability summary")
+			u.log.WithError(err).Debug("failed to batch upsert vulnerability summary")
 			batchErr = err
 			countError++
 			errs = append(errs, err)
 		}
 	})
 	upserted = len(summaries) - countError
-	s.log.WithError(batchErr).WithFields(logrus.Fields{
+	u.log.WithError(batchErr).WithFields(logrus.Fields{
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   upserted,
 		"num_errors": countError,
@@ -271,15 +169,15 @@ func (s *SyncImageWorker) upsertBatch(ctx context.Context, batch []*ImageVulnera
 
 	if len(errs) == 0 {
 		start = time.Now()
-		s.db.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
+		u.db.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
 			if err != nil {
-				s.log.WithError(err).Debug("failed to batch update image state")
+				u.log.WithError(err).Debug("failed to batch update image state")
 				batchErr = err
 				countError++
 				errs = append(errs, err)
 			}
 		})
-		s.log.WithError(batchErr).WithFields(logrus.Fields{
+		u.log.WithError(batchErr).WithFields(logrus.Fields{
 			"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 			"num_rows":   upserted,
 			"num_errors": countError,
