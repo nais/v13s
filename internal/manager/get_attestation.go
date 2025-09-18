@@ -69,6 +69,13 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
+
+	g.log.WithFields(logrus.Fields{
+		"image":      imageName,
+		"tag":        imageTag,
+		"workloadId": job.Args.WorkloadId.String(),
+	}).Debugf("getting attestation")
+
 	att, err := g.verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
 	g.workloadCounter.Add(
 		ctx,
