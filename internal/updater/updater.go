@@ -31,17 +31,12 @@ type Updater struct {
 	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
 	mgr                          *manager.WorkloadManager
-	doneChan                     chan struct{}
 	once                         sync.Once
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, doneChan chan struct{}, mgr *manager.WorkloadManager, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, mgr *manager.WorkloadManager, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
-	}
-
-	if doneChan == nil {
-		doneChan = make(chan struct{})
 	}
 
 	return &Updater{
@@ -51,7 +46,6 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
 		mgr:                          mgr,
-		doneChan:                     doneChan,
 		log:                          log,
 	}
 }
