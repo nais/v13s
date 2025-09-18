@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
@@ -12,7 +13,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const KindFetchImage = "fetch_image"
+const (
+	KindFetchImage                  = "fetch_image"
+	SyncErrorStatusCodeGenericError = "GenericError"
+)
 
 type FetchImageJob struct {
 	ImageName string
@@ -26,7 +30,7 @@ func (FetchImageJob) InsertOpts() river.InsertOpts {
 		Queue: KindFetchImage,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: 2 * time.Minute,
+			ByPeriod: 1 * time.Minute,
 		},
 		MaxAttempts: 6,
 	}
@@ -49,19 +53,12 @@ func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[FetchImageJo
 
 	data, err := f.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, f.source)
 	if err != nil {
-		f.log.WithError(err).Error("fetch failed")
-		if errors.Is(err, sources.ErrNoProject) {
-			_ = f.jobClient.AddJob(ctx, RemoveFromSourceJob{
-				ImageName: img.ImageName,
-				ImageTag:  img.ImageTag,
-			})
-			recordOutput(ctx, JobStatusImageNoProject)
-			return nil
+		handleErr := f.handleError(ctx, img.ImageName, img.ImageTag, f.source.Name(), err)
+		if handleErr != nil {
+			recordOutput(ctx, JobStatusImageFetchFailed)
+			return handleErr
 		}
-		if errors.Is(err, sources.ErrNoMetrics) {
-			recordOutput(ctx, JobStatusImageNoMetrics)
-			return err
-		}
+
 		return err
 	}
 
@@ -143,4 +140,34 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	default:
 		return "NOT_SET"
 	}
+}
+
+func (f *FetchImageWorker) handleError(ctx context.Context, imageName, imageTag string, source string, err error) error {
+	updateSyncParams := sql.UpdateImageSyncStatusParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		Source:    source,
+	}
+
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, sources.ErrNoProject):
+		recordOutput(ctx, JobStatusImageNoProject)
+		return nil
+	case errors.Is(err, sources.ErrNoMetrics):
+		recordOutput(ctx, JobStatusImageNoMetrics)
+		return nil
+	}
+
+	updateSyncParams.Reason = err.Error()
+	updateSyncParams.StatusCode = SyncErrorStatusCodeGenericError
+	f.log.Debugf("orginal error status: %v", err)
+
+	if insertErr := f.db.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {
+		f.log.Errorf("failed to update image sync status: %v", insertErr)
+		return fmt.Errorf("updating image sync status: %w", insertErr)
+	}
+
+	return err
 }

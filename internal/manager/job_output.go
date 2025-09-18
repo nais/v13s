@@ -18,6 +18,7 @@ type JobStatus = string
 const (
 	JobStatusAttestationDownloaded      JobStatus = "attestation_downloaded"
 	JobStatusAttestationUploaded        JobStatus = "attestation_uploaded"
+	JobStatusImageFetchFailed           JobStatus = "image_fetch_failed"
 	JobStatusImageMetadataFetched       JobStatus = "image_metadata_fetched"
 	JobStatusImageNoMetrics             JobStatus = "image_no_metrics"
 	JobStatusImageNoProject             JobStatus = "image_no_project"
