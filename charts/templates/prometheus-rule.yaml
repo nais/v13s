@@ -15,8 +15,7 @@ spec:
           expr: max by (workload_namespace) (
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
-            workload_namespace="{{ .Release.Namespace }}",
-            workload_type!="job"
+            workload_namespace=~"nais-system|nais"
             }
             ) > 0
           for: 30m
@@ -39,8 +38,7 @@ spec:
         - alert: "namespace high risk-score"
           expr: max by (workload_namespace) (
             v13s_workload_risk_score{
-            workload_namespace="{{ .Release.Namespace }}",
-            workload_type!="job"
+            workload_namespace=~"nais-system|nais"
             }
             ) > 250
           for: 30m
