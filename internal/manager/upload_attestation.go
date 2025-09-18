@@ -40,7 +40,7 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: UploadAttestationByPeriodMinutes,
 		},
-		MaxAttempts: 4,
+		MaxAttempts: 8,
 	}
 }
 
@@ -92,7 +92,8 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 				Tag:   imageTag,
 				State: sql.ImageStateResync,
 				ReadyForResyncAt: pgtype.Timestamptz{
-					Time:  time.Now().Add(FinalizeAttestationScheduledForResyncMinutes),
+					// update immediately, the project exits and a refresh is warranted
+					Time:  time.Now(),
 					Valid: true,
 				},
 			})
