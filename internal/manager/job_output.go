@@ -19,6 +19,8 @@ const (
 	JobStatusAttestationDownloaded      JobStatus = "attestation_downloaded"
 	JobStatusAttestationUploaded        JobStatus = "attestation_uploaded"
 	JobStatusImageMetadataFetched       JobStatus = "image_metadata_fetched"
+	JobStatusImageNoMetrics             JobStatus = "image_no_metrics"
+	JobStatusImageNoProject             JobStatus = "image_no_project"
 	JobStatusImageRemovedFromSource     JobStatus = "image_removed_from_source"
 	JobStatusImageStillInUse            JobStatus = "image_still_in_use"
 	JobStatusImageSynced                JobStatus = "image_synced"

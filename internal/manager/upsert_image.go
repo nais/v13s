@@ -75,7 +75,10 @@ type UpsertImageWorker struct {
 
 func (u *UpsertImageWorker) Work(ctx context.Context, job *river.Job[UpsertImageJob]) error {
 	data := job.Args.Data
-	u.log.Infof("upserting vulnerabilities for %s:%s", data.ImageName, data.ImageTag)
+	u.log.WithFields(logrus.Fields{
+		"image": data.ImageName,
+		"tag":   data.ImageTag,
+	}).Debugf("upserting image vulnerabilities (num_vulns=%d))", len(data.Vulnerabilities))
 
 	if err := u.upsertBatch(ctx, data); err != nil {
 		return err
@@ -131,7 +134,7 @@ func (u *UpsertImageWorker) upsertBatch(ctx context.Context, data *ImageVulnerab
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   upserted,
 		"num_errors": countError,
-	}).Infof("upserted batch of cves")
+	}).Debugf("upserted batch of cves")
 
 	start = time.Now()
 	countError = 0
@@ -148,7 +151,7 @@ func (u *UpsertImageWorker) upsertBatch(ctx context.Context, data *ImageVulnerab
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   upserted,
 		"num_errors": countError,
-	}).Infof("upserted batch of vulnerabilities")
+	}).Debugf("upserted batch of vulnerabilities")
 
 	start = time.Now()
 	countError = 0
@@ -165,7 +168,7 @@ func (u *UpsertImageWorker) upsertBatch(ctx context.Context, data *ImageVulnerab
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   upserted,
 		"num_errors": countError,
-	}).Infof("upserted batch of summaries")
+	}).Debugf("upserted batch of summaries")
 
 	if len(errs) == 0 {
 		start = time.Now()
@@ -181,7 +184,7 @@ func (u *UpsertImageWorker) upsertBatch(ctx context.Context, data *ImageVulnerab
 			"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 			"num_rows":   upserted,
 			"num_errors": countError,
-		}).Infof("upserted batch of image states (updated)")
+		}).Debugf("upserted batch of image states (updated)")
 		return nil
 	}
 	return fmt.Errorf("%d countError occurred during batch upsert: %v", len(errs), errs)

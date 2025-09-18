@@ -28,7 +28,7 @@ func (FetchImageJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 2 * time.Minute,
 		},
-		MaxAttempts: 3,
+		MaxAttempts: 6,
 	}
 }
 
@@ -42,7 +42,10 @@ type FetchImageWorker struct {
 
 func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[FetchImageJob]) error {
 	img := job.Args
-	f.log.Debugf("fetching vulnerabilities for %s:%s", img.ImageName, img.ImageTag)
+	f.log.WithFields(logrus.Fields{
+		"image": img.ImageName,
+		"tag":   img.ImageTag,
+	}).Debugf("fetching image vulnerability data")
 
 	data, err := f.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, f.source)
 	if err != nil {
@@ -52,6 +55,12 @@ func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[FetchImageJo
 				ImageName: img.ImageName,
 				ImageTag:  img.ImageTag,
 			})
+			recordOutput(ctx, JobStatusImageNoProject)
+			return nil
+		}
+		if errors.Is(err, sources.ErrNoMetrics) {
+			recordOutput(ctx, JobStatusImageNoMetrics)
+			return err
 		}
 		return err
 	}

@@ -71,6 +71,11 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		SourceType: u.source.Name(),
 	})
 
+	u.log.WithFields(logrus.Fields{
+		"image": imageName,
+		"tag":   imageTag,
+	}).Debugf("uploading attestation")
+
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("failed to check source ref: %w", err)
 	}

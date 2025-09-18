@@ -52,7 +52,11 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 
-	// Check if external processing is complete
+	f.log.WithFields(logrus.Fields{
+		"image": imageName,
+		"tag":   imageTag,
+	}).Debugf("finalizing attestation")
+
 	inProgress, err := f.source.IsTaskInProgress(ctx, job.Args.ProcessToken)
 	if err != nil {
 		return fmt.Errorf("failed to update image state: %w", err)
@@ -63,10 +67,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	}
 
 	if job.Args.ProcessToken == "" {
-		f.log.WithFields(logrus.Fields{
-			"image": imageName,
-			"tag":   imageTag,
-		}).Warn("finalizer ran with empty process token, marking for resync anyway")
+		f.log.Warnf("no process token for image %s:%s, marking as ready for resync", imageName, imageTag)
 	}
 
 	// Mark image as ready for resync

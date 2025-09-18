@@ -54,6 +54,11 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		attribute.String("image.tag", job.Args.ImageTag),
 	)
 
+	r.log.WithFields(logrus.Fields{
+		"image": job.Args.ImageName,
+		"tag":   job.Args.ImageTag,
+	}).Debugf("Removing image from source and deleting DB reference")
+
 	// 1. Delete from external source
 	if err := r.source.Delete(ctx, job.Args.ImageName, job.Args.ImageTag); err != nil {
 		span.RecordError(err)
