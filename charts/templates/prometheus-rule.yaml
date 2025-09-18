@@ -1,3 +1,4 @@
+{{- if contains "nav" .Values.fasit.tenant.name }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -11,48 +12,55 @@ spec:
     - name: namespace-vulnerability-alerts
       rules:
         - alert: "namespace critical vulnerabilities"
-          expr: max by (workload_name, workload_namespace, workload_cluster) (
+          expr: max by (workload_namespace, workload_cluster) (
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="{{ .Release.Namespace }}",
             workload_type!="job"
             }
-            ) > 0
-          for: 10m
+          ) > 0
+          for: 30m
           labels:
             namespace: nais-system
             severity: warning
             channel: nais-alerts-info
             alert_type: custom
+            repeat_interval: 1d
           annotations:
             summary: |
               {{ ":rotating_light: CRITICAL vulnerabilities in namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` and cluster `{{ $labels.workload_cluster }}` has {{ $value | printf \"%.0f\" }} critical vulnerabilities. Please investigate immediately." }}
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+              {{ "Namespace `{{ $labels.workload_namespace }}` on cluster `{{ $labels.workload_cluster }}` has workloads with critical vulnerabilities."}}
+
+              Check details in Salsa:
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{ "{{ $labels.workload_namespace }}" }}
             consequence: Potential security risk; workload may be exploitable
             action: |
               Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
 
         - alert: "namespace high risk-score"
-          expr: max by (workload_name, workload_namespace, workload_cluster) (
+          expr: max by (workload_namespace, workload_cluster) (
             v13s_workload_risk_score{
             workload_namespace="{{ .Release.Namespace }}",
             workload_type!="job"
             }
-            ) > 250
-          for: 10m
+          ) > 250
+          for: 30m
           labels:
             namespace: nais-system
             severity: warning
             channel: nais-alerts-info
             alert_type: custom
+            repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":warning: High risk score for namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":warning: High risk score in namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` and cluster `{{ $labels.workload_cluster }}` has a risk score of {{ $value | printf \"%.0f\" }}. Please review and mitigate potential security or operational issues." }}
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+              {{ "Namespace `{{ $labels.workload_namespace }}` on cluster `{{ $labels.workload_cluster }}` has workloads with risk scores above threshold." }}
+
+              Check details in Salsa:
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{ "{{ $labels.workload_namespace }}" }}
             consequence: Potential security or operational risk
             action: |
-              Investigate the workload and consider patching, redeploying, or other mitigations as needed.
+              Investigate the workloads in Salsa. Consider patching, redeploying, or other mitigations as needed.
+{{- end }}
