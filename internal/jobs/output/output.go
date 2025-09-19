@@ -1,4 +1,4 @@
-package manager
+package output
 
 import (
 	"context"
@@ -35,7 +35,7 @@ const (
 	JobStatusUploadAttestationFinalized JobStatus = "upload_attestation_finalized"
 )
 
-func recordOutput(ctx context.Context, status JobStatus) {
+func Record(ctx context.Context, status JobStatus) {
 	err := river.RecordOutput(ctx, JobOutput{
 		Status: status,
 	})
@@ -44,7 +44,7 @@ func recordOutput(ctx context.Context, status JobStatus) {
 	}
 }
 
-func handleJobErr(originalErr error) error {
+func HandleJobErr(originalErr error) error {
 	var uErr model.UnrecoverableError
 	if errors.As(originalErr, &uErr) {
 		return river.JobCancel(uErr)

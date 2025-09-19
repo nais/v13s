@@ -1,4 +1,4 @@
-package manager
+package sbom
 
 import (
 	"context"
@@ -10,7 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/jobs"
+	"github.com/nais/v13s/internal/jobs/output"
+	"github.com/nais/v13s/internal/jobs/types"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -19,40 +21,15 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-const (
-	KindUploadAttestation            = "upload_attestation"
-	UploadAttestationByPeriodMinutes = 2 * time.Minute
-)
-
-type UploadAttestationJob struct {
-	ImageName   string `river:"unique"`
-	ImageTag    string `river:"unique"`
-	WorkloadId  pgtype.UUID
-	Attestation []byte
-}
-
-func (UploadAttestationJob) Kind() string { return KindUploadAttestation }
-
-func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue: KindUploadAttestation,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: UploadAttestationByPeriodMinutes,
-		},
-		MaxAttempts: 8,
-	}
-}
-
 type UploadAttestationWorker struct {
-	db        sql.Querier
-	source    sources.Source
-	jobClient job.Client
-	log       logrus.FieldLogger
-	river.WorkerDefaults[UploadAttestationJob]
+	Manager jobs.WorkloadManager
+	Querier sql.Querier
+	Source  sources.Source
+	Log     logrus.FieldLogger
+	river.WorkerDefaults[types.UploadAttestationJob]
 }
 
-func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[UploadAttestationJob]) error {
+func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[types.UploadAttestationJob]) error {
 	ctx, span := otel.Tracer("v13s/upload-attestation").Start(ctx, "UploadAttestationWorker")
 	defer span.End()
 
@@ -65,29 +42,29 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 
-	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
+	sourceRef, err := u.Querier.GetSourceRef(ctx, sql.GetSourceRefParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+		SourceType: u.Source.Name(),
 	})
 
-	u.log.WithFields(logrus.Fields{
+	u.Log.WithFields(logrus.Fields{
 		"image": imageName,
 		"tag":   imageTag,
 	}).Debugf("uploading attestation")
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("failed to check source ref: %w", err)
+		return fmt.Errorf("failed to check Verifier ref: %w", err)
 	}
 
 	if err == nil {
 		// sourceRef exists → check if the project actually exists
-		exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
-		if err != nil {
+		exists, ExistErr := u.Source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
+		if ExistErr != nil {
 			return fmt.Errorf("failed to verify project existence: %w", err)
 		}
 		if exists {
-			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			err = u.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				Name:  imageName,
 				Tag:   imageTag,
 				State: sql.ImageStateResync,
@@ -101,19 +78,19 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 				return fmt.Errorf("failed to update image state: %w", err)
 			}
 
-			recordOutput(ctx, JobStatusSourceRefExists)
+			output.Record(ctx, output.JobStatusSourceRefExists)
 			return nil
 		}
 
 		// project does not exist → delete stale sourceRef
-		if err := u.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+		if err = u.Querier.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
 			ImageName:  imageName,
 			ImageTag:   imageTag,
-			SourceType: u.source.Name(),
+			SourceType: u.Source.Name(),
 		}); err != nil {
 			return fmt.Errorf("failed to delete stale sourceRef: %w", err)
 		}
-		u.log.WithFields(logrus.Fields{
+		u.Log.WithFields(logrus.Fields{
 			"image": imageName,
 			"tag":   imageTag,
 		}).Warn("deleted stale sourceRef; will attempt to create new project")
@@ -125,30 +102,30 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	// Upload attestation and create new sourceRef
-	uploadRes, upErr := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	uploadRes, upErr := u.Source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
 	if upErr != nil {
 		span.RecordError(upErr)
-		span.SetStatus(codes.Error, "failed to upload attestation to source")
+		span.SetStatus(codes.Error, "failed to upload attestation to Verifier")
 		// TODO: consider creating a table to track sbom upload failures
 		// can be used to alert teams of persistent upload failures
 		// now we just delete the dangling project and try again
-		return handleJobErr(upErr)
+		return output.HandleJobErr(upErr)
 	}
 
-	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+	err = u.Querier.CreateSourceRef(ctx, sql.CreateSourceRefParams{
 		SourceID: pgtype.UUID{
 			Bytes: uploadRes.AttestationId,
 			Valid: true,
 		},
 		ImageName:  imageName,
 		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+		SourceType: u.Source.Name(),
 	})
 	if err != nil {
 		return err
 	}
 
-	err = u.db.UpdateImage(ctx, sql.UpdateImageParams{
+	err = u.Querier.UpdateImage(ctx, sql.UpdateImageParams{
 		Name:     imageName,
 		Tag:      imageTag,
 		Metadata: att.Metadata,
@@ -158,7 +135,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	// enqueue finalize job
-	err = u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
+	err = u.Manager.AddJob(ctx, &types.FinalizeAttestationJob{
 		ImageName:    imageName,
 		ImageTag:     imageTag,
 		ProcessToken: uploadRes.ProcessToken,
@@ -167,6 +144,6 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
 	}
 
-	recordOutput(ctx, JobStatusAttestationUploaded)
+	output.Record(ctx, output.JobStatusAttestationUploaded)
 	return nil
 }

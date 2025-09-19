@@ -15,8 +15,10 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/jobs/image"
+	"github.com/nais/v13s/internal/jobs/types"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager"
+	"github.com/nais/v13s/internal/management"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	sources2 "github.com/nais/v13s/internal/mocks/Source"
 	attestation "github.com/nais/v13s/internal/mocks/Verifier"
@@ -45,7 +47,7 @@ func TestUpdater(t *testing.T) {
 	mockSource := new(sources2.MockSource)
 	verifierMock := new(attestation.MockVerifier)
 
-	jobCfg := &job.Config{
+	jobCfg := &job.Options{
 		DbUrl: pool.Config().ConnString(),
 	}
 
@@ -54,7 +56,7 @@ func TestUpdater(t *testing.T) {
 		Deleted: make(chan *model.Workload, 100),
 	}
 
-	mgr := manager.NewWorkloadManager(
+	mgr := management.NewWorkloadManager(
 		ctx,
 		pool,
 		jobCfg,
@@ -140,8 +142,8 @@ func TestUpdater(t *testing.T) {
 			imageTag := "v1"
 
 			require.Eventually(t, func() bool {
-				for _, p = range projectNames {
-					img, _ := db.GetImage(ctx, sql.GetImageParams{Name: p, Tag: "v1"})
+				for _, pn := range projectNames {
+					img, _ := db.GetImage(ctx, sql.GetImageParams{Name: pn, Tag: "v1"})
 					if img.State != sql.ImageStateUpdated {
 						return false
 					}
@@ -203,7 +205,7 @@ func TestUpdater(t *testing.T) {
 		var vulnCount int
 		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM vulnerabilities WHERE image_name=$1 AND image_tag=$2", imageName, imageVersion).Scan(&vulnCount)
 		require.NoError(t, err)
-		t.Logf("Raw vulnerabilities in DB for %s:%s = %d", imageName, imageVersion, vulnCount)
+		t.Logf("Raw vulnerabilities in Querier for %s:%s = %d", imageName, imageVersion, vulnCount)
 
 		rows, _ := pool.Query(ctx, "SELECT image_name, image_tag, cve_id FROM vulnerabilities WHERE image_name=$1 AND image_tag=$2", imageName, imageVersion)
 		defer rows.Close()
@@ -390,7 +392,7 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		readyAt := time.Now().Add(-manager.FinalizeAttestationScheduledForResyncMinutes)
+		readyAt := time.Now().Add(-types.FinalizeAttestationScheduledForResyncMinutes)
 		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
@@ -475,14 +477,14 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
         `, ts, 2, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := manager.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
+		got, err := image.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.WithinDuration(t, ts, *got, time.Second)
 	})
 
 	t.Run("returns timestamp if severity not present", func(t *testing.T) {
-		got, err := manager.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 5)
+		got, err := image.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 5)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 	})
@@ -496,7 +498,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
     `, ts, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := manager.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
+		got, err := image.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 

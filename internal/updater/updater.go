@@ -2,14 +2,13 @@ package updater
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/manager"
+	"github.com/nais/v13s/internal/jobs"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
@@ -30,11 +29,10 @@ type Updater struct {
 	resyncImagesOlderThanMinutes time.Duration
 	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
-	mgr                          *manager.WorkloadManager
-	once                         sync.Once
+	mgr                          jobs.WorkloadManager
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, mgr *manager.WorkloadManager, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, mgr jobs.WorkloadManager, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
