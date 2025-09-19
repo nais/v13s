@@ -27,8 +27,7 @@ func AddWorker[T river.JobArgs](c Client, worker river.Worker[T]) {
 	river.AddWorker(c.GetWorkers(), worker)
 }
 
-// TODO: rename to Options ?
-type Config struct {
+type Options struct {
 	DbUrl string
 }
 
@@ -47,8 +46,8 @@ type client struct {
 
 var _ Client = (*client)(nil)
 
-func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueConfig) (Client, error) {
-	pool, err := pgxpool.New(ctx, cfg.DbUrl)
+func NewClient(ctx context.Context, jobOpts *Options, queues map[string]river.QueueConfig) (Client, error) {
+	pool, err := pgxpool.New(ctx, jobOpts.DbUrl)
 	if err != nil {
 		return nil, err
 	}
