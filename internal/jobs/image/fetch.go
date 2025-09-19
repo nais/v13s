@@ -1,85 +1,67 @@
-package manager
+package image
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/jobs"
+	"github.com/nais/v13s/internal/jobs/output"
+	"github.com/nais/v13s/internal/jobs/types"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	KindFetchImage                  = "fetch_image"
 	SyncErrorStatusCodeGenericError = "GenericError"
 )
 
-type FetchImageJob struct {
-	ImageName string
-	ImageTag  string
-}
-
-func (FetchImageJob) Kind() string { return KindFetchImage }
-
-func (FetchImageJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue: KindFetchImage,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
-		},
-		MaxAttempts: 6,
-	}
-}
-
 type FetchImageWorker struct {
-	db        sql.Querier
-	source    sources.Source
-	log       logrus.FieldLogger
-	jobClient job.Client
-	river.WorkerDefaults[FetchImageJob]
+	Manager jobs.WorkloadManager
+	Querier sql.Querier
+	Source  sources.Source
+	Log     logrus.FieldLogger
+	river.WorkerDefaults[types.FetchImageJob]
 }
 
-func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[FetchImageJob]) error {
+func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[types.FetchImageJob]) error {
 	img := job.Args
-	f.log.WithFields(logrus.Fields{
+	f.Log.WithFields(logrus.Fields{
 		"image": img.ImageName,
 		"tag":   img.ImageTag,
 	}).Debugf("fetching image vulnerability data")
 
-	data, err := f.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, f.source)
+	data, err := f.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, f.Source)
 	if err != nil {
-		handleErr := f.handleError(ctx, img.ImageName, img.ImageTag, f.source.Name(), err)
+		handleErr := f.handleError(ctx, img.ImageName, img.ImageTag, f.Source.Name(), err)
 		if handleErr != nil {
-			recordOutput(ctx, JobStatusImageFetchFailed)
+			output.Record(ctx, output.JobStatusImageFetchFailed)
 			return handleErr
 		}
 
 		return err
 	}
 
-	recordOutput(ctx, JobStatusImageMetadataFetched)
-	return f.jobClient.AddJob(ctx, UpsertImageJob{Data: data})
+	output.Record(ctx, output.JobStatusImageMetadataFetched)
+	return f.Manager.AddJob(ctx, types.UpsertImageJob{Data: data})
 }
 
-func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*ImageVulnerabilityData, error) {
-	vulnerabilities, err := f.source.GetVulnerabilities(ctx, imageName, imageTag, true)
+func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*types.ImageVulnerabilityData, error) {
+	vulnerabilities, err := f.Source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		return nil, err
 	}
-	f.log.Debugf("Got %d vulnerabilities", len(vulnerabilities))
+	f.Log.Debugf("Got %d vulnerabilities", len(vulnerabilities))
 
 	// sync suppressed vulnerabilities
-	suppressedVulns, err := f.db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+	suppressedVulns, err := f.Querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
 	if err != nil {
 		return nil, err
 	}
 
-	f.log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
+	f.Log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
 	filteredVulnerabilities := make([]*sources.SuppressedVulnerability, 0)
 	for _, sup := range suppressedVulns {
 		for _, v := range vulnerabilities {
@@ -99,17 +81,17 @@ func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName
 		}
 	}
 
-	err = f.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
+	err = f.Source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
 	if err != nil {
 		return nil, err
 	}
 
-	summary, err := f.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
+	summary, err := f.Source.GetVulnerabilitySummary(ctx, imageName, imageTag)
 	if err != nil {
 		return nil, err
 	}
 
-	workloads, err := f.db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+	workloads, err := f.Querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	})
@@ -117,7 +99,7 @@ func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName
 		return nil, err
 	}
 
-	return &ImageVulnerabilityData{
+	return &types.ImageVulnerabilityData{
 		ImageName:       imageName,
 		ImageTag:        imageTag,
 		Source:          source.Name(),
@@ -153,19 +135,23 @@ func (f *FetchImageWorker) handleError(ctx context.Context, imageName, imageTag 
 	case err == nil:
 		return nil
 	case errors.Is(err, sources.ErrNoProject):
-		recordOutput(ctx, JobStatusImageNoProject)
+		output.Record(ctx, output.JobStatusImageNoProject)
+		_ = f.Manager.AddJob(ctx, types.RemoveFromSourceJob{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+		})
 		return nil
 	case errors.Is(err, sources.ErrNoMetrics):
-		recordOutput(ctx, JobStatusImageNoMetrics)
+		output.Record(ctx, output.JobStatusImageNoMetrics)
 		return nil
 	}
 
 	updateSyncParams.Reason = err.Error()
 	updateSyncParams.StatusCode = SyncErrorStatusCodeGenericError
-	f.log.Debugf("orginal error status: %v", err)
+	f.Log.Debugf("orginal error status: %v", err)
 
-	if insertErr := f.db.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {
-		f.log.Errorf("failed to update image sync status: %v", insertErr)
+	if insertErr := f.Querier.UpdateImageSyncStatus(ctx, updateSyncParams); insertErr != nil {
+		f.Log.Errorf("failed to update image sync status: %v", insertErr)
 		return fmt.Errorf("updating image sync status: %w", insertErr)
 	}
 
