@@ -34,30 +34,5 @@ spec:
             consequence: Potential security risk; workload may be exploitable
             action: |
               Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
-
-        - alert: "namespace high risk-score"
-          expr: max by (workload_namespace) (
-            v13s_workload_risk_score{
-            workload_namespace=~"nais-system|nais"
-            }
-            ) > 250
-          for: 30m
-          labels:
-            namespace: nais-system
-            severity: warning
-            channel: nais-alerts-info
-            alert_type: custom
-            repeat_interval: 1d
-          annotations:
-            summary: |
-              {{ ":warning: High risk score in namespace `{{ $labels.workload_namespace }}`" }}
-            description: |
-              {{ "Namespace `{{ $labels.workload_namespace }}` has workloads with risk scores above threshold in one or more clusters" }}
-
-              Check details in Salsa:
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText=nais-io
-            consequence: Potential security or operational risk
-            action: |
-              Investigate the workloads in Salsa. Consider patching, redeploying, or other mitigations as needed.
 {{- end }}
 
