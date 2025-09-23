@@ -28,7 +28,7 @@ type WorkloadManager struct {
 	pool             *pgxpool.Pool
 	jobClient        job.Client
 	verifier         attestation.Verifier
-	src              sources.Source
+	srcs             map[string]sources.Source
 	queue            *kubernetes.WorkloadEventQueue
 	addDispatcher    *dispatcher.Dispatcher[*model.Workload]
 	deleteDispatcher *dispatcher.Dispatcher[*model.Workload]
@@ -38,7 +38,7 @@ type WorkloadManager struct {
 
 type WorkloadEvent string
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobOpts *job.Options, verifier attestation.Verifier, s sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobOpts *job.Options, verifier attestation.Verifier, s map[string]sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -67,7 +67,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobOpts *job.Op
 		pool:            pool,
 		jobClient:       jobClient,
 		verifier:        verifier,
-		src:             s,
+		srcs:            s,
 		queue:           queue,
 		workloadCounter: udCounter,
 		log:             log,

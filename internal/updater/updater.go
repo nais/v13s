@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/jobs"
-	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,27 +22,23 @@ const (
 )
 
 type Updater struct {
-	db                           *pgxpool.Pool
 	querier                      *sql.Queries
-	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	updateSchedule               ScheduleConfig
 	log                          *logrus.Entry
 	mgr                          jobs.WorkloadManager
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, mgr jobs.WorkloadManager, log *log.Entry) *Updater {
+func NewUpdater(mgr jobs.WorkloadManager, pool *pgxpool.Pool, schedule ScheduleConfig, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
 
 	return &Updater{
-		db:                           pool,
+		mgr:                          mgr,
 		querier:                      sql.New(pool),
-		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
-		mgr:                          mgr,
 		log:                          log,
 	}
 }

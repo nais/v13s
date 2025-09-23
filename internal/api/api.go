@@ -43,9 +43,14 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer pool.Close()
 
-	source, err := sources.New(cfg.DependencyTrack, log)
+	sourceMap, err := sources.SetupSources(
+		[]sources.SourceConfig{
+			&cfg.DependencyTrack,
+		},
+		log,
+	)
 	if err != nil {
-		log.Fatalf("Failed to create source: %v", err)
+		log.Fatalf("failed to initialize sources: %v", err)
 	}
 
 	workloadEventQueue := &kubernetes.WorkloadEventQueue{
@@ -76,7 +81,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		DbUrl: cfg.DatabaseUrl,
 	}
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobOpts, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr := manager.NewWorkloadManager(ctx, pool, jobOpts, verifier, sourceMap, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
 
@@ -93,13 +98,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 
 	u := updater.NewUpdater(
+		mgr,
 		pool,
-		source,
 		updater.ScheduleConfig{
 			Type:     updater.SchedulerInterval,
 			Interval: cfg.UpdateInterval,
 		},
-		mgr,
 		log.WithField("subsystem", "updater"),
 	)
 	u.Run(ctx)

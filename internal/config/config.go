@@ -8,7 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/depedencytrack"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -24,7 +24,7 @@ type Config struct {
 	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
 	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
-	DependencyTrack           sources.DependencyTrackConfig
+	DependencyTrack           depedencytrack.DependencyTrackConfig
 	K8s                       K8sConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 }

@@ -150,7 +150,9 @@ SELECT w.id,
        w.cluster,
        w.namespace,
        w.name,
-       w.workload_type
+       w.workload_type,
+       w.image_name,
+       w.image_tag
 FROM workloads w
          JOIN vulnerabilities v
               ON v.image_name = w.image_name

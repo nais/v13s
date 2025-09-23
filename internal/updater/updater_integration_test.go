@@ -19,11 +19,12 @@ import (
 	"github.com/nais/v13s/internal/jobs/types"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/management"
-	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	sources2 "github.com/nais/v13s/internal/mocks/Source"
 	attestation "github.com/nais/v13s/internal/mocks/Verifier"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/depedencytrack"
+	"github.com/nais/v13s/internal/sources/source"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/sirupsen/logrus"
@@ -43,7 +44,6 @@ func TestUpdater(t *testing.T) {
 	assert.NoError(t, err)
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
-	mockDPTrack := new(dependencytrackMock.MockClient)
 	mockSource := new(sources2.MockSource)
 	verifierMock := new(attestation.MockVerifier)
 
@@ -61,7 +61,9 @@ func TestUpdater(t *testing.T) {
 		pool,
 		jobCfg,
 		verifierMock,
-		mockSource,
+		map[string]sources.Source{
+			depedencytrack.SourceName: mockSource,
+		},
 		queue,
 		logrus.NewEntry(logrus.StandardLogger()))
 
@@ -70,11 +72,11 @@ func TestUpdater(t *testing.T) {
 
 	for _, p := range projectNames {
 
-		vulns := make([]*sources.Vulnerability, 4)
+		vulns := make([]*source.Vulnerability, 4)
 		for i := 0; i < 4; i++ {
-			vulns[i] = &sources.Vulnerability{
+			vulns[i] = &source.Vulnerability{
 				Package: "pkg:component-" + p + fmt.Sprintf("-%d", i),
-				Cve: &sources.Cve{
+				Cve: &source.Cve{
 					Description: "description",
 					Title:       "title",
 					Link:        fmt.Sprintf("mylink-%s-%d", p, i),
@@ -97,9 +99,9 @@ func TestUpdater(t *testing.T) {
 			true,          // includeFixes
 		).Return(vulns, nil)
 
-		mockSource.On("Name").Return("test-source")
+		mockSource.On("Name").Return(depedencytrack.SourceName)
 
-		mockSource.On("GetVulnerabilitySummary", mock.Anything, p, "v1").Return(&sources.VulnerabilitySummary{
+		mockSource.On("GetVulnerabilitySummary", mock.Anything, p, "v1").Return(&source.VulnerabilitySummary{
 			Id:         p,
 			Critical:   1,
 			High:       2,
@@ -120,8 +122,7 @@ func TestUpdater(t *testing.T) {
 	log := logrus.NewEntry(logrus.StandardLogger())
 	logrus.SetLevel(logrus.DebugLevel)
 
-	//done := make(chan struct{})
-	u := updater.NewUpdater(pool, mockSource, updateSchedule, mgr, log)
+	u := updater.NewUpdater(mgr, pool, updateSchedule, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
@@ -268,7 +269,7 @@ func TestUpdater(t *testing.T) {
 		threshold := time.Now().UTC().Add(-updater.ImageMarkAge)
 		fmt.Printf("Threshold for untracking: %v\n", threshold)
 
-		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, mgr, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(mgr, pool, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
@@ -305,7 +306,7 @@ func TestUpdater(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, mgr, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(mgr, pool, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkUnusedImages(ctx)
 		assert.NoError(t, err)
@@ -355,7 +356,7 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, mgr, logrus.NewEntry(logrus.StandardLogger()))
+		u := updater.NewUpdater(mgr, pool, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkForResync(updaterCtx)
 		assert.NoError(t, err)
@@ -409,7 +410,7 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateResync, image.State)
 		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
 
-		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, mgr, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(mgr, pool, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		images, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)

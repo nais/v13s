@@ -1,4 +1,4 @@
-package sources
+package depedencytrack
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
+	sources "github.com/nais/v13s/internal/sources/source"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,7 +27,7 @@ func TestMaintainSuppressedVulnerabilities(t *testing.T) {
 		VulnerabilityUuid: "vuln-1",
 	}
 
-	suppressed := []*SuppressedVulnerability{
+	suppressed := []*sources.SuppressedVulnerability{
 		{
 			CveId:      "CVE-2025-0001",
 			Package:    "libfoo",
@@ -77,7 +78,7 @@ func TestMaintainSuppressedVulnerabilities_GetAnalysisError(t *testing.T) {
 		VulnerabilityUuid: "vuln-1",
 	}
 
-	suppressed := []*SuppressedVulnerability{
+	suppressed := []*sources.SuppressedVulnerability{
 		{Metadata: metadata, CveId: "CVE-2025-0001", Suppressed: true},
 	}
 
@@ -103,7 +104,7 @@ func TestMaintainSuppressedVulnerabilities_UpdateFindingError(t *testing.T) {
 		VulnerabilityUuid: "vuln-1",
 	}
 
-	suppressed := []*SuppressedVulnerability{
+	suppressed := []*sources.SuppressedVulnerability{
 		{Metadata: metadata, CveId: "CVE-2025-0001", Suppressed: true, State: "NOT_AFFECTED"},
 	}
 
@@ -135,7 +136,7 @@ func TestMaintainSuppressedVulnerabilities_NoUpdateNeeded(t *testing.T) {
 		VulnerabilityUuid: "vuln-1",
 	}
 
-	suppressed := []*SuppressedVulnerability{
+	suppressed := []*sources.SuppressedVulnerability{
 		{Metadata: metadata, CveId: "CVE-2025-0001", Suppressed: true, State: "NOT_AFFECTED"},
 	}
 
@@ -162,7 +163,7 @@ func TestMaintainSuppressedVulnerabilities_EmptyList(t *testing.T) {
 	mockClient := new(dependencytrackMock.MockClient)
 	source := NewDependencytrackSource(mockClient, log)
 
-	var suppressed []*SuppressedVulnerability
+	var suppressed []*sources.SuppressedVulnerability
 
 	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)
 	assert.NoError(t, err)
