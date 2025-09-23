@@ -1033,7 +1033,9 @@ SELECT w.id,
        w.cluster,
        w.namespace,
        w.name,
-       w.workload_type
+       w.workload_type,
+       w.image_name,
+       w.image_tag
 FROM workloads w
          JOIN vulnerabilities v
               ON v.image_name = w.image_name
@@ -1048,6 +1050,8 @@ type ListWorkloadsForVulnerabilityByIdRow struct {
 	Namespace    string
 	Name         string
 	WorkloadType string
+	ImageName    string
+	ImageTag     string
 }
 
 func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnerabilityID pgtype.UUID) ([]*ListWorkloadsForVulnerabilityByIdRow, error) {
@@ -1065,6 +1069,8 @@ func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnera
 			&i.Namespace,
 			&i.Name,
 			&i.WorkloadType,
+			&i.ImageName,
+			&i.ImageTag,
 		); err != nil {
 			return nil, err
 		}

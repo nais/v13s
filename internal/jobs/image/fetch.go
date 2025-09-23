@@ -10,6 +10,8 @@ import (
 	"github.com/nais/v13s/internal/jobs/output"
 	"github.com/nais/v13s/internal/jobs/types"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/depedencytrack"
+	"github.com/nais/v13s/internal/sources/source"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
@@ -33,7 +35,7 @@ func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[types.FetchI
 		"tag":   img.ImageTag,
 	}).Debugf("fetching image vulnerability data")
 
-	data, err := f.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag, f.Source)
+	data, err := f.fetchVulnerabilityData(ctx, img.ImageName, img.ImageTag)
 	if err != nil {
 		handleErr := f.handleError(ctx, img.ImageName, img.ImageTag, f.Source.Name(), err)
 		if handleErr != nil {
@@ -48,7 +50,7 @@ func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[types.FetchI
 	return f.Manager.AddJob(ctx, types.UpsertImageJob{Data: data})
 }
 
-func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*types.ImageVulnerabilityData, error) {
+func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string) (*types.ImageVulnerabilityData, error) {
 	vulnerabilities, err := f.Source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		return nil, err
@@ -62,11 +64,11 @@ func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName
 	}
 
 	f.Log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
-	filteredVulnerabilities := make([]*sources.SuppressedVulnerability, 0)
+	filteredVulnerabilities := make([]*source.SuppressedVulnerability, 0)
 	for _, sup := range suppressedVulns {
 		for _, v := range vulnerabilities {
 			if v.Cve.Id == sup.CveID && v.Package == sup.Package && sup.Suppressed != v.Suppressed {
-				filteredVulnerabilities = append(filteredVulnerabilities, &sources.SuppressedVulnerability{
+				filteredVulnerabilities = append(filteredVulnerabilities, &source.SuppressedVulnerability{
 					ImageName:    imageName,
 					ImageTag:     imageTag,
 					CveId:        v.Cve.Id,
@@ -102,7 +104,7 @@ func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName
 	return &types.ImageVulnerabilityData{
 		ImageName:       imageName,
 		ImageTag:        imageTag,
-		Source:          source.Name(),
+		Source:          f.Source.Name(),
 		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
 		Workloads:       workloads,
@@ -134,14 +136,14 @@ func (f *FetchImageWorker) handleError(ctx context.Context, imageName, imageTag 
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, sources.ErrNoProject):
+	case errors.Is(err, depedencytrack.ErrNoProject):
 		output.Record(ctx, output.JobStatusImageNoProject)
 		_ = f.Manager.AddJob(ctx, types.RemoveFromSourceJob{
 			ImageName: imageName,
 			ImageTag:  imageTag,
 		})
 		return nil
-	case errors.Is(err, sources.ErrNoMetrics):
+	case errors.Is(err, depedencytrack.ErrNoMetrics):
 		output.Record(ctx, output.JobStatusImageNoMetrics)
 		return nil
 	}

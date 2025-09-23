@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/source"
 	"github.com/riverqueue/river"
 )
 
@@ -25,8 +25,8 @@ type ImageVulnerabilityData struct {
 	ImageName       string
 	ImageTag        string
 	Source          string
-	Vulnerabilities []*sources.Vulnerability
-	Summary         *sources.VulnerabilitySummary
+	Vulnerabilities []*source.Vulnerability
+	Summary         *source.VulnerabilitySummary
 	Workloads       []*sql.ListWorkloadsByImageRow
 }
 
