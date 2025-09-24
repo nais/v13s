@@ -16,8 +16,8 @@ WITH mttr AS (
         v.snapshot_date      AS snapshot_time,
         AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
         COUNT(*)::INT        AS fixed_count,
-        MIN(v.fixed_at)::timestamptz     AS first_fixed_at,
-        MAX(v.fixed_at)::timestamptz      AS last_fixed_at
+        MIN(v.fixed_at)::date     AS first_fixed_at,
+        MAX(v.fixed_at)::date      AS last_fixed_at
     FROM vuln_fix_summary v
              JOIN workloads w ON w.id = v.workload_id
     WHERE v.is_fixed = true
@@ -52,8 +52,8 @@ type ListMeanTimeToFixTrendBySeverityRow struct {
 	SnapshotTime      pgtype.Date
 	MeanTimeToFixDays int32
 	FixedCount        int32
-	FirstFixedAt      pgtype.Timestamptz
-	LastFixedAt       pgtype.Timestamptz
+	FirstFixedAt      pgtype.Date
+	LastFixedAt       pgtype.Date
 }
 
 func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error) {
