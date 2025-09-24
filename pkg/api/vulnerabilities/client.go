@@ -122,6 +122,7 @@ func (c *client) ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...O
 	o := applyOptions(opts...)
 	return c.v.ListMeanTimeToFixTrendBySeverity(ctx, &ListMeanTimeToFixTrendBySeverityRequest{
 		Filter: o.Filter,
+		Since:  o.Since,
 	}, o.CallOptions...)
 }
 

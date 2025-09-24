@@ -250,6 +250,7 @@ message ListWorkloadsForVulnerabilityByIdResponse {
 
 message ListMeanTimeToFixTrendBySeverityRequest {
   Filter filter = 1;
+  optional google.protobuf.Timestamp since = 2;
 }
 
 message ListMeanTimeToFixTrendBySeverityResponse {

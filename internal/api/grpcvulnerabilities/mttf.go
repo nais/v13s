@@ -25,6 +25,7 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
 		WorkloadName:  request.GetFilter().Workload,
+		Since:         timestamptzFromProto(request.GetSince()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list mean time to fix per severity: %w", err)

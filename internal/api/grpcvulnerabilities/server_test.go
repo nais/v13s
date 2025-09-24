@@ -1020,19 +1020,19 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 
 			for _, v := range vulns {
 				fixed := v.FixedAt != nil
-				var fixedAt pgtype.Date
 				fixDuration := 0
 				if fixed {
 					fixDuration = int(v.FixedAt.Sub(v.IntroducedAt).Hours() / 24)
 				}
 
 				_, err := pool.Exec(ctx, `
-   		 		INSERT INTO vuln_fix_summary (
-        		workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
-    			) VALUES ($1, $2, $3, $4, $5, $6, $7)
-				`, w.ID, v.Severity, v.IntroducedAt, fixedAt, fixDuration, fixed, now)
+        INSERT INTO vuln_fix_summary (
+            workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, w.ID, v.Severity, v.IntroducedAt, v.FixedAt, fixDuration, fixed, now)
 				require.NoError(t, err)
 			}
+
 		}
 	}
 
@@ -1082,6 +1082,12 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		for _, n := range resp.Nodes {
 			assert.True(t, n.FixedCount > 0)
 		}
+	})
+
+	t.Run("filter since that is after the last fixed vuln", func(t *testing.T) {
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.Since(now.Add(-1*24*time.Hour)))
+		require.NoError(t, err)
+		assert.Empty(t, resp.Nodes, "expected no results since no vulns were fixed in the last 24h")
 	})
 }
 

@@ -10,21 +10,28 @@ import (
 )
 
 const listMeanTimeToFixTrendBySeverity = `-- name: ListMeanTimeToFixTrendBySeverity :many
-SELECT
-    v.severity,
-    v.snapshot_date      AS snapshot_time,
-    AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
-    COUNT(*)::INT        AS fixed_count
-FROM vuln_fix_summary v
-         JOIN workloads w ON w.id = v.workload_id
-WHERE v.is_fixed = true
-AND
-    ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
-AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
-AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
-AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
-GROUP BY v.snapshot_date, v.severity
-ORDER BY v.snapshot_date, v.severity
+WITH mttr AS (
+    SELECT
+        v.severity,
+        v.snapshot_date      AS snapshot_time,
+        AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
+        COUNT(*)::INT        AS fixed_count
+    FROM vuln_fix_summary v
+             JOIN workloads w ON w.id = v.workload_id
+    WHERE v.is_fixed = true
+      AND ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
+      AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
+      AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
+      AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+      AND ($5::timestamptz IS NULL OR v.fixed_at >= $5::timestamptz)
+    GROUP BY v.snapshot_date, v.severity
+)
+SELECT severity,
+       snapshot_time,
+       mean_time_to_fix_days,
+       fixed_count
+FROM mttr
+ORDER BY snapshot_time, severity
 `
 
 type ListMeanTimeToFixTrendBySeverityParams struct {
@@ -32,6 +39,7 @@ type ListMeanTimeToFixTrendBySeverityParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	Since         pgtype.Timestamptz
 }
 
 type ListMeanTimeToFixTrendBySeverityRow struct {
@@ -47,6 +55,7 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.Since,
 	)
 	if err != nil {
 		return nil, err
