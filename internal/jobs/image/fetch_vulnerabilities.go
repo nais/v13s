@@ -20,15 +20,15 @@ const (
 	SyncErrorStatusCodeGenericError = "GenericError"
 )
 
-type FetchImageWorker struct {
+type FetchImageVulnerabilitiesWorker struct {
 	Manager jobs.WorkloadManager
 	Querier sql.Querier
 	Source  sources.Source
 	Log     logrus.FieldLogger
-	river.WorkerDefaults[types.FetchImageJob]
+	river.WorkerDefaults[types.FetchImageVulnerabilitiesJob]
 }
 
-func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[types.FetchImageJob]) error {
+func (f *FetchImageVulnerabilitiesWorker) Work(ctx context.Context, job *river.Job[types.FetchImageVulnerabilitiesJob]) error {
 	img := job.Args
 	f.Log.WithFields(logrus.Fields{
 		"image": img.ImageName,
@@ -42,15 +42,18 @@ func (f *FetchImageWorker) Work(ctx context.Context, job *river.Job[types.FetchI
 			output.Record(ctx, output.JobStatusImageFetchFailed)
 			return handleErr
 		}
-
 		return err
 	}
 
-	output.Record(ctx, output.JobStatusImageMetadataFetched)
-	return f.Manager.AddJob(ctx, types.UpsertImageJob{Data: data})
+	output.Record(ctx, output.JobStatusImageVulnerabilityMetadataFetched)
+	return f.Manager.AddJob(ctx, types.FetchImageSummaryJob{
+		ImageName:       img.ImageName,
+		ImageTag:        img.ImageTag,
+		Vulnerabilities: data,
+	})
 }
 
-func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string) (*types.ImageVulnerabilityData, error) {
+func (f *FetchImageVulnerabilitiesWorker) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string) ([]*source.Vulnerability, error) {
 	vulnerabilities, err := f.Source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		return nil, err
@@ -88,27 +91,7 @@ func (f *FetchImageWorker) fetchVulnerabilityData(ctx context.Context, imageName
 		return nil, err
 	}
 
-	summary, err := f.Source.GetVulnerabilitySummary(ctx, imageName, imageTag)
-	if err != nil {
-		return nil, err
-	}
-
-	workloads, err := f.Querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
-		ImageName: imageName,
-		ImageTag:  imageTag,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.ImageVulnerabilityData{
-		ImageName:       imageName,
-		ImageTag:        imageTag,
-		Source:          f.Source.Name(),
-		Vulnerabilities: vulnerabilities,
-		Summary:         summary,
-		Workloads:       workloads,
-	}, nil
+	return vulnerabilities, nil
 }
 
 func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
@@ -126,7 +109,7 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	}
 }
 
-func (f *FetchImageWorker) handleError(ctx context.Context, imageName, imageTag string, source string, err error) error {
+func (f *FetchImageVulnerabilitiesWorker) handleError(ctx context.Context, imageName, imageTag string, source string, err error) error {
 	updateSyncParams := sql.UpdateImageSyncStatusParams{
 		ImageName: imageName,
 		ImageTag:  imageTag,

@@ -55,6 +55,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobOpts *job.Op
 		types.KindFinalizeAttestation: {MaxWorkers: 100},
 		types.KindUpsertImage:         {MaxWorkers: 50},
 		types.KindFetchImage:          {MaxWorkers: 50},
+		types.KindFetchImageSummary:   {MaxWorkers: 50},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobOpts, queues)
@@ -114,7 +115,7 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 }
 
 func (m *WorkloadManager) SyncImage(ctx context.Context, imageName, imageTag string) error {
-	err := m.jobClient.AddJob(ctx, &types.FetchImageJob{
+	err := m.jobClient.AddJob(ctx, &types.FetchImageVulnerabilitiesJob{
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	})

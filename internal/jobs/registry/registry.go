@@ -22,11 +22,17 @@ func RegisterWorkers(jobClient job.Client, db sql.Querier, verifier attestation.
 		return
 	}
 
-	job.AddWorker(jobClient, &image.FetchImageWorker{
+	job.AddWorker(jobClient, &image.FetchImageVulnerabilitiesWorker{
 		Manager: m,
 		Source:  dpSrc,
 		Querier: db,
 		Log:     log.WithField("subsystem", types.KindFetchImage),
+	})
+	job.AddWorker(jobClient, &image.FetchImageSummaryWorker{
+		Manager: m,
+		Source:  dpSrc,
+		Querier: db,
+		Log:     log.WithField("subsystem", types.KindFetchImageSummary),
 	})
 	job.AddWorker(jobClient, &sbom.FinalizeAttestationWorker{
 		Manager: m,

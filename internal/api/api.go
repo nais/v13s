@@ -78,7 +78,8 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 
 	jobOpts := &job.Options{
-		DbUrl: cfg.DatabaseUrl,
+		DbUrl:         cfg.DatabaseUrl,
+		WorkerOptions: job.DefaultWorkerOptions,
 	}
 
 	mgr := manager.NewWorkloadManager(ctx, pool, jobOpts, verifier, sourceMap, workloadEventQueue, log.WithField("subsystem", "manager"))
