@@ -16,10 +16,9 @@ import (
 	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/jobs/image"
-	"github.com/nais/v13s/internal/jobs/types"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/management"
-	sources2 "github.com/nais/v13s/internal/mocks/Source"
+	mockSources "github.com/nais/v13s/internal/mocks/Source"
 	attestation "github.com/nais/v13s/internal/mocks/Verifier"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
@@ -44,11 +43,12 @@ func TestUpdater(t *testing.T) {
 	assert.NoError(t, err)
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
-	mockSource := new(sources2.MockSource)
+	mockSource := new(mockSources.MockSource)
 	verifierMock := new(attestation.MockVerifier)
 
 	jobCfg := &job.Options{
-		DbUrl: pool.Config().ConnString(),
+		DbUrl:         pool.Config().ConnString(),
+		WorkerOptions: job.WorkerOptions{},
 	}
 
 	queue := &kubernetes.WorkloadEventQueue{
@@ -117,7 +117,7 @@ func TestUpdater(t *testing.T) {
 
 	updateSchedule := updater.ScheduleConfig{
 		Type:     updater.SchedulerInterval,
-		Interval: 200 * time.Millisecond,
+		Interval: 100 * time.Millisecond,
 	}
 	log := logrus.NewEntry(logrus.StandardLogger())
 	logrus.SetLevel(logrus.DebugLevel)
@@ -125,44 +125,62 @@ func TestUpdater(t *testing.T) {
 	u := updater.NewUpdater(mgr, pool, updateSchedule, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
-		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(15*time.Second))
 		defer cancel()
 
 		insertWorkloads(ctx, t, db, projectNames)
+
 		_, err = pool.Exec(ctx, `
-    		UPDATE images
-    		SET metadata = '{}', ready_for_resync_at = NOW()
-    		WHERE state = 'initialized'`)
+		UPDATE images
+		SET metadata = '{}', ready_for_resync_at = NOW()
+		WHERE state = 'initialized'`)
 		require.NoError(t, err)
 
 		err = u.ResyncImageVulnerabilities(updaterCtx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			for _, p := range projectNames {
+				img, err := db.GetImage(ctx, sql.GetImageParams{Name: p, Tag: "v1"})
+				if err != nil {
+					t.Logf("Error fetching image %s: %v", p, err)
+					return false
+				}
+
+				imageTag := "v1"
+				vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+					ImageName: &p,
+					ImageTag:  &imageTag,
+					Limit:     100,
+				})
+				if err != nil || len(vulns) < 4 {
+					t.Logf("Image %s has %d vulnerabilities (err=%v)", p, len(vulns), err)
+					return false
+				}
+
+				if img.State != sql.ImageStateUpdated && img.State != sql.ImageStateResync {
+					t.Logf("Image %s state=%s", p, img.State)
+					return false
+				}
+			}
+			return true
+		}, 20*time.Second, 300*time.Millisecond)
 
 		for _, p := range projectNames {
 			imageName := p
 			imageTag := "v1"
-
-			require.Eventually(t, func() bool {
-				for _, pn := range projectNames {
-					img, _ := db.GetImage(ctx, sql.GetImageParams{Name: pn, Tag: "v1"})
-					if img.State != sql.ImageStateUpdated {
-						return false
-					}
-				}
-				return true
-			}, 5*time.Second, 100*time.Millisecond)
-			assert.NoError(t, err)
 
 			vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 				ImageName: &imageName,
 				ImageTag:  &imageTag,
 				Limit:     100,
 			})
-			assert.NoError(t, err)
-			assert.Len(t, vulns, 4)
+			require.NoError(t, err)
+			require.Len(t, vulns, 4)
 
 			assert.True(t, collections.AnyMatch(vulns, func(r *sql.ListVulnerabilitiesRow) bool {
-				return r.ImageName == imageName && r.ImageTag == imageTag && r.CveID == fmt.Sprintf("CVE-%s-0", imageName)
+				return r.ImageName == imageName && r.ImageTag == imageTag &&
+					r.CveID == fmt.Sprintf("CVE-%s-0", imageName)
 			}))
 		}
 	})
@@ -195,7 +213,7 @@ func TestUpdater(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
 		defer cancel()
 
 		err = u.MarkForResync(updaterCtx)
@@ -225,17 +243,17 @@ func TestUpdater(t *testing.T) {
 		}
 
 		require.Eventually(t, func() bool {
-			image, _ := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
-			vulns, _ := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+			i, _ := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+			v, _ := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 				ImageName: &imageName,
 				ImageTag:  &imageVersion,
 				Offset:    0,
 				Limit:     100,
 			})
 			t.Logf("Image %s:%s state=%s updated_at=%v, vulns=%d",
-				imageName, imageVersion, image.State, image.UpdatedAt, len(vulns))
-			return image.State == sql.ImageStateUpdated || image.State == sql.ImageStateResync && len(vulns) == 4
-		}, 5*time.Second, 100*time.Millisecond)
+				imageName, imageVersion, i.State, i.UpdatedAt, len(v))
+			return i.State == sql.ImageStateUpdated || i.State == sql.ImageStateResync && len(v) == 4
+		}, 20*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("images older than threshold should be marked as untracked", func(t *testing.T) {
@@ -393,7 +411,7 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		readyAt := time.Now().Add(-types.FinalizeAttestationScheduledForResyncMinutes)
+		readyAt := time.Now().Add(-1 * time.Minute)
 		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,

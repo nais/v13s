@@ -15,6 +15,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	FinalizeAttestationScheduledForResyncMinutes = 1 * time.Minute
+)
+
 type FinalizeAttestationWorker struct {
 	Manager jobs.WorkloadManager
 	Querier sql.Querier
@@ -24,12 +28,11 @@ type FinalizeAttestationWorker struct {
 }
 
 func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[types.FinalizeAttestationJob]) error {
-	imageName := job.Args.ImageName
-	imageTag := job.Args.ImageTag
+	img := job.Args
 
 	f.Log.WithFields(logrus.Fields{
-		"image": imageName,
-		"tag":   imageTag,
+		"image": img.ImageName,
+		"tag":   img.ImageTag,
 	}).Debugf("finalizing attestation")
 
 	inProgress, err := f.Source.IsTaskInProgress(ctx, job.Args.ProcessToken)
@@ -38,20 +41,20 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[typ
 	}
 
 	if inProgress {
-		return fmt.Errorf("attestation task for image %s:%s is still in progress", imageName, imageTag)
+		return fmt.Errorf("attestation task for image %s:%s is still in progress", img.ImageName, img.ImageTag)
 	}
 
 	if job.Args.ProcessToken == "" {
-		f.Log.Warnf("no process token for image %s:%s, marking as ready for resync", imageName, imageTag)
+		f.Log.Warnf("no process token for image %s:%s, marking as ready for resync", img.ImageName, img.ImageTag)
 	}
 
 	// Mark image as ready for resync
 	err = f.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-		Name:  imageName,
-		Tag:   imageTag,
+		Name:  img.ImageName,
+		Tag:   img.ImageTag,
 		State: sql.ImageStateResync,
 		ReadyForResyncAt: pgtype.Timestamptz{
-			Time:  time.Now().Add(types.FinalizeAttestationScheduledForResyncMinutes),
+			Time:  time.Now().Add(FinalizeAttestationScheduledForResyncMinutes),
 			Valid: true,
 		},
 	})
@@ -59,7 +62,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[typ
 		return fmt.Errorf("failed to update image state: %f", err)
 	}
 
-	rows, err := f.Querier.ListUnusedImages(ctx, &imageName)
+	rows, err := f.Querier.ListUnusedImages(ctx, &img.ImageName)
 	if err != nil {
 		return fmt.Errorf("failed to list unused images: %w", err)
 	}
