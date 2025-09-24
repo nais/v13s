@@ -32,7 +32,9 @@ WITH mttr AS (
         v.severity,
         v.snapshot_date      AS snapshot_time,
         AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
-        COUNT(*)::INT        AS fixed_count
+        COUNT(*)::INT        AS fixed_count,
+        MIN(v.fixed_at)::timestamptz     AS first_fixed_at,
+        MAX(v.fixed_at)::timestamptz      AS last_fixed_at
     FROM vuln_fix_summary v
              JOIN workloads w ON w.id = v.workload_id
     WHERE v.is_fixed = true
@@ -43,10 +45,13 @@ WITH mttr AS (
       AND (sqlc.narg('since')::timestamptz IS NULL OR v.fixed_at >= sqlc.narg('since')::timestamptz)
     GROUP BY v.snapshot_date, v.severity
 )
-SELECT severity,
-       snapshot_time,
-       mean_time_to_fix_days,
-       fixed_count
+SELECT
+    severity,
+    snapshot_time,
+    mean_time_to_fix_days,
+    fixed_count,
+    first_fixed_at,
+    last_fixed_at
 FROM mttr
 ORDER BY snapshot_time, severity;
 

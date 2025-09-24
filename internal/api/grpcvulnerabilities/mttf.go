@@ -37,6 +37,8 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 			MeanTimeToFixDays: row.MeanTimeToFixDays,
 			SnapshotTime:      timestamppb.New(row.SnapshotTime.Time),
 			FixedCount:        row.FixedCount,
+			FirstFixedAt:      timestamppb.New(row.FirstFixedAt.Time),
+			LastFixedAt:       timestamppb.New(row.LastFixedAt.Time),
 		}
 	})
 

@@ -15,7 +15,9 @@ WITH mttr AS (
         v.severity,
         v.snapshot_date      AS snapshot_time,
         AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
-        COUNT(*)::INT        AS fixed_count
+        COUNT(*)::INT        AS fixed_count,
+        MIN(v.fixed_at)::timestamptz     AS first_fixed_at,
+        MAX(v.fixed_at)::timestamptz      AS last_fixed_at
     FROM vuln_fix_summary v
              JOIN workloads w ON w.id = v.workload_id
     WHERE v.is_fixed = true
@@ -26,10 +28,13 @@ WITH mttr AS (
       AND ($5::timestamptz IS NULL OR v.fixed_at >= $5::timestamptz)
     GROUP BY v.snapshot_date, v.severity
 )
-SELECT severity,
-       snapshot_time,
-       mean_time_to_fix_days,
-       fixed_count
+SELECT
+    severity,
+    snapshot_time,
+    mean_time_to_fix_days,
+    fixed_count,
+    first_fixed_at,
+    last_fixed_at
 FROM mttr
 ORDER BY snapshot_time, severity
 `
@@ -47,6 +52,8 @@ type ListMeanTimeToFixTrendBySeverityRow struct {
 	SnapshotTime      pgtype.Date
 	MeanTimeToFixDays int32
 	FixedCount        int32
+	FirstFixedAt      pgtype.Timestamptz
+	LastFixedAt       pgtype.Timestamptz
 }
 
 func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error) {
@@ -69,6 +76,8 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 			&i.SnapshotTime,
 			&i.MeanTimeToFixDays,
 			&i.FixedCount,
+			&i.FirstFixedAt,
+			&i.LastFixedAt,
 		); err != nil {
 			return nil, err
 		}
