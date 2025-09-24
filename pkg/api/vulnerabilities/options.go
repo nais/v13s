@@ -85,6 +85,7 @@ type Options struct {
 	Offset            int32
 	OrderBy           *OrderBy
 	Since             *timestamppb.Timestamp
+	SinceType         *SinceType
 	Severity          *Severity
 }
 
@@ -222,6 +223,12 @@ func Order(field OrderByField, direction Direction) Option {
 func Since(t time.Time) Option {
 	return newFuncOption(func(o *Options) {
 		o.Since = timestamppb.New(t)
+	})
+}
+
+func SinceTypeFiler(sinceType SinceType) Option {
+	return newFuncOption(func(o *Options) {
+		o.SinceType = &sinceType
 	})
 }
 

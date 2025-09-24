@@ -9,22 +9,19 @@ INSERT INTO vuln_fix_summary (
     snapshot_date
 )
 SELECT
-    v.workload_id,
-    v.severity,
-    v.introduced_at,
-    v.fixed_at,
-    v.fix_duration,
-    v.is_fixed,
-    v.snapshot_date
-FROM vuln_upsert_data v
-         JOIN workloads w ON w.id = v.workload_id
-    ON CONFLICT (workload_id, severity, introduced_at) DO
+    workload_id,
+    severity,
+    introduced_at,
+    fixed_at,
+    fix_duration,
+    is_fixed,
+    snapshot_date
+FROM vuln_upsert_data_for_date(CURRENT_DATE) ON CONFLICT (workload_id, severity, introduced_at, snapshot_date) DO
 UPDATE
     SET
         fixed_at = EXCLUDED.fixed_at,
     fix_duration = EXCLUDED.fix_duration,
-    is_fixed = EXCLUDED.is_fixed,
-    snapshot_date = EXCLUDED.snapshot_date;
+    is_fixed = EXCLUDED.is_fixed;
 
 -- name: ListMeanTimeToFixTrendBySeverity :many
 WITH mttr AS (
@@ -42,7 +39,15 @@ WITH mttr AS (
       AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
       AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
       AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
-      AND (sqlc.narg('since')::timestamptz IS NULL OR v.fixed_at >= sqlc.narg('since')::timestamptz)
+      AND (
+        sqlc.narg('since')::timestamptz IS NULL
+          OR (
+              sqlc.narg('since_type')::TEXT = 'snapshot' AND v.snapshot_date >= sqlc.narg('since')::timestamptz
+          )
+          OR (
+              sqlc.narg('since_type')::TEXT = 'fixed' AND v.fixed_at >= sqlc.narg('since')::timestamptz
+          )
+        )
     GROUP BY v.snapshot_date, v.severity
 )
 SELECT

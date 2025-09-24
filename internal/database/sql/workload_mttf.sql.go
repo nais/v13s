@@ -25,7 +25,15 @@ WITH mttr AS (
       AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
       AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
       AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
-      AND ($5::timestamptz IS NULL OR v.fixed_at >= $5::timestamptz)
+      AND (
+        $5::timestamptz IS NULL
+          OR (
+              $6::TEXT = 'snapshot' AND v.snapshot_date >= $5::timestamptz
+          )
+          OR (
+              $6::TEXT = 'fixed' AND v.fixed_at >= $5::timestamptz
+          )
+        )
     GROUP BY v.snapshot_date, v.severity
 )
 SELECT
@@ -45,6 +53,7 @@ type ListMeanTimeToFixTrendBySeverityParams struct {
 	WorkloadTypes []string
 	WorkloadName  *string
 	Since         pgtype.Timestamptz
+	SinceType     *string
 }
 
 type ListMeanTimeToFixTrendBySeverityRow struct {
@@ -63,6 +72,7 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.Since,
+		arg.SinceType,
 	)
 	if err != nil {
 		return nil, err
@@ -180,22 +190,19 @@ INSERT INTO vuln_fix_summary (
     snapshot_date
 )
 SELECT
-    v.workload_id,
-    v.severity,
-    v.introduced_at,
-    v.fixed_at,
-    v.fix_duration,
-    v.is_fixed,
-    v.snapshot_date
-FROM vuln_upsert_data v
-         JOIN workloads w ON w.id = v.workload_id
-    ON CONFLICT (workload_id, severity, introduced_at) DO
+    workload_id,
+    severity,
+    introduced_at,
+    fixed_at,
+    fix_duration,
+    is_fixed,
+    snapshot_date
+FROM vuln_upsert_data_for_date(CURRENT_DATE) ON CONFLICT (workload_id, severity, introduced_at, snapshot_date) DO
 UPDATE
     SET
         fixed_at = EXCLUDED.fixed_at,
     fix_duration = EXCLUDED.fix_duration,
-    is_fixed = EXCLUDED.is_fixed,
-    snapshot_date = EXCLUDED.snapshot_date
+    is_fixed = EXCLUDED.is_fixed
 `
 
 func (q *Queries) UpsertVulnerabilityLifetimes(ctx context.Context) error {
