@@ -37,6 +37,11 @@ enum Severity {
   UNASSIGNED = 4;
 }
 
+enum SinceType {
+  SNAPSHOT = 0;
+  FIXED = 1;
+}
+
 // -------------------- Core Messages --------------------
 
 message Filter {
@@ -253,6 +258,7 @@ message ListWorkloadsForVulnerabilityByIdResponse {
 message ListMeanTimeToFixTrendBySeverityRequest {
   Filter filter = 1;
   optional google.protobuf.Timestamp since = 2;
+  optional SinceType since_type = 3;
 }
 
 message ListMeanTimeToFixTrendBySeverityResponse {
@@ -262,6 +268,8 @@ message ListMeanTimeToFixTrendBySeverityResponse {
 
 message ListWorkloadMTTFBySeverityRequest {
   Filter filter = 1;
+  optional google.protobuf.Timestamp since = 2;
+  optional SinceType since_type = 3;
 }
 
 message ListWorkloadMTTFBySeverityResponse {

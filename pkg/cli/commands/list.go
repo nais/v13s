@@ -59,7 +59,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				{
 					Name:  "mttf",
 					Usage: "list mean time to fix (MTTF) for workload severities",
-					Flags: flag.CommonFlags(opts, "l", "o", "s", "su"),
+					Flags: flag.CommonFlags(opts, "l", "o", "su"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listWorkloadMTTFBySeverity(ctx, cmd, c, opts)
 					},
@@ -365,8 +365,16 @@ func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c v
 
 	for _, n := range resp.GetNodes() {
 		snapshot := "N/A"
+		firstFixedAt := "N/A"
+		lastFixedAt := "N/A"
 		if n.SnapshotTime != nil && !n.SnapshotTime.AsTime().IsZero() {
 			snapshot = n.SnapshotTime.AsTime().Format("2006-01-02")
+		}
+		if n.FirstFixedAt != nil && !n.FirstFixedAt.AsTime().IsZero() {
+			firstFixedAt = n.FirstFixedAt.AsTime().Format("2006-01-02")
+		}
+		if n.LastFixedAt != nil && !n.LastFixedAt.AsTime().IsZero() {
+			lastFixedAt = n.LastFixedAt.AsTime().Format("2006-01-02")
 		}
 
 		tbl.AddRow(
@@ -374,8 +382,8 @@ func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c v
 			snapshot,
 			n.MeanTimeToFixDays,
 			n.FixedCount,
-			n.FirstFixedAt,
-			n.LastFixedAt,
+			firstFixedAt,
+			lastFixedAt,
 		)
 	}
 

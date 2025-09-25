@@ -3,6 +3,7 @@ package grpcvulnerabilities
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
@@ -20,13 +21,20 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
 	}
 
-	metrics, err := s.querier.ListMeanTimeToFixTrendBySeverity(ctx, sql.ListMeanTimeToFixTrendBySeverityParams{
+	params := sql.ListMeanTimeToFixTrendBySeverityParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         timestamptzFromProto(request.GetSince()),
-	})
+	}
+
+	if request.SinceType != nil {
+		sinceType := strings.ToLower(request.GetSinceType().String())
+		params.SinceType = &sinceType
+	}
+
+	metrics, err := s.querier.ListMeanTimeToFixTrendBySeverity(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list mean time to fix per severity: %w", err)
 	}
@@ -58,12 +66,20 @@ func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulner
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
 	}
 
-	rows, err := s.querier.ListWorkloadSeverityFixStats(ctx, sql.ListWorkloadSeverityFixStatsParams{
+	params := sql.ListWorkloadSeverityFixStatsParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
 		WorkloadName:  request.GetFilter().Workload,
-	})
+		Since:         timestamptzFromProto(request.GetSince()),
+	}
+
+	if request.SinceType != nil {
+		sinceType := strings.ToLower(request.GetSinceType().String())
+		params.SinceType = &sinceType
+	}
+
+	rows, err := s.querier.ListWorkloadSeverityFixStats(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list workload severities with mean time to fix: %w", err)
 	}

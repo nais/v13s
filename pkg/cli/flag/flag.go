@@ -18,6 +18,7 @@ type Options struct {
 	Limit         int
 	Order         string
 	Since         string
+	SinceType     string
 	WorkloadType  string
 	ShowJobs      bool
 	WorkloadState string
@@ -81,6 +82,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "Specify a relative time (e.g. '1Y' for last year, '1M' for last month, '2D' for last 2 days, '12h' for last 12 hours, '30m' for last 30 minutes)",
 			Destination: &opts.Since,
+		},
+		&cli.StringFlag{
+			Name:        "since-type",
+			Aliases:     []string{"st"},
+			Value:       "snapshot",
+			Usage:       "Specify the type of 'since' filter (e.g. 'snapshot' for time since last snapshot, 'fixed' for time since vulnerability was fixed)",
+			Destination: &opts.SinceType,
 		},
 		&cli.BoolFlag{
 			Name:        "suppressed",
@@ -168,6 +176,16 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		}
 		sinceTime := time.Now().Add(-duration)
 		opts = append(opts, vulnerabilities.Since(sinceTime))
+	}
+	if o.SinceType != "" {
+		switch strings.ToLower(o.SinceType) {
+		case "snapshot":
+			opts = append(opts, vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_SNAPSHOT))
+		case "fixed":
+			opts = append(opts, vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED))
+		default:
+			log.Fatalf("invalid since-type: %s valid values are 'snapshot' or 'fixed'", o.SinceType)
+		}
 	}
 
 	if o.Suppressed {
