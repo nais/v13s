@@ -53,9 +53,14 @@ SELECT
     i.severity,
     i.introduced_at,
     MIN(f.fixed_at) AS fixed_at,
-    COALESCE(MIN(f.fixed_at), for_date) - i.introduced_at AS fix_duration,
-    CASE WHEN MIN(f.fixed_at) IS NOT NULL AND MIN(f.fixed_at) <= for_date
-             THEN TRUE ELSE FALSE END AS is_fixed,
+    CASE
+        WHEN MIN(f.fixed_at) IS NOT NULL THEN MIN(f.fixed_at) - i.introduced_at
+        ELSE NULL
+        END AS fix_duration,
+    CASE
+        WHEN MIN(f.fixed_at) IS NOT NULL AND MIN(f.fixed_at) <= for_date THEN TRUE
+        ELSE FALSE
+        END AS is_fixed,
     for_date AS snapshot_date
 FROM introduced i
          LEFT JOIN fixed f
@@ -65,6 +70,6 @@ FROM introduced i
 GROUP BY i.workload_id, i.severity, i.introduced_at
     $fn$ LANGUAGE sql STABLE;
 
-CREATE OR REPLACE FUNCTION backfill_vuln_fix_summary() RETURNS void AS $fn$ DECLARE d DATE; BEGIN FOR d IN (SELECT DISTINCT snapshot_date FROM vuln_daily_by_workload ORDER BY snapshot_date) LOOP INSERT INTO vuln_fix_summary (workload_id,severity,introduced_at,fixed_at,fix_duration,is_fixed,snapshot_date) SELECT workload_id,severity,introduced_at,fixed_at,fix_duration,is_fixed,snapshot_date FROM vuln_upsert_data_for_date(d) ON CONFLICT (workload_id,severity,introduced_at,snapshot_date) DO UPDATE SET fixed_at=EXCLUDED.fixed_at, fix_duration=EXCLUDED.fix_duration, is_fixed=EXCLUDED.is_fixed; END LOOP; END; $fn$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION backfill_vuln_fix_summary() RETURNS void AS $fn$ DECLARE d DATE; BEGIN FOR d IN (SELECT DISTINCT snapshot_date FROM vuln_daily_by_workload ORDER BY snapshot_date) LOOP INSERT INTO vuln_fix_summary (workload_id,severity,introduced_at,fixed_at,fix_duration,is_fixed,snapshot_date) SELECT workload_id,severity,introduced_at,fixed_at,CASE WHEN fixed_at IS NOT NULL THEN fixed_at - introduced_at ELSE NULL END,CASE WHEN fixed_at IS NOT NULL AND fixed_at <= d THEN TRUE ELSE FALSE END,d FROM vuln_upsert_data_for_date(d) ON CONFLICT (workload_id,severity,introduced_at,snapshot_date) DO UPDATE SET fixed_at=EXCLUDED.fixed_at,fix_duration=EXCLUDED.fix_duration,is_fixed=EXCLUDED.is_fixed; END LOOP; END; $fn$ LANGUAGE plpgsql;
 
 SELECT backfill_vuln_fix_summary();
