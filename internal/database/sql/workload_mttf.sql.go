@@ -27,12 +27,12 @@ WITH mttr AS (
       AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
       AND (
         $5::timestamptz IS NULL
-          OR (
-              $6::TEXT = 'snapshot' AND v.snapshot_date >= $5::timestamptz
-          )
-          OR (
-              $6::TEXT = 'fixed' AND v.fixed_at >= $5::timestamptz
-          )
+    OR (
+        CASE COALESCE($6::TEXT, 'snapshot')
+            WHEN 'snapshot' THEN v.snapshot_date
+            WHEN 'fixed' THEN v.fixed_at
+        END >= $5::timestamptz
+    )
         )
     GROUP BY v.snapshot_date, v.severity
 )

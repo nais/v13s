@@ -1013,26 +1013,34 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 				Severity     int
 				IntroducedAt time.Time
 				FixedAt      *time.Time
+				SnapshotDate time.Time
 			}{
-				{0, now.Add(-10 * 24 * time.Hour), ptrTime(now.Add(-5 * 24 * time.Hour))},
-				{1, now.Add(-7 * 24 * time.Hour), ptrTime(now.Add(-2 * 24 * time.Hour))},
+				{0, now.Add(-10 * 24 * time.Hour), ptrTime(now.Add(-5 * 24 * time.Hour)), now.Add(-10 * 24 * time.Hour)},
+				{1, now.Add(-7 * 24 * time.Hour), ptrTime(now.Add(-2 * 24 * time.Hour)), now.Add(-7 * 24 * time.Hour)},
 			}
 
 			for _, v := range vulns {
-				fixed := v.FixedAt != nil
+				intro := v.IntroducedAt.Truncate(24 * time.Hour)
+				snap := v.SnapshotDate.Truncate(24 * time.Hour)
+				var fixed *time.Time
+				if v.FixedAt != nil {
+					tmp := v.FixedAt.Truncate(24 * time.Hour)
+					fixed = &tmp
+				}
+
+				fixedFlag := fixed != nil
 				fixDuration := 0
-				if fixed {
-					fixDuration = int(v.FixedAt.Sub(v.IntroducedAt).Hours() / 24)
+				if fixedFlag {
+					fixDuration = int(fixed.Sub(intro).Hours() / 24)
 				}
 
 				_, err := pool.Exec(ctx, `
-        INSERT INTO vuln_fix_summary (
-            workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, w.ID, v.Severity, v.IntroducedAt, v.FixedAt, fixDuration, fixed, now)
+					INSERT INTO vuln_fix_summary (
+						workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
+					) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				`, w.ID, v.Severity, intro, fixed, fixDuration, fixedFlag, snap)
 				require.NoError(t, err)
 			}
-
 		}
 	}
 
@@ -1088,6 +1096,50 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.Since(now.Add(-1*24*time.Hour)))
 		require.NoError(t, err)
 		assert.Empty(t, resp.Nodes, "expected no results since no vulns were fixed in the last 24h")
+	})
+
+	t.Run("filter since snapshot date", func(t *testing.T) {
+		sinceSnapshot := now.Add(-20 * 24 * time.Hour).Truncate(24 * time.Hour).UTC()
+
+		fmt.Println("Filtering since snapshot date:", sinceSnapshot)
+
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx)
+		require.NoError(t, err)
+
+		fmt.Printf("=== Raw Response Nodes ===\n")
+		for _, n := range resp.Nodes {
+			fmt.Printf(
+				"Severity: %d, Snapshot: %v, MeanTimeToFix: %d, FixedCount: %d\n",
+				n.Severity,
+				n.SnapshotTime.AsTime(),
+				n.MeanTimeToFixDays,
+				n.FixedCount,
+			)
+		}
+
+		resp, err = client.ListMeanTimeToFixTrendBySeverity(ctx,
+			vulnerabilities.Since(sinceSnapshot))
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(resp.Nodes), 1)
+
+		for _, n := range resp.Nodes {
+			assert.True(t, n.SnapshotTime.AsTime().After(sinceSnapshot) || n.SnapshotTime.AsTime().Equal(sinceSnapshot))
+		}
+	})
+
+	t.Run("filter since fixed date", func(t *testing.T) {
+		sinceFixed := now.Add(-10 * 24 * time.Hour).Truncate(24 * time.Hour).UTC()
+
+		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx,
+			vulnerabilities.Since(sinceFixed),
+			vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED))
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(resp.Nodes), 1)
+
+		for _, n := range resp.Nodes {
+			assert.True(t, n.FixedCount > 0)
+			assert.True(t, n.SnapshotTime.AsTime().After(sinceFixed) || n.SnapshotTime.AsTime().Equal(sinceFixed))
+		}
 	})
 }
 

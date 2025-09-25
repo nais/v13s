@@ -41,12 +41,12 @@ WITH mttr AS (
       AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
       AND (
         sqlc.narg('since')::timestamptz IS NULL
-          OR (
-              sqlc.narg('since_type')::TEXT = 'snapshot' AND v.snapshot_date >= sqlc.narg('since')::timestamptz
-          )
-          OR (
-              sqlc.narg('since_type')::TEXT = 'fixed' AND v.fixed_at >= sqlc.narg('since')::timestamptz
-          )
+    OR (
+        CASE COALESCE(sqlc.narg('since_type')::TEXT, 'snapshot')
+            WHEN 'snapshot' THEN v.snapshot_date
+            WHEN 'fixed' THEN v.fixed_at
+        END >= sqlc.narg('since')::timestamptz
+    )
         )
     GROUP BY v.snapshot_date, v.severity
 )

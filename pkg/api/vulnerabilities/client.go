@@ -121,8 +121,9 @@ func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id strin
 func (c *client) ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListMeanTimeToFixTrendBySeverity(ctx, &ListMeanTimeToFixTrendBySeverityRequest{
-		Filter: o.Filter,
-		Since:  o.Since,
+		Filter:    o.Filter,
+		Since:     o.Since,
+		SinceType: o.SinceType,
 	}, o.CallOptions...)
 }
 

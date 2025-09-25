@@ -226,7 +226,7 @@ func Since(t time.Time) Option {
 	})
 }
 
-func SinceTypeFiler(sinceType SinceType) Option {
+func SinceTypeFilter(sinceType SinceType) Option {
 	return newFuncOption(func(o *Options) {
 		o.SinceType = &sinceType
 	})

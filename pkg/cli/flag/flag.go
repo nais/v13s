@@ -180,9 +180,9 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 	if o.SinceType != "" {
 		switch strings.ToLower(o.SinceType) {
 		case "snapshot":
-			opts = append(opts, vulnerabilities.SinceTypeFiler(vulnerabilities.SinceType_SNAPSHOT))
+			opts = append(opts, vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_SNAPSHOT))
 		case "fixed":
-			opts = append(opts, vulnerabilities.SinceTypeFiler(vulnerabilities.SinceType_FIXED))
+			opts = append(opts, vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED))
 		default:
 			log.Fatalf("invalid since-type: %s valid values are 'snapshot' or 'fixed'", o.SinceType)
 		}
