@@ -130,7 +130,9 @@ func (c *client) ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...O
 func (c *client) ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListWorkloadMTTFBySeverity(ctx, &ListWorkloadMTTFBySeverityRequest{
-		Filter: o.Filter,
+		Filter:    o.Filter,
+		Since:     o.Since,
+		SinceType: o.SinceType,
 	}, o.CallOptions...)
 }
 

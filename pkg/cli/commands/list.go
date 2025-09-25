@@ -59,7 +59,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				{
 					Name:  "mttf",
 					Usage: "list mean time to fix (MTTF) for workload severities",
-					Flags: flag.CommonFlags(opts, "l", "o", "s", "su"),
+					Flags: flag.CommonFlags(opts, "l", "o", "su"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listWorkloadMTTFBySeverity(ctx, cmd, c, opts)
 					},
