@@ -1,5 +1,7 @@
 -- +goose Up
 
+DROP VIEW IF EXISTS vuln_upsert_data;
+
 ALTER TABLE vuln_fix_summary DROP CONSTRAINT IF EXISTS vuln_fix_summary_pkey;
 
 ALTER TABLE vuln_fix_summary

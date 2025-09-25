@@ -63,22 +63,30 @@ ORDER BY snapshot_time, severity;
 -- name: ListWorkloadSeverityFixStats :many
 SELECT
     v.workload_id,
-    w.name       AS workload_name,
-    w.namespace  AS workload_namespace,
-    w.cluster    AS workload_cluster,
+    w.name AS workload_name,
+    w.namespace AS workload_namespace,
+    w.cluster AS workload_cluster,
     v.severity,
     MIN(v.introduced_at)::date AS introduced_date,
     MAX(v.fixed_at)::date AS fixed_at,
     COUNT(*) FILTER (WHERE v.is_fixed)::INT AS fixed_count,
-    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT mean_time_to_fix_days,
+    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT AS mean_time_to_fix_days,
     MAX(v.snapshot_date)::timestamptz AS snapshot_time
 FROM vuln_fix_summary v
          JOIN workloads w ON w.id = v.workload_id
-WHERE (
-          (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
-              AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
-              AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
-              AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
-          )
+WHERE
+    (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
+  AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
+  AND (sqlc.narg('workload_types')::TEXT[] IS NULL OR w.workload_type = ANY(sqlc.narg('workload_types')::TEXT[]))
+  AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
+  AND (
+    sqlc.narg('since')::timestamptz IS NULL
+        OR (
+            sqlc.narg('since_type')::TEXT = 'snapshot' AND v.snapshot_date >= sqlc.narg('since')::timestamptz
+        )
+        OR (
+            sqlc.narg('since_type')::TEXT = 'fixed' AND v.fixed_at >= sqlc.narg('since')::timestamptz
+        )
+    )
 GROUP BY v.workload_id, w.name, w.namespace, w.cluster, v.severity
 ORDER BY introduced_date DESC;

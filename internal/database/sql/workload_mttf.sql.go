@@ -102,23 +102,31 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 const listWorkloadSeverityFixStats = `-- name: ListWorkloadSeverityFixStats :many
 SELECT
     v.workload_id,
-    w.name       AS workload_name,
-    w.namespace  AS workload_namespace,
-    w.cluster    AS workload_cluster,
+    w.name AS workload_name,
+    w.namespace AS workload_namespace,
+    w.cluster AS workload_cluster,
     v.severity,
     MIN(v.introduced_at)::date AS introduced_date,
     MAX(v.fixed_at)::date AS fixed_at,
     COUNT(*) FILTER (WHERE v.is_fixed)::INT AS fixed_count,
-    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT mean_time_to_fix_days,
+    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT AS mean_time_to_fix_days,
     MAX(v.snapshot_date)::timestamptz AS snapshot_time
 FROM vuln_fix_summary v
          JOIN workloads w ON w.id = v.workload_id
-WHERE (
-          ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
-              AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
-              AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
-              AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
-          )
+WHERE
+    ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
+  AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
+  AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
+  AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+  AND (
+    $5::timestamptz IS NULL
+        OR (
+            $6::TEXT = 'snapshot' AND v.snapshot_date >= $5::timestamptz
+        )
+        OR (
+            $6::TEXT = 'fixed' AND v.fixed_at >= $5::timestamptz
+        )
+    )
 GROUP BY v.workload_id, w.name, w.namespace, w.cluster, v.severity
 ORDER BY introduced_date DESC
 `
@@ -128,6 +136,8 @@ type ListWorkloadSeverityFixStatsParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	Since         pgtype.Timestamptz
+	SinceType     *string
 }
 
 type ListWorkloadSeverityFixStatsRow struct {
@@ -149,6 +159,8 @@ func (q *Queries) ListWorkloadSeverityFixStats(ctx context.Context, arg ListWork
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.Since,
+		arg.SinceType,
 	)
 	if err != nil {
 		return nil, err
