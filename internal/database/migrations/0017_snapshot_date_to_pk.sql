@@ -20,18 +20,23 @@ RETURNS TABLE (
 WITH vuln_events AS (
     SELECT workload_id, snapshot_date, 0 AS severity, critical AS count
     FROM vuln_daily_by_workload
+    WHERE snapshot_date <= for_date
     UNION ALL
     SELECT workload_id, snapshot_date, 1, high
     FROM vuln_daily_by_workload
+    WHERE snapshot_date <= for_date
     UNION ALL
     SELECT workload_id, snapshot_date, 2, medium
     FROM vuln_daily_by_workload
+    WHERE snapshot_date <= for_date
     UNION ALL
     SELECT workload_id, snapshot_date, 3, low
     FROM vuln_daily_by_workload
+    WHERE snapshot_date <= for_date
     UNION ALL
     SELECT workload_id, snapshot_date, 4, unassigned
     FROM vuln_daily_by_workload
+    WHERE snapshot_date <= for_date
 ),
 vuln_events_with_lag AS (
     SELECT *,
@@ -53,19 +58,14 @@ SELECT
     i.severity,
     i.introduced_at,
     MIN(f.fixed_at) AS fixed_at,
-    CASE
-        WHEN MIN(f.fixed_at) IS NOT NULL THEN MIN(f.fixed_at) - i.introduced_at
-        ELSE NULL
-        END AS fix_duration,
-    CASE
-        WHEN MIN(f.fixed_at) IS NOT NULL AND MIN(f.fixed_at) <= for_date THEN TRUE
-        ELSE FALSE
-        END AS is_fixed,
+    COALESCE(MIN(f.fixed_at), for_date) - i.introduced_at AS fix_duration,
+    CASE WHEN MIN(f.fixed_at) IS NOT NULL AND MIN(f.fixed_at) <= for_date THEN TRUE ELSE FALSE END AS is_fixed,
     for_date AS snapshot_date
 FROM introduced i
          LEFT JOIN fixed f
                    ON f.workload_id = i.workload_id
                        AND f.severity = i.severity
+                       AND f.fixed_at <= for_date
                        AND f.fixed_at > i.introduced_at
 GROUP BY i.workload_id, i.severity, i.introduced_at
     $fn$ LANGUAGE sql STABLE;
