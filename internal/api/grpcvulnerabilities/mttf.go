@@ -20,12 +20,18 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 		wTypes = []string{request.GetFilter().GetWorkloadType()}
 	}
 
+	sinceType := vulnerabilities.SinceType_SNAPSHOT.String()
+	if request.GetSinceType() != vulnerabilities.SinceType_SNAPSHOT {
+		sinceType = vulnerabilities.SinceType_FIXED.String()
+	}
+
 	metrics, err := s.querier.ListMeanTimeToFixTrendBySeverity(ctx, sql.ListMeanTimeToFixTrendBySeverityParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: wTypes,
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         timestamptzFromProto(request.GetSince()),
+		SinceType:     &sinceType,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list mean time to fix per severity: %w", err)
