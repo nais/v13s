@@ -25,15 +25,15 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "image",
 					Aliases: []string{"v"},
 					Usage:   "list vulnerabilities for image",
-					Flags:   flag.CommonFlags(opts, "cluster", "namespace", "workload"),
+					Flags:   flag.CommonFlags(opts, "c", "n", "w", "s"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listVulnerabilitiesForImage(ctx, cmd, c, opts)
 					},
 				},
 				{
 					Name:  "suppressed",
-					Usage: "list suppressed vulnerabilities",
-					Flags: flag.CommonFlags(opts),
+					Usage: "list suppressed vulnerabilities with optional filters",
+					Flags: flag.CommonFlags(opts, "su"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listSuppressedVulnerabilities(ctx, cmd, c, opts)
 					},
@@ -50,7 +50,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				{
 					Name:    "summary",
 					Aliases: []string{"s"},
-					Usage:   "list vulnerability summary for filter",
+					Usage:   "list vulnerability summary with optional filters",
 					Flags:   flag.CommonFlags(opts),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listSummaries(ctx, cmd, c, opts)
@@ -78,7 +78,6 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 }
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
-	opts := flag.ParseOptions(cmd, o)
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image name")
 	}
@@ -86,64 +85,75 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
 	}
+	imageName, imageTag := parts[0], parts[1]
+
 	start := time.Now()
-	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
-	if err != nil {
-		return err
-	}
 
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	vulnTbl := table.New("Package", "CVE", "Title", "Severity", "Severity Since", "Created", "Last Updated", "Suppressed")
-	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	err := pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
+		opts := flag.ParseOptions(cmd, o)
+		opts = append(opts, vulnerabilities.Offset(int32(offset)))
 
-	var suppressions [][]string
-
-	for _, n := range resp.GetNodes() {
-		suppressed := "No"
-		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
-			suppressed = "Yes"
+		resp, err := c.ListVulnerabilitiesForImage(ctx, imageName, imageTag, opts...)
+		if err != nil {
+			return 0, false, fmt.Errorf("failed to list vulnerabilities for image %s:%s: %w", imageName, imageTag, err)
 		}
-		vulnTbl.AddRow(
-			n.GetPackage(),
-			n.Cve.Id,
-			n.Cve.Title,
-			n.Cve.Severity,
-			n.SeveritySince.AsTime().Format(time.RFC3339),
-			n.GetCreated().AsTime().Format(time.RFC3339),
-			n.GetLastUpdated().AsTime().Format(time.RFC3339),
-			suppressed,
-		)
 
-		// Only add to suppression table if suppressed
-		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
-			suppressions = append(suppressions, []string{
-				n.Cve.Id,
-				n.GetPackage(),
-				n.GetLatestVersion(),
-				n.GetSuppression().GetSuppressedReason().String(),
-				n.GetSuppression().GetSuppressedBy(),
-				n.GetSuppression().GetLastUpdated().AsTime().Format(time.RFC3339),
-			})
-		}
-	}
+		vulnTbl := table.New("Package", "CVE", "Title", "Severity", "References", "Severity Since", "CVE Last Updated", "Suppressed")
+		vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
-	vulnTbl.Print()
+		var suppressions [][]string
 
-	if len(suppressions) > 0 {
-		fmt.Println("\nSuppressed vulnerabilities:")
-		suppTbl := table.New("CVE", "Package", "Latest Version", "Reason", "Suppressed By", "Suppressed At")
-		suppTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-		for _, row := range suppressions {
-			// Convert []string to []interface{}
-			rowInterface := make([]interface{}, len(row))
-			for i, v := range row {
-				rowInterface[i] = v
+		for _, n := range resp.GetNodes() {
+			suppressed := "No"
+			if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
+				suppressed = "Yes"
 			}
-			suppTbl.AddRow(rowInterface...)
+			vulnTbl.AddRow(
+				n.GetPackage(),
+				n.Cve.Id,
+				n.Cve.Title,
+				n.Cve.Severity,
+				n.Cve.References,
+				n.SeveritySince.AsTime().Format(time.RFC3339),
+				n.GetLastUpdated().AsTime().Format(time.RFC3339),
+				suppressed,
+			)
+
+			if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
+				suppressions = append(suppressions, []string{
+					n.Cve.Id,
+					n.GetPackage(),
+					n.GetLatestVersion(),
+					n.GetSuppression().GetSuppressedReason().String(),
+					n.GetSuppression().GetSuppressedBy(),
+					n.GetSuppression().GetLastUpdated().AsTime().Format(time.RFC3339),
+				})
+			}
 		}
-		suppTbl.Print()
+
+		vulnTbl.Print()
+
+		if len(suppressions) > 0 {
+			fmt.Println("\nSuppressed vulnerabilities:")
+			suppTbl := table.New("CVE", "Package", "Latest Version", "Reason", "Suppressed By", "Suppressed At")
+			suppTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+			for _, row := range suppressions {
+				rowInterface := make([]interface{}, len(row))
+				for i, v := range row {
+					rowInterface[i] = v
+				}
+				suppTbl.AddRow(rowInterface...)
+			}
+			suppTbl.Print()
+		}
+
+		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")

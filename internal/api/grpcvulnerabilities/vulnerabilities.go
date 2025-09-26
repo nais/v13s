@@ -16,6 +16,8 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -333,9 +335,9 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 	row, err := s.querier.GetVulnerabilityById(ctx, uuId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("vulnerability not found")
+			return nil, status.Errorf(codes.NotFound, "vulnerability not found")
 		}
-		return nil, fmt.Errorf("get vulnerability by id: %w", err)
+		return nil, status.Errorf(codes.Internal, "get vulnerability by id: %v", err)
 	}
 
 	return &vulnerabilities.GetVulnerabilityByIdResponse{
@@ -376,6 +378,8 @@ func (s *Server) ListWorkloadsForVulnerabilityById(ctx context.Context, request 
 			Namespace: r.Namespace,
 			Name:      r.Name,
 			Type:      r.WorkloadType,
+			ImageName: r.ImageName,
+			ImageTag:  r.ImageTag,
 		}
 	})
 	return &vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse{
@@ -392,9 +396,9 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("vulnerability not found")
+			return nil, status.Errorf(codes.NotFound, "vulnerability not found")
 		}
-		return nil, fmt.Errorf("get vulnerability: %w", err)
+		return nil, status.Errorf(codes.Internal, "get vulnerability: %v", err)
 	}
 
 	return &vulnerabilities.GetVulnerabilityResponse{

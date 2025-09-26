@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/source"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -37,7 +37,7 @@ func Collectors() []prometheus.Collector {
 	}
 }
 
-func SetWorkloadMetrics(workloads []*sql.ListWorkloadsByImageRow, summary *sources.VulnerabilitySummary) {
+func SetWorkloadMetrics(workloads []*sql.ListWorkloadsByImageRow, summary *source.VulnerabilitySummary) {
 	for _, w := range workloads {
 		labelValues := []string{w.Cluster, w.Namespace, w.Name, w.WorkloadType}
 		WorkloadRiskScore.WithLabelValues(labelValues...).Set(float64(summary.RiskScore))

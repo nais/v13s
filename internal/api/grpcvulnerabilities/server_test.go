@@ -172,6 +172,40 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 			return f.WorkloadRef.Name == "workload-1" && f.WorkloadRef.Namespace == "namespace-1" && f.WorkloadRef.Cluster == "cluster-prod"
 		}))
 	})
+
+	t.Run("list suppressed vulnerabilities", func(t *testing.T) {
+		vulns, err := client.ListVulnerabilitiesForImage(ctx, "image-cluster-1-namespace-1-workload-1", "v1.0")
+		assert.NoError(t, err)
+		assert.Len(t, vulns.Nodes, 4)
+
+		err = client.SuppressVulnerability(
+			ctx,
+			vulns.Nodes[0].GetId(),
+			"Marked suppressed in test",
+			"tester",
+			vulnerabilities.SuppressState_IN_TRIAGE,
+			true,
+		)
+		require.NoError(t, err, "suppressing vulnerability should not error")
+
+		resp, err := client.ListVulnerabilities(ctx,
+			vulnerabilities.Limit(100),
+			vulnerabilities.IncludeSuppressed(),
+		)
+		assert.NoError(t, err)
+
+		found := false
+		for _, v := range resp.Nodes {
+			if v.Vulnerability.Suppression != nil && v.Vulnerability.Suppression.Suppressed {
+				found = true
+				assert.Equal(t, vulnerabilities.SuppressState_IN_TRIAGE, v.Vulnerability.Suppression.SuppressedReason)
+				assert.Equal(t, "Marked suppressed in test", v.Vulnerability.Suppression.SuppressedDetails)
+				assert.Equal(t, "tester", v.Vulnerability.Suppression.SuppressedBy)
+				assert.NotZero(t, v.Vulnerability.Suppression.LastUpdated.AsTime())
+			}
+		}
+		assert.True(t, found, "expected at least one suppressed vulnerability")
+	})
 }
 
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
@@ -804,6 +838,50 @@ func TestServer_ListSeverityVulnerabilitiesSince(t *testing.T) {
 			)
 		}
 	})
+}
+
+func TestServer_ListWorkloadsForVulnerabilityById(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "image-1",
+		Tag:      "v1.0",
+		Metadata: map[string]string{},
+	})
+	assert.NoError(t, err)
+
+	vulnResp, err := client.GetVulnerability(ctx,
+		"image-cluster-1-namespace-1-workload-1",
+		"v1.0",
+		"package-CWE-1-1",
+		"CWE-1-1",
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, vulnResp.Vulnerability)
+
+	vulnID := vulnResp.Vulnerability.Id
+	assert.NotEmpty(t, vulnID)
+
+	resp, err := client.ListWorkloadsForVulnerabilityById(ctx, vulnID)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	require.Len(t, resp.WorkloadRef, 1)
+	wl := resp.WorkloadRef[0]
+	assert.Equal(t, "cluster-1", wl.Cluster)
+	assert.Equal(t, "namespace-1", wl.Namespace)
+	assert.Equal(t, "workload-1", wl.Name)
+	assert.Equal(t, "app", wl.Type)
+	assert.Equal(t, "image-cluster-1-namespace-1-workload-1", wl.ImageName)
+	assert.Equal(t, "v1.0", wl.ImageTag)
 }
 
 func TestSanitizeOrderBy(t *testing.T) {

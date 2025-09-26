@@ -77,6 +77,12 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 			resList, err := discoveryClient.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
 			if err != nil {
 				log.WithError(err).Warnf("group version %s not available in cluster %s", gvr.String(), cluster)
+				continue
+			}
+
+			if resList == nil {
+				log.Warnf("no resources returned for group version %s in cluster %s", gvr.String(), cluster)
+				continue
 			}
 
 			found := false

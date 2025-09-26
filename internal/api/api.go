@@ -18,14 +18,13 @@ import (
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager"
+	manager "github.com/nais/v13s/internal/management"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -44,9 +43,14 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer pool.Close()
 
-	source, err := sources.New(cfg.DependencyTrack, log)
+	sourceMap, err := sources.SetupSources(
+		[]sources.SourceConfig{
+			&cfg.DependencyTrack,
+		},
+		log,
+	)
 	if err != nil {
-		log.Fatalf("Failed to create source: %v", err)
+		log.Fatalf("failed to initialize sources: %v", err)
 	}
 
 	workloadEventQueue := &kubernetes.WorkloadEventQueue{
@@ -54,13 +58,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		Deleted: make(chan *model.Workload, 10000),
 	}
 
-	gFunc := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "v13s_workload_update_queue_length",
-	}, func() float64 {
-		return float64(len(workloadEventQueue.Updated))
-	})
-
-	_, tp, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
+	_, tp, promReg, err := metrics.NewMeterProvider(ctx)
 	if err != nil {
 		return fmt.Errorf("create metric meter: %w", err)
 	}
@@ -79,11 +77,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
 
-	jobCfg := &job.Config{
-		DbUrl: cfg.DatabaseUrl,
+	jobOpts := &job.Options{
+		DbUrl:         cfg.DatabaseUrl,
+		WorkerOptions: job.DefaultWorkerOptions,
 	}
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr := manager.NewWorkloadManager(ctx, pool, jobOpts, verifier, sourceMap, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
 
@@ -100,13 +99,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 
 	u := updater.NewUpdater(
+		mgr,
 		pool,
-		source,
 		updater.ScheduleConfig{
 			Type:     updater.SchedulerInterval,
 			Interval: cfg.UpdateInterval,
 		},
-		nil,
 		log.WithField("subsystem", "updater"),
 	)
 	u.Run(ctx)
@@ -127,7 +125,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			cfg.InternalListenAddr,
 			promReg,
 			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+			Handler{"/riverui", riverUI(ctx, jobOpts.DbUrl)},
 		)
 	})
 
