@@ -104,7 +104,6 @@ SELECT
     v.workload_id,
     w.name AS workload_name,
     w.namespace AS workload_namespace,
-    w.cluster AS workload_cluster,
     v.severity,
     MIN(v.introduced_at)::date AS introduced_date,
     MAX(v.fixed_at)::date AS fixed_at,
@@ -127,7 +126,7 @@ WHERE
         END >= $5::timestamptz
     )
     )
-GROUP BY v.workload_id, w.name, w.namespace, w.cluster, v.severity
+GROUP BY v.workload_id, w.name, w.namespace, v.severity
 ORDER BY introduced_date DESC
 `
 
@@ -144,7 +143,6 @@ type ListWorkloadSeverityFixStatsRow struct {
 	WorkloadID        pgtype.UUID
 	WorkloadName      string
 	WorkloadNamespace string
-	WorkloadCluster   string
 	Severity          int32
 	IntroducedDate    pgtype.Date
 	FixedAt           pgtype.Date
@@ -173,7 +171,6 @@ func (q *Queries) ListWorkloadSeverityFixStats(ctx context.Context, arg ListWork
 			&i.WorkloadID,
 			&i.WorkloadName,
 			&i.WorkloadNamespace,
-			&i.WorkloadCluster,
 			&i.Severity,
 			&i.IntroducedDate,
 			&i.FixedAt,
@@ -202,19 +199,21 @@ INSERT INTO vuln_fix_summary (
     snapshot_date
 )
 SELECT
-    workload_id,
-    severity,
-    introduced_at,
-    fixed_at,
-    fix_duration,
-    is_fixed,
-    snapshot_date
-FROM vuln_upsert_data_for_date(CURRENT_DATE) ON CONFLICT (workload_id, severity, introduced_at, snapshot_date) DO
-UPDATE
-    SET
-        fixed_at = EXCLUDED.fixed_at,
-    fix_duration = EXCLUDED.fix_duration,
-    is_fixed = EXCLUDED.is_fixed
+    v.workload_id,
+    v.severity,
+    v.introduced_at,
+    v.fixed_at,
+    v.fix_duration,
+    v.is_fixed,
+    v.snapshot_date
+FROM vuln_upsert_data_for_date(CURRENT_DATE) v
+WHERE v.workload_id IN (SELECT id FROM workloads)
+    ON CONFLICT (workload_id, severity, introduced_at, snapshot_date)
+DO UPDATE
+           SET
+               fixed_at = EXCLUDED.fixed_at,
+           fix_duration = EXCLUDED.fix_duration,
+           is_fixed = EXCLUDED.is_fixed
 `
 
 func (q *Queries) UpsertVulnerabilityLifetimes(ctx context.Context) error {

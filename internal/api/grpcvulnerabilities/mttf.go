@@ -110,7 +110,6 @@ func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulner
 
 		return &vulnerabilities.WorkloadWithFixes{
 			WorkloadId:        first.WorkloadID.String(),
-			WorkloadCluster:   first.WorkloadCluster,
 			WorkloadNamespace: first.WorkloadNamespace,
 			WorkloadName:      first.WorkloadName,
 			Fixes:             fixes,

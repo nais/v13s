@@ -149,7 +149,6 @@ message WorkloadFix {
 
 message WorkloadWithFixes {
   string workload_id = 1;
-  string workload_cluster = 2;
   string workload_namespace = 3;
   string workload_name = 4;
   repeated WorkloadFix fixes = 5;

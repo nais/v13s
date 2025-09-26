@@ -9,19 +9,21 @@ INSERT INTO vuln_fix_summary (
     snapshot_date
 )
 SELECT
-    workload_id,
-    severity,
-    introduced_at,
-    fixed_at,
-    fix_duration,
-    is_fixed,
-    snapshot_date
-FROM vuln_upsert_data_for_date(CURRENT_DATE) ON CONFLICT (workload_id, severity, introduced_at, snapshot_date) DO
-UPDATE
-    SET
-        fixed_at = EXCLUDED.fixed_at,
-    fix_duration = EXCLUDED.fix_duration,
-    is_fixed = EXCLUDED.is_fixed;
+    v.workload_id,
+    v.severity,
+    v.introduced_at,
+    v.fixed_at,
+    v.fix_duration,
+    v.is_fixed,
+    v.snapshot_date
+FROM vuln_upsert_data_for_date(CURRENT_DATE) v
+WHERE v.workload_id IN (SELECT id FROM workloads)
+    ON CONFLICT (workload_id, severity, introduced_at, snapshot_date)
+DO UPDATE
+           SET
+               fixed_at = EXCLUDED.fixed_at,
+           fix_duration = EXCLUDED.fix_duration,
+           is_fixed = EXCLUDED.is_fixed;
 
 -- name: ListMeanTimeToFixTrendBySeverity :many
 WITH mttr AS (
@@ -65,7 +67,6 @@ SELECT
     v.workload_id,
     w.name AS workload_name,
     w.namespace AS workload_namespace,
-    w.cluster AS workload_cluster,
     v.severity,
     MIN(v.introduced_at)::date AS introduced_date,
     MAX(v.fixed_at)::date AS fixed_at,
@@ -88,5 +89,5 @@ WHERE
         END >= sqlc.narg('since')::timestamptz
     )
     )
-GROUP BY v.workload_id, w.name, w.namespace, w.cluster, v.severity
+GROUP BY v.workload_id, w.name, w.namespace, v.severity
 ORDER BY introduced_date DESC;

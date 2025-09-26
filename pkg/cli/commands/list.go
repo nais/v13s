@@ -25,7 +25,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "image",
 					Aliases: []string{"v"},
 					Usage:   "list vulnerabilities for image",
-					Flags:   flag.CommonFlags(opts, "cluster", "namespace", "workload"),
+					Flags:   flag.CommonFlags(opts, "c", "n", "w", "t"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listVulnerabilitiesForImage(ctx, cmd, c, opts)
 					},
@@ -316,7 +316,7 @@ func listWorkloadMTTFBySeverity(ctx context.Context, cmd *cli.Command, c vulnera
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	tbl := table.New(
-		"Workload", "Cluster", "Namespace", "Severity", "Introduced At", "Fixed At", "Fixed", "Fix Duration (days)", "Fix Count", "Snapshot Date")
+		"Workload", "Namespace", "Severity", "Introduced At", "Fixed At", "Fixed", "Fix Duration (days)", "Fix Count", "Snapshot Date")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, workload := range resp.GetWorkloads() {
@@ -333,7 +333,6 @@ func listWorkloadMTTFBySeverity(ctx context.Context, cmd *cli.Command, c vulnera
 
 			tbl.AddRow(
 				workload.WorkloadName,
-				workload.WorkloadCluster,
 				workload.WorkloadNamespace,
 				fix.Severity.String(),
 				introduced,
@@ -360,21 +359,18 @@ func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c v
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	tbl := table.New(
-		"Severity", "Snapshot Date", "Mean Time To Fix (days)", "Fix Count", "First Fixed At", "Last Fixed At")
+		"Severity", "Snapshot Date", "Mean Time To Fix (days)", "Fix Count", "Fixed At")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, n := range resp.GetNodes() {
 		snapshot := "N/A"
 		firstFixedAt := "N/A"
-		lastFixedAt := "N/A"
+
 		if n.SnapshotTime != nil && !n.SnapshotTime.AsTime().IsZero() {
 			snapshot = n.SnapshotTime.AsTime().Format("2006-01-02")
 		}
 		if n.FirstFixedAt != nil && !n.FirstFixedAt.AsTime().IsZero() {
 			firstFixedAt = n.FirstFixedAt.AsTime().Format("2006-01-02")
-		}
-		if n.LastFixedAt != nil && !n.LastFixedAt.AsTime().IsZero() {
-			lastFixedAt = n.LastFixedAt.AsTime().Format("2006-01-02")
 		}
 
 		tbl.AddRow(
@@ -383,7 +379,6 @@ func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c v
 			n.MeanTimeToFixDays,
 			n.FixedCount,
 			firstFixedAt,
-			lastFixedAt,
 		)
 	}
 

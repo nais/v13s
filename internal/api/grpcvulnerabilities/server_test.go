@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
@@ -1141,6 +1142,32 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 			assert.True(t, n.SnapshotTime.AsTime().After(sinceFixed) || n.SnapshotTime.AsTime().Equal(sinceFixed))
 		}
 	})
+
+	t.Run("handle orphaned workload_id in daily table", func(t *testing.T) {
+		orphanWorkloadID := uuid.New()
+
+		_, err := pool.Exec(ctx, `
+        INSERT INTO vuln_daily_by_workload (
+            snapshot_date, workload_id, workload_name, cluster, namespace, workload_type,
+            critical, high, medium, low, unassigned, total, risk_score
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    `, now, orphanWorkloadID, "orphan-workload", "cluster-1", "namespace-1", "app",
+			1, 2, 3, 4, 0, 10, 50)
+		require.NoError(t, err)
+
+		err = db.UpsertVulnerabilityLifetimes(ctx)
+		require.NoError(t, err, "Upsert should skip orphaned workloads")
+
+		// Verify the orphan did NOT appear in vuln_fix_summary
+		// and no error occurred during UpsertVulnerabilityLifetimes
+		var count int
+		err = pool.QueryRow(ctx, `
+        SELECT COUNT(*) FROM vuln_fix_summary WHERE workload_id = $1
+    `, orphanWorkloadID).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count, "Orphaned workload_id should not be inserted into vuln_fix_summary")
+	})
+
 }
 
 func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {

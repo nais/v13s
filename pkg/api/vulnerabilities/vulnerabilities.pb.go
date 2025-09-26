@@ -1200,7 +1200,6 @@ func (x *WorkloadFix) GetSnapshotTime() *timestamppb.Timestamp {
 type WorkloadWithFixes struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	WorkloadId        string                 `protobuf:"bytes,1,opt,name=workload_id,json=workloadId,proto3" json:"workload_id,omitempty"`
-	WorkloadCluster   string                 `protobuf:"bytes,2,opt,name=workload_cluster,json=workloadCluster,proto3" json:"workload_cluster,omitempty"`
 	WorkloadNamespace string                 `protobuf:"bytes,3,opt,name=workload_namespace,json=workloadNamespace,proto3" json:"workload_namespace,omitempty"`
 	WorkloadName      string                 `protobuf:"bytes,4,opt,name=workload_name,json=workloadName,proto3" json:"workload_name,omitempty"`
 	Fixes             []*WorkloadFix         `protobuf:"bytes,5,rep,name=fixes,proto3" json:"fixes,omitempty"`
@@ -1241,13 +1240,6 @@ func (*WorkloadWithFixes) Descriptor() ([]byte, []int) {
 func (x *WorkloadWithFixes) GetWorkloadId() string {
 	if x != nil {
 		return x.WorkloadId
-	}
-	return ""
-}
-
-func (x *WorkloadWithFixes) GetWorkloadCluster() string {
-	if x != nil {
-		return x.WorkloadCluster
 	}
 	return ""
 }
@@ -3330,11 +3322,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x0e_introduced_atB\v\n" +
 	"\t_fixed_atB\x14\n" +
 	"\x12_fix_duration_daysB\x10\n" +
-	"\x0e_snapshot_time\"\xe9\x01\n" +
+	"\x0e_snapshot_time\"\xbe\x01\n" +
 	"\x11WorkloadWithFixes\x12\x1f\n" +
 	"\vworkload_id\x18\x01 \x01(\tR\n" +
-	"workloadId\x12)\n" +
-	"\x10workload_cluster\x18\x02 \x01(\tR\x0fworkloadCluster\x12-\n" +
+	"workloadId\x12-\n" +
 	"\x12workload_namespace\x18\x03 \x01(\tR\x11workloadNamespace\x12#\n" +
 	"\rworkload_name\x18\x04 \x01(\tR\fworkloadName\x124\n" +
 	"\x05fixes\x18\x05 \x03(\v2\x1e.v13s.api.protobuf.WorkloadFixR\x05fixes\"\xe8\x02\n" +
