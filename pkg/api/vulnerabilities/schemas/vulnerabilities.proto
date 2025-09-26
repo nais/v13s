@@ -262,7 +262,7 @@ message ListMeanTimeToFixTrendBySeverityRequest {
 
 message ListMeanTimeToFixTrendBySeverityResponse {
   Filter filter = 1;
-  repeated MeanTimeToFixTrendPoint nodes = 2;
+  repeated MeanTimeToFixTrendPoint points = 2;
 }
 
 message ListWorkloadMTTFBySeverityRequest {

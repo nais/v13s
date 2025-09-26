@@ -359,18 +359,22 @@ func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c v
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	tbl := table.New(
-		"Severity", "Snapshot Date", "Mean Time To Fix (days)", "Fix Count", "Fixed At")
+		"Severity", "Snapshot Date", "Mean Time To Fix (days)", "Fix Count", "Fixed At (first)", "Fixed At (last)")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
-	for _, n := range resp.GetNodes() {
+	for _, n := range resp.GetPoints() {
 		snapshot := "N/A"
 		firstFixedAt := "N/A"
+		lastFixedAt := "N/A"
 
 		if n.SnapshotTime != nil && !n.SnapshotTime.AsTime().IsZero() {
 			snapshot = n.SnapshotTime.AsTime().Format("2006-01-02")
 		}
 		if n.FirstFixedAt != nil && !n.FirstFixedAt.AsTime().IsZero() {
 			firstFixedAt = n.FirstFixedAt.AsTime().Format("2006-01-02")
+		}
+		if n.LastFixedAt != nil && !n.LastFixedAt.AsTime().IsZero() {
+			lastFixedAt = n.LastFixedAt.AsTime().Format("2006-01-02")
 		}
 
 		tbl.AddRow(
@@ -379,6 +383,7 @@ func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c v
 			n.MeanTimeToFixDays,
 			n.FixedCount,
 			firstFixedAt,
+			lastFixedAt,
 		)
 	}
 

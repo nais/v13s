@@ -2280,7 +2280,7 @@ func (x *ListMeanTimeToFixTrendBySeverityRequest) GetSinceType() SinceType {
 type ListMeanTimeToFixTrendBySeverityResponse struct {
 	state         protoimpl.MessageState     `protogen:"open.v1"`
 	Filter        *Filter                    `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Nodes         []*MeanTimeToFixTrendPoint `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Points        []*MeanTimeToFixTrendPoint `protobuf:"bytes,2,rep,name=points,proto3" json:"points,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2322,9 +2322,9 @@ func (x *ListMeanTimeToFixTrendBySeverityResponse) GetFilter() *Filter {
 	return nil
 }
 
-func (x *ListMeanTimeToFixTrendBySeverityResponse) GetNodes() []*MeanTimeToFixTrendPoint {
+func (x *ListMeanTimeToFixTrendBySeverityResponse) GetPoints() []*MeanTimeToFixTrendPoint {
 	if x != nil {
-		return x.Nodes
+		return x.Points
 	}
 	return nil
 }
@@ -3422,10 +3422,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\n" +
 	"since_type\x18\x03 \x01(\x0e2\x1c.v13s.api.protobuf.SinceTypeH\x01R\tsinceType\x88\x01\x01B\b\n" +
 	"\x06_sinceB\r\n" +
-	"\v_since_type\"\x9f\x01\n" +
+	"\v_since_type\"\xa1\x01\n" +
 	"(ListMeanTimeToFixTrendBySeverityResponse\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12@\n" +
-	"\x05nodes\x18\x02 \x03(\v2*.v13s.api.protobuf.MeanTimeToFixTrendPointR\x05nodes\"\xe8\x01\n" +
+	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12B\n" +
+	"\x06points\x18\x02 \x03(\v2*.v13s.api.protobuf.MeanTimeToFixTrendPointR\x06points\"\xe8\x01\n" +
 	"!ListWorkloadMTTFBySeverityRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x125\n" +
 	"\x05since\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05since\x88\x01\x01\x12@\n" +
@@ -3667,7 +3667,7 @@ var file_vulnerabilities_proto_depIdxs = []int32{
 	49, // 62: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since:type_name -> google.protobuf.Timestamp
 	3,  // 63: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType
 	4,  // 64: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
-	17, // 65: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.nodes:type_name -> v13s.api.protobuf.MeanTimeToFixTrendPoint
+	17, // 65: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.points:type_name -> v13s.api.protobuf.MeanTimeToFixTrendPoint
 	4,  // 66: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest.filter:type_name -> v13s.api.protobuf.Filter
 	49, // 67: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest.since:type_name -> google.protobuf.Timestamp
 	3,  // 68: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType

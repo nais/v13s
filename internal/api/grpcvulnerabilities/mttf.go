@@ -52,7 +52,7 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 
 	return &vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse{
 		Filter: request.GetFilter(),
-		Nodes:  ms,
+		Points: ms,
 	}, nil
 }
 

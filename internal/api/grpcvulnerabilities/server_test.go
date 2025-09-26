@@ -1051,9 +1051,9 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	t.Run("all clusters", func(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx)
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(resp.Nodes), 1)
+		assert.GreaterOrEqual(t, len(resp.Points), 1)
 
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			fmt.Printf("Severity %d -> mean time to fix: %d days, fixed count: %d\n",
 				n.Severity, n.MeanTimeToFixDays, n.FixedCount)
 			assert.True(t, n.FixedCount > 0)
@@ -1064,7 +1064,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	t.Run("filter by cluster-1", func(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.ClusterFilter("cluster-1"))
 		require.NoError(t, err)
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			assert.True(t, n.FixedCount > 0)
 		}
 	})
@@ -1072,7 +1072,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	t.Run("filter by namespace-2", func(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.NamespaceFilter("namespace-2"))
 		require.NoError(t, err)
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			assert.True(t, n.FixedCount > 0)
 		}
 	})
@@ -1080,7 +1080,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	t.Run("filter by workload type app", func(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.WorkloadTypeFilter("app"))
 		require.NoError(t, err)
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			assert.True(t, n.FixedCount > 0)
 		}
 	})
@@ -1088,7 +1088,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	t.Run("filter by workload name workload-A", func(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.WorkloadFilter("workload-A"))
 		require.NoError(t, err)
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			assert.True(t, n.FixedCount > 0)
 		}
 	})
@@ -1096,7 +1096,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	t.Run("filter since that is after the last fixed vuln", func(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx, vulnerabilities.Since(now.Add(-1*24*time.Hour)))
 		require.NoError(t, err)
-		assert.Empty(t, resp.Nodes, "expected no results since no vulns were fixed in the last 24h")
+		assert.Empty(t, resp.Points, "expected no results since no vulns were fixed in the last 24h")
 	})
 
 	t.Run("filter since snapshot date", func(t *testing.T) {
@@ -1107,8 +1107,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx)
 		require.NoError(t, err)
 
-		fmt.Printf("=== Raw Response Nodes ===\n")
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			fmt.Printf(
 				"Severity: %d, Snapshot: %v, MeanTimeToFix: %d, FixedCount: %d\n",
 				n.Severity,
@@ -1121,9 +1120,9 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		resp, err = client.ListMeanTimeToFixTrendBySeverity(ctx,
 			vulnerabilities.Since(sinceSnapshot))
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(resp.Nodes), 1)
+		assert.GreaterOrEqual(t, len(resp.Points), 1)
 
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			assert.True(t, n.SnapshotTime.AsTime().After(sinceSnapshot) || n.SnapshotTime.AsTime().Equal(sinceSnapshot))
 		}
 	})
@@ -1135,9 +1134,9 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 			vulnerabilities.Since(sinceFixed),
 			vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED))
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(resp.Nodes), 1)
+		assert.GreaterOrEqual(t, len(resp.Points), 1)
 
-		for _, n := range resp.Nodes {
+		for _, n := range resp.Points {
 			assert.True(t, n.FixedCount > 0)
 			assert.True(t, n.SnapshotTime.AsTime().After(sinceFixed) || n.SnapshotTime.AsTime().Equal(sinceFixed))
 		}

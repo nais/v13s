@@ -31,7 +31,7 @@ WITH mttr AS (
         v.severity,
         v.snapshot_date      AS snapshot_time,
         AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
-        COUNT(*)::INT        AS fixed_count,
+        COUNT(DISTINCT v.severity || '-' || v.workload_id || '-' || v.introduced_at)::INT AS fixed_count,
         MIN(v.fixed_at)::date     AS first_fixed_at,
         MAX(v.fixed_at)::date      AS last_fixed_at
     FROM vuln_fix_summary v
@@ -70,7 +70,8 @@ SELECT
     v.severity,
     MIN(v.introduced_at)::date AS introduced_date,
     MAX(v.fixed_at)::date AS fixed_at,
-    COUNT(*) FILTER (WHERE v.is_fixed)::INT AS fixed_count,
+    COUNT(DISTINCT v.workload_id || '-' || v.severity || '-' || v.introduced_at)
+        FILTER (WHERE v.is_fixed)::INT AS fixed_count,
     COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT AS mean_time_to_fix_days,
     MAX(v.snapshot_date)::timestamptz AS snapshot_time
 FROM vuln_fix_summary v
