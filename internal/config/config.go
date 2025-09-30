@@ -26,6 +26,7 @@ type Config struct {
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
 	DependencyTrack           sources.DependencyTrackConfig
 	K8s                       K8sConfig
+	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 }
 
@@ -39,6 +40,13 @@ type K8sConfig struct {
 	SelfCluster    string          `envconfig:"KUBERNETES_SELF_CLUSTER" default:"management"`
 	Clusters       []string        `envconfig:"KUBERNETES_CLUSTERS"`
 	StaticClusters []StaticCluster `envconfig:"KUBERNETES_CLUSTERS_STATIC"`
+}
+
+type LeaderElectionConfig struct {
+	FakeEnabled     bool   `envconfig:"LEADER_ELECTION_FAKE_ENABLED" default:"false"`
+	LocalKubernetes bool   `envconfig:"LEADER_ELECTION_LOCAL_KUBERNETES" default:"false"`
+	LeaseName       string `envconfig:"LEADER_ELECTION_LEASE_NAME" default:"v13s-lease"`
+	LeaseNamespace  string `envconfig:"LEADER_ELECTION_LEASE_NAMESPACE" default:"nais-system"`
 }
 
 func (k *K8sConfig) AllClusterNames() []string {
@@ -76,15 +84,7 @@ func CreateClusterConfigMap(tenant string, config K8sConfig) (ClusterConfigMap, 
 	configs := ClusterConfigMap{}
 
 	for _, cluster := range config.Clusters {
-		configs[cluster] = &rest.Config{
-			Host: fmt.Sprintf("https://apiserver.%s.%s.cloud.nais.io", cluster, tenant),
-			AuthProvider: &api.AuthProviderConfig{
-				Name: GoogleAuthPlugin,
-			},
-			WrapTransport: func(rt http.RoundTripper) http.RoundTripper {
-				return otelhttp.NewTransport(rt, otelhttp.WithServerName(cluster))
-			},
-		}
+		configs[cluster] = CreateRemoteClusterConfig(cluster, tenant)
 	}
 	if config.SelfCluster != "" {
 		mgmtCfg, err := rest.InClusterConfig()
@@ -100,6 +100,22 @@ func CreateClusterConfigMap(tenant string, config K8sConfig) (ClusterConfigMap, 
 	}
 
 	return configs, nil
+}
+
+func CreateRemoteClusterConfig(cluster, tenant string) *rest.Config {
+	host := fmt.Sprintf("https://apiserver.%s.cloud.nais.io", tenant)
+	if cluster != "" {
+		host = fmt.Sprintf("https://apiserver.%s.%s.cloud.nais.io", cluster, tenant)
+	}
+	return &rest.Config{
+		Host: host,
+		AuthProvider: &api.AuthProviderConfig{
+			Name: GoogleAuthPlugin,
+		},
+		WrapTransport: func(rt http.RoundTripper) http.RoundTripper {
+			return otelhttp.NewTransport(rt, otelhttp.WithServerName(cluster))
+		},
+	}
 }
 
 func getStaticClusterConfigs(clusters []StaticCluster) ClusterConfigMap {

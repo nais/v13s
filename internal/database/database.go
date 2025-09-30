@@ -2,7 +2,9 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/pressly/goose/v3"
 	"github.com/sirupsen/logrus"
 )
@@ -32,7 +35,7 @@ func New(ctx context.Context, dsn string, log logrus.FieldLogger) (*pgxpool.Pool
 
 func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bool) (*pgxpool.Pool, error) {
 	if migrate {
-		if err := migrateDatabaseSchema("pgx", dsn, log); err != nil {
+		if err := migrateDatabaseSchema(ctx, "pgx", dsn, log); err != nil {
 			return nil, err
 		}
 	}
@@ -92,7 +95,7 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 }
 
 // migrateDatabaseSchema runs database migrations
-func migrateDatabaseSchema(driver, dsn string, log logrus.FieldLogger) error {
+func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.FieldLogger) error {
 	goose.SetBaseFS(embedMigrations)
 	goose.SetLogger(log)
 
@@ -110,5 +113,53 @@ func migrateDatabaseSchema(driver, dsn string, log logrus.FieldLogger) error {
 		}
 	}()
 
-	return goose.Up(db, "migrations")
+	errChan := make(chan error, 1)
+	leaderelection.RegisterOnStartedLeading(func(ctx context.Context) {
+		err = goose.Up(db, "migrations")
+		if err != nil {
+			errChan <- fmt.Errorf("migrating database schema: %w", err)
+			return
+		}
+	})
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case migrationErr := <-errChan:
+			return migrationErr
+		case <-time.After(1 * time.Second):
+			migrated, err := isMigrated(db, "migrations")
+			if err != nil {
+				return err
+			}
+			log.WithField("migrated", migrated).Debug("checking database migrated")
+			if !migrated {
+				continue
+			}
+			return nil
+		}
+	}
+}
+
+func isMigrated(db *sql.DB, migrationsDir string) (bool, error) {
+	migrations, err := goose.CollectMigrations(migrationsDir, 0, goose.MaxVersion)
+	if err != nil {
+		return false, err
+	}
+
+	var currentVersion int64
+	err = db.QueryRow("SELECT version_id FROM goose_db_version ORDER BY id DESC LIMIT 1").Scan(&currentVersion)
+	if errors.Is(err, sql.ErrNoRows) {
+		currentVersion = 0
+	} else if err != nil {
+		return false, err
+	}
+
+	if len(migrations) == 0 {
+		return true, nil
+	}
+
+	lastMigration := migrations[len(migrations)-1]
+	return lastMigration.Version == currentVersion, nil
 }
