@@ -6,15 +6,26 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/database"
+	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-
-	"github.com/nais/v13s/internal/database"
 )
 
 func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Pool {
 	log, _ := logrustest.NewNullLogger()
+	err := leaderelection.Start(ctx, config.LeaderElectionConfig{
+		FakeEnabled:     true,
+		LocalKubernetes: false,
+		LeaseName:       "v13s-leader-election",
+		LeaseNamespace:  "v13s",
+	}, log)
+	if err != nil {
+		t.Fatalf("failed to start fake leader election: %v", err)
+	}
+
 	if testcontainers {
 		container, dsn, err := startPostgresql(ctx, log)
 		if err != nil {
