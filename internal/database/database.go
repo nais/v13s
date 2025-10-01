@@ -113,31 +113,25 @@ func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.F
 		}
 	}()
 
-	errChan := make(chan error, 1)
-	leaderelection.RegisterOnStartedLeading(func(ctx context.Context) {
-		err = goose.Up(db, "migrations")
-		if err != nil {
-			errChan <- fmt.Errorf("migrating database schema: %w", err)
-			return
-		}
-	})
-
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case migrationErr := <-errChan:
-			return migrationErr
 		case <-time.After(1 * time.Second):
-			migrated, err := isMigrated(db, "migrations")
-			if err != nil {
-				return err
-			}
-			log.WithField("migrated", migrated).Debug("checking database migrated")
-			if !migrated {
+			if !leaderelection.IsReady() {
 				continue
 			}
-			return nil
+			if !leaderelection.IsLeader() {
+				migrated, err := isMigrated(db, "migrations")
+				if err != nil {
+					return err
+				}
+				log.WithField("migrated", migrated).Debug("checking database migrated")
+				if !migrated {
+					continue
+				}
+			}
+			return goose.Up(db, "migrations")
 		}
 	}
 }

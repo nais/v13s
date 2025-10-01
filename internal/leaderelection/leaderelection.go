@@ -99,6 +99,10 @@ func IsLeader() bool {
 	return elector.IsLeader()
 }
 
+func IsReady() bool {
+	return elector != nil
+}
+
 func newClient(cfg config.LeaderElectionConfig) (kubernetes.Interface, error) {
 	if cfg.FakeEnabled {
 		return fake.NewClientset(), nil
