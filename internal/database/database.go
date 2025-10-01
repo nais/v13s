@@ -113,6 +113,13 @@ func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.F
 		}
 	}()
 
+	leaderelection.RegisterOnStartedLeading(func(ctx context.Context) {
+		err = goose.Up(db, "migrations")
+		if err != nil {
+			log.WithError(err).Fatal("running database migration")
+		}
+	})
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -133,7 +140,6 @@ func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.F
 				log.Info("not leader, skipping database migration")
 				return nil
 			}
-			return goose.Up(db, "migrations")
 		}
 	}
 }
