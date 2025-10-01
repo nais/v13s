@@ -130,6 +130,8 @@ func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.F
 				if !migrated {
 					continue
 				}
+				log.Info("not leader, skipping database migration")
+				return nil
 			}
 			return goose.Up(db, "migrations")
 		}
