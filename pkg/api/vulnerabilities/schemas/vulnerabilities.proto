@@ -144,7 +144,7 @@ message WorkloadFix {
   optional int32 fix_duration_days = 4;
   int32 mean_time_to_fix_days = 5;
   int32 fixed_count = 6;
-  optional google.protobuf.Timestamp snapshot_time = 7;
+  optional google.protobuf.Timestamp snapshot_date = 7;
 }
 
 message WorkloadWithFixes {
@@ -158,7 +158,7 @@ message MeanTimeToFixTrendPoint {
   Severity severity = 1;
   int32 mean_time_to_fix_days = 2;
   int32 fixed_count = 3;
-  google.protobuf.Timestamp snapshot_time = 4;
+  google.protobuf.Timestamp snapshot_date = 4;
   google.protobuf.Timestamp first_fixed_at = 5;
   google.protobuf.Timestamp last_fixed_at = 6;
 }

@@ -1113,7 +1113,7 @@ type WorkloadFix struct {
 	FixDurationDays   *int32                 `protobuf:"varint,4,opt,name=fix_duration_days,json=fixDurationDays,proto3,oneof" json:"fix_duration_days,omitempty"`
 	MeanTimeToFixDays int32                  `protobuf:"varint,5,opt,name=mean_time_to_fix_days,json=meanTimeToFixDays,proto3" json:"mean_time_to_fix_days,omitempty"`
 	FixedCount        int32                  `protobuf:"varint,6,opt,name=fixed_count,json=fixedCount,proto3" json:"fixed_count,omitempty"`
-	SnapshotTime      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=snapshot_time,json=snapshotTime,proto3,oneof" json:"snapshot_time,omitempty"`
+	SnapshotDate      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=snapshot_date,json=snapshotDate,proto3,oneof" json:"snapshot_date,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1190,9 +1190,9 @@ func (x *WorkloadFix) GetFixedCount() int32 {
 	return 0
 }
 
-func (x *WorkloadFix) GetSnapshotTime() *timestamppb.Timestamp {
+func (x *WorkloadFix) GetSnapshotDate() *timestamppb.Timestamp {
 	if x != nil {
-		return x.SnapshotTime
+		return x.SnapshotDate
 	}
 	return nil
 }
@@ -1270,7 +1270,7 @@ type MeanTimeToFixTrendPoint struct {
 	Severity          Severity               `protobuf:"varint,1,opt,name=severity,proto3,enum=v13s.api.protobuf.Severity" json:"severity,omitempty"`
 	MeanTimeToFixDays int32                  `protobuf:"varint,2,opt,name=mean_time_to_fix_days,json=meanTimeToFixDays,proto3" json:"mean_time_to_fix_days,omitempty"`
 	FixedCount        int32                  `protobuf:"varint,3,opt,name=fixed_count,json=fixedCount,proto3" json:"fixed_count,omitempty"`
-	SnapshotTime      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=snapshot_time,json=snapshotTime,proto3" json:"snapshot_time,omitempty"`
+	SnapshotDate      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=snapshot_date,json=snapshotDate,proto3" json:"snapshot_date,omitempty"`
 	FirstFixedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=first_fixed_at,json=firstFixedAt,proto3" json:"first_fixed_at,omitempty"`
 	LastFixedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_fixed_at,json=lastFixedAt,proto3" json:"last_fixed_at,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -1328,9 +1328,9 @@ func (x *MeanTimeToFixTrendPoint) GetFixedCount() int32 {
 	return 0
 }
 
-func (x *MeanTimeToFixTrendPoint) GetSnapshotTime() *timestamppb.Timestamp {
+func (x *MeanTimeToFixTrendPoint) GetSnapshotDate() *timestamppb.Timestamp {
 	if x != nil {
-		return x.SnapshotTime
+		return x.SnapshotDate
 	}
 	return nil
 }
@@ -3318,11 +3318,11 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x15mean_time_to_fix_days\x18\x05 \x01(\x05R\x11meanTimeToFixDays\x12\x1f\n" +
 	"\vfixed_count\x18\x06 \x01(\x05R\n" +
 	"fixedCount\x12D\n" +
-	"\rsnapshot_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x03R\fsnapshotTime\x88\x01\x01B\x10\n" +
+	"\rsnapshot_date\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x03R\fsnapshotDate\x88\x01\x01B\x10\n" +
 	"\x0e_introduced_atB\v\n" +
 	"\t_fixed_atB\x14\n" +
 	"\x12_fix_duration_daysB\x10\n" +
-	"\x0e_snapshot_time\"\xbe\x01\n" +
+	"\x0e_snapshot_date\"\xbe\x01\n" +
 	"\x11WorkloadWithFixes\x12\x1f\n" +
 	"\vworkload_id\x18\x01 \x01(\tR\n" +
 	"workloadId\x12-\n" +
@@ -3334,7 +3334,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x15mean_time_to_fix_days\x18\x02 \x01(\x05R\x11meanTimeToFixDays\x12\x1f\n" +
 	"\vfixed_count\x18\x03 \x01(\x05R\n" +
 	"fixedCount\x12?\n" +
-	"\rsnapshot_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fsnapshotTime\x12@\n" +
+	"\rsnapshot_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fsnapshotDate\x12@\n" +
 	"\x0efirst_fixed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ffirstFixedAt\x12>\n" +
 	"\rlast_fixed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vlastFixedAt\"\xb3\x02\n" +
 	"\x17SuppressedVulnerability\x12\x1d\n" +
@@ -3630,10 +3630,10 @@ var file_vulnerabilities_proto_depIdxs = []int32{
 	2,  // 25: v13s.api.protobuf.WorkloadFix.severity:type_name -> v13s.api.protobuf.Severity
 	49, // 26: v13s.api.protobuf.WorkloadFix.introduced_at:type_name -> google.protobuf.Timestamp
 	49, // 27: v13s.api.protobuf.WorkloadFix.fixed_at:type_name -> google.protobuf.Timestamp
-	49, // 28: v13s.api.protobuf.WorkloadFix.snapshot_time:type_name -> google.protobuf.Timestamp
+	49, // 28: v13s.api.protobuf.WorkloadFix.snapshot_date:type_name -> google.protobuf.Timestamp
 	15, // 29: v13s.api.protobuf.WorkloadWithFixes.fixes:type_name -> v13s.api.protobuf.WorkloadFix
 	2,  // 30: v13s.api.protobuf.MeanTimeToFixTrendPoint.severity:type_name -> v13s.api.protobuf.Severity
-	49, // 31: v13s.api.protobuf.MeanTimeToFixTrendPoint.snapshot_time:type_name -> google.protobuf.Timestamp
+	49, // 31: v13s.api.protobuf.MeanTimeToFixTrendPoint.snapshot_date:type_name -> google.protobuf.Timestamp
 	49, // 32: v13s.api.protobuf.MeanTimeToFixTrendPoint.first_fixed_at:type_name -> google.protobuf.Timestamp
 	49, // 33: v13s.api.protobuf.MeanTimeToFixTrendPoint.last_fixed_at:type_name -> google.protobuf.Timestamp
 	0,  // 34: v13s.api.protobuf.SuppressedVulnerability.state:type_name -> v13s.api.protobuf.SuppressState

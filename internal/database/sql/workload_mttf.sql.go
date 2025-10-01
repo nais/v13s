@@ -10,14 +10,14 @@ import (
 )
 
 const listMeanTimeToFixTrendBySeverity = `-- name: ListMeanTimeToFixTrendBySeverity :many
-WITH mttr AS (
+WITH filtered AS (
     SELECT
         v.severity,
-        v.snapshot_date      AS snapshot_time,
-        AVG(v.fix_duration)::INT AS mean_time_to_fix_days,
-        COUNT(DISTINCT v.severity || '-' || v.workload_id || '-' || v.introduced_at)::INT AS fixed_count,
-        MIN(v.fixed_at)::date     AS first_fixed_at,
-        MAX(v.fixed_at)::date      AS last_fixed_at
+        v.snapshot_date,
+        v.fix_duration,
+        v.fixed_at,
+        v.introduced_at,
+        v.workload_id
     FROM vuln_fix_summary v
              JOIN workloads w ON w.id = v.workload_id
     WHERE v.is_fixed = true
@@ -27,24 +27,37 @@ WITH mttr AS (
       AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
       AND (
         $5::timestamptz IS NULL
-    OR (
-        CASE COALESCE($6::TEXT, 'snapshot')
-            WHEN 'snapshot' THEN v.snapshot_date
-            WHEN 'fixed' THEN v.fixed_at
-        END >= $5::timestamptz
-    )
+          OR (
+              CASE COALESCE($6::TEXT, 'snapshot')
+                  WHEN 'snapshot' THEN v.snapshot_date
+                  WHEN 'fixed' THEN v.fixed_at
+              END >= $5::timestamptz
+          )
         )
-    GROUP BY v.snapshot_date, v.severity
-)
+),
+     aggregated AS (
+         SELECT
+             severity,
+             snapshot_date,
+             AVG(fix_duration)::INT AS mean_time_to_fix_days,
+             COUNT(*)::INT AS fixed_count,
+             MIN(fixed_at)::date AS first_fixed_at,
+             MAX(fixed_at)::date AS last_fixed_at
+         FROM (
+                  SELECT DISTINCT severity, workload_id, introduced_at, fix_duration, fixed_at, snapshot_date
+                  FROM filtered
+              ) f
+         GROUP BY snapshot_date, severity
+     )
 SELECT
     severity,
-    snapshot_time,
+    snapshot_date,
     mean_time_to_fix_days,
     fixed_count,
     first_fixed_at,
     last_fixed_at
-FROM mttr
-ORDER BY snapshot_time, severity
+FROM aggregated
+ORDER BY snapshot_date, severity
 `
 
 type ListMeanTimeToFixTrendBySeverityParams struct {
@@ -58,7 +71,7 @@ type ListMeanTimeToFixTrendBySeverityParams struct {
 
 type ListMeanTimeToFixTrendBySeverityRow struct {
 	Severity          int32
-	SnapshotTime      pgtype.Date
+	SnapshotDate      pgtype.Date
 	MeanTimeToFixDays int32
 	FixedCount        int32
 	FirstFixedAt      pgtype.Date
@@ -83,7 +96,7 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 		var i ListMeanTimeToFixTrendBySeverityRow
 		if err := rows.Scan(
 			&i.Severity,
-			&i.SnapshotTime,
+			&i.SnapshotDate,
 			&i.MeanTimeToFixDays,
 			&i.FixedCount,
 			&i.FirstFixedAt,

@@ -1111,7 +1111,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 			fmt.Printf(
 				"Severity: %d, Snapshot: %v, MeanTimeToFix: %d, FixedCount: %d\n",
 				n.Severity,
-				n.SnapshotTime.AsTime(),
+				n.SnapshotDate.AsTime(),
 				n.MeanTimeToFixDays,
 				n.FixedCount,
 			)
@@ -1123,7 +1123,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		assert.GreaterOrEqual(t, len(resp.Points), 1)
 
 		for _, n := range resp.Points {
-			assert.True(t, n.SnapshotTime.AsTime().After(sinceSnapshot) || n.SnapshotTime.AsTime().Equal(sinceSnapshot))
+			assert.True(t, n.SnapshotDate.AsTime().After(sinceSnapshot) || n.SnapshotDate.AsTime().Equal(sinceSnapshot))
 		}
 	})
 
@@ -1138,7 +1138,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 
 		for _, n := range resp.Points {
 			assert.True(t, n.FixedCount > 0)
-			assert.True(t, n.SnapshotTime.AsTime().After(sinceFixed) || n.SnapshotTime.AsTime().Equal(sinceFixed))
+			assert.True(t, n.SnapshotDate.AsTime().After(sinceFixed) || n.SnapshotDate.AsTime().Equal(sinceFixed))
 		}
 	})
 
