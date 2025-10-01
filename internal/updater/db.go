@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources"
+	depedencytrack "github.com/nais/v13s/internal/sources/dependencytrack"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -73,7 +72,7 @@ func handleError(ctx context.Context, imageName, imageTag string, source string,
 		Source:    source,
 	}
 
-	if err == nil || errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
+	if err == nil || errors.Is(err, depedencytrack.ErrNoProject) || errors.Is(err, depedencytrack.ErrNoMetrics) {
 		return nil
 	}
 

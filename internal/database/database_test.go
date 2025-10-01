@@ -2,15 +2,33 @@ package database_test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	if err := leaderelection.Start(ctx, config.LeaderElectionConfig{
+		FakeEnabled:    true,
+		LeaseName:      "vuln-api-test",
+		LeaseNamespace: "test",
+	}, logrus.WithField("component", "leader-election")); err != nil {
+		panic(fmt.Sprintf("starting leader election: %v", err))
+	}
+	code := m.Run()
+	os.Exit(code)
+}
 
 func TestMarkImagesAsUnused(t *testing.T) {
 	ctx := context.Background()

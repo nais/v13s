@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/source"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -14,8 +14,8 @@ type ImageVulnerabilityData struct {
 	ImageName       string
 	ImageTag        string
 	Source          string
-	Vulnerabilities []*sources.Vulnerability
-	Summary         *sources.VulnerabilitySummary
+	Vulnerabilities []*source.Vulnerability
+	Summary         *source.VulnerabilitySummary
 	Workloads       []*sql.ListWorkloadsByImageRow
 }
 
@@ -33,7 +33,7 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 			return SyncImage(ctxTimeout, image.Name, image.Tag, u.source.Name(), func(ctx context.Context) error {
 				u.log.Debug("update image")
 
-				imageData, err := u.fetchVulnerabilityData(ctx, image.Name, image.Tag, u.source)
+				imageData, err := u.fetchVulnerabilityData(ctx, image.Name, image.Tag)
 				if err != nil {
 					return err
 				}
@@ -47,7 +47,7 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 	return g.Wait()
 }
 
-func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*ImageVulnerabilityData, error) {
+func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string) (*ImageVulnerabilityData, error) {
 	vulnerabilities, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
 	if err != nil {
 		return nil, err
@@ -61,11 +61,11 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 	}
 
 	u.log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
-	filteredVulnerabilities := make([]*sources.SuppressedVulnerability, 0)
+	filteredVulnerabilities := make([]*source.SuppressedVulnerability, 0)
 	for _, s := range suppressedVulns {
 		for _, v := range vulnerabilities {
 			if v.Cve.Id == s.CveID && v.Package == s.Package && s.Suppressed != v.Suppressed {
-				filteredVulnerabilities = append(filteredVulnerabilities, &sources.SuppressedVulnerability{
+				filteredVulnerabilities = append(filteredVulnerabilities, &source.SuppressedVulnerability{
 					ImageName:    imageName,
 					ImageTag:     imageTag,
 					CveId:        v.Cve.Id,
@@ -101,7 +101,7 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 	return &ImageVulnerabilityData{
 		ImageName:       imageName,
 		ImageTag:        imageTag,
-		Source:          source.Name(),
+		Source:          u.source.Name(),
 		Vulnerabilities: vulnerabilities,
 		Summary:         summary,
 		Workloads:       workloads,

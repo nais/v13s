@@ -1,30 +1,70 @@
-package sources
+package dependencytrack
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/source"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var ErrNoMetrics = fmt.Errorf("no metrics found")
 var ErrNoProject = fmt.Errorf("no project found")
 
-const DependencytrackSourceName = "dependencytrack"
+const SourceName = "dependencytrack"
+
+type DependencyTrackConfig struct {
+	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
+	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
+	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
+}
+
+func (d DependencyTrackConfig) GetUrl() string {
+	return d.Url
+}
+
+func (d DependencyTrackConfig) Type() string {
+	return SourceName
+}
 
 type dependencytrackSource struct {
 	client dependencytrack.Client
 	log    *logrus.Entry
 }
 
-var _ Source = &dependencytrackSource{}
+var _ sources.Source = &dependencytrackSource{}
 
-func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
+func init() {
+	sources.RegisterSource(SourceName, func(cfg sources.SourceConfig, log logrus.FieldLogger) (sources.Source, error) {
+		dpCfg, ok := cfg.(*DependencyTrackConfig)
+		if !ok {
+			return nil, fmt.Errorf("expected *DependencyTrackConfig, got %T", cfg)
+		}
+
+		client, err := dependencytrack.NewClient(
+			dpCfg.Url,
+			dpCfg.Username,
+			dpCfg.Password,
+			log.WithField("subsystem", "dp-client"),
+			dependencytrack.WithHTTPClient(&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create dependencytrack client: %w", err)
+		}
+
+		return NewDependencytrackSource(client, log.WithField("source", SourceName)), nil
+	})
+}
+
+func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) sources.Source {
 	return &dependencytrackSource{
 		client: client,
 		log:    log,
@@ -32,7 +72,7 @@ func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) 
 }
 
 func (d *dependencytrackSource) Name() string {
-	return DependencytrackSourceName
+	return SourceName
 }
 
 func (d *dependencytrackSource) IsTaskInProgress(ctx context.Context, tokenProcess string) (bool, error) {
@@ -43,7 +83,7 @@ func (d *dependencytrackSource) IsTaskInProgress(ctx context.Context, tokenProce
 	return d.client.IsTaskInProgress(ctx, tokenProcess)
 }
 
-func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom []byte) (*UploadAttestationResponse, error) {
+func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, sbom []byte) (*source.UploadAttestationResponse, error) {
 	d.log.Debugf("uploading sbom for workload %v", imageName)
 
 	res, err := d.client.CreateProjectWithSbom(ctx, imageName, imageTag, sbom)
@@ -61,7 +101,7 @@ func (d *dependencytrackSource) UploadAttestation(ctx context.Context, imageName
 	if err != nil {
 		return nil, fmt.Errorf("parsing project id: %w", err)
 	}
-	return &UploadAttestationResponse{
+	return &source.UploadAttestationResponse{
 		AttestationId: id,
 		ProcessToken:  res.Token,
 	}, nil
@@ -101,7 +141,7 @@ func (d *dependencytrackSource) ProjectExists(ctx context.Context, imageName, im
 	return true, nil
 }
 
-func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
+func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*source.Vulnerability, error) {
 	p, err := d.client.GetProject(ctx, imageName, imageTag)
 	if err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
@@ -116,7 +156,7 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		return nil, fmt.Errorf("getting findings for project %s: %w", p.Uuid, err)
 	}
 
-	vv := make([]*Vulnerability, 0, len(vulns))
+	vv := make([]*source.Vulnerability, 0, len(vulns))
 	for _, v := range vulns {
 		var m *dependencytrack.VulnMetadata
 		if v.Metadata != nil {
@@ -128,13 +168,13 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		} else {
 			d.log.Warnf("missing metadata for vulnerability, CveId '%s', Package '%s'", v.Cve.Id, v.Package)
 		}
-		vv = append(vv, &Vulnerability{
-			Cve: &Cve{
+		vv = append(vv, &source.Vulnerability{
+			Cve: &source.Cve{
 				Id:          v.Cve.Id,
 				Description: v.Cve.Description,
 				Title:       v.Cve.Title,
 				Link:        v.Cve.Link,
-				Severity:    Severity(v.Cve.Severity),
+				Severity:    source.Severity(v.Cve.Severity),
 				References:  v.Cve.References,
 			},
 			Package:       v.Package,
@@ -147,7 +187,7 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 	return vv, nil
 }
 
-func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
+func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*source.SuppressedVulnerability) error {
 	d.log.Debug("maintaining suppressed vulnerabilities")
 	triggeredProjects := make(map[string]struct{})
 
@@ -184,7 +224,7 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 	return nil
 }
 
-func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {
+func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*source.VulnerabilitySummary, error) {
 	i := imageName
 	t := imageTag
 	// TODO: remove this hack when we have a better way to handle test images
@@ -207,7 +247,7 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 		return nil, ErrNoMetrics
 	}
 
-	return &VulnerabilitySummary{
+	return &source.VulnerabilitySummary{
 		Id:         p.Uuid,
 		Critical:   p.Metrics.Critical,
 		High:       p.Metrics.High,
@@ -218,7 +258,7 @@ func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, ima
 	}, nil
 }
 
-func (d *dependencytrackSource) shouldUpdateFinding(an *dependencytrack.Analysis, v *SuppressedVulnerability) bool {
+func (d *dependencytrackSource) shouldUpdateFinding(an *dependencytrack.Analysis, v *source.SuppressedVulnerability) bool {
 	if an == nil {
 		return true
 	}
@@ -228,7 +268,7 @@ func (d *dependencytrackSource) shouldUpdateFinding(an *dependencytrack.Analysis
 	return an.AnalysisState != v.State
 }
 
-func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrack.VulnMetadata, v *SuppressedVulnerability) error {
+func (d *dependencytrackSource) updateFinding(ctx context.Context, metadata *dependencytrack.VulnMetadata, v *source.SuppressedVulnerability) error {
 	vReq := dependencytrack.AnalysisRequest{
 		SuppressedBy:    v.SuppressedBy,
 		Reason:          v.Reason,

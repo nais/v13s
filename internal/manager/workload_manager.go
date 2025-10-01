@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
+	dependencytrack "github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
@@ -44,7 +45,7 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, sourceMap map[string]sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -74,6 +75,8 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
+	// TODO: hack for now, only one source supported
+	source := sourceMap[dependencytrack.SourceName]
 	if err != nil {
 		log.Fatalf("Failed to create job client: %v", err)
 	}

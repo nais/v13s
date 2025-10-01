@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -14,8 +15,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
+	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
@@ -25,6 +28,19 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 )
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	if err := leaderelection.Start(ctx, config.LeaderElectionConfig{
+		FakeEnabled:    true,
+		LeaseName:      "vuln-api-test",
+		LeaseNamespace: "test",
+	}, logrus.WithField("component", "leader-election")); err != nil {
+		panic(fmt.Sprintf("starting leader election: %v", err))
+	}
+	code := m.Run()
+	os.Exit(code)
+}
 
 type testSetupConfig struct {
 	clusters              []string

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -11,11 +12,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
+	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/nais/v13s/internal/manager"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	"github.com/nais/v13s/internal/sources"
+	dependencytrackSource "github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/sirupsen/logrus"
@@ -23,6 +27,19 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	if err := leaderelection.Start(ctx, config.LeaderElectionConfig{
+		FakeEnabled:    true,
+		LeaseName:      "vuln-api-test",
+		LeaseNamespace: "test",
+	}, logrus.WithField("component", "leader-election")); err != nil {
+		panic(fmt.Sprintf("starting leader election: %v", err))
+	}
+	code := m.Run()
+	os.Exit(code)
+}
 
 func TestUpdater(t *testing.T) {
 	ctx := context.Background()
@@ -92,7 +109,10 @@ func TestUpdater(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	done := make(chan struct{})
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), updateSchedule, done, log)
+	u := updater.NewUpdater(pool,
+		map[string]sources.Source{dependencytrackSource.SourceName: dependencytrackSource.NewDependencytrackSource(mockDPTrack, log)},
+		updateSchedule, done, log,
+	)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
@@ -181,7 +201,12 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(pool,
+			map[string]sources.Source{dependencytrackSource.SourceName: dependencytrackSource.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))},
+			updateSchedule,
+			done,
+			logrus.NewEntry(logrus.StandardLogger()),
+		)
 		u.Run(updaterCtx)
 
 		select {
@@ -244,7 +269,7 @@ func TestUpdater(t *testing.T) {
 		done = make(chan struct{})
 		u = updater.NewUpdater(
 			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			map[string]sources.Source{dependencytrackSource.SourceName: dependencytrackSource.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))},
 			updateSchedule,
 			done,
 			logrus.NewEntry(logrus.StandardLogger()),
@@ -289,7 +314,7 @@ func TestUpdater(t *testing.T) {
 
 		u = updater.NewUpdater(
 			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			map[string]sources.Source{dependencytrackSource.SourceName: dependencytrackSource.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))},
 			updateSchedule,
 			make(chan struct{}),
 			logrus.NewEntry(logrus.StandardLogger()),
@@ -348,7 +373,7 @@ func TestUpdater(t *testing.T) {
 
 		u := updater.NewUpdater(
 			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			map[string]sources.Source{dependencytrackSource.SourceName: dependencytrackSource.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))},
 			updateSchedule,
 			make(chan struct{}),
 			logrus.NewEntry(logrus.StandardLogger()),
@@ -410,7 +435,7 @@ func TestUpdater(t *testing.T) {
 
 		u = updater.NewUpdater(
 			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
+			map[string]sources.Source{dependencytrackSource.SourceName: dependencytrackSource.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))},
 			updateSchedule,
 			nil,
 			logrus.NewEntry(logrus.StandardLogger()),

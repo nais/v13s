@@ -13,6 +13,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
+	dependencytrack "github.com/nais/v13s/internal/sources/dependencytrack"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,7 +38,7 @@ type Updater struct {
 	once                         sync.Once
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, sourceMap map[string]sources.Source, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -47,9 +48,10 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConf
 	}
 
 	return &Updater{
-		db:                           pool,
-		querier:                      sql.New(pool),
-		source:                       source,
+		db:      pool,
+		querier: sql.New(pool),
+		// TODO: hack for now, only one source supported
+		source:                       sourceMap[dependencytrack.SourceName],
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
 		doneChan:                     doneChan,

@@ -38,6 +38,8 @@ services:
       - "4318:4318"     # OTLP HTTP receiver (optional)
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    profiles:
+      - tracing
 
 volumes:
   pgdata:

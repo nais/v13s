@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/sources"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
