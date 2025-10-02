@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"embed"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -113,27 +112,34 @@ func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.F
 		}
 	}()
 
+	migrated, err := isMigrated(db, "migrations")
+	if err != nil {
+		return err
+	}
+	if migrated {
+		log.Info("database already migrated; skipping")
+		return nil
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 	for {
+		if leaderelection.IsLeader() {
+			log.Info("became leader; running migrations")
+			return goose.Up(db, "migrations")
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(1 * time.Second):
-			if !leaderelection.IsReady() {
-				continue
+		case <-ticker.C:
+			migrated, err = isMigrated(db, "migrations")
+			if err != nil {
+				return err
 			}
-			if !leaderelection.IsLeader() {
-				migrated, err := isMigrated(db, "migrations")
-				if err != nil {
-					return err
-				}
-				log.WithField("migrated", migrated).Debug("checking database migrated")
-				if !migrated {
-					continue
-				}
-				log.Info("not leader, skipping database migration")
+			if migrated {
+				log.Info("no migrations to run; continuing startup")
 				return nil
 			}
-			return goose.Up(db, "migrations")
 		}
 	}
 }
@@ -143,19 +149,14 @@ func isMigrated(db *sql.DB, migrationsDir string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
-	var currentVersion int64
-	err = db.QueryRow("SELECT version_id FROM goose_db_version ORDER BY id DESC LIMIT 1").Scan(&currentVersion)
-	if errors.Is(err, sql.ErrNoRows) {
-		currentVersion = 0
-	} else if err != nil {
-		return false, err
-	}
-
 	if len(migrations) == 0 {
 		return true, nil
 	}
 
 	lastMigration := migrations[len(migrations)-1]
-	return lastMigration.Version == currentVersion, nil
+	ver, err := goose.EnsureDBVersion(db)
+	if err != nil {
+		return false, err
+	}
+	return lastMigration.Version == ver, nil
 }

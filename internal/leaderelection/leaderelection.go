@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/nais/v13s/internal/config"
@@ -24,6 +26,11 @@ var callbacks = struct {
 	onStartedLeading []func(context.Context)
 	onStoppedLeading []func()
 }{}
+
+// Closed exactly once the first time this process becomes leader.
+var becameLeaderOnce sync.Once
+var becameLeaderCh = make(chan struct{})
+var leader atomic.Bool
 
 func RegisterOnStartedLeading(f func(context.Context)) {
 	callbacks.onStartedLeading = append(callbacks.onStartedLeading, f)
@@ -62,15 +69,18 @@ func Start(ctx context.Context, cfg config.LeaderElectionConfig, log logrus.Fiel
 		RenewDeadline:   10 * time.Second,
 		RetryPeriod:     2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(context.Context) {
+			OnStartedLeading: func(lctx context.Context) {
 				log.Info("Started leading")
+				leader.Store(true)
+				becameLeaderOnce.Do(func() { close(becameLeaderCh) })
 
 				for _, f := range callbacks.onStartedLeading {
-					f(ctx)
+					f(lctx)
 				}
 			},
 			OnStoppedLeading: func() {
 				log.Info("Stopped leading")
+				leader.Store(false)
 
 				for _, f := range callbacks.onStoppedLeading {
 					f()
@@ -92,15 +102,21 @@ func Start(ctx context.Context, cfg config.LeaderElectionConfig, log logrus.Fiel
 }
 
 func IsLeader() bool {
-	if elector == nil {
-		return false
-	}
-
-	return elector.IsLeader()
+	return leader.Load()
 }
 
 func IsReady() bool {
 	return elector != nil
+}
+
+// WaitUntilLeader blocks until this process becomes leader or the context ends.
+func WaitUntilLeader(ctx context.Context) bool {
+	select {
+	case <-becameLeaderCh:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 func newClient(cfg config.LeaderElectionConfig) (kubernetes.Interface, error) {
