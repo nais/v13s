@@ -161,6 +161,7 @@ message MeanTimeToFixTrendPoint {
   google.protobuf.Timestamp snapshot_date = 4;
   google.protobuf.Timestamp first_fixed_at = 5;
   google.protobuf.Timestamp last_fixed_at = 6;
+  int32 workload_count = 7;
 }
 
 message SuppressedVulnerability {

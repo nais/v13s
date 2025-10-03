@@ -47,6 +47,7 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 			FixedCount:        row.FixedCount,
 			FirstFixedAt:      timestamppb.New(row.FirstFixedAt.Time),
 			LastFixedAt:       timestamppb.New(row.LastFixedAt.Time),
+			WorkloadCount:     row.RegisteredWorkloads,
 		}
 	})
 
@@ -104,7 +105,7 @@ func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulner
 				FixedAt:           timestamppb.New(row.FixedAt.Time),
 				FixedCount:        row.FixedCount,
 				MeanTimeToFixDays: row.MeanTimeToFixDays,
-				SnapshotDate:      timestamppb.New(row.SnapshotTime.Time),
+				SnapshotDate:      timestamppb.New(row.SnapshotDate.Time),
 			}
 		})
 

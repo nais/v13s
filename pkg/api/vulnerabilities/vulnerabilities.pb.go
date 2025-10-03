@@ -1273,6 +1273,7 @@ type MeanTimeToFixTrendPoint struct {
 	SnapshotDate      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=snapshot_date,json=snapshotDate,proto3" json:"snapshot_date,omitempty"`
 	FirstFixedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=first_fixed_at,json=firstFixedAt,proto3" json:"first_fixed_at,omitempty"`
 	LastFixedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_fixed_at,json=lastFixedAt,proto3" json:"last_fixed_at,omitempty"`
+	WorkloadCount     int32                  `protobuf:"varint,7,opt,name=workload_count,json=workloadCount,proto3" json:"workload_count,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1347,6 +1348,13 @@ func (x *MeanTimeToFixTrendPoint) GetLastFixedAt() *timestamppb.Timestamp {
 		return x.LastFixedAt
 	}
 	return nil
+}
+
+func (x *MeanTimeToFixTrendPoint) GetWorkloadCount() int32 {
+	if x != nil {
+		return x.WorkloadCount
+	}
+	return 0
 }
 
 type SuppressedVulnerability struct {
@@ -3328,7 +3336,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"workloadId\x12-\n" +
 	"\x12workload_namespace\x18\x03 \x01(\tR\x11workloadNamespace\x12#\n" +
 	"\rworkload_name\x18\x04 \x01(\tR\fworkloadName\x124\n" +
-	"\x05fixes\x18\x05 \x03(\v2\x1e.v13s.api.protobuf.WorkloadFixR\x05fixes\"\xe8\x02\n" +
+	"\x05fixes\x18\x05 \x03(\v2\x1e.v13s.api.protobuf.WorkloadFixR\x05fixes\"\x8f\x03\n" +
 	"\x17MeanTimeToFixTrendPoint\x127\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x1b.v13s.api.protobuf.SeverityR\bseverity\x120\n" +
 	"\x15mean_time_to_fix_days\x18\x02 \x01(\x05R\x11meanTimeToFixDays\x12\x1f\n" +
@@ -3336,7 +3344,8 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"fixedCount\x12?\n" +
 	"\rsnapshot_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fsnapshotDate\x12@\n" +
 	"\x0efirst_fixed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ffirstFixedAt\x12>\n" +
-	"\rlast_fixed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vlastFixedAt\"\xb3\x02\n" +
+	"\rlast_fixed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vlastFixedAt\x12%\n" +
+	"\x0eworkload_count\x18\a \x01(\x05R\rworkloadCount\"\xb3\x02\n" +
 	"\x17SuppressedVulnerability\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x15\n" +

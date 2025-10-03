@@ -1058,6 +1058,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 				n.Severity, n.MeanTimeToFixDays, n.FixedCount)
 			assert.True(t, n.FixedCount > 0)
 			assert.True(t, n.MeanTimeToFixDays > 0)
+			assert.True(t, n.WorkloadCount > 0)
 		}
 	})
 

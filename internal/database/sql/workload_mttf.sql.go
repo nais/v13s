@@ -37,23 +37,25 @@ WITH filtered AS (
 ),
      aggregated AS (
          SELECT
-             severity,
-             snapshot_date,
-             AVG(fix_duration)::INT AS mean_time_to_fix_days,
+             f.severity,
+             f.snapshot_date,
+             AVG(f.fix_duration)::INT AS mean_time_to_fix_days,
              COUNT(*)::INT AS fixed_count,
-             MIN(fixed_at)::date AS first_fixed_at,
-             MAX(fixed_at)::date AS last_fixed_at
+             MIN(f.fixed_at)::date AS first_fixed_at,
+             MAX(f.fixed_at)::date AS last_fixed_at,
+             COUNT(DISTINCT f.workload_id)::INT AS registered_workloads
          FROM (
                   SELECT DISTINCT severity, workload_id, introduced_at, fix_duration, fixed_at, snapshot_date
                   FROM filtered
               ) f
-         GROUP BY snapshot_date, severity
+         GROUP BY f.snapshot_date, f.severity
      )
 SELECT
     severity,
     snapshot_date,
     mean_time_to_fix_days,
     fixed_count,
+    registered_workloads,
     first_fixed_at,
     last_fixed_at
 FROM aggregated
@@ -70,12 +72,13 @@ type ListMeanTimeToFixTrendBySeverityParams struct {
 }
 
 type ListMeanTimeToFixTrendBySeverityRow struct {
-	Severity          int32
-	SnapshotDate      pgtype.Date
-	MeanTimeToFixDays int32
-	FixedCount        int32
-	FirstFixedAt      pgtype.Date
-	LastFixedAt       pgtype.Date
+	Severity            int32
+	SnapshotDate        pgtype.Date
+	MeanTimeToFixDays   int32
+	FixedCount          int32
+	RegisteredWorkloads int32
+	FirstFixedAt        pgtype.Date
+	LastFixedAt         pgtype.Date
 }
 
 func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error) {
@@ -99,6 +102,7 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 			&i.SnapshotDate,
 			&i.MeanTimeToFixDays,
 			&i.FixedCount,
+			&i.RegisteredWorkloads,
 			&i.FirstFixedAt,
 			&i.LastFixedAt,
 		); err != nil {
@@ -113,34 +117,44 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 }
 
 const listWorkloadSeverityFixStats = `-- name: ListWorkloadSeverityFixStats :many
+WITH filtered AS (
+    SELECT DISTINCT
+        v.severity,
+        v.workload_id,
+        v.introduced_at,
+        v.fixed_at,
+        v.snapshot_date,
+        v.is_fixed
+    FROM vuln_fix_summary v
+             JOIN workloads w ON w.id = v.workload_id
+    WHERE
+        ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
+      AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
+      AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
+      AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
+      AND (
+        $5::timestamptz IS NULL
+        OR (
+            CASE COALESCE($6::TEXT, 'snapshot')
+                WHEN 'snapshot' THEN v.snapshot_date
+                WHEN 'fixed' THEN v.fixed_at
+            END >= $5::timestamptz
+        )
+        )
+)
 SELECT
-    v.workload_id,
+    f.workload_id,
     w.name AS workload_name,
     w.namespace AS workload_namespace,
-    v.severity,
-    MIN(v.introduced_at)::date AS introduced_date,
-    MAX(v.fixed_at)::date AS fixed_at,
-    COUNT(DISTINCT v.workload_id || '-' || v.severity || '-' || v.introduced_at)
-        FILTER (WHERE v.is_fixed)::INT AS fixed_count,
-    COALESCE(AVG((v.fixed_at::date - v.introduced_at::date)), 0)::INT AS mean_time_to_fix_days,
-    MAX(v.snapshot_date)::timestamptz AS snapshot_time
-FROM vuln_fix_summary v
-         JOIN workloads w ON w.id = v.workload_id
-WHERE
-    ($1::TEXT IS NULL OR w.cluster = $1::TEXT)
-  AND ($2::TEXT IS NULL OR w.namespace = $2::TEXT)
-  AND ($3::TEXT[] IS NULL OR w.workload_type = ANY($3::TEXT[]))
-  AND ($4::TEXT IS NULL OR w.name = $4::TEXT)
-  AND (
-    $5::timestamptz IS NULL
-    OR (
-        CASE COALESCE($6::TEXT, 'snapshot')
-            WHEN 'snapshot' THEN v.snapshot_date
-            WHEN 'fixed' THEN v.fixed_at
-        END >= $5::timestamptz
-    )
-    )
-GROUP BY v.workload_id, w.name, w.namespace, v.severity
+    f.severity,
+    MIN(f.introduced_at)::date AS introduced_date,
+    MAX(f.fixed_at)::date AS fixed_at,
+    COUNT(*) FILTER (WHERE f.is_fixed)::INT AS fixed_count,
+    COALESCE(AVG((f.fixed_at::date - f.introduced_at::date)), 0)::INT AS mean_time_to_fix_days,
+    MAX(f.snapshot_date)::timestamptz as snapshot_date
+FROM filtered f
+         JOIN workloads w ON w.id = f.workload_id
+GROUP BY f.workload_id, w.name, w.namespace, f.severity
 ORDER BY introduced_date DESC
 `
 
@@ -162,7 +176,7 @@ type ListWorkloadSeverityFixStatsRow struct {
 	FixedAt           pgtype.Date
 	FixedCount        int32
 	MeanTimeToFixDays int32
-	SnapshotTime      pgtype.Timestamptz
+	SnapshotDate      pgtype.Timestamptz
 }
 
 func (q *Queries) ListWorkloadSeverityFixStats(ctx context.Context, arg ListWorkloadSeverityFixStatsParams) ([]*ListWorkloadSeverityFixStatsRow, error) {
@@ -190,7 +204,7 @@ func (q *Queries) ListWorkloadSeverityFixStats(ctx context.Context, arg ListWork
 			&i.FixedAt,
 			&i.FixedCount,
 			&i.MeanTimeToFixDays,
-			&i.SnapshotTime,
+			&i.SnapshotDate,
 		); err != nil {
 			return nil, err
 		}
