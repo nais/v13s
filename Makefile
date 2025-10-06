@@ -1,3 +1,7 @@
+local: build
+	docker compose up -d
+	./bin/api
+
 build:
 	go build -o bin/api ./cmd/api
 
