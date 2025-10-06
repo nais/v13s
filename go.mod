@@ -18,7 +18,7 @@ require (
 	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20250922040922-29fc33fff561
 	github.com/nais/liberator v0.0.0-20250924103433-536eaed90405
 	github.com/nais/v13s/pkg/api v0.0.0-20250925124126-8d578233f750
-	github.com/pressly/goose/v3 v3.25.0
+	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/riverqueue/river v0.25.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.25.0
