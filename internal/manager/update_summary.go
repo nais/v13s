@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -58,6 +59,10 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 	for _, image := range job.Args.Images {
 		summary, err := u.Source.GetVulnerabilitySummary(ctx, image.Name, image.Tag)
 		if err != nil {
+			if errors.Is(sources.ErrNoProject, err) || errors.Is(err, sources.ErrNoMetrics) {
+				u.Log.WithField("image", image).Info("no vulnerability summary found")
+				continue
+			}
 			u.Log.WithError(err).WithField("image", image).Error("failed to get vulnerability summary")
 			return err
 		}
