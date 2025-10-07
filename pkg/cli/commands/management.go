@@ -167,7 +167,8 @@ func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Opt
 	}
 
 	if opts.Package == "" || opts.CveId == "" {
-		return fmt.Errorf("both package and cve-id must be provided to identify the vulnerability")
+		return fmt.Errorf("both package and cve-id must be provided to identify the vulnerability" +
+			"package in the format 'pkg:<package_name>@<version>' and cve-id in the format 'CVE-YYYY-NNNN'")
 	}
 
 	vuln, err := c.GetVulnerability(ctx, imageName, imageTag, opts.Package, opts.CveId)

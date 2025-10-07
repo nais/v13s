@@ -744,6 +744,7 @@ type Vulnerability struct {
 	Created       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created,proto3,oneof" json:"created,omitempty"`
 	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
 	SeveritySince *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=severity_since,json=severitySince,proto3,oneof" json:"severity_since,omitempty"`
+	ImageName     string                 `protobuf:"bytes,10,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -839,6 +840,13 @@ func (x *Vulnerability) GetSeveritySince() *timestamppb.Timestamp {
 		return x.SeveritySince
 	}
 	return nil
+}
+
+func (x *Vulnerability) GetImageName() string {
+	if x != nil {
+		return x.ImageName
+	}
+	return ""
 }
 
 type Finding struct {
@@ -3275,7 +3283,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x11suppressed_reason\x18\x02 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x10suppressedReason\x12#\n" +
 	"\rsuppressed_by\x18\x03 \x01(\tR\fsuppressedBy\x12-\n" +
 	"\x12suppressed_details\x18\x04 \x01(\tR\x11suppressedDetails\x12=\n" +
-	"\flast_updated\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\"\x94\x04\n" +
+	"\flast_updated\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\"\xb3\x04\n" +
 	"\rVulnerability\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\apackage\x18\x02 \x01(\tR\apackage\x12(\n" +
@@ -3285,7 +3293,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\vsuppression\x18\x06 \x01(\v2\x1e.v13s.api.protobuf.SuppressionH\x01R\vsuppression\x88\x01\x01\x129\n" +
 	"\acreated\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x02R\acreated\x88\x01\x01\x12B\n" +
 	"\flast_updated\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x03R\vlastUpdated\x88\x01\x01\x12F\n" +
-	"\x0eseverity_since\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x04R\rseveritySince\x88\x01\x01B\x10\n" +
+	"\x0eseverity_since\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x04R\rseveritySince\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"image_name\x18\n" +
+	" \x01(\tR\timageNameB\x10\n" +
 	"\x0e_last_severityB\x0e\n" +
 	"\f_suppressionB\n" +
 	"\n" +

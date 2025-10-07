@@ -13,8 +13,12 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
+	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
+	attestation "github.com/nais/v13s/internal/mocks/Verifier"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
@@ -36,6 +40,31 @@ func TestUpdater(t *testing.T) {
 
 	projectNames := []string{"project-1", "project-2", "project-3", "project-4"}
 	mockDPTrack := new(dependencytrackMock.MockClient)
+	verifierMock := new(attestation.MockVerifier)
+
+	jobCfg := &job.Config{
+		DbUrl: pool.Config().ConnString(),
+	}
+
+	queue := &kubernetes.WorkloadEventQueue{
+		Updated: make(chan *model.Workload, 100),
+		Deleted: make(chan *model.Workload, 100),
+	}
+
+	sourceMock := sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))
+
+	mgr := manager.NewWorkloadManager(
+		ctx,
+		pool,
+		jobCfg,
+		verifierMock,
+		sourceMock,
+		queue,
+		logrus.NewEntry(logrus.StandardLogger()),
+	)
+
+	mgr.Start(ctx)
+	defer mgr.Stop(ctx)
 
 	for _, project := range projectNames {
 		mockDPTrack.On("GetProject", mock.Anything, project, "v1").Return(&dependencytrack.Project{
@@ -92,7 +121,7 @@ func TestUpdater(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	done := make(chan struct{})
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), updateSchedule, done, log)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), mgr, updateSchedule, done, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
@@ -181,7 +210,7 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())), updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
 		u.Run(updaterCtx)
 
 		select {
@@ -242,13 +271,7 @@ func TestUpdater(t *testing.T) {
 		fmt.Printf("Threshold for untracking: %v\n", threshold)
 
 		done = make(chan struct{})
-		u = updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			done,
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
@@ -287,13 +310,7 @@ func TestUpdater(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		u = updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			make(chan struct{}),
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkUnusedImages(ctx)
 		assert.NoError(t, err)
@@ -346,13 +363,7 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		u := updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			make(chan struct{}),
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u := updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkForResync(updaterCtx)
 		assert.NoError(t, err)
@@ -408,13 +419,7 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateResync, image.State)
 		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
 
-		u = updater.NewUpdater(
-			pool,
-			sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger())),
-			updateSchedule,
-			nil,
-			logrus.NewEntry(logrus.StandardLogger()),
-		)
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, nil, logrus.NewEntry(logrus.StandardLogger()))
 
 		images, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)
@@ -433,7 +438,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
 
-	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
 
 	imageName := "image-1"
 	imageTag := "v1"

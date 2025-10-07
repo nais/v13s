@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
@@ -19,28 +17,21 @@ import (
 )
 
 func main() {
-
 	ctx := context.Background()
-	err := godotenv.Load()
+	cfg, err := config.NewConfig()
 	if err != nil {
-		fmt.Println("No .env file found")
+		log.WithError(err).Errorf("error when processing configuration")
 	}
 
 	log.Infof("initializing database")
 
-	dbUrl := os.Getenv("DATABASE_URL")
-	pool, err := database.New(ctx, dbUrl, log.WithField("component", "database"))
+	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("component", "database"))
 	if err != nil {
 		panic(err)
 	}
 	defer pool.Close()
 
 	db := sql.New(pool)
-	cfg, err := config.NewConfig()
-	if err != nil {
-		log.WithError(err).Errorf("error when processing configuration")
-	}
-
 	clients := newClients(cfg)
 
 	for cluster, client := range clients {

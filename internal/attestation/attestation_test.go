@@ -7,14 +7,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/cosign/bundle"
 	"github.com/sigstore/cosign/v2/pkg/oci"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,6 +77,28 @@ func TestDSSEParsePayload(t *testing.T) {
 	err = json.Unmarshal(att, &want)
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
+}
+
+func TestAttestation_CompressAndDecompress(t *testing.T) {
+	att := &Attestation{
+		Metadata: map[string]string{
+			"issuer": "https://token.actions.githubusercontent.com",
+		},
+	}
+
+	data, err := att.Compress()
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+
+	got, err := Decompress(data)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, att.Metadata["issuer"], got.Metadata["issuer"])
+}
+
+func TestAttestation_DecompressInvalidData(t *testing.T) {
+	_, err := Decompress([]byte("not-gzip"))
+	require.Error(t, err)
 }
 
 func loadRekorBundleFromFile(t *testing.T, s string) *bundle.RekorBundle {

@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// TODO: use status.Errorf(codes.NotFound ...) and such for errors
 func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
 	// TODO: add input validation for request, especially for filter values
 	limit, offset, err := grpcpagination.Pagination(request)
@@ -344,6 +345,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 			Package:       row.Package,
 			Suppression:   toSuppression(row.Suppressed, row.Reason.VulnerabilitySuppressReason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
 			LatestVersion: row.LatestVersion,
+			ImageName:     row.ImageName,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
 				Title:       row.CveTitle,
@@ -376,6 +378,8 @@ func (s *Server) ListWorkloadsForVulnerabilityById(ctx context.Context, request 
 			Namespace: r.Namespace,
 			Name:      r.Name,
 			Type:      r.WorkloadType,
+			ImageName: r.ImageName,
+			ImageTag:  r.ImageTag,
 		}
 	})
 	return &vulnerabilities.ListWorkloadsForVulnerabilityByIdResponse{

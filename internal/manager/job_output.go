@@ -28,6 +28,7 @@ const (
 	JobStatusImageRemovedFromSource     JobStatus = "image_removed_from_source"
 	JobStatusImageStillInUse            JobStatus = "image_still_in_use"
 	JobStatusSourceRefDeleted           JobStatus = "source_ref_deleted"
+	JobStatusSummariesUpdated           JobStatus = "summaries_updated"
 )
 
 func recordOutput(ctx context.Context, status JobStatus) {

@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nais/v13s/internal/job"
-
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -16,7 +15,7 @@ import (
 
 const (
 	KindFinalizeAttestation                      = "finalize_attestation"
-	FinalizeAttestationScheduledForResyncMinutes = 1 * time.Minute
+	FinalizeAttestationScheduledForResyncMinutes = 10 * time.Second
 	FinalizeAttestationScheduledWaitSecond       = 30 * time.Second
 )
 
@@ -34,7 +33,7 @@ func (f FinalizeAttestationJob) InsertOpts() river.InsertOpts {
 		ScheduledAt: time.Now().Add(FinalizeAttestationScheduledWaitSecond),
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: FinalizeAttestationScheduledForResyncMinutes,
+			ByPeriod: 1 * time.Minute,
 		},
 		MaxAttempts: 15,
 	}

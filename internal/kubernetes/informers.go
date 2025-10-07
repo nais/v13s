@@ -2,11 +2,13 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/nais/v13s/internal/config"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -76,6 +78,11 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 			// Check if the resource is available in the cluster.
 			resList, err := discoveryClient.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
 			if err != nil {
+				var authErr *oauth2.RetrieveError
+				if errors.As(err, &authErr) {
+					mgr.Stop()
+					return nil, fmt.Errorf("authentication error for cluster %s: %w", cluster, err)
+				}
 				log.WithError(err).Warnf("group version %s not available in cluster %s", gvr.String(), cluster)
 			}
 

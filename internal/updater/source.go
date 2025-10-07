@@ -15,8 +15,6 @@ type ImageVulnerabilityData struct {
 	ImageTag        string
 	Source          string
 	Vulnerabilities []*sources.Vulnerability
-	Summary         *sources.VulnerabilitySummary
-	Workloads       []*sql.ListWorkloadsByImageRow
 }
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
@@ -85,26 +83,11 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		return nil, err
 	}
 
-	summary, err := u.source.GetVulnerabilitySummary(ctx, imageName, imageTag)
-	if err != nil {
-		return nil, err
-	}
-
-	workloads, err := u.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
-		ImageName: imageName,
-		ImageTag:  imageTag,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	return &ImageVulnerabilityData{
 		ImageName:       imageName,
 		ImageTag:        imageTag,
 		Source:          source.Name(),
 		Vulnerabilities: vulnerabilities,
-		Summary:         summary,
-		Workloads:       workloads,
 	}, nil
 }
 
@@ -190,17 +173,4 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 		})
 	}
 	return params
-}
-
-func (i *ImageVulnerabilityData) ToVulnerabilitySummarySqlParams() sql.BatchUpsertVulnerabilitySummaryParams {
-	return sql.BatchUpsertVulnerabilitySummaryParams{
-		ImageName:  i.ImageName,
-		ImageTag:   i.ImageTag,
-		Critical:   i.Summary.Critical,
-		High:       i.Summary.High,
-		Medium:     i.Summary.Medium,
-		Low:        i.Summary.Low,
-		Unassigned: i.Summary.Unassigned,
-		RiskScore:  i.Summary.RiskScore,
-	}
 }

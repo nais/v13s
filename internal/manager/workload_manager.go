@@ -71,6 +71,9 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		KindFinalizeAttestation: {
 			MaxWorkers: 100,
 		},
+		KindUpsertVulnerabilitySummaries: {
+			MaxWorkers: 50,
+		},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
@@ -83,7 +86,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
 	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
 	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
-
+	job.AddWorker(jobClient, &UpsertVulnerabilitySummariesWorker{Db: db, Source: source, Log: log.WithField("subsystem", "upsert_vulnerability_summaries")})
 	m := &WorkloadManager{
 		db:              db,
 		pool:            pool,
@@ -137,15 +140,19 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 	return nil
 }
 
+func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
+	return m.jobClient.AddJob(ctx, job)
+}
+
 /*func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
-	m.log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
+	m.Log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
 	state := sql.WorkloadStateFailed
 	subsystem := WorkloadEventSubsystemUnknown
 	eventType := WorkloadEventFailed
 
 	var uErr model.UnrecoverableError
 	if errors.As(originalErr, &uErr) {
-		m.log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
+		m.Log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
 		subsystem = uErr.Subsystem
 		state = sql.WorkloadStateUnrecoverable
 		eventType = WorkloadEventUnrecoverable
@@ -153,13 +160,13 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 
 	var rErr model.RecoverableError
 	if errors.As(originalErr, &rErr) {
-		m.log.WithField("workload", workload.String()).Error("recoverable error, marking workload as failed")
+		m.Log.WithField("workload", workload.String()).Error("recoverable error, marking workload as failed")
 		subsystem = rErr.Subsystem
 		state = sql.WorkloadStateFailed
 		eventType = WorkloadEventRecoverable
 	}
 
-	err := m.db.AddWorkloadEvent(ctx, sql.AddWorkloadEventParams{
+	err := m.Db.AddWorkloadEvent(ctx, sql.AddWorkloadEventParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
 		Namespace:    workload.Namespace,
@@ -169,10 +176,10 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 		Subsystem:    subsystem,
 	})
 	if err != nil {
-		m.log.WithError(err).WithField("workload", workload).Error("failed to add workload event")
+		m.Log.WithError(err).WithField("workload", workload).Error("failed to add workload event")
 	}
 
-	err = m.db.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
+	err = m.Db.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
 		Namespace:    workload.Namespace,
@@ -182,7 +189,7 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 		State:        state,
 	})
 	if err != nil {
-		m.log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
+		m.Log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
 	}
 }*/
 

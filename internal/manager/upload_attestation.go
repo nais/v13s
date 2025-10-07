@@ -87,7 +87,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 				Tag:   imageTag,
 				State: sql.ImageStateResync,
 				ReadyForResyncAt: pgtype.Timestamptz{
-					Time:  time.Now().Add(FinalizeAttestationScheduledForResyncMinutes),
+					Time:  time.Now(),
 					Valid: true,
 				},
 			})

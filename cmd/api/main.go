@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/nais/v13s/internal/api"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/logger"
@@ -18,18 +16,11 @@ const (
 	exitCodeRunError
 )
 
-// handle env vars better
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	log := logrus.StandardLogger()
-
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("No .env file found")
-	}
-
 	cfg, err := config.NewConfig()
 	if err != nil {
 		log.WithError(err).Errorf("error when processing configuration")

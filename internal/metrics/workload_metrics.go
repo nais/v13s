@@ -37,14 +37,12 @@ func Collectors() []prometheus.Collector {
 	}
 }
 
-func SetWorkloadMetrics(workloads []*sql.ListWorkloadsByImageRow, summary *sources.VulnerabilitySummary) {
-	for _, w := range workloads {
-		labelValues := []string{w.Cluster, w.Namespace, w.Name, w.WorkloadType}
-		WorkloadRiskScore.WithLabelValues(labelValues...).Set(float64(summary.RiskScore))
-		WorkloadVulnerabilities.WithLabelValues(append(labelValues, "CRITICAL")...).Set(float64(summary.Critical))
-		WorkloadVulnerabilities.WithLabelValues(append(labelValues, "HIGH")...).Set(float64(summary.High))
-		WorkloadVulnerabilities.WithLabelValues(append(labelValues, "MEDIUM")...).Set(float64(summary.Medium))
-		WorkloadVulnerabilities.WithLabelValues(append(labelValues, "LOW")...).Set(float64(summary.Low))
-		WorkloadVulnerabilities.WithLabelValues(append(labelValues, "UNASSIGNED")...).Set(float64(summary.Unassigned))
-	}
+func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.VulnerabilitySummary) {
+	labelValues := []string{w.Cluster, w.Namespace, w.Name, w.WorkloadType}
+	WorkloadRiskScore.WithLabelValues(labelValues...).Set(float64(summary.RiskScore))
+	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "CRITICAL")...).Set(float64(summary.Critical))
+	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "HIGH")...).Set(float64(summary.High))
+	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "MEDIUM")...).Set(float64(summary.Medium))
+	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "LOW")...).Set(float64(summary.Low))
+	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "UNASSIGNED")...).Set(float64(summary.Unassigned))
 }
