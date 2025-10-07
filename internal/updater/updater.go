@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -263,9 +264,6 @@ func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVul
 }
 
 func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityData) []error {
-	if len(batch) == 0 {
-		return nil
-	}
 	var errs []error
 	var batchErr error
 
@@ -290,6 +288,9 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 
 	start := time.Now()
 	errors := 0
+	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
+		return x.CveID
+	})
 	u.querier.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
 		if err != nil {
 			u.log.WithError(err).Debug("failed to batch upsert cves")
@@ -306,6 +307,14 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 
 	start = time.Now()
 	errors = 0
+	sortByFields(vulns,
+		func(x sql.BatchUpsertVulnerabilitiesParams) string {
+			return x.ImageName
+		},
+		func(x sql.BatchUpsertVulnerabilitiesParams) string {
+			return x.ImageTag
+		},
+	)
 	u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec(func(i int, err error) {
 		if err != nil {
 			u.log.WithError(err).Debug("failed to batch upsert vulnerabilities")
@@ -321,6 +330,10 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	}).Infof("upserted batch of vulnerabilities")
 
 	if len(batch) > 0 {
+		sortByFields(images,
+			func(x manager.Image) string { return x.Name },
+			func(x manager.Image) string { return x.Tag },
+		)
 		if err := u.manager.AddJob(ctx, &manager.UpsertVulnerabilitySummariesJob{
 			Images: images,
 		}); err != nil {
@@ -332,6 +345,10 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	if len(errs) == 0 {
 		start = time.Now()
 		errors = 0
+		sortByFields(imageStates,
+			func(x sql.BatchUpdateImageStateParams) string { return x.Name },
+			func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
+		)
 		u.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
 			if err != nil {
 				u.log.WithError(err).Debug("failed to batch update image state")
@@ -348,4 +365,19 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	}
 
 	return errs
+}
+
+func sortByFields[T any](items []T, getters ...func(T) string) {
+	sort.SliceStable(items, func(i, j int) bool {
+		for _, get := range getters {
+			a, b := get(items[i]), get(items[j])
+			if a < b {
+				return true
+			}
+			if a > b {
+				return false
+			}
+		}
+		return false
+	})
 }
