@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
@@ -27,6 +28,10 @@ func (u DeleteWorkloadJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindDeleteWorkload,
 		MaxAttempts: 4,
+		UniqueOpts: river.UniqueOpts{
+			ByArgs:   true,
+			ByPeriod: 1 * time.Minute,
+		},
 	}
 }
 

@@ -59,7 +59,7 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 	for _, image := range job.Args.Images {
 		summary, err := u.Source.GetVulnerabilitySummary(ctx, image.Name, image.Tag)
 		if err != nil {
-			if errors.Is(sources.ErrNoProject, err) || errors.Is(err, sources.ErrNoMetrics) {
+			if errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
 				u.Log.WithField("image", image).Info("no vulnerability summary found")
 				continue
 			}
