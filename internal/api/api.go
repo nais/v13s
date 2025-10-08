@@ -131,6 +131,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			ctx,
 			cfg.InternalListenAddr,
 			promReg,
+			pool,
 			log,
 			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
 		)

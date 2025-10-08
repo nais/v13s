@@ -9,16 +9,22 @@ metadata:
     app.kubernetes.io/name: {{ .Chart.Name }}
 spec:
   groups:
-    - name: namespace-vulnerability-alerts
+    - name: namespace-vulnerability-recording
       rules:
-        - alert: "namespace critical vulnerabilities"
+        - record: namespace:vulnerabilities:critical:count
           expr: max by (workload_namespace) (
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
-            workload_namespace=~"nais-system|nais"
+            workload_namespace="nais-system"
             }
-            ) > 0
-          for: 30m
+            )
+
+    - name: namespace-vulnerability-alerts
+      rules:
+        - record: namespace:vulnerabilities:critical:count
+          alert: "namespace critical vulnerabilities"
+          expr: namespace:vulnerabilities:critical:count > 0
+          for: 5m
           labels:
             namespace: nais-system
             severity: warning
