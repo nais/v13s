@@ -21,8 +21,7 @@ spec:
 
     - name: namespace-vulnerability-alerts
       rules:
-        - record: namespace:vulnerabilities:critical:count
-          alert: "namespace critical vulnerabilities"
+        - alert: "namespace critical vulnerabilities"
           expr: namespace:vulnerabilities:critical:count > 0
           for: 5m
           labels:
