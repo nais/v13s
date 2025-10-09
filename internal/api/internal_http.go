@@ -28,7 +28,18 @@ type Handler struct {
 func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, pool *pgxpool.Pool, log logrus.FieldLogger, extraHandlers ...Handler) error {
 	router := chi.NewRouter()
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	router.Get("/healthz", func(_ http.ResponseWriter, _ *http.Request) {})
+	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+
+		if err := pool.Ping(ctx); err != nil {
+			http.Error(w, "db unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
 
 	router.HandleFunc("/pprof/*", pprof.Index)
 	router.HandleFunc("/pprof/profile", pprof.Profile)

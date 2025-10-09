@@ -48,7 +48,16 @@ type client struct {
 var _ Client = (*client)(nil)
 
 func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueConfig) (Client, error) {
-	pool, err := pgxpool.New(ctx, cfg.DbUrl)
+	dbConfig, err := pgxpool.ParseConfig(cfg.DbUrl)
+	if err != nil {
+		return nil, err
+	}
+	dbConfig.MaxConns = 40
+	dbConfig.MinConns = 2
+	dbConfig.MaxConnIdleTime = 5 * time.Minute
+	dbConfig.HealthCheckPeriod = 30 * time.Second
+
+	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +75,8 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 		Workers:              workers,
 		JobTimeout:           5 * time.Minute,
 		RescueStuckJobsAfter: 10 * time.Minute,
+		FetchCooldown:        300 * time.Millisecond,
+		FetchPollInterval:    2 * time.Second,
 		Middleware: []rivertype.Middleware{
 			otelriver.NewMiddleware(nil),
 		},
