@@ -41,7 +41,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return fmt.Errorf("starting leader election: %w", err)
 	}
 
-	dbCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	dbCtx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	pool, err := database.New(dbCtx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
 	cancel()
 
