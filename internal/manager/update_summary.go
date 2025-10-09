@@ -56,18 +56,23 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 	}
 
 	summaries := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
+	noProjectOrMetrics := 0
+
 	for _, image := range job.Args.Images {
 		summary, err := u.Source.GetVulnerabilitySummary(ctx, image.Name, image.Tag)
 		if err != nil {
 			if errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
 				u.Log.WithField("image", image).Info("no vulnerability summary found")
+				noProjectOrMetrics++
 				continue
 			}
 			u.Log.WithError(err).WithField("image", image).Error("failed to get vulnerability summary")
 			return err
 		}
+
 		if summary == nil {
 			u.Log.WithField("image", image).Info("no vulnerability summary found")
+			noProjectOrMetrics++
 			continue
 		}
 		summaries = append(summaries, toVulnerabilitySummarySqlParams(image, summary))
@@ -87,23 +92,27 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 	}
 
 	start := time.Now()
-	errors := 0
+	errorCount := 0
 	u.Db.BatchUpsertVulnerabilitySummary(ctx, summaries).Exec(func(i int, err error) {
 		if err != nil {
 			u.Log.WithError(err).Errorf("failed to upsert summary %d", i)
-			errors++
+			errorCount++
 		}
 	})
 
 	duration := time.Since(start).Seconds()
 
-	if errors > 0 {
+	if noProjectOrMetrics > 0 {
+		u.Log.WithField("count", noProjectOrMetrics).Info("images skipped due to no project or no metrics")
+	}
+
+	if errorCount > 0 {
 		u.Log.WithFields(logrus.Fields{
 			"num_rows":   len(summaries),
-			"num_errors": errors,
+			"num_errors": errorCount,
 			"duration":   duration,
 		}).Error("failed to upsert some vulnerability summaries")
-		return fmt.Errorf("%d vulnerability summaries failed to upsert", errors)
+		return fmt.Errorf("%d vulnerability summaries failed to upsert", errorCount)
 	}
 
 	u.Log.WithFields(logrus.Fields{
