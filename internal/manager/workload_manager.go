@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	maxWorkers = 15
+	maxWorkers = 30
 )
 
 type WorkloadManager struct {
@@ -53,13 +53,13 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	db := sql.New(pool)
 
 	queues := map[string]river.QueueConfig{
-		KindAddWorkload:                  {MaxWorkers: 5},
-		KindGetAttestation:               {MaxWorkers: 5},
-		KindUploadAttestation:            {MaxWorkers: 4},
-		KindDeleteWorkload:               {MaxWorkers: 1},
-		KindRemoveFromSource:             {MaxWorkers: 2},
-		KindFinalizeAttestation:          {MaxWorkers: 2},
-		KindUpsertVulnerabilitySummaries: {MaxWorkers: 2},
+		KindAddWorkload:                  {MaxWorkers: 10},
+		KindGetAttestation:               {MaxWorkers: 10},
+		KindUploadAttestation:            {MaxWorkers: 8},
+		KindDeleteWorkload:               {MaxWorkers: 5},
+		KindRemoveFromSource:             {MaxWorkers: 20},
+		KindFinalizeAttestation:          {MaxWorkers: 10},
+		KindUpsertVulnerabilitySummaries: {MaxWorkers: 10},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
