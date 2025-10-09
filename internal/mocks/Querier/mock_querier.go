@@ -1928,6 +1928,65 @@ func (_c *MockQuerier_ListUnusedImages_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// ListUnusedSourceRefs provides a mock function with given fields: ctx, name
+func (_m *MockQuerier) ListUnusedSourceRefs(ctx context.Context, name *string) ([]*sql.SourceRef, error) {
+	ret := _m.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListUnusedSourceRefs")
+	}
+
+	var r0 []*sql.SourceRef
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *string) ([]*sql.SourceRef, error)); ok {
+		return rf(ctx, name)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *string) []*sql.SourceRef); ok {
+		r0 = rf(ctx, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.SourceRef)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *string) error); ok {
+		r1 = rf(ctx, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListUnusedSourceRefs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListUnusedSourceRefs'
+type MockQuerier_ListUnusedSourceRefs_Call struct {
+	*mock.Call
+}
+
+// ListUnusedSourceRefs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name *string
+func (_e *MockQuerier_Expecter) ListUnusedSourceRefs(ctx interface{}, name interface{}) *MockQuerier_ListUnusedSourceRefs_Call {
+	return &MockQuerier_ListUnusedSourceRefs_Call{Call: _e.mock.On("ListUnusedSourceRefs", ctx, name)}
+}
+
+func (_c *MockQuerier_ListUnusedSourceRefs_Call) Run(run func(ctx context.Context, name *string)) *MockQuerier_ListUnusedSourceRefs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListUnusedSourceRefs_Call) Return(_a0 []*sql.SourceRef, _a1 error) *MockQuerier_ListUnusedSourceRefs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListUnusedSourceRefs_Call) RunAndReturn(run func(context.Context, *string) ([]*sql.SourceRef, error)) *MockQuerier_ListUnusedSourceRefs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListVulnerabilities(ctx context.Context, arg sql.ListVulnerabilitiesParams) ([]*sql.ListVulnerabilitiesRow, error) {
 	ret := _m.Called(ctx, arg)

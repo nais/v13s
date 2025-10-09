@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/test"
@@ -116,7 +117,83 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		assert.Equal(t, int64(1), affectedRows)
 		assert.Equal(t, sql.ImageStateUnused, image.State)
 	})
+}
 
+func TestDeleteUnusedSourceRefs(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	err := db.ResetDatabase(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	imageName := "testimage-srcref"
+	imageTagUnused := "unused"
+	imageTagUsed := "used"
+
+	assert.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: imageTagUnused, Metadata: map[string]string{}}))
+	assert.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: imageTagUsed, Metadata: map[string]string{}}))
+
+	_, err = db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "wl1",
+		WorkloadType: "application",
+		Namespace:    "test",
+		Cluster:      "test",
+		ImageName:    imageName,
+		ImageTag:     imageTagUsed,
+	})
+	assert.NoError(t, err)
+
+	srcUnusedID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
+	srcUsedID := pgtype.UUID{Bytes: uuid.New(), Valid: true}
+
+	assert.NoError(t, db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+		SourceID:   srcUnusedID,
+		SourceType: "dependencytrack",
+		ImageName:  imageName,
+		ImageTag:   imageTagUnused,
+	}))
+
+	assert.NoError(t, db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+		SourceID:   srcUsedID,
+		SourceType: "dependencytrack",
+		ImageName:  imageName,
+		ImageTag:   imageTagUsed,
+	}))
+
+	rows, err := db.ListUnusedSourceRefs(ctx, &imageName)
+	assert.NoError(t, err)
+	assert.Len(t, rows, 1)
+	assert.Equal(t, imageTagUnused, rows[0].ImageTag)
+
+	err = db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+		ImageName:  imageName,
+		ImageTag:   imageTagUnused,
+		SourceType: "dependencytrack",
+	})
+	assert.NoError(t, err)
+
+	err = db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+		ImageName:  imageName,
+		ImageTag:   imageTagUnused,
+		SourceType: "dependencytrack",
+	})
+	assert.NoError(t, err)
+
+	rowsAfter, err := db.ListUnusedSourceRefs(ctx, &imageName)
+	assert.NoError(t, err)
+	assert.Len(t, rowsAfter, 0)
+
+	srcUsed, err := db.GetSourceRef(ctx, sql.GetSourceRefParams{
+		ImageName:  imageName,
+		ImageTag:   imageTagUsed,
+		SourceType: "dependencytrack",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, imageTagUsed, srcUsed.ImageTag)
 }
 
 func createTestdata(t *testing.T, db sql.Querier, image_name, image_tag string, createWorkload bool) {

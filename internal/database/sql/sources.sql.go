@@ -91,3 +91,47 @@ func (q *Queries) GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*So
 	)
 	return &i, err
 }
+
+const listUnusedSourceRefs = `-- name: ListUnusedSourceRefs :many
+SELECT sr.id, sr.source_id, sr.source_type, sr.created_at, sr.updated_at, sr.image_name, sr.image_tag
+FROM source_refs sr
+         JOIN images i
+              ON sr.image_name = i.name
+                  AND sr.image_tag  = i.tag
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM workloads w
+    WHERE w.image_name = i.name
+      AND w.image_tag  = i.tag
+)
+  AND ($1::TEXT IS NULL OR i.name = $1::TEXT)
+ORDER BY sr.updated_at DESC
+`
+
+func (q *Queries) ListUnusedSourceRefs(ctx context.Context, name *string) ([]*SourceRef, error) {
+	rows, err := q.db.Query(ctx, listUnusedSourceRefs, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*SourceRef{}
+	for rows.Next() {
+		var i SourceRef
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.SourceType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ImageName,
+			&i.ImageTag,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
