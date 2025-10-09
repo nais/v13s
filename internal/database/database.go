@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -73,6 +74,9 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 
 	conn, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return nil, fmt.Errorf("database context canceled during pool creation: %w", err)
+		}
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 

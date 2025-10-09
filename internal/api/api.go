@@ -41,8 +41,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return fmt.Errorf("starting leader election: %w", err)
 	}
 
-	log.Info("Initializing database")
-	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
+	dbCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	pool, err := database.New(dbCtx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
+	cancel()
+
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
