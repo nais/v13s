@@ -18,7 +18,6 @@ import (
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
@@ -37,14 +36,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer signalStop()
 
-	if err := leaderelection.Start(ctx, cfg.LeaderElection, log.WithField("subsystem", "leaderelection")); err != nil {
-		return fmt.Errorf("starting leader election: %w", err)
-	}
-
-	dbCtx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	pool, err := database.New(dbCtx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
-	cancel()
-
+	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}

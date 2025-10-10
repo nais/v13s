@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/nais/v13s/internal/leaderelection"
 	"github.com/pressly/goose/v3"
 	"github.com/sirupsen/logrus"
 )
@@ -124,28 +123,7 @@ func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.F
 		log.Info("database already migrated; skipping")
 		return nil
 	}
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	for {
-		if leaderelection.IsLeader() {
-			log.Info("became leader; running migrations")
-			return goose.Up(db, "migrations")
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			migrated, err = isMigrated(db, "migrations")
-			if err != nil {
-				return err
-			}
-			if migrated {
-				log.Info("no migrations to run; continuing startup")
-				return nil
-			}
-		}
-	}
+	return goose.Up(db, "migrations")
 }
 
 func isMigrated(db *sql.DB, migrationsDir string) (bool, error) {
