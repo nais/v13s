@@ -54,12 +54,12 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 
 	queues := map[string]river.QueueConfig{
 		KindAddWorkload:                  {MaxWorkers: 10},
-		KindGetAttestation:               {MaxWorkers: 10},
-		KindUploadAttestation:            {MaxWorkers: 8},
-		KindDeleteWorkload:               {MaxWorkers: 5},
-		KindRemoveFromSource:             {MaxWorkers: 20},
+		KindGetAttestation:               {MaxWorkers: 15},
+		KindUploadAttestation:            {MaxWorkers: 10},
+		KindDeleteWorkload:               {MaxWorkers: 3},
+		KindRemoveFromSource:             {MaxWorkers: 3},
 		KindFinalizeAttestation:          {MaxWorkers: 10},
-		KindUpsertVulnerabilitySummaries: {MaxWorkers: 10},
+		KindUpsertVulnerabilitySummaries: {MaxWorkers: 8},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
