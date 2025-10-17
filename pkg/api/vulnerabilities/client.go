@@ -24,6 +24,7 @@ type Client interface {
 	GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
+	SuppressVulnerabilityForNamespace(ctx context.Context, cveId, namespace, reason, suppressedBy string, state SuppressState, suppress bool) (*SuppressVulnerabilityForNamespaceResponse, error)
 	management.ManagementClient
 }
 
@@ -76,6 +77,7 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 		OrderBy:           o.OrderBy,
 		Since:             o.Since,
 		Severity:          o.Severity,
+		IncludeRelated:    o.IncludeRelated,
 	}, o.CallOptions...)
 }
 
@@ -185,6 +187,17 @@ func (c *client) SuppressVulnerability(ctx context.Context, id, reason, suppress
 		Suppress:     &suppress,
 	})
 	return err
+}
+
+func (c *client) SuppressVulnerabilityForNamespace(ctx context.Context, cveId, namespace, reason, suppressedBy string, state SuppressState, suppress bool) (*SuppressVulnerabilityForNamespaceResponse, error) {
+	return c.v.SuppressVulnerabilityForNamespace(ctx, &SuppressVulnerabilityForNamespaceRequest{
+		CveId:        cveId,
+		Namespace:    namespace,
+		Reason:       &reason,
+		SuppressedBy: &suppressedBy,
+		State:        state,
+		Suppress:     &suppress,
+	})
 }
 
 func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWorkloadRequest, opts ...grpc.CallOption) (*management.RegisterWorkloadResponse, error) {

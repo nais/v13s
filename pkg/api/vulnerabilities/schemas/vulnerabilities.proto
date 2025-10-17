@@ -111,6 +111,10 @@ message Vulnerability {
   string image_name = 10;
 }
 
+message RelatedVulnerabilities {
+  repeated Vulnerability vulnerabilities = 1;
+}
+
 message Finding {
   Workload workload_ref = 1;
   Vulnerability vulnerability = 2;
@@ -200,11 +204,13 @@ message ListVulnerabilitiesForImageRequest {
   optional OrderBy order_by = 6;
   optional google.protobuf.Timestamp since = 7;
   optional Severity severity = 8;
+  bool include_related = 9;
 }
 
 message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
+  repeated RelatedVulnerabilities related_vulnerabilities = 3;
 }
 
 message ListVulnerabilitySummariesRequest {
@@ -351,6 +357,22 @@ message SuppressVulnerabilityRequest {
 message SuppressVulnerabilityResponse {
   string cve_id = 1;
   bool suppressed = 2;
+  int32 total_related = 3;
+  int32 total_suppressed = 4;
+}
+
+message SuppressVulnerabilityForNamespaceRequest {
+  string namespace = 1;
+  string cve_id = 2;
+  SuppressState state = 3;
+  optional string reason = 4;
+  optional string suppressed_by = 5;
+  optional bool suppress = 6;
+}
+
+message SuppressVulnerabilityForNamespaceResponse {
+  string cve_id = 1;
+  repeated Workload affected_workloads = 2;
 }
 
 service Vulnerabilities {
@@ -395,4 +417,6 @@ service Vulnerabilities {
 
   // -------------------- Suppress RPCs --------------------
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
+
+  rpc SuppressVulnerabilityForNamespace(SuppressVulnerabilityForNamespaceRequest) returns (SuppressVulnerabilityForNamespaceResponse);
 }

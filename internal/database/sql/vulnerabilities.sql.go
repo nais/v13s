@@ -377,6 +377,38 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 	return &i, err
 }
 
+const listReferencingCves = `-- name: ListReferencingCves :many
+SELECT cve_id
+FROM cve
+WHERE refs::jsonb ? ($1)::text
+   OR EXISTS (
+       SELECT 1
+       FROM jsonb_each_text(refs) kv
+       WHERE kv.value = ($1)::text
+   )
+ORDER BY cve_id
+`
+
+func (q *Queries) ListReferencingCves(ctx context.Context, lookupCveID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listReferencingCves, lookupCveID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var cve_id string
+		if err := rows.Scan(&cve_id); err != nil {
+			return nil, err
+		}
+		items = append(items, cve_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSeverityVulnerabilitiesSince = `-- name: ListSeverityVulnerabilitiesSince :many
 SELECT
     v.id,
@@ -1017,6 +1049,67 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVulnerabilitiesForNamespaceAndCve = `-- name: ListVulnerabilitiesForNamespaceAndCve :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag,
+    v.package,
+    v.cve_id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.cluster
+FROM workloads w
+         JOIN vulnerabilities v
+              ON w.image_name = v.image_name
+                  AND w.image_tag = v.image_tag
+WHERE w.namespace = $1
+  AND v.cve_id = $2
+ORDER BY w.cluster, v.image_name, v.package, v.cve_id
+`
+
+type ListVulnerabilitiesForNamespaceAndCveParams struct {
+	Namespace string
+	CveID     string
+}
+
+type ListVulnerabilitiesForNamespaceAndCveRow struct {
+	ImageName    string
+	ImageTag     string
+	Package      string
+	CveID        string
+	WorkloadName string
+	WorkloadType string
+	Cluster      string
+}
+
+func (q *Queries) ListVulnerabilitiesForNamespaceAndCve(ctx context.Context, arg ListVulnerabilitiesForNamespaceAndCveParams) ([]*ListVulnerabilitiesForNamespaceAndCveRow, error) {
+	rows, err := q.db.Query(ctx, listVulnerabilitiesForNamespaceAndCve, arg.Namespace, arg.CveID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListVulnerabilitiesForNamespaceAndCveRow{}
+	for rows.Next() {
+		var i ListVulnerabilitiesForNamespaceAndCveRow
+		if err := rows.Scan(
+			&i.ImageName,
+			&i.ImageTag,
+			&i.Package,
+			&i.CveID,
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Cluster,
 		); err != nil {
 			return nil, err
 		}
