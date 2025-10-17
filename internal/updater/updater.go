@@ -3,7 +3,6 @@ package updater
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -289,7 +288,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 
 	start := time.Now()
 	errors := 0
-	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
+	collections.SortByFields(cves, func(x sql.BatchUpsertCveParams) string {
 		return x.CveID
 	})
 	u.querier.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
@@ -308,7 +307,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 
 	start = time.Now()
 	errors = 0
-	sortByFields(vulns,
+	collections.SortByFields(vulns,
 		func(x sql.BatchUpsertVulnerabilitiesParams) string {
 			return x.ImageName
 		},
@@ -331,7 +330,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	}).Infof("upserted batch of vulnerabilities")
 
 	if len(batch) > 0 {
-		sortByFields(images,
+		collections.SortByFields(images,
 			func(x manager.Image) string { return x.Name },
 			func(x manager.Image) string { return x.Tag },
 		)
@@ -346,7 +345,7 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	if len(errs) == 0 {
 		start = time.Now()
 		errors = 0
-		sortByFields(imageStates,
+		collections.SortByFields(imageStates,
 			func(x sql.BatchUpdateImageStateParams) string { return x.Name },
 			func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
 		)
@@ -366,19 +365,4 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	}
 
 	return errs
-}
-
-func sortByFields[T any](items []T, getters ...func(T) string) {
-	sort.SliceStable(items, func(i, j int) bool {
-		for _, get := range getters {
-			a, b := get(items[i]), get(items[j])
-			if a < b {
-				return true
-			}
-			if a > b {
-				return false
-			}
-		}
-		return false
-	})
 }

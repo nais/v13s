@@ -81,6 +81,7 @@ type Options struct {
 	Filter            *Filter
 	IncludeSuppressed bool
 	IncludeUnresolved bool
+	IncludeRelated    bool
 	Limit             int32
 	Offset            int32
 	OrderBy           *OrderBy
@@ -235,6 +236,12 @@ func SinceTypeFilter(sinceType SinceType) Option {
 func IncludeUnresolved() Option {
 	return newFuncOption(func(o *Options) {
 		o.IncludeUnresolved = true
+	})
+}
+
+func IncludeRelated() Option {
+	return newFuncOption(func(o *Options) {
+		o.IncludeRelated = true
 	})
 }
 

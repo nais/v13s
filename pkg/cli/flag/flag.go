@@ -27,6 +27,7 @@ type Options struct {
 	Package       string
 	CveId         string
 	Unresolved    bool
+	Related       bool
 	Severity      string
 	Output        string
 }
@@ -103,6 +104,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "filter by severity (e.g. 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNASSIGNED')",
 			Destination: &opts.Severity,
+		},
+		&cli.BoolFlag{
+			Name:        "include-related",
+			Aliases:     []string{"ir"},
+			Value:       false,
+			Usage:       "include related vulnerabilities",
+			Destination: &opts.Related,
 		},
 	}
 	for _, f := range cFlags {
@@ -186,6 +194,11 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		default:
 			log.Fatalf("invalid since-type: %s valid values are 'snapshot' or 'fixed'", o.SinceType)
 		}
+	}
+
+	if o.Related {
+		fmt.Println("including related vulnerabilities")
+		opts = append(opts, vulnerabilities.IncludeRelated())
 	}
 
 	if o.Suppressed {

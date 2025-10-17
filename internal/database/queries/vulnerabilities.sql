@@ -20,11 +20,14 @@ VALUES (@cve_id,
                refs      = EXCLUDED.refs,
                updated_at = NOW()
    WHERE
-           cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
-           cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
-           cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
-           cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
-           cve.refs       IS DISTINCT FROM EXCLUDED.refs
+       (cve.cve_title IS DISTINCT FROM EXCLUDED.cve_title
+      OR (cve.cve_title = '' AND EXCLUDED.cve_title <> ''))
+      OR (cve.cve_desc IS DISTINCT FROM EXCLUDED.cve_desc
+      OR (cve.cve_desc = '' AND EXCLUDED.cve_desc <> ''))
+      OR (cve.cve_link IS DISTINCT FROM EXCLUDED.cve_link
+      OR (cve.cve_link = '' AND EXCLUDED.cve_link <> ''))
+      OR cve.severity IS DISTINCT FROM EXCLUDED.severity
+           OR cve.refs IS DISTINCT FROM EXCLUDED.refs;
 ;
 
 -- name: BatchUpsertVulnerabilities :batchexec
@@ -82,6 +85,17 @@ SELECT *
 FROM cve
 WHERE cve_id = @cve_id
 ;
+
+-- name: ListReferencingCves :many
+SELECT cve_id
+FROM cve
+WHERE refs::jsonb ? (@lookup_cve_id)::text
+   OR EXISTS (
+       SELECT 1
+       FROM jsonb_each_text(refs) kv
+       WHERE kv.value = (@lookup_cve_id)::text
+   )
+ORDER BY cve_id;
 
 -- name: GetVulnerability :one
 SELECT v.id,
@@ -190,6 +204,43 @@ WHERE
     suppressed_vulnerabilities.reason_text    IS DISTINCT FROM EXCLUDED.reason_text;
 ;
 
+-- name: BatchSuppressVulnerabilities :batchexec
+INSERT INTO suppressed_vulnerabilities (
+    image_name,
+    package,
+    cve_id,
+    suppressed,
+    suppressed_by,
+    reason,
+    reason_text
+)
+VALUES (
+           @image_name,
+           @package,
+           @cve_id,
+           @suppressed,
+           @suppressed_by,
+           @reason,
+           @reason_text
+       ) ON CONFLICT
+ON CONSTRAINT image_name_package_cve_id DO
+UPDATE
+    SET
+        suppressed = EXCLUDED.suppressed,
+    suppressed_by = EXCLUDED.suppressed_by,
+    reason = EXCLUDED.reason,
+    reason_text = EXCLUDED.reason_text,
+    updated_at = NOW()
+WHERE
+    suppressed_vulnerabilities.suppressed IS DISTINCT
+FROM EXCLUDED.suppressed OR
+    suppressed_vulnerabilities.suppressed_by IS DISTINCT
+FROM EXCLUDED.suppressed_by OR
+    suppressed_vulnerabilities.reason IS DISTINCT
+FROM EXCLUDED.reason OR
+    suppressed_vulnerabilities.reason_text IS DISTINCT
+FROM EXCLUDED.reason_text;
+
 -- name: ListSuppressedVulnerabilities :many
 SELECT sv.*, v.*, c.*, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
@@ -216,6 +267,23 @@ ORDER BY
     v.id ASC
     LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset')
 ;
+
+-- name: ListVulnerabilitiesForNamespaceAndCve :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag,
+    v.package,
+    v.cve_id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.cluster
+FROM workloads w
+         JOIN vulnerabilities v
+              ON w.image_name = v.image_name
+                  AND w.image_tag = v.image_tag
+WHERE w.namespace = @namespace
+  AND v.cve_id = @cve_id
+ORDER BY w.cluster, v.image_name, v.package, v.cve_id;
 
 -- name: CountSuppressedVulnerabilities :one
 SELECT COUNT(*) AS total

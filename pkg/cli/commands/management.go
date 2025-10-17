@@ -92,15 +92,8 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 		{
 			Name:    "suppress",
 			Aliases: []string{"sp"},
-			Usage:   "suppress a vulnerability for a workload",
+			Usage:   "suppress related commands for a vulnerability",
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:        "package",
-					Aliases:     []string{"pkg"},
-					Value:       "",
-					Usage:       "package name to identify the vulnerability",
-					Destination: &opts.Package,
-				},
 				&cli.StringFlag{
 					Name:        "cve-id",
 					Aliases:     []string{"cve"},
@@ -109,8 +102,36 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					Destination: &opts.CveId,
 				},
 			},
-			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return suppressVulnerability(ctx, cmd, opts, c)
+			Commands: []*cli.Command{
+				{
+					Name:    "vulnerability",
+					Aliases: []string{"v"},
+					Usage: "suppress a specific vulnerability for an image\n" +
+						"image must be provided as the first argument in the format 'name:tag'\n" +
+						"package in the format 'pkg:<package_name>@<version>' and cve-id in the format 'CVE-YYYY-NNNN'",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:        "package",
+							Aliases:     []string{"pkg"},
+							Value:       "",
+							Usage:       "package name to identify the vulnerability",
+							Destination: &opts.Package,
+						},
+					},
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return suppressVulnerability(ctx, cmd, opts, c)
+					},
+				},
+				{
+					Name:    "namespace",
+					Aliases: []string{"n"},
+					Usage: "suppress a specific vulnerability for all workloads in a namespace\n" +
+						"both namespace and cve-id must be provided to identify the vulnerability",
+					Flags: append(flag.CommonFlags(opts, "l", "o", "s", "w", "c", "t", "se")),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return suppressVulnerabilityForNamespace(ctx, opts, c)
+					},
+				},
 			},
 		},
 		{
@@ -266,6 +287,45 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 		return err
 	}
 
+	return nil
+}
+
+func suppressVulnerabilityForNamespace(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
+	var namespace, CveId string
+	if opts.CveId != "" {
+		CveId = opts.CveId
+	}
+	if opts.Namespace != "" {
+		namespace = opts.Namespace
+	}
+	if namespace == "" || CveId == "" {
+		return fmt.Errorf("both namespace and cve-id must be provided to suppress a vulnerability for a namespace")
+	}
+
+	sup, err := c.SuppressVulnerabilityForNamespace(ctx, CveId, namespace, "Suppressing via CLI", "cli-user", vulnerabilities.SuppressState_FALSE_POSITIVE, true)
+	if err != nil {
+		return fmt.Errorf("failed to suppress vulnerability for namespace: %w", err)
+	}
+
+	if len(sup.AffectedWorkloads) == 0 {
+		fmt.Printf("No workloads affected by vulnerability %s in namespace %s\n", CveId, namespace)
+		return nil
+	}
+
+	t := Table{
+		Headers: []any{"Cluster", "Namespace", "Workload", "Type", "Image Name"},
+	}
+
+	fmt.Printf("Vulnerability %s affects the following workloads in namespace %s:\n", CveId, namespace)
+	for _, w := range sup.AffectedWorkloads {
+		t.AddRow(w.Cluster,
+			w.Namespace,
+			w.Name,
+			w.Type,
+			w.ImageName,
+		)
+	}
+	t.Print()
 	return nil
 }
 
