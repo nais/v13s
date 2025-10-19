@@ -3294,9 +3294,9 @@ type SuppressVulnerabilityForNamespaceRequest struct {
 	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	CveId         string                 `protobuf:"bytes,2,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
 	State         SuppressState          `protobuf:"varint,3,opt,name=state,proto3,enum=v13s.api.protobuf.SuppressState" json:"state,omitempty"`
-	Reason        *string                `protobuf:"bytes,4,opt,name=reason,proto3,oneof" json:"reason,omitempty"`
-	SuppressedBy  *string                `protobuf:"bytes,5,opt,name=suppressed_by,json=suppressedBy,proto3,oneof" json:"suppressed_by,omitempty"`
-	Suppress      *bool                  `protobuf:"varint,6,opt,name=suppress,proto3,oneof" json:"suppress,omitempty"`
+	Pkg           string                 `protobuf:"bytes,4,opt,name=pkg,proto3" json:"pkg,omitempty"`
+	Reason        *string                `protobuf:"bytes,5,opt,name=reason,proto3,oneof" json:"reason,omitempty"`
+	SuppressedBy  *string                `protobuf:"bytes,6,opt,name=suppressed_by,json=suppressedBy,proto3,oneof" json:"suppressed_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3352,6 +3352,13 @@ func (x *SuppressVulnerabilityForNamespaceRequest) GetState() SuppressState {
 	return SuppressState_FALSE_POSITIVE
 }
 
+func (x *SuppressVulnerabilityForNamespaceRequest) GetPkg() string {
+	if x != nil {
+		return x.Pkg
+	}
+	return ""
+}
+
 func (x *SuppressVulnerabilityForNamespaceRequest) GetReason() string {
 	if x != nil && x.Reason != nil {
 		return *x.Reason
@@ -3366,17 +3373,11 @@ func (x *SuppressVulnerabilityForNamespaceRequest) GetSuppressedBy() string {
 	return ""
 }
 
-func (x *SuppressVulnerabilityForNamespaceRequest) GetSuppress() bool {
-	if x != nil && x.Suppress != nil {
-		return *x.Suppress
-	}
-	return false
-}
-
 type SuppressVulnerabilityForNamespaceResponse struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	CveId             string                 `protobuf:"bytes,1,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
-	AffectedWorkloads []*Workload            `protobuf:"bytes,2,rep,name=affected_workloads,json=affectedWorkloads,proto3" json:"affected_workloads,omitempty"`
+	Package           string                 `protobuf:"bytes,2,opt,name=package,proto3" json:"package,omitempty"`
+	AffectedWorkloads []*Workload            `protobuf:"bytes,3,rep,name=affected_workloads,json=affectedWorkloads,proto3" json:"affected_workloads,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -3414,6 +3415,13 @@ func (*SuppressVulnerabilityForNamespaceResponse) Descriptor() ([]byte, []int) {
 func (x *SuppressVulnerabilityForNamespaceResponse) GetCveId() string {
 	if x != nil {
 		return x.CveId
+	}
+	return ""
+}
+
+func (x *SuppressVulnerabilityForNamespaceResponse) GetPackage() string {
+	if x != nil {
+		return x.Package
 	}
 	return ""
 }
@@ -3735,20 +3743,20 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"suppressed\x18\x02 \x01(\bR\n" +
 	"suppressed\x12#\n" +
 	"\rtotal_related\x18\x03 \x01(\x05R\ftotalRelated\x12)\n" +
-	"\x10total_suppressed\x18\x04 \x01(\x05R\x0ftotalSuppressed\"\xa9\x02\n" +
+	"\x10total_suppressed\x18\x04 \x01(\x05R\x0ftotalSuppressed\"\x8d\x02\n" +
 	"(SuppressVulnerabilityForNamespaceRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x15\n" +
 	"\x06cve_id\x18\x02 \x01(\tR\x05cveId\x126\n" +
-	"\x05state\x18\x03 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x05state\x12\x1b\n" +
-	"\x06reason\x18\x04 \x01(\tH\x00R\x06reason\x88\x01\x01\x12(\n" +
-	"\rsuppressed_by\x18\x05 \x01(\tH\x01R\fsuppressedBy\x88\x01\x01\x12\x1f\n" +
-	"\bsuppress\x18\x06 \x01(\bH\x02R\bsuppress\x88\x01\x01B\t\n" +
+	"\x05state\x18\x03 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x05state\x12\x10\n" +
+	"\x03pkg\x18\x04 \x01(\tR\x03pkg\x12\x1b\n" +
+	"\x06reason\x18\x05 \x01(\tH\x00R\x06reason\x88\x01\x01\x12(\n" +
+	"\rsuppressed_by\x18\x06 \x01(\tH\x01R\fsuppressedBy\x88\x01\x01B\t\n" +
 	"\a_reasonB\x10\n" +
-	"\x0e_suppressed_byB\v\n" +
-	"\t_suppress\"\x8e\x01\n" +
+	"\x0e_suppressed_by\"\xa8\x01\n" +
 	")SuppressVulnerabilityForNamespaceResponse\x12\x15\n" +
-	"\x06cve_id\x18\x01 \x01(\tR\x05cveId\x12J\n" +
-	"\x12affected_workloads\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\x11affectedWorkloads*_\n" +
+	"\x06cve_id\x18\x01 \x01(\tR\x05cveId\x12\x18\n" +
+	"\apackage\x18\x02 \x01(\tR\apackage\x12J\n" +
+	"\x12affected_workloads\x18\x03 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\x11affectedWorkloads*_\n" +
 	"\rSuppressState\x12\x12\n" +
 	"\x0eFALSE_POSITIVE\x10\x00\x12\r\n" +
 	"\tIN_TRIAGE\x10\x01\x12\f\n" +

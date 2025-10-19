@@ -514,6 +514,7 @@ func (s *Server) SuppressVulnerabilityForNamespace(ctx context.Context, req *vul
 		sql.ListVulnerabilitiesForNamespaceAndCveParams{
 			Namespace: req.Namespace,
 			CveID:     req.CveId,
+			Package:   req.Pkg,
 		})
 	if err != nil {
 		s.log.WithError(err).Error("list vulnerabilities for namespace")
@@ -526,7 +527,13 @@ func (s *Server) SuppressVulnerabilityForNamespace(ctx context.Context, req *vul
 
 	batch := make([]sql.BatchSuppressVulnerabilitiesParams, 0, len(vulns))
 	var affectedWorkloads []*vulnerabilities.Workload
+
 	for _, v := range vulns {
+		if v.Package == "" {
+			s.log.Warnf("vulnerability %s in image %s:%s has no package, skipping", v.CveID, v.ImageName, v.ImageTag)
+			continue
+		}
+
 		batch = append(batch, sql.BatchSuppressVulnerabilitiesParams{
 			ImageName:    v.ImageName,
 			Package:      v.Package,
@@ -565,12 +572,11 @@ func (s *Server) SuppressVulnerabilityForNamespace(ctx context.Context, req *vul
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
 		"num_rows":   len(batch) - errorCount,
 		"num_errors": errorCount,
+		"package":    req.Pkg,
 	}).Infof("suppressed %d vulnerabilities for namespace=%s CVE=%s",
 		len(batch)-errorCount, req.Namespace, req.CveId)
 
 	if len(errs) == 0 {
-		errorCount = 0
-
 		imageStates := make([]sql.BatchUpdateImageStateParams, 0, len(vulns))
 		for _, v := range vulns {
 			imageStates = append(imageStates, sql.BatchUpdateImageStateParams{

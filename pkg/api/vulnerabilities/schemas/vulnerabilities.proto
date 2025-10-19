@@ -365,14 +365,15 @@ message SuppressVulnerabilityForNamespaceRequest {
   string namespace = 1;
   string cve_id = 2;
   SuppressState state = 3;
-  optional string reason = 4;
-  optional string suppressed_by = 5;
-  optional bool suppress = 6;
+  string pkg = 4;
+  optional string reason = 5;
+  optional string suppressed_by = 6;
 }
 
 message SuppressVulnerabilityForNamespaceResponse {
   string cve_id = 1;
-  repeated Workload affected_workloads = 2;
+  string package = 2;
+  repeated Workload affected_workloads = 3;
 }
 
 service Vulnerabilities {

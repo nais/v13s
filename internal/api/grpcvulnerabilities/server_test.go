@@ -41,7 +41,7 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		workloadsPerNamespace: 4,
 		vulnsPerWorkload:      4,
 	}
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerabilities for every cluster", func(t *testing.T) {
@@ -218,7 +218,7 @@ func TestServer_ListWorkloadsForVulnerabilityById(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	err := db.CreateImage(ctx, sql.CreateImageParams{
@@ -262,7 +262,7 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list vulnerabilities for a specific image", func(t *testing.T) {
@@ -283,7 +283,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
@@ -316,7 +316,7 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 		mode:                  "cascade",
 	}
 
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true, "cascade")
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	imageName := "image-cluster-1-namespace-1-workload-1"
@@ -469,21 +469,6 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		// 🔍 LOG what's in the cve table to see refs and types
-		rows, err := pool.Query(ctx, "SELECT cve_id, refs, pg_typeof(refs) FROM cve ORDER BY cve_id")
-		assert.NoError(t, err)
-		fmt.Println("---- CVE refs in DB ----")
-		for rows.Next() {
-			var id string
-			var refs string
-			var typ string
-			_ = rows.Scan(&id, &refs, &typ)
-			fmt.Printf("CVE: %-25s | Type: %-5s | Refs: %s\n", id, typ, refs)
-		}
-		rows.Close()
-		fmt.Println("-------------------------")
-
-		// 🔍 LOG related CVEs from ListReferencingCves manually
 		related, err := db.ListReferencingCves(ctx, "CWE-1-1")
 		assert.NoError(t, err)
 		fmt.Printf("ListReferencingCves('CWE-1-1') returned: %v\n", related)
@@ -497,17 +482,6 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.Len(t, vulns, 3)
-
-		fmt.Println("---- Vulnerabilities in DB ----")
-		for _, v := range vulns {
-			fmt.Printf("CVE=%-22s  Package=%-20s  Suppressed=%v  Image=%s:%s\n",
-				v.CveID, v.Package, v.Suppressed, v.ImageName, v.ImageTag)
-		}
-		fmt.Println("-------------------------------")
-
-		for _, v := range vulns {
-			logrus.Infof("Vulnerability %s suppressed=%v", v.CveID, v.Suppressed)
-		}
 
 		var suppressed1, suppressed2 bool
 		for _, v := range vulns {
@@ -537,6 +511,69 @@ func containsAll(haystack, needles []string) bool {
 	return true
 }
 
+func TestServer_SuppressVulnerabilityForNamespace_PackageScoped(t *testing.T) {
+	cluster := "cluster-1"
+	namespace := "namespace-1"
+
+	cfg := testSetupConfig{
+		clusters:              []string{cluster},
+		namespaces:            []string{namespace},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      3,
+		mode:                  "cascade",
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	cveID := "CWE-1-1"
+	targetPkg := "package-CWE-1-1"
+	suppressedBy := "tester"
+	suppressReason := "suppressing one package across all images"
+
+	t.Run("suppress package for CVE across all images", func(t *testing.T) {
+		resp, err := client.SuppressVulnerabilityForNamespace(
+			ctx,
+			cveID,
+			targetPkg,
+			namespace,
+			suppressReason,
+			suppressedBy,
+			vulnerabilities.SuppressState_IN_TRIAGE,
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, cveID, resp.CveId)
+		assert.NotEmpty(t, resp.AffectedWorkloads, "expected affected workloads in response")
+
+		rows, err := db.ListSuppressedVulnerabilities(ctx, sql.ListSuppressedVulnerabilitiesParams{
+			Cluster:   &cluster,
+			Namespace: &namespace,
+			Limit:     100,
+			Offset:    0,
+		})
+		assert.NoError(t, err)
+
+		suppressedCount := 0
+		for _, row := range rows {
+			if row.CveID == cveID {
+				if row.Package == targetPkg {
+					assert.True(t, row.Suppressed, "expected package %s suppressed for all images", targetPkg)
+					assert.Equal(t, suppressedBy, row.SuppressedBy)
+					assert.Equal(t, suppressReason, row.ReasonText)
+					suppressedCount++
+				} else {
+					assert.Falsef(t, row.Suppressed,
+						"non-target package %s should remain unsuppressed", row.Package)
+				}
+			}
+		}
+
+		assert.Greater(t, suppressedCount, 0,
+			"expected at least one suppressed vulnerability for %s:%s", targetPkg, cveID)
+	})
+}
+
 func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
@@ -545,7 +582,7 @@ func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	// get vulnerabilities for workload-1
@@ -583,7 +620,7 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      1,
 	}
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	imageName := "image-cluster-1-namespace-1-workload-1"
@@ -609,7 +646,6 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	// --- First suppression should bump updated_at ---
 	err = client.SuppressVulnerability(
 		ctx,
 		vulnID,
@@ -635,15 +671,14 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 			beforeUpdatedAt, afterFirstUpdatedAt)
 	}
 
-	// --- Second suppression with identical values should NOT bump updated_at ---
 	time.Sleep(10 * time.Millisecond)
 	err = client.SuppressVulnerability(
 		ctx,
 		vulnID,
-		"not affected", // same reason
-		"test-user",    // same user
+		"not affected",
+		"test-user",
 		vulnerabilities.SuppressState_FALSE_POSITIVE,
-		true, // already suppressed
+		true,
 	)
 	assert.NoError(t, err)
 
@@ -668,10 +703,9 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      1,
 	}
-	ctx, db, _, _, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	// Insert a CVE with initial severity
 	initialCve := sql.BatchUpsertCveParams{
 		CveID:    "CVE-2023-1234",
 		CveTitle: "Test CVE",
@@ -684,17 +718,14 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	// Fetch the CVE and record timestamps
 	cve, err := db.GetCve(ctx, "CVE-2023-1234")
 	assert.NoError(t, err)
 	initialCreatedAt := cve.CreatedAt
 	initialUpdatedAt := cve.UpdatedAt
 
-	// Ensure timestamps are set
 	assert.False(t, initialCreatedAt.Time.IsZero(), "created_at should not be zero")
 	assert.False(t, initialUpdatedAt.Time.IsZero(), "updated_at should not be zero")
 
-	// Update the CVE with a new severity
 	updatedCve := sql.BatchUpsertCveParams{
 		CveID:    "CVE-2023-1234",
 		CveTitle: "Test CVE",
@@ -707,14 +738,11 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	// Fetch the updated CVE and verify changes
 	updatedCveRecord, err := db.GetCve(ctx, "CVE-2023-1234")
 	assert.NoError(t, err)
 
-	// Verify severity is updated
 	assert.Equal(t, int32(1), updatedCveRecord.Severity, "Severity should be updated to High")
 
-	// Verify timestamps
 	assert.Equal(t, initialCreatedAt, updatedCveRecord.CreatedAt, "created_at should remain unchanged")
 	assert.True(t, updatedCveRecord.UpdatedAt.Time.After(initialUpdatedAt.Time), "updated_at should be updated")
 }
@@ -726,10 +754,9 @@ func TestVulnerabilitySeveritySince(t *testing.T) {
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      1,
 	}
-	ctx, db, _, _, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	// Create image
 	err := db.CreateImage(ctx, sql.CreateImageParams{
 		Name:     "my-image",
 		Tag:      "v1.0.0",
@@ -855,7 +882,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		vulnsPerWorkload:      4,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for every cluster", func(t *testing.T) {
@@ -878,7 +905,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
@@ -902,7 +929,7 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	vuln, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
@@ -928,7 +955,7 @@ func TestServer_ListSeverityVulnerabilitiesSince(t *testing.T) {
 		vulnsPerWorkload:      2,
 	}
 
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	err := db.CreateImage(ctx, sql.CreateImageParams{
@@ -1085,7 +1112,7 @@ func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
 		vulnsPerWorkload:      3,
 	}
 
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
@@ -1202,7 +1229,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	now := time.Now()
@@ -1379,7 +1406,7 @@ func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 		workloadsPerNamespace: 1,
 	}
 
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true, "default")
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	now := time.Now()
@@ -1480,7 +1507,7 @@ func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 
 func ptrTime(t time.Time) *time.Time { return &t }
 
-func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool, mode string) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
+func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
 	db := sql.New(pool)
@@ -1492,6 +1519,10 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool, mode stri
 
 	workloads := generateTestWorkloads(cfg.clusters, cfg.namespaces, cfg.workloadsPerNamespace, cfg.vulnsPerWorkload)
 
+	mode := "default"
+	if cfg.mode != "" {
+		mode = cfg.mode
+	}
 	err = seedDb(t, db, workloads, mode)
 	assert.NoError(t, err)
 

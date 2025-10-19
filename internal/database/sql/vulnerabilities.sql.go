@@ -1062,6 +1062,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 
 const listVulnerabilitiesForNamespaceAndCve = `-- name: ListVulnerabilitiesForNamespaceAndCve :many
 SELECT DISTINCT
+    v.id,
     v.image_name,
     v.image_tag,
     v.package,
@@ -1075,15 +1076,18 @@ FROM workloads w
                   AND w.image_tag = v.image_tag
 WHERE w.namespace = $1
   AND v.cve_id = $2
+  AND v.package = $3
 ORDER BY w.cluster, v.image_name, v.package, v.cve_id
 `
 
 type ListVulnerabilitiesForNamespaceAndCveParams struct {
 	Namespace string
 	CveID     string
+	Package   string
 }
 
 type ListVulnerabilitiesForNamespaceAndCveRow struct {
+	ID           pgtype.UUID
 	ImageName    string
 	ImageTag     string
 	Package      string
@@ -1094,7 +1098,7 @@ type ListVulnerabilitiesForNamespaceAndCveRow struct {
 }
 
 func (q *Queries) ListVulnerabilitiesForNamespaceAndCve(ctx context.Context, arg ListVulnerabilitiesForNamespaceAndCveParams) ([]*ListVulnerabilitiesForNamespaceAndCveRow, error) {
-	rows, err := q.db.Query(ctx, listVulnerabilitiesForNamespaceAndCve, arg.Namespace, arg.CveID)
+	rows, err := q.db.Query(ctx, listVulnerabilitiesForNamespaceAndCve, arg.Namespace, arg.CveID, arg.Package)
 	if err != nil {
 		return nil, err
 	}
@@ -1103,6 +1107,7 @@ func (q *Queries) ListVulnerabilitiesForNamespaceAndCve(ctx context.Context, arg
 	for rows.Next() {
 		var i ListVulnerabilitiesForNamespaceAndCveRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.ImageName,
 			&i.ImageTag,
 			&i.Package,

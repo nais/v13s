@@ -270,6 +270,7 @@ ORDER BY
 
 -- name: ListVulnerabilitiesForNamespaceAndCve :many
 SELECT DISTINCT
+    v.id,
     v.image_name,
     v.image_tag,
     v.package,
@@ -283,6 +284,7 @@ FROM workloads w
                   AND w.image_tag = v.image_tag
 WHERE w.namespace = @namespace
   AND v.cve_id = @cve_id
+  AND v.package = @package
 ORDER BY w.cluster, v.image_name, v.package, v.cve_id;
 
 -- name: CountSuppressedVulnerabilities :one
