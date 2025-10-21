@@ -2,28 +2,50 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: {{ .Release.Name }}-namespace-vulnerability-alerts
+  name: {{ .Release.Name }}-namespace-workload-vulnerability-alerts
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/name: {{ .Chart.Name }}
 spec:
   groups:
-    - name: namespace-vulnerability-recording
+    - name: namespace-workload-vulnerability-recording
       rules:
-        - record: namespace:vulnerabilities:critical:count
-          expr: max by (workload_namespace) (
+
+        - record: namespace:workload:vulnerabilities:critical:max3h
+          expr: max by (workload_namespace, workload_name) (
+            max_over_time(
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
-            }
+            }[3h]
+            )
             )
 
-    - name: namespace-vulnerability-alerts
+        - record: namespace:workload:vulnerabilities:critical:recent_samples
+          expr: max by (workload_namespace, workload_name) (
+            count_over_time(
+            v13s_workload_vulnerabilities{
+            workload_namespace="nais-system"
+            }[15m]
+            ) > 0
+            )
+
+        - record: namespace:workload:vulnerabilities:critical:current
+          expr: max by (workload_namespace, workload_name) (
+            v13s_workload_vulnerabilities{
+            severity="CRITICAL",
+            workload_namespace="nais-system"
+            } or on(workload_namespace, workload_name) vector(0)
+            )
+
+    - name: namespace-workload-vulnerability-alerts
       rules:
-        - alert: "namespace critical vulnerabilities"
-          expr: namespace:vulnerabilities:critical:count > 0
-          for: 5m
+        - alert: "workload critical vulnerabilities"
+          expr: (namespace:workload:vulnerabilities:critical:max3h > 0)
+            and ((namespace:workload:vulnerabilities:critical:current > 0)
+            or on(workload_namespace, workload_name) (namespace:workload:vulnerabilities:critical:recent_samples == 0))
+          for: 10m
           labels:
             namespace: nais-system
             severity: warning
@@ -32,12 +54,11 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":rotating_light: CRITICAL vulnerabilities in namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":rotating_light: CRITICAL vulnerabilities in workload `{{ $labels.workload_name }}` (namespace `{{ $labels.workload_namespace }}`)" }}
             description: |
-              {{ "Namespace `{{ $labels.workload_namespace }}` has workloads with critical vulnerabilities in one or more clusters." }}
+              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` has had critical vulnerabilities in the last 3 hours." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText=nais-io
             consequence: Potential security risk; workload may be exploitable
             action: |
               Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
 {{- end }}
-
