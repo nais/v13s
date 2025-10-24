@@ -186,14 +186,11 @@ VALUES ($1,
                refs      = EXCLUDED.refs,
                updated_at = NOW()
    WHERE
-       (cve.cve_title IS DISTINCT FROM EXCLUDED.cve_title
-      OR (cve.cve_title = '' AND EXCLUDED.cve_title <> ''))
-      OR (cve.cve_desc IS DISTINCT FROM EXCLUDED.cve_desc
-      OR (cve.cve_desc = '' AND EXCLUDED.cve_desc <> ''))
-      OR (cve.cve_link IS DISTINCT FROM EXCLUDED.cve_link
-      OR (cve.cve_link = '' AND EXCLUDED.cve_link <> ''))
-      OR cve.severity IS DISTINCT FROM EXCLUDED.severity
-           OR cve.refs IS DISTINCT FROM EXCLUDED.refs
+           cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
+           cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
+           cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
+           cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
+           cve.refs       IS DISTINCT FROM EXCLUDED.refs
 `
 
 type BatchUpsertCveBatchResults struct {
