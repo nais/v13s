@@ -13,7 +13,7 @@ spec:
       rules:
 
         - record: namespace:workload:vulnerabilities:critical:max3h
-          expr: max by (workload_namespace, workload_name) (
+          expr: max by (workload_cluster, workload_namespace, workload_name, workload_type) (
             max_over_time(
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
@@ -23,7 +23,7 @@ spec:
             )
 
         - record: namespace:workload:vulnerabilities:critical:recent_samples
-          expr: max by (workload_namespace, workload_name) (
+          expr: max by (workload_cluster, workload_namespace, workload_name, workload_type) (
             count_over_time(
             v13s_workload_vulnerabilities{
             workload_namespace="nais-system"
@@ -32,19 +32,26 @@ spec:
             )
 
         - record: namespace:workload:vulnerabilities:critical:current
-          expr: max by (workload_namespace, workload_name) (
+          expr: max by (workload_cluster, workload_namespace, workload_name, workload_type) (
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
-            } or on(workload_namespace, workload_name) vector(0)
+            }
+            )
+            or
+            max by (workload_cluster, workload_namespace, workload_name, workload_type) (
+            0 * v13s_workload_vulnerabilities{workload_namespace="nais-system"}
             )
 
     - name: namespace-workload-vulnerability-alerts
       rules:
         - alert: "workload critical vulnerabilities"
           expr: (namespace:workload:vulnerabilities:critical:max3h > 0)
-            and ((namespace:workload:vulnerabilities:critical:current > 0)
-            or on(workload_namespace, workload_name) (namespace:workload:vulnerabilities:critical:recent_samples == 0))
+            and (
+            (namespace:workload:vulnerabilities:critical:current > 0)
+            or on(workload_cluster, workload_namespace, workload_name, workload_type)
+            ((namespace:workload:vulnerabilities:critical:recent_samples or vector(0)) == 0)
+            )
           for: 10m
           labels:
             namespace: nais-system
@@ -56,7 +63,7 @@ spec:
             summary: |
               {{ ":rotating_light: CRITICAL vulnerabilities in workload `{{ $labels.workload_name }}` (namespace `{{ $labels.workload_namespace }}`)" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` has had critical vulnerabilities in the last 3 hours." }}
+              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` has {{ $value }} critical vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText=nais-io
             consequence: Potential security risk; workload may be exploitable
             action: |
