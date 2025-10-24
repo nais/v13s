@@ -31,6 +31,7 @@ type testSetupConfig struct {
 	namespaces            []string
 	workloadsPerNamespace int
 	vulnsPerWorkload      int
+	mode                  string
 }
 
 func TestServer_ListVulnerabilities(t *testing.T) {
@@ -312,9 +313,10 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 		namespaces:            []string{"namespace-1"},
 		workloadsPerNamespace: 1,
 		vulnsPerWorkload:      3,
+		mode:                  "cascade",
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	imageName := "image-cluster-1-namespace-1-workload-1"
@@ -411,6 +413,165 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 			assert.True(t, v.GetSuppression().GetSuppressed() || !v.GetSuppression().GetSuppressed(), "suppressed field should be present")
 		}
 	})
+	t.Run("include related vulnerabilities", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			imageName,
+			imageTag,
+			vulnerabilities.IncludeRelated(),
+			vulnerabilities.Limit(100),
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		relatedGroups := resp.GetRelatedVulnerabilities()
+		assert.NotEmpty(t, relatedGroups, "expected at least one related vulnerabilities group")
+
+		foundPair := false
+		for _, group := range relatedGroups {
+			t.Logf("Related group contains %d vulnerabilities", len(group.GetVulnerabilities()))
+			if len(group.GetVulnerabilities()) >= 2 {
+				var ids []string
+				for _, v := range group.GetVulnerabilities() {
+					ids = append(ids, v.GetCve().GetId())
+				}
+				if containsAll(ids, []string{"CWE-1-1", "CWE-1-2"}) {
+					foundPair = true
+					break
+				}
+			}
+		}
+
+		assert.True(t, foundPair, "expected to find related vulnerabilities CWE-1-1 and CWE-1-2")
+	})
+	t.Run("suppress vulnerability cascades", func(t *testing.T) {
+		vulnResp, err := client.GetVulnerability(ctx,
+			"image-cluster-1-namespace-1-workload-1",
+			"v1.0",
+			"package-CWE-1-1",
+			"CWE-1-1",
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, vulnResp.Vulnerability)
+		fmt.Println(vulnResp.Vulnerability)
+
+		vulnID := vulnResp.Vulnerability.Id
+		assert.NotEmpty(t, vulnID)
+
+		suppressed := true
+		err = client.SuppressVulnerability(
+			ctx,
+			vulnID,
+			"manual suppression",
+			"tester",
+			vulnerabilities.SuppressState_IN_TRIAGE,
+			suppressed,
+		)
+		assert.NoError(t, err)
+
+		related, err := db.ListReferencingCves(ctx, "CWE-1-1")
+		assert.NoError(t, err)
+		fmt.Printf("ListReferencingCves('CWE-1-1') returned: %v\n", related)
+
+		vulns, err := db.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
+			ImageName:         "image-cluster-1-namespace-1-workload-1",
+			ImageTag:          "v1.0",
+			Limit:             100,
+			Offset:            0,
+			IncludeSuppressed: &suppressed,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, vulns, 3)
+
+		var suppressed1, suppressed2 bool
+		for _, v := range vulns {
+			switch v.CveID {
+			case "CWE-1-1":
+				suppressed1 = v.Suppressed
+			case "CWE-1-2":
+				suppressed2 = v.Suppressed
+			}
+		}
+
+		assert.True(t, suppressed1, "CWE-1-1 should be suppressed because it was directly suppressed")
+		assert.True(t, suppressed2, "CWE-1-2 should be suppressed because it references CWE-1-1 which was suppressed")
+	})
+}
+
+func containsAll(haystack, needles []string) bool {
+	m := make(map[string]bool, len(haystack))
+	for _, h := range haystack {
+		m[h] = true
+	}
+	for _, n := range needles {
+		if !m[n] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestServer_SuppressVulnerabilityForNamespace_PackageScoped(t *testing.T) {
+	cluster := "cluster-1"
+	namespace := "namespace-1"
+
+	cfg := testSetupConfig{
+		clusters:              []string{cluster},
+		namespaces:            []string{namespace},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      3,
+		mode:                  "cascade",
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	cveID := "CWE-1-1"
+	targetPkg := "package-CWE-1-1"
+	suppressedBy := "tester"
+	suppressReason := "suppressing one package across all images"
+
+	t.Run("suppress package for CVE across all images", func(t *testing.T) {
+		resp, err := client.SuppressVulnerabilityForNamespace(
+			ctx,
+			cveID,
+			targetPkg,
+			namespace,
+			suppressReason,
+			suppressedBy,
+			vulnerabilities.SuppressState_IN_TRIAGE,
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, cveID, resp.CveId)
+		assert.NotEmpty(t, resp.AffectedWorkloads, "expected affected workloads in response")
+
+		rows, err := db.ListSuppressedVulnerabilities(ctx, sql.ListSuppressedVulnerabilitiesParams{
+			Cluster:   &cluster,
+			Namespace: &namespace,
+			Limit:     100,
+			Offset:    0,
+		})
+		assert.NoError(t, err)
+
+		suppressedCount := 0
+		for _, row := range rows {
+			if row.CveID == cveID {
+				if row.Package == targetPkg {
+					assert.True(t, row.Suppressed, "expected package %s suppressed for all images", targetPkg)
+					assert.Equal(t, suppressedBy, row.SuppressedBy)
+					assert.Equal(t, suppressReason, row.ReasonText)
+					suppressedCount++
+				} else {
+					assert.Falsef(t, row.Suppressed,
+						"non-target package %s should remain unsuppressed", row.Package)
+				}
+			}
+		}
+
+		assert.Greater(t, suppressedCount, 0,
+			"expected at least one suppressed vulnerability for %s:%s", targetPkg, cveID)
+	})
 }
 
 func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
@@ -485,7 +646,6 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	// --- First suppression should bump updated_at ---
 	err = client.SuppressVulnerability(
 		ctx,
 		vulnID,
@@ -511,15 +671,14 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 			beforeUpdatedAt, afterFirstUpdatedAt)
 	}
 
-	// --- Second suppression with identical values should NOT bump updated_at ---
 	time.Sleep(10 * time.Millisecond)
 	err = client.SuppressVulnerability(
 		ctx,
 		vulnID,
-		"not affected", // same reason
-		"test-user",    // same user
+		"not affected",
+		"test-user",
 		vulnerabilities.SuppressState_FALSE_POSITIVE,
-		true, // already suppressed
+		true,
 	)
 	assert.NoError(t, err)
 
@@ -547,7 +706,6 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	// Insert a CVE with initial severity
 	initialCve := sql.BatchUpsertCveParams{
 		CveID:    "CVE-2023-1234",
 		CveTitle: "Test CVE",
@@ -560,17 +718,14 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	// Fetch the CVE and record timestamps
 	cve, err := db.GetCve(ctx, "CVE-2023-1234")
 	assert.NoError(t, err)
 	initialCreatedAt := cve.CreatedAt
 	initialUpdatedAt := cve.UpdatedAt
 
-	// Ensure timestamps are set
 	assert.False(t, initialCreatedAt.Time.IsZero(), "created_at should not be zero")
 	assert.False(t, initialUpdatedAt.Time.IsZero(), "updated_at should not be zero")
 
-	// Update the CVE with a new severity
 	updatedCve := sql.BatchUpsertCveParams{
 		CveID:    "CVE-2023-1234",
 		CveTitle: "Test CVE",
@@ -583,14 +738,11 @@ func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	// Fetch the updated CVE and verify changes
 	updatedCveRecord, err := db.GetCve(ctx, "CVE-2023-1234")
 	assert.NoError(t, err)
 
-	// Verify severity is updated
 	assert.Equal(t, int32(1), updatedCveRecord.Severity, "Severity should be updated to High")
 
-	// Verify timestamps
 	assert.Equal(t, initialCreatedAt, updatedCveRecord.CreatedAt, "created_at should remain unchanged")
 	assert.True(t, updatedCveRecord.UpdatedAt.Time.After(initialUpdatedAt.Time), "updated_at should be updated")
 }
@@ -605,7 +757,6 @@ func TestVulnerabilitySeveritySince(t *testing.T) {
 	ctx, db, _, _, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	// Create image
 	err := db.CreateImage(ctx, sql.CreateImageParams{
 		Name:     "my-image",
 		Tag:      "v1.0.0",
@@ -1368,7 +1519,11 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.
 
 	workloads := generateTestWorkloads(cfg.clusters, cfg.namespaces, cfg.workloadsPerNamespace, cfg.vulnsPerWorkload)
 
-	err = seedDb(t, db, workloads)
+	mode := "default"
+	if cfg.mode != "" {
+		mode = cfg.mode
+	}
+	err = seedDb(t, db, workloads, mode)
 	assert.NoError(t, err)
 
 	return ctx, db, pool, client, func() {
@@ -1427,10 +1582,11 @@ func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, fu
 	}
 }
 
-func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
+func seedDb(t *testing.T, db sql.Querier, workloads []*Workload, mode string) error {
 	ctx := context.Background()
 
 	for _, workload := range workloads {
+		// Create image
 		err := db.CreateImage(ctx, sql.CreateImageParams{
 			Name:     workload.ImageName,
 			Tag:      workload.ImageTag,
@@ -1438,6 +1594,7 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 		})
 		assert.NoError(t, err)
 
+		// Upsert workload
 		w := sql.UpsertWorkloadParams{
 			Name:         workload.Workload,
 			WorkloadType: workload.WorkloadType,
@@ -1446,16 +1603,38 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 			ImageName:    workload.ImageName,
 			ImageTag:     workload.ImageTag,
 		}
-
 		_, err = db.UpsertWorkload(ctx, w)
 		assert.NoError(t, err)
 
 		cweParams := make([]sql.BatchUpsertCveParams, 0)
 		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 		sumParams := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
-		for _, f := range workload.Vulnz {
+
+		for i, f := range workload.Vulnz {
 			v := f.vuln
 			cve := f.cve
+
+			refs := map[string]string{}
+
+			switch mode {
+			case "cascade":
+				// Shared package, bidirectional CVE references
+				commonPkg := "package-CWE-1-1"
+				v.Package = commonPkg
+
+				if i == 0 {
+					cve.CveID = "CWE-1-1"
+					refs = map[string]string{"CWE-1-1": "CWE-1-2"}
+				} else if i == 1 {
+					cve.CveID = "CWE-1-2"
+					refs = map[string]string{"CWE-1-2": "CWE-1-1"}
+				}
+
+			default:
+				// Default safe mode — distinct packages, no refs
+				cve.CveID = fmt.Sprintf("CWE-1-%d", i+1)
+				v.Package = fmt.Sprintf("package-CWE-1-%d", i+1)
+			}
 
 			cweParams = append(cweParams, sql.BatchUpsertCveParams{
 				CveID:    cve.CveID,
@@ -1463,13 +1642,14 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 				CveDesc:  cve.CveDesc,
 				CveLink:  cve.CveLink,
 				Severity: cve.Severity,
-				Refs:     map[string]string{},
+				Refs:     refs,
 			})
+
 			vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
 				ImageName:     v.ImageName,
 				ImageTag:      v.ImageTag,
 				Package:       v.Package,
-				CveID:         v.CveID,
+				CveID:         cve.CveID,
 				LatestVersion: "2",
 				LastSeverity:  cve.Severity,
 				SeveritySince: pgtype.Timestamptz{
@@ -1477,6 +1657,7 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 					Valid: true,
 				},
 			})
+
 			sumParams = append(sumParams, sql.BatchUpsertVulnerabilitySummaryParams{
 				ImageName:  v.ImageName,
 				ImageTag:   v.ImageTag,
@@ -1489,21 +1670,13 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 		}
 
 		db.BatchUpsertCve(ctx, cweParams).Exec(func(i int, err error) {
-			if err != nil {
-				assert.NoError(t, err)
-			}
+			assert.NoError(t, err)
 		})
-
 		db.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) {
-			if err != nil {
-				assert.NoError(t, err)
-			}
+			assert.NoError(t, err)
 		})
-
 		db.BatchUpsertVulnerabilitySummary(ctx, sumParams).Exec(func(i int, err error) {
-			if err != nil {
-				assert.NoError(t, err)
-			}
+			assert.NoError(t, err)
 		})
 	}
 
