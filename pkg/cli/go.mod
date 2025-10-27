@@ -10,7 +10,7 @@ require (
 	github.com/nais/v13s/pkg/api v0.0.0-20251008145206-525a3f2962e7
 	github.com/rodaine/table v1.3.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli/v3 v3.4.1
+	github.com/urfave/cli/v3 v3.5.0
 	google.golang.org/grpc v1.76.0
 )
 
