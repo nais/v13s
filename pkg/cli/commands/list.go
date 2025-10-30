@@ -136,7 +136,6 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		suppTbl := table.New("CVE", "Package", "Latest Version", "Reason", "Suppressed By", "Suppressed At")
 		suppTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		for _, row := range suppressions {
-			// Convert []string to []interface{}
 			rowInterface := make([]interface{}, len(row))
 			for i, v := range row {
 				rowInterface[i] = v
@@ -144,6 +143,32 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 			suppTbl.AddRow(rowInterface...)
 		}
 		suppTbl.Print()
+	}
+
+	if len(resp.GetRelatedVulnerabilities()) > 0 {
+		fmt.Println("\nRelated vulnerabilities:")
+
+		for i, group := range resp.GetRelatedVulnerabilities() {
+			fmt.Printf("\nGroup %d:\n", i+1)
+
+			groupTbl := table.New("Package", "CVE", "Title", "Severity", "Created", "Last Updated")
+			groupTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+			for _, v := range group.GetVulnerabilities() {
+				groupTbl.AddRow(
+					v.GetPackage(),
+					v.GetCve().GetId(),
+					v.GetCve().GetTitle(),
+					v.GetCve().GetSeverity(),
+					v.GetCreated().AsTime().Format(time.RFC3339),
+					v.GetLastUpdated().AsTime().Format(time.RFC3339),
+				)
+			}
+
+			groupTbl.Print()
+		}
+	} else if o.Related {
+		fmt.Println("\nNo related vulnerabilities found.")
 	}
 
 	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")

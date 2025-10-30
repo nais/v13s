@@ -16,6 +16,9 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -163,14 +166,20 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		}
 	})
 
+	var related []*vulnerabilities.RelatedVulnerabilities
+	if request.IncludeRelated {
+		related = groupRelatedCVEs(nodes)
+	}
+
 	pageInfo, err := grpcpagination.PageInfo(request, total)
 	if err != nil {
 		return nil, err
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:    nodes,
-		PageInfo: pageInfo,
+		Nodes:                  nodes,
+		PageInfo:               pageInfo,
+		RelatedVulnerabilities: related,
 	}, nil
 }
 
@@ -419,29 +428,67 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 	}, nil
 }
 
-func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
-	uuId := convert.StringToUUID(request.Id)
-	vuln, err := s.querier.GetVulnerabilityById(ctx, uuId)
+func (s *Server) SuppressVulnerability(ctx context.Context, req *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
+	id := convert.StringToUUID(req.GetId())
+	if !id.Valid {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid vulnerability ID: %s", req.GetId())
+	}
+
+	vuln, err := s.querier.GetVulnerabilityById(ctx, id)
 	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("get suppressed vulnerability: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Errorf(codes.NotFound, "vulnerability with ID %s not found", req.GetId())
+		}
+		return nil, status.Errorf(codes.Internal, "get vulnerability by ID: %v", err)
+	}
+
+	relatedIDs, err := s.querier.ListReferencingCves(ctx, vuln.CveID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list referencing CVEs: %v", err)
+	}
+
+	base := sql.SuppressVulnerabilityParams{
+		ImageName:    vuln.ImageName,
+		Package:      vuln.Package,
+		SuppressedBy: req.GetSuppressedBy(),
+		Suppressed:   req.GetSuppress(),
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(req.GetState().String())),
+		ReasonText:   req.GetReason(),
+	}
+
+	suppress := func(cveID, reasonText string) error {
+		p := base
+		p.CveID = cveID
+		p.ReasonText = reasonText
+		return s.querier.SuppressVulnerability(ctx, p)
+	}
+
+	if err = suppress(vuln.CveID, base.ReasonText); err != nil {
+		return nil, status.Errorf(codes.Internal, "suppress %s: %v", vuln.CveID, err)
+	}
+
+	total := 1
+	suppressedCount := 0
+	if req.GetSuppress() {
+		suppressedCount++
+	}
+
+	for _, cveID := range relatedIDs {
+		if cveID == vuln.CveID {
+			continue
+		}
+		total++
+		reasonAuto := fmt.Sprintf("original reason: %s; auto-suppressed due to alias with %s", req.GetReason(), vuln.CveID)
+		if err = suppress(cveID, reasonAuto); err != nil {
+			logrus.WithError(err).Warnf("failed to suppress related CVE %s (alias of %s)", cveID, vuln.CveID)
+			continue
+		}
+		if req.GetSuppress() {
+			suppressedCount++
 		}
 	}
 
-	supErr := s.querier.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
-		ImageName:    vuln.ImageName,
-		CveID:        vuln.CveID,
-		Package:      vuln.Package,
-		SuppressedBy: request.GetSuppressedBy(),
-		Suppressed:   request.GetSuppress(),
-		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
-		ReasonText:   request.GetReason(),
-	})
-	if supErr != nil {
-		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
-	}
-
-	err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	if err := s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateResync,
 		Name:  vuln.ImageName,
 		Tag:   vuln.ImageTag,
@@ -449,14 +496,143 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 			Time:  time.Now(),
 			Valid: true,
 		},
-	})
-	if err != nil {
-		return nil, err
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "update image state: %v", err)
 	}
 
 	return &vulnerabilities.SuppressVulnerabilityResponse{
-		CveId:      vuln.CveID,
-		Suppressed: request.GetSuppress(),
+		CveId:           vuln.CveID,
+		Suppressed:      suppressedCount == total,
+		TotalRelated:    int32(total),
+		TotalSuppressed: int32(suppressedCount),
+	}, nil
+}
+
+func (s *Server) SuppressVulnerabilityForNamespace(ctx context.Context, req *vulnerabilities.SuppressVulnerabilityForNamespaceRequest) (*vulnerabilities.SuppressVulnerabilityForNamespaceResponse, error) {
+	if req.GetNamespace() == "" || req.GetCveId() == "" || req.GetPkg() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "namespace, cveId and pkg are required")
+	}
+	if req.GetSuppressedBy() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "suppressedBy is required")
+	}
+
+	start := time.Now()
+	vulns, err := s.querier.ListVulnerabilitiesForNamespaceAndCve(ctx,
+		sql.ListVulnerabilitiesForNamespaceAndCveParams{
+			Namespace: req.Namespace,
+			CveID:     req.CveId,
+			Package:   req.Pkg,
+		})
+	if err != nil {
+		s.log.WithError(err).Error("list vulnerabilities for namespace")
+		return nil, status.Errorf(codes.Internal, "list vulnerabilities for namespace: %v", err)
+	}
+	if len(vulns) == 0 {
+		s.log.Infof("no vulnerabilities found; namespace=%s cve=%s pkg=%s", req.GetNamespace(), req.GetCveId(), req.GetPkg())
+		return &vulnerabilities.SuppressVulnerabilityForNamespaceResponse{
+			CveId:             req.GetCveId(),
+			AffectedWorkloads: []*vulnerabilities.Workload{},
+		}, nil
+	}
+
+	batch := make([]sql.BatchSuppressVulnerabilitiesParams, 0, len(vulns))
+	affected := make([]*vulnerabilities.Workload, 0, len(vulns))
+
+	reason := sql.VulnerabilitySuppressReason(strings.ToLower(req.GetState().String()))
+	reasonText := req.GetReason()
+
+	imageTags := make(map[string]string, len(vulns))
+	for _, v := range vulns {
+		imageTags[v.ImageName] = v.ImageTag
+		if v.Package == "" {
+			s.log.Warnf("vulnerability %s in image %s:%s has no package, skipping", v.CveID, v.ImageName, v.ImageTag)
+			continue
+		}
+		batch = append(batch, sql.BatchSuppressVulnerabilitiesParams{
+			ImageName:    v.ImageName,
+			Package:      v.Package,
+			CveID:        v.CveID,
+			Suppressed:   true,
+			SuppressedBy: req.GetSuppressedBy(),
+			Reason:       reason,
+			ReasonText:   reasonText,
+		})
+		affected = append(affected, &vulnerabilities.Workload{
+			Cluster:   v.Cluster,
+			Namespace: req.GetNamespace(),
+			Name:      v.WorkloadName,
+			Type:      v.WorkloadType,
+			ImageName: v.ImageName,
+			ImageTag:  v.ImageTag,
+		})
+	}
+
+	if len(batch) == 0 {
+		return &vulnerabilities.SuppressVulnerabilityForNamespaceResponse{
+			CveId:             req.GetCveId(),
+			AffectedWorkloads: []*vulnerabilities.Workload{},
+		}, nil
+	}
+
+	collections.SortByFields(batch,
+		func(x sql.BatchSuppressVulnerabilitiesParams) string { return x.ImageName },
+		func(x sql.BatchSuppressVulnerabilitiesParams) string { return x.Package },
+		func(x sql.BatchSuppressVulnerabilitiesParams) string { return x.CveID },
+	)
+
+	var (
+		suppressErrs []error
+		rowErrors    int
+	)
+	s.querier.BatchSuppressVulnerabilities(ctx, batch).Exec(func(i int, err error) {
+		if err != nil {
+			rowErrors++
+			suppressErrs = append(suppressErrs, err)
+			s.log.WithError(err).Debug("batch suppress failed row")
+		}
+	})
+
+	s.log.WithFields(logrus.Fields{
+		"namespace":  req.GetNamespace(),
+		"cve":        req.GetCveId(),
+		"pkg":        req.GetPkg(),
+		"duration_s": fmt.Sprintf("%.3f", time.Since(start).Seconds()),
+		"attempted":  len(batch),
+		"succeeded":  len(batch) - rowErrors,
+		"errors":     rowErrors,
+	}).Info("namespace suppression complete")
+
+	if rowErrors == 0 {
+		imageStates := make([]sql.BatchUpdateImageStateParams, 0, len(batch))
+		for _, b := range batch {
+			imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
+				State: sql.ImageStateResync,
+				Name:  b.ImageName,
+				Tag:   imageTags[b.ImageName],
+				ReadyForResyncAt: pgtype.Timestamptz{
+					Time:  time.Now(),
+					Valid: true,
+				},
+			})
+		}
+		collections.SortByFields(imageStates,
+			func(x sql.BatchUpdateImageStateParams) string { return x.Name },
+			func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
+		)
+		s.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
+			if err != nil {
+				suppressErrs = append(suppressErrs, fmt.Errorf("update image state: %w", err))
+			}
+		})
+	}
+
+	if len(suppressErrs) > 0 {
+		return nil, status.Errorf(codes.Internal, "suppression partially failed: %v", errors.Join(suppressErrs...))
+	}
+
+	return &vulnerabilities.SuppressVulnerabilityForNamespaceResponse{
+		CveId:             req.GetCveId(),
+		AffectedWorkloads: affected,
 	}, nil
 }
 
@@ -545,4 +721,36 @@ func toInt32Ptr(s *vulnerabilities.Severity) *int32 {
 	}
 	v := int32(*s)
 	return &v
+}
+
+func groupRelatedCVEs(vulns []*vulnerabilities.Vulnerability) []*vulnerabilities.RelatedVulnerabilities {
+	byID := make(map[string]*vulnerabilities.Vulnerability, len(vulns))
+	for _, v := range vulns {
+		byID[v.Cve.Id] = v
+	}
+
+	visited := make(map[string]bool, len(vulns))
+	var related []*vulnerabilities.RelatedVulnerabilities
+
+	for _, v := range vulns {
+		if visited[v.Cve.Id] {
+			continue
+		}
+
+		group := []*vulnerabilities.Vulnerability{v}
+		visited[v.Cve.Id] = true
+
+		for _, refVal := range v.Cve.References {
+			if other, ok := byID[refVal]; ok && !visited[refVal] {
+				group = append(group, other)
+				visited[refVal] = true
+			}
+		}
+
+		related = append(related, &vulnerabilities.RelatedVulnerabilities{
+			Vulnerabilities: group,
+		})
+	}
+
+	return related
 }
