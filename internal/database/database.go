@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"embed"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -20,7 +19,10 @@ import (
 //go:embed migrations/0*.sql
 var embedMigrations embed.FS
 
-const databaseConnectRetries = 5
+const (
+	maxRetries    = 12
+	retryBaseWait = 5 * time.Second
+)
 
 var regParseSQLName = regexp.MustCompile(`\-\-\s*name:\s+(\S+)`)
 
@@ -34,8 +36,19 @@ func New(ctx context.Context, dsn string, log logrus.FieldLogger) (*pgxpool.Pool
 
 func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bool) (*pgxpool.Pool, error) {
 	if migrate {
-		if err := migrateDatabaseSchema(ctx, "pgx", dsn, log); err != nil {
-			return nil, err
+		var migErr error
+		for i := 0; i < maxRetries; i++ {
+			migErr = migrateDatabaseSchema(ctx, "pgx", dsn, log)
+			if migErr == nil {
+				break
+			}
+			log.WithError(migErr).
+				Warnf("Database migration attempt %d/%d failed, retrying in %s",
+					i+1, maxRetries, retryBaseWait*time.Duration(i+1))
+			time.Sleep(retryBaseWait * time.Duration(i+1))
+		}
+		if migErr != nil {
+			return nil, fmt.Errorf("migration failed after %d attempts: %w", maxRetries, migErr)
 		}
 	}
 
@@ -57,43 +70,37 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 	)
 
 	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		t, err := conn.LoadType(ctx, "image_state") // image_state type
-		if err != nil {
-			return fmt.Errorf("failed to load type: %w", err)
+		for _, typ := range []string{"image_state", "_image_state"} {
+			t, err := conn.LoadType(ctx, typ)
+			if err != nil {
+				return fmt.Errorf("failed to load type %s: %w", typ, err)
+			}
+			conn.TypeMap().RegisterType(t)
 		}
-		conn.TypeMap().RegisterType(t)
-
-		t, err = conn.LoadType(ctx, "_image_state") // array of slug type
-		if err != nil {
-			return fmt.Errorf("failed to load type: %w", err)
-		}
-		conn.TypeMap().RegisterType(t)
 		return nil
 	}
 
-	conn, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return nil, fmt.Errorf("database context canceled during pool creation: %w", err)
-		}
-		return nil, fmt.Errorf("failed to connect: %w", err)
-	}
-
-	connected := false
-	for i := 0; i < databaseConnectRetries; i++ {
-		if err = conn.Ping(ctx); err == nil {
-			connected = true
-			break
+	var pool *pgxpool.Pool
+	var pingErr error
+	for i := 0; i < maxRetries; i++ {
+		pool, err = pgxpool.NewWithConfig(ctx, config)
+		if err == nil {
+			if pingErr = pool.Ping(ctx); pingErr == nil {
+				log.Infof("Connected to database on attempt %d", i+1)
+				return pool, nil
+			}
+			err = pingErr
 		}
 
-		time.Sleep(time.Second * time.Duration(i+1))
+		wait := retryBaseWait * time.Duration(i+1)
+		log.WithError(err).Warnf(
+			"Database connection attempt %d/%d failed, retrying in %s",
+			i+1, maxRetries, wait,
+		)
+		time.Sleep(wait)
 	}
 
-	if !connected {
-		return nil, fmt.Errorf("giving up connecting to the database after %d attempts: %w", databaseConnectRetries, err)
-	}
-
-	return conn, nil
+	return nil, fmt.Errorf("giving up after %d attempts: %w", maxRetries, err)
 }
 
 // migrateDatabaseSchema runs database migrations
