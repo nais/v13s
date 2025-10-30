@@ -113,8 +113,9 @@ const batchUpdateImageState = `-- name: BatchUpdateImageState :batchexec
 UPDATE images
 SET
     state = $1,
+    ready_for_resync_at = $2,
     updated_at = NOW()
-WHERE name = $2 AND tag = $3
+WHERE name = $3 AND tag = $4
 `
 
 type BatchUpdateImageStateBatchResults struct {
@@ -124,9 +125,10 @@ type BatchUpdateImageStateBatchResults struct {
 }
 
 type BatchUpdateImageStateParams struct {
-	State ImageState
-	Name  string
-	Tag   string
+	State            ImageState
+	ReadyForResyncAt pgtype.Timestamptz
+	Name             string
+	Tag              string
 }
 
 func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults {
@@ -134,6 +136,7 @@ func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateIm
 	for _, a := range arg {
 		vals := []interface{}{
 			a.State,
+			a.ReadyForResyncAt,
 			a.Name,
 			a.Tag,
 		}
