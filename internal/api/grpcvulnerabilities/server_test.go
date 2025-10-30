@@ -453,7 +453,6 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 		)
 		assert.NoError(t, err)
 		assert.NotNil(t, vulnResp.Vulnerability)
-		fmt.Println(vulnResp.Vulnerability)
 
 		vulnID := vulnResp.Vulnerability.Id
 		assert.NotEmpty(t, vulnID)
