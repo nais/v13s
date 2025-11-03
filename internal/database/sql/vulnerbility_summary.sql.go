@@ -422,20 +422,36 @@ WITH latest_summary_per_day AS (
     w.cluster,
     w.namespace,
     w.workload_type,
-    vs.critical,
-    vs.high,
-    vs.medium,
-    vs.low,
-    vs.unassigned,
-    vs.risk_score
+    COALESCE(vs.critical, 0) AS critical,
+    COALESCE(vs.high, 0) AS high,
+    COALESCE(vs.medium, 0) AS medium,
+    COALESCE(vs.low, 0) AS low,
+    COALESCE(vs.unassigned, 0) AS unassigned,
+    COALESCE(vs.risk_score, 0) AS risk_score,
+    (vs.id IS NOT NULL) AS has_summary
 FROM workloads w
     LEFT JOIN vulnerability_summary vs
 ON w.image_name = vs.image_name
+    AND w.image_tag = vs.image_tag
     AND vs.updated_at::date <= $1::date
-WHERE vs IS NOT NULL
 ORDER BY w.id, vs.updated_at DESC
     )
-INSERT INTO vuln_daily_by_workload
+INSERT INTO vuln_daily_by_workload (
+    snapshot_date,
+    workload_id,
+    workload_name,
+    cluster,
+    namespace,
+    workload_type,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    total,
+    risk_score,
+    has_summary
+)
 SELECT
     snapshot_date,
     workload_id,
@@ -449,7 +465,8 @@ SELECT
         COALESCE(low, 0)::INT4,
         COALESCE(unassigned, 0)::INT4,
         (COALESCE(critical, 0) + COALESCE(high, 0) + COALESCE(medium, 0) + COALESCE(low, 0) + COALESCE(unassigned, 0))::INT4,
-        COALESCE(risk_score, 0)::INT4
+    COALESCE(risk_score, 0)::INT4,
+    has_summary
 FROM latest_summary_per_day
     ON CONFLICT (snapshot_date, workload_id) DO UPDATE
                                                     SET
@@ -459,7 +476,8 @@ FROM latest_summary_per_day
                                                     low = EXCLUDED.low,
                                                     unassigned = EXCLUDED.unassigned,
                                                     total = EXCLUDED.total,
-                                                    risk_score = EXCLUDED.risk_score
+                                                    risk_score = EXCLUDED.risk_score,
+                                                    has_summary = EXCLUDED.has_summary
 `
 
 func (q *Queries) RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error {
