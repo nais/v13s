@@ -148,6 +148,7 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 }
 
 func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
+	// get projects and update findings
 	d.log.Debug("maintaining suppressed vulnerabilities")
 	triggeredProjects := make(map[string]struct{})
 
@@ -174,6 +175,7 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 		}
 	}
 
+	// TODO: postgres river: trigger analysis for projects with updated findings
 	for projectID := range triggeredProjects {
 		if err := d.client.TriggerAnalysis(ctx, projectID); err != nil {
 			return fmt.Errorf("triggering analysis for project %s: %w", projectID, err)

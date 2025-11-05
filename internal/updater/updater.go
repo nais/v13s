@@ -144,6 +144,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	go func() {
 		defer close(done)
+		// TODO: riverjob worker to batch insert vulnerability data
 		if err := u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
 			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
 			done <- false
@@ -152,6 +153,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 		}
 	}()
 
+	// TODO: riverjob worker to fetch vulnerability data for images
 	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
 	close(ch)
 
@@ -235,6 +237,7 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
+// TODO: postgresriver update vulnerability data in batches
 func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVulnerabilityData) error {
 	start := time.Now()
 
