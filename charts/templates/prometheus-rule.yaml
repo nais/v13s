@@ -12,18 +12,18 @@ spec:
     - name: namespace-workload-vulnerability-recording
       rules:
 
-        - record: namespace:workload:vulnerabilities:critical:max3h
-          expr: max by (workload_cluster, workload_namespace, workload_name, workload_type) (
+        - record: namespace:workload:vulnerabilities:critical:max1h
+          expr: max by (workload_cluster, workload_namespace, workload_name) (
             max_over_time(
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
-            }[3h]
+            }[1h]
             )
             )
 
         - record: namespace:workload:vulnerabilities:critical:recent_samples
-          expr: max by (workload_cluster, workload_namespace, workload_name, workload_type) (
+          expr: max by (workload_cluster, workload_namespace, workload_name) (
             count_over_time(
             v13s_workload_vulnerabilities{
             workload_namespace="nais-system"
@@ -32,24 +32,24 @@ spec:
             )
 
         - record: namespace:workload:vulnerabilities:critical:current
-          expr: max by (workload_cluster, workload_namespace, workload_name, workload_type) (
+          expr: max by (workload_cluster, workload_namespace, workload_name) (
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
             }
             )
             or
-            max by (workload_cluster, workload_namespace, workload_name, workload_type) (
+            max by (workload_cluster, workload_namespace, workload_name) (
             0 * v13s_workload_vulnerabilities{workload_namespace="nais-system"}
             )
 
     - name: namespace-workload-vulnerability-alerts
       rules:
         - alert: "workload critical vulnerabilities"
-          expr: (namespace:workload:vulnerabilities:critical:max3h > 0)
+          expr: (namespace:workload:vulnerabilities:critical:max1h > 0)
             and (
             (namespace:workload:vulnerabilities:critical:current > 0)
-            or on(workload_cluster, workload_namespace, workload_name, workload_type)
+            or on(workload_cluster, workload_namespace, workload_name)
             ((namespace:workload:vulnerabilities:critical:recent_samples or vector(0)) == 0)
             )
           for: 10m
