@@ -1,4 +1,4 @@
-package manager
+package workers
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -19,40 +20,15 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-const (
-	KindUploadAttestation            = "upload_attestation"
-	UploadAttestationByPeriodMinutes = 2 * time.Minute
-)
-
-type UploadAttestationJob struct {
-	ImageName   string `river:"unique"`
-	ImageTag    string `river:"unique"`
-	WorkloadId  pgtype.UUID
-	Attestation []byte
-}
-
-func (UploadAttestationJob) Kind() string { return KindUploadAttestation }
-
-func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue: KindUploadAttestation,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: UploadAttestationByPeriodMinutes,
-		},
-		MaxAttempts: 4,
-	}
-}
-
 type UploadAttestationWorker struct {
 	Querier   sql.Querier
 	Source    sources.Source
 	JobClient job.Client
 	Log       logrus.FieldLogger
-	river.WorkerDefaults[UploadAttestationJob]
+	river.WorkerDefaults[jobs.UploadAttestationJob]
 }
 
-func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[UploadAttestationJob]) error {
+func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[jobs.UploadAttestationJob]) error {
 	ctx, span := otel.Tracer("v13s/upload-attestation").Start(ctx, "UploadAttestationWorker")
 	defer span.End()
 
@@ -95,7 +71,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 				return fmt.Errorf("failed to update image state: %w", err)
 			}
 
-			recordOutput(ctx, JobStatusSourceRefExists)
+			jobs.RecordOutput(ctx, jobs.JobStatusSourceRefExists)
 			return nil
 		}
 
@@ -126,7 +102,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		// TODO: consider creating a table to track sbom upload failures
 		// can be used to alert teams of persistent upload failures
 		// now we just delete the dangling project and try again
-		return handleJobErr(upErr)
+		return jobs.HandleJobErr(upErr)
 	}
 
 	err = u.Querier.CreateSourceRef(ctx, sql.CreateSourceRefParams{
@@ -152,7 +128,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	// enqueue finalize job
-	err = u.JobClient.AddJob(ctx, &FinalizeAttestationJob{
+	err = u.JobClient.AddJob(ctx, &jobs.FinalizeAttestationJob{
 		ImageName:    imageName,
 		ImageTag:     imageTag,
 		ProcessToken: uploadRes.ProcessToken,
@@ -161,6 +137,6 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
 	}
 
-	recordOutput(ctx, JobStatusAttestationUploaded)
+	jobs.RecordOutput(ctx, jobs.JobStatusAttestationUploaded)
 	return nil
 }

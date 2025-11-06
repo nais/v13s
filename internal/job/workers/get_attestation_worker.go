@@ -1,4 +1,4 @@
-package manager
+package workers
 
 import (
 	"context"
@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/nais/v13s/internal/model"
 	"github.com/riverqueue/river"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
@@ -20,44 +20,20 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-const (
-	KindGetAttestation = "get_attestation"
-)
-
-type GetAttestationJob struct {
-	ImageName    string
-	ImageTag     string
-	WorkloadId   pgtype.UUID
-	WorkloadType model.WorkloadType
-}
-
-func (GetAttestationJob) Kind() string { return KindGetAttestation }
-
-func (g GetAttestationJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue: KindGetAttestation,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
-		},
-		MaxAttempts: 4,
-	}
-}
-
 type GetAttestationWorker struct {
 	Querier         sql.Querier
 	JobClient       job.Client
 	Verifier        attestation.Verifier
 	WorkloadCounter metric.Int64UpDownCounter
 	Log             logrus.FieldLogger
-	river.WorkerDefaults[GetAttestationJob]
+	river.WorkerDefaults[jobs.GetAttestationJob]
 }
 
-func (g *GetAttestationWorker) NextRetry(job *river.Job[GetAttestationJob]) time.Time {
+func (g *GetAttestationWorker) NextRetry(job *river.Job[jobs.GetAttestationJob]) time.Time {
 	return time.Now().Add(1 * time.Minute)
 }
 
-func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttestationJob]) error {
+func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[jobs.GetAttestationJob]) error {
 	ctx, span := otel.Tracer("v13s/get-attestation").Start(ctx, "GetAttestationWorker.Work")
 	defer span.End()
 
@@ -104,7 +80,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			if err != nil {
 				return fmt.Errorf("failed to set image state: %w", err)
 			}
-			recordOutput(ctx, JobStatusNoAttestation)
+			jobs.RecordOutput(ctx, jobs.JobStatusNoAttestation)
 			if job.Args.WorkloadType == model.WorkloadTypeApp {
 				return noMatchAttestationError
 			}
@@ -113,7 +89,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 			g.Log.WithError(err).Error("unrecoverable error while getting attestation")
-			recordOutput(ctx, JobStatusUnrecoverable)
+			jobs.RecordOutput(ctx, jobs.JobStatusUnrecoverable)
 			err = g.Querier.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateUnrecoverable,
 				ID:    job.Args.WorkloadId,
@@ -131,7 +107,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			}
 			return river.JobCancel(unrecoverableError)
 		} else {
-			return handleJobErr(err)
+			return jobs.HandleJobErr(err)
 		}
 	}
 	if att != nil {
@@ -139,7 +115,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		if err != nil {
 			return fmt.Errorf("failed to compress attestation: %w", err)
 		}
-		err = g.JobClient.AddJob(ctx, &UploadAttestationJob{
+		err = g.JobClient.AddJob(ctx, &jobs.UploadAttestationJob{
 			ImageName:   imageName,
 			ImageTag:    imageTag,
 			WorkloadId:  job.Args.WorkloadId,
@@ -150,7 +126,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
-		recordOutput(ctx, JobStatusAttestationDownloaded)
+		jobs.RecordOutput(ctx, jobs.JobStatusAttestationDownloaded)
 	}
 	return nil
 }
