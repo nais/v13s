@@ -56,13 +56,13 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	db := sql.New(pool)
 
 	queues := map[string]river.QueueConfig{
-		manager.KindAddWorkload:                  {MaxWorkers: 10},
-		manager.KindGetAttestation:               {MaxWorkers: 15},
-		manager.KindUploadAttestation:            {MaxWorkers: 10},
-		manager.KindDeleteWorkload:               {MaxWorkers: 3},
-		manager.KindRemoveFromSource:             {MaxWorkers: 3},
-		manager.KindFinalizeAttestation:          {MaxWorkers: 10},
-		manager.KindUpsertVulnerabilitySummaries: {MaxWorkers: 8},
+		jobs.KindAddWorkload:                     {MaxWorkers: 10},
+		jobs.KindGetAttestation:                  {MaxWorkers: 15},
+		jobs.KindUploadAttestation:               {MaxWorkers: 10},
+		jobs.KindDeleteWorkload:                  {MaxWorkers: 3},
+		jobs.KindRemoveFromSource:                {MaxWorkers: 3},
+		jobs.KindFinalizeAttestation:             {MaxWorkers: 10},
+		jobs.KindUpsertVulnerabilitySummaries:    {MaxWorkers: 8},
 		jobs.KindFetchVulnerabilityDataForImages: {MaxWorkers: 10},
 		jobs.KindFinalizeAnalysis:                {MaxWorkers: 5},
 		jobs.KindProcessVulnerabilityData:        {MaxWorkers: 10},
@@ -72,13 +72,13 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	if err != nil {
 		log.Fatalf("Failed to create job client: %v", err)
 	}
-	job.AddWorker(jobClient, &manager.AddWorkloadWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", "add_workload")})
-	job.AddWorker(jobClient, &manager.GetAttestationWorker{Querier: db, Verifier: verifier, JobClient: jobClient, WorkloadCounter: udCounter, Log: log.WithField("subsystem", "get_attestation")})
-	job.AddWorker(jobClient, &manager.UploadAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", "upload_attestation")})
-	job.AddWorker(jobClient, &manager.RemoveFromSourceWorker{Querier: db, Source: source, Log: log.WithField("subsystem", "remove_from_source")})
-	job.AddWorker(jobClient, &manager.DeleteWorkloadWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", "delete_workload")})
-	job.AddWorker(jobClient, &manager.FinalizeAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", "finalize_attestation")})
-	job.AddWorker(jobClient, &manager.UpsertVulnerabilitySummariesWorker{Querier: db, Source: source, Log: log.WithField("subsystem", "upsert_vulnerability_summaries")})
+	job.AddWorker(jobClient, &workers.AddWorkloadWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindAddWorkload)})
+	job.AddWorker(jobClient, &workers.GetAttestationWorker{Querier: db, Verifier: verifier, JobClient: jobClient, WorkloadCounter: udCounter, Log: log.WithField("subsystem", jobs.KindGetAttestation)})
+	job.AddWorker(jobClient, &workers.UploadAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindUploadAttestation)})
+	job.AddWorker(jobClient, &workers.RemoveFromSourceWorker{Querier: db, Source: source, Log: log.WithField("subsystem", jobs.KindRemoveFromSource)})
+	job.AddWorker(jobClient, &workers.DeleteWorkloadWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindDeleteWorkload)})
+	job.AddWorker(jobClient, &workers.FinalizeAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindFinalizeAttestation)})
+	job.AddWorker(jobClient, &workers.UpsertVulnerabilitySummariesWorker{Querier: db, Source: source, Log: log.WithField("subsystem", jobs.KindUpsertVulnerabilitySummaries)})
 	job.AddWorker(jobClient, &workers.FetchVulnerabilityDataForImagesWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindFetchVulnerabilityDataForImages)})
 	job.AddWorker(jobClient, &workers.FinalizeAnalysisWorker{Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindFinalizeAnalysis)})
 	job.AddWorker(jobClient, &workers.ProcessVulnerabilityDataWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindProcessVulnerabilityData)})
@@ -116,7 +116,7 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) manag
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
 	m.log.WithField("workload", workload).Debug("adding or updating workload")
-	err := m.jobClient.AddJob(ctx, &manager.AddWorkloadJob{
+	err := m.jobClient.AddJob(ctx, &jobs.AddWorkloadJob{
 		Workload: workload,
 	})
 	if err != nil {
@@ -126,7 +126,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 }
 
 func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Workload) error {
-	err := m.jobClient.AddJob(ctx, &manager.DeleteWorkloadJob{
+	err := m.jobClient.AddJob(ctx, &jobs.DeleteWorkloadJob{
 		Workload: workload,
 	})
 	if err != nil {

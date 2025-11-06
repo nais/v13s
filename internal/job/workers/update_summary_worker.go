@@ -1,4 +1,4 @@
-package manager
+package workers
 
 import (
 	"context"
@@ -7,50 +7,21 @@ import (
 	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	KindUpsertVulnerabilitySummaries   = "upsert_vulnerability_summaries"
-	UpdateSummariesScheduledWaitSecond = 10 * time.Second
-)
-
-type Image struct {
-	Name string
-	Tag  string
-}
-
-type UpsertVulnerabilitySummariesJob struct {
-	Images []Image
-}
-
-func (UpsertVulnerabilitySummariesJob) Kind() string {
-	return KindUpsertVulnerabilitySummaries
-}
-
-func (u UpsertVulnerabilitySummariesJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		ScheduledAt: time.Now().Add(UpdateSummariesScheduledWaitSecond),
-		Queue:       KindUpsertVulnerabilitySummaries,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
-		},
-		MaxAttempts: 3,
-	}
-}
-
 type UpsertVulnerabilitySummariesWorker struct {
 	Querier sql.Querier
 	Source  sources.Source
 	Log     logrus.FieldLogger
-	river.WorkerDefaults[UpsertVulnerabilitySummariesJob]
+	river.WorkerDefaults[jobs.UpsertVulnerabilitySummariesJob]
 }
 
-func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *river.Job[UpsertVulnerabilitySummariesJob]) error {
+func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *river.Job[jobs.UpsertVulnerabilitySummariesJob]) error {
 	if len(job.Args.Images) == 0 {
 		return nil
 	}
@@ -119,11 +90,11 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 		"num_rows": len(summaries),
 		"duration": duration,
 	}).Info("successfully upserted vulnerability summaries")
-	recordOutput(ctx, JobStatusSummariesUpdated)
+	jobs.RecordOutput(ctx, jobs.JobStatusSummariesUpdated)
 	return nil
 }
 
-func toVulnerabilitySummarySqlParams(i Image, s *sources.VulnerabilitySummary) sql.BatchUpsertVulnerabilitySummaryParams {
+func toVulnerabilitySummarySqlParams(i jobs.Image, s *sources.VulnerabilitySummary) sql.BatchUpsertVulnerabilitySummaryParams {
 	return sql.BatchUpsertVulnerabilitySummaryParams{
 		ImageName:  i.Name,
 		ImageTag:   i.Tag,
