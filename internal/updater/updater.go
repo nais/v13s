@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/containerd/log"
@@ -12,7 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/nais/v13s/internal/manager"
+	"github.com/nais/v13s/internal/postgresriver"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
@@ -31,16 +32,16 @@ const (
 type Updater struct {
 	db                           *pgxpool.Pool
 	querier                      *sql.Queries
-	manager                      *manager.WorkloadManager
+	manager                      *postgresriver.WorkloadManager
 	updateSchedule               ScheduleConfig
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	doneChan                     chan struct{}
-	once                         sync.Once
-	log                          *logrus.Entry
+	// once                         sync.Once
+	log *logrus.Entry
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *postgresriver.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -131,46 +132,24 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	images, err := u.querier.GetImagesScheduledForSync(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("get images for sync: %w", err)
 	}
 
-	ctx = NewDbContext(ctx, u.querier, u.log)
+	if len(images) == 0 {
+		u.log.Info("no images scheduled for sync")
+		return nil
+	}
 
-	done := make(chan bool)
-	batchCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
-	defer cancel()
-
-	ch := make(chan *ImageVulnerabilityData, 100)
-
-	go func() {
-		defer close(done)
-		// TODO: riverjob worker to batch insert vulnerability data
-		if err := u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
-			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
-			done <- false
-		} else {
-			done <- true
-		}
-	}()
-
-	// TODO: riverjob worker to fetch vulnerability data for images
-	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
-	close(ch)
-
-	updateSuccess := <-done
-
+	err = u.manager.AddJob(ctx, &jobs.FetchVulnerabilityDataForImagesJob{
+		Images: images,
+	})
 	if err != nil {
-		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
+		u.log.WithError(err).Error("failed to enqueue FetchVulnerabilityDataForImages job")
 		return err
 	}
 
-	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
-
-	if u.doneChan != nil {
-		u.once.Do(func() {
-			close(u.doneChan)
-		})
-	}
+	u.log.WithField("count", len(images)).
+		Infof("enqueued FetchVulnerabilityDataForImages job in %.2fs", time.Since(start).Seconds())
 
 	return nil
 }

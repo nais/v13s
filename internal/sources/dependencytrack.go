@@ -149,7 +149,6 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 }
 
 func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
-	// get projects and update findings
 	d.log.Debug("maintaining suppressed vulnerabilities")
 	triggeredProjects := make(map[string]struct{})
 
@@ -185,6 +184,47 @@ func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Co
 
 	d.log.Debug("suppressed vulnerabilities maintained")
 	return nil
+}
+
+func (d *dependencytrackSource) UpdateSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) (model.EventTokens, error) {
+	d.log.Debug("maintaining suppressed vulnerabilities")
+	eventTokens := make(model.EventTokens, 0)
+
+	for _, v := range suppressed {
+		metadata, ok := v.Metadata.(*dependencytrack.VulnMetadata)
+		imageName := v.ImageName
+		imageTag := v.ImageTag
+		if !ok || metadata == nil {
+			d.log.Warnf("missing metadata for suppressed vulnerability, CveId '%s', Package '%s'", v.CveId, v.Package)
+			continue
+		}
+
+		an, err := d.client.GetAnalysisTrailForImage(ctx, metadata.ProjectId, metadata.ComponentId, metadata.VulnerabilityUuid)
+		if err != nil {
+			return nil, err
+		}
+
+		if d.shouldUpdateFinding(an, v) {
+			if err := d.updateFinding(ctx, metadata, v); err != nil {
+				return nil, err
+			}
+
+			token, err := d.client.TriggerAnalysisToken(ctx, metadata.ProjectId)
+			if err != nil {
+				return nil, fmt.Errorf("triggering analysis for project %s: %w", metadata.ProjectId, err)
+			}
+
+			eventTokens = append(eventTokens, &model.EventToken{
+				ProjectId: metadata.ProjectId,
+				ImageName: imageName,
+				ImageTag:  imageTag,
+				Token:     token,
+			})
+		}
+	}
+
+	d.log.Debug("suppressed vulnerabilities maintained")
+	return eventTokens, nil
 }
 
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {

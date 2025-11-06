@@ -31,25 +31,25 @@ func (a AddWorkloadJob) InsertOpts() river.InsertOpts {
 }
 
 type AddWorkloadWorker struct {
-	db        sql.Querier
-	log       logrus.FieldLogger
-	jobClient job.Client
+	Querier   sql.Querier
+	JobClient job.Client
+	Log       logrus.FieldLogger
 	river.WorkerDefaults[AddWorkloadJob]
 }
 
 func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkloadJob]) error {
 	workload := job.Args.Workload
 
-	if err := a.db.CreateImage(ctx, sql.CreateImageParams{
+	if err := a.Querier.CreateImage(ctx, sql.CreateImageParams{
 		Name:     workload.ImageName,
 		Tag:      workload.ImageTag,
 		Metadata: map[string]string{},
 	}); err != nil {
-		a.log.WithError(err).Error("Failed to create image")
+		a.Log.WithError(err).Error("Failed to create image")
 		return err
 	}
 
-	id, err := a.db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+	id, err := a.Querier.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
 		Name:         workload.Name,
 		Cluster:      workload.Cluster,
 		Namespace:    workload.Namespace,
@@ -61,17 +61,17 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			recordOutput(ctx, JobStatusInitializeWorkloadSkipped)
-			a.log.WithField("workload", workload).Debug("workload already initialized, skipping")
+			a.Log.WithField("workload", workload).Debug("workload already initialized, skipping")
 			return nil
 		}
 
 		if !errors.Is(err, pgx.ErrNoRows) {
-			a.log.WithError(err).Error("failed to get workload")
+			a.Log.WithError(err).Error("failed to get workload")
 			return err
 		}
 	}
 
-	err = a.jobClient.AddJob(ctx, &GetAttestationJob{
+	err = a.JobClient.AddJob(ctx, &GetAttestationJob{
 		ImageName:    workload.ImageName,
 		ImageTag:     workload.ImageTag,
 		WorkloadId:   id,
@@ -81,7 +81,7 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		return err
 	}
 
-	err = a.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+	err = a.Querier.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 		State: sql.WorkloadStateUpdated,
 		ID:    id,
 	})

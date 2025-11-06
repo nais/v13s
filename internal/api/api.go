@@ -18,9 +18,9 @@ import (
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/postgresriver"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -92,7 +92,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		DbUrl: cfg.DatabaseUrl,
 	}
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr := postgresriver.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
 
@@ -161,7 +161,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *postgresriver.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {

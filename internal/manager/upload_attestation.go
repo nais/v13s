@@ -45,10 +45,10 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 }
 
 type UploadAttestationWorker struct {
-	db        sql.Querier
-	source    sources.Source
-	jobClient job.Client
-	log       logrus.FieldLogger
+	Querier   sql.Querier
+	Source    sources.Source
+	JobClient job.Client
+	Log       logrus.FieldLogger
 	river.WorkerDefaults[UploadAttestationJob]
 }
 
@@ -65,10 +65,10 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 
-	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
+	sourceRef, err := u.Querier.GetSourceRef(ctx, sql.GetSourceRefParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+		SourceType: u.Source.Name(),
 	})
 
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -77,12 +77,12 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	if err == nil {
 		// sourceRef exists → check if the project actually exists
-		exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
+		exists, err := u.Source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
 		if err != nil {
 			return fmt.Errorf("failed to verify project existence: %w", err)
 		}
 		if exists {
-			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			err = u.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				Name:  imageName,
 				Tag:   imageTag,
 				State: sql.ImageStateResync,
@@ -100,14 +100,14 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		}
 
 		// project does not exist → delete stale sourceRef
-		if err := u.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+		if err := u.Querier.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
 			ImageName:  imageName,
 			ImageTag:   imageTag,
-			SourceType: u.source.Name(),
+			SourceType: u.Source.Name(),
 		}); err != nil {
 			return fmt.Errorf("failed to delete stale sourceRef: %w", err)
 		}
-		u.log.WithFields(logrus.Fields{
+		u.Log.WithFields(logrus.Fields{
 			"image": imageName,
 			"tag":   imageTag,
 		}).Warn("deleted stale sourceRef; will attempt to create new project")
@@ -119,7 +119,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	// Upload attestation and create new sourceRef
-	uploadRes, upErr := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	uploadRes, upErr := u.Source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
 	if upErr != nil {
 		span.RecordError(upErr)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
@@ -129,20 +129,20 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		return handleJobErr(upErr)
 	}
 
-	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+	err = u.Querier.CreateSourceRef(ctx, sql.CreateSourceRefParams{
 		SourceID: pgtype.UUID{
 			Bytes: uploadRes.AttestationId,
 			Valid: true,
 		},
 		ImageName:  imageName,
 		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+		SourceType: u.Source.Name(),
 	})
 	if err != nil {
 		return err
 	}
 
-	err = u.db.UpdateImage(ctx, sql.UpdateImageParams{
+	err = u.Querier.UpdateImage(ctx, sql.UpdateImageParams{
 		Name:     imageName,
 		Tag:      imageTag,
 		Metadata: att.Metadata,
@@ -152,7 +152,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	// enqueue finalize job
-	err = u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
+	err = u.JobClient.AddJob(ctx, &FinalizeAttestationJob{
 		ImageName:    imageName,
 		ImageTag:     imageTag,
 		ProcessToken: uploadRes.ProcessToken,
