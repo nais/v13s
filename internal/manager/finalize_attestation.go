@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	KindFinalizeAttestation                      = "finalize_attestation"
-	FinalizeAttestationScheduledForResyncMinutes = 10 * time.Second
-	FinalizeAttestationScheduledWaitSecond       = 30 * time.Second
+	KindFinalizeAttestation                = "finalize_attestation"
+	FinalizeAttestationScheduledWaitSecond = 10 * time.Second
 )
 
 type FinalizeAttestationJob struct {
@@ -40,10 +39,10 @@ func (f FinalizeAttestationJob) InsertOpts() river.InsertOpts {
 }
 
 type FinalizeAttestationWorker struct {
-	db        sql.Querier
-	source    sources.Source
-	jobClient job.Client
-	log       logrus.FieldLogger
+	Querier   sql.Querier
+	Source    sources.Source
+	JobClient job.Client
+	Log       logrus.FieldLogger
 	river.WorkerDefaults[FinalizeAttestationJob]
 }
 
@@ -52,7 +51,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	imageTag := job.Args.ImageTag
 
 	// Check if external processing is complete
-	inProgress, err := f.source.IsTaskInProgress(ctx, job.Args.ProcessToken)
+	inProgress, err := f.Source.IsTaskInProgress(ctx, job.Args.ProcessToken)
 	if err != nil {
 		return fmt.Errorf("failed to update image state: %w", err)
 	}
@@ -62,19 +61,19 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	}
 
 	if job.Args.ProcessToken == "" {
-		f.log.WithFields(logrus.Fields{
+		f.Log.WithFields(logrus.Fields{
 			"image": imageName,
 			"tag":   imageTag,
 		}).Warn("finalizer ran with empty process token, marking for resync anyway")
 	}
 
 	// Mark image as ready for resync
-	err = f.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	err = f.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		Name:  imageName,
 		Tag:   imageTag,
 		State: sql.ImageStateResync,
 		ReadyForResyncAt: pgtype.Timestamptz{
-			Time:  time.Now().Add(FinalizeAttestationScheduledForResyncMinutes),
+			Time:  time.Now(),
 			Valid: true,
 		},
 	})
@@ -82,12 +81,12 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		return fmt.Errorf("failed to update image state: %f", err)
 	}
 
-	rows, err := f.db.ListUnusedSourceRefs(ctx, &imageName)
+	rows, err := f.Querier.ListUnusedSourceRefs(ctx, &imageName)
 	if err != nil {
 		return fmt.Errorf("failed to list unused images: %w", err)
 	}
 	for _, row := range rows {
-		err = f.jobClient.AddJob(ctx, &RemoveFromSourceJob{
+		err = f.JobClient.AddJob(ctx, &RemoveFromSourceJob{
 			ImageName: row.ImageName,
 			ImageTag:  row.ImageTag,
 		})

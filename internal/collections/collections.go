@@ -1,5 +1,7 @@
 package collections
 
+import "sort"
+
 func Filter[T any](s []T, f func(T) bool) []T {
 	var r []T
 	for _, v := range s {
@@ -25,4 +27,19 @@ func AnyMatch[T1 any](s []T1, f func(e T1) bool) bool {
 		}
 	}
 	return false
+}
+
+func SortByFields[T any](items []T, getters ...func(T) string) {
+	sort.SliceStable(items, func(i, j int) bool {
+		for _, get := range getters {
+			a, b := get(items[i]), get(items[j])
+			if a < b {
+				return true
+			}
+			if a > b {
+				return false
+			}
+		}
+		return false
+	})
 }

@@ -15,10 +15,10 @@ import (
 	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
-	"github.com/nais/v13s/internal/manager"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	attestation "github.com/nais/v13s/internal/mocks/Verifier"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/postgresriver"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
@@ -53,7 +53,7 @@ func TestUpdater(t *testing.T) {
 
 	sourceMock := sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))
 
-	mgr := manager.NewWorkloadManager(
+	mgr := postgresriver.NewWorkloadManager(
 		ctx,
 		pool,
 		jobCfg,
@@ -402,7 +402,7 @@ func TestUpdater(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Set ReadyForResyncAt to 5 minutes ago
-		readyAt := time.Now().Add(-manager.FinalizeAttestationScheduledForResyncMinutes)
+		readyAt := time.Now().Add(-5 * time.Minute)
 		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,

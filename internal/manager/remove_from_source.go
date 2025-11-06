@@ -37,14 +37,14 @@ func (u RemoveFromSourceJob) InsertOpts() river.InsertOpts {
 }
 
 type RemoveFromSourceWorker struct {
-	db     sql.Querier
-	source sources.Source
-	log    logrus.FieldLogger
+	Querier sql.Querier
+	Source  sources.Source
+	Log     logrus.FieldLogger
 	river.WorkerDefaults[RemoveFromSourceJob]
 }
 
 func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[RemoveFromSourceJob]) error {
-	ctx, span := otel.Tracer("v13s/remove-from-source").Start(ctx, "RemoveFromSourceWorker.Work")
+	ctx, span := otel.Tracer("v13s/remove-from-Source").Start(ctx, "RemoveFromSourceWorker.Work")
 	defer span.End()
 
 	span.SetAttributes(
@@ -52,20 +52,20 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		attribute.String("image.tag", job.Args.ImageTag),
 	)
 
-	if err := r.source.Delete(ctx, job.Args.ImageName, job.Args.ImageTag); err != nil {
+	if err := r.Source.Delete(ctx, job.Args.ImageName, job.Args.ImageTag); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to delete workload from source")
-		r.log.WithError(err).Error("failed to delete workload from source")
+		r.Log.WithError(err).Error("failed to delete workload from source")
 		return handleJobErr(err)
 	}
 
-	err := r.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
+	err := r.Querier.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
 		ImageName:  job.Args.ImageName,
 		ImageTag:   job.Args.ImageTag,
-		SourceType: r.source.Name(),
+		SourceType: r.Source.Name(),
 	})
 	if err != nil {
-		r.log.WithError(err).Error("failed to delete source ref")
+		r.Log.WithError(err).Error("failed to delete source ref")
 		return handleJobErr(err)
 	}
 

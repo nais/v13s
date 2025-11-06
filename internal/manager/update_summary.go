@@ -44,9 +44,9 @@ func (u UpsertVulnerabilitySummariesJob) InsertOpts() river.InsertOpts {
 }
 
 type UpsertVulnerabilitySummariesWorker struct {
-	Db     sql.Querier
-	Source sources.Source
-	Log    logrus.FieldLogger
+	Querier sql.Querier
+	Source  sources.Source
+	Log     logrus.FieldLogger
 	river.WorkerDefaults[UpsertVulnerabilitySummariesJob]
 }
 
@@ -77,7 +77,7 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 		}
 		summaries = append(summaries, toVulnerabilitySummarySqlParams(image, summary))
 
-		wls, err := u.Db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+		wls, err := u.Querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 			ImageName: image.Name,
 			ImageTag:  image.Tag,
 		})
@@ -93,7 +93,7 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, job *rive
 
 	start := time.Now()
 	errorCount := 0
-	u.Db.BatchUpsertVulnerabilitySummary(ctx, summaries).Exec(func(i int, err error) {
+	u.Querier.BatchUpsertVulnerabilitySummary(ctx, summaries).Exec(func(i int, err error) {
 		if err != nil {
 			u.Log.WithError(err).Errorf("failed to upsert summary %d", i)
 			errorCount++
