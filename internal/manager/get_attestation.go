@@ -45,11 +45,11 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 }
 
 type GetAttestationWorker struct {
-	db              sql.Querier
-	jobClient       job.Client
-	verifier        attestation.Verifier
-	workloadCounter metric.Int64UpDownCounter
-	log             logrus.FieldLogger
+	Querier         sql.Querier
+	JobClient       job.Client
+	Verifier        attestation.Verifier
+	WorkloadCounter metric.Int64UpDownCounter
+	Log             logrus.FieldLogger
 	river.WorkerDefaults[GetAttestationJob]
 }
 
@@ -69,8 +69,8 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
-	att, err := g.verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
-	g.workloadCounter.Add(
+	att, err := g.Verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
+	g.WorkloadCounter.Add(
 		ctx,
 		1,
 		metric.WithAttributes(
@@ -85,10 +85,10 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			if err.Error() != "no matching attestations: " {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				g.log.WithError(err).Error("failed to get attestation")
+				g.Log.WithError(err).Error("failed to get attestation")
 			}
 			// TODO: handle errors
-			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			err = g.Querier.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateNoAttestation,
 				ID:    job.Args.WorkloadId,
 			})
@@ -96,7 +96,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
 
-			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			err = g.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
@@ -112,16 +112,16 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		} else if errors.As(err, &unrecoverableError) {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			g.log.WithError(err).Error("unrecoverable error while getting attestation")
+			g.Log.WithError(err).Error("unrecoverable error while getting attestation")
 			recordOutput(ctx, JobStatusUnrecoverable)
-			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			err = g.Querier.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateUnrecoverable,
 				ID:    job.Args.WorkloadId,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
-			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			err = g.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
@@ -139,7 +139,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		if err != nil {
 			return fmt.Errorf("failed to compress attestation: %w", err)
 		}
-		err = g.jobClient.AddJob(ctx, &UploadAttestationJob{
+		err = g.JobClient.AddJob(ctx, &UploadAttestationJob{
 			ImageName:   imageName,
 			ImageTag:    imageTag,
 			WorkloadId:  job.Args.WorkloadId,

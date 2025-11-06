@@ -1,5 +1,5 @@
 // TODO: rename package to management or something else, or split up into domain specific packages
-package manager
+package postgresriver
 
 import (
 	"context"
@@ -8,7 +8,10 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/job/jobs"
+	"github.com/nais/v13s/internal/job/workers"
 	"github.com/nais/v13s/internal/kubernetes"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
@@ -18,7 +21,7 @@ import (
 )
 
 const (
-	maxWorkers = 30
+	maxWorkers = 40
 )
 
 type WorkloadManager struct {
@@ -28,8 +31,8 @@ type WorkloadManager struct {
 	verifier         attestation.Verifier
 	src              sources.Source
 	queue            *kubernetes.WorkloadEventQueue
-	addDispatcher    *Dispatcher[*model.Workload]
-	deleteDispatcher *Dispatcher[*model.Workload]
+	addDispatcher    *manager.Dispatcher[*model.Workload]
+	deleteDispatcher *manager.Dispatcher[*model.Workload]
 	workloadCounter  metric.Int64UpDownCounter
 	log              logrus.FieldLogger
 }
@@ -53,26 +56,32 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	db := sql.New(pool)
 
 	queues := map[string]river.QueueConfig{
-		KindAddWorkload:                  {MaxWorkers: 10},
-		KindGetAttestation:               {MaxWorkers: 15},
-		KindUploadAttestation:            {MaxWorkers: 10},
-		KindDeleteWorkload:               {MaxWorkers: 3},
-		KindRemoveFromSource:             {MaxWorkers: 3},
-		KindFinalizeAttestation:          {MaxWorkers: 10},
-		KindUpsertVulnerabilitySummaries: {MaxWorkers: 8},
+		manager.KindAddWorkload:                  {MaxWorkers: 10},
+		manager.KindGetAttestation:               {MaxWorkers: 15},
+		manager.KindUploadAttestation:            {MaxWorkers: 10},
+		manager.KindDeleteWorkload:               {MaxWorkers: 3},
+		manager.KindRemoveFromSource:             {MaxWorkers: 3},
+		manager.KindFinalizeAttestation:          {MaxWorkers: 10},
+		manager.KindUpsertVulnerabilitySummaries: {MaxWorkers: 8},
+		jobs.KindFetchVulnerabilityDataForImages: {MaxWorkers: 10},
+		jobs.KindFinalizeAnalysis:                {MaxWorkers: 5},
+		jobs.KindProcessVulnerabilityData:        {MaxWorkers: 10},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
 	if err != nil {
 		log.Fatalf("Failed to create job client: %v", err)
 	}
-	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "add_workload")})
-	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", "get_attestation")})
-	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
-	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
-	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
-	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
-	job.AddWorker(jobClient, &UpsertVulnerabilitySummariesWorker{Db: db, Source: source, Log: log.WithField("subsystem", "upsert_vulnerability_summaries")})
+	job.AddWorker(jobClient, &manager.AddWorkloadWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", "add_workload")})
+	job.AddWorker(jobClient, &manager.GetAttestationWorker{Querier: db, Verifier: verifier, JobClient: jobClient, WorkloadCounter: udCounter, Log: log.WithField("subsystem", "get_attestation")})
+	job.AddWorker(jobClient, &manager.UploadAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", "upload_attestation")})
+	job.AddWorker(jobClient, &manager.RemoveFromSourceWorker{Querier: db, Source: source, Log: log.WithField("subsystem", "remove_from_source")})
+	job.AddWorker(jobClient, &manager.DeleteWorkloadWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", "delete_workload")})
+	job.AddWorker(jobClient, &manager.FinalizeAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", "finalize_attestation")})
+	job.AddWorker(jobClient, &manager.UpsertVulnerabilitySummariesWorker{Querier: db, Source: source, Log: log.WithField("subsystem", "upsert_vulnerability_summaries")})
+	job.AddWorker(jobClient, &workers.FetchVulnerabilityDataForImagesWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindFetchVulnerabilityDataForImages)})
+	job.AddWorker(jobClient, &workers.FinalizeAnalysisWorker{Source: source, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindFinalizeAnalysis)})
+	job.AddWorker(jobClient, &workers.ProcessVulnerabilityDataWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", jobs.KindProcessVulnerabilityData)})
 	m := &WorkloadManager{
 		db:              db,
 		pool:            pool,
@@ -83,9 +92,9 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		workloadCounter: udCounter,
 		log:             log,
 	}
-	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
+	m.addDispatcher = manager.NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
 	//m.addDispatcher.errorHook = m.handleError
-	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
+	m.deleteDispatcher = manager.NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
 
 	return m
 }
@@ -99,7 +108,7 @@ func (m *WorkloadManager) Start(ctx context.Context) {
 	m.deleteDispatcher.Start(ctx)
 }
 
-func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worker[*model.Workload] {
+func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) manager.Worker[*model.Workload] {
 	return func(ctx context.Context, workload *model.Workload) error {
 		return fn(ctx, workload)
 	}
@@ -107,7 +116,7 @@ func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worke
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
 	m.log.WithField("workload", workload).Debug("adding or updating workload")
-	err := m.jobClient.AddJob(ctx, &AddWorkloadJob{
+	err := m.jobClient.AddJob(ctx, &manager.AddWorkloadJob{
 		Workload: workload,
 	})
 	if err != nil {
@@ -117,7 +126,7 @@ func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workl
 }
 
 func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Workload) error {
-	err := m.jobClient.AddJob(ctx, &DeleteWorkloadJob{
+	err := m.jobClient.AddJob(ctx, &manager.DeleteWorkloadJob{
 		Workload: workload,
 	})
 	if err != nil {
