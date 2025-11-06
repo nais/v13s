@@ -1,4 +1,4 @@
-package manager
+package workers
 
 import (
 	"context"
@@ -8,36 +8,19 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
-	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
-
-const (
-	KindAddWorkload = "add_workload"
-)
-
-type AddWorkloadJob struct {
-	Workload *model.Workload
-}
-
-func (AddWorkloadJob) Kind() string { return KindAddWorkload }
-
-func (a AddWorkloadJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue:       KindAddWorkload,
-		MaxAttempts: 4,
-	}
-}
 
 type AddWorkloadWorker struct {
 	Querier   sql.Querier
 	JobClient job.Client
 	Log       logrus.FieldLogger
-	river.WorkerDefaults[AddWorkloadJob]
+	river.WorkerDefaults[jobs.AddWorkloadJob]
 }
 
-func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkloadJob]) error {
+func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[jobs.AddWorkloadJob]) error {
 	workload := job.Args.Workload
 
 	if err := a.Querier.CreateImage(ctx, sql.CreateImageParams{
@@ -60,7 +43,7 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			recordOutput(ctx, JobStatusInitializeWorkloadSkipped)
+			jobs.RecordOutput(ctx, jobs.JobStatusInitializeWorkloadSkipped)
 			a.Log.WithField("workload", workload).Debug("workload already initialized, skipping")
 			return nil
 		}
@@ -71,7 +54,7 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		}
 	}
 
-	err = a.JobClient.AddJob(ctx, &GetAttestationJob{
+	err = a.JobClient.AddJob(ctx, &jobs.GetAttestationJob{
 		ImageName:    workload.ImageName,
 		ImageTag:     workload.ImageTag,
 		WorkloadId:   id,
@@ -88,6 +71,6 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	if err != nil {
 		return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
 	}
-	recordOutput(ctx, JobStatusUpdated)
+	jobs.RecordOutput(ctx, jobs.JobStatusUpdated)
 	return nil
 }

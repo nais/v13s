@@ -1,4 +1,4 @@
-package manager
+package jobs
 
 import (
 	"context"
@@ -31,7 +31,7 @@ const (
 	JobStatusSummariesUpdated           JobStatus = "summaries_updated"
 )
 
-func recordOutput(ctx context.Context, status JobStatus) {
+func RecordOutput(ctx context.Context, status JobStatus) {
 	err := river.RecordOutput(ctx, JobOutput{
 		Status: status,
 	})
@@ -40,7 +40,7 @@ func recordOutput(ctx context.Context, status JobStatus) {
 	}
 }
 
-func handleJobErr(originalErr error) error {
+func HandleJobErr(originalErr error) error {
 	var uErr model.UnrecoverableError
 	if errors.As(originalErr, &uErr) {
 		return river.JobCancel(uErr)

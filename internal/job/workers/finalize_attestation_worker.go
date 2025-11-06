@@ -1,4 +1,4 @@
-package manager
+package workers
 
 import (
 	"context"
@@ -8,45 +8,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
-
-const (
-	KindFinalizeAttestation                = "finalize_attestation"
-	FinalizeAttestationScheduledWaitSecond = 10 * time.Second
-)
-
-type FinalizeAttestationJob struct {
-	ImageName    string `river:"unique"`
-	ImageTag     string `river:"unique"`
-	ProcessToken string
-}
-
-func (FinalizeAttestationJob) Kind() string { return KindFinalizeAttestation }
-
-func (f FinalizeAttestationJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue:       KindFinalizeAttestation,
-		ScheduledAt: time.Now().Add(FinalizeAttestationScheduledWaitSecond),
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
-		},
-		MaxAttempts: 15,
-	}
-}
 
 type FinalizeAttestationWorker struct {
 	Querier   sql.Querier
 	Source    sources.Source
 	JobClient job.Client
 	Log       logrus.FieldLogger
-	river.WorkerDefaults[FinalizeAttestationJob]
+	river.WorkerDefaults[jobs.FinalizeAttestationJob]
 }
 
-func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[FinalizeAttestationJob]) error {
+func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[jobs.FinalizeAttestationJob]) error {
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 
@@ -86,7 +62,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		return fmt.Errorf("failed to list unused images: %w", err)
 	}
 	for _, row := range rows {
-		err = f.JobClient.AddJob(ctx, &RemoveFromSourceJob{
+		err = f.JobClient.AddJob(ctx, &jobs.RemoveFromSourceJob{
 			ImageName: row.ImageName,
 			ImageTag:  row.ImageTag,
 		})
@@ -96,6 +72,6 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		}
 	}
 
-	recordOutput(ctx, JobStatusUploadAttestationFinalized)
+	jobs.RecordOutput(ctx, jobs.JobStatusUploadAttestationFinalized)
 	return nil
 }

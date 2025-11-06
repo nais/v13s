@@ -12,7 +12,6 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job/jobs"
-	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/postgresriver"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
@@ -253,10 +252,10 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-	images := make([]manager.Image, 0, len(batch))
+	images := make([]jobs.Image, 0, len(batch))
 
 	for _, i := range batch {
-		images = append(images, manager.Image{
+		images = append(images, jobs.Image{
 			Name: i.ImageName,
 			Tag:  i.ImageTag,
 		})
@@ -314,10 +313,10 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 
 	if len(batch) > 0 {
 		sortByFields(images,
-			func(x manager.Image) string { return x.Name },
-			func(x manager.Image) string { return x.Tag },
+			func(x jobs.Image) string { return x.Name },
+			func(x jobs.Image) string { return x.Tag },
 		)
-		if err := u.manager.AddJob(ctx, &manager.UpsertVulnerabilitySummariesJob{
+		if err := u.manager.AddJob(ctx, &jobs.UpsertVulnerabilitySummariesJob{
 			Images: images,
 		}); err != nil {
 			u.log.WithError(err).Error("failed to enqueue vulnerability summaries job")

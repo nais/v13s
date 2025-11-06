@@ -1,49 +1,27 @@
-package manager
+package workers
 
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
-	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/job/jobs"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
-
-const (
-	KindDeleteWorkload = "delete_workload"
-)
-
-type DeleteWorkloadJob struct {
-	Workload *model.Workload
-}
-
-func (DeleteWorkloadJob) Kind() string { return KindDeleteWorkload }
-
-func (u DeleteWorkloadJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue:       KindDeleteWorkload,
-		MaxAttempts: 4,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
-		},
-	}
-}
 
 type DeleteWorkloadWorker struct {
 	Querier   sql.Querier
 	Source    sources.Source
 	JobClient job.Client
 	Log       logrus.FieldLogger
-	river.WorkerDefaults[DeleteWorkloadJob]
+	river.WorkerDefaults[jobs.DeleteWorkloadJob]
 }
 
-func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWorkloadJob]) error {
+func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[jobs.DeleteWorkloadJob]) error {
 	w := job.Args.Workload
 	d.Log.WithField("workload", w).Debug("deleting workload")
 	_, err := d.Querier.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
@@ -54,7 +32,7 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			recordOutput(ctx, JobStatusSourceRefDeleteSkipped)
+			jobs.RecordOutput(ctx, jobs.JobStatusSourceRefDeleteSkipped)
 			return nil
 		}
 		return err
@@ -69,7 +47,7 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 	}
 
 	if len(rows) == 0 {
-		err = d.JobClient.AddJob(ctx, &RemoveFromSourceJob{
+		err = d.JobClient.AddJob(ctx, &jobs.RemoveFromSourceJob{
 			ImageName: w.ImageName,
 			ImageTag:  w.ImageTag,
 		})
@@ -77,9 +55,9 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 			d.Log.WithError(err).Error("failed to add remove from source job")
 			return err
 		}
-		recordOutput(ctx, JobStatusImageRemovedFromSource)
+		jobs.RecordOutput(ctx, jobs.JobStatusImageRemovedFromSource)
 	} else {
-		recordOutput(ctx, JobStatusImageStillInUse)
+		jobs.RecordOutput(ctx, jobs.JobStatusImageStillInUse)
 	}
 	return nil
 }

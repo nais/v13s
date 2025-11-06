@@ -45,11 +45,6 @@ func (t *FinalizeAnalysisWorker) Work(ctx context.Context, job *river.Job[jobs.F
 
 	t.Log.WithField("projectID", projectID).WithField("vulnerabilityCount", len(vulnerabilities)).Debug("fetched vulnerabilities for project")
 
-	vulnerabilities, err = t.Source.GetVulnerabilities(ctx, imgName, imgTag, true)
-	if err != nil {
-		return err
-	}
-
 	if err = t.JobClient.AddJob(ctx, &jobs.ProcessVulnerabilityDataJob{
 		Batch: &sources.ImageVulnerabilityData{
 			ImageName:       imgName,
