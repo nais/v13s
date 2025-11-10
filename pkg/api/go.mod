@@ -3,7 +3,7 @@ module github.com/nais/v13s/pkg/api
 go 1.24.6
 
 require (
-	golang.org/x/oauth2 v0.32.0
+	golang.org/x/oauth2 v0.33.0
 	google.golang.org/api v0.253.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
