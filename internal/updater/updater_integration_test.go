@@ -13,12 +13,12 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
-	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	attestation "github.com/nais/v13s/internal/mocks/Verifier"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/postgresriver"
+	"github.com/nais/v13s/internal/postgresriver/riverjob"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
@@ -42,7 +42,7 @@ func TestUpdater(t *testing.T) {
 	mockDPTrack := new(dependencytrackMock.MockClient)
 	verifierMock := new(attestation.MockVerifier)
 
-	jobCfg := &job.Config{
+	jobCfg := &riverjob.Options{
 		DbUrl: pool.Config().ConnString(),
 	}
 
