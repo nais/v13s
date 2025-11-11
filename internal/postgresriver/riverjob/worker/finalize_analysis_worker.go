@@ -1,11 +1,11 @@
-package workers
+package worker
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/nais/v13s/internal/job"
-	jobs "github.com/nais/v13s/internal/job/jobs"
+	"github.com/nais/v13s/internal/postgresriver/riverjob"
+	"github.com/nais/v13s/internal/postgresriver/riverjob/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -13,21 +13,21 @@ import (
 
 type FinalizeAnalysisWorker struct {
 	Source    sources.Source
-	JobClient job.Client
+	JobClient riverjob.Client
 	Log       logrus.FieldLogger
-	river.WorkerDefaults[jobs.FinalizeAnalysisJob]
+	river.WorkerDefaults[job.FinalizeAnalysisJob]
 }
 
-func (t *FinalizeAnalysisWorker) Work(ctx context.Context, job *river.Job[jobs.FinalizeAnalysisJob]) error {
-	projectID := job.Args.ProjectID
-	imgName := job.Args.ImageName
-	imgTag := job.Args.ImageTag
+func (t *FinalizeAnalysisWorker) Work(ctx context.Context, j *river.Job[job.FinalizeAnalysisJob]) error {
+	projectID := j.Args.ProjectID
+	imgName := j.Args.ImageName
+	imgTag := j.Args.ImageTag
 
-	if job.Args.ProcessToken == "" {
+	if j.Args.ProcessToken == "" {
 		t.Log.WithField("projectID", projectID).Warn("no process token provided, assuming analysis completed")
 	}
 
-	inProgress, err := t.Source.IsTaskInProgress(ctx, job.Args.ProcessToken)
+	inProgress, err := t.Source.IsTaskInProgress(ctx, j.Args.ProcessToken)
 	if err != nil {
 		return fmt.Errorf("check task progress for project %s: %t", projectID, err)
 	}
@@ -45,7 +45,7 @@ func (t *FinalizeAnalysisWorker) Work(ctx context.Context, job *river.Job[jobs.F
 
 	t.Log.WithField("projectID", projectID).WithField("vulnerabilityCount", len(vulnerabilities)).Debug("fetched vulnerabilities for project")
 
-	if err = t.JobClient.AddJob(ctx, &jobs.ProcessVulnerabilityDataJob{
+	if err = t.JobClient.AddJob(ctx, &job.ProcessVulnerabilityDataJob{
 		Batch: &sources.ImageVulnerabilityData{
 			ImageName:       imgName,
 			ImageTag:        imgTag,
