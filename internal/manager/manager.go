@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/postgresriver/riverjob"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -18,7 +18,7 @@ const mgrKey ctxKey = iota
 
 type Mgr struct {
 	Db        *Db
-	JobClient job.Client
+	JobClient riverjob.Client
 	Verifier  attestation.Verifier
 	Source    sources.Source
 	Logger    logrus.FieldLogger
@@ -32,7 +32,7 @@ type Db struct {
 func NewContext(
 	ctx context.Context,
 	dbPool *pgxpool.Pool,
-	jobClient job.Client,
+	jobClient riverjob.Client,
 	verifier attestation.Verifier,
 	source sources.Source,
 	logger logrus.FieldLogger,
@@ -53,12 +53,12 @@ func FromContext(ctx context.Context) *Mgr {
 	return ctx.Value(mgrKey).(*Mgr)
 }
 
-func JobClient(ctx context.Context) job.Client {
+func JobClient(ctx context.Context) riverjob.Client {
 	mgr := FromContext(ctx)
 	return mgr.JobClient
 }
 
 func AddWorker[T river.JobArgs](ctx context.Context, worker river.Worker[T]) {
 	mgr := FromContext(ctx)
-	job.AddWorker(mgr.JobClient, worker)
+	riverjob.AddWorker(mgr.JobClient, worker)
 }

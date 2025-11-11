@@ -16,11 +16,11 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
-	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/postgresriver"
+	"github.com/nais/v13s/internal/postgresriver/riverjob"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -88,7 +88,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
 
-	jobCfg := &job.Config{
+	jobCfg := &riverjob.Options{
 		DbUrl: cfg.DatabaseUrl,
 	}
 

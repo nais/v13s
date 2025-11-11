@@ -1,4 +1,4 @@
-package job
+package riverjob
 
 import (
 	"context"
@@ -27,8 +27,7 @@ func AddWorker[T river.JobArgs](c Client, worker river.Worker[T]) {
 	river.AddWorker(c.GetWorkers(), worker)
 }
 
-// TODO: rename to Options ?
-type Config struct {
+type Options struct {
 	DbUrl string
 }
 
@@ -47,7 +46,7 @@ type client struct {
 
 var _ Client = (*client)(nil)
 
-func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueConfig) (Client, error) {
+func NewClient(ctx context.Context, cfg *Options, queues map[string]river.QueueConfig) (Client, error) {
 	dbConfig, err := pgxpool.ParseConfig(cfg.DbUrl)
 	if err != nil {
 		return nil, err
