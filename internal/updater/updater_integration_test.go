@@ -120,8 +120,7 @@ func TestUpdater(t *testing.T) {
 	log := logrus.NewEntry(logrus.StandardLogger())
 	logrus.SetLevel(logrus.DebugLevel)
 
-	done := make(chan struct{})
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), mgr, updateSchedule, done, log)
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), mgr, updateSchedule, log)
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
@@ -137,12 +136,18 @@ func TestUpdater(t *testing.T) {
 		err = u.ResyncImageVulnerabilities(updaterCtx)
 		assert.NoError(t, err)
 
-		select {
-		case <-done:
-			// proceed with asserts
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
-		}
+		require.Eventually(t, func() bool {
+			for _, p := range projectNames {
+				image, err := db.GetImage(ctx, sql.GetImageParams{Name: p, Tag: "v1"})
+				if err != nil {
+					return false
+				}
+				if image.State != sql.ImageStateUpdated {
+					return false
+				}
+			}
+			return true
+		}, 5*time.Second, 100*time.Millisecond)
 
 		for _, p := range projectNames {
 			imageName := p
@@ -209,23 +214,20 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 		u.Run(updaterCtx)
 
-		select {
-		case <-done:
-			// proceed with asserts
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
-		}
-
-		vulns, err := db.ListVulnerabilities(
-			ctx,
-			sql.ListVulnerabilitiesParams{Limit: 100, ImageName: &imageName, ImageTag: &imageVersion},
-		)
-		assert.NoError(t, err)
-		assert.Len(t, vulns, 5)
+		require.Eventually(t, func() bool {
+			vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+				ImageName: &imageName,
+				ImageTag:  &imageVersion,
+				Limit:     100,
+			})
+			if err != nil {
+				return false
+			}
+			return len(vulns) == 5
+		}, 5*time.Second, 100*time.Millisecond)
 
 		image, err := db.GetImage(ctx, sql.GetImageParams{
 			Name: imageName,
@@ -270,8 +272,7 @@ func TestUpdater(t *testing.T) {
 		threshold := time.Now().UTC().Add(-updater.ImageMarkAge)
 		fmt.Printf("Threshold for untracking: %v\n", threshold)
 
-		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
@@ -310,7 +311,7 @@ func TestUpdater(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkUnusedImages(ctx)
 		assert.NoError(t, err)
@@ -363,7 +364,7 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		u := updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+		u := updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		err = u.MarkForResync(updaterCtx)
 		assert.NoError(t, err)
@@ -419,7 +420,7 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateResync, image.State)
 		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, nil, logrus.NewEntry(logrus.StandardLogger()))
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, logrus.NewEntry(logrus.StandardLogger()))
 
 		images, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)
@@ -438,7 +439,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
 
-	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()))
 
 	imageName := "image-1"
 	imageTag := "v1"

@@ -32,18 +32,12 @@ type Updater struct {
 	updateSchedule               ScheduleConfig
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
-	doneChan                     chan struct{}
-	// once                         sync.Once
-	log *logrus.Entry
+	log                          *logrus.Entry
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *postgresriver.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *postgresriver.WorkloadManager, schedule ScheduleConfig, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
-	}
-
-	if doneChan == nil {
-		doneChan = make(chan struct{})
 	}
 
 	return &Updater{
@@ -53,7 +47,6 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *postgresriver.Wo
 		manager:                      mgr,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		updateSchedule:               schedule,
-		doneChan:                     doneChan,
 		log:                          log,
 	}
 }
@@ -190,7 +183,7 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 	return nil
 }
 
-// MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'
+// MarkForResync Mark images for resync that have not been updated for a certain amount of time when state is not 'resync'
 func (u *Updater) MarkForResync(ctx context.Context) error {
 	//TODO: send in states as parameter, and not use values in sql
 	err := u.querier.MarkImagesForResync(
