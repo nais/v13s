@@ -15,16 +15,16 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251120132527-e19fc9486843
-	github.com/nais/liberator v0.0.0-20251021073339-e0b725df035f
-	github.com/nais/v13s/pkg/api v0.0.0-20251021085810-a45ab9750276
+	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251124040753-6d7145a31dc1
+	github.com/nais/liberator v0.0.0-20251121113042-7c7bc3ddeb41
+	github.com/nais/v13s/pkg/api v0.0.0-20251124102608-1de65d7a47a1
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.67.3
-	github.com/riverqueue/river v0.26.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.26.0
-	github.com/riverqueue/river/rivertype v0.26.0
-	github.com/riverqueue/rivercontrib/otelriver v0.5.0
+	github.com/prometheus/common v0.67.4
+	github.com/riverqueue/river v0.28.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.28.0
+	github.com/riverqueue/river/rivertype v0.28.0
+	github.com/riverqueue/rivercontrib/otelriver v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.9.1
 	github.com/sigstore/cosign/v2 v2.6.1
@@ -274,8 +274,8 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/apiframe v0.0.0-20250909003311-70c9e6783551 // indirect
-	github.com/riverqueue/river/riverdriver v0.26.0 // indirect
-	github.com/riverqueue/river/rivershared v0.26.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.28.0 // indirect
+	github.com/riverqueue/river/rivershared v0.28.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
@@ -339,7 +339,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
