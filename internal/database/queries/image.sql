@@ -37,6 +37,7 @@ WHERE name = @name AND tag = @tag
 UPDATE images
 SET
     state = @state,
+    ready_for_resync_at = @ready_for_resync_at,
     updated_at = NOW()
 WHERE name = @name AND tag = @tag
 ;

@@ -16,12 +16,106 @@ var (
 	ErrBatchAlreadyClosed = errors.New("batch already closed")
 )
 
+const batchSuppressVulnerabilities = `-- name: BatchSuppressVulnerabilities :batchexec
+INSERT INTO suppressed_vulnerabilities (
+    image_name,
+    package,
+    cve_id,
+    suppressed,
+    suppressed_by,
+    reason,
+    reason_text
+)
+VALUES (
+           $1,
+           $2,
+           $3,
+           $4,
+           $5,
+           $6,
+           $7
+       ) ON CONFLICT
+ON CONSTRAINT image_name_package_cve_id DO
+UPDATE
+    SET
+        suppressed = EXCLUDED.suppressed,
+    suppressed_by = EXCLUDED.suppressed_by,
+    reason = EXCLUDED.reason,
+    reason_text = EXCLUDED.reason_text,
+    updated_at = NOW()
+WHERE
+    suppressed_vulnerabilities.suppressed IS DISTINCT
+FROM EXCLUDED.suppressed OR
+    suppressed_vulnerabilities.suppressed_by IS DISTINCT
+FROM EXCLUDED.suppressed_by OR
+    suppressed_vulnerabilities.reason IS DISTINCT
+FROM EXCLUDED.reason OR
+    suppressed_vulnerabilities.reason_text IS DISTINCT
+FROM EXCLUDED.reason_text
+`
+
+type BatchSuppressVulnerabilitiesBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BatchSuppressVulnerabilitiesParams struct {
+	ImageName    string
+	Package      string
+	CveID        string
+	Suppressed   bool
+	SuppressedBy string
+	Reason       VulnerabilitySuppressReason
+	ReasonText   string
+}
+
+func (q *Queries) BatchSuppressVulnerabilities(ctx context.Context, arg []BatchSuppressVulnerabilitiesParams) *BatchSuppressVulnerabilitiesBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.ImageName,
+			a.Package,
+			a.CveID,
+			a.Suppressed,
+			a.SuppressedBy,
+			a.Reason,
+			a.ReasonText,
+		}
+		batch.Queue(batchSuppressVulnerabilities, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BatchSuppressVulnerabilitiesBatchResults{br, len(arg), false}
+}
+
+func (b *BatchSuppressVulnerabilitiesBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BatchSuppressVulnerabilitiesBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const batchUpdateImageState = `-- name: BatchUpdateImageState :batchexec
 UPDATE images
 SET
     state = $1,
+    ready_for_resync_at = $2,
     updated_at = NOW()
-WHERE name = $2 AND tag = $3
+WHERE name = $3 AND tag = $4
 `
 
 type BatchUpdateImageStateBatchResults struct {
@@ -31,9 +125,10 @@ type BatchUpdateImageStateBatchResults struct {
 }
 
 type BatchUpdateImageStateParams struct {
-	State ImageState
-	Name  string
-	Tag   string
+	State            ImageState
+	ReadyForResyncAt pgtype.Timestamptz
+	Name             string
+	Tag              string
 }
 
 func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults {
@@ -41,6 +136,7 @@ func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateIm
 	for _, a := range arg {
 		vals := []interface{}{
 			a.State,
+			a.ReadyForResyncAt,
 			a.Name,
 			a.Tag,
 		}

@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventParams) error
+	BatchSuppressVulnerabilities(ctx context.Context, arg []BatchSuppressVulnerabilitiesParams) *BatchSuppressVulnerabilitiesBatchResults
 	BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
@@ -38,6 +39,7 @@ type Querier interface {
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error)
+	ListReferencingCves(ctx context.Context, lookupCveID string) ([]string, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
 	ListSeverityVulnerabilitiesSince(ctx context.Context, arg ListSeverityVulnerabilitiesSinceParams) ([]*ListSeverityVulnerabilitiesSinceRow, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
@@ -46,6 +48,7 @@ type Querier interface {
 	ListUnusedSourceRefs(ctx context.Context, name *string) ([]*SourceRef, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
+	ListVulnerabilitiesForNamespaceAndCve(ctx context.Context, arg ListVulnerabilitiesForNamespaceAndCveParams) ([]*ListVulnerabilitiesForNamespaceAndCveRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
 	ListWorkloadSeverityFixStats(ctx context.Context, arg ListWorkloadSeverityFixStatsParams) ([]*ListWorkloadSeverityFixStatsRow, error)
 	ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)
