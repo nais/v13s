@@ -41,7 +41,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, j *river.Job[job.F
 	if inProgress {
 		msg := fmt.Sprintf("attestation task for image %s:%s is still in progress", imageName, imageTag)
 		rec.Add("check_in_progress", "pending", msg)
-		return fmt.Errorf(msg)
+		return fmt.Errorf(msg, nil)
 	}
 
 	rec.Add("check_in_progress", "complete", "")
