@@ -65,9 +65,6 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *riverjo
 		job.KindFetchVulnerabilityDataForImages: {MaxWorkers: 10},
 		job.KindFinalizeAnalysisBatch:           {MaxWorkers: 5},
 		job.KindProcessVulnerabilityDataBatch:   {MaxWorkers: 10},
-		// job.KindFinalizeAttestation:            {MaxWorkers: 10},
-		// job.KindFinalizeAnalysis:                {MaxWorkers: 5},
-		// job.KindProcessVulnerabilityData:        {MaxWorkers: 10},
 	}
 
 	jobClient, err := riverjob.NewClient(ctx, jobCfg, queues)
@@ -83,9 +80,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *riverjo
 	riverjob.AddWorker(jobClient, &worker.UpsertVulnerabilitySummariesWorker{Querier: db, Source: source, Log: log.WithField("subsystem", job.KindUpsertVulnerabilitySummaries)})
 	riverjob.AddWorker(jobClient, &worker.FetchVulnerabilityDataForImagesWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindFetchVulnerabilityDataForImages)})
 	riverjob.AddWorker(jobClient, &worker.FinalizeAnalysisBatchWorker{Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindFinalizeAnalysisBatch)})
-	// riverjob.AddWorker(jobClient, &worker.FinalizeAnalysisWorker{Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindFinalizeAnalysis)})
 	riverjob.AddWorker(jobClient, &worker.ProcessVulnerabilityDataBatchWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", job.KindProcessVulnerabilityDataBatch)})
-	// riverjob.AddWorker(jobClient, &worker.ProcessVulnerabilityDataWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", job.KindProcessVulnerabilityData)})
 	m := &WorkloadManager{
 		db:              db,
 		pool:            pool,
