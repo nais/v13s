@@ -1987,6 +1987,64 @@ func (_c *MockQuerier_ListUnusedSourceRefs_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// ListUpdatedWorkloadsWithSummaries provides a mock function with given fields: ctx
+func (_m *MockQuerier) ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*sql.ListUpdatedWorkloadsWithSummariesRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListUpdatedWorkloadsWithSummaries")
+	}
+
+	var r0 []*sql.ListUpdatedWorkloadsWithSummariesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*sql.ListUpdatedWorkloadsWithSummariesRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*sql.ListUpdatedWorkloadsWithSummariesRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListUpdatedWorkloadsWithSummariesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListUpdatedWorkloadsWithSummaries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListUpdatedWorkloadsWithSummaries'
+type MockQuerier_ListUpdatedWorkloadsWithSummaries_Call struct {
+	*mock.Call
+}
+
+// ListUpdatedWorkloadsWithSummaries is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) ListUpdatedWorkloadsWithSummaries(ctx interface{}) *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call {
+	return &MockQuerier_ListUpdatedWorkloadsWithSummaries_Call{Call: _e.mock.On("ListUpdatedWorkloadsWithSummaries", ctx)}
+}
+
+func (_c *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call) Run(run func(ctx context.Context)) *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call) Return(_a0 []*sql.ListUpdatedWorkloadsWithSummariesRow, _a1 error) *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call) RunAndReturn(run func(context.Context) ([]*sql.ListUpdatedWorkloadsWithSummariesRow, error)) *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListVulnerabilities(ctx context.Context, arg sql.ListVulnerabilitiesParams) ([]*sql.ListVulnerabilitiesRow, error) {
 	ret := _m.Called(ctx, arg)

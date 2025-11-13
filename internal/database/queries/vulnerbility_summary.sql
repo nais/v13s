@@ -229,3 +229,30 @@ FROM latest_summary_per_day
                                                     total = EXCLUDED.total,
                                                     risk_score = EXCLUDED.risk_score,
                                                     has_summary = EXCLUDED.has_summary;
+
+-- name: ListUpdatedWorkloadsWithSummaries :many
+SELECT
+    w.cluster,
+    w.namespace,
+    w.name,
+    w.image_name,
+    w.image_tag,
+    w.state AS workload_state,
+    i.state AS image_state,
+    s.critical,
+    s.high,
+    s.medium,
+    s.low,
+    s.unassigned,
+    s.risk_score
+FROM workloads w
+         JOIN images i
+              ON i.name = w.image_name
+                  AND i.tag  = w.image_tag
+         JOIN vulnerability_summary s
+              ON s.image_name = w.image_name
+                  AND s.image_tag  = w.image_tag
+WHERE w.state = 'updated'
+  AND i.state = 'updated'
+ORDER BY w.cluster, w.namespace, w.name;
+

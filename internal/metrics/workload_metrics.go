@@ -1,34 +1,51 @@
 package metrics
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/metric"
 )
 
 const (
 	Namespace = "v13s"
 )
 
-var labels = []string{"workload_cluster", "workload_namespace", "workload_name"}
+var (
+	labels = []string{"workload_cluster", "workload_namespace", "workload_name"}
 
-var WorkloadRiskScore = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Namespace: Namespace,
-		Name:      "workload_risk_score",
-		Help:      "Aggregated risk score of a workload, based on vulnerabilities, CVSS, and inherited risk. Higher values indicate higher risk.",
-	},
-	labels,
+	WorkloadRiskScore = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "workload_risk_score",
+			Help:      "Aggregated risk score of a workload, based on vulnerabilities, CVSS, and inherited risk. Higher values indicate higher risk.",
+		},
+		labels,
+	)
+
+	WorkloadVulnerabilities = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "workload_vulnerabilities",
+			Help:      "Number of vulnerabilities detected in the workload, grouped by severity.",
+		},
+		append(labels, "severity"),
+	)
+
+	otelWorkloadRiskScore       metric.Float64ObservableGauge
+	otelWorkloadVulnerabilities metric.Int64ObservableGauge
+	workloadMetricCache         sync.Map
 )
 
-var WorkloadVulnerabilities = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Namespace: Namespace,
-		Name:      "workload_vulnerabilities",
-		Help:      "Number of vulnerabilities detected in the workload, grouped by severity.",
-	},
-	append(labels, "severity"),
-)
+type workloadMetric struct {
+	Cluster   string
+	Namespace string
+	Name      string
+	Summary   sources.VulnerabilitySummary
+}
 
 func Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
@@ -45,4 +62,12 @@ func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.Vulnera
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "MEDIUM")...).Set(float64(summary.Medium))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "LOW")...).Set(float64(summary.Low))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "UNASSIGNED")...).Set(float64(summary.Unassigned))
+
+	key := fmt.Sprintf("%s/%s/%s", w.Cluster, w.Namespace, w.Name)
+	workloadMetricCache.Store(key, workloadMetric{
+		Cluster:   w.Cluster,
+		Namespace: w.Namespace,
+		Name:      w.Name,
+		Summary:   *summary,
+	})
 }

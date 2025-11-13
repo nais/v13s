@@ -243,6 +243,83 @@ func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg Get
 	return items, nil
 }
 
+const listUpdatedWorkloadsWithSummaries = `-- name: ListUpdatedWorkloadsWithSummaries :many
+SELECT
+    w.cluster,
+    w.namespace,
+    w.name,
+    w.image_name,
+    w.image_tag,
+    w.state AS workload_state,
+    i.state AS image_state,
+    s.critical,
+    s.high,
+    s.medium,
+    s.low,
+    s.unassigned,
+    s.risk_score
+FROM workloads w
+         JOIN images i
+              ON i.name = w.image_name
+                  AND i.tag  = w.image_tag
+         JOIN vulnerability_summary s
+              ON s.image_name = w.image_name
+                  AND s.image_tag  = w.image_tag
+WHERE w.state = 'updated'
+  AND i.state = 'updated'
+ORDER BY w.cluster, w.namespace, w.name
+`
+
+type ListUpdatedWorkloadsWithSummariesRow struct {
+	Cluster       string
+	Namespace     string
+	Name          string
+	ImageName     string
+	ImageTag      string
+	WorkloadState WorkloadState
+	ImageState    ImageState
+	Critical      int32
+	High          int32
+	Medium        int32
+	Low           int32
+	Unassigned    int32
+	RiskScore     int32
+}
+
+func (q *Queries) ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*ListUpdatedWorkloadsWithSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listUpdatedWorkloadsWithSummaries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListUpdatedWorkloadsWithSummariesRow{}
+	for rows.Next() {
+		var i ListUpdatedWorkloadsWithSummariesRow
+		if err := rows.Scan(
+			&i.Cluster,
+			&i.Namespace,
+			&i.Name,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.WorkloadState,
+			&i.ImageState,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.RiskScore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVulnerabilitySummaries = `-- name: ListVulnerabilitySummaries :many
 WITH filtered_workloads AS (
     SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
