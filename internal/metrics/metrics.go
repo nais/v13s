@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,11 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -57,104 +54,55 @@ func NewMeterProvider(ctx context.Context, extraCollectors ...promClient.Collect
 	)
 	otel.SetMeterProvider(meterProvider)
 
-	if err = initOTelWorkloadMetrics(meterProvider); err != nil {
-		return nil, nil, nil, fmt.Errorf("initializing OTel workload metrics: %w", err)
-	}
-
 	var tp *sdktrace.TracerProvider
-	if _, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT"); ok {
-		client := otlptracegrpc.NewClient()
-		exp, err := otlptrace.New(ctx, client)
-		if err != nil {
-			log.Fatalf("failed to initialize trace exporter: %v", err)
-		}
+	primary := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	secondary := os.Getenv("OTEL_EXPORTER_OTLP_SECONDARY")
 
-		tp = sdktrace.NewTracerProvider(
-			sdktrace.WithBatcher(exp),
-			sdktrace.WithResource(resource.NewWithAttributes(
+	if primary != "" {
+		var opts []sdktrace.TracerProviderOption
+
+		opts = append(opts, sdktrace.WithResource(
+			resource.NewWithAttributes(
 				semconv.SchemaURL,
 				semconv.ServiceNameKey.String("v13s"),
 				semconv.ServiceNamespace("nais.io"),
-			)),
+			),
+		))
+
+		// Primary exporter
+		exp1, err := otlptrace.New(ctx,
+			otlptracegrpc.NewClient(
+				otlptracegrpc.WithEndpointURL(primary),
+				otlptracegrpc.WithInsecure(),
+			),
 		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("primary exporter: %w", err)
+		}
+		opts = append(opts, sdktrace.WithBatcher(exp1))
+
+		// Optional: Secondary exporter
+		if secondary != "" {
+			exp2, err := otlptrace.New(ctx,
+				otlptracegrpc.NewClient(
+					otlptracegrpc.WithEndpointURL(secondary),
+					otlptracegrpc.WithInsecure(),
+				),
+			)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("secondary exporter: %w", err)
+			}
+			opts = append(opts, sdktrace.WithBatcher(exp2))
+		}
+
+		// Build tracer provider with multiple processors
+		tp = sdktrace.NewTracerProvider(opts...)
 		otel.SetTracerProvider(tp)
 	}
 
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return meterProvider, tp, reg, nil
-}
-
-func initOTelWorkloadMetrics(mp *sdkmetric.MeterProvider) error {
-	meter := mp.Meter("v13s")
-
-	var err error
-
-	otelWorkloadRiskScore, err = meter.Float64ObservableGauge(
-		"v13s_workload_risk_score",
-		otelmetric.WithDescription("Aggregated risk score of a workload, based on vulnerabilities, CVSS, and inherited risk. Higher values indicate higher risk."),
-	)
-	if err != nil {
-		return fmt.Errorf("creating workload risk observable gauge: %w", err)
-	}
-
-	otelWorkloadVulnerabilities, err = meter.Int64ObservableGauge(
-		"v13s_workload_vulnerabilities",
-		otelmetric.WithDescription("Number of vulnerabilities detected in the workload, grouped by severity."),
-	)
-	if err != nil {
-		return fmt.Errorf("creating workload vulnerabilities observable gauge: %w", err)
-	}
-
-	// Register a single callback that observes both instruments.
-	_, err = meter.RegisterCallback(
-		func(ctx context.Context, o otelmetric.Observer) error {
-			// Iterate cached workload metrics and export them as OTel metrics.
-			workloadMetricCache.Range(func(_, v any) bool {
-				wm := v.(workloadMetric)
-
-				attrs := []attribute.KeyValue{
-					attribute.String("workload_cluster", wm.Cluster),
-					attribute.String("workload_namespace", wm.Namespace),
-					attribute.String("workload_name", wm.Name),
-				}
-
-				o.ObserveFloat64(
-					otelWorkloadRiskScore,
-					float64(wm.Summary.RiskScore),
-					otelmetric.WithAttributes(attrs...),
-				)
-
-				for sev, count := range map[string]int32{
-					"CRITICAL":   wm.Summary.Critical,
-					"HIGH":       wm.Summary.High,
-					"MEDIUM":     wm.Summary.Medium,
-					"LOW":        wm.Summary.Low,
-					"UNASSIGNED": wm.Summary.Unassigned,
-				} {
-					o.ObserveInt64(
-						otelWorkloadVulnerabilities,
-						int64(count),
-						otelmetric.WithAttributes(
-							append(attrs, attribute.String("severity", sev))...,
-						),
-					)
-				}
-
-				return true
-			})
-
-			return nil
-		},
-		otelWorkloadRiskScore,
-		otelWorkloadVulnerabilities,
-	)
-
-	if err != nil {
-		return fmt.Errorf("registering workload metrics callback: %w", err)
-	}
-
-	return nil
 }
 
 func newResource() (*resource.Resource, error) {

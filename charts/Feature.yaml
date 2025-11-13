@@ -145,6 +145,14 @@ values:
     config:
       type: string
 
+  opentelemetry.collector.secondary:
+    displayName: OpenTelemetry secondary collector endpoint
+    description: Secondary endpoint for the OpenTelemetry collector
+    computed:
+      template: "http://opentelemetry-collector.nais-system:4317"
+    config:
+      type: string
+
   opentelemetry.enabled:
     displayName: Enable OpenTelemetry
     config:

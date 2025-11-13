@@ -42,4 +42,5 @@ logFormat: json
 opentelemetry:
   collector:
     endpoint:
+    secondary:
   enabled: true
