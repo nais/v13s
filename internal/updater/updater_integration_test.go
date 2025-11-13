@@ -53,18 +53,17 @@ func TestUpdater(t *testing.T) {
 
 	sourceMock := sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))
 
-	mgr := postgresriver.NewWorkloadManager(
-		ctx,
-		pool,
-		jobCfg,
-		verifierMock,
-		sourceMock,
-		queue,
-		logrus.NewEntry(logrus.StandardLogger()),
-	)
+	mgr, err := postgresriver.NewWorkloadManager(ctx, postgresriver.WorkloadManagerConfig{
+		Pool:      pool,
+		JobConfig: jobCfg,
+		Verifier:  verifierMock,
+		Source:    sourceMock,
+		Queue:     queue,
+		Logger:    logrus.NewEntry(logrus.StandardLogger()),
+	})
 
 	mgr.Start(ctx)
-	defer mgr.Stop(ctx)
+	defer func() { _ = mgr.Stop(ctx) }()
 
 	for _, project := range projectNames {
 		mockDPTrack.On("GetProject", mock.Anything, project, "v1").Return(&dependencytrack.Project{
@@ -227,7 +226,7 @@ func TestUpdater(t *testing.T) {
 				return false
 			}
 			return len(vulns) == 5
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 200*time.Millisecond)
 
 		image, err := db.GetImage(ctx, sql.GetImageParams{
 			Name: imageName,

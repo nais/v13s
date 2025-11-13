@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	KindUploadAttestation            = "upload_attestation"
-	UploadAttestationByPeriodMinutes = 2 * time.Minute
+	KindUploadAttestation = "upload_attestation"
 )
 
 type UploadAttestationJob struct {
@@ -26,8 +25,8 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 		Queue: KindUploadAttestation,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: UploadAttestationByPeriodMinutes,
+			ByPeriod: 1 * time.Minute,
 		},
-		MaxAttempts: 4,
+		MaxAttempts: 8,
 	}
 }

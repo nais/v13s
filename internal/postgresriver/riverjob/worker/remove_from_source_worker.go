@@ -50,7 +50,6 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, j *river.Job[job.Remo
 	rec.Add("delete_source", "ok", "")
 
 	// Delete local source reference
-	rec.Add("delete_source_ref", "start", "")
 	err := r.Querier.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,

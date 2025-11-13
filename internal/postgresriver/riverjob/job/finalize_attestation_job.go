@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	KindFinalizeAttestation                = "finalize_attestation"
-	FinalizeAttestationScheduledWaitSecond = 10 * time.Second
+	KindFinalizeAttestation = "finalize_attestation"
 )
 
 type FinalizeAttestationJob struct {
@@ -22,7 +21,7 @@ func (FinalizeAttestationJob) Kind() string { return KindFinalizeAttestation }
 func (f FinalizeAttestationJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindFinalizeAttestation,
-		ScheduledAt: time.Now().Add(FinalizeAttestationScheduledWaitSecond),
+		ScheduledAt: time.Now().Add(10 * time.Second),
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,

@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -41,7 +42,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, j *river.Job[job.F
 	if inProgress {
 		msg := fmt.Sprintf("attestation task for image %s:%s is still in progress", imageName, imageTag)
 		rec.Add("check_in_progress", "pending", msg)
-		return fmt.Errorf(msg, nil)
+		return errors.New(msg)
 	}
 
 	rec.Add("check_in_progress", "complete", "")

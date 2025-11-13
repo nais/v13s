@@ -38,13 +38,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
 	if err != nil {
-		log.Fatalf("Failed to create database pool: %v", err)
+		return fmt.Errorf("create database pool: %w", err)
 	}
 	defer pool.Close()
 
 	source, err := sources.New(cfg.DependencyTrack, log)
 	if err != nil {
-		log.Fatalf("Failed to create source: %v", err)
+		return fmt.Errorf("create source: %w", err)
 	}
 
 	workloadEventQueue := &kubernetes.WorkloadEventQueue{
@@ -67,7 +67,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			log.Warn("No tracer provider to shut down")
 			return
 		}
-		if err = tp.Shutdown(ctx); err != nil {
+		if err := tp.Shutdown(ctx); err != nil {
 			log.WithError(err).Warn("Failed to shut down tracer provider")
 		}
 	}()
@@ -85,27 +85,37 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
 	if err != nil {
-		log.Fatalf("Failed to create verifier: %v", err)
+		return fmt.Errorf("create verifier: %w", err)
 	}
 
 	jobCfg := &riverjob.Options{
 		DbUrl: cfg.DatabaseUrl,
 	}
 
-	mgr := postgresriver.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr, err := postgresriver.NewWorkloadManager(ctx, postgresriver.WorkloadManagerConfig{
+		Pool:      pool,
+		JobConfig: jobCfg,
+		Verifier:  verifier,
+		Source:    source,
+		Queue:     workloadEventQueue,
+		Logger:    log.WithField("subsystem", "manager"),
+	})
+	if err != nil {
+		return fmt.Errorf("create workload manager: %w", err)
+	}
 	mgr.Start(ctx)
-	defer mgr.Stop(ctx)
+	defer func() { _ = mgr.Stop(ctx) }()
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
-		log.Fatalf("Failed to create informer manager: %v", err)
+		return fmt.Errorf("create informer manager: %w", err)
 	}
 	defer informerMgr.Stop()
 
 	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
 	if !informerMgr.WaitForReady(syncCtx) {
-		log.Fatalf("timed out waiting for watchers to be ready")
+		return fmt.Errorf("timed out waiting for watchers to be ready")
 	}
 
 	u := updater.NewUpdater(

@@ -1,8 +1,6 @@
 package job
 
 import (
-	"time"
-
 	"github.com/riverqueue/river"
 )
 
@@ -19,12 +17,7 @@ func (FinalizeAnalysisBatchJob) Kind() string { return KindFinalizeAnalysisBatch
 func (t FinalizeAnalysisBatchJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindFinalizeAnalysisBatch,
-		ScheduledAt: time.Now().Add(5 * time.Second),
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 2 * time.Minute,
-		},
-		MaxAttempts: 10,
+		MaxAttempts: 3,
 	}
 }
 
