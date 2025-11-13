@@ -20,7 +20,7 @@ import (
 var embedMigrations embed.FS
 
 const (
-	maxRetries    = 12
+	maxRetries    = 6
 	retryBaseWait = 5 * time.Second
 )
 
@@ -38,14 +38,20 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 	if migrate {
 		var migErr error
 		for i := 0; i < maxRetries; i++ {
-			migErr = migrateDatabaseSchema(ctx, "pgx", dsn, log)
+			migErr = migrateDatabaseSchema("pgx", dsn, log)
 			if migErr == nil {
 				break
 			}
-			log.WithError(migErr).
-				Warnf("Database migration attempt %d/%d failed, retrying in %s",
-					i+1, maxRetries, retryBaseWait*time.Duration(i+1))
-			time.Sleep(retryBaseWait * time.Duration(i+1))
+
+			wait := retryBaseWait * time.Duration(i+1)
+			if i+1 == maxRetries {
+				log.WithError(migErr).Errorf("Database migration failed after %d attempts", maxRetries)
+			} else {
+				log.Warnf("Database migration retry %d/%d; waiting %s...",
+					i+1, maxRetries, wait)
+			}
+
+			time.Sleep(wait)
 		}
 		if migErr != nil {
 			return nil, fmt.Errorf("migration failed after %d attempts: %w", maxRetries, migErr)
@@ -86,17 +92,20 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 		pool, err = pgxpool.NewWithConfig(ctx, config)
 		if err == nil {
 			if pingErr = pool.Ping(ctx); pingErr == nil {
-				log.Infof("Connected to database on attempt %d", i+1)
+				log.Infof("connected to database on attempt %d of max retry %d", i+1, maxRetries)
 				return pool, nil
 			}
 			err = pingErr
 		}
 
 		wait := retryBaseWait * time.Duration(i+1)
-		log.WithError(err).Warnf(
-			"Database connection attempt %d/%d failed, retrying in %s",
-			i+1, maxRetries, wait,
-		)
+		if i+1 == maxRetries {
+			log.WithError(err).Errorf("Database connection failed after %d attempts", maxRetries)
+		} else {
+			log.Warnf("Database connection retry %d/%d; waiting %s...",
+				i+1, maxRetries, wait)
+		}
+
 		time.Sleep(wait)
 	}
 
@@ -104,7 +113,7 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 }
 
 // migrateDatabaseSchema runs database migrations
-func migrateDatabaseSchema(ctx context.Context, driver, dsn string, log logrus.FieldLogger) error {
+func migrateDatabaseSchema(driver, dsn string, log logrus.FieldLogger) error {
 	goose.SetBaseFS(embedMigrations)
 	goose.SetLogger(log)
 
