@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	KindUpsertVulnerabilitySummaries   = "upsert_vulnerability_summaries"
-	UpdateSummariesScheduledWaitSecond = 10 * time.Second
+	KindUpsertVulnerabilitySummaries = "upsert_vulnerability_summaries"
 )
 
 type Image struct {
@@ -26,8 +25,7 @@ func (UpsertVulnerabilitySummariesJob) Kind() string {
 
 func (u UpsertVulnerabilitySummariesJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		ScheduledAt: time.Now().Add(UpdateSummariesScheduledWaitSecond),
-		Queue:       KindUpsertVulnerabilitySummaries,
+		Queue: KindUpsertVulnerabilitySummaries,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,

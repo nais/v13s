@@ -2,6 +2,8 @@ package postgresriver
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
@@ -20,7 +22,7 @@ import (
 )
 
 const (
-	maxWorkers = 40
+	maxWorkers = 60
 )
 
 type WorkloadManager struct {
@@ -38,64 +40,193 @@ type WorkloadManager struct {
 
 type WorkloadEvent string
 
-const (
-	WorkloadEventFailed           WorkloadEvent = "failed"
-	WorkloadEventUnrecoverable    WorkloadEvent = "unrecoverable_error"
-	WorkloadEventRecoverable      WorkloadEvent = "recoverable_error"
-	WorkloadEventSucceeded        WorkloadEvent = "succeeded"
-	WorkloadEventSubsystemUnknown               = "unknown"
-)
+type WorkloadManagerConfig struct {
+	Pool      *pgxpool.Pool
+	JobConfig *riverjob.Options
+	Verifier  attestation.Verifier
+	Source    sources.Source
+	Queue     *kubernetes.WorkloadEventQueue
+	Logger    logrus.FieldLogger
+	Meter     metric.Meter
+}
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *riverjob.Options, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
-	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
-	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
-	if err != nil {
-		panic(err)
+func NewWorkloadManager(ctx context.Context, cfg WorkloadManagerConfig) (*WorkloadManager, error) {
+	if cfg.Pool == nil {
+		return nil, errors.New("pool is required")
 	}
-	db := sql.New(pool)
+	if cfg.JobConfig == nil {
+		return nil, errors.New("job config is required")
+	}
+	if cfg.Verifier == nil {
+		return nil, errors.New("verifier is required")
+	}
+	if cfg.Source == nil {
+		return nil, errors.New("source is required")
+	}
+	if cfg.Queue == nil {
+		return nil, errors.New("workload event queue is required")
+	}
+	if cfg.Logger == nil {
+		cfg.Logger = logrus.New()
+	}
 
-	queues := map[string]river.QueueConfig{
-		job.KindAddWorkload:                     {MaxWorkers: 10},
-		job.KindGetAttestation:                  {MaxWorkers: 15},
+	log := cfg.Logger.WithField("component", "workload_manager")
+
+	meter := cfg.Meter
+	if meter == nil {
+		meter = otel.GetMeterProvider().Meter("nais_v13s_manager")
+	}
+
+	workloadCounter, err := meter.Int64UpDownCounter(
+		"nais_v13s_manager_resources",
+		metric.WithDescription("Number of workloads managed by the manager"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create workload counter: %w", err)
+	}
+
+	db := sql.New(cfg.Pool)
+
+	// Queue configuration for all job kinds handled by this manager.
+	queues := defaultQueueConfig()
+
+	jobClient, err := riverjob.NewClient(ctx, cfg.JobConfig, queues)
+	if err != nil {
+		return nil, fmt.Errorf("create job client: %w", err)
+	}
+
+	// Register all workers for the job client.
+	registerWorkers(jobClient, workerDeps{
+		db:              db,
+		source:          cfg.Source,
+		verifier:        cfg.Verifier,
+		workloadCounter: workloadCounter,
+		log:             log,
+	})
+
+	mgr := &WorkloadManager{
+		db:              db,
+		pool:            cfg.Pool,
+		jobClient:       jobClient,
+		verifier:        cfg.Verifier,
+		src:             cfg.Source,
+		queue:           cfg.Queue,
+		workloadCounter: workloadCounter,
+		log:             log,
+	}
+
+	mgr.addDispatcher = manager.NewDispatcher(
+		workloadWorker(mgr.AddWorkload),
+		cfg.Queue.Updated,
+		maxWorkers,
+	)
+
+	mgr.deleteDispatcher = manager.NewDispatcher(
+		workloadWorker(mgr.DeleteWorkload),
+		cfg.Queue.Deleted,
+		maxWorkers,
+	)
+
+	return mgr, nil
+}
+
+func defaultQueueConfig() map[string]river.QueueConfig {
+	return map[string]river.QueueConfig{
+		job.KindAddWorkload:                     {MaxWorkers: 20},
+		job.KindGetAttestation:                  {MaxWorkers: 25},
 		job.KindUploadAttestation:               {MaxWorkers: 10},
 		job.KindDeleteWorkload:                  {MaxWorkers: 3},
 		job.KindRemoveFromSource:                {MaxWorkers: 3},
 		job.KindFinalizeAttestation:             {MaxWorkers: 10},
-		job.KindUpsertVulnerabilitySummaries:    {MaxWorkers: 8},
-		job.KindFetchVulnerabilityDataForImages: {MaxWorkers: 10},
+		job.KindUpsertVulnerabilitySummaries:    {MaxWorkers: 3},
+		job.KindFetchVulnerabilityDataForImages: {MaxWorkers: 3},
 		job.KindFinalizeAnalysisBatch:           {MaxWorkers: 5},
-		job.KindProcessVulnerabilityDataBatch:   {MaxWorkers: 10},
+		job.KindProcessVulnerabilityDataBatch:   {MaxWorkers: 3},
 	}
+}
 
-	jobClient, err := riverjob.NewClient(ctx, jobCfg, queues)
-	if err != nil {
-		log.Fatalf("Failed to create job client: %v", err)
-	}
-	riverjob.AddWorker(jobClient, &worker.AddWorkloadWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", job.KindAddWorkload)})
-	riverjob.AddWorker(jobClient, &worker.GetAttestationWorker{Querier: db, Verifier: verifier, JobClient: jobClient, WorkloadCounter: udCounter, Log: log.WithField("subsystem", job.KindGetAttestation)})
-	riverjob.AddWorker(jobClient, &worker.UploadAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindUploadAttestation)})
-	riverjob.AddWorker(jobClient, &worker.RemoveFromSourceWorker{Querier: db, Source: source, Log: log.WithField("subsystem", job.KindRemoveFromSource)})
-	riverjob.AddWorker(jobClient, &worker.DeleteWorkloadWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindDeleteWorkload)})
-	riverjob.AddWorker(jobClient, &worker.FinalizeAttestationWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindFinalizeAttestation)})
-	riverjob.AddWorker(jobClient, &worker.UpsertVulnerabilitySummariesWorker{Querier: db, Source: source, Log: log.WithField("subsystem", job.KindUpsertVulnerabilitySummaries)})
-	riverjob.AddWorker(jobClient, &worker.FetchVulnerabilityDataForImagesWorker{Querier: db, Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindFetchVulnerabilityDataForImages)})
-	riverjob.AddWorker(jobClient, &worker.FinalizeAnalysisBatchWorker{Source: source, JobClient: jobClient, Log: log.WithField("subsystem", job.KindFinalizeAnalysisBatch)})
-	riverjob.AddWorker(jobClient, &worker.ProcessVulnerabilityDataBatchWorker{Querier: db, JobClient: jobClient, Log: log.WithField("subsystem", job.KindProcessVulnerabilityDataBatch)})
-	m := &WorkloadManager{
-		db:              db,
-		pool:            pool,
-		jobClient:       jobClient,
-		verifier:        verifier,
-		src:             source,
-		queue:           queue,
-		workloadCounter: udCounter,
-		log:             log,
-	}
-	m.addDispatcher = manager.NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
-	//m.addDispatcher.errorHook = m.handleError
-	m.deleteDispatcher = manager.NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
+type workerDeps struct {
+	db              sql.Querier
+	source          sources.Source
+	verifier        attestation.Verifier
+	workloadCounter metric.Int64UpDownCounter
+	log             logrus.FieldLogger
+}
 
-	return m
+func registerWorkers(jobClient riverjob.Client, deps workerDeps) {
+	log := deps.log
+
+	riverjob.AddWorker(jobClient, &worker.AddWorkloadWorker{
+		Querier:   deps.db,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindAddWorkload),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.GetAttestationWorker{
+		Querier:         deps.db,
+		Verifier:        deps.verifier,
+		JobClient:       jobClient,
+		WorkloadCounter: deps.workloadCounter,
+		Log:             log.WithField("subsystem", job.KindGetAttestation),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.UploadAttestationWorker{
+		Querier:   deps.db,
+		Source:    deps.source,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindUploadAttestation),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.RemoveFromSourceWorker{
+		Querier: deps.db,
+		Source:  deps.source,
+		Log:     log.WithField("subsystem", job.KindRemoveFromSource),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.DeleteWorkloadWorker{
+		Querier:   deps.db,
+		Source:    deps.source,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindDeleteWorkload),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.FinalizeAttestationWorker{
+		Querier:   deps.db,
+		Source:    deps.source,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindFinalizeAttestation),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.UpsertVulnerabilitySummariesWorker{
+		Querier: deps.db,
+		Source:  deps.source,
+		Log:     log.WithField("subsystem", job.KindUpsertVulnerabilitySummaries),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.FetchVulnerabilityDataForImagesWorker{
+		Querier:   deps.db,
+		Source:    deps.source,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindFetchVulnerabilityDataForImages),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.FinalizeAnalysisBatchWorker{
+		Source:    deps.source,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindFinalizeAnalysisBatch),
+	})
+
+	riverjob.AddWorker(jobClient, &worker.ProcessVulnerabilityDataBatchWorker{
+		Querier:   deps.db,
+		JobClient: jobClient,
+		Log:       log.WithField("subsystem", job.KindProcessVulnerabilityDataBatch),
+	})
+}
+
+func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) manager.Worker[*model.Workload] {
+	return func(ctx context.Context, workload *model.Workload) error {
+		return fn(ctx, workload)
+	}
 }
 
 func (m *WorkloadManager) Start(ctx context.Context) {
@@ -107,86 +238,23 @@ func (m *WorkloadManager) Start(ctx context.Context) {
 	m.deleteDispatcher.Start(ctx)
 }
 
-func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) manager.Worker[*model.Workload] {
-	return func(ctx context.Context, workload *model.Workload) error {
-		return fn(ctx, workload)
-	}
+func (m *WorkloadManager) Stop(ctx context.Context) error {
+	return m.jobClient.Stop(ctx)
 }
 
 func (m *WorkloadManager) AddWorkload(ctx context.Context, workload *model.Workload) error {
 	m.log.WithField("workload", workload).Debug("adding or updating workload")
-	err := m.jobClient.AddJob(ctx, &job.AddWorkloadJob{
+	return m.jobClient.AddJob(ctx, &job.AddWorkloadJob{
 		Workload: workload,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Workload) error {
-	err := m.jobClient.AddJob(ctx, &job.DeleteWorkloadJob{
+	return m.jobClient.AddJob(ctx, &job.DeleteWorkloadJob{
 		Workload: workload,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
-	return m.jobClient.AddJob(ctx, job)
-}
-
-/*func (m *WorkloadManager) handleError(ctx context.Context, workload *model.Workload, originalErr error) {
-	m.Log.WithField("workload", workload.String()).WithError(originalErr).Error("processing workload")
-	state := sql.WorkloadStateFailed
-	subsystem := WorkloadEventSubsystemUnknown
-	eventType := WorkloadEventFailed
-
-	var uErr model.UnrecoverableError
-	if errors.As(originalErr, &uErr) {
-		m.Log.WithField("workload", workload.String()).Error("unrecoverable error, marking workload as unrecoverable")
-		subsystem = uErr.Subsystem
-		state = sql.WorkloadStateUnrecoverable
-		eventType = WorkloadEventUnrecoverable
-	}
-
-	var rErr model.RecoverableError
-	if errors.As(originalErr, &rErr) {
-		m.Log.WithField("workload", workload.String()).Error("recoverable error, marking workload as failed")
-		subsystem = rErr.Subsystem
-		state = sql.WorkloadStateFailed
-		eventType = WorkloadEventRecoverable
-	}
-
-	err := m.Db.AddWorkloadEvent(ctx, sql.AddWorkloadEventParams{
-		Name:         workload.Name,
-		Cluster:      workload.Cluster,
-		Namespace:    workload.Namespace,
-		WorkloadType: string(workload.Type),
-		EventType:    string(eventType),
-		EventData:    originalErr.Error(),
-		Subsystem:    subsystem,
-	})
-	if err != nil {
-		m.Log.WithError(err).WithField("workload", workload).Error("failed to add workload event")
-	}
-
-	err = m.Db.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
-		Name:         workload.Name,
-		Cluster:      workload.Cluster,
-		Namespace:    workload.Namespace,
-		WorkloadType: string(workload.Type),
-		ImageName:    workload.ImageName,
-		ImageTag:     workload.ImageTag,
-		State:        state,
-	})
-	if err != nil {
-		m.Log.WithError(err).WithField("workload", workload).Error("failed to set workload state")
-	}
-}*/
-
-func (m *WorkloadManager) Stop(ctx context.Context) error {
-	return m.jobClient.Stop(ctx)
+func (m *WorkloadManager) AddJob(ctx context.Context, j river.JobArgs) error {
+	return m.jobClient.AddJob(ctx, j)
 }
