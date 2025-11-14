@@ -149,7 +149,16 @@ values:
     displayName: OpenTelemetry secondary collector endpoint
     description: Secondary endpoint for the OpenTelemetry collector
     computed:
-      template: "https://collector.{{ .Env.name }}.{{ .Tenant.Name }}.cloud.nais.io"
+      template: |
+        {{ $suffix := "" }}
+          {{- if eq .Tenant.Name "nav" }}
+            {{- $suffix = "-gcp" }}
+        {{- end }}
+        {{- range $cluster := .Envs }}
+        {{- if and (ne $cluster.name "management") (or (hasPrefix $cluster.name "prod") (eq $.Tenant.Name "dev-nais")) }}
+          https://collector.{{ $cluster.name }}{{ $suffix }}.{{ $.Tenant.Name }}.cloud.nais.io
+          {{- end }}
+        {{- end }}
     config:
       type: string
 
