@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -54,58 +55,70 @@ func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollecto
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
-	allCollectors := append(extraCollectors, Collectors()...)
-	for _, c := range allCollectors {
+	for _, c := range append(extraCollectors, Collectors()...) {
 		if err := reg.Register(c); err != nil {
 			return nil, nil, nil, fmt.Errorf("registering collector: %w", err)
 		}
 	}
 
-	metricExporter, err := otelprom.New(otelprom.WithRegisterer(reg))
+	promExporter, err := otelprom.New(otelprom.WithRegisterer(reg))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
 	}
 
-	meterProvider := sdkmetric.NewMeterProvider(
-		sdkmetric.WithResource(res),
-		sdkmetric.WithReader(metricExporter),
-	)
-	otel.SetMeterProvider(meterProvider)
-
 	primary := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	secondary := os.Getenv("OTEL_EXPORTER_OTLP_SECONDARY")
 
-	log.Infof("OTEL tracing: primary='%s' secondary='%s'", primary, secondary)
+	var metricOpts []sdkmetric.Option
+	metricOpts = append(metricOpts, sdkmetric.WithResource(res))
+	metricOpts = append(metricOpts, sdkmetric.WithReader(promExporter))
+
+	if secondary != "" {
+		otlpExp, err := otlpmetricgrpc.New(ctx,
+			otlpmetricgrpc.WithEndpoint(secondary),
+			otlpmetricgrpc.WithInsecure(),
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("create otlp metric exporter: %w", err)
+		}
+
+		metricOpts = append(metricOpts,
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(otlpExp)),
+		)
+	}
+
+	meterProvider := sdkmetric.NewMeterProvider(metricOpts...)
+	otel.SetMeterProvider(meterProvider)
 
 	var tp *sdktrace.TracerProvider
 	if primary != "" {
-		var opts []sdktrace.TracerProviderOption
+		var traceOpts []sdktrace.TracerProviderOption
 
-		opts = append(opts, sdktrace.WithResource(
-			resource.NewWithAttributes(
-				semconv.SchemaURL,
-				semconv.ServiceNameKey.String("v13s"),
-				semconv.ServiceNamespace("nais.io"),
+		traceOpts = append(traceOpts,
+			sdktrace.WithResource(
+				resource.NewWithAttributes(
+					semconv.SchemaURL,
+					semconv.ServiceNameKey.String("v13s"),
+					semconv.ServiceNamespace("nais.io"),
+				),
 			),
-		))
+		)
 
 		exp1, err := newLoggedExporter(ctx, primary, log.WithField("otel_exporter", "primary"))
 		if err != nil {
-			log.Errorf("FAILED initializing primary OTLP exporter: %v", err)
-			return nil, nil, nil, err
+			return nil, nil, nil, fmt.Errorf("primary exporter: %w", err)
 		}
-		opts = append(opts, sdktrace.WithBatcher(exp1))
+		traceOpts = append(traceOpts, sdktrace.WithBatcher(exp1))
 
 		if secondary != "" {
 			exp2, err := newLoggedExporter(ctx, secondary, log.WithField("otel_exporter", "secondary"))
 			if err != nil {
-				log.Errorf("FAILED initializing secondary OTLP exporter: %v", err)
-				return nil, nil, nil, err
+				return nil, nil, nil, fmt.Errorf("secondary exporter: %w", err)
 			}
-			opts = append(opts, sdktrace.WithBatcher(exp2))
+			traceOpts = append(traceOpts, sdktrace.WithBatcher(exp2))
 		}
 
-		tp = sdktrace.NewTracerProvider(opts...)
+		tp = sdktrace.NewTracerProvider(traceOpts...)
 		otel.SetTracerProvider(tp)
 	}
 
