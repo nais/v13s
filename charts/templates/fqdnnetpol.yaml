@@ -30,6 +30,7 @@ spec:
     to:
       - fqdns:
           - "apiserver.{{ . }}.{{ $root.Values.fasit.tenant.name }}.cloud.nais.io"
+          - "collector.{{ . }}.{{ $root.Values.fasit.tenant.name }}.cloud.nais.io"
 {{- end }}
 {{- if .Values.kubernetes.static }}
 {{- range split "," .Values.kubernetes.static }}
