@@ -3,9 +3,8 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
@@ -16,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -113,40 +113,6 @@ func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollecto
 	return meterProvider, tp, reg, nil
 }
 
-func newLoggedExporter(ctx context.Context, endpoint string, log logrus.FieldLogger) (sdktrace.SpanExporter, error) {
-
-	log.Infof("Initializing OTLP exporter for endpoint: %s", endpoint)
-
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		log.Errorf("OTLP endpoint parse error: %v", err)
-	} else {
-		host := u.Hostname()
-		if host != "" {
-			ips, lookupErr := net.LookupHost(host)
-			if lookupErr != nil {
-				log.Errorf("DNS lookup FAILED for '%s': %v", host, lookupErr)
-			} else {
-				log.Infof("DNS lookup OK for '%s': %v", host, ips)
-			}
-		}
-	}
-
-	exp, err := otlptrace.New(ctx,
-		otlptracegrpc.NewClient(
-			otlptracegrpc.WithEndpointURL(endpoint),
-			otlptracegrpc.WithInsecure(),
-		),
-	)
-	if err != nil {
-		log.Errorf("Failed creating OTLP exporter for '%s': %v", endpoint, err)
-		return nil, err
-	}
-
-	log.Infof("OTLP exporter connected to %s", endpoint)
-	return &loggingExporter{next: exp, log: log}, nil
-}
-
 func newResource() (*resource.Resource, error) {
 	return resource.Merge(
 		resource.Default(),
@@ -156,6 +122,39 @@ func newResource() (*resource.Resource, error) {
 			semconv.ServiceVersion("0.1.0"),
 		),
 	)
+}
+
+func newLoggedExporter(ctx context.Context, endpoint string, log logrus.FieldLogger) (sdktrace.SpanExporter, error) {
+	log.Infof("Initializing OTLP exporter for endpoint: %s", endpoint)
+
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		exp, err := otlptrace.New(ctx,
+			otlptracehttp.NewClient(
+				otlptracehttp.WithEndpointURL(endpoint),
+			),
+		)
+		if err != nil {
+			log.Errorf("failed creating OTLP HTTP exporter for '%s': %v", endpoint, err)
+			return nil, err
+		}
+
+		log.Infof("OTLP HTTP exporter connected to %s", endpoint)
+		return &loggingExporter{next: exp, log: log}, nil
+	}
+
+	exp, err := otlptrace.New(ctx,
+		otlptracegrpc.NewClient(
+			otlptracegrpc.WithEndpoint(endpoint),
+			otlptracegrpc.WithInsecure(),
+		),
+	)
+	if err != nil {
+		log.Errorf("failed creating OTLP gRPC exporter for '%s': %v", endpoint, err)
+		return nil, err
+	}
+
+	log.Infof("OTLP gRPC exporter connected to %s", endpoint)
+	return &loggingExporter{next: exp, log: log}, nil
 }
 
 func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {

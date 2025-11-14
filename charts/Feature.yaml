@@ -140,8 +140,7 @@ values:
     displayName: OpenTelemetry collector endpoint
     description: Endpoint for the OpenTelemetry collector
     computed:
-      template: |
-        {{ .Env.otel_otlp_endpoint | quote }}
+      template: "opentelemetry-management-collector.nais-system:4317"
     config:
       type: string
 
