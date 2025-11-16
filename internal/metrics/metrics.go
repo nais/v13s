@@ -26,23 +26,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-type loggingExporter struct {
-	next sdktrace.SpanExporter
-	log  logrus.FieldLogger
-}
-
-func (l *loggingExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
-	err := l.next.ExportSpans(ctx, spans)
-	if err != nil {
-		l.log.Errorf("OTLP EXPORT FAILED (%d spans): %v", len(spans), err)
-	}
-	return err
-}
-
-func (l *loggingExporter) Shutdown(ctx context.Context) error {
-	return l.next.Shutdown(ctx)
-}
-
 func NewMeterProvider(ctx context.Context, extra ...prom.Collector) (*sdkmetric.MeterProvider, *sdktrace.TracerProvider, prom.Gatherer, error) {
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
@@ -171,6 +154,8 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 			ImageTag:  w.ImageTag,
 		}, &summary)
 	}
+
+	workloadMetricCache.Reset()
 
 	log.Infof("init %d workload metrics from database", len(rows))
 	return nil
