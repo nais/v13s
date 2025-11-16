@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -43,7 +44,6 @@ func (l *loggingExporter) Shutdown(ctx context.Context) error {
 }
 
 func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollectors ...promClient.Collector) (*sdkmetric.MeterProvider, *sdktrace.TracerProvider, promClient.Gatherer, error) {
-
 	res, err := newResource()
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating resource: %w", err)
@@ -74,17 +74,24 @@ func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollecto
 	metricOpts = append(metricOpts, sdkmetric.WithReader(promExporter))
 
 	if secondary != "" {
-		otlpExp, err := otlpmetricgrpc.New(ctx,
-			otlpmetricgrpc.WithEndpoint(secondary),
-			otlpmetricgrpc.WithInsecure(),
-		)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("create otlp metric exporter: %w", err)
+		var metricExp sdkmetric.Exporter
+		if strings.HasPrefix(secondary, "http://") || strings.HasPrefix(secondary, "https://") {
+			metricExp, err = otlpmetrichttp.New(ctx,
+				otlpmetrichttp.WithEndpointURL(secondary),
+			)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("create otlp http metric exporter: %w", err)
+			}
+		} else {
+			metricExp, err = otlpmetricgrpc.New(ctx,
+				otlpmetricgrpc.WithEndpoint(secondary),
+				otlpmetricgrpc.WithInsecure(),
+			)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("create otlp grpc metric exporter: %w", err)
+			}
 		}
-
-		metricOpts = append(metricOpts,
-			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(otlpExp)),
-		)
+		metricOpts = append(metricOpts, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExp)))
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(metricOpts...)

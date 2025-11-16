@@ -30,11 +30,6 @@ spec:
     to:
       - fqdns:
           - "apiserver.{{ . }}.{{ $root.Values.fasit.tenant.name }}.cloud.nais.io"
-  - ports:
-      - port: 4318
-        protocol: TCP
-    to:
-      - fqdns:
           - "collector.{{ . }}.{{ $root.Values.fasit.tenant.name }}.cloud.nais.io"
 {{- end }}
 {{- if .Values.kubernetes.static }}
