@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
-	promClient "github.com/prometheus/client_golang/prometheus"
+	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
@@ -43,27 +43,27 @@ func (l *loggingExporter) Shutdown(ctx context.Context) error {
 	return l.next.Shutdown(ctx)
 }
 
-func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollectors ...promClient.Collector) (*sdkmetric.MeterProvider, *sdktrace.TracerProvider, promClient.Gatherer, error) {
-	res, err := newResource()
+func NewMeterProvider(ctx context.Context, extra ...prom.Collector) (*sdkmetric.MeterProvider, *sdktrace.TracerProvider, prom.Gatherer, error) {
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceName("v13s"),
+			semconv.ServiceVersion("0.1.0"),
+		),
+	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating resource: %w", err)
+		return nil, nil, nil, err
 	}
 
-	reg := promClient.NewRegistry()
-	reg.MustRegister(
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-	)
-
-	for _, c := range append(extraCollectors, Collectors()...) {
-		if err := reg.Register(c); err != nil {
-			return nil, nil, nil, fmt.Errorf("registering collector: %w", err)
-		}
+	reg := prom.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector())
+	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	for _, c := range extra {
+		reg.MustRegister(c)
 	}
 
 	promExporter, err := otelprom.New(otelprom.WithRegisterer(reg))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
+		return nil, nil, nil, err
 	}
 
 	primary := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -74,53 +74,50 @@ func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollecto
 	metricOpts = append(metricOpts, sdkmetric.WithReader(promExporter))
 
 	if secondary != "" {
-		var metricExp sdkmetric.Exporter
-		if strings.HasPrefix(secondary, "http://") || strings.HasPrefix(secondary, "https://") {
-			metricExp, err = otlpmetrichttp.New(ctx,
-				otlpmetrichttp.WithEndpointURL(secondary),
-			)
+		if strings.HasPrefix(secondary, "https://") {
+			exp, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(secondary))
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("create otlp http metric exporter: %w", err)
+				return nil, nil, nil, fmt.Errorf("OTLP http metric exporter: %w", err)
 			}
+			metricOpts = append(metricOpts, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp)))
 		} else {
-			metricExp, err = otlpmetricgrpc.New(ctx,
+			exp, err := otlpmetricgrpc.New(ctx,
 				otlpmetricgrpc.WithEndpoint(secondary),
 				otlpmetricgrpc.WithInsecure(),
 			)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("create otlp grpc metric exporter: %w", err)
+				return nil, nil, nil, fmt.Errorf("OTLP grpc metric exporter: %w", err)
 			}
+			metricOpts = append(metricOpts, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp)))
 		}
-		metricOpts = append(metricOpts, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExp)))
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(metricOpts...)
 	otel.SetMeterProvider(meterProvider)
 
+	if err := InitOTelMetrics(meterProvider.Meter("v13s")); err != nil {
+		return nil, nil, nil, err
+	}
+
 	var tp *sdktrace.TracerProvider
 	if primary != "" {
+
 		var traceOpts []sdktrace.TracerProviderOption
 
 		traceOpts = append(traceOpts,
-			sdktrace.WithResource(
-				resource.NewWithAttributes(
-					semconv.SchemaURL,
-					semconv.ServiceNameKey.String("v13s"),
-					semconv.ServiceNamespace("nais.io"),
-				),
-			),
+			sdktrace.WithResource(res),
 		)
 
-		exp1, err := newLoggedExporter(ctx, primary, log.WithField("otel_exporter", "primary"))
+		exp1, err := newTraceExporter(ctx, primary)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("primary exporter: %w", err)
+			return nil, nil, nil, err
 		}
 		traceOpts = append(traceOpts, sdktrace.WithBatcher(exp1))
 
 		if secondary != "" {
-			exp2, err := newLoggedExporter(ctx, secondary, log.WithField("otel_exporter", "secondary"))
+			exp2, err := newTraceExporter(ctx, secondary)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("secondary exporter: %w", err)
+				return nil, nil, nil, err
 			}
 			traceOpts = append(traceOpts, sdktrace.WithBatcher(exp2))
 		}
@@ -133,48 +130,20 @@ func NewMeterProvider(ctx context.Context, log logrus.FieldLogger, extraCollecto
 	return meterProvider, tp, reg, nil
 }
 
-func newResource() (*resource.Resource, error) {
-	return resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName("v13s"),
-			semconv.ServiceVersion("0.1.0"),
-		),
-	)
-}
-
-func newLoggedExporter(ctx context.Context, endpoint string, log logrus.FieldLogger) (sdktrace.SpanExporter, error) {
-	log.Infof("Initializing OTLP exporter for endpoint: %s", endpoint)
-
-	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
-		exp, err := otlptrace.New(ctx,
+func newTraceExporter(ctx context.Context, endpoint string) (sdktrace.SpanExporter, error) {
+	if strings.HasPrefix(endpoint, "https://") {
+		return otlptrace.New(ctx,
 			otlptracehttp.NewClient(
 				otlptracehttp.WithEndpointURL(endpoint),
 			),
 		)
-		if err != nil {
-			log.Errorf("failed creating OTLP HTTP exporter for '%s': %v", endpoint, err)
-			return nil, err
-		}
-
-		log.Infof("OTLP HTTP exporter connected to %s", endpoint)
-		return &loggingExporter{next: exp, log: log}, nil
 	}
-
-	exp, err := otlptrace.New(ctx,
+	return otlptrace.New(ctx,
 		otlptracegrpc.NewClient(
 			otlptracegrpc.WithEndpoint(endpoint),
 			otlptracegrpc.WithInsecure(),
 		),
 	)
-	if err != nil {
-		log.Errorf("failed creating OTLP gRPC exporter for '%s': %v", endpoint, err)
-		return nil, err
-	}
-
-	log.Infof("OTLP gRPC exporter connected to %s", endpoint)
-	return &loggingExporter{next: exp, log: log}, nil
 }
 
 func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
