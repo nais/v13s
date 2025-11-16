@@ -155,7 +155,7 @@ values:
         {{- end }}
         {{- range $cluster := .Envs }}
         {{- if and (ne $cluster.name "management") (or (hasPrefix $cluster.name "prod") (eq $.Tenant.Name "dev-nais")) }}
-          https://collector.{{ $cluster.name }}{{ $suffix }}.{{ $.Tenant.Name }}.cloud.nais.io
+          collector.{{ $cluster.name }}{{ $suffix }}.{{ $.Tenant.Name }}.cloud.nais.io:4317
           {{- end }}
         {{- end }}
     config:
