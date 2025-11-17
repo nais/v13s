@@ -130,7 +130,7 @@ func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpoo
 			ImageTag:  w.ImageTag,
 		}, &summary)
 
-		key := w.Cluster + "/" + w.Namespace
+		key := w.Cluster + "/" + w.Namespace + "/" + w.Name
 		if _, ok := namespaces[key]; !ok {
 			namespaces[key] = &Agg{
 				Sev: map[string]int{
