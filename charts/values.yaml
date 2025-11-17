@@ -39,8 +39,10 @@ resources:
     memory: 1Gi
 logLevel: info
 logFormat: json
+prometheus:
+  pushgateway:
+    endpoint: ""
 opentelemetry:
   collector:
     endpoint:
-    secondary:
   enabled: true

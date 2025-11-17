@@ -144,18 +144,14 @@ values:
     config:
       type: string
 
-  opentelemetry.collector.secondary:
-    displayName: OpenTelemetry secondary collector endpoint
-    description: Secondary endpoint for the OpenTelemetry collector
+  prometheus.pushgateway.endpoint:
+    displayName: Prometheus pushgateway endpoint
+    description: Endpoint for Prometheus pushgateway
     computed:
       template: |
-        {{ $suffix := "" }}
-          {{- if eq .Tenant.Name "nav" }}
-            {{- $suffix = "-gcp" }}
-        {{- end }}
         {{- range $cluster := .Envs }}
         {{- if and (ne $cluster.name "management") (or (hasPrefix $cluster.name "prod") (eq $.Tenant.Name "dev-nais")) }}
-          https://collector.{{ $cluster.name }}{{ $suffix }}.{{ $.Tenant.Name }}.cloud.nais.io
+          https://prometheus-pushgateway.{{ $cluster.name }}.{{ $.Tenant.Name }}.cloud.nais.io
           {{- end }}
         {{- end }}
     config:

@@ -28,6 +28,7 @@ type Config struct {
 	K8s                       K8sConfig
 	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
+	Metrics                   MetricConfig
 }
 
 type DependencyTrackConfig struct {
@@ -47,6 +48,11 @@ type LeaderElectionConfig struct {
 	LocalKubernetes bool   `envconfig:"LEADER_ELECTION_LOCAL_KUBERNETES" default:"false"`
 	LeaseName       string `envconfig:"LEADER_ELECTION_LEASE_NAME" default:"v13s-lease"`
 	LeaseNamespace  string `envconfig:"LEADER_ELECTION_LEASE_NAMESPACE" default:"nais-system"`
+}
+
+type MetricConfig struct {
+	OtelExporterOtlpEndpoint             string `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	PrometheusMetricsPushgatewayEndpoint string `envconfig:"PROMETHEUS_METRICS_PUSHGATEWAY_ENDPOINT"`
 }
 
 func (k *K8sConfig) AllClusterNames() []string {

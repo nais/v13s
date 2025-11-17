@@ -58,7 +58,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return float64(len(workloadEventQueue.Updated))
 	})
 
-	_, tp, promReg, err := metrics.NewMeterProvider(ctx, gFunc)
+	_, tp, promReg, err := metrics.NewMeterProvider(ctx, cfg.Metrics, gFunc)
 	if err != nil {
 		return fmt.Errorf("create metric meter: %w", err)
 	}

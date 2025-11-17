@@ -41,6 +41,19 @@ services:
     profiles:
       - tracing
 
+  pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "9091:9091"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./local/prometheus.yml:/etc/prometheus/prometheus.yml
+
 volumes:
   pgdata:
   trivy-cache:
