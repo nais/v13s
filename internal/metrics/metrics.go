@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -98,13 +99,19 @@ func newResource() (*resource.Resource, error) {
 		))
 }
 
-func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
+func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
 	db := sql.New(pool)
 	rows, err := db.ListUpdatedWorkloadsWithSummaries(ctx)
 	if err != nil {
 		return fmt.Errorf("load workload metrics from DB: %w", err)
 	}
 
+	type Agg struct {
+		Risk float64
+		Sev  map[string]int
+	}
+
+	namespaces := make(map[string]*Agg)
 	for _, w := range rows {
 		summary := sources.VulnerabilitySummary{
 			Critical:   w.Critical,
@@ -122,16 +129,66 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 			ImageName: w.ImageName,
 			ImageTag:  w.ImageTag,
 		}, &summary)
+
+		key := w.Cluster + "/" + w.Namespace
+		if _, ok := namespaces[key]; !ok {
+			namespaces[key] = &Agg{
+				Sev: map[string]int{
+					"CRITICAL":   0,
+					"HIGH":       0,
+					"MEDIUM":     0,
+					"LOW":        0,
+					"UNASSIGNED": 0,
+				},
+			}
+		}
+
+		agg := namespaces[key]
+		agg.Risk += float64(w.RiskScore)
+
+		if w.Critical > 0 {
+			agg.Sev["CRITICAL"]++
+		}
+		if w.High > 0 {
+			agg.Sev["HIGH"]++
+		}
+		if w.Medium > 0 {
+			agg.Sev["MEDIUM"]++
+		}
+		if w.Low > 0 {
+			agg.Sev["LOW"]++
+		}
+		if w.Unassigned > 0 {
+			agg.Sev["UNASSIGNED"]++
+		}
 	}
 
-	log.Infof("init %d workload metrics from database", len(rows))
+	for key, a := range namespaces {
+		parts := strings.Split(key, "/")
+		cluster, ns := parts[0], parts[1]
+
+		NamespaceRiskScore.WithLabelValues(cluster, ns).Set(a.Risk)
+
+		for sev, count := range a.Sev {
+			NamespaceVulnerabilities.
+				WithLabelValues(cluster, ns, sev).
+				Set(float64(count))
+		}
+	}
+
+	log.Infof(
+		"initialized %d workload metrics and %d namespace aggregates",
+		len(rows),
+		len(namespaces),
+	)
+
 	return nil
 }
 
 func pushToGateway(cfg config.MetricConfig) error {
 	return push.New(cfg.PrometheusMetricsPushgatewayEndpoint, "v13s").
-		Collector(WorkloadRiskScore).
-		Collector(WorkloadVulnerabilities).
+		Collector(NamespaceVulnerabilities).
+		Collector(NamespaceRiskScore).
 		Grouping("service", "v13s").
 		Push()
 }

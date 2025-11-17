@@ -72,8 +72,8 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}()
 
-	if err = metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics")); err != nil {
-		log.WithError(err).Error("failed to load workload metrics from DB")
+	if err = metrics.LoadWorkloadMetricsAndNamespaceAggregates(ctx, pool, log.WithField("subsystem", "metrics")); err != nil {
+		log.WithError(err).Error("failed to load metrics from DB")
 	}
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)

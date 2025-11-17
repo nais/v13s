@@ -12,28 +12,50 @@ const (
 
 var labels = []string{"workload_cluster", "workload_namespace", "workload_name"}
 
-var WorkloadRiskScore = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Namespace: Namespace,
-		Name:      "workload_risk_score",
-		Help:      "Aggregated risk score of a workload, based on vulnerabilities, CVSS, and inherited risk. Higher values indicate higher risk.",
-	},
-	labels,
-)
+var (
+	WorkloadRiskScore = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "workload_risk_score",
+			Help:      "Aggregated risk score of a workload, based on vulnerabilities, CVSS, and inherited risk. Higher values indicate higher risk.",
+		},
+		labels,
+	)
 
-var WorkloadVulnerabilities = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Namespace: Namespace,
-		Name:      "workload_vulnerabilities",
-		Help:      "Number of vulnerabilities detected in the workload, grouped by severity.",
-	},
-	append(labels, "severity"),
+	WorkloadVulnerabilities = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "workload_vulnerabilities",
+			Help:      "Number of vulnerabilities detected in the workload, grouped by severity.",
+		},
+		append(labels, "severity"),
+	)
+
+	NamespaceVulnerabilities = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "namespace_vulnerabilities",
+			Help:      "Aggregated vulnerability counts per namespace.",
+		},
+		[]string{"workload_cluster", "workload_namespace", "severity"},
+	)
+
+	NamespaceRiskScore = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "namespace_risk_score",
+			Help:      "Sum of risk scores per namespace.",
+		},
+		[]string{"workload_cluster", "workload_namespace"},
+	)
 )
 
 func Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
+		NamespaceVulnerabilities,
+		NamespaceRiskScore,
 	}
 }
 
