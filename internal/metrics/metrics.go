@@ -101,69 +101,81 @@ func newResource() (*resource.Resource, error) {
 
 func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
 	db := sql.New(pool)
-	rows, err := db.ListUpdatedWorkloadsWithSummaries(ctx)
-	if err != nil {
-		return fmt.Errorf("load workload metrics from DB: %w", err)
-	}
+	wTypes := []string{"app", "job"}
 
-	type Agg struct {
+	const pageSize = 300
+	offset := int32(0)
+
+	type NamespaceAggregate struct {
 		Risk float64
 		Sev  map[string]int
 	}
 
-	namespaces := make(map[string]*Agg)
-	for _, w := range rows {
-		summary := sources.VulnerabilitySummary{
-			Critical:   w.Critical,
-			High:       w.High,
-			Medium:     w.Medium,
-			Low:        w.Low,
-			Unassigned: w.Unassigned,
-			RiskScore:  w.RiskScore,
+	namespaceAgg := make(map[string]*NamespaceAggregate)
+	totalRows := 0
+
+	for {
+		summaries, err := db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
+			WorkloadTypes: wTypes,
+			Limit:         pageSize,
+			Offset:        offset,
+		})
+		if err != nil {
+			return fmt.Errorf("loading vulnerability summaries: %w", err)
 		}
 
-		SetWorkloadMetrics(&sql.ListWorkloadsByImageRow{
-			Cluster:   w.Cluster,
-			Namespace: w.Namespace,
-			Name:      w.Name,
-			ImageName: w.ImageName,
-			ImageTag:  w.ImageTag,
-		}, &summary)
+		// Break the loop if no more summaries are returned
+		if len(summaries) == 0 {
+			break
+		}
 
-		key := w.Cluster + "/" + w.Namespace + "/" + w.Name
-		if _, ok := namespaces[key]; !ok {
-			namespaces[key] = &Agg{
-				Sev: map[string]int{
-					"CRITICAL":   0,
-					"HIGH":       0,
-					"MEDIUM":     0,
-					"LOW":        0,
-					"UNASSIGNED": 0,
-				},
+		totalRows += len(summaries)
+		for _, row := range summaries {
+
+			summary := sources.VulnerabilitySummary{
+				Critical:   safeInt(row.Critical),
+				High:       safeInt(row.High),
+				Medium:     safeInt(row.Medium),
+				Low:        safeInt(row.Low),
+				Unassigned: safeInt(row.Unassigned),
+				RiskScore:  safeInt(row.RiskScore),
 			}
+
+			SetWorkloadMetrics(&sql.ListWorkloadsByImageRow{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				ImageName: row.CurrentImageName,
+				ImageTag:  row.CurrentImageTag,
+			}, &summary)
+
+			key := row.Cluster + "/" + row.Namespace
+			if _, ok := namespaceAgg[key]; !ok {
+				namespaceAgg[key] = &NamespaceAggregate{
+					Risk: 0,
+					Sev: map[string]int{
+						"CRITICAL":   0,
+						"HIGH":       0,
+						"MEDIUM":     0,
+						"LOW":        0,
+						"UNASSIGNED": 0,
+					},
+				}
+			}
+
+			agg := namespaceAgg[key]
+			agg.Risk += float64(summary.RiskScore)
+			agg.Sev["CRITICAL"] += int(summary.Critical)
+			agg.Sev["HIGH"] += int(summary.High)
+			agg.Sev["MEDIUM"] += int(summary.Medium)
+			agg.Sev["LOW"] += int(summary.Low)
+			agg.Sev["UNASSIGNED"] += int(summary.Unassigned)
 		}
 
-		agg := namespaces[key]
-		agg.Risk += float64(w.RiskScore)
-
-		if w.Critical > 0 {
-			agg.Sev["CRITICAL"]++
-		}
-		if w.High > 0 {
-			agg.Sev["HIGH"]++
-		}
-		if w.Medium > 0 {
-			agg.Sev["MEDIUM"]++
-		}
-		if w.Low > 0 {
-			agg.Sev["LOW"]++
-		}
-		if w.Unassigned > 0 {
-			agg.Sev["UNASSIGNED"]++
-		}
+		offset += pageSize
 	}
 
-	for key, a := range namespaces {
+	for key, a := range namespaceAgg {
 		parts := strings.Split(key, "/")
 		cluster, ns := parts[0], parts[1]
 
@@ -171,18 +183,19 @@ func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpoo
 
 		for sev, count := range a.Sev {
 			NamespaceVulnerabilities.
-				WithLabelValues(cluster, ns, sev).
-				Set(float64(count))
+				WithLabelValues(cluster, ns, sev).Set(float64(count))
 		}
 	}
 
-	log.Infof(
-		"initialized %d workload metrics and %d namespace aggregates",
-		len(rows),
-		len(namespaces),
-	)
-
+	log.Infof("loaded %d workload metrics; %d namespaces aggregated", totalRows, len(namespaceAgg))
 	return nil
+}
+
+func safeInt(val *int32) int32 {
+	if val == nil {
+		return 0
+	}
+	return *val
 }
 
 func pushToGateway(cfg config.MetricConfig) error {
