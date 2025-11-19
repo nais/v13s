@@ -15,9 +15,9 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251021160551-f666ec9f4848
-	github.com/nais/liberator v0.0.0-20251021073339-e0b725df035f
-	github.com/nais/v13s/pkg/api v0.0.0-20251021085810-a45ab9750276
+	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251111105230-b5fda4fa6e65
+	github.com/nais/liberator v0.0.0-20251105145237-b406841758d4
+	github.com/nais/v13s/pkg/api v0.0.0-20251106114751-74e208fda01c
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/riverqueue/river v0.26.0
@@ -373,4 +373,4 @@ require (
 
 replace github.com/nais/v13s/pkg/api => ./pkg/api
 
-//replace github.com/nais/dependencytrack/pkg/dependencytrack => ../dependencytrack/pkg/dependencytrack
+// replace github.com/nais/dependencytrack/pkg/dependencytrack => ../dependencytrack/pkg/dependencytrack
