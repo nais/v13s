@@ -276,7 +276,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
 
 			// Print vulnerabilities table for this workload
-			tbl := table.New("Package", "CVE", "Severity", "CVE Last Updated", "Last Severity", "Severity Sins", "Latest Version", "Suppressed", "Time Since Update")
+			tbl := table.New("Package", "CVE", "Severity", "CVSS Score", "CVE Age", "Last Severity", "Severity Since", "Latest Version", "Suppressed", "Vuln Age")
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 			for _, n := range findings {
@@ -290,6 +290,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetPackage(),
 					v.GetCve().GetId(),
 					v.GetCve().GetSeverity(),
+					v.GetCvssScore(),
 					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
 					v.GetLastSeverity(),
 					timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),

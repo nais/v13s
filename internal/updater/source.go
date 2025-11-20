@@ -133,6 +133,7 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 			Source:        i.Source,
 			LatestVersion: v.LatestVersion,
 			LastSeverity:  severity,
+			CvssScore:     v.CvssScore,
 		}
 
 		if severitySince != nil {

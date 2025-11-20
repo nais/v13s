@@ -109,6 +109,7 @@ message Vulnerability {
   optional google.protobuf.Timestamp last_updated = 8;
   optional google.protobuf.Timestamp severity_since = 9;
   string image_name = 10;
+  optional double cvss_score = 11;
 }
 
 message Finding {

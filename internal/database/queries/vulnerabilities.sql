@@ -36,7 +36,8 @@ INSERT INTO vulnerabilities (
     source,
     latest_version,
     last_severity,
-    severity_since
+    severity_since,
+    cvss_score
 )
 VALUES (
            @image_name,
@@ -46,13 +47,14 @@ VALUES (
            @source,
            @latest_version,
            @last_severity,
-           COALESCE(@severity_since::timestamptz, NOW()))
-ON CONFLICT (image_name, image_tag, package, cve_id) DO
+           COALESCE(@severity_since::timestamptz, NOW()),
+           @cvss_score) ON CONFLICT (image_name, image_tag, package, cve_id) DO
 UPDATE
     SET
         latest_version = EXCLUDED.latest_version,
     updated_at = NOW(),
     last_severity = EXCLUDED.last_severity,
+    cvss_score = EXCLUDED.cvss_score,
     severity_since = CASE
     WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
     THEN COALESCE (EXCLUDED.severity_since, NOW())
@@ -276,7 +278,8 @@ WITH image_vulnerabilities AS (
           sv.reason,
           sv.reason_text,
           sv.suppressed_by,
-          sv.updated_at as suppressed_at
+          sv.updated_at as suppressed_at,
+          v.cvss_score
     FROM vulnerabilities v
             JOIN cve c ON v.cve_id = c.cve_id
             JOIN images i ON v.image_name = i.name AND v.image_tag = i.tag
@@ -311,7 +314,8 @@ SELECT id,
        reason_text,
        suppressed_by,
        suppressed_at,
-       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count
+       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count,
+        cvss_score
 FROM image_vulnerabilities
 ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
          CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN severity END DESC,
@@ -358,7 +362,8 @@ SELECT v.id,
        sv.reason,
        sv.reason_text,
        sv.suppressed_by,
-       sv.updated_at as suppressed_at
+       sv.updated_at as suppressed_at,
+       v.cvss_score
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
@@ -449,7 +454,8 @@ SELECT
     sv.reason,
     sv.reason_text,
     sv.suppressed_by,
-    sv.updated_at AS suppressed_at
+    sv.updated_at AS suppressed_at,
+    v.cvss_score
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag

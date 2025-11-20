@@ -745,6 +745,7 @@ type Vulnerability struct {
 	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
 	SeveritySince *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=severity_since,json=severitySince,proto3,oneof" json:"severity_since,omitempty"`
 	ImageName     string                 `protobuf:"bytes,10,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
+	CvssScore     *float64               `protobuf:"fixed64,11,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -847,6 +848,13 @@ func (x *Vulnerability) GetImageName() string {
 		return x.ImageName
 	}
 	return ""
+}
+
+func (x *Vulnerability) GetCvssScore() float64 {
+	if x != nil && x.CvssScore != nil {
+		return *x.CvssScore
+	}
+	return 0
 }
 
 type Finding struct {
@@ -3283,7 +3291,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x11suppressed_reason\x18\x02 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x10suppressedReason\x12#\n" +
 	"\rsuppressed_by\x18\x03 \x01(\tR\fsuppressedBy\x12-\n" +
 	"\x12suppressed_details\x18\x04 \x01(\tR\x11suppressedDetails\x12=\n" +
-	"\flast_updated\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\"\xb3\x04\n" +
+	"\flast_updated\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\"\xe6\x04\n" +
 	"\rVulnerability\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\apackage\x18\x02 \x01(\tR\apackage\x12(\n" +
@@ -3296,13 +3304,16 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x0eseverity_since\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x04R\rseveritySince\x88\x01\x01\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\n" +
-	" \x01(\tR\timageNameB\x10\n" +
+	" \x01(\tR\timageName\x12\"\n" +
+	"\n" +
+	"cvss_score\x18\v \x01(\x01H\x05R\tcvssScore\x88\x01\x01B\x10\n" +
 	"\x0e_last_severityB\x0e\n" +
 	"\f_suppressionB\n" +
 	"\n" +
 	"\b_createdB\x0f\n" +
 	"\r_last_updatedB\x11\n" +
-	"\x0f_severity_since\"\xe6\x01\n" +
+	"\x0f_severity_sinceB\r\n" +
+	"\v_cvss_score\"\xe6\x01\n" +
 	"\aFinding\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12F\n" +
 	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\x12B\n" +

@@ -121,6 +121,7 @@ type Vulnerability struct {
 	Cve           *Cve
 	LatestVersion string
 	Metadata      VulnerabilityMetadata
+	CvssScore     *float64
 }
 
 type VulnerabilityMetadata interface {

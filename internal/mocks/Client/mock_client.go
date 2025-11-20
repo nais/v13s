@@ -551,6 +551,63 @@ func (_c *MockClient_TriggerAnalysis_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// TriggerAnalysisToken provides a mock function with given fields: ctx, uuid
+func (_m *MockClient) TriggerAnalysisToken(ctx context.Context, uuid string) (string, error) {
+	ret := _m.Called(ctx, uuid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TriggerAnalysisToken")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, uuid)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, uuid)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, uuid)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClient_TriggerAnalysisToken_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TriggerAnalysisToken'
+type MockClient_TriggerAnalysisToken_Call struct {
+	*mock.Call
+}
+
+// TriggerAnalysisToken is a helper method to define mock.On call
+//   - ctx context.Context
+//   - uuid string
+func (_e *MockClient_Expecter) TriggerAnalysisToken(ctx interface{}, uuid interface{}) *MockClient_TriggerAnalysisToken_Call {
+	return &MockClient_TriggerAnalysisToken_Call{Call: _e.mock.On("TriggerAnalysisToken", ctx, uuid)}
+}
+
+func (_c *MockClient_TriggerAnalysisToken_Call) Run(run func(ctx context.Context, uuid string)) *MockClient_TriggerAnalysisToken_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClient_TriggerAnalysisToken_Call) Return(_a0 string, _a1 error) *MockClient_TriggerAnalysisToken_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClient_TriggerAnalysisToken_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockClient_TriggerAnalysisToken_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateFinding provides a mock function with given fields: ctx, request
 func (_m *MockClient) UpdateFinding(ctx context.Context, request dependencytrack.AnalysisRequest) error {
 	ret := _m.Called(ctx, request)

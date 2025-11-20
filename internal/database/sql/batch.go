@@ -162,7 +162,8 @@ INSERT INTO vulnerabilities (
     source,
     latest_version,
     last_severity,
-    severity_since
+    severity_since,
+    cvss_score
 )
 VALUES (
            $1,
@@ -172,13 +173,14 @@ VALUES (
            $5,
            $6,
            $7,
-           COALESCE($8::timestamptz, NOW()))
-ON CONFLICT (image_name, image_tag, package, cve_id) DO
+           COALESCE($8::timestamptz, NOW()),
+           $9) ON CONFLICT (image_name, image_tag, package, cve_id) DO
 UPDATE
     SET
         latest_version = EXCLUDED.latest_version,
     updated_at = NOW(),
     last_severity = EXCLUDED.last_severity,
+    cvss_score = EXCLUDED.cvss_score,
     severity_since = CASE
     WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
     THEN COALESCE (EXCLUDED.severity_since, NOW())
@@ -201,6 +203,7 @@ type BatchUpsertVulnerabilitiesParams struct {
 	LatestVersion string
 	LastSeverity  int32
 	SeveritySince pgtype.Timestamptz
+	CvssScore     *float64
 }
 
 func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults {
@@ -215,6 +218,7 @@ func (q *Queries) BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUps
 			a.LatestVersion,
 			a.LastSeverity,
 			a.SeveritySince,
+			a.CvssScore,
 		}
 		batch.Queue(batchUpsertVulnerabilities, vals...)
 	}

@@ -403,7 +403,8 @@ SELECT
     sv.reason,
     sv.reason_text,
     sv.suppressed_by,
-    sv.updated_at AS suppressed_at
+    sv.updated_at AS suppressed_at,
+    v.cvss_score
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
@@ -473,6 +474,7 @@ type ListSeverityVulnerabilitiesSinceRow struct {
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	CvssScore     *float64
 }
 
 func (q *Queries) ListSeverityVulnerabilitiesSince(ctx context.Context, arg ListSeverityVulnerabilitiesSinceParams) ([]*ListSeverityVulnerabilitiesSinceRow, error) {
@@ -522,6 +524,7 @@ func (q *Queries) ListSeverityVulnerabilitiesSince(ctx context.Context, arg List
 			&i.ReasonText,
 			&i.SuppressedBy,
 			&i.SuppressedAt,
+			&i.CvssScore,
 		); err != nil {
 			return nil, err
 		}
@@ -534,7 +537,7 @@ func (q *Queries) ListSeverityVulnerabilitiesSince(ctx context.Context, arg List
 }
 
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
-SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
+SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
@@ -592,6 +595,7 @@ type ListSuppressedVulnerabilitiesRow struct {
 	UpdatedAt_2   pgtype.Timestamptz
 	LastSeverity  int32
 	SeveritySince pgtype.Timestamptz
+	CvssScore     *float64
 	CveID_3       string
 	CveTitle      string
 	CveDesc       string
@@ -643,6 +647,7 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.UpdatedAt_2,
 			&i.LastSeverity,
 			&i.SeveritySince,
+			&i.CvssScore,
 			&i.CveID_3,
 			&i.CveTitle,
 			&i.CveDesc,
@@ -726,7 +731,8 @@ SELECT v.id,
        sv.reason,
        sv.reason_text,
        sv.suppressed_by,
-       sv.updated_at as suppressed_at
+       sv.updated_at as suppressed_at,
+       v.cvss_score
 FROM vulnerabilities v
          JOIN cve c ON v.cve_id = c.cve_id
          JOIN workloads w ON v.image_name = w.image_name AND v.image_tag = w.image_tag
@@ -802,6 +808,7 @@ type ListVulnerabilitiesRow struct {
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	CvssScore     *float64
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -849,6 +856,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.ReasonText,
 			&i.SuppressedBy,
 			&i.SuppressedAt,
+			&i.CvssScore,
 		); err != nil {
 			return nil, err
 		}
@@ -882,7 +890,8 @@ WITH image_vulnerabilities AS (
           sv.reason,
           sv.reason_text,
           sv.suppressed_by,
-          sv.updated_at as suppressed_at
+          sv.updated_at as suppressed_at,
+          v.cvss_score
     FROM vulnerabilities v
             JOIN cve c ON v.cve_id = c.cve_id
             JOIN images i ON v.image_name = i.name AND v.image_tag = i.tag
@@ -917,7 +926,8 @@ SELECT id,
        reason_text,
        suppressed_by,
        suppressed_at,
-       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count
+       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count,
+        cvss_score
 FROM image_vulnerabilities
 ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
          CASE WHEN $1 = 'severity_desc' THEN severity END DESC,
@@ -974,6 +984,7 @@ type ListVulnerabilitiesForImageRow struct {
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
 	TotalCount    int64
+	CvssScore     *float64
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
@@ -1017,6 +1028,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.TotalCount,
+			&i.CvssScore,
 		); err != nil {
 			return nil, err
 		}
