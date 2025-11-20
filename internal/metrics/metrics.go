@@ -1,9 +1,9 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -14,6 +14,7 @@ import (
 	promClient "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/push"
+	"github.com/prometheus/common/expfmt"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -26,7 +27,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, c ...promClient.Collector) (*metric.MeterProvider, *sdktrace.TracerProvider, promClient.Gatherer, error) {
+func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.Entry, c ...promClient.Collector) (*metric.MeterProvider, *sdktrace.TracerProvider, promClient.Gatherer, error) {
 	res, err := newResource()
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating resource: %w", err)
@@ -57,7 +58,7 @@ func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, c ...promCli
 	otel.SetMeterProvider(meterProvider)
 
 	if cfg.PrometheusMetricsPushgatewayEndpoint != "" {
-		go pushPrometheusGateWay(ctx, cfg)
+		go pushPrometheusGateWay(ctx, cfg, reg, log)
 	}
 
 	// Only create a trace provider if the environment variable is set
@@ -198,15 +199,43 @@ func safeInt(val *int32) int32 {
 	return *val
 }
 
-func pushToGateway(cfg config.MetricConfig) error {
+func sizeOfPromPayload(reg promClient.Gatherer) (int, error) {
+	mfs, err := reg.Gather()
+	if err != nil {
+		return 0, err
+	}
+
+	var buf bytes.Buffer
+	enc := expfmt.NewEncoder(&buf, expfmt.FmtText)
+
+	for _, mf := range mfs {
+		if err := enc.Encode(mf); err != nil {
+			return 0, err
+		}
+	}
+
+	return buf.Len(), nil
+}
+
+func pushToGateway(cfg config.MetricConfig, reg promClient.Gatherer, log *logrus.Entry) error {
+	size, err := sizeOfPromPayload(reg)
+	if err == nil {
+		log.Infof("pushing %.2f MB (%.2f KB) of metrics to Prometheus Pushgateway",
+			float64(size)/(1024*1024),
+			float64(size)/1024,
+		)
+	}
+
 	return push.New(cfg.PrometheusMetricsPushgatewayEndpoint, "v13s").
+		Collector(WorkloadVulnerabilities).
+		Collector(WorkloadRiskScore).
 		Collector(NamespaceVulnerabilities).
 		Collector(NamespaceRiskScore).
 		Grouping("service", "v13s").
 		Push()
 }
 
-func pushPrometheusGateWay(ctx context.Context, cfg config.MetricConfig) {
+func pushPrometheusGateWay(ctx context.Context, cfg config.MetricConfig, reg promClient.Gatherer, log *logrus.Entry) {
 	ticker := time.NewTicker(1 * time.Minute)
 
 	go func() {
@@ -215,7 +244,7 @@ func pushPrometheusGateWay(ctx context.Context, cfg config.MetricConfig) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if err := pushToGateway(cfg); err != nil {
+				if err := pushToGateway(cfg, reg, log); err != nil {
 					log.Printf("failed to push metrics to Prometheus Pushgateway: %v", err)
 				}
 			}

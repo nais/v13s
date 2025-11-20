@@ -46,8 +46,6 @@ services:
     ports:
       - "9091:9091"
     restart: unless-stopped
-    profiles:
-      - monitoring
 
   prometheus:
     image: prom/prometheus:latest
