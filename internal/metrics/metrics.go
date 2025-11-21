@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -112,7 +111,6 @@ func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpoo
 		Sev  map[string]int
 	}
 
-	namespaceAgg := make(map[string]*NamespaceAggregate)
 	totalRows := 0
 
 	for {
@@ -129,6 +127,8 @@ func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpoo
 		if len(summaries) == 0 {
 			break
 		}
+
+		offset += int32(len(summaries))
 
 		totalRows += len(summaries)
 		for _, row := range summaries {
@@ -149,46 +149,10 @@ func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpoo
 				ImageName: row.CurrentImageName,
 				ImageTag:  row.CurrentImageTag,
 			}, &summary)
-
-			key := row.Cluster + "/" + row.Namespace
-			if _, ok := namespaceAgg[key]; !ok {
-				namespaceAgg[key] = &NamespaceAggregate{
-					Risk: 0,
-					Sev: map[string]int{
-						"CRITICAL":   0,
-						"HIGH":       0,
-						"MEDIUM":     0,
-						"LOW":        0,
-						"UNASSIGNED": 0,
-					},
-				}
-			}
-
-			agg := namespaceAgg[key]
-			agg.Risk += float64(summary.RiskScore)
-			agg.Sev["CRITICAL"] += int(summary.Critical)
-			agg.Sev["HIGH"] += int(summary.High)
-			agg.Sev["MEDIUM"] += int(summary.Medium)
-			agg.Sev["LOW"] += int(summary.Low)
-			agg.Sev["UNASSIGNED"] += int(summary.Unassigned)
-		}
-
-		offset += pageSize
-	}
-
-	for key, a := range namespaceAgg {
-		parts := strings.Split(key, "/")
-		cluster, ns := parts[0], parts[1]
-
-		NamespaceRiskScore.WithLabelValues(cluster, ns).Set(a.Risk)
-
-		for sev, count := range a.Sev {
-			NamespaceVulnerabilities.
-				WithLabelValues(cluster, ns, sev).Set(float64(count))
 		}
 	}
 
-	log.Infof("loaded %d workload metrics; %d namespaces aggregated", totalRows, len(namespaceAgg))
+	log.Infof("loaded %d workload metrics", totalRows)
 	return nil
 }
 
@@ -229,8 +193,6 @@ func pushToGateway(cfg config.MetricConfig, reg promClient.Gatherer, log *logrus
 	return push.New(cfg.PrometheusMetricsPushgatewayEndpoint, "v13s").
 		Collector(WorkloadVulnerabilities).
 		Collector(WorkloadRiskScore).
-		Collector(NamespaceVulnerabilities).
-		Collector(NamespaceRiskScore).
 		Grouping("service", "v13s").
 		Push()
 }

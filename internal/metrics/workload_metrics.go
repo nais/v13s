@@ -30,32 +30,12 @@ var (
 		},
 		append(labels, "severity"),
 	)
-
-	NamespaceVulnerabilities = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: Namespace,
-			Name:      "namespace_vulnerabilities",
-			Help:      "Aggregated vulnerability counts per namespace.",
-		},
-		[]string{"workload_cluster", "workload_namespace", "severity"},
-	)
-
-	NamespaceRiskScore = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: Namespace,
-			Name:      "namespace_risk_score",
-			Help:      "Sum of risk scores per namespace.",
-		},
-		[]string{"workload_cluster", "workload_namespace"},
-	)
 )
 
 func Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
-		NamespaceVulnerabilities,
-		NamespaceRiskScore,
 	}
 }
 
