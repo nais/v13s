@@ -144,6 +144,14 @@ values:
     config:
       type: string
 
+  prometheus.pushgateway.duration:
+    displayName: Prometheus pushgateway duration
+    description: Duration for pushing metrics to Prometheus pushgateway
+    config:
+      type: string
+    computed:
+      template: "5m"
+
   prometheus.pushgateway.endpoint:
     displayName: Prometheus pushgateway endpoint
     description: Endpoint for Prometheus pushgateway

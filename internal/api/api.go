@@ -58,7 +58,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return float64(len(workloadEventQueue.Updated))
 	})
 
-	_, tp, promReg, err := metrics.NewMeterProvider(ctx, cfg.Metrics, log.WithField("subsystem", "metrics"), gFunc)
+	tp, promReg, err := metrics.NewMeterProvider(ctx, cfg.Metrics, log.WithField("subsystem", "metrics-setup"), gFunc)
 	if err != nil {
 		return fmt.Errorf("create metric meter: %w", err)
 	}
@@ -72,9 +72,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}()
 
-	if err = metrics.LoadWorkloadMetricsAndNamespaceAggregates(ctx, pool, log.WithField("subsystem", "metrics")); err != nil {
+	if err = metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-push")); err != nil {
 		log.WithError(err).Error("failed to load metrics from DB")
 	}
+
+	metrics.PushOnce(cfg.Metrics, promReg, log)
+	metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
 	if err != nil {

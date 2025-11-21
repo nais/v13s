@@ -26,10 +26,10 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.Entry, c ...promClient.Collector) (*metric.MeterProvider, *sdktrace.TracerProvider, promClient.Gatherer, error) {
+func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.Entry, c ...promClient.Collector) (*sdktrace.TracerProvider, promClient.Gatherer, error) {
 	res, err := newResource()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating resource: %w", err)
+		return nil, nil, fmt.Errorf("creating resource: %w", err)
 	}
 
 	reg := promClient.NewRegistry()
@@ -42,11 +42,11 @@ func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.
 	)
 
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
+		return nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
 	}
 	for _, collector := range append(c, Collectors()...) {
 		if err := reg.Register(collector); err != nil {
-			return nil, nil, nil, fmt.Errorf("registering collector: %w", err)
+			return nil, nil, fmt.Errorf("registering collector: %w", err)
 		}
 	}
 
@@ -55,10 +55,6 @@ func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.
 		metric.WithReader(metricExporter),
 	)
 	otel.SetMeterProvider(meterProvider)
-
-	if cfg.PrometheusMetricsPushgatewayEndpoint != "" {
-		go pushPrometheusGateWay(ctx, cfg, reg, log)
-	}
 
 	// Only create a trace provider if the environment variable is set
 	var tp *sdktrace.TracerProvider
@@ -88,7 +84,7 @@ func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.
 	// Register the TraceContext propagator globally.
 	otel.SetTextMapPropagator(tc)
 
-	return meterProvider, tp, reg, nil
+	return tp, reg, nil
 }
 
 func newResource() (*resource.Resource, error) {
@@ -99,7 +95,7 @@ func newResource() (*resource.Resource, error) {
 		))
 }
 
-func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
+func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
 	db := sql.New(pool)
 	wTypes := []string{"app", "job"}
 
@@ -123,7 +119,6 @@ func LoadWorkloadMetricsAndNamespaceAggregates(ctx context.Context, pool *pgxpoo
 			return fmt.Errorf("loading vulnerability summaries: %w", err)
 		}
 
-		// Break the loop if no more summaries are returned
 		if len(summaries) == 0 {
 			break
 		}
@@ -170,7 +165,7 @@ func sizeOfPromPayload(reg promClient.Gatherer) (int, error) {
 	}
 
 	var buf bytes.Buffer
-	enc := expfmt.NewEncoder(&buf, expfmt.FmtText)
+	enc := expfmt.NewEncoder(&buf, expfmt.NewFormat(expfmt.TypeTextPlain))
 
 	for _, mf := range mfs {
 		if err := enc.Encode(mf); err != nil {
@@ -181,7 +176,7 @@ func sizeOfPromPayload(reg promClient.Gatherer) (int, error) {
 	return buf.Len(), nil
 }
 
-func pushToGateway(cfg config.MetricConfig, reg promClient.Gatherer, log *logrus.Entry) error {
+func pushToGateway(cfg config.MetricConfig, reg promClient.Gatherer, log logrus.FieldLogger) error {
 	size, err := sizeOfPromPayload(reg)
 	if err == nil {
 		log.Infof("pushing %.2f MB (%.2f KB) of metrics to Prometheus Pushgateway",
@@ -197,8 +192,16 @@ func pushToGateway(cfg config.MetricConfig, reg promClient.Gatherer, log *logrus
 		Push()
 }
 
-func pushPrometheusGateWay(ctx context.Context, cfg config.MetricConfig, reg promClient.Gatherer, log *logrus.Entry) {
-	ticker := time.NewTicker(1 * time.Minute)
+func PushOnce(cfg config.MetricConfig, reg promClient.Gatherer, log logrus.FieldLogger) {
+	if err := pushToGateway(cfg, reg, log); err != nil {
+		log.Errorf("initial metrics push failed: %v", err)
+	} else {
+		log.Infof("initial metrics push succeeded")
+	}
+}
+
+func StartIntervalPusher(ctx context.Context, cfg config.MetricConfig, reg promClient.Gatherer, log logrus.FieldLogger) {
+	ticker := time.NewTicker(cfg.PrometheusPushgatewayDuration)
 
 	go func() {
 		for {
@@ -207,7 +210,7 @@ func pushPrometheusGateWay(ctx context.Context, cfg config.MetricConfig, reg pro
 				return
 			case <-ticker.C:
 				if err := pushToGateway(cfg, reg, log); err != nil {
-					log.Printf("failed to push metrics to Prometheus Pushgateway: %v", err)
+					log.Errorf("failed to push metrics to Prometheus Pushgateway: %v", err)
 				}
 			}
 		}

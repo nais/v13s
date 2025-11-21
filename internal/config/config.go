@@ -51,8 +51,9 @@ type LeaderElectionConfig struct {
 }
 
 type MetricConfig struct {
-	OtelExporterOtlpEndpoint             string `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
-	PrometheusMetricsPushgatewayEndpoint string `envconfig:"PROMETHEUS_METRICS_PUSHGATEWAY_ENDPOINT"`
+	OtelExporterOtlpEndpoint             string        `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	PrometheusMetricsPushgatewayEndpoint string        `envconfig:"PROMETHEUS_METRICS_PUSHGATEWAY_ENDPOINT"`
+	PrometheusPushgatewayDuration        time.Duration `envconfig:"PROMETHEUS_PUSHGATEWAY_DURATION" default:"2m"`
 }
 
 func (k *K8sConfig) AllClusterNames() []string {

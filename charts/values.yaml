@@ -42,6 +42,7 @@ logFormat: json
 prometheus:
   pushgateway:
     endpoint: ""
+    duration:
 opentelemetry:
   collector:
     endpoint:
