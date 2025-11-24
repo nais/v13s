@@ -373,4 +373,4 @@ require (
 
 replace github.com/nais/v13s/pkg/api => ./pkg/api
 
-replace github.com/nais/dependencytrack/pkg/dependencytrack => ../dependencytrack/pkg/dependencytrack
+// replace github.com/nais/dependencytrack/pkg/dependencytrack => ../dependencytrack/pkg/dependencytrack

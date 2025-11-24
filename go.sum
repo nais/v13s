@@ -1379,6 +1379,8 @@ github.com/mozillazg/docker-credential-acr-helper v0.4.0 h1:Uoh3Z9CcpEDnLiozDx+D
 github.com/mozillazg/docker-credential-acr-helper v0.4.0/go.mod h1:2kiicb3OlPytmlNC9XGkLvVC+f0qTiJw3f/mhmeeQBg=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
+github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251124040753-6d7145a31dc1 h1:02mr27WDfGE2otu40bFs3aNg3XkafyLMnm39BjoJ5Qw=
+github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251124040753-6d7145a31dc1/go.mod h1:ntKscwLRW7YWkgvSq9WMMma4JhNisxiEstYxABmqj/k=
 github.com/nais/liberator v0.0.0-20251121113042-7c7bc3ddeb41 h1:9LDnZHiZ7yO2uEtR2ICIXKVNCuRQ/E/Jc1mdfcnwUoU=
 github.com/nais/liberator v0.0.0-20251121113042-7c7bc3ddeb41/go.mod h1:p6EA7AKqzH798N7yvG8GDHVMzzkpORoxoyfcFz5Oa7c=
 github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdhx/f4=
