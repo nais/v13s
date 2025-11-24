@@ -1476,8 +1476,8 @@ github.com/riverqueue/river/rivershared v0.26.0 h1:tsMvxTIdG58GoYXd3788DwjNq87Y7
 github.com/riverqueue/river/rivershared v0.26.0/go.mod h1:/BEdbdGEqfcFP9FtChwK81e2AWF8e82RC6z5mwQ3y1g=
 github.com/riverqueue/river/rivertype v0.26.0 h1:C3GdCMH8khTUUKH+OkTSQv1kdsSAXWL8n7M7Rq2r4yE=
 github.com/riverqueue/river/rivertype v0.26.0/go.mod h1:rWpgI59doOWS6zlVocROcwc00fZ1RbzRwsRTU8CDguw=
-github.com/riverqueue/rivercontrib/otelriver v0.5.0 h1:dZF4Fy7/3RaIRsyCPdpIJtzEip0pCvoJ44YpSDum8e4=
-github.com/riverqueue/rivercontrib/otelriver v0.5.0/go.mod h1:rXANcBrlgRvg+auD3/O6Xfs59AWeWNpa/kim62mkxGo=
+github.com/riverqueue/rivercontrib/otelriver v0.6.0 h1:AtrqW57JTs0ePqq/JCMdVeXc+MBXZC/3/f+NvCtudjI=
+github.com/riverqueue/rivercontrib/otelriver v0.6.0/go.mod h1:t8WimC/ZFTH1/tMo6RxLWBsM52r9X9vyrAjvjBHNHYk=
 github.com/riza-io/grpc-go v0.2.0 h1:2HxQKFVE7VuYstcJ8zqpN84VnAoJ4dCL6YFhJewNcHQ=
 github.com/riza-io/grpc-go v0.2.0/go.mod h1:2bDvR9KkKC3KhtlSHfR3dAXjUMT86kg4UfWFyVGWqi8=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=

@@ -24,7 +24,7 @@ require (
 	github.com/riverqueue/river v0.26.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.26.0
 	github.com/riverqueue/river/rivertype v0.26.0
-	github.com/riverqueue/rivercontrib/otelriver v0.5.0
+	github.com/riverqueue/rivercontrib/otelriver v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.9.1
 	github.com/sigstore/cosign/v2 v2.6.1
