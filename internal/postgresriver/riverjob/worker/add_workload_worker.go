@@ -52,12 +52,9 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, j *river.Job[job.AddWorklo
 			a.Log.WithField("workload", workload).Debug("workload already initialized, skipping")
 			return nil
 		}
-
-		if !errors.Is(err, pgx.ErrNoRows) {
-			rec.Add("init_workload", "error", err.Error())
-			a.Log.WithError(err).Error("failed to get workload")
-			return err
-		}
+		rec.Add("init_workload", "error", err.Error())
+		a.Log.WithError(err).Error("failed to get workload")
+		return err
 	}
 
 	rec.Add("init_workload", "ok", fmt.Sprintf("workload_id=%s", id.String()))
