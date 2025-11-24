@@ -76,8 +76,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.WithError(err).Error("failed to load metrics from DB")
 	}
 
-	metrics.PushOnce(cfg.Metrics, promReg, log)
-	metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
+	if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
+		metrics.PushOnce(cfg.Metrics, promReg, log)
+		metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
+	} else {
+		log.Info("Prometheus Pushgateway endpoint not configured, skipping metrics push setup")
+	}
 
 	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
 	if err != nil {

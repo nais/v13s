@@ -102,11 +102,6 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 	const pageSize = 300
 	offset := int32(0)
 
-	type NamespaceAggregate struct {
-		Risk float64
-		Sev  map[string]int
-	}
-
 	totalRows := 0
 
 	for {
