@@ -8,6 +8,7 @@ import (
 	"github.com/containerd/log"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/riverupdater"
 	jobs "github.com/nais/v13s/internal/riverupdater/riverjob/job"
@@ -129,16 +130,37 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 		return nil
 	}
 
-	err = u.manager.AddJob(ctx, &jobs.FetchVulnerabilityDataForImagesJob{
-		Images: images,
-	})
-	if err != nil {
-		u.log.WithError(err).Error("failed to enqueue FetchVulnerabilityDataForImages job")
-		return err
+	const batchSize = 100
+	batches := collections.ChunkImages(images, batchSize)
+
+	for i, batch := range batches {
+		err = u.manager.AddJob(ctx, &jobs.FetchVulnerabilityDataForImagesJob{
+			Images: batch,
+		})
+		if err != nil {
+			u.log.WithFields(map[string]interface{}{
+				"batch":     i + 1,
+				"total":     len(batches),
+				"batchSize": len(batch),
+			}).WithError(err).Error("failed to enqueue FetchVulnerabilityDataForImages job")
+
+			return err
+		}
+
+		u.log.WithFields(map[string]interface{}{
+			"batch":     i + 1,
+			"total":     len(batches),
+			"batchSize": len(batch),
+		}).Debug("enqueued FetchVulnerabilityDataForImages batch")
 	}
 
-	u.log.WithField("count", len(images)).
-		Infof("enqueued FetchVulnerabilityDataForImages job in %.2fs", time.Since(start).Seconds())
+	u.log.WithFields(map[string]interface{}{
+		"images":  len(images),
+		"batches": len(batches),
+	}).Infof(
+		"enqueued FetchVulnerabilityDataForImages jobs in %.2fs",
+		time.Since(start).Seconds(),
+	)
 
 	return nil
 }

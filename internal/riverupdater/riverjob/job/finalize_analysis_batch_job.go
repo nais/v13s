@@ -18,6 +18,6 @@ func (FinalizeAnalysisBatchJob) Kind() string { return KindFinalizeAnalysisBatch
 func (t FinalizeAnalysisBatchJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindFinalizeAnalysisBatch,
-		MaxAttempts: 3,
+		MaxAttempts: 15,
 	}
 }

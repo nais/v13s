@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/nais/v13s/internal/riverupdater/riverjob"
-	"github.com/nais/v13s/internal/riverupdater/riverjob/domain"
 	"github.com/nais/v13s/internal/riverupdater/riverjob/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
@@ -20,7 +19,10 @@ type FinalizeAnalysisBatchWorker struct {
 	river.WorkerDefaults[job.FinalizeAnalysisBatchJob]
 }
 
-func (f *FinalizeAnalysisBatchWorker) Work(ctx context.Context, j *river.Job[job.FinalizeAnalysisBatchJob]) error {
+func (f *FinalizeAnalysisBatchWorker) Work(
+	ctx context.Context,
+	j *river.Job[job.FinalizeAnalysisBatchJob],
+) error {
 	ctx = riverjob.NewRecorder(ctx)
 	rec := riverjob.FromContext(ctx)
 	defer rec.Flush(ctx)
@@ -28,7 +30,6 @@ func (f *FinalizeAnalysisBatchWorker) Work(ctx context.Context, j *river.Job[job
 	total := len(j.Args.Tokens)
 	rec.Add("start", "ok", fmt.Sprintf("token_count=%d", total))
 
-	var remaining []domain.AnalysisTokenInfo
 	var done []*sources.ImageVulnerabilityData
 
 	inProgressCount := 0
@@ -38,24 +39,33 @@ func (f *FinalizeAnalysisBatchWorker) Work(ctx context.Context, j *river.Job[job
 		inProgress, err := f.Source.IsTaskInProgress(ctx, t.ProcessToken)
 		if err != nil {
 			inProgressCount++
-			remaining = append(remaining, t)
+			f.Log.Warnf(
+				"check task in progress for %s:%s: %v",
+				t.ImageName, t.ImageTag, err,
+			)
 			continue
 		}
 
 		if inProgress {
 			inProgressCount++
-			remaining = append(remaining, t)
+			f.Log.Infof(
+				"suppress finalize in-progress task %s:%s",
+				t.ImageName, t.ImageTag,
+			)
 			continue
 		}
 
 		vulns, err := f.Source.GetVulnerabilities(ctx, t.ImageName, t.ImageTag, true)
 		if err != nil {
 			if errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
-				rec.Add("get_vulnerabilities", "skipped", fmt.Sprintf("no_project_or_metrics for %s:%s", t.ImageName, t.ImageTag))
+				rec.Add(
+					"get_vulnerabilities",
+					"skipped",
+					fmt.Sprintf("no_project_or_metrics for %s:%s", t.ImageName, t.ImageTag),
+				)
 				continue
 			}
 			fetchErrCount++
-			remaining = append(remaining, t)
 			continue
 		}
 
@@ -68,22 +78,23 @@ func (f *FinalizeAnalysisBatchWorker) Work(ctx context.Context, j *river.Job[job
 	}
 
 	rec.Add("analysis_results", "ok",
-		fmt.Sprintf("done=%d in_progress=%d errors=%d", len(done), inProgressCount, fetchErrCount),
+		fmt.Sprintf(
+			"done=%d in_progress=%d errors=%d",
+			len(done),
+			inProgressCount,
+			fetchErrCount,
+		),
 	)
 
-	// Re-enqueue unfinished ones
-	if len(remaining) > 0 {
-		rec.Add("enqueue_finalize_again", "start", fmt.Sprintf("remaining=%d", len(remaining)))
-		if err := f.JobClient.AddJob(ctx, &job.FinalizeAnalysisBatchJob{
-			Tokens: remaining,
-		}); err != nil {
-			rec.Add("enqueue_finalize_again", "error", err.Error())
-			return fmt.Errorf("re-enqueue finalize batch: %w", err)
-		}
-		rec.Add("enqueue_finalize_again", "ok", "")
+	if inProgressCount > 0 || fetchErrCount > 0 {
+		rec.Add("finish", "retry", "some tokens still in progress or errored")
+		return fmt.Errorf(
+			"finalize incomplete: in_progress=%d fetch_errors=%d",
+			inProgressCount,
+			fetchErrCount,
+		)
 	}
 
-	// Enqueue completed batches for processing
 	if len(done) > 0 {
 		rec.Add("enqueue_process_batch", "start", fmt.Sprintf("batches=%d", len(done)))
 		if err := f.JobClient.AddJob(ctx, &job.ProcessVulnerabilityDataBatchJob{

@@ -43,3 +43,16 @@ func SortByFields[T any](items []T, getters ...func(T) string) {
 		return false
 	})
 }
+
+func ChunkImages[T any](items []T, size int) [][]T {
+	if size <= 0 {
+		panic("chunk size must be > 0")
+	}
+
+	var chunks [][]T
+	for size < len(items) {
+		items, chunks = items[size:], append(chunks, items[0:size:size])
+	}
+	chunks = append(chunks, items)
+	return chunks
+}
