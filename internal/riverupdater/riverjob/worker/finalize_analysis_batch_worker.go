@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/nais/v13s/internal/riverupdater/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/domain"
 	"github.com/nais/v13s/internal/riverupdater/riverjob/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
@@ -27,7 +28,7 @@ func (f *FinalizeAnalysisBatchWorker) Work(ctx context.Context, j *river.Job[job
 	total := len(j.Args.Tokens)
 	rec.Add("start", "ok", fmt.Sprintf("token_count=%d", total))
 
-	var remaining []job.AnalysisTokenInfo
+	var remaining []domain.AnalysisTokenInfo
 	var done []*sources.ImageVulnerabilityData
 
 	inProgressCount := 0

@@ -3,6 +3,7 @@ package job
 import (
 	"time"
 
+	"github.com/nais/v13s/internal/riverupdater/riverjob/domain"
 	"github.com/riverqueue/river"
 )
 
@@ -10,13 +11,8 @@ const (
 	KindUpsertVulnerabilitySummaries = "upsert_vulnerability_summaries"
 )
 
-type Image struct {
-	Name string
-	Tag  string
-}
-
 type UpsertVulnerabilitySummariesJob struct {
-	Images []Image
+	Images []domain.Image
 }
 
 func (UpsertVulnerabilitySummariesJob) Kind() string {

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"github.com/nais/v13s/internal/riverupdater/riverjob/domain"
 	"github.com/riverqueue/river"
 )
 
@@ -9,7 +10,7 @@ const (
 )
 
 type FinalizeAnalysisBatchJob struct {
-	Tokens []AnalysisTokenInfo
+	Tokens []domain.AnalysisTokenInfo
 }
 
 func (FinalizeAnalysisBatchJob) Kind() string { return KindFinalizeAnalysisBatch }
@@ -19,8 +20,4 @@ func (t FinalizeAnalysisBatchJob) InsertOpts() river.InsertOpts {
 		Queue:       KindFinalizeAnalysisBatch,
 		MaxAttempts: 3,
 	}
-}
-
-type AnalysisTokenInfo struct {
-	ImageName, ImageTag, ProjectID, ProcessToken string
 }

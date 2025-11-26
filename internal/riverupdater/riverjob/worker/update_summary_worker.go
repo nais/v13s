@@ -9,6 +9,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/riverupdater/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/domain"
 	"github.com/nais/v13s/internal/riverupdater/riverjob/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
@@ -127,7 +128,7 @@ func (u *UpsertVulnerabilitySummariesWorker) Work(ctx context.Context, j *river.
 	return nil
 }
 
-func toVulnerabilitySummarySqlParams(i job.Image, s *sources.VulnerabilitySummary) sql.BatchUpsertVulnerabilitySummaryParams {
+func toVulnerabilitySummarySqlParams(i domain.Image, s *sources.VulnerabilitySummary) sql.BatchUpsertVulnerabilitySummaryParams {
 	return sql.BatchUpsertVulnerabilitySummaryParams{
 		ImageName:  i.Name,
 		ImageTag:   i.Tag,
