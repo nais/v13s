@@ -1,8 +1,7 @@
-package postgresriver
+package riverupdater
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,9 +10,9 @@ import (
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/postgresriver/riverjob"
-	"github.com/nais/v13s/internal/postgresriver/riverjob/job"
-	"github.com/nais/v13s/internal/postgresriver/riverjob/worker"
+	"github.com/nais/v13s/internal/riverupdater/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/job"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/worker"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -51,21 +50,6 @@ type WorkloadManagerConfig struct {
 }
 
 func NewWorkloadManager(ctx context.Context, cfg WorkloadManagerConfig) (*WorkloadManager, error) {
-	if cfg.Pool == nil {
-		return nil, errors.New("pool is required")
-	}
-	if cfg.JobConfig == nil {
-		return nil, errors.New("job config is required")
-	}
-	if cfg.Verifier == nil {
-		return nil, errors.New("verifier is required")
-	}
-	if cfg.Source == nil {
-		return nil, errors.New("source is required")
-	}
-	if cfg.Queue == nil {
-		return nil, errors.New("workload event queue is required")
-	}
 	if cfg.Logger == nil {
 		cfg.Logger = logrus.New()
 	}

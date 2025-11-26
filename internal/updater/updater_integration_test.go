@@ -17,8 +17,8 @@ import (
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	attestation "github.com/nais/v13s/internal/mocks/Verifier"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/postgresriver"
-	"github.com/nais/v13s/internal/postgresriver/riverjob"
+	"github.com/nais/v13s/internal/riverupdater"
+	"github.com/nais/v13s/internal/riverupdater/riverjob"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
@@ -53,7 +53,7 @@ func TestUpdater(t *testing.T) {
 
 	sourceMock := sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))
 
-	mgr, err := postgresriver.NewWorkloadManager(ctx, postgresriver.WorkloadManagerConfig{
+	mgr, err := riverupdater.NewWorkloadManager(ctx, riverupdater.WorkloadManagerConfig{
 		Pool:      pool,
 		JobConfig: jobCfg,
 		Verifier:  verifierMock,

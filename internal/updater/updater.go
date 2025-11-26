@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/postgresriver"
-	jobs "github.com/nais/v13s/internal/postgresriver/riverjob/job"
+	"github.com/nais/v13s/internal/riverupdater"
+	jobs "github.com/nais/v13s/internal/riverupdater/riverjob/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
 )
@@ -28,14 +28,14 @@ const (
 type Updater struct {
 	db                           *pgxpool.Pool
 	querier                      *sql.Queries
-	manager                      *postgresriver.WorkloadManager
+	manager                      *riverupdater.WorkloadManager
 	updateSchedule               ScheduleConfig
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	log                          *logrus.Entry
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *postgresriver.WorkloadManager, schedule ScheduleConfig, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *riverupdater.WorkloadManager, schedule ScheduleConfig, log *log.Entry) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}

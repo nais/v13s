@@ -12,7 +12,7 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/postgresriver"
+	"github.com/nais/v13s/internal/riverupdater"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
@@ -26,13 +26,13 @@ var _ management.ManagementServer = (*Server)(nil)
 type Server struct {
 	management.UnimplementedManagementServer
 	querier   sql.Querier
-	mgr       *postgresriver.WorkloadManager
+	mgr       *riverupdater.WorkloadManager
 	updater   *updater.Updater
 	parentCtx context.Context
 	log       *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr *postgresriver.WorkloadManager, updater *updater.Updater, field *logrus.Entry) *Server {
+func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr *riverupdater.WorkloadManager, updater *updater.Updater, field *logrus.Entry) *Server {
 	return &Server{
 		parentCtx: parentCtx,
 		querier:   sql.New(pool),

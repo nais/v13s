@@ -19,8 +19,8 @@ import (
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/postgresriver"
-	"github.com/nais/v13s/internal/postgresriver/riverjob"
+	"github.com/nais/v13s/internal/riverupdater"
+	"github.com/nais/v13s/internal/riverupdater/riverjob"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -38,7 +38,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
 	if err != nil {
-		return fmt.Errorf("create database pool: %w", err)
+		return fmt.Errorf("creating database pool: %w", err)
 	}
 	defer pool.Close()
 
@@ -88,17 +88,15 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return fmt.Errorf("create verifier: %w", err)
 	}
 
-	jobCfg := &riverjob.Options{
-		DbUrl: cfg.DatabaseUrl,
-	}
-
-	mgr, err := postgresriver.NewWorkloadManager(ctx, postgresriver.WorkloadManagerConfig{
-		Pool:      pool,
-		JobConfig: jobCfg,
-		Verifier:  verifier,
-		Source:    source,
-		Queue:     workloadEventQueue,
-		Logger:    log.WithField("subsystem", "manager"),
+	mgr, err := riverupdater.NewWorkloadManager(ctx, riverupdater.WorkloadManagerConfig{
+		Pool: pool,
+		JobConfig: &riverjob.Options{
+			DbUrl: cfg.DatabaseUrl,
+		},
+		Verifier: verifier,
+		Source:   source,
+		Queue:    workloadEventQueue,
+		Logger:   log.WithField("subsystem", "manager"),
 	})
 	if err != nil {
 		return fmt.Errorf("create workload manager: %w", err)
@@ -147,7 +145,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			promReg,
 			pool,
 			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+			Handler{"/riverui", riverUI(ctx, cfg.DatabaseUrl)},
 		)
 	})
 
@@ -170,7 +168,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *postgresriver.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *riverupdater.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {

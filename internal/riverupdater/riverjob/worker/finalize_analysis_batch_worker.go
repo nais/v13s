@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nais/v13s/internal/postgresriver/riverjob"
-	"github.com/nais/v13s/internal/postgresriver/riverjob/job"
+	"github.com/nais/v13s/internal/riverupdater/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/job"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"

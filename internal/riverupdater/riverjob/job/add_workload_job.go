@@ -5,7 +5,7 @@ import (
 
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/postgresriver/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
