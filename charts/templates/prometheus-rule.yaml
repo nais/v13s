@@ -13,7 +13,7 @@ spec:
       rules:
 
         - record: namespace:workload:vulnerabilities:critical:max1h
-          expr: max by (workload_cluster, workload_namespace, workload_name) (
+          expr: max by (workload_namespace, workload_name) (
             max_over_time(
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
@@ -23,7 +23,7 @@ spec:
             )
 
         - record: namespace:workload:vulnerabilities:critical:recent_samples
-          expr: max by (workload_cluster, workload_namespace, workload_name) (
+          expr: max by (workload_namespace, workload_name) (
             count_over_time(
             v13s_workload_vulnerabilities{
             workload_namespace="nais-system"
@@ -32,14 +32,14 @@ spec:
             )
 
         - record: namespace:workload:vulnerabilities:critical:current
-          expr: max by (workload_cluster, workload_namespace, workload_name) (
+          expr: max by (workload_namespace, workload_name) (
             v13s_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
             }
             )
             or
-            max by (workload_cluster, workload_namespace, workload_name) (
+            max by (workload_namespace, workload_name) (
             0 * v13s_workload_vulnerabilities{workload_namespace="nais-system"}
             )
 
@@ -49,7 +49,7 @@ spec:
           expr: (namespace:workload:vulnerabilities:critical:max1h > 0)
             and (
             (namespace:workload:vulnerabilities:critical:current > 0)
-            or on(workload_cluster, workload_namespace, workload_name)
+            or on(workload_namespace, workload_name)
             ((namespace:workload:vulnerabilities:critical:recent_samples or vector(0)) == 0)
             )
           for: 10m
