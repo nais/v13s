@@ -37,15 +37,47 @@ WITH matched_workloads AS (
              rj.attempt
          FROM river_job rj
                   JOIN matched_workloads w ON (
-             (rj.kind = 'add_workload' AND
+             (rj.kind IN ('add_workload', 'delete_workload') AND
               rj.args #>> '{Workload,Name}' = w.name AND
-         rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
-         rj.args #>> '{Workload,Namespace}' = w.namespace AND
-         rj.args #>> '{Workload,Cluster}' = w.cluster)
+            rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
+            rj.args #>> '{Workload,Namespace}' = w.namespace AND
+            rj.args #>> '{Workload,Cluster}' = w.cluster)
                  OR
-             (rj.kind IN ('get_attestation', 'upload_attestation') AND
+             (rj.kind IN ('get_attestation', 'upload_attestation', 'finalize_attestation', 'remove_from_source') AND
               rj.args #>> '{ImageName}' = w.image_name AND
-         rj.args #>> '{ImageTag}' = w.image_tag)
+            rj.args #>> '{ImageTag}' = w.image_tag)
+                 OR
+             (rj.kind = 'finalize_analysis_batch'
+                 AND EXISTS (
+                     SELECT 1
+                     FROM jsonb_array_elements(rj.args->'Tokens') AS token
+                     WHERE
+                         token->>'ImageName' = w.image_name
+             AND token->>'ImageTag' = w.image_tag
+                 )
+                 )
+                 OR
+             (
+                 rj.kind = 'upsert_vulnerability_summaries'
+                     AND EXISTS (
+                     SELECT 1
+                     FROM jsonb_array_elements(rj.args->'Images') AS img
+                     WHERE
+                         img->>'Name' = w.image_name
+      AND img->>'Tag' = w.image_tag
+                 )
+                 )
+                 OR
+             (
+                 rj.kind = 'fetch_vulnerability_data_for_images'
+                     AND EXISTS (
+                     SELECT 1
+                     FROM jsonb_array_elements(rj.args->'Images') AS img
+                     WHERE
+                         img->>'Name' = w.image_name
+      AND img->>'Tag' = w.image_tag
+                 )
+                 )
              )
      ),
      total_count AS (

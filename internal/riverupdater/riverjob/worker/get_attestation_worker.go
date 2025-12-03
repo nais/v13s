@@ -1,16 +1,15 @@
-package manager
+package worker
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/riverupdater/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/job"
 	"github.com/riverqueue/river"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sirupsen/logrus"
@@ -20,57 +19,34 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-const (
-	KindGetAttestation = "get_attestation"
-)
-
-type GetAttestationJob struct {
-	ImageName    string
-	ImageTag     string
-	WorkloadId   pgtype.UUID
-	WorkloadType model.WorkloadType
-}
-
-func (GetAttestationJob) Kind() string { return KindGetAttestation }
-
-func (g GetAttestationJob) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		Queue: KindGetAttestation,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs:   true,
-			ByPeriod: 1 * time.Minute,
-		},
-		MaxAttempts: 4,
-	}
-}
-
 type GetAttestationWorker struct {
-	db              sql.Querier
-	jobClient       job.Client
-	verifier        attestation.Verifier
-	workloadCounter metric.Int64UpDownCounter
-	log             logrus.FieldLogger
-	river.WorkerDefaults[GetAttestationJob]
+	Querier         sql.Querier
+	JobClient       riverjob.Client
+	Verifier        attestation.Verifier
+	WorkloadCounter metric.Int64UpDownCounter
+	Log             logrus.FieldLogger
+	river.WorkerDefaults[job.GetAttestationJob]
 }
 
-func (g *GetAttestationWorker) NextRetry(job *river.Job[GetAttestationJob]) time.Time {
-	return time.Now().Add(1 * time.Minute)
-}
-
-func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttestationJob]) error {
+func (g *GetAttestationWorker) Work(ctx context.Context, j *river.Job[job.GetAttestationJob]) error {
 	ctx, span := otel.Tracer("v13s/get-attestation").Start(ctx, "GetAttestationWorker.Work")
 	defer span.End()
 
+	imageName := j.Args.ImageName
+	imageTag := j.Args.ImageTag
+
+	ctx = riverjob.NewRecorder(ctx)
+	rec := riverjob.FromContext(ctx)
+	defer rec.Flush(ctx)
+
 	span.SetAttributes(
-		attribute.String("image.name", job.Args.ImageName),
-		attribute.String("image.tag", job.Args.ImageTag),
-		attribute.String("workload.id", job.Args.WorkloadId.String()),
+		attribute.String("image.name", imageName),
+		attribute.String("image.tag", imageTag),
+		attribute.String("workload.id", j.Args.WorkloadId.String()),
 	)
 
-	imageName := job.Args.ImageName
-	imageTag := job.Args.ImageTag
-	att, err := g.verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
-	g.workloadCounter.Add(
+	att, err := g.Verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
+	g.WorkloadCounter.Add(
 		ctx,
 		1,
 		metric.WithAttributes(
@@ -85,72 +61,86 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			if err.Error() != "no matching attestations: " {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				g.log.WithError(err).Error("failed to get attestation")
+				g.Log.WithError(err).Error("failed to get attestation")
 			}
-			// TODO: handle errors
-			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+
+			rec.Add("get_attestation", "not_found", noMatchAttestationError.Error())
+
+			err = g.Querier.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateNoAttestation,
-				ID:    job.Args.WorkloadId,
+				ID:    j.Args.WorkloadId,
 			})
 			if err != nil {
+				rec.Add("update_state", "error", err.Error())
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
 
-			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			err = g.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
 			})
 			if err != nil {
+				rec.Add("update_state", "error", err.Error())
 				return fmt.Errorf("failed to set image state: %w", err)
 			}
-			recordOutput(ctx, JobStatusNoAttestation)
-			if job.Args.WorkloadType == model.WorkloadTypeApp {
+
+			if j.Args.WorkloadType == model.WorkloadTypeApp {
 				return noMatchAttestationError
 			}
+
 			return river.JobCancel(noMatchAttestationError)
 		} else if errors.As(err, &unrecoverableError) {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			g.log.WithError(err).Error("unrecoverable error while getting attestation")
-			recordOutput(ctx, JobStatusUnrecoverable)
-			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			g.Log.WithError(err).Error("unrecoverable error while getting attestation")
+
+			rec.Add("get_attestation", "unrecoverable", unrecoverableError.Error())
+
+			err = g.Querier.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateUnrecoverable,
-				ID:    job.Args.WorkloadId,
+				ID:    j.Args.WorkloadId,
 			})
 			if err != nil {
+				rec.Add("update_state", "error", err.Error())
 				return fmt.Errorf("failed to set workload state: %w", err)
 			}
-			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			err = g.Querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageStateFailed,
 				Name:  imageName,
 				Tag:   imageTag,
 			})
 			if err != nil {
+				rec.Add("update_state", "error", err.Error())
 				return fmt.Errorf("failed to set image state: %w", err)
 			}
 			return river.JobCancel(unrecoverableError)
 		} else {
-			return handleJobErr(err)
+			rec.Add("get_attestation", "error", err.Error())
+			return riverjob.HandleJobErr(err)
 		}
 	}
 	if att != nil {
-		compressed, err := att.Compress()
+		rec.Add("get_attestation", "ok", "attestation present")
+		var compressed []byte
+		compressed, err = att.Compress()
 		if err != nil {
+			rec.Add("compress_attestation", "error", err.Error())
 			return fmt.Errorf("failed to compress attestation: %w", err)
 		}
-		err = g.jobClient.AddJob(ctx, &UploadAttestationJob{
+		err = g.JobClient.AddJob(ctx, &job.UploadAttestationJob{
 			ImageName:   imageName,
 			ImageTag:    imageTag,
-			WorkloadId:  job.Args.WorkloadId,
+			WorkloadId:  j.Args.WorkloadId,
 			Attestation: compressed,
 		})
 		if err != nil {
+			rec.Add("enqueue_upload", "error", err.Error())
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
-		recordOutput(ctx, JobStatusAttestationDownloaded)
+		rec.Add("enqueue_upload", "ok", "")
 	}
-	return nil
+	return rec.Flush(ctx)
 }

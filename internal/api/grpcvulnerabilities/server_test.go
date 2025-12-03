@@ -1258,7 +1258,7 @@ func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	now := time.Now()
+	now := time.Now().UTC().Truncate(24 * time.Hour)
 
 	type vuln struct {
 		Severity     int
@@ -1296,10 +1296,10 @@ func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 				}
 
 				_, err := pool.Exec(ctx, `
-					INSERT INTO vuln_fix_summary (
-						workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
-					) VALUES ($1, $2, $3, $4, $5, $6, $7)
-				`, w.ID, v.Severity, v.IntroducedAt, fixedAt, fixDuration, fixed, now)
+				INSERT INTO vuln_fix_summary (
+					workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
+				) VALUES ($1, $2, $3, $4, $5, $6, $7)
+			`, w.ID, v.Severity, v.IntroducedAt, fixedAt, fixDuration, fixed, now)
 				require.NoError(t, err)
 
 				key := fmt.Sprintf("%s-%d", w.ID, v.Severity)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -32,9 +33,10 @@ type Source interface {
 	GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 	IsTaskInProgress(ctx context.Context, processToken string) (bool, error)
-	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
 	Name() string
 	ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error)
+	TriggerAnalysis(ctx context.Context, imageName, imageTag string) error
+	UpdateSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) (model.EventTokens, error)
 	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (*UploadAttestationResponse, error)
 }
 
@@ -155,4 +157,11 @@ type SuppressedVulnerability struct {
 type UploadAttestationResponse struct {
 	AttestationId uuid.UUID
 	ProcessToken  string
+}
+
+type ImageVulnerabilityData struct {
+	ImageName       string
+	ImageTag        string
+	Source          string
+	Vulnerabilities []*Vulnerability
 }
