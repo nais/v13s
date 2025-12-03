@@ -40,13 +40,13 @@ func runAtInterval(ctx context.Context, interval time.Duration, name string, log
 		defer ticker.Stop()
 
 		for {
+			log.Infof("running scheduled job '%s'", name)
+			job()
 			select {
 			case <-ctx.Done():
 				log.Infof("job '%s' stopped", name)
 				return
 			case <-ticker.C:
-				log.Infof("running scheduled job '%s'", name)
-				job()
 			}
 		}
 	}()

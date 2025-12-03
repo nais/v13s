@@ -1260,6 +1260,79 @@ func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnera
 	return items, nil
 }
 
+const recalculateVulnerabilitySummary = `-- name: RecalculateVulnerabilitySummary :exec
+WITH summary AS (
+    SELECT
+        $1 AS image_name,
+        $2  AS image_tag,
+        COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN c.severity = 0 THEN 1 ELSE 0 END), 0) AS critical,
+        COALESCE(SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END), 0) AS high,
+        COALESCE(SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END), 0) AS medium,
+        COALESCE(SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END), 0) AS low,
+        COALESCE(SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END), 0) AS unassigned,
+        10 * COALESCE(SUM(CASE WHEN c.severity = 0 THEN 1 ELSE 0 END), 0) +
+        5 * COALESCE(SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END), 0) +
+        3 * COALESCE(SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END), 0) +
+        1 * COALESCE(SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END), 0) +
+        5 * COALESCE(SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END), 0) AS risk_score
+    FROM vulnerabilities v
+             JOIN cve c
+                  ON v.cve_id = c.cve_id
+             LEFT JOIN suppressed_vulnerabilities sv
+                       ON v.image_name = sv.image_name
+                           AND v.package    = sv.package
+                           AND v.cve_id     = sv.cve_id
+    WHERE COALESCE(sv.suppressed, FALSE) = FALSE
+      AND v.image_name = $1
+      AND v.image_tag  = $2
+)
+
+INSERT INTO vulnerability_summary (
+    image_name,
+    image_tag,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score,
+    created_at,
+    updated_at
+)
+SELECT
+    image_name,
+    image_tag,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score,
+    NOW(),
+    NOW()
+FROM summary
+    ON CONFLICT (image_name, image_tag) DO UPDATE
+                                               SET
+                                                   critical    = EXCLUDED.critical,
+                                               high        = EXCLUDED.high,
+                                               medium      = EXCLUDED.medium,
+                                               low         = EXCLUDED.low,
+                                               unassigned  = EXCLUDED.unassigned,
+                                               risk_score  = EXCLUDED.risk_score,
+                                               updated_at  = NOW()
+`
+
+type RecalculateVulnerabilitySummaryParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error {
+	_, err := q.db.Exec(ctx, recalculateVulnerabilitySummary, arg.ImageName, arg.ImageTag)
+	return err
+}
+
 const suppressVulnerability = `-- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(image_name,
                                        package,

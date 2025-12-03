@@ -334,15 +334,16 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 	}).Infof("upserted batch of vulnerabilities")
 
 	if len(batch) > 0 {
-		sortByFields(images,
-			func(x manager.Image) string { return x.Name },
-			func(x manager.Image) string { return x.Tag },
-		)
-		if err := u.manager.AddJob(ctx, &manager.UpsertVulnerabilitySummariesJob{
-			Images: images,
-		}); err != nil {
-			u.log.WithError(err).Error("failed to enqueue vulnerability summaries job")
-			errs = append(errs, err)
+		for _, i := range images {
+			if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+				ImageName: i.Name,
+				ImageTag:  i.Tag,
+			}); err != nil {
+				u.log.WithError(err).Debug("recalculate vulnerability summary")
+				batchErr = err
+				errors++
+				errs = append(errs, err)
+			}
 		}
 	}
 
