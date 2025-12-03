@@ -59,7 +59,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, j *river.Job[job.F
 		Tag:   imageTag,
 		State: sql.ImageStateResync,
 		ReadyForResyncAt: pgtype.Timestamptz{
-			Time:  time.Now(),
+			Time:  time.Now().Add(10 * time.Second),
 			Valid: true,
 		},
 	})

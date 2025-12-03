@@ -19,6 +19,7 @@ import (
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/riverupdater"
 	"github.com/nais/v13s/internal/riverupdater/riverjob"
+	"github.com/nais/v13s/internal/riverupdater/riverjob/worker"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
@@ -431,14 +432,12 @@ func TestUpdater(t *testing.T) {
 	})
 }
 
-func TestUpdater_DetermineSeveritySince(t *testing.T) {
+func TestWorker_DetermineSeveritySince(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
-
-	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()))
 
 	imageName := "image-1"
 	imageTag := "v1"
@@ -490,14 +489,14 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
         `, ts, 2, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
+		got, err := worker.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 		assert.WithinDuration(t, ts, *got, time.Second)
 	})
 
 	t.Run("returns timestamp if severity not present", func(t *testing.T) {
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 5)
+		got, err := worker.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 5)
 		require.NoError(t, err)
 		assert.NotNil(t, got)
 	})
@@ -511,7 +510,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
     `, ts, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
+		got, err := worker.DetermineSeveritySince(ctx, db, imageName, pkg, cveID, 2)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 

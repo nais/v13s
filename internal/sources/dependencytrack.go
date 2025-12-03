@@ -148,44 +148,6 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 	return vv, nil
 }
 
-func (d *dependencytrackSource) MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error {
-	d.log.Debug("maintaining suppressed vulnerabilities")
-	triggeredProjects := make(map[string]struct{})
-
-	for _, v := range suppressed {
-		metadata, ok := v.Metadata.(*dependencytrack.VulnMetadata)
-		if !ok || metadata == nil {
-			d.log.Warnf("missing metadata for suppressed vulnerability, CveId '%s', Package '%s'", v.CveId, v.Package)
-			continue
-		}
-
-		an, err := d.client.GetAnalysisTrailForImage(ctx, metadata.ProjectId, metadata.ComponentId, metadata.VulnerabilityUuid)
-		if err != nil {
-			return err
-		}
-
-		if d.shouldUpdateFinding(an, v) {
-			d.log.Debug("analysis trail for vulnerability found")
-			if err := d.updateFinding(ctx, metadata, v); err != nil {
-				return err
-			}
-			triggeredProjects[metadata.ProjectId] = struct{}{}
-		} else {
-			d.log.Infof("vulnerability %s is already up to date in project %s", v.CveId, metadata.ProjectId)
-		}
-	}
-
-	// TODO: postgres river: trigger analysis for projects with updated findings
-	for projectID := range triggeredProjects {
-		if err := d.client.TriggerAnalysis(ctx, projectID); err != nil {
-			return fmt.Errorf("triggering analysis for project %s: %w", projectID, err)
-		}
-	}
-
-	d.log.Debug("suppressed vulnerabilities maintained")
-	return nil
-}
-
 func (d *dependencytrackSource) UpdateSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) (model.EventTokens, error) {
 	d.log.Debug("maintaining suppressed vulnerabilities")
 	eventTokens := make(model.EventTokens, 0)
@@ -225,6 +187,17 @@ func (d *dependencytrackSource) UpdateSuppressedVulnerabilities(ctx context.Cont
 
 	d.log.Debug("suppressed vulnerabilities maintained")
 	return eventTokens, nil
+}
+
+func (d *dependencytrackSource) TriggerAnalysis(ctx context.Context, imageName, imageTag string) error {
+	p, err := d.client.GetProject(ctx, imageName, imageTag)
+	if err != nil {
+		return fmt.Errorf("getting project: %w", err)
+	}
+	if p == nil {
+		return ErrNoProject
+	}
+	return d.client.TriggerAnalysis(ctx, p.Uuid)
 }
 
 func (d *dependencytrackSource) GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error) {

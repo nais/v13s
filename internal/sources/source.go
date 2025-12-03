@@ -33,10 +33,10 @@ type Source interface {
 	GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error)
 	GetVulnerabilitySummary(ctx context.Context, imageName, imageTag string) (*VulnerabilitySummary, error)
 	IsTaskInProgress(ctx context.Context, processToken string) (bool, error)
-	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
-	UpdateSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) (model.EventTokens, error)
 	Name() string
 	ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error)
+	TriggerAnalysis(ctx context.Context, imageName, imageTag string) error
+	UpdateSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) (model.EventTokens, error)
 	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (*UploadAttestationResponse, error)
 }
 

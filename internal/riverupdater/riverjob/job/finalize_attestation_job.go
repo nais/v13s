@@ -21,7 +21,7 @@ func (FinalizeAttestationJob) Kind() string { return KindFinalizeAttestation }
 func (f FinalizeAttestationJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindFinalizeAttestation,
-		ScheduledAt: time.Now().Add(10 * time.Second),
+		ScheduledAt: time.Now().Add(20 * time.Second),
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
