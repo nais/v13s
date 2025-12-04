@@ -89,6 +89,11 @@ type Options struct {
 	Severity          *Severity
 }
 
+type VulnerabilityFilter struct {
+	CveIds    []string
+	CvssScore *float64
+}
+
 type funcOption struct {
 	f func(options *Options)
 }

@@ -257,6 +257,25 @@ message ListWorkloadsForVulnerabilityByIdResponse {
   repeated Workload workloadRef = 2;
 }
 
+message ListWorkloadsForVulnerabilityRequest {
+  Filter filter = 1;
+  repeated string cve_ids = 2;
+  optional double cvss_score = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+  optional OrderBy order_by = 6;
+}
+
+message ListWorkloadsForVulnerabilityResponse {
+  repeated WorkloadForVulnerability nodes = 1;
+  PageInfo page_info = 2;
+}
+
+message WorkloadForVulnerability {
+  Workload workload_ref = 1;
+  Vulnerability vulnerability = 2;
+}
+
 message ListMeanTimeToFixTrendBySeverityRequest {
   Filter filter = 1;
   optional google.protobuf.Timestamp since = 2;
@@ -370,6 +389,8 @@ service Vulnerabilities {
   rpc ListSeverityVulnerabilitiesSince(ListSeverityVulnerabilitiesSinceRequest) returns (ListSeverityVulnerabilitiesSinceResponse);
 
   rpc ListWorkloadsForVulnerabilityById(ListWorkloadsForVulnerabilityByIdRequest) returns (ListWorkloadsForVulnerabilityByIdResponse);
+
+  rpc ListWorkloadsForVulnerability(ListWorkloadsForVulnerabilityRequest) returns (ListWorkloadsForVulnerabilityResponse);
 
   rpc ListMeanTimeToFixTrendBySeverity(ListMeanTimeToFixTrendBySeverityRequest) returns (ListMeanTimeToFixTrendBySeverityResponse);
 

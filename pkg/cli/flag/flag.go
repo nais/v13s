@@ -29,6 +29,8 @@ type Options struct {
 	Unresolved    bool
 	Severity      string
 	Output        string
+	CveIds        string
+	CvssScore     float64
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -103,6 +105,17 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Value:       "",
 			Usage:       "filter by severity (e.g. 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNASSIGNED')",
 			Destination: &opts.Severity,
+		},
+		&cli.StringFlag{
+			Name:        "cve_ids",
+			Value:       "",
+			Usage:       "comma-separated list of CVE IDs to filter by",
+			Destination: &opts.CveIds,
+		},
+		&cli.Float64Flag{
+			Name:        "cvss_score",
+			Usage:       "CVSS score",
+			Destination: &opts.CvssScore,
 		},
 	}
 	for _, f := range cFlags {

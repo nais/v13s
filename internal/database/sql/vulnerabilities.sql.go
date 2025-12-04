@@ -1040,6 +1040,169 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 	return items, nil
 }
 
+const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilities :many
+SELECT
+    v.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    v.latest_version,
+    v.package,
+    v.cve_id,
+    v.created_at,
+    v.updated_at,
+    v.severity_since,
+    v.last_severity,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity AS severity,
+    c.created_at AS cve_created_at,
+    c.updated_at AS cve_updated_at,
+    COALESCE(sv.suppressed, FALSE) AS suppressed,
+    sv.reason,
+    sv.reason_text,
+    sv.suppressed_by,
+    sv.updated_at AS suppressed_at,
+    v.cvss_score,
+    COUNT(v.id) OVER() as total_count
+FROM vulnerabilities v
+    JOIN cve c ON v.cve_id = c.cve_id
+    JOIN workloads w ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+    LEFT JOIN suppressed_vulnerabilities sv
+              ON v.image_name = sv.image_name
+                  AND v.package = sv.package
+                  AND v.cve_id = sv.cve_id
+WHERE
+    ($1::TEXT[] IS NULL OR v.cve_id = ANY($1::TEXT[]))
+    AND
+    ($2::FLOAT8 IS NULL OR (v.cvss_score IS NOT NULL AND v.cvss_score >= $2::FLOAT8))
+    AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.cluster = $3::TEXT ELSE TRUE END)
+    AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.namespace = $4::TEXT ELSE TRUE END)
+    AND (CASE WHEN $5::TEXT IS NOT NULL THEN w.workload_type = $5::TEXT ELSE TRUE END)
+    AND (CASE WHEN $6::TEXT IS NOT NULL THEN w.name = $6::TEXT ELSE TRUE END)
+    AND (CASE WHEN $7::TEXT IS NOT NULL THEN v.image_name = $7::TEXT ELSE TRUE END)
+    AND (CASE WHEN $8::TEXT IS NOT NULL THEN v.image_tag = $8::TEXT ELSE TRUE END)
+ORDER BY
+    CASE WHEN $9 = 'cve_id_desc' THEN v.cve_id END DESC,
+    CASE WHEN $9 = 'cve_id_asc' THEN v.cve_id END ASC,
+    CASE WHEN $9 = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN $9 = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN $9 = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN $9 = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN $9 = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN $9 = 'cluster_desc' THEN w.cluster END DESC,
+    v.id ASC LIMIT $11
+OFFSET $10
+`
+
+type ListWorkloadsForVulnerabilitiesParams struct {
+	CveIds       []string
+	CvssScore    *float64
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+	WorkloadName *string
+	ImageName    *string
+	ImageTag     *string
+	OrderBy      interface{}
+	Offset       int32
+	Limit        int32
+}
+
+type ListWorkloadsForVulnerabilitiesRow struct {
+	ID            pgtype.UUID
+	WorkloadName  string
+	WorkloadType  string
+	Namespace     string
+	Cluster       string
+	ImageName     string
+	ImageTag      string
+	LatestVersion string
+	Package       string
+	CveID         string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	SeveritySince pgtype.Timestamptz
+	LastSeverity  int32
+	CveTitle      string
+	CveDesc       string
+	CveLink       string
+	Severity      int32
+	CveCreatedAt  pgtype.Timestamptz
+	CveUpdatedAt  pgtype.Timestamptz
+	Suppressed    bool
+	Reason        NullVulnerabilitySuppressReason
+	ReasonText    *string
+	SuppressedBy  *string
+	SuppressedAt  pgtype.Timestamptz
+	CvssScore     *float64
+	TotalCount    int64
+}
+
+func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListWorkloadsForVulnerabilitiesParams) ([]*ListWorkloadsForVulnerabilitiesRow, error) {
+	rows, err := q.db.Query(ctx, listWorkloadsForVulnerabilities,
+		arg.CveIds,
+		arg.CvssScore,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+		arg.WorkloadName,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.OrderBy,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListWorkloadsForVulnerabilitiesRow{}
+	for rows.Next() {
+		var i ListWorkloadsForVulnerabilitiesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.ImageName,
+			&i.ImageTag,
+			&i.LatestVersion,
+			&i.Package,
+			&i.CveID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SeveritySince,
+			&i.LastSeverity,
+			&i.CveTitle,
+			&i.CveDesc,
+			&i.CveLink,
+			&i.Severity,
+			&i.CveCreatedAt,
+			&i.CveUpdatedAt,
+			&i.Suppressed,
+			&i.Reason,
+			&i.ReasonText,
+			&i.SuppressedBy,
+			&i.SuppressedAt,
+			&i.CvssScore,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkloadsForVulnerabilityById = `-- name: ListWorkloadsForVulnerabilityById :many
 SELECT w.id,
        w.cluster,

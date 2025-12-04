@@ -389,6 +389,86 @@ func (s *Server) ListWorkloadsForVulnerabilityById(ctx context.Context, request 
 	}, nil
 }
 
+func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vulnerabilities.ListWorkloadsForVulnerabilityRequest) (*vulnerabilities.ListWorkloadsForVulnerabilityResponse, error) {
+	limit, offset, err := grpcpagination.Pagination(request)
+	if err != nil {
+		return nil, err
+	}
+	filter := request.GetFilter()
+	if filter == nil {
+		filter = &vulnerabilities.Filter{}
+	}
+
+	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
+		Cluster:      filter.Cluster,
+		Namespace:    filter.Namespace,
+		WorkloadType: filter.FuzzyWorkloadType(),
+		WorkloadName: filter.Workload,
+		CveIds:       request.CveIds,
+		CvssScore:    request.CvssScore,
+		Offset:       offset,
+		Limit:        limit,
+		OrderBy:      SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list workloads for vulnerability: %w", err)
+	}
+
+	total := 0
+	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
+		total = int(row.TotalCount)
+		if row.WorkloadName == "flaky-frontend" {
+			fmt.Println("debug")
+		}
+		return &vulnerabilities.WorkloadForVulnerability{
+			WorkloadRef: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.WorkloadName,
+				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
+			},
+			Vulnerability: &vulnerabilities.Vulnerability{
+				Id:      row.ID.String(),
+				Package: row.Package,
+				Suppression: toSuppression(
+					row.Suppressed,
+					row.Reason.VulnerabilitySuppressReason,
+					row.ReasonText,
+					row.SuppressedBy,
+					row.SuppressedAt.Time,
+				),
+				CvssScore:     row.CvssScore,
+				ImageName:     row.ImageName,
+				Created:       timestamppb.New(row.CreatedAt.Time),
+				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
+				SeveritySince: timestamppb.New(row.SeveritySince.Time),
+				LastSeverity:  &row.LastSeverity,
+				Cve: &vulnerabilities.Cve{
+					Id:          row.CveID,
+					Title:       row.CveTitle,
+					Description: row.CveDesc,
+					Link:        row.CveLink,
+					Severity:    vulnerabilities.Severity(row.Severity),
+					Created:     timestamppb.New(row.CveCreatedAt.Time),
+					LastUpdated: timestamppb.New(row.CveUpdatedAt.Time),
+				},
+			},
+		}
+	})
+
+	pageInfo, err := grpcpagination.PageInfo(request, total)
+	if err != nil {
+		return nil, err
+	}
+	response := &vulnerabilities.ListWorkloadsForVulnerabilityResponse{
+		Nodes:    nodes,
+		PageInfo: pageInfo,
+	}
+	return response, nil
+}
+
 func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error) {
 	row, err := s.querier.GetVulnerability(ctx, sql.GetVulnerabilityParams{
 		ImageName: request.ImageName,

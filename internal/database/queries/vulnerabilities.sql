@@ -483,3 +483,64 @@ ORDER BY
          CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
          v.id ASC LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
+
+-- name: ListWorkloadsForVulnerabilities :many
+SELECT
+    DISTINCT ON (w.id)
+    v.id,
+    w.name AS workload_name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    v.latest_version,
+    v.package,
+    v.cve_id,
+    v.created_at,
+    v.updated_at,
+    v.severity_since,
+    v.last_severity,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity AS severity,
+    c.created_at AS cve_created_at,
+    c.updated_at AS cve_updated_at,
+    COALESCE(sv.suppressed, FALSE) AS suppressed,
+    sv.reason,
+    sv.reason_text,
+    sv.suppressed_by,
+    sv.updated_at AS suppressed_at,
+    v.cvss_score,
+    COUNT(v.id) OVER() as total_count
+FROM vulnerabilities v
+    JOIN cve c ON v.cve_id = c.cve_id
+    JOIN workloads w ON w.image_name = v.image_name AND w.image_tag = v.image_tag
+    LEFT JOIN suppressed_vulnerabilities sv
+              ON v.image_name = sv.image_name
+                  AND v.package = sv.package
+                  AND v.cve_id = sv.cve_id
+WHERE
+    (sqlc.narg('cve_ids')::TEXT[] IS NULL OR v.cve_id = ANY(sqlc.narg('cve_ids')::TEXT[]))
+    AND
+    (sqlc.narg('cvss_score')::FLOAT8 IS NULL OR (v.cvss_score IS NOT NULL AND v.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
+    AND (CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN w.cluster = sqlc.narg('cluster')::TEXT ELSE TRUE END)
+    AND (CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN w.namespace = sqlc.narg('namespace')::TEXT ELSE TRUE END)
+    AND (CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN w.workload_type = sqlc.narg('workload_type')::TEXT ELSE TRUE END)
+    AND (CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN w.name = sqlc.narg('workload_name')::TEXT ELSE TRUE END)
+    AND (CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN v.image_name = sqlc.narg('image_name')::TEXT ELSE TRUE END)
+    AND (CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN v.image_tag = sqlc.narg('image_tag')::TEXT ELSE TRUE END)
+ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN v.cve_id END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN v.cve_id END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN w.name END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN w.name END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN w.namespace END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN w.namespace END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN w.cluster END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN w.cluster END DESC,
+    v.id ASC LIMIT sqlc.arg('limit')
+OFFSET sqlc.arg('offset')
+;
+

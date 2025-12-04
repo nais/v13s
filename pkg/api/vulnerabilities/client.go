@@ -16,6 +16,7 @@ type Client interface {
 	ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error)
 	ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
+	ListWorkloadsForVulnerability(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListWorkloadsForVulnerabilityResponse, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error)
 	ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
@@ -115,6 +116,18 @@ func (c *client) ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...O
 func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error) {
 	return c.v.ListWorkloadsForVulnerabilityById(ctx, &ListWorkloadsForVulnerabilityByIdRequest{
 		Id: id,
+	})
+}
+
+func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListWorkloadsForVulnerabilityResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.ListWorkloadsForVulnerability(ctx, &ListWorkloadsForVulnerabilityRequest{
+		Filter:    o.Filter,
+		Limit:     o.Limit,
+		Offset:    o.Offset,
+		OrderBy:   o.OrderBy,
+		CveIds:    vulnerabilityFilter.CveIds,
+		CvssScore: vulnerabilityFilter.CvssScore,
 	})
 }
 
