@@ -4,13 +4,15 @@ INSERT INTO cve(cve_id,
                 cve_desc,
                 cve_link,
                 severity,
-                refs)
+                refs,
+                cvss_score)
 VALUES (@cve_id,
         @cve_title,
         @cve_desc,
         @cve_link,
         @severity,
-        @refs)
+        @refs,
+        @cvss_score)
     ON CONFLICT (cve_id)
     DO UPDATE
                SET cve_title = EXCLUDED.cve_title,
@@ -18,13 +20,15 @@ VALUES (@cve_id,
                cve_link  = EXCLUDED.cve_link,
                severity  = EXCLUDED.severity,
                refs      = EXCLUDED.refs,
+               cvss_score = EXCLUDED.cvss_score,
                updated_at = NOW()
    WHERE
            cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
            cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
            cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
            cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
-           cve.refs       IS DISTINCT FROM EXCLUDED.refs
+           cve.refs       IS DISTINCT FROM EXCLUDED.refs OR
+           cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
 ;
 
 -- name: BatchUpsertVulnerabilities :batchexec

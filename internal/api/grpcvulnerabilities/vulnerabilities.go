@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -499,6 +502,50 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 			},
 		},
 	}, nil
+}
+
+func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequest) (*vulnerabilities.GetCveResponse, error) {
+	if err := validateInput(request.GetId()); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid cve id: %v", err)
+	}
+
+	cve, err := s.querier.GetCve(ctx, request.Id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Errorf(codes.NotFound, "cve not found")
+		}
+		return nil, status.Errorf(codes.Internal, "get cve: %v", err)
+	}
+
+	cvssScore := 0.0
+	if cve.CvssScore != nil {
+		cvssScore = *cve.CvssScore
+	}
+	return &vulnerabilities.GetCveResponse{
+		Cve: &vulnerabilities.Cve{
+			Id:          cve.CveID,
+			Title:       cve.CveTitle,
+			Description: cve.CveDesc,
+			Link:        cve.CveLink,
+			Severity:    vulnerabilities.Severity(cve.Severity),
+			References:  cve.Refs,
+			Created:     timestamppb.New(cve.CreatedAt.Time),
+			LastUpdated: timestamppb.New(cve.UpdatedAt.Time),
+			CvssScore:   cvssScore,
+		},
+	}, nil
+}
+
+func validateInput(s string) error {
+	// only allow characters A-Z, a-z, 0-9, hyphen, underscore
+	ok, err := regexp.Match(`^[A-Za-z0-9\-_]+$`, []byte(s))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("string contains invalid characters")
+	}
+	return nil
 }
 
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {

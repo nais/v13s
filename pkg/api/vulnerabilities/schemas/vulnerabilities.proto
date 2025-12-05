@@ -88,6 +88,7 @@ message Cve {
   map<string, string> references = 6;
   optional google.protobuf.Timestamp created = 7;
   optional google.protobuf.Timestamp last_updated = 8;
+  double cvss_score = 9;
 }
 
 message Suppression {
@@ -360,6 +361,14 @@ message GetVulnerabilityResponse {
   Vulnerability vulnerability = 1;
 }
 
+message GetCveRequest {
+  string id = 1;
+}
+
+message GetCveResponse {
+  Cve cve = 1;
+}
+
 message SuppressVulnerabilityRequest {
   string id = 1;
   SuppressState state = 2;
@@ -414,6 +423,8 @@ service Vulnerabilities {
   rpc GetVulnerabilityById(GetVulnerabilityByIdRequest) returns (GetVulnerabilityByIdResponse);
 
   rpc GetVulnerability(GetVulnerabilityRequest) returns (GetVulnerabilityResponse);
+
+  rpc GetCve(GetCveRequest) returns (GetCveResponse);
 
   // -------------------- Suppress RPCs --------------------
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);

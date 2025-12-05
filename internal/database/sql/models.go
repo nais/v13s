@@ -308,6 +308,7 @@ type Cve struct {
 	Refs      typeext.MapStringString
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	CvssScore *float64
 }
 
 type Image struct {

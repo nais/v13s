@@ -1,0 +1,4 @@
+-- +goose Up
+
+ALTER TABLE cve
+    ADD COLUMN cvss_score FLOAT8 NULL DEFAULT NULL;

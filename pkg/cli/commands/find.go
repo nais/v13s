@@ -29,6 +29,23 @@ func FindCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 						return listWorkloads(ctx, cmd, c, opts)
 					},
 				},
+				{
+					Name:  "cve",
+					Usage: "find cve matching id",
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						if cmd.Args().First() == "" {
+							return fmt.Errorf("cve id is required argument")
+						}
+
+						resp, err := c.GetCve(ctx, cmd.Args().First())
+						if err != nil {
+							return err
+						}
+
+						fmt.Printf("CVE ID: %s\n\nDescription: %s\n\nSeverity: %s\n\n", resp.Cve.GetId(), resp.Cve.GetDescription(), resp.Cve.GetSeverity())
+						return nil
+					},
+				},
 			},
 		},
 	}
@@ -62,16 +79,12 @@ func listWorkloads(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 		// Print vulnerabilities table for this workload
-		tbl := table.New("Workload", "Package", "CVE", "Severity", "CVSS Score", "Severity Since", "Latest Version", "Suppressed")
+		tbl := table.New("Workload", "Package", "CVE", "Severity", "CVSS Score", "Severity Since")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
 			w := fmt.Sprintf("%s/%s/%s", n.GetWorkloadRef().GetCluster(), n.GetWorkloadRef().GetNamespace(), n.GetWorkloadRef().GetName())
 			v := n.Vulnerability
-			suppressed := "No"
-			if v.GetSuppression() != nil && v.GetSuppression().GetSuppressed() {
-				suppressed = "Yes"
-			}
 
 			tbl.AddRow(
 				w,
@@ -80,8 +93,6 @@ func listWorkloads(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				v.GetCve().GetSeverity(),
 				v.GetCvssScore(),
 				timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),
-				v.GetLatestVersion(),
-				suppressed,
 			)
 		}
 

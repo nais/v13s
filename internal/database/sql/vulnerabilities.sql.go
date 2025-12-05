@@ -142,7 +142,7 @@ func (q *Queries) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg 
 }
 
 const getCve = `-- name: GetCve :one
-SELECT cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at
+SELECT cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score
 FROM cve
 WHERE cve_id = $1
 `
@@ -159,6 +159,7 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.Refs,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CvssScore,
 	)
 	return &i, err
 }
@@ -537,7 +538,7 @@ func (q *Queries) ListSeverityVulnerabilitiesSince(ctx context.Context, arg List
 }
 
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
-SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, w.cluster, w.namespace
+SELECT sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by, v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, w.cluster, w.namespace
 FROM suppressed_vulnerabilities sv
          JOIN vulnerabilities v
               ON sv.image_name = v.image_name
@@ -604,6 +605,7 @@ type ListSuppressedVulnerabilitiesRow struct {
 	Refs          typeext.MapStringString
 	CreatedAt_3   pgtype.Timestamptz
 	UpdatedAt_3   pgtype.Timestamptz
+	CvssScore_2   *float64
 	Cluster       string
 	Namespace     string
 }
@@ -656,6 +658,7 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.Refs,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_3,
+			&i.CvssScore_2,
 			&i.Cluster,
 			&i.Namespace,
 		); err != nil {
@@ -1042,6 +1045,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 
 const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilities :many
 SELECT
+    DISTINCT ON (w.id)
     v.id,
     w.name AS workload_name,
     w.workload_type,
