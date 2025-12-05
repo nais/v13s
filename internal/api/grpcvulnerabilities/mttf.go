@@ -16,15 +16,10 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	wTypes := []string{"app", "job"}
-	if request.GetFilter().GetWorkloadType() != "" {
-		wTypes = []string{request.GetFilter().GetWorkloadType()}
-	}
-
 	params := sql.ListMeanTimeToFixTrendBySeverityParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: wTypes,
+		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         timestamptzFromProto(request.GetSince()),
 	}
@@ -62,15 +57,10 @@ func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	wTypes := []string{"app", "job"}
-	if request.GetFilter().GetWorkloadType() != "" {
-		wTypes = []string{request.GetFilter().GetWorkloadType()}
-	}
-
 	params := sql.ListWorkloadSeverityFixStatsParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: wTypes,
+		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         timestamptzFromProto(request.GetSince()),
 	}

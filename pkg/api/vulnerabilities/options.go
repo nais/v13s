@@ -278,3 +278,11 @@ func (f *Filter) FuzzyWorkloadType() *string {
 	}
 	return f.WorkloadType
 }
+
+func (f *Filter) GetWorkloadTypes() []string {
+	wTypes := []string{"app", "job"}
+	if f.GetWorkloadType() != "" {
+		wTypes = []string{*f.FuzzyWorkloadType()}
+	}
+	return wTypes
+}

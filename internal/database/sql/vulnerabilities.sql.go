@@ -1085,7 +1085,7 @@ WHERE
     ($2::FLOAT8 IS NULL OR (v.cvss_score IS NOT NULL AND v.cvss_score >= $2::FLOAT8))
     AND (CASE WHEN $3::TEXT IS NOT NULL THEN w.cluster = $3::TEXT ELSE TRUE END)
     AND (CASE WHEN $4::TEXT IS NOT NULL THEN w.namespace = $4::TEXT ELSE TRUE END)
-    AND (CASE WHEN $5::TEXT IS NOT NULL THEN w.workload_type = $5::TEXT ELSE TRUE END)
+    AND ($5::TEXT[] IS NULL OR w.workload_type = ANY($5::TEXT[]))
     AND (CASE WHEN $6::TEXT IS NOT NULL THEN w.name = $6::TEXT ELSE TRUE END)
     AND (CASE WHEN $7::TEXT IS NOT NULL THEN v.image_name = $7::TEXT ELSE TRUE END)
     AND (CASE WHEN $8::TEXT IS NOT NULL THEN v.image_tag = $8::TEXT ELSE TRUE END)
@@ -1103,17 +1103,17 @@ OFFSET $10
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
-	CveIds       []string
-	CvssScore    *float64
-	Cluster      *string
-	Namespace    *string
-	WorkloadType *string
-	WorkloadName *string
-	ImageName    *string
-	ImageTag     *string
-	OrderBy      interface{}
-	Offset       int32
-	Limit        int32
+	CveIds        []string
+	CvssScore     *float64
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	ImageName     *string
+	ImageTag      *string
+	OrderBy       interface{}
+	Offset        int32
+	Limit         int32
 }
 
 type ListWorkloadsForVulnerabilitiesRow struct {
@@ -1152,7 +1152,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.CvssScore,
 		arg.Cluster,
 		arg.Namespace,
-		arg.WorkloadType,
+		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.ImageName,
 		arg.ImageTag,

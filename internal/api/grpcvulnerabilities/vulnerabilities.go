@@ -403,15 +403,15 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	}
 
 	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
-		Cluster:      filter.Cluster,
-		Namespace:    filter.Namespace,
-		WorkloadType: filter.FuzzyWorkloadType(),
-		WorkloadName: filter.Workload,
-		CveIds:       request.CveIds,
-		CvssScore:    request.CvssScore,
-		Offset:       offset,
-		Limit:        limit,
-		OrderBy:      SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+		Cluster:       filter.Cluster,
+		Namespace:     filter.Namespace,
+		WorkloadTypes: filter.GetWorkloadTypes(),
+		WorkloadName:  filter.Workload,
+		CveIds:        request.CveIds,
+		CvssScore:     request.CvssScore,
+		Offset:        offset,
+		Limit:         limit,
+		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list workloads for vulnerability: %w", err)

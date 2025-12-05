@@ -30,15 +30,10 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		since.Valid = true
 	}
 
-	// TODO: extract this to a function
-	wTypes := []string{"app", "job"}
-	if request.GetFilter().GetWorkloadType() != "" {
-		wTypes = []string{request.GetFilter().GetWorkloadType()}
-	}
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: wTypes,
+		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
@@ -106,14 +101,10 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	wTypes := []string{"app", "job"}
-	if request.GetFilter().GetWorkloadType() != "" {
-		wTypes = []string{request.GetFilter().GetWorkloadType()}
-	}
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: wTypes,
+		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 	})
 
@@ -162,15 +153,11 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		since.Time = request.GetSince().AsTime()
 		since.Valid = true
 	}
-	wTypes := []string{"app", "job"}
-	if request.GetFilter().GetWorkloadType() != "" {
-		wTypes = []string{request.GetFilter().GetWorkloadType()}
-	}
 
 	timeSeries, err := s.querier.GetVulnerabilitySummaryTimeSeries(ctx, sql.GetVulnerabilitySummaryTimeSeriesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: wTypes,
+		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         since,
 	})
