@@ -60,18 +60,18 @@ spec:
             httpGet:
               path: /healthz
               port: 8000
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 20
+            periodSeconds: 5
             timeoutSeconds: 5
-            failureThreshold: 3
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /healthz
               port: 8000
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 20
+            periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 3
+            failureThreshold: 5
         - name: cloud-sql-proxy
           image: {{ .Values.image.cloudsql_proxy }}
           command:

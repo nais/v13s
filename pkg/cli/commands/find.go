@@ -42,7 +42,13 @@ func FindCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 							return err
 						}
 
-						fmt.Printf("CVE ID: %s\n\nDescription: %s\n\nSeverity: %s\n\n", resp.Cve.GetId(), resp.Cve.GetDescription(), resp.Cve.GetSeverity())
+						fmt.Printf(
+							"CVE ID: %s\n\nDescription: %s\n\nSeverity: %s\n\nCvss Score: %v\n",
+							resp.Cve.GetId(),
+							resp.Cve.GetDescription(),
+							resp.Cve.GetSeverity(),
+							resp.Cve.GetCvssScore(),
+						)
 						return nil
 					},
 				},

@@ -490,7 +490,6 @@ OFFSET sqlc.arg('offset');
 
 -- name: ListWorkloadsForVulnerabilities :many
 SELECT
-    DISTINCT ON (w.id)
     v.id,
     w.name AS workload_name,
     w.workload_type,
