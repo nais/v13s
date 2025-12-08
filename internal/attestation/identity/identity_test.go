@@ -1,4 +1,4 @@
-package github
+package identity
 
 import (
 	"testing"
@@ -57,8 +57,7 @@ func TestNewCertificateIdentity(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			id := NewCertificateIdentity(tt.orgs)
-			idPattern := id.GetIdentities()
+			idPattern := GitHubWorkflowIdentity(tt.enabled)
 			for _, pattern := range idPattern {
 				if tt.fails {
 					assert.NotRegexp(t, pattern.SubjectRegExp, tt.serverUrl+"/"+tt.workFlowRef)

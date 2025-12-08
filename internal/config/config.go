@@ -15,20 +15,20 @@ import (
 )
 
 type Config struct {
-	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	InternalListenAddr        string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
-	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
-	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
-	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
-	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
-	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
-	Tenant                    string        `envconfig:"TENANT" default:"nav"`
-	DependencyTrack           sources.DependencyTrackConfig
-	K8s                       K8sConfig
-	LeaderElection            LeaderElectionConfig
-	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
-	Metrics                   MetricConfig
+	AuthorizedServiceAccounts  []string `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
+	DatabaseUrl                string   `envconfig:"DATABASE_URL" required:"true"`
+	DependencyTrack            sources.DependencyTrackConfig
+	IdentityEnforcementEnabled bool   `envconfig:"IDENTITY_ENFORCEMENT_ENABLED" default:"true"`
+	InternalListenAddr         string `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
+	K8s                        K8sConfig
+	LeaderElection             LeaderElectionConfig
+	ListenAddr                 string `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	LogFormat                  string `envconfig:"LOG_FORMAT" default:"json"`
+	LogLevel                   string `envconfig:"LOG_LEVEL" default:"info"`
+	Metrics                    MetricConfig
+	RequiredAudience           string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
+	Tenant                     string        `envconfig:"TENANT" default:"nav"`
+	UpdateInterval             time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 }
 
 type DependencyTrackConfig struct {

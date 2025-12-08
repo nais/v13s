@@ -7,9 +7,8 @@ image:
 serviceAccountEmail:
 serviceAccountName: v13s-sa
 updateInterval: 3m
-github:
-  organizations:
-    - nais
+identityEnforcement:
+  enabled: true
 dockerconfigjson: '{"auths":{}}'
 auth:
   audience: "v13s"
