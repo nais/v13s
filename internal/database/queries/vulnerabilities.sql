@@ -1,3 +1,92 @@
+-- name: RecalculateVulnerabilitySummary :exec
+WITH alias_map AS (
+    -- Map alias GHSA IDs to canonical CVE IDs
+    SELECT
+        r.v::text AS alias_id,     -- e.g. GHSA-...
+        r.k       AS canonical_id  -- e.g. CVE-...
+    FROM cve
+             CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
+),
+resolved_vulnerabilities AS (
+     SELECT DISTINCT
+         c.cve_id AS id,
+         c.severity,
+         v.package,
+         v.image_name,
+         v.image_tag
+     FROM vulnerabilities v
+              LEFT JOIN alias_map am
+                        ON v.cve_id = am.alias_id
+              JOIN cve c
+                   ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
+     WHERE v.image_name = @image_name
+       AND v.image_tag  = @image_tag
+ ),
+ severity_counts AS (
+     SELECT COUNT(*)                             AS total,
+            COUNT(*) FILTER (WHERE severity = 0) AS critical,
+            COUNT(*) FILTER (WHERE severity = 1) AS high,
+            COUNT(*) FILTER (WHERE severity = 2) AS medium,
+            COUNT(*) FILTER (WHERE severity = 3) AS low,
+            COUNT(*) FILTER (WHERE severity = 4) AS unassigned
+     FROM resolved_vulnerabilities rv
+              LEFT JOIN suppressed_vulnerabilities sv
+                        ON  rv.image_name = sv.image_name
+                            AND rv.package    = sv.package
+                            AND rv.id         = sv.cve_id
+     WHERE NOT COALESCE(sv.suppressed, FALSE)
+ ),
+summary AS (
+    SELECT @image_name AS image_name,
+           @image_tag  AS image_tag,
+           total,
+           critical,
+           high,
+           medium,
+           low,
+           unassigned,
+           10 * critical
+               + 5 * high
+               + 3 * medium
+               + 1 * low
+               + 5 * unassigned AS risk_score
+    FROM severity_counts
+)
+INSERT INTO vulnerability_summary (
+    image_name,
+    image_tag,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score,
+    created_at,
+    updated_at
+)
+SELECT
+    image_name,
+    image_tag,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score,
+    NOW(),
+    NOW()
+FROM summary
+    ON CONFLICT (image_name, image_tag)
+        DO UPDATE SET
+           critical    = EXCLUDED.critical,
+           high        = EXCLUDED.high,
+           medium      = EXCLUDED.medium,
+           low         = EXCLUDED.low,
+           unassigned  = EXCLUDED.unassigned,
+           risk_score  = EXCLUDED.risk_score,
+           updated_at  = NOW();
+
+
 -- name: BatchUpsertCve :batchexec
 INSERT INTO cve(cve_id,
                 cve_title,

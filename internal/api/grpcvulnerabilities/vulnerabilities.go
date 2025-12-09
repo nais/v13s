@@ -570,6 +570,13 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
 	}
 
+	if err := s.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+		ImageName: vuln.ImageName,
+		ImageTag:  vuln.ImageTag,
+	}); err != nil {
+		return nil, fmt.Errorf("recalculate vulnerability summary: %w", err)
+	}
+
 	err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateResync,
 		Name:  vuln.ImageName,
