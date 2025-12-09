@@ -1261,33 +1261,59 @@ func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnera
 }
 
 const recalculateVulnerabilitySummary = `-- name: RecalculateVulnerabilitySummary :exec
-WITH summary AS (
+WITH alias_map AS (
+    -- Map alias GHSA IDs to canonical CVE IDs
     SELECT
-        $1 AS image_name,
-        $2  AS image_tag,
-        COUNT(*) AS total,
-        COALESCE(SUM(CASE WHEN c.severity = 0 THEN 1 ELSE 0 END), 0) AS critical,
-        COALESCE(SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END), 0) AS high,
-        COALESCE(SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END), 0) AS medium,
-        COALESCE(SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END), 0) AS low,
-        COALESCE(SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END), 0) AS unassigned,
-        10 * COALESCE(SUM(CASE WHEN c.severity = 0 THEN 1 ELSE 0 END), 0) +
-        5 * COALESCE(SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END), 0) +
-        3 * COALESCE(SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END), 0) +
-        1 * COALESCE(SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END), 0) +
-        5 * COALESCE(SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END), 0) AS risk_score
-    FROM vulnerabilities v
-             JOIN cve c
-                  ON v.cve_id = c.cve_id
-             LEFT JOIN suppressed_vulnerabilities sv
-                       ON v.image_name = sv.image_name
-                           AND v.package    = sv.package
-                           AND v.cve_id     = sv.cve_id
-    WHERE COALESCE(sv.suppressed, FALSE) = FALSE
-      AND v.image_name = $1
-      AND v.image_tag  = $2
+        r.v::text AS alias_id,     -- e.g. GHSA-...
+        r.k       AS canonical_id  -- e.g. CVE-...
+    FROM cve
+             CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
+),
+resolved_vulnerabilities AS (
+     SELECT DISTINCT
+         c.cve_id AS id,
+         c.severity,
+         v.package,
+         v.image_name,
+         v.image_tag
+     FROM vulnerabilities v
+              LEFT JOIN alias_map am
+                        ON v.cve_id = am.alias_id
+              JOIN cve c
+                   ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
+     WHERE v.image_name = $1
+       AND v.image_tag  = $2
+ ),
+ severity_counts AS (
+     SELECT COUNT(*)                             AS total,
+            COUNT(*) FILTER (WHERE severity = 0) AS critical,
+            COUNT(*) FILTER (WHERE severity = 1) AS high,
+            COUNT(*) FILTER (WHERE severity = 2) AS medium,
+            COUNT(*) FILTER (WHERE severity = 3) AS low,
+            COUNT(*) FILTER (WHERE severity = 4) AS unassigned
+     FROM resolved_vulnerabilities rv
+              LEFT JOIN suppressed_vulnerabilities sv
+                        ON  rv.image_name = sv.image_name
+                            AND rv.package    = sv.package
+                            AND rv.id         = sv.cve_id
+     WHERE NOT COALESCE(sv.suppressed, FALSE)
+ ),
+summary AS (
+    SELECT $1 AS image_name,
+           $2  AS image_tag,
+           total,
+           critical,
+           high,
+           medium,
+           low,
+           unassigned,
+           10 * critical
+               + 5 * high
+               + 3 * medium
+               + 1 * low
+               + 5 * unassigned AS risk_score
+    FROM severity_counts
 )
-
 INSERT INTO vulnerability_summary (
     image_name,
     image_tag,
@@ -1312,15 +1338,15 @@ SELECT
     NOW(),
     NOW()
 FROM summary
-    ON CONFLICT (image_name, image_tag) DO UPDATE
-                                               SET
-                                                   critical    = EXCLUDED.critical,
-                                               high        = EXCLUDED.high,
-                                               medium      = EXCLUDED.medium,
-                                               low         = EXCLUDED.low,
-                                               unassigned  = EXCLUDED.unassigned,
-                                               risk_score  = EXCLUDED.risk_score,
-                                               updated_at  = NOW()
+    ON CONFLICT (image_name, image_tag)
+        DO UPDATE SET
+           critical    = EXCLUDED.critical,
+           high        = EXCLUDED.high,
+           medium      = EXCLUDED.medium,
+           low         = EXCLUDED.low,
+           unassigned  = EXCLUDED.unassigned,
+           risk_score  = EXCLUDED.risk_score,
+           updated_at  = NOW()
 `
 
 type RecalculateVulnerabilitySummaryParams struct {
