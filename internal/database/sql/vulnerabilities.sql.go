@@ -872,41 +872,71 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 }
 
 const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
-WITH image_vulnerabilities AS (
-    SELECT v.id,
-          v.image_name,
-          v.image_tag,
-          v.package,
-          v.cve_id,
-          v.latest_version,
-          v.created_at,
-          v.updated_at,
-          v.severity_since,
-          c.cve_title,
-          c.cve_desc,
-          c.cve_link,
-          c.severity,
-          c.refs::JSONB AS cve_refs,
-          c.created_at AS cve_created_at,
-          c.updated_at AS cve_updated_at,
+WITH alias_map AS (
+    -- Map alias GHSA IDs to canonical CVE IDs
+    SELECT
+        r.v::text AS alias_id,     -- e.g. GHSA-...
+        r.k       AS canonical_id  -- e.g. CVE-...
+    FROM cve
+             CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
+),
+resolved_vulnerabilities AS (
+SELECT DISTINCT(c.cve_id),
+    c.cve_id AS resolved_cve_id,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity,
+    c.refs::JSONB AS cve_refs,
+    c.created_at AS cve_created_at,
+    c.updated_at AS cve_updated_at,
+    v.id,
+    v.image_name,
+    v.image_tag,
+    v.package,
+    v.latest_version,
+    v.created_at,
+    v.updated_at,
+    v.severity_since,
+    v.cvss_score
+FROM vulnerabilities v
+    LEFT JOIN alias_map am
+ON v.cve_id = am.alias_id
+    JOIN cve c
+    ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
+WHERE v.image_name = $4
+  AND v.image_tag  = $5
+),
+image_vulnerabilities AS (
+    SELECT rv.id,
+          rv.image_name,
+          rv.image_tag,
+          rv.package,
+          rv.cve_id,
+          rv.latest_version,
+          rv.created_at,
+          rv.updated_at,
+          rv.severity_since,
+          rv.cve_title,
+          rv.cve_desc,
+          rv.cve_link,
+          rv.severity,
+          cve_refs,
+          cve_created_at,
+          cve_updated_at,
           COALESCE(sv.suppressed, FALSE) AS suppressed,
           sv.reason,
           sv.reason_text,
           sv.suppressed_by,
           sv.updated_at as suppressed_at,
-          v.cvss_score
-    FROM vulnerabilities v
-            JOIN cve c ON v.cve_id = c.cve_id
-            JOIN images i ON v.image_name = i.name AND v.image_tag = i.tag
-            LEFT JOIN suppressed_vulnerabilities sv
-                      ON v.image_name = sv.image_name
-                          AND v.package = sv.package
-                          AND v.cve_id = sv.cve_id
-    WHERE v.image_name = $4
-     AND v.image_tag = $5
-     AND ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-     AND ($7::timestamptz IS NULL OR v.severity_since > $7::timestamptz)
-     AND ($8::INT IS NULL OR c.severity = $8::INT)
+          rv.cvss_score
+    FROM resolved_vulnerabilities rv
+        LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
+            AND rv.package = sv.package
+            AND rv.resolved_cve_id = sv.cve_id
+    WHERE ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+     AND ($7::timestamptz IS NULL OR rv.severity_since > $7::timestamptz)
+     AND ($8::INT IS NULL OR rv.severity = $8::INT)
 )
 SELECT id,
        image_name,
