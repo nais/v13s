@@ -207,10 +207,6 @@ func (c *client) SuppressVulnerability(ctx context.Context, id, reason, suppress
 	return err
 }
 
-func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWorkloadRequest, opts ...grpc.CallOption) (*management.RegisterWorkloadResponse, error) {
-	return c.m.RegisterWorkload(ctx, in, opts...)
-}
-
 func (c *client) GetWorkloadStatus(ctx context.Context, in *management.GetWorkloadStatusRequest, opts ...grpc.CallOption) (*management.GetWorkloadStatusResponse, error) {
 	return c.m.GetWorkloadStatus(ctx, in, opts...)
 }

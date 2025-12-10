@@ -119,7 +119,23 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 			return ret
 		}
 
-		for _, c := range deployment.Spec.Template.Spec.Containers {
+		spec := deployment.Spec.Template.Spec
+
+		for _, c := range spec.Containers {
+			name, tag := imageNameTag(c.Image)
+			wType := getWorkloadType(deployment, c)
+
+			ret = append(ret, &model.Workload{
+				Name:      setWorkloadName(c.Name, deployment.GetName()),
+				Namespace: deployment.GetNamespace(),
+				Cluster:   cluster,
+				Type:      wType,
+				ImageName: name,
+				ImageTag:  tag,
+			})
+		}
+
+		for _, c := range spec.InitContainers {
 			name, tag := imageNameTag(c.Image)
 			wType := getWorkloadType(deployment, c)
 
@@ -164,6 +180,8 @@ func getWorkloadType(deployment *v1.Deployment, container corev1.Container) mode
 		"gcr.io/cloud-sql-connectors/cloud-sql-proxy",
 		"docker.io/devopsfaith/krakend",
 		"europe-north1-docker.pkg.dev/nais-io/nais/images/elector",
+		"europe-north1-docker.pkg.dev/nais-io/nais/images/texas",
+		"docker.io/fluent/fluent-bit",
 	}, func(e string) bool {
 		return strings.HasPrefix(container.Image, e) || container.Name == "wonderwall"
 	})
@@ -201,6 +219,7 @@ func jobName(job *nais.Naisjob) string {
 	return job.GetName()
 }
 
+// When introducing digest based images (kyverno mutate), this function needs to be updated
 func imageNameTag(image string) (string, string) {
 	parts := strings.Split(image, ":")
 	if len(parts) == 1 {

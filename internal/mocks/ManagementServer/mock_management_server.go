@@ -199,65 +199,6 @@ func (_c *MockManagementServer_GetWorkloadStatus_Call) RunAndReturn(run func(con
 	return _c
 }
 
-// RegisterWorkload provides a mock function with given fields: _a0, _a1
-func (_m *MockManagementServer) RegisterWorkload(_a0 context.Context, _a1 *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
-	ret := _m.Called(_a0, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RegisterWorkload")
-	}
-
-	var r0 *management.RegisterWorkloadResponse
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error)); ok {
-		return rf(_a0, _a1)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *management.RegisterWorkloadRequest) *management.RegisterWorkloadResponse); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*management.RegisterWorkloadResponse)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *management.RegisterWorkloadRequest) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockManagementServer_RegisterWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterWorkload'
-type MockManagementServer_RegisterWorkload_Call struct {
-	*mock.Call
-}
-
-// RegisterWorkload is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 *management.RegisterWorkloadRequest
-func (_e *MockManagementServer_Expecter) RegisterWorkload(_a0 interface{}, _a1 interface{}) *MockManagementServer_RegisterWorkload_Call {
-	return &MockManagementServer_RegisterWorkload_Call{Call: _e.mock.On("RegisterWorkload", _a0, _a1)}
-}
-
-func (_c *MockManagementServer_RegisterWorkload_Call) Run(run func(_a0 context.Context, _a1 *management.RegisterWorkloadRequest)) *MockManagementServer_RegisterWorkload_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*management.RegisterWorkloadRequest))
-	})
-	return _c
-}
-
-func (_c *MockManagementServer_RegisterWorkload_Call) Return(_a0 *management.RegisterWorkloadResponse, _a1 error) *MockManagementServer_RegisterWorkload_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockManagementServer_RegisterWorkload_Call) RunAndReturn(run func(context.Context, *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error)) *MockManagementServer_RegisterWorkload_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Resync provides a mock function with given fields: _a0, _a1
 func (_m *MockManagementServer) Resync(_a0 context.Context, _a1 *management.ResyncRequest) (*management.ResyncResponse, error) {
 	ret := _m.Called(_a0, _a1)

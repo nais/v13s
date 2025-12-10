@@ -7,28 +7,15 @@ import "google/protobuf/timestamp.proto";
 option go_package = "./pkg/api/vulnerabilities/management";
 
 service Management{
-  rpc RegisterWorkload(RegisterWorkloadRequest) returns (RegisterWorkloadResponse);
   rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
   rpc GetWorkloadJobs(GetWorkloadJobsRequest) returns (GetWorkloadJobsResponse);
   rpc Resync(ResyncRequest) returns (ResyncResponse);
   rpc DeleteWorkload(DeleteWorkloadRequest) returns (DeleteWorkloadResponse);
 }
 
-message RegisterWorkloadRequest {
-  string cluster = 1;
-  string namespace = 2;
-  string workload = 3;
-  string workload_type = 4;
-  string image_name = 5;
-  string image_tag = 6;
-  optional Metadata metadata = 7;
-}
-
 message Metadata {
   map<string, string> labels = 1;
 }
-
-message RegisterWorkloadResponse {}
 
 message GetWorkloadStatusRequest {
   optional string cluster = 1;

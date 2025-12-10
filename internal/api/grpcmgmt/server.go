@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
@@ -40,55 +37,6 @@ func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr *manager.Workl
 		updater:   updater,
 		log:       field,
 	}
-}
-
-func (s *Server) RegisterWorkload(ctx context.Context, request *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
-	metadata := map[string]string{}
-	if request.Metadata != nil {
-		metadata = request.Metadata.Labels
-	}
-
-	if err := s.querier.CreateImage(ctx, sql.CreateImageParams{
-		Name:     request.ImageName,
-		Tag:      request.ImageTag,
-		Metadata: metadata,
-	}); err != nil {
-		s.log.WithError(err).Error("Failed to create image")
-		return nil, err
-	}
-
-	isPlatformImage := collections.AnyMatch([]string{
-		"gcr.io/cloud-sql-connectors/cloud-sql-proxy",
-		"docker.io/devopsfaith/krakend",
-		"europe-north1-docker.pkg.dev/nais-io/nais/images/elector",
-	}, func(e string) bool {
-		return e == request.ImageName || request.Workload == "wonderwall"
-	})
-
-	wType := request.WorkloadType
-	if isPlatformImage {
-		wType = "platform"
-	}
-
-	if _, err := s.querier.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
-		Name:         request.Workload,
-		WorkloadType: wType,
-		Namespace:    request.Namespace,
-		Cluster:      request.Cluster,
-		ImageName:    request.ImageName,
-		ImageTag:     request.ImageTag,
-	}); err != nil {
-		s.log.WithError(err).Error("Failed to upsert workload")
-		return nil, err
-	}
-
-	// TODO: we need to do something here, it gets invoked a lot of times within a short period of time
-	// have some checks if image needs updating.. maybe just set state initialized and let the updater handle it
-	// need something so that new images get updated almost at once
-
-	//s.updater.QueueImage(s.parentCtx, request.ImageName, request.ImageTag)
-
-	return &management.RegisterWorkloadResponse{}, nil
 }
 
 func (s *Server) GetWorkloadStatus(ctx context.Context, req *management.GetWorkloadStatusRequest) (*management.GetWorkloadStatusResponse, error) {
@@ -232,28 +180,6 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 
 		workloads = append(workloads,
 			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
-
-		if request.ImageState != nil {
-			err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-				State: sql.ImageState(*request.ImageState),
-				Name:  workload.ImageName,
-				Tag:   workload.ImageTag,
-				ReadyForResyncAt: pgtype.Timestamptz{
-					Time:  time.Now(),
-					Valid: true,
-				},
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			go func() {
-				err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
-				if err != nil {
-					fmt.Printf("failed to resync images: %v\n", err)
-				}
-			}()
-		}
 
 		if len(workloads) == 0 {
 			s.log.Debugf("no workloads to resync")

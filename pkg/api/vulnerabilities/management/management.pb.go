@@ -22,98 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RegisterWorkloadRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cluster       string                 `protobuf:"bytes,1,opt,name=cluster,proto3" json:"cluster,omitempty"`
-	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Workload      string                 `protobuf:"bytes,3,opt,name=workload,proto3" json:"workload,omitempty"`
-	WorkloadType  string                 `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3" json:"workload_type,omitempty"`
-	ImageName     string                 `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
-	ImageTag      string                 `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3" json:"image_tag,omitempty"`
-	Metadata      *Metadata              `protobuf:"bytes,7,opt,name=metadata,proto3,oneof" json:"metadata,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RegisterWorkloadRequest) Reset() {
-	*x = RegisterWorkloadRequest{}
-	mi := &file_management_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RegisterWorkloadRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RegisterWorkloadRequest) ProtoMessage() {}
-
-func (x *RegisterWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RegisterWorkloadRequest.ProtoReflect.Descriptor instead.
-func (*RegisterWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *RegisterWorkloadRequest) GetCluster() string {
-	if x != nil {
-		return x.Cluster
-	}
-	return ""
-}
-
-func (x *RegisterWorkloadRequest) GetNamespace() string {
-	if x != nil {
-		return x.Namespace
-	}
-	return ""
-}
-
-func (x *RegisterWorkloadRequest) GetWorkload() string {
-	if x != nil {
-		return x.Workload
-	}
-	return ""
-}
-
-func (x *RegisterWorkloadRequest) GetWorkloadType() string {
-	if x != nil {
-		return x.WorkloadType
-	}
-	return ""
-}
-
-func (x *RegisterWorkloadRequest) GetImageName() string {
-	if x != nil {
-		return x.ImageName
-	}
-	return ""
-}
-
-func (x *RegisterWorkloadRequest) GetImageTag() string {
-	if x != nil {
-		return x.ImageTag
-	}
-	return ""
-}
-
-func (x *RegisterWorkloadRequest) GetMetadata() *Metadata {
-	if x != nil {
-		return x.Metadata
-	}
-	return nil
-}
-
 type Metadata struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Labels        map[string]string      `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -123,7 +31,7 @@ type Metadata struct {
 
 func (x *Metadata) Reset() {
 	*x = Metadata{}
-	mi := &file_management_proto_msgTypes[1]
+	mi := &file_management_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -135,7 +43,7 @@ func (x *Metadata) String() string {
 func (*Metadata) ProtoMessage() {}
 
 func (x *Metadata) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[1]
+	mi := &file_management_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +56,7 @@ func (x *Metadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{1}
+	return file_management_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Metadata) GetLabels() map[string]string {
@@ -156,42 +64,6 @@ func (x *Metadata) GetLabels() map[string]string {
 		return x.Labels
 	}
 	return nil
-}
-
-type RegisterWorkloadResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RegisterWorkloadResponse) Reset() {
-	*x = RegisterWorkloadResponse{}
-	mi := &file_management_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RegisterWorkloadResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RegisterWorkloadResponse) ProtoMessage() {}
-
-func (x *RegisterWorkloadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RegisterWorkloadResponse.ProtoReflect.Descriptor instead.
-func (*RegisterWorkloadResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{2}
 }
 
 type GetWorkloadStatusRequest struct {
@@ -208,7 +80,7 @@ type GetWorkloadStatusRequest struct {
 
 func (x *GetWorkloadStatusRequest) Reset() {
 	*x = GetWorkloadStatusRequest{}
-	mi := &file_management_proto_msgTypes[3]
+	mi := &file_management_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -220,7 +92,7 @@ func (x *GetWorkloadStatusRequest) String() string {
 func (*GetWorkloadStatusRequest) ProtoMessage() {}
 
 func (x *GetWorkloadStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[3]
+	mi := &file_management_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -233,7 +105,7 @@ func (x *GetWorkloadStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkloadStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkloadStatusRequest) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{3}
+	return file_management_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetWorkloadStatusRequest) GetCluster() string {
@@ -298,7 +170,7 @@ type WorkloadStatus struct {
 
 func (x *WorkloadStatus) Reset() {
 	*x = WorkloadStatus{}
-	mi := &file_management_proto_msgTypes[4]
+	mi := &file_management_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -310,7 +182,7 @@ func (x *WorkloadStatus) String() string {
 func (*WorkloadStatus) ProtoMessage() {}
 
 func (x *WorkloadStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[4]
+	mi := &file_management_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -323,7 +195,7 @@ func (x *WorkloadStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadStatus.ProtoReflect.Descriptor instead.
 func (*WorkloadStatus) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{4}
+	return file_management_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *WorkloadStatus) GetCluster() string {
@@ -422,7 +294,7 @@ type GetWorkloadStatusResponse struct {
 
 func (x *GetWorkloadStatusResponse) Reset() {
 	*x = GetWorkloadStatusResponse{}
-	mi := &file_management_proto_msgTypes[5]
+	mi := &file_management_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -434,7 +306,7 @@ func (x *GetWorkloadStatusResponse) String() string {
 func (*GetWorkloadStatusResponse) ProtoMessage() {}
 
 func (x *GetWorkloadStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[5]
+	mi := &file_management_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -447,7 +319,7 @@ func (x *GetWorkloadStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkloadStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetWorkloadStatusResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{5}
+	return file_management_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetWorkloadStatusResponse) GetWorkloadStatus() []*WorkloadStatus {
@@ -493,7 +365,7 @@ type Job struct {
 
 func (x *Job) Reset() {
 	*x = Job{}
-	mi := &file_management_proto_msgTypes[6]
+	mi := &file_management_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +377,7 @@ func (x *Job) String() string {
 func (*Job) ProtoMessage() {}
 
 func (x *Job) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[6]
+	mi := &file_management_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +390,7 @@ func (x *Job) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Job.ProtoReflect.Descriptor instead.
 func (*Job) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{6}
+	return file_management_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Job) GetId() int64 {
@@ -583,7 +455,7 @@ type GetWorkloadJobsRequest struct {
 
 func (x *GetWorkloadJobsRequest) Reset() {
 	*x = GetWorkloadJobsRequest{}
-	mi := &file_management_proto_msgTypes[7]
+	mi := &file_management_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +467,7 @@ func (x *GetWorkloadJobsRequest) String() string {
 func (*GetWorkloadJobsRequest) ProtoMessage() {}
 
 func (x *GetWorkloadJobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[7]
+	mi := &file_management_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +480,7 @@ func (x *GetWorkloadJobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkloadJobsRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkloadJobsRequest) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{7}
+	return file_management_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetWorkloadJobsRequest) GetCluster() string {
@@ -658,7 +530,7 @@ type GetWorkloadJobsResponse struct {
 
 func (x *GetWorkloadJobsResponse) Reset() {
 	*x = GetWorkloadJobsResponse{}
-	mi := &file_management_proto_msgTypes[8]
+	mi := &file_management_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -670,7 +542,7 @@ func (x *GetWorkloadJobsResponse) String() string {
 func (*GetWorkloadJobsResponse) ProtoMessage() {}
 
 func (x *GetWorkloadJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[8]
+	mi := &file_management_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -683,7 +555,7 @@ func (x *GetWorkloadJobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkloadJobsResponse.ProtoReflect.Descriptor instead.
 func (*GetWorkloadJobsResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{8}
+	return file_management_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetWorkloadJobsResponse) GetJobs() []*Job {
@@ -728,7 +600,7 @@ type ResyncRequest struct {
 
 func (x *ResyncRequest) Reset() {
 	*x = ResyncRequest{}
-	mi := &file_management_proto_msgTypes[9]
+	mi := &file_management_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -740,7 +612,7 @@ func (x *ResyncRequest) String() string {
 func (*ResyncRequest) ProtoMessage() {}
 
 func (x *ResyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[9]
+	mi := &file_management_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -753,7 +625,7 @@ func (x *ResyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResyncRequest.ProtoReflect.Descriptor instead.
 func (*ResyncRequest) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{9}
+	return file_management_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ResyncRequest) GetCluster() string {
@@ -808,7 +680,7 @@ type ResyncResponse struct {
 
 func (x *ResyncResponse) Reset() {
 	*x = ResyncResponse{}
-	mi := &file_management_proto_msgTypes[10]
+	mi := &file_management_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -820,7 +692,7 @@ func (x *ResyncResponse) String() string {
 func (*ResyncResponse) ProtoMessage() {}
 
 func (x *ResyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[10]
+	mi := &file_management_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -833,7 +705,7 @@ func (x *ResyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResyncResponse.ProtoReflect.Descriptor instead.
 func (*ResyncResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{10}
+	return file_management_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ResyncResponse) GetNumWorkloads() int32 {
@@ -862,7 +734,7 @@ type DeleteWorkloadRequest struct {
 
 func (x *DeleteWorkloadRequest) Reset() {
 	*x = DeleteWorkloadRequest{}
-	mi := &file_management_proto_msgTypes[11]
+	mi := &file_management_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +746,7 @@ func (x *DeleteWorkloadRequest) String() string {
 func (*DeleteWorkloadRequest) ProtoMessage() {}
 
 func (x *DeleteWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[11]
+	mi := &file_management_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +759,7 @@ func (x *DeleteWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{11}
+	return file_management_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteWorkloadRequest) GetCluster() string {
@@ -926,7 +798,7 @@ type DeleteWorkloadResponse struct {
 
 func (x *DeleteWorkloadResponse) Reset() {
 	*x = DeleteWorkloadResponse{}
-	mi := &file_management_proto_msgTypes[12]
+	mi := &file_management_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -938,7 +810,7 @@ func (x *DeleteWorkloadResponse) String() string {
 func (*DeleteWorkloadResponse) ProtoMessage() {}
 
 func (x *DeleteWorkloadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[12]
+	mi := &file_management_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -951,30 +823,19 @@ func (x *DeleteWorkloadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkloadResponse.ProtoReflect.Descriptor instead.
 func (*DeleteWorkloadResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{12}
+	return file_management_proto_rawDescGZIP(), []int{10}
 }
 
 var File_management_proto protoreflect.FileDescriptor
 
 const file_management_proto_rawDesc = "" +
 	"\n" +
-	"\x10management.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\x99\x02\n" +
-	"\x17RegisterWorkloadRequest\x12\x18\n" +
-	"\acluster\x18\x01 \x01(\tR\acluster\x12\x1c\n" +
-	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1a\n" +
-	"\bworkload\x18\x03 \x01(\tR\bworkload\x12#\n" +
-	"\rworkload_type\x18\x04 \x01(\tR\fworkloadType\x12\x1d\n" +
-	"\n" +
-	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\x12<\n" +
-	"\bmetadata\x18\a \x01(\v2\x1b.v13s.api.protobuf.MetadataH\x00R\bmetadata\x88\x01\x01B\v\n" +
-	"\t_metadata\"\x86\x01\n" +
+	"\x10management.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\x86\x01\n" +
 	"\bMetadata\x12?\n" +
 	"\x06labels\x18\x01 \x03(\v2'.v13s.api.protobuf.Metadata.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x1a\n" +
-	"\x18RegisterWorkloadResponse\"\x8e\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8e\x02\n" +
 	"\x18GetWorkloadStatusRequest\x12\x1d\n" +
 	"\acluster\x18\x01 \x01(\tH\x00R\acluster\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x02 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1f\n" +
@@ -1062,10 +923,9 @@ const file_management_proto_rawDesc = "" +
 	"\bworkload\x18\x03 \x01(\tR\bworkload\x12(\n" +
 	"\rworkload_type\x18\x04 \x01(\tH\x00R\fworkloadType\x88\x01\x01B\x10\n" +
 	"\x0e_workload_type\"\x18\n" +
-	"\x16DeleteWorkloadResponse2\x89\x04\n" +
+	"\x16DeleteWorkloadResponse2\x9c\x03\n" +
 	"\n" +
-	"Management\x12k\n" +
-	"\x10RegisterWorkload\x12*.v13s.api.protobuf.RegisterWorkloadRequest\x1a+.v13s.api.protobuf.RegisterWorkloadResponse\x12n\n" +
+	"Management\x12n\n" +
 	"\x11GetWorkloadStatus\x12+.v13s.api.protobuf.GetWorkloadStatusRequest\x1a,.v13s.api.protobuf.GetWorkloadStatusResponse\x12h\n" +
 	"\x0fGetWorkloadJobs\x12).v13s.api.protobuf.GetWorkloadJobsRequest\x1a*.v13s.api.protobuf.GetWorkloadJobsResponse\x12M\n" +
 	"\x06Resync\x12 .v13s.api.protobuf.ResyncRequest\x1a!.v13s.api.protobuf.ResyncResponse\x12e\n" +
@@ -1083,48 +943,43 @@ func file_management_proto_rawDescGZIP() []byte {
 	return file_management_proto_rawDescData
 }
 
-var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_management_proto_goTypes = []any{
-	(*RegisterWorkloadRequest)(nil),   // 0: v13s.api.protobuf.RegisterWorkloadRequest
-	(*Metadata)(nil),                  // 1: v13s.api.protobuf.Metadata
-	(*RegisterWorkloadResponse)(nil),  // 2: v13s.api.protobuf.RegisterWorkloadResponse
-	(*GetWorkloadStatusRequest)(nil),  // 3: v13s.api.protobuf.GetWorkloadStatusRequest
-	(*WorkloadStatus)(nil),            // 4: v13s.api.protobuf.WorkloadStatus
-	(*GetWorkloadStatusResponse)(nil), // 5: v13s.api.protobuf.GetWorkloadStatusResponse
-	(*Job)(nil),                       // 6: v13s.api.protobuf.Job
-	(*GetWorkloadJobsRequest)(nil),    // 7: v13s.api.protobuf.GetWorkloadJobsRequest
-	(*GetWorkloadJobsResponse)(nil),   // 8: v13s.api.protobuf.GetWorkloadJobsResponse
-	(*ResyncRequest)(nil),             // 9: v13s.api.protobuf.ResyncRequest
-	(*ResyncResponse)(nil),            // 10: v13s.api.protobuf.ResyncResponse
-	(*DeleteWorkloadRequest)(nil),     // 11: v13s.api.protobuf.DeleteWorkloadRequest
-	(*DeleteWorkloadResponse)(nil),    // 12: v13s.api.protobuf.DeleteWorkloadResponse
-	nil,                               // 13: v13s.api.protobuf.Metadata.LabelsEntry
-	(*timestamppb.Timestamp)(nil),     // 14: google.protobuf.Timestamp
+	(*Metadata)(nil),                  // 0: v13s.api.protobuf.Metadata
+	(*GetWorkloadStatusRequest)(nil),  // 1: v13s.api.protobuf.GetWorkloadStatusRequest
+	(*WorkloadStatus)(nil),            // 2: v13s.api.protobuf.WorkloadStatus
+	(*GetWorkloadStatusResponse)(nil), // 3: v13s.api.protobuf.GetWorkloadStatusResponse
+	(*Job)(nil),                       // 4: v13s.api.protobuf.Job
+	(*GetWorkloadJobsRequest)(nil),    // 5: v13s.api.protobuf.GetWorkloadJobsRequest
+	(*GetWorkloadJobsResponse)(nil),   // 6: v13s.api.protobuf.GetWorkloadJobsResponse
+	(*ResyncRequest)(nil),             // 7: v13s.api.protobuf.ResyncRequest
+	(*ResyncResponse)(nil),            // 8: v13s.api.protobuf.ResyncResponse
+	(*DeleteWorkloadRequest)(nil),     // 9: v13s.api.protobuf.DeleteWorkloadRequest
+	(*DeleteWorkloadResponse)(nil),    // 10: v13s.api.protobuf.DeleteWorkloadResponse
+	nil,                               // 11: v13s.api.protobuf.Metadata.LabelsEntry
+	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
 }
 var file_management_proto_depIdxs = []int32{
-	1,  // 0: v13s.api.protobuf.RegisterWorkloadRequest.metadata:type_name -> v13s.api.protobuf.Metadata
-	13, // 1: v13s.api.protobuf.Metadata.labels:type_name -> v13s.api.protobuf.Metadata.LabelsEntry
-	6,  // 2: v13s.api.protobuf.WorkloadStatus.jobs:type_name -> v13s.api.protobuf.Job
-	14, // 3: v13s.api.protobuf.WorkloadStatus.workload_updated_at:type_name -> google.protobuf.Timestamp
-	14, // 4: v13s.api.protobuf.WorkloadStatus.image_updated_at:type_name -> google.protobuf.Timestamp
-	4,  // 5: v13s.api.protobuf.GetWorkloadStatusResponse.workload_status:type_name -> v13s.api.protobuf.WorkloadStatus
-	14, // 6: v13s.api.protobuf.Job.finished_at:type_name -> google.protobuf.Timestamp
-	6,  // 7: v13s.api.protobuf.GetWorkloadJobsResponse.jobs:type_name -> v13s.api.protobuf.Job
-	0,  // 8: v13s.api.protobuf.Management.RegisterWorkload:input_type -> v13s.api.protobuf.RegisterWorkloadRequest
-	3,  // 9: v13s.api.protobuf.Management.GetWorkloadStatus:input_type -> v13s.api.protobuf.GetWorkloadStatusRequest
-	7,  // 10: v13s.api.protobuf.Management.GetWorkloadJobs:input_type -> v13s.api.protobuf.GetWorkloadJobsRequest
-	9,  // 11: v13s.api.protobuf.Management.Resync:input_type -> v13s.api.protobuf.ResyncRequest
-	11, // 12: v13s.api.protobuf.Management.DeleteWorkload:input_type -> v13s.api.protobuf.DeleteWorkloadRequest
-	2,  // 13: v13s.api.protobuf.Management.RegisterWorkload:output_type -> v13s.api.protobuf.RegisterWorkloadResponse
-	5,  // 14: v13s.api.protobuf.Management.GetWorkloadStatus:output_type -> v13s.api.protobuf.GetWorkloadStatusResponse
-	8,  // 15: v13s.api.protobuf.Management.GetWorkloadJobs:output_type -> v13s.api.protobuf.GetWorkloadJobsResponse
-	10, // 16: v13s.api.protobuf.Management.Resync:output_type -> v13s.api.protobuf.ResyncResponse
-	12, // 17: v13s.api.protobuf.Management.DeleteWorkload:output_type -> v13s.api.protobuf.DeleteWorkloadResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	11, // 0: v13s.api.protobuf.Metadata.labels:type_name -> v13s.api.protobuf.Metadata.LabelsEntry
+	4,  // 1: v13s.api.protobuf.WorkloadStatus.jobs:type_name -> v13s.api.protobuf.Job
+	12, // 2: v13s.api.protobuf.WorkloadStatus.workload_updated_at:type_name -> google.protobuf.Timestamp
+	12, // 3: v13s.api.protobuf.WorkloadStatus.image_updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 4: v13s.api.protobuf.GetWorkloadStatusResponse.workload_status:type_name -> v13s.api.protobuf.WorkloadStatus
+	12, // 5: v13s.api.protobuf.Job.finished_at:type_name -> google.protobuf.Timestamp
+	4,  // 6: v13s.api.protobuf.GetWorkloadJobsResponse.jobs:type_name -> v13s.api.protobuf.Job
+	1,  // 7: v13s.api.protobuf.Management.GetWorkloadStatus:input_type -> v13s.api.protobuf.GetWorkloadStatusRequest
+	5,  // 8: v13s.api.protobuf.Management.GetWorkloadJobs:input_type -> v13s.api.protobuf.GetWorkloadJobsRequest
+	7,  // 9: v13s.api.protobuf.Management.Resync:input_type -> v13s.api.protobuf.ResyncRequest
+	9,  // 10: v13s.api.protobuf.Management.DeleteWorkload:input_type -> v13s.api.protobuf.DeleteWorkloadRequest
+	3,  // 11: v13s.api.protobuf.Management.GetWorkloadStatus:output_type -> v13s.api.protobuf.GetWorkloadStatusResponse
+	6,  // 12: v13s.api.protobuf.Management.GetWorkloadJobs:output_type -> v13s.api.protobuf.GetWorkloadJobsResponse
+	8,  // 13: v13s.api.protobuf.Management.Resync:output_type -> v13s.api.protobuf.ResyncResponse
+	10, // 14: v13s.api.protobuf.Management.DeleteWorkload:output_type -> v13s.api.protobuf.DeleteWorkloadResponse
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_management_proto_init() }
@@ -1132,18 +987,17 @@ func file_management_proto_init() {
 	if File_management_proto != nil {
 		return
 	}
-	file_management_proto_msgTypes[0].OneofWrappers = []any{}
-	file_management_proto_msgTypes[3].OneofWrappers = []any{}
+	file_management_proto_msgTypes[1].OneofWrappers = []any{}
+	file_management_proto_msgTypes[5].OneofWrappers = []any{}
 	file_management_proto_msgTypes[7].OneofWrappers = []any{}
 	file_management_proto_msgTypes[9].OneofWrappers = []any{}
-	file_management_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_management_proto_rawDesc), len(file_management_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
