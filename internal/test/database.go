@@ -13,10 +13,11 @@ import (
 )
 
 func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Pool {
+	t.Helper()
 	log, _ := logrustest.NewNullLogger()
 
 	if testcontainers {
-		container, dsn, err := startPostgresql(ctx, log)
+		container, dsn, err := startPostgresql(ctx, log, t)
 		if err != nil {
 			t.Fatalf("failed to start postgresql: %v", err)
 		}
@@ -29,7 +30,8 @@ func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Po
 	return pool
 }
 
-func startPostgresql(ctx context.Context, log logrus.FieldLogger) (container *postgres.PostgresContainer, dsn string, err error) {
+func startPostgresql(ctx context.Context, log logrus.FieldLogger, t *testing.T) (container *postgres.PostgresContainer, dsn string, err error) {
+	t.Helper()
 	container, err = postgres.Run(
 		ctx,
 		"docker.io/postgres:16-alpine",
