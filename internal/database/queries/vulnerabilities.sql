@@ -350,41 +350,64 @@ WHERE (CASE WHEN sqlc.narg('cluster')::TEXT is not null THEN w.cluster = sqlc.na
 ;
 
 -- name: ListVulnerabilitiesForImage :many
-WITH image_vulnerabilities AS (
-    SELECT v.id,
-          v.image_name,
-          v.image_tag,
-          v.package,
-          v.cve_id,
-          v.latest_version,
-          v.created_at,
-          v.updated_at,
-          v.severity_since,
-          c.cve_title,
-          c.cve_desc,
-          c.cve_link,
-          c.severity,
-          c.refs::JSONB AS cve_refs,
-          c.created_at AS cve_created_at,
-          c.updated_at AS cve_updated_at,
-          COALESCE(sv.suppressed, FALSE) AS suppressed,
-          sv.reason,
-          sv.reason_text,
-          sv.suppressed_by,
-          sv.updated_at as suppressed_at,
-          v.cvss_score
+WITH image_all_vulns AS (
+    -- Only the vulnerabilities for this image/tag
+    SELECT *
     FROM vulnerabilities v
-            JOIN cve c ON v.cve_id = c.cve_id
-            JOIN images i ON v.image_name = i.name AND v.image_tag = i.tag
-            LEFT JOIN suppressed_vulnerabilities sv
-                      ON v.image_name = sv.image_name
-                          AND v.package = sv.package
-                          AND v.cve_id = sv.cve_id
     WHERE v.image_name = @image_name
-     AND v.image_tag = @image_tag
-     AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
+      AND v.image_tag  = @image_tag
+),
+alias_map AS (
+     -- Only aliases that actually appear in image_vulns.cve_id
+     SELECT
+         r.v AS alias_id,      -- typically GHSA-...
+         r.k AS canonical_id   -- typically CVE-...
+     FROM cve
+              CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
+     WHERE r.v IN (
+         SELECT DISTINCT cve_id
+         FROM image_all_vulns
+     )
+ ),
+resolved_vulnerabilities AS (
+     SELECT
+         COALESCE(am.canonical_id, v.cve_id)::TEXT AS cve_id,
+         c.cve_title,
+         c.cve_desc,
+         c.cve_link,
+         c.severity,
+         c.refs::jsonb AS cve_refs,
+         c.created_at AS cve_created_at,
+         c.updated_at AS cve_updated_at,
+         v.id,
+         v.image_name,
+         v.image_tag,
+         v.package,
+         v.latest_version,
+         v.created_at,
+         v.updated_at,
+         v.severity_since,
+         v.cvss_score
+    FROM image_all_vulns v
+    LEFT JOIN alias_map am ON v.cve_id = am.alias_id
+    JOIN cve c ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
+),
+distinct_image_vulnerabilities AS (
+    SELECT DISTINCT ON (v.image_name, v.image_tag, v.package, v.cve_id)
+        v.*,
+        COALESCE(sv.suppressed, FALSE) AS suppressed,
+        sv.reason,
+        sv.reason_text,
+        sv.suppressed_by,
+        sv.updated_at as suppressed_at
+    FROM resolved_vulnerabilities v
+             LEFT JOIN suppressed_vulnerabilities sv
+                       ON v.image_name       = sv.image_name
+                           AND v.package          = sv.package
+                           AND v.cve_id = sv.cve_id
+    WHERE (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
      AND (sqlc.narg('since')::timestamptz IS NULL OR v.severity_since > sqlc.narg('since')::timestamptz)
-     AND (sqlc.narg('severity')::INT IS NULL OR c.severity = sqlc.narg('severity')::INT)
+     AND (sqlc.narg('severity')::INT IS NULL OR v.severity = sqlc.narg('severity')::INT)
 )
 SELECT id,
        image_name,
@@ -395,6 +418,7 @@ SELECT id,
        created_at,
        updated_at,
        severity_since,
+       cvss_score,
        cve_title,
        cve_desc,
        cve_link,
@@ -407,9 +431,8 @@ SELECT id,
        reason_text,
        suppressed_by,
        suppressed_at,
-       (SELECT COUNT(*) FROM image_vulnerabilities) AS total_count,
-        cvss_score
-FROM image_vulnerabilities
+       COUNT(id) OVER() as total_count
+FROM distinct_image_vulnerabilities
 ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
          CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN severity END DESC,
          CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN severity_since END ASC,
@@ -431,6 +454,7 @@ ORDER BY CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN severity END ASC,
 OFFSET sqlc.arg('offset')
 ;
 
+-- TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 -- name: ListVulnerabilities :many
 SELECT v.id,
        w.name                         AS workload_name,

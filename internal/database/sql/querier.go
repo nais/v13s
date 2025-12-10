@@ -45,6 +45,7 @@ type Querier interface {
 	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
 	ListUnusedSourceRefs(ctx context.Context, name *string) ([]*SourceRef, error)
 	ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*ListUpdatedWorkloadsWithSummariesRow, error)
+	// TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
