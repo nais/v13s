@@ -915,7 +915,7 @@ resolved_vulnerabilities AS (
     LEFT JOIN alias_map am ON v.cve_id = am.alias_id
     JOIN cve c ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
 ),
-distinc_image_vulnerabilities AS (
+distinct_image_vulnerabilities AS (
     SELECT DISTINCT ON (v.image_name, v.image_tag, v.package, v.cve_id)
         v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
@@ -955,7 +955,7 @@ SELECT id,
        suppressed_by,
        suppressed_at,
        COUNT(id) OVER() as total_count
-FROM distinc_image_vulnerabilities
+FROM distinct_image_vulnerabilities
 ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
          CASE WHEN $1 = 'severity_desc' THEN severity END DESC,
          CASE WHEN $1 = 'severity_since_asc' THEN severity_since END ASC,
