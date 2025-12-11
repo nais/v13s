@@ -46,7 +46,7 @@ values:
 
   identity.enforcement.enabled:
     displayName: Enable identity enforcement
-    description: Enables enforcement of GitHub OIDC workflow identity for signature and attestation verification.
+    description: Enables enforcement of OIDC identities for attestations.
     config:
       type: bool
 
