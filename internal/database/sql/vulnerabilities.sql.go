@@ -91,56 +91,6 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
-const generateVulnerabilitySummaryForImage = `-- name: GenerateVulnerabilitySummaryForImage :one
-SELECT COUNT(*) AS total,
-       SUM(CASE WHEN c.severity = 5 THEN 1 ELSE 0 END) AS critical,
-       SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END) AS high,
-       SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END) AS medium,
-       SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END) AS low,
-       SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END) AS unassigned,
-       -- 10*critical + 5*high + 3*medium + 1*low + 5*unassigned
-         10 * SUM(CASE WHEN c.severity = 5 THEN 1 ELSE 0 END) +
-            5 * SUM(CASE WHEN c.severity = 4 THEN 1 ELSE 0 END) +
-            3 * SUM(CASE WHEN c.severity = 3 THEN 1 ELSE 0 END) +
-            1 * SUM(CASE WHEN c.severity = 2 THEN 1 ELSE 0 END) +
-            5 * SUM(CASE WHEN c.severity = 1 THEN 1 ELSE 0 END) AS risk_score
-
-FROM vulnerabilities v
-         JOIN cve c ON v.cve_id = c.cve_id
-WHERE v.image_name = $1
-    AND v.image_tag = $2
-`
-
-type GenerateVulnerabilitySummaryForImageParams struct {
-	ImageName string
-	ImageTag  string
-}
-
-type GenerateVulnerabilitySummaryForImageRow struct {
-	Total      int64
-	Critical   int64
-	High       int64
-	Medium     int64
-	Low        int64
-	Unassigned int64
-	RiskScore  int32
-}
-
-func (q *Queries) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg GenerateVulnerabilitySummaryForImageParams) (*GenerateVulnerabilitySummaryForImageRow, error) {
-	row := q.db.QueryRow(ctx, generateVulnerabilitySummaryForImage, arg.ImageName, arg.ImageTag)
-	var i GenerateVulnerabilitySummaryForImageRow
-	err := row.Scan(
-		&i.Total,
-		&i.Critical,
-		&i.High,
-		&i.Medium,
-		&i.Low,
-		&i.Unassigned,
-		&i.RiskScore,
-	)
-	return &i, err
-}
-
 const getCve = `-- name: GetCve :one
 SELECT cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score
 FROM cve
@@ -873,65 +823,6 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 }
 
 const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
-WITH image_all_vulns AS (
-    -- Only the vulnerabilities for this image/tag
-    SELECT id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score
-    FROM vulnerabilities v
-    WHERE v.image_name = $4
-      AND v.image_tag  = $5
-),
-alias_map AS (
-     -- Only aliases that actually appear in image_vulns.cve_id
-     SELECT
-         r.v AS alias_id,      -- typically GHSA-...
-         r.k AS canonical_id   -- typically CVE-...
-     FROM cve
-              CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
-     WHERE r.v IN (
-         SELECT DISTINCT cve_id
-         FROM image_all_vulns
-     )
- ),
-resolved_vulnerabilities AS (
-     SELECT
-         COALESCE(am.canonical_id, v.cve_id)::TEXT AS cve_id,
-         c.cve_title,
-         c.cve_desc,
-         c.cve_link,
-         c.severity,
-         c.refs::jsonb AS cve_refs,
-         c.created_at AS cve_created_at,
-         c.updated_at AS cve_updated_at,
-         v.id,
-         v.image_name,
-         v.image_tag,
-         v.package,
-         v.latest_version,
-         v.created_at,
-         v.updated_at,
-         v.severity_since,
-         v.cvss_score
-    FROM image_all_vulns v
-    LEFT JOIN alias_map am ON v.cve_id = am.alias_id
-    JOIN cve c ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
-),
-distinct_image_vulnerabilities AS (
-    SELECT DISTINCT ON (v.image_name, v.image_tag, v.package, v.cve_id)
-        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score,
-        COALESCE(sv.suppressed, FALSE) AS suppressed,
-        sv.reason,
-        sv.reason_text,
-        sv.suppressed_by,
-        sv.updated_at as suppressed_at
-    FROM resolved_vulnerabilities v
-             LEFT JOIN suppressed_vulnerabilities sv
-                       ON v.image_name       = sv.image_name
-                           AND v.package          = sv.package
-                           AND v.cve_id = sv.cve_id
-    WHERE ($6::BOOLEAN IS TRUE OR COALESCE(sv.suppressed, FALSE) = FALSE)
-     AND ($7::timestamptz IS NULL OR v.severity_since > $7::timestamptz)
-     AND ($8::INT IS NULL OR v.severity = $8::INT)
-)
 SELECT id,
        image_name,
        image_tag,
@@ -949,43 +840,47 @@ SELECT id,
        cve_refs as cve_refs,
        cve_created_at,
        cve_updated_at,
-       COALESCE(suppressed, FALSE) AS suppressed,
+       suppressed,
        reason,
        reason_text,
        suppressed_by,
        suppressed_at,
        COUNT(id) OVER() as total_count
-FROM distinct_image_vulnerabilities
-ORDER BY CASE WHEN $1 = 'severity_asc' THEN severity END ASC,
-         CASE WHEN $1 = 'severity_desc' THEN severity END DESC,
-         CASE WHEN $1 = 'severity_since_asc' THEN severity_since END ASC,
-         CASE WHEN $1 = 'severity_since_desc' THEN severity_since END DESC,
-         CASE WHEN $1 = 'package_asc' THEN package END ASC,
-         CASE WHEN $1 = 'package_desc' THEN package END DESC,
-         CASE WHEN $1 = 'cve_id_asc' THEN cve_id END ASC,
-         CASE WHEN $1 = 'cve_id_desc' THEN cve_id END DESC,
-         CASE WHEN $1 = 'suppressed_asc' THEN COALESCE(suppressed, FALSE) END ASC,
-         CASE WHEN $1 = 'suppressed_desc' THEN COALESCE(suppressed, FALSE) END DESC,
-         CASE WHEN $1 = 'reason_asc' THEN reason END ASC,
-         CASE WHEN $1 = 'reason_desc' THEN reason END DESC,
-         CASE WHEN $1 = 'created_at_asc' THEN created_at END ASC,
-         CASE WHEN $1 = 'created_at_desc' THEN created_at END DESC,
-         CASE WHEN $1 = 'updated_at_asc' THEN updated_at END ASC,
-         CASE WHEN $1 = 'updated_at_desc' THEN updated_at END DESC,
+FROM v_canonical_vulnerabilities
+WHERE image_name = $1 AND image_tag = $2
+  AND ($3::BOOLEAN IS TRUE OR suppressed = FALSE)
+  AND ($4::timestamptz IS NULL OR severity_since > $4::timestamptz)
+  AND ($5::INT IS NULL OR severity = $5::INT)
+ORDER BY CASE WHEN $6 = 'severity_asc' THEN severity END ASC,
+         CASE WHEN $6 = 'severity_desc' THEN severity END DESC,
+         CASE WHEN $6 = 'severity_since_asc' THEN severity_since END ASC,
+         CASE WHEN $6 = 'severity_since_desc' THEN severity_since END DESC,
+         CASE WHEN $6 = 'package_asc' THEN package END ASC,
+         CASE WHEN $6 = 'package_desc' THEN package END DESC,
+         CASE WHEN $6 = 'cve_id_asc' THEN cve_id END ASC,
+         CASE WHEN $6 = 'cve_id_desc' THEN cve_id END DESC,
+         CASE WHEN $6 = 'suppressed_asc' THEN COALESCE(suppressed, FALSE) END ASC,
+         CASE WHEN $6 = 'suppressed_desc' THEN COALESCE(suppressed, FALSE) END DESC,
+         CASE WHEN $6 = 'reason_asc' THEN reason END ASC,
+         CASE WHEN $6 = 'reason_desc' THEN reason END DESC,
+         CASE WHEN $6 = 'created_at_asc' THEN created_at END ASC,
+         CASE WHEN $6 = 'created_at_desc' THEN created_at END DESC,
+         CASE WHEN $6 = 'updated_at_asc' THEN updated_at END ASC,
+         CASE WHEN $6 = 'updated_at_desc' THEN updated_at END DESC,
          severity, id ASC
-    LIMIT $3
-OFFSET $2
+    LIMIT $8
+OFFSET $7
 `
 
 type ListVulnerabilitiesForImageParams struct {
-	OrderBy           interface{}
-	Offset            int32
-	Limit             int32
 	ImageName         string
 	ImageTag          string
 	IncludeSuppressed *bool
 	Since             pgtype.Timestamptz
 	Severity          *int32
+	OrderBy           interface{}
+	Offset            int32
+	Limit             int32
 }
 
 type ListVulnerabilitiesForImageRow struct {
@@ -1016,14 +911,14 @@ type ListVulnerabilitiesForImageRow struct {
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilitiesForImage,
-		arg.OrderBy,
-		arg.Offset,
-		arg.Limit,
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
 		arg.Since,
 		arg.Severity,
+		arg.OrderBy,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -1285,59 +1180,6 @@ func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnera
 }
 
 const recalculateVulnerabilitySummary = `-- name: RecalculateVulnerabilitySummary :exec
-WITH alias_map AS (
-    -- Map alias GHSA IDs to canonical CVE IDs
-    SELECT
-        r.v::text AS alias_id,     -- e.g. GHSA-...
-        r.k       AS canonical_id  -- e.g. CVE-...
-    FROM cve
-             CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
-),
-resolved_vulnerabilities AS (
-     SELECT DISTINCT
-         c.cve_id AS id,
-         c.severity,
-         v.package,
-         v.image_name,
-         v.image_tag
-     FROM vulnerabilities v
-              LEFT JOIN alias_map am
-                        ON v.cve_id = am.alias_id
-              JOIN cve c
-                   ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
-     WHERE v.image_name = $1
-       AND v.image_tag  = $2
- ),
- severity_counts AS (
-     SELECT COUNT(*)                             AS total,
-            COUNT(*) FILTER (WHERE severity = 0) AS critical,
-            COUNT(*) FILTER (WHERE severity = 1) AS high,
-            COUNT(*) FILTER (WHERE severity = 2) AS medium,
-            COUNT(*) FILTER (WHERE severity = 3) AS low,
-            COUNT(*) FILTER (WHERE severity = 4) AS unassigned
-     FROM resolved_vulnerabilities rv
-              LEFT JOIN suppressed_vulnerabilities sv
-                        ON  rv.image_name = sv.image_name
-                            AND rv.package    = sv.package
-                            AND rv.id         = sv.cve_id
-     WHERE NOT COALESCE(sv.suppressed, FALSE)
- ),
-summary AS (
-    SELECT $1 AS image_name,
-           $2  AS image_tag,
-           total,
-           critical,
-           high,
-           medium,
-           low,
-           unassigned,
-           10 * critical
-               + 5 * high
-               + 3 * medium
-               + 1 * low
-               + 5 * unassigned AS risk_score
-    FROM severity_counts
-)
 INSERT INTO vulnerability_summary (
     image_name,
     image_tag,
@@ -1346,22 +1188,18 @@ INSERT INTO vulnerability_summary (
     medium,
     low,
     unassigned,
-    risk_score,
-    created_at,
-    updated_at
+    risk_score
 )
-SELECT
-    image_name,
-    image_tag,
-    critical,
-    high,
-    medium,
-    low,
-    unassigned,
-    risk_score,
-    NOW(),
-    NOW()
-FROM summary
+SELECT  image_name,
+        image_tag,
+        critical,
+        high,
+        medium,
+        low,
+        unassigned,
+        risk_score
+FROM v_calc_summary_by_image v
+WHERE v.image_name = $1 AND v.image_tag = $2
     ON CONFLICT (image_name, image_tag)
         DO UPDATE SET
            critical    = EXCLUDED.critical,
