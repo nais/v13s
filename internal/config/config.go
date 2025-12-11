@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,20 +16,25 @@ import (
 )
 
 type Config struct {
-	AuthorizedServiceAccounts  []string `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
-	DatabaseUrl                string   `envconfig:"DATABASE_URL" required:"true"`
-	DependencyTrack            sources.DependencyTrackConfig
-	IdentityEnforcementEnabled bool   `envconfig:"IDENTITY_ENFORCEMENT_ENABLED" default:"true"`
-	InternalListenAddr         string `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
-	K8s                        K8sConfig
-	LeaderElection             LeaderElectionConfig
-	ListenAddr                 string `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	LogFormat                  string `envconfig:"LOG_FORMAT" default:"json"`
-	LogLevel                   string `envconfig:"LOG_LEVEL" default:"info"`
-	Metrics                    MetricConfig
-	RequiredAudience           string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
-	Tenant                     string        `envconfig:"TENANT" default:"nav"`
-	UpdateInterval             time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
+	AuthorizedServiceAccounts []string `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
+	DatabaseUrl               string   `envconfig:"DATABASE_URL" required:"true"`
+	DependencyTrack           sources.DependencyTrackConfig
+	IdentityEnforcement       IdentityEnforcementConfig
+	InternalListenAddr        string `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
+	K8s                       K8sConfig
+	LeaderElection            LeaderElectionConfig
+	ListenAddr                string `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	LogFormat                 string `envconfig:"LOG_FORMAT" default:"json"`
+	LogLevel                  string `envconfig:"LOG_LEVEL" default:"info"`
+	Metrics                   MetricConfig
+	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
+	Tenant                    string        `envconfig:"TENANT" default:"nav"`
+	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
+}
+
+type IdentityEnforcementConfig struct {
+	Enabled    bool         `envconfig:"IDENTITY_ENFORCEMENT_ENABLED" default:"true"`
+	Identities IdentityList `envconfig:"IDENTITY_ENFORCEMENT_IDENTITIES"`
 }
 
 type DependencyTrackConfig struct {
@@ -83,6 +89,20 @@ type StaticCluster struct {
 	Name  string
 	Host  string
 	Token string
+}
+
+type Identity struct {
+	Issuer  string `json:"issuer"`
+	Subject string `json:"subject"`
+}
+
+type IdentityList []Identity
+
+func (l *IdentityList) Decode(value string) error {
+	if value == "" {
+		return nil
+	}
+	return json.Unmarshal([]byte(value), l)
 }
 
 type ClusterConfigMap map[string]*rest.Config

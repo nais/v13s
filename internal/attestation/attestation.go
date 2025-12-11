@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/attestation/identity"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/model"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
@@ -47,8 +48,8 @@ type verifier struct {
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
-func NewVerifier(ctx context.Context, log *logrus.Entry, identityEnforcementEnabled bool) (Verifier, error) {
-	opts, err := CosignOptions(ctx, "", identity.GitHubWorkflowIdentity(identityEnforcementEnabled))
+func NewVerifier(ctx context.Context, log *logrus.Entry, identityEnforcementConfig config.IdentityEnforcementConfig) (Verifier, error) {
+	opts, err := CosignOptions(ctx, "", identity.GetIdentities(identityEnforcementConfig, log))
 	if err != nil {
 		return nil, err
 	}

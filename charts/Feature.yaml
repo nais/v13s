@@ -50,6 +50,16 @@ values:
     config:
       type: bool
 
+  identity.enforcement.identities:
+    displayName: Allowed identities
+    description: List of allowed OIDC identities for attestations.
+    config:
+      type: string_array
+    computed:
+      template: |
+        - issuer: "https://token.actions.githubusercontent.com"
+          subject: {{ ^https://github\.com/[^/]+/[^/]+/\.github/workflows/.+\.(ya?ml)@refs/(heads|pull|tags)/.+$ | quote }}
+
   dockerconfigjson:
     displayName: Docker config json
     description: Docker config json for pulling images from registries

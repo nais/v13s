@@ -9,6 +9,7 @@ serviceAccountName: v13s-sa
 updateInterval: 3m
 identityEnforcement:
   enabled: true
+  identities: # from fasit
 dockerconfigjson: '{"auths":{}}'
 auth:
   audience: "v13s"

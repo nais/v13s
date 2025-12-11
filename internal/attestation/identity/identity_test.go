@@ -3,68 +3,117 @@ package identity
 import (
 	"testing"
 
+	"github.com/nais/v13s/internal/config"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewCertificateIdentity(t *testing.T) {
-	for _, tt := range []struct {
+func TestGetIdentities(t *testing.T) {
+	const validRegex = `^https://github\.com/[^/]+/[^/]+/\.github/workflows/.+\.(ya?ml)@refs/(heads|pull|tags)/.+$`
+	log := logrus.New().WithField("test", true)
+
+	testCases := []struct {
 		name        string
-		enabled     bool
-		serverUrl   string
-		orgs        []string
-		workFlowRef string
-		fails       bool
+		cfg         config.IdentityEnforcementConfig
+		expectCount int
+		expect      []cosign.Identity
 	}{
 		{
-			name:        "GitHub Cert Authz is enabled and matches pattern git ref",
-			enabled:     true,
-			serverUrl:   "https://github.com",
-			orgs:        []string{"nais"},
-			workFlowRef: "nais/yolo-bolo/.github/workflows/.main.yml@refs/heads/master",
+			name: "disabled identity enforcement returns nil",
+			cfg: config.IdentityEnforcementConfig{
+				Enabled: false,
+				Identities: []config.Identity{
+					{Issuer: "issuer", Subject: validRegex},
+				},
+			},
+			expectCount: 0,
+			expect:      nil,
 		},
 		{
-			name:        "GitHub Cert Authz is enabled and matches pattern",
-			enabled:     true,
-			serverUrl:   "https://github.com",
-			orgs:        []string{"nais"},
-			workFlowRef: "nais/sapo/.github/workflows/PROD%20deploy.yml@refs/heads/sapo-upgrade",
+			name: "enabled but no identities configured",
+			cfg: config.IdentityEnforcementConfig{
+				Enabled:    true,
+				Identities: nil,
+			},
+			expectCount: 0,
+			expect:      []cosign.Identity{},
 		},
 		{
-			name:        "GitHub Cert Authz is enabled and matches pattern pull request",
-			enabled:     true,
-			serverUrl:   "https://github.com",
-			orgs:        []string{"navikt"},
-			workFlowRef: "navikt/yolo-bolo/.github/workflows/.build.yaml@refs/pull/1575/merge",
+			name: "valid identity",
+			cfg: config.IdentityEnforcementConfig{
+				Enabled: true,
+				Identities: []config.Identity{
+					{
+						Issuer:  "https://github.com",
+						Subject: validRegex,
+					},
+				},
+			},
+			expectCount: 1,
+			expect: []cosign.Identity{
+				{
+					Issuer:        "https://github.com",
+					SubjectRegExp: validRegex,
+				},
+			},
 		},
+		{
+			name: "invalid regex is skipped",
+			cfg: config.IdentityEnforcementConfig{
+				Enabled: true,
+				Identities: []config.Identity{
+					{
+						Issuer:  "https://github.com",
+						Subject: "(",
+					},
+				},
+			},
+			expectCount: 0,
+			expect:      []cosign.Identity{},
+		},
+		{
+			name: "multiple identities, only valid ones kept",
+			cfg: config.IdentityEnforcementConfig{
+				Enabled: true,
+				Identities: []config.Identity{
+					{Issuer: "https://github.com", Subject: "("},        // invalid
+					{Issuer: "https://github.com", Subject: validRegex}, // valid
+				},
+			},
+			expectCount: 1,
+			expect: []cosign.Identity{
+				{
+					Issuer:        "https://github.com",
+					SubjectRegExp: validRegex,
+				},
+			},
+		},
+		{
+			name: "all invalid identities returns empty slice but not nil",
+			cfg: config.IdentityEnforcementConfig{
+				Enabled: true,
+				Identities: []config.Identity{
+					{Issuer: "https://github.com", Subject: "("},
+					{Issuer: "https://example.com", Subject: "["},
+				},
+			},
+			expectCount: 0,
+			expect:      []cosign.Identity{},
+		},
+	}
 
-		{
-			name:        "GitHub Cert Authz is enabled and matches pattern tags",
-			enabled:     true,
-			serverUrl:   "https://github.com",
-			orgs:        []string{"tull"},
-			workFlowRef: "tull/yolo-bolo/.github/workflows/.build.yaml@refs/tags/1575/merge",
-		},
-		{
-			name:        "GitHub Cert Authz is enabled and fails pattern",
-			enabled:     true,
-			serverUrl:   "https://github.com",
-			orgs:        []string{"tull"},
-			workFlowRef: "evilorg/yolo-bolo/.github/workflows/.build.yaml@refs/ta/1575/merge",
-			fails:       true,
-		},
-		{
-			name: "GitHub Cert Authz is disabled",
-		},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			idPattern := GitHubWorkflowIdentity(tt.enabled)
-			for _, pattern := range idPattern {
-				if tt.fails {
-					assert.NotRegexp(t, pattern.SubjectRegExp, tt.serverUrl+"/"+tt.workFlowRef)
-				} else {
-					assert.Regexp(t, pattern.SubjectRegExp, tt.serverUrl+"/"+tt.workFlowRef)
-				}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ids := GetIdentities(tc.cfg, log)
+
+			if !tc.cfg.Enabled {
+				assert.Nil(t, ids, "disabled mode should return nil")
+				return
 			}
+
+			assert.Len(t, ids, tc.expectCount)
+			assert.Equal(t, tc.expect, ids)
 		})
 	}
 }

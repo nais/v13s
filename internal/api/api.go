@@ -83,7 +83,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Info("Prometheus Pushgateway endpoint not configured, skipping metrics push setup")
 	}
 
-	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.IdentityEnforcementEnabled)
+	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.IdentityEnforcement)
 	if err != nil {
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
