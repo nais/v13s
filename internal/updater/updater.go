@@ -144,8 +144,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	go func() {
 		defer close(done)
-		// TODO: riverjob worker to batch insert vulnerability data
-		if err := u.UpdateVulnerabilityData(batchCtx, ch); err != nil {
+		if err := u.Update(batchCtx, ch); err != nil {
 			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
 			done <- false
 		} else {
@@ -237,11 +236,9 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
-// TODO: postgresriver update vulnerability data in batches
-func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVulnerabilityData) error {
+func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) error {
 	start := time.Now()
 
-	errs := make([]error, 0)
 	for {
 		batch, err := collections.ReadChannel(ctx, ch, 100)
 		if err != nil {
@@ -252,30 +249,22 @@ func (u *Updater) UpdateVulnerabilityData(ctx context.Context, ch chan *ImageVul
 			break
 		}
 
-		errs = u.upsertBatch(ctx, batch)
-	}
-
-	if len(errs) > 0 {
-		u.log.Debugf("errors during batch upsert: %v", errs)
+		u.batchUpdateVulnerabilityData(ctx, batch)
 	}
 
 	u.log.WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_errors": len(errs),
+		"duration": fmt.Sprintf("%fs", time.Since(start).Seconds()),
 	}).Infof("vulnerability data has been updated")
 
 	return nil
 }
 
-func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityData) []error {
-	var errs []error
-	var batchErr error
-
-	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
+func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) {
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
 
-	for _, i := range batch {
+	for _, i := range images {
 		cves = append(cves, i.ToCveSqlParams()...)
 		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
@@ -285,27 +274,9 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 		})
 	}
 
-	start := time.Now()
-	errors := 0
 	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
 		return x.CveID
 	})
-	u.querier.BatchUpsertCve(ctx, cves).Exec(func(i int, err error) {
-		if err != nil {
-			u.log.WithError(err).Debug("failed to batch upsert cves")
-			batchErr = err
-			errors++
-			errs = append(errs, err)
-		}
-	})
-	u.log.WithError(batchErr).WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_rows":   len(cves) - errors,
-		"num_errors": errors,
-	}).Infof("upserted batch of CVEs")
-
-	start = time.Now()
-	errors = 0
 	sortByFields(vulns,
 		func(x sql.BatchUpsertVulnerabilitiesParams) string {
 			return x.ImageName
@@ -314,57 +285,57 @@ func (u *Updater) upsertBatch(ctx context.Context, batch []*ImageVulnerabilityDa
 			return x.ImageTag
 		},
 	)
-	u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec(func(i int, err error) {
-		if err != nil {
-			u.log.WithError(err).Debug("failed to batch upsert vulnerabilities")
-			batchErr = err
-			errors++
-			errs = append(errs, err)
+	sortByFields(imageStates,
+		func(x sql.BatchUpdateImageStateParams) string { return x.Name },
+		func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
+	)
+
+	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
+	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
+
+	for _, i := range images {
+		if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: i.ImageName,
+			ImageTag:  i.ImageTag,
+		}); err != nil {
+			u.log.WithError(err).Error("recalculate vulnerability summary")
 		}
-	})
-	u.log.WithError(batchErr).WithFields(logrus.Fields{
+	}
+
+	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
+}
+
+func (u *Updater) runExec(
+	label string,
+	totalRows int,
+	exec func(handler func(int, error)),
+) (errCount int) {
+	start := time.Now()
+	handler := func(i int, err error) {
+		if err == nil {
+			return
+		}
+		errCount++
+		u.log.WithError(err).WithFields(logrus.Fields{
+			"batch": label,
+			"row":   i,
+		}).Error("batch row failed")
+	}
+
+	exec(handler)
+
+	entry := u.log.WithFields(logrus.Fields{
 		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_rows":   len(vulns) - errors,
-		"num_errors": errors,
-	}).Infof("upserted batch of vulnerabilities")
-
-	if len(batch) > 0 {
-		for _, i := range batch {
-			if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
-				ImageName: i.ImageName,
-				ImageTag:  i.ImageTag,
-			}); err != nil {
-				u.log.WithError(err).Debug("recalculate vulnerability summary")
-				batchErr = err
-				errors++
-				errs = append(errs, err)
-			}
-		}
+		"num_rows":   totalRows - errCount,
+		"num_errors": errCount,
+	})
+	if errCount > 0 {
+		entry.Error(label)
+	} else {
+		entry.Info(label)
 	}
 
-	if len(errs) == 0 {
-		start = time.Now()
-		errors = 0
-		sortByFields(imageStates,
-			func(x sql.BatchUpdateImageStateParams) string { return x.Name },
-			func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
-		)
-		u.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(i int, err error) {
-			if err != nil {
-				u.log.WithError(err).Debug("failed to batch update image state")
-				batchErr = err
-				errors++
-				errs = append(errs, err)
-			}
-		})
-		u.log.WithError(batchErr).WithFields(logrus.Fields{
-			"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-			"num_rows":   len(imageStates),
-			"num_errors": errors,
-		}).Infof("updated image states to 'updated'")
-	}
-
-	return errs
+	return errCount
 }
 
 func sortByFields[T any](items []T, getters ...func(T) string) {
