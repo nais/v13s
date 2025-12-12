@@ -1,5 +1,5 @@
 -- name: RecalculateVulnerabilitySummary :exec
-WITH alias_map AS (
+WITH alias_map AS MATERIALIZED (
     -- Map alias GHSA IDs to canonical CVE IDs
     SELECT
         r.v::text AS alias_id,     -- e.g. GHSA-...
@@ -357,7 +357,7 @@ WITH image_all_vulns AS (
     WHERE v.image_name = @image_name
       AND v.image_tag  = @image_tag
 ),
-alias_map AS (
+alias_map AS MATERIALIZED (
      -- Only aliases that actually appear in image_vulns.cve_id
      SELECT
          r.v AS alias_id,      -- typically GHSA-...
