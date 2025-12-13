@@ -44,10 +44,21 @@ values:
         {{ eachOf $tenantEnvs "name" | sortAlpha | join "," }}
         {{ end }}
 
-  github.organizations:
-    displayName: Github Organizations
+  identity.enforcement.enabled:
+    displayName: Enable identity enforcement
+    description: Enables enforcement of OIDC identities for attestations.
+    config:
+      type: bool
+
+  identity.enforcement.identities:
+    displayName: Allowed identities
+    description: List of allowed OIDC identities for attestations.
     config:
       type: string_array
+    computed:
+      template: |
+        - issuer: "https://token.actions.githubusercontent.com"
+          subject: {{ ^https://github\.com/[^/]+/[^/]+/\.github/workflows/.+\.(ya?ml)@refs/(heads|pull|tags)/.+$ | quote }}
 
   dockerconfigjson:
     displayName: Docker config json

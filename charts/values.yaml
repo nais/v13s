@@ -7,9 +7,9 @@ image:
 serviceAccountEmail:
 serviceAccountName: v13s-sa
 updateInterval: 3m
-github:
-  organizations:
-    - nais
+identityEnforcement:
+  enabled: true
+  identities: # from fasit
 dockerconfigjson: '{"auths":{}}'
 auth:
   audience: "v13s"
