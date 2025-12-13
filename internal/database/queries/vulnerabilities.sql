@@ -120,6 +120,17 @@ VALUES (@cve_id,
            cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
 ;
 
+-- name: BatchUpsertCveAlias :batchexec
+INSERT INTO cve_alias(alias,
+                canonical_cve_id)
+VALUES (@alias,
+        @canonical_cve_id)
+ON CONFLICT (alias) DO UPDATE
+    SET canonical_cve_id = EXCLUDED.canonical_cve_id
+WHERE
+    cve_alias.canonical_cve_id  IS DISTINCT FROM EXCLUDED.canonical_cve_id
+;
+
 -- name: BatchUpsertVulnerabilities :batchexec
 INSERT INTO vulnerabilities (
     image_name,

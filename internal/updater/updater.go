@@ -261,12 +261,14 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 
 func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) {
 	cves := make([]sql.BatchUpsertCveParams, 0)
+	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
 
 	for _, i := range images {
 		cves = append(cves, i.ToCveSqlParams()...)
 		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
+		cveAliases = append(cveAliases, i.ToCveAliasSqlParams()...)
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
 			State: sql.ImageStateUpdated,
 			Name:  i.ImageName,
@@ -291,6 +293,7 @@ func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	)
 
 	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
+	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
 	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
 
 	for _, i := range images {

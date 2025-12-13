@@ -187,3 +187,16 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 	}
 	return params
 }
+
+func (i *ImageVulnerabilityData) ToCveAliasSqlParams() []sql.BatchUpsertCveAliasParams {
+	params := make([]sql.BatchUpsertCveAliasParams, 0)
+	for _, v := range i.Vulnerabilities {
+		for id, alias := range v.Cve.References {
+			params = append(params, sql.BatchUpsertCveAliasParams{
+				Alias:          alias,
+				CanonicalCveID: id,
+			})
+		}
+	}
+	return params
+}
