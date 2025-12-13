@@ -12,15 +12,15 @@ CREATE TABLE IF NOT EXISTS cve_alias (
 --    - value (r.v) = alias (GHSA or other alt ID)
 INSERT INTO cve_alias (alias, canonical_cve_id)
 SELECT DISTINCT
-    r.v      AS alias,           -- alias ID (e.g. GHSA-...)
-    c.cve_id AS canonical_cve_id -- canonical CVE (the row owning the JSON)
+    r.value AS alias,          -- alias (e.g. GHSA-...)
+    r.key   AS canonical_cve_id -- canonical CVE (from JSON key)
 FROM cve c
-         CROSS JOIN LATERAL jsonb_each_text(c.refs) AS r(k, v)
+         CROSS JOIN LATERAL jsonb_each_text(c.refs) AS r(key, value)
 WHERE c.refs <> '{}'::jsonb
   AND EXISTS (
     SELECT 1
     FROM cve cc
-    WHERE cc.cve_id = r.v
+    WHERE cc.cve_id = r.value
 )
 ON CONFLICT DO NOTHING;
 
