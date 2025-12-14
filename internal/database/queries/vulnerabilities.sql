@@ -1,13 +1,5 @@
 -- name: RecalculateVulnerabilitySummary :exec
-WITH alias_map AS MATERIALIZED (
-    -- Map alias GHSA IDs to canonical CVE IDs
-    SELECT
-        r.v::text AS alias_id,     -- e.g. GHSA-...
-        r.k       AS canonical_id  -- e.g. CVE-...
-    FROM cve
-             CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
-),
-resolved_vulnerabilities AS (
+WITH resolved_vulnerabilities AS (
      SELECT DISTINCT
          c.cve_id AS id,
          c.severity,
@@ -15,10 +7,10 @@ resolved_vulnerabilities AS (
          v.image_name,
          v.image_tag
      FROM vulnerabilities v
-              LEFT JOIN alias_map am
-                        ON v.cve_id = am.alias_id
+              LEFT JOIN cve_alias ca
+                        ON v.cve_id = ca.alias
               JOIN cve c
-                   ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
+                   ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
      WHERE v.image_name = @image_name
        AND v.image_tag  = @image_tag
  ),
@@ -368,21 +360,9 @@ WITH image_all_vulns AS (
     WHERE v.image_name = @image_name
       AND v.image_tag  = @image_tag
 ),
-alias_map AS MATERIALIZED (
-     -- Only aliases that actually appear in image_vulns.cve_id
-     SELECT
-         r.v AS alias_id,      -- typically GHSA-...
-         r.k AS canonical_id   -- typically CVE-...
-     FROM cve
-              CROSS JOIN LATERAL jsonb_each_text(refs) AS r(k, v)
-     WHERE r.v IN (
-         SELECT DISTINCT cve_id
-         FROM image_all_vulns
-     )
- ),
 resolved_vulnerabilities AS (
      SELECT
-         COALESCE(am.canonical_id, v.cve_id)::TEXT AS cve_id,
+         COALESCE(ca.canonical_cve_id, v.cve_id)::TEXT AS cve_id,
          c.cve_title,
          c.cve_desc,
          c.cve_link,
@@ -400,8 +380,8 @@ resolved_vulnerabilities AS (
          v.severity_since,
          v.cvss_score
     FROM image_all_vulns v
-    LEFT JOIN alias_map am ON v.cve_id = am.alias_id
-    JOIN cve c ON c.cve_id = COALESCE(am.canonical_id, v.cve_id)
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
 ),
 distinct_image_vulnerabilities AS (
     SELECT DISTINCT ON (v.image_name, v.image_tag, v.package, v.cve_id)

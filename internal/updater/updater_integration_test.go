@@ -101,7 +101,7 @@ func TestUpdater(t *testing.T) {
 						Link:        fmt.Sprintf("mylink-%s-%d", uuid, i),
 						Severity:    "CRITICAL",
 						Id:          fmt.Sprintf("CVE-%s-%d", uuid, i),
-						References:  map[string]string{"ref": fmt.Sprintf("https://nvd.nist.gov/vuln/detail/CVE-%s-%d", uuid, i)},
+						References:  map[string]string{},
 					},
 					Metadata: &dependencytrack.VulnMetadata{
 						ProjectId:         uuid,

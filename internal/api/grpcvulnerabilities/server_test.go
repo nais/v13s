@@ -276,6 +276,7 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 	addVulns := func(image string, cves ...string) {
 		cveParams := make([]sql.BatchUpsertCveParams, 0)
 		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+		cveAliasParams := make([]sql.BatchUpsertCveAliasParams, 0)
 		imageName := strings.Split(image, ":")[0]
 		imageTag := strings.Split(image, ":")[1]
 		for _, c := range cves {
@@ -284,6 +285,10 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 			refs := map[string]string{}
 			if len(parts) > 1 {
 				refs[cveId] = parts[1]
+				cveAliasParams = append(cveAliasParams, sql.BatchUpsertCveAliasParams{
+					Alias:          parts[1],
+					CanonicalCveID: cveId,
+				})
 			}
 			cveParams = append(cveParams, sql.BatchUpsertCveParams{
 				CveID:    cveId,
@@ -303,6 +308,11 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		queries.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) {
 			if err != nil {
 				t.Fatalf("failed to upsert cve: %v", err)
+			}
+		})
+		queries.BatchUpsertCveAlias(ctx, cveAliasParams).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert cve alias: %v", err)
 			}
 		})
 		queries.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) {
