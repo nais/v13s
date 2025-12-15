@@ -58,7 +58,7 @@ values:
     computed:
       template: |
         - issuer: "https://token.actions.githubusercontent.com"
-          subject: {{ ^https://github\.com/[^/]+/[^/]+/\.github/workflows/.+\.(ya?ml)@refs/(heads|pull|tags)/.+$ | quote }}
+          subject: {{ "^https://github\\.com/[^/]+/[^/]+/\\.github/workflows/.+\\.(ya?ml)@refs/(heads|pull|tags)/.+$" | quote }}
 
   dockerconfigjson:
     displayName: Docker config json
