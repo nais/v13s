@@ -1,4 +1,4 @@
-golang             1.25.4
+golang             1.25.5
 protoc-gen-go-grpc cmd/protoc-gen-go-grpc/v1.5.1
 protoc-gen-go      1.36.10
 protoc             29.3
