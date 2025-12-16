@@ -10,52 +10,41 @@ env:
   NAME: v13s
   FEATURE_REPOSITORY: oci://europe-north1-docker.pkg.dev/nais-io/nais/feature
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  go_version:
-    outputs:
-      go_version: ${{ steps.go_version.outputs.GO_VERSION }}
+  checks:
     permissions:
-      contents: read
-    runs-on: ubuntu-22.04
+      contents: "read"
+    strategy:
+      matrix:
+        mise-task:
+          - check:deadcode
+          - check:govet
+          - check:govulncheck
+          - check:staticcheck
+          - check:helmlint
+          - test
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v4
-      - name: Find Go version
-        id: go_version
-        run: |
-          echo "GO_VERSION=$(grep golang .tool-versions | awk '{print $2}')" >> $GITHUB_OUTPUT
-  tests:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    needs: go_version
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v4
-      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # ratchet:actions/setup-go@v5
-        with:
-          go-version: ${{ needs.go_version.outputs.go_version }}
-          cache-dependency-path: ./go.sum
-
-     # - name: Check for vulnerable dependencies and static code
-     #  run: make check
-
-      - name: Run tests
-        run: make test
-      - name: Helm lint
-        run: make helm-lint
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 # ratchet:jdx/mise-action@v3
+      - run: mise run ${{ matrix.mise-task }}
 
   build_and_push:
     outputs:
       version: ${{ steps.build-push-sign.outputs.version }}
     needs:
-      - tests
+      - checks
     permissions:
       contents: "read"
       id-token: "write"
     name: build and push
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
 
       - name: Build push v13s image
         uses: nais/platform-build-push-sign@main # ratchet:exclude
