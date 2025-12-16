@@ -9,4 +9,4 @@ echo "Running vulncheck and showing only vulnerabilities with fixes..."
 go run golang.org/x/vuln/cmd/govulncheck@latest ./... \
   | awk '/^GO:|^module:|Fixed in:/ {print}' \
   | paste - - - \
-  | column -t -s $$'\t'
+  | column -t -s $'\t'

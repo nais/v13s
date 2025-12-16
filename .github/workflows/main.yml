@@ -25,7 +25,8 @@ jobs:
         mise-task:
           - check:deadcode
           - check:govet
-          - check:govulncheck
+          # disabled until cosign is updated
+          #- check:govulncheck
           - check:staticcheck
           - check:helmlint
           - test
