@@ -12,4 +12,5 @@ DIR="${1:-.}"
 find "$DIR" \
   -type d -name river_schema -prune -o \
   -type f -name '*.sql' -print \
-  -exec pg_format -U 2 -i -k --no-space-function {} \;
+  -exec pg_format -i -c ./.configs/pg_format.conf {} \;
+#  -exec pg_format -U 2 -i -k --no-space-function {} \;
