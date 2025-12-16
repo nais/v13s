@@ -261,7 +261,7 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, queries, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list vulnerabilities for a specific image", func(t *testing.T) {
@@ -271,6 +271,72 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(resp.Nodes))
+	})
+
+	addVulns := func(image string, cves ...string) {
+		cveParams := make([]sql.BatchUpsertCveParams, 0)
+		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+		cveAliasParams := make([]sql.BatchUpsertCveAliasParams, 0)
+		imageName := strings.Split(image, ":")[0]
+		imageTag := strings.Split(image, ":")[1]
+		for _, c := range cves {
+			parts := strings.Split(c, ":")
+			cveId := parts[0]
+			refs := map[string]string{}
+			if len(parts) > 1 {
+				refs[cveId] = parts[1]
+				cveAliasParams = append(cveAliasParams, sql.BatchUpsertCveAliasParams{
+					Alias:          parts[1],
+					CanonicalCveID: cveId,
+				})
+			}
+			cveParams = append(cveParams, sql.BatchUpsertCveParams{
+				CveID:    cveId,
+				CveTitle: fmt.Sprintf("Title for %s", cveId),
+				CveDesc:  fmt.Sprintf("Description for %s", cveId),
+				CveLink:  fmt.Sprintf("http://example.com/%s", cveId),
+				Refs:     refs,
+			})
+			vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{
+				ImageName: imageName,
+				ImageTag:  imageTag,
+				Package:   "package-1",
+				CveID:     cveId,
+				Source:    "test",
+			})
+		}
+		queries.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert cve: %v", err)
+			}
+		})
+		queries.BatchUpsertCveAlias(ctx, cveAliasParams).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert cve alias: %v", err)
+			}
+		})
+		queries.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert vulnerability: %v", err)
+			}
+		})
+	}
+
+	t.Run("list vulnerabilities with alias for a specific image", func(t *testing.T) {
+		addVulns("image-cluster-1-namespace-1-workload-1:v1.0", "GHSA-1", "CVE-1:GHSA-1")
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			"image-cluster-1-namespace-1-workload-1", "v1.0",
+		)
+		assert.NoError(t, err)
+		// only unique CVEs should be returned, have 1 existing + 2 new (CVE-1 and GHSA-1), GHSA-1 is duplicate
+		assert.Len(t, resp.Nodes, 2)
+		ids := make([]string, 0)
+		for _, v := range resp.Nodes {
+			ids = append(ids, v.GetCve().Id)
+		}
+		assert.Contains(t, ids, "CVE-1")
+		assert.NotContains(t, ids, "GHSA-1")
 	})
 }
 

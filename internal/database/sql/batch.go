@@ -159,6 +159,62 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 	return b.br.Close()
 }
 
+const batchUpsertCveAlias = `-- name: BatchUpsertCveAlias :batchexec
+INSERT INTO cve_alias(alias,
+                canonical_cve_id)
+VALUES ($1,
+        $2)
+ON CONFLICT (alias) DO UPDATE
+    SET canonical_cve_id = EXCLUDED.canonical_cve_id
+WHERE
+    cve_alias.canonical_cve_id  IS DISTINCT FROM EXCLUDED.canonical_cve_id
+`
+
+type BatchUpsertCveAliasBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BatchUpsertCveAliasParams struct {
+	Alias          string
+	CanonicalCveID string
+}
+
+func (q *Queries) BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.Alias,
+			a.CanonicalCveID,
+		}
+		batch.Queue(batchUpsertCveAlias, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BatchUpsertCveAliasBatchResults{br, len(arg), false}
+}
+
+func (b *BatchUpsertCveAliasBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BatchUpsertCveAliasBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
 INSERT INTO vulnerabilities (
     image_name,

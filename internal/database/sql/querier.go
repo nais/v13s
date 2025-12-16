@@ -12,6 +12,7 @@ type Querier interface {
 	AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventParams) error
 	BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
+	BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
@@ -45,6 +46,7 @@ type Querier interface {
 	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
 	ListUnusedSourceRefs(ctx context.Context, name *string) ([]*SourceRef, error)
 	ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*ListUpdatedWorkloadsWithSummariesRow, error)
+	// TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
@@ -58,6 +60,7 @@ type Querier interface {
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
+	RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	ResetDatabase(ctx context.Context) error

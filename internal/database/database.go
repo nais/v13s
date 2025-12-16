@@ -42,6 +42,7 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 			if migErr == nil {
 				break
 			}
+			log.Errorf("database migration attempt %d/%d failed: %v", i+1, maxRetries, migErr)
 
 			wait := retryBaseWait * time.Duration(i+1)
 			if i+1 == maxRetries {

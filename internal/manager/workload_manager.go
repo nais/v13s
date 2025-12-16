@@ -53,13 +53,12 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	db := sql.New(pool)
 
 	queues := map[string]river.QueueConfig{
-		KindAddWorkload:                  {MaxWorkers: 10},
-		KindGetAttestation:               {MaxWorkers: 15},
-		KindUploadAttestation:            {MaxWorkers: 10},
-		KindDeleteWorkload:               {MaxWorkers: 3},
-		KindRemoveFromSource:             {MaxWorkers: 3},
-		KindFinalizeAttestation:          {MaxWorkers: 10},
-		KindUpsertVulnerabilitySummaries: {MaxWorkers: 8},
+		KindAddWorkload:         {MaxWorkers: 10},
+		KindGetAttestation:      {MaxWorkers: 15},
+		KindUploadAttestation:   {MaxWorkers: 10},
+		KindDeleteWorkload:      {MaxWorkers: 3},
+		KindRemoveFromSource:    {MaxWorkers: 3},
+		KindFinalizeAttestation: {MaxWorkers: 10},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
@@ -72,7 +71,6 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
 	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
 	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
-	job.AddWorker(jobClient, &UpsertVulnerabilitySummariesWorker{Db: db, Source: source, Log: log.WithField("subsystem", "upsert_vulnerability_summaries")})
 	m := &WorkloadManager{
 		db:              db,
 		pool:            pool,

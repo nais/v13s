@@ -8,3 +8,4 @@ bin/
 /local/registry-data/
 internal/sources/dependencytrack/client/.travis.yml
 internal/sources/dependencytrack/client/git_push.sh
+/tmp/
