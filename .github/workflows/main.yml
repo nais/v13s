@@ -1,5 +1,7 @@
 name: Build and deploy
 on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
   push:
     branches:
       - main
@@ -34,6 +36,7 @@ jobs:
       - run: mise run ${{ matrix.mise-task }}
 
   build_and_push:
+    if: github.ref == 'refs/heads/main'
     outputs:
       version: ${{ steps.build-push-sign.outputs.version }}
     needs:
@@ -74,6 +77,7 @@ jobs:
           helm push ${{ env.NAME }}*.tgz ${{ env.FEATURE_REPOSITORY }}
 
   rollout:
+    if: github.ref == 'refs/heads/main'
     needs:
       - build_and_push
     runs-on: fasit-deploy
