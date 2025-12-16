@@ -1,7 +1,7 @@
 package github
 
 import (
-	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/cosign/v3/pkg/cosign"
 )
 
 const (
