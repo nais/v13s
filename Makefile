@@ -3,10 +3,10 @@ local: build
 	./bin/api
 
 build:
-	go build -o bin/api ./cmd/api
+	mise run build:api
 
 build-cli:
-	go -C ./pkg/cli build -o ../../bin/vulnz
+	mise run build:cli
 
 install-cli:
 	go -C ./pkg/cli build -o ${GOBIN}/vulnz
@@ -18,7 +18,7 @@ tidy:
 test-all:  test test-integration
 
 test:
-	go test -v -cover ./...
+	mise run test
 
 test-integration:
 	go test -count=1 ./... -tags integration_test -run TestUpdater
@@ -42,27 +42,20 @@ fmt:
 	go fmt ./...
 
 staticcheck:
-	@echo "Running staticcheck..."
-	go run honnef.co/go/tools/cmd/staticcheck@latest -f=stylish  ./...
+	mise run check:staticcheck
 
 # -exclude=GO-2025-3770 Several
 # Sigstore-related modules (e.g., cosign, rekor, sigstore-go, timestamp-authority) are pulling in the vulnerable version
 # Ignore until we can update to a version that is not vulnerable
 vulncheck:
-	@echo "Running vulncheck and showing only vulnerabilities with fixes..."
-	@go run golang.org/x/vuln/cmd/govulncheck@latest ./... \
-		| awk '/^GO:|^module:|Fixed in:/ {print}' \
-		| paste - - - \
-		| column -t -s $$'\t'
+	mise run check:govulncheck
 
 deadcode:
-	@echo "Running deadcode..."
-	go run golang.org/x/tools/cmd/deadcode@latest -filter "pkg/api/vulnerabilities/options" -test ./...
+	mise run check:deadcode
 
 # Is not in the total check, error for pkg/cli
 gosec:
-	@echo "Running gosec..."
-	go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude G404,G101,G115,G402 --exclude-generated -terse ./...
+	mise run check:gosec
 
 helm-lint:
 	@echo "Running helm lint..."
@@ -71,31 +64,18 @@ helm-lint:
 generate: generate-proto generate-sql generate-mocks
 
 generate-proto:
-	protoc \
-		-I pkg/api/vulnerabilities/schemas/ \
-		./pkg/api/vulnerabilities/schemas/*.proto \
-		--go_out=. \
-		--go-grpc_out=.
-
+	mise run generate:proto
 
 generate-sql:
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc generate -f .configs/sqlc.yaml
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc vet -f .configs/sqlc.yaml
+	mise run generate:sqlc
 
 generate-mocks:
-	find internal pkg -type f -name "mock_*.go" -delete
-	go run github.com/vektra/mockery/v2 --config ./.configs/mockery.yaml
-	find internal pkg -type f -name "mock_*.go" -exec go run mvdan.cc/gofumpt@latest -w {} \;
+	mise run generate:mocks
 
 refresh-db:
 	docker compose down -v
 
-# make connect-db I=v13s-d94dc8a5 P=nais-management-7178 S=v13s-sa
+TENANT ?= nav
 connect-db:
-	@CONNECTION_NAME=$$(gcloud sql instances describe $(I) \
-	  --format="get(connectionName)" \
-	  --project $(P)) && \
-	cloud-sql-proxy $$CONNECTION_NAME \
-	    --auto-iam-authn \
-	    --impersonate-service-account="$(S)@$(P).iam.gserviceaccount.com"
+	mise run db:proxy ${TENANT}
 
