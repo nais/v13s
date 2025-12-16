@@ -1,7 +1,7 @@
 [tools]
-golang = "1.25.4"
+golang = "1.25.5"
 protoc-gen-go-grpc = "1.5.1"
-protoc-gen-go = "1.36.10"
+protoc-gen-go = "1.36.11"
 protoc = "29.3"
 helm = "3.15.1"
 
