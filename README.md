@@ -1,32 +1,57 @@
 # v13s
 
-## Description
+v13s(vulnerabilities) is a workload centric API which monitors Kubernetes workloads 
+across multiple clusters and tracks container image vulnerabilities. 
 
-v13s offers a streamlined, workload-focused API designed to retrieve vulnerability data for a workload from multiple
-sources
+## What it does
 
-## Versioning the client
+- Watches Kubernetes Deployments and Jobs across clusters
+- Fetches and verifies container image attestations (SBOMs)
+- Syncs vulnerability data from external sources
+- Provides gRPC API and CLI for querying vulnerability information
+- Tracks vulnerability history and calculates metrics such as Mean Time to Fix (MTTF)
 
-Skip versioning in the package names and use [Semantic Versioning](https://semver.org/) and tags, i.e. v1 and so on, so
-users can import the package with a specific version.
+## Documentation
 
-## Notes/TODOs
+- [Architecture](docs/architecture.md) - System components and data flow
+- [API](docs/api.md) - gRPC service documentation
+- [Development](docs/development.md) - Local setup, building, and testing
+- [CLI Usage](docs/cli-usage.md) - Command-line interface examples
+- [River Job Queue](docs/river.md) - Job queue system and schema updates
 
-* Have a k8s informer to keep track of total workloads, can watch deployments, statefulsets, daemonsets, jobs, and how
-  many have sboms etc.
-* Remember pagination when fetching resources from the API. We should not fetch all resources at once. See iterator in
-  nais/api/apiclient for an example.
-* Consider adding a separate go.mod in the pkg directory to not expose all our dependencies to the users. This will also
-  allow us to have a cleaner go.mod file in the root directory.
-  Add a replace directive in the main go.mod file to point to the local path of the pkg directory so it doesn't fetch
-  the package from the internet. See github.com/nais/api for an example.
-* Should we create a new row for each workload or do a update? If we do create we have a history of all workloads and
-  images tags. If we do a update we only have the latest image tag for each workload. We still have the history of all
-  images tags in the image table.
-
-## River
+## Quick Start
 
 ```bash
-  river migrate-get --line main --all --up > river_schema.sql
+# Start dependencies
+docker compose up -d
+
+# Configure
+cp .env.sample .env
+# Edit .env with your settings
+
+# Build and run
+make local
 ```
+
+API available at:
+- gRPC: `localhost:50051`
+
+Metrics and RiverUI available at:
+- Internal HTTP (metrics, RiverUI): `localhost:8080`
+
+See [development documentation](docs/development.md) for detailed setup instructions.
+
+## Client Package
+
+```bash
+go get github.com/nais/v13s/pkg/api@main
+```
+
+```go
+import "github.com/nais/v13s/pkg/api/vulnerabilities"
+```
+
+## License
+
+[MIT](LICENSE.md)
 
