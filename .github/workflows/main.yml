@@ -6,6 +6,7 @@ on:
     branches:
       - main
     paths-ignore:
+      - 'docs/**'
       - '*.md'
       - 'LICENSE.md'
 env:

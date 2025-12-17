@@ -1,7 +1,7 @@
 # API Documentation
 
 v13s exposes gRPC services defined in [pkg/api/vulnerabilities/schemas](../pkg/api/vulnerabilities/schemas).
-in mainly two services: `Vulnerabilities` and `Management`.
+in two main services: `Vulnerabilities` and `Management`.
 
 There is a client interface available at [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) for easy programmatic access.
 

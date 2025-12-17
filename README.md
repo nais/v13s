@@ -1,6 +1,6 @@
 # v13s
 
-v13s(vulnerabilities) is a workload centric API which monitors Kubernetes workloads 
+v13s (vulnerabilities) is a workload centric API which monitors Kubernetes workloads 
 across multiple clusters and tracks container image vulnerabilities. 
 
 ## What it does
@@ -16,7 +16,7 @@ across multiple clusters and tracks container image vulnerabilities.
 - [Architecture](docs/architecture.md) - System components and data flow
 - [API](docs/api.md) - gRPC service documentation
 - [Development](docs/development.md) - Local setup, building, and testing
-- [CLI Usage](docs/cli-usage.md) - Command-line interface examples
+- [CLI Usage](docs/cli-usage.md) - Command-line interface usage
 - [River Job Queue](docs/river.md) - Job queue system and schema updates
 
 ## Quick Start
@@ -37,7 +37,7 @@ API available at:
 - gRPC: `localhost:50051`
 
 Metrics and RiverUI available at:
-- Internal HTTP (metrics, RiverUI): `localhost:8080`
+- Internal HTTP (metrics, RiverUI): `localhost:8000`
 
 See [development documentation](docs/development.md) for detailed setup instructions.
 
