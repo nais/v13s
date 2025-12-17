@@ -14,12 +14,12 @@ v13s uses [River](https://riverqueue.com/) for asynchronous job processing. Rive
 
 The system uses River for several types of jobs:
 
-- **AddWorkload**: Register a new workload in the system (10 workers)
-- **GetAttestation**: Fetch attestation from container registry (15 workers)
-- **UploadAttestation**: Upload SBOM to vulnerability source (10 workers)
-- **FinalizeAttestation**: Complete attestation processing (10 workers)
-- **DeleteWorkload**: Remove workload from tracking (3 workers)
-- **RemoveFromSource**: Clean up workload from vulnerability source (3 workers)
+- **AddWorkload**: Register a new workload in the system 
+- **GetAttestation**: Fetch attestation from container registry 
+- **UploadAttestation**: Upload SBOM to vulnerability source 
+- **FinalizeAttestation**: Complete attestation processing 
+- **DeleteWorkload**: Remove workload from tracking 
+- **RemoveFromSource**: Clean up workload from vulnerability source 
 
 Each job type has its own queue configuration defined in `internal/manager/workload_manager.go`.
 

@@ -104,7 +104,7 @@ Updater Schedule → MarkForResync → FetchVulnerabilities → BatchUpdate → 
 
 The system maintains several scheduled tasks:
 - **Image Resync** (every 4 hours): Marks and resyncs image vulnerability data
-- **Mark Untracked** (every 20 minutes): Identifies images no longer in use
-- **Mark Unused** (every 30 minutes): Marks images that haven't been seen recently
+- **Mark Untracked** (every 20 minutes): Identifies images with no SBOMs
+- **Mark Unused** (every 30 minutes): Marks images that are no longer in use by any workload
 - **Daily Summary Refresh** (daily at 4:30 AM CEST): Updates materialized views for reporting
 - **MTTF Calculation** (daily at 5:00 AM CEST): Calculates Mean Time to Fix metrics

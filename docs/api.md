@@ -9,7 +9,7 @@ The Vulnerabilities service provides access to vulnerability data.
 ### List Operations
 
 - `ListVulnerabilities`: List all vulnerabilities for the given filters (cluster, namespace, workload, workload_type)
-- `ListVulnerabilitySummaries`: List all workloads with their vulnerability summaries
+- `ListVulnerabilitySummaries`: List all workloads with their vulnerability summaries for the given filters (cluster, namespace, workload, workload_type)
 - `ListVulnerabilitiesForImage`: List vulnerabilities for a specific container image
 - `ListSuppressedVulnerabilities`: List suppressed vulnerabilities
 - `ListSeverityVulnerabilitiesSince`: List vulnerabilities by severity since a given date

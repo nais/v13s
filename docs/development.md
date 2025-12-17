@@ -4,7 +4,7 @@
 
 - **Go 1.25.5+**
 - **Docker** and **Docker Compose**
-- **mise** (for task automation, optional but recommended)
+- **mise** (for task automation)
 - **PostgreSQL 15+** (provided via docker-compose)
 
 ## Local Setup

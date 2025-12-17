@@ -1,14 +1,15 @@
 # v13s
 
-v13s monitors Kubernetes workloads across multiple clusters and tracks container image vulnerabilities from external sources like DependencyTrack.
+v13s(vulnerabilities) is a workload centric API which monitors Kubernetes workloads 
+across multiple clusters and tracks container image vulnerabilities. 
 
 ## What it does
 
-- Watches Kubernetes Deployments and NaisJobs across clusters
+- Watches Kubernetes Deployments and Jobs across clusters
 - Fetches and verifies container image attestations (SBOMs)
 - Syncs vulnerability data from external sources
 - Provides gRPC API and CLI for querying vulnerability information
-- Tracks vulnerability history and calculates Mean Time to Fix (MTTF)
+- Tracks vulnerability history and calculates metrics such as Mean Time to Fix (MTTF)
 
 ## Documentation
 
@@ -34,6 +35,8 @@ make local
 
 API available at:
 - gRPC: `localhost:50051`
+
+Metrics and RiverUI available at:
 - Internal HTTP (metrics, RiverUI): `localhost:8080`
 
 See [development documentation](docs/development.md) for detailed setup instructions.
@@ -41,7 +44,7 @@ See [development documentation](docs/development.md) for detailed setup instruct
 ## Client Package
 
 ```bash
-go get github.com/nais/v13s/pkg/api@v1.0.0
+go get github.com/nais/v13s/pkg/api@main
 ```
 
 ```go
@@ -50,5 +53,5 @@ import "github.com/nais/v13s/pkg/api/vulnerabilities"
 
 ## License
 
-[Apache 2.0](LICENSE.md)
+[MIT](LICENSE.md)
 
