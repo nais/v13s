@@ -12,7 +12,7 @@ import (
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
 	"github.com/riverqueue/river"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/cosign/v3/pkg/cosign"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"

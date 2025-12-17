@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/sigstore/cosign/v2/pkg/cosign/bundle"
+	"github.com/sigstore/cosign/v3/pkg/cosign/bundle"
 	"github.com/sigstore/rekor/pkg/pki"
 	dsse "github.com/sigstore/rekor/pkg/types/dsse/v0.0.1"
 	intoto "github.com/sigstore/rekor/pkg/types/intoto/v0.0.1"
