@@ -6,7 +6,7 @@ set -euo pipefail
 # Sigstore-related modules (e.g., cosign, rekor, sigstore-go, timestamp-authority) are pulling in the vulnerable version
 # Ignore until we can update to a version that is not vulnerable
 echo "Running vulncheck and showing only vulnerabilities with fixes..."
-go run golang.org/x/vuln/cmd/govulncheck@latest ./... \
+go tool golang.org/x/vuln/cmd/govulncheck ./... \
   | awk '/^GO:|^module:|Fixed in:/ {print}' \
   | paste - - - \
   | column -t -s $'\t'

@@ -15,12 +15,12 @@ project=$(gcloud projects list --filter='projectId~"^nais-management"' --format=
 
 echo "found project: $project for tenant: $tenant"
 
-instance=$(gcloud sql instances list --project=$project --format=json \
+instance=$(gcloud sql instances list --project="$project" --format=json \
   | jq -er '.[] | select(.name | startswith("v13s")) | .name' | head -n1)
 
-CONNECTION_NAME=$(gcloud sql instances describe $instance --format="get(connectionName)" --project $project)
+CONNECTION_NAME=$(gcloud sql instances describe "$instance" --format="get(connectionName)" --project "$project")
 echo "connecting to instance: $CONNECTION_NAME"
 
 cloud-sql-proxy $CONNECTION_NAME \
-	    --auto-iam-authn \
-	    --impersonate-service-account="v13s-sa@$project.iam.gserviceaccount.com"
+  --auto-iam-authn \
+  --impersonate-service-account="v13s-sa@$project.iam.gserviceaccount.com"
