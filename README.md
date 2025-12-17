@@ -471,13 +471,18 @@ This project uses [Semantic Versioning](https://semver.org/). Version tags (e.g.
 
 ### Client Package Versioning
 
-The client package in `pkg/api` is designed to be imported with a specific version:
+The client package in `pkg/api` is designed to be imported with a specific version. Users should pin to a specific version tag for stability:
 
-```go
-import "github.com/nais/v13s/pkg/api@v1.0.0"
+```bash
+# Install a specific version
+go get github.com/nais/v13s@v1.0.0
 ```
 
-Users should pin to a specific version tag for stability.
+Then import normally in your Go code:
+
+```go
+import "github.com/nais/v13s/pkg/api/vulnerabilities"
+```
 
 ## Contributing
 
