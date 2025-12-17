@@ -43,4 +43,4 @@ The River schema is stored in `internal/database/river_schema/river_schema.sql` 
 
 ## Monitoring Jobs
 
-Access the River UI at `http://localhost:8080/riverui` when running locally to monitor job status, view errors, and inspect job details.
+Access the River UI at `http://localhost:8000/riverui` when running locally to monitor job status, view errors, and inspect job details.

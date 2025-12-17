@@ -52,7 +52,7 @@ go build -o bin/api ./cmd/api
 ./bin/api
 ```
 
-The API will be available at `localhost:50051` (gRPC) and `localhost:8080` (internal HTTP with metrics and RiverUI).
+The API will be available at `localhost:50051` (gRPC) and `localhost:8000` (internal HTTP with metrics and RiverUI).
 
 ## Running the CLI
 
@@ -124,13 +124,13 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 
 ### Core Settings
 
-| Variable | Description | Default |
-|----------|-------------|---------|
+| Variable | Description | Default           |
+|----------|-------------|-------------------|
 | `LISTEN_ADDR` | gRPC server address | `localhost:50051` |
-| `INTERNAL_LISTEN_ADDR` | Internal HTTP server address | `localhost:8080` |
-| `DATABASE_URL` | PostgreSQL connection URL | Required |
-| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
-| `LOG_FORMAT` | Log format (text, json) | `text` |
+| `INTERNAL_LISTEN_ADDR` | Internal HTTP server address | `localhost:8000`  |
+| `DATABASE_URL` | PostgreSQL connection URL | Required          |
+| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info`            |
+| `LOG_FORMAT` | Log format (text, json) | `text`            |
 
 ### Kubernetes Settings
 
