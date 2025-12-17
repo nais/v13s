@@ -1,6 +1,9 @@
 # API Documentation
 
-v13s exposes two gRPC services defined in [pkg/api/vulnerabilities/schemas](../pkg/api/vulnerabilities/schemas).
+v13s exposes gRPC services defined in [pkg/api/vulnerabilities/schemas](../pkg/api/vulnerabilities/schemas).
+in mainly two services: `Vulnerabilities` and `Management`.
+
+There is a client interface available at [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) for easy programmatic access.
 
 ## Vulnerabilities Service
 
@@ -8,17 +11,18 @@ The Vulnerabilities service provides access to vulnerability data.
 
 ### List Operations
 
+List operations retrieve collections of vulnerability-related data based on various filters, e.g.:
+
 - `ListVulnerabilities`: List all vulnerabilities for the given filters (cluster, namespace, workload, workload_type)
 - `ListVulnerabilitySummaries`: List all workloads with their vulnerability summaries for the given filters (cluster, namespace, workload, workload_type)
 - `ListVulnerabilitiesForImage`: List vulnerabilities for a specific container image
-- `ListSuppressedVulnerabilities`: List suppressed vulnerabilities
-- `ListSeverityVulnerabilitiesSince`: List vulnerabilities by severity since a given date
-- `ListWorkloadsForVulnerabilityById`: List workloads affected by a specific vulnerability ID
-- `ListWorkloadsForVulnerability`: List workloads affected by a vulnerability
-- `ListMeanTimeToFixTrendBySeverity`: List MTTF trends by severity
-- `ListWorkloadMTTFBySeverity`: List workload MTTF by severity
+- ... and more.
+
+See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
 
 ### Get Operations
+
+Get operations retrieve specific vulnerability data, and typically return one item, e.g.:
 
 - `GetVulnerabilitySummary`: Get aggregated vulnerability counts for filters (cluster, namespace, workload, workload_type)
 - `GetVulnerabilitySummaryTimeSeries`: Get vulnerability summary over time
@@ -26,6 +30,8 @@ The Vulnerabilities service provides access to vulnerability data.
 - `GetVulnerabilityById`: Get a specific vulnerability by ID
 - `GetVulnerability`: Get vulnerability details
 - `GetCve`: Get CVE details
+
+See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
 
 ### Suppress Operations
 
@@ -43,6 +49,6 @@ The Management service provides administrative operations.
 
 ## API Usage
 
-See the [CLI usage documentation](cli-usage.md) for examples of how to interact with the API using the command-line client.
+See the [CLI usage documentation](cli-usage.md) for how to interact with the API using the command-line client.
 
-For programmatic access, see the [protobuf definitions](../pkg/api/vulnerabilities/schemas) for detailed request/response schemas.
+For programmatic access, see the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) and the [protobuf definitions](../pkg/api/vulnerabilities/schemas) for detailed request/response schemas.
