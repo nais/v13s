@@ -122,7 +122,6 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 	})
 
 	t.Run("list vulnerabilities with limit and pagination", func(t *testing.T) {
-
 		limit := int32(10)
 		offset := int32(0)
 		resp, err := client.ListVulnerabilities(
@@ -149,7 +148,6 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 	})
 
 	t.Run("list vulnerabilities for workloads using the same image", func(t *testing.T) {
-
 		w := sql.UpsertWorkloadParams{
 			Name:         "workload-1",
 			WorkloadType: "app",
@@ -809,7 +807,6 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 	})
-
 }
 
 func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
@@ -833,7 +830,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 	})
-
 }
 
 func TestServer_GetVulnerabilityById(t *testing.T) {
@@ -1311,7 +1307,6 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 0, count, "Orphaned workload_id should not be inserted into vuln_fix_summary")
 	})
-
 }
 
 func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {

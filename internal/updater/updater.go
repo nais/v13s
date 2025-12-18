@@ -216,7 +216,7 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 
 // MarkForResync Mark images for resync that have not been updated for a certain amount of time where state is not 'resync'
 func (u *Updater) MarkForResync(ctx context.Context) error {
-	//TODO: send in states as parameter, and not use values in sql
+	// TODO: send in states as parameter, and not use values in sql
 	err := u.querier.MarkImagesForResync(
 		ctx,
 		sql.MarkImagesForResyncParams{

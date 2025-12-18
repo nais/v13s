@@ -57,7 +57,6 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		ImageName:    workload.ImageName,
 		ImageTag:     workload.ImageTag,
 	})
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			recordOutput(ctx, JobStatusInitializeWorkloadSkipped)

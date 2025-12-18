@@ -132,7 +132,7 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 }
 
 func deleteWorkload(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload, workloadType = extractFilters(opts)
+	cluster, namespace, workload, workloadType := extractFilters(opts)
 	if workload == nil || namespace == nil || cluster == nil {
 		return fmt.Errorf("cluster, namespace, and workload must be provided to delete a workload")
 	}
@@ -193,7 +193,7 @@ func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Opt
 }
 
 func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload, workloadType = extractFilters(opts)
+	cluster, namespace, workload, workloadType := extractFilters(opts)
 	var imageState *string
 	if opts.ImageState != "" {
 		imageState = &opts.ImageState
@@ -224,7 +224,7 @@ func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) 
 }
 
 func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload, workloadType = extractFilters(opts)
+	cluster, namespace, workload, workloadType := extractFilters(opts)
 
 	if opts.Limit <= 0 {
 		opts.Limit = 30
@@ -270,7 +270,7 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 }
 
 func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
-	var cluster, namespace, workload, _ = extractFilters(opts)
+	cluster, namespace, workload, _ := extractFilters(opts)
 
 	err := pagination.Paginate(opts.Limit, func(offset int) (int, bool, error) {
 		status, err := c.GetWorkloadJobs(ctx, &management.GetWorkloadJobsRequest{

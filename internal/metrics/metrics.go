@@ -40,7 +40,6 @@ func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.
 	metricExporter, err := prometheus.New(
 		prometheus.WithRegisterer(reg),
 	)
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating prometheus exporter: %w", err)
 	}

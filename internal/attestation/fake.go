@@ -15,57 +15,57 @@ type fakeSig struct {
 }
 
 func (f *fakeSig) Digest() (v1.Hash, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) DiffID() (v1.Hash, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Compressed() (io.ReadCloser, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Uncompressed() (io.ReadCloser, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Annotations() (map[string]string, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Size() (int64, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) MediaType() (types.MediaType, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Signature() ([]byte, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Base64Signature() (string, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Cert() (*x509.Certificate, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *fakeSig) Chain() ([]*x509.Certificate, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -74,7 +74,7 @@ func (f *fakeSig) Bundle() (*bundle.RekorBundle, error) {
 }
 
 func (f *fakeSig) RFC3161Timestamp() (*bundle.RFC3161Timestamp, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

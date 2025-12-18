@@ -152,7 +152,6 @@ func (u *Updater) DetermineSeveritySince(
 	imageName, pkg, cveID string,
 	lastSeverity int32,
 ) (*time.Time, error) {
-
 	earliest, err := u.querier.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
 		ImageName:    imageName,
 		Package:      pkg,

@@ -36,7 +36,7 @@ type anyTransportPerRPCCredentials struct {
 }
 
 func (i anyTransportPerRPCCredentials) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-	//return i.tokenSrc.GetRequestMetadata(ctx, uri...)
+	// return i.tokenSrc.GetRequestMetadata(ctx, uri...)
 	token, err := i.tokenSrc.Token()
 	if err != nil {
 		return nil, err

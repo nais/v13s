@@ -61,14 +61,14 @@ func main() {
 			if workload.WorkloadType == "app" || workload.WorkloadType == "job" {
 				for _, app := range apps.Items {
 					if workload.Name == app.GetName() && workload.Namespace == app.GetNamespace() && workload.WorkloadType == "app" {
-						//fmt.Printf("found workload: %s in ns: %s and cluster: %s\n", workload.Name, workload.Namespace, cluster)
+						// fmt.Printf("found workload: %s in ns: %s and cluster: %s\n", workload.Name, workload.Namespace, cluster)
 						found = true
 						break
 					}
 				}
 				for _, job := range jobs.Items {
 					if workload.Name == job.GetName() && workload.Namespace == job.GetNamespace() && workload.WorkloadType == "job" {
-						//fmt.Printf("found workload: %s in ns: %s and cluster: %s\n", workload.Name, workload.Namespace, cluster)
+						// fmt.Printf("found workload: %s in ns: %s and cluster: %s\n", workload.Name, workload.Namespace, cluster)
 						found = true
 						break
 					}
@@ -111,10 +111,10 @@ func main() {
 			panic(fmt.Errorf("error listing workloads: %w", err))
 		}
 		numAppsJobs := 0
-		//fmt.Printf("------------ List of workloads ------------\n")
+		// fmt.Printf("------------ List of workloads ------------\n")
 		for _, workload := range workloads {
 			if workload.WorkloadType == "app" || workload.WorkloadType == "job" {
-				//fmt.Printf("%s:%s:%s:%s\n", workload.Name, workload.WorkloadType, workload.Namespace, cluster)
+				// fmt.Printf("%s:%s:%s:%s\n", workload.Name, workload.WorkloadType, workload.Namespace, cluster)
 				numAppsJobs++
 			}
 		}
@@ -125,7 +125,6 @@ func main() {
 		fmt.Printf("jobs in cluster %s: %d\n", cluster, len(jobs.Items))
 		fmt.Printf("-------------------------------------------\n")
 	}
-
 }
 
 func newClients(cfg *config.Config) map[string]*Client {

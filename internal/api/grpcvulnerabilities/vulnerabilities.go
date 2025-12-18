@@ -51,7 +51,6 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
-
 		return &vulnerabilities.Finding{
 			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
@@ -96,7 +95,6 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
 	}
@@ -129,7 +127,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		Since:             timestamptzFromProto(request.GetSince()),
 		Severity:          toInt32Ptr(request.Severity),
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
@@ -206,7 +203,6 @@ func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *
 	}
 
 	vulnz := collections.Map(v, func(row *sql.ListSeverityVulnerabilitiesSinceRow) *vulnerabilities.Finding {
-
 		return &vulnerabilities.Finding{
 			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
@@ -249,7 +245,6 @@ func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
 	}
@@ -282,7 +277,6 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 		Limit:     limit,
 		OrderBy:   SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("list suppressed vulnerabilities: %w", err)
 	}

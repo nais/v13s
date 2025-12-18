@@ -88,7 +88,6 @@ func TestMarkImagesAsUnused(t *testing.T) {
 	})
 
 	t.Run("image without workload should be marked as unused", func(t *testing.T) {
-
 		err = db.CreateImage(ctx, sql.CreateImageParams{
 			Name:     "testimage",
 			Tag:      "old",

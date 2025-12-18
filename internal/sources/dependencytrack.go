@@ -12,8 +12,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ErrNoMetrics = fmt.Errorf("no metrics found")
-var ErrNoProject = fmt.Errorf("no project found")
+var (
+	ErrNoMetrics = fmt.Errorf("no metrics found")
+	ErrNoProject = fmt.Errorf("no project found")
+)
 
 const DependencytrackSourceName = "dependencytrack"
 

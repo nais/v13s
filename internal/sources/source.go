@@ -100,11 +100,13 @@ func (s Severity) ToInt32() int32 {
 	return -1
 }
 
-const SeverityCritical = Severity("CRITICAL")
-const SeverityHigh = Severity("HIGH")
-const SeverityMedium = Severity("MEDIUM")
-const SeverityLow = Severity("LOW")
-const SeverityUnassigned = Severity("UNASSIGNED")
+const (
+	SeverityCritical   = Severity("CRITICAL")
+	SeverityHigh       = Severity("HIGH")
+	SeverityMedium     = Severity("MEDIUM")
+	SeverityLow        = Severity("LOW")
+	SeverityUnassigned = Severity("UNASSIGNED")
+)
 
 type Cve struct {
 	Id          string

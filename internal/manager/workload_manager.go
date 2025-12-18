@@ -82,7 +82,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		log:             log,
 	}
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
-	//m.addDispatcher.errorHook = m.handleError
+	// m.addDispatcher.errorHook = m.handleError
 	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
 
 	return m
