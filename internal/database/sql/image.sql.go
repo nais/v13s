@@ -11,11 +11,16 @@ import (
 )
 
 const createImage = `-- name: CreateImage :exec
-INSERT INTO
-        images (name, tag, metadata)
-VALUES
-        ($1, $2, $3)
-ON CONFLICT DO NOTHING
+INSERT INTO images(
+    name,
+    tag,
+    metadata)
+VALUES (
+    $1,
+    $2,
+    $3)
+ON CONFLICT
+    DO NOTHING
 `
 
 type CreateImageParams struct {
@@ -30,7 +35,13 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 }
 
 const getImage = `-- name: GetImage :one
-SELECT name, tag, metadata, state, created_at, updated_at, ready_for_resync_at FROM images WHERE name = $1 AND tag = $2
+SELECT
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+FROM
+    images
+WHERE
+    name = $1
+    AND tag = $2
 `
 
 type GetImageParams struct {
@@ -54,12 +65,16 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
-SELECT name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
-FROM images
-WHERE ready_for_resync_at IS NOT NULL
-  AND ready_for_resync_at <= NOW()
-  AND state IN ('initialized', 'resync')
-ORDER BY updated_at DESC
+SELECT
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+FROM
+    images
+WHERE
+    ready_for_resync_at IS NOT NULL
+    AND ready_for_resync_at <= NOW()
+    AND state IN ('initialized', 'resync')
+ORDER BY
+    updated_at DESC
 `
 
 func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, error) {
@@ -91,11 +106,24 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 }
 
 const listUnusedImages = `-- name: ListUnusedImages :many
-SELECT name, tag
-FROM images
-WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
-   AND ($1::TEXT IS NULL OR name = $1::TEXT)
-ORDER BY updated_at
+SELECT
+    name,
+    tag
+FROM
+    images
+WHERE
+    NOT EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag)
+    AND ($1::TEXT IS NULL
+        OR name = $1::TEXT)
+ORDER BY
+    updated_at
 `
 
 type ListUnusedImagesRow struct {
@@ -124,11 +152,13 @@ func (q *Queries) ListUnusedImages(ctx context.Context, name *string) ([]*ListUn
 }
 
 const markImagesAsUntracked = `-- name: MarkImagesAsUntracked :execrows
-UPDATE images
+UPDATE
+    images
 SET
     state = 'untracked',
     updated_at = NOW()
-WHERE state = ANY($1::image_state[])
+WHERE
+    state = ANY ($1::image_state[])
     AND updated_at < $2
 `
 
@@ -146,15 +176,19 @@ func (q *Queries) MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUnt
 }
 
 const markImagesForResync = `-- name: MarkImagesForResync :exec
-UPDATE images
-SET state      = 'resync',
+UPDATE
+    images
+SET
+    state = 'resync',
     updated_at = NOW()
-FROM workloads w
-WHERE images.name = w.image_name
-  AND images.tag = w.image_tag
-  AND images.updated_at < $1
-  AND images.state != 'resync'
-  AND images.state != ANY($2::image_state[])
+FROM
+    workloads w
+WHERE
+    images.name = w.image_name
+    AND images.tag = w.image_tag
+    AND images.updated_at < $1
+    AND images.state != 'resync'
+    AND images.state != ANY ($2::image_state[])
 `
 
 type MarkImagesForResyncParams struct {
@@ -168,13 +202,23 @@ func (q *Queries) MarkImagesForResync(ctx context.Context, arg MarkImagesForResy
 }
 
 const markUnusedImages = `-- name: MarkUnusedImages :execrows
-UPDATE images
-SET state      = 'unused',
+UPDATE
+    images
+SET
+    state = 'unused',
     updated_at = NOW()
-WHERE NOT EXISTS (SELECT 1 FROM workloads WHERE image_name = images.name AND image_tag = images.tag)
-  AND images.updated_at < $1
-  AND images.state != 'unused'
-  AND images.state != ANY($2::image_state[])
+WHERE
+    NOT EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag)
+    AND images.updated_at < $1
+    AND images.state != 'unused'
+    AND images.state != ANY ($2::image_state[])
 `
 
 type MarkUnusedImagesParams struct {
@@ -191,10 +235,14 @@ func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesPara
 }
 
 const updateImage = `-- name: UpdateImage :exec
-UPDATE images SET
+UPDATE
+    images
+SET
     metadata = $1,
     updated_at = NOW()
-WHERE name = $2 AND tag = $3
+WHERE
+    name = $2
+    AND tag = $3
 `
 
 type UpdateImageParams struct {
@@ -209,12 +257,15 @@ func (q *Queries) UpdateImage(ctx context.Context, arg UpdateImageParams) error 
 }
 
 const updateImageState = `-- name: UpdateImageState :exec
-UPDATE images
+UPDATE
+    images
 SET
     state = $1,
     ready_for_resync_at = $2,
     updated_at = NOW()
-WHERE name = $3 AND tag = $4
+WHERE
+    name = $3
+    AND tag = $4
 `
 
 type UpdateImageStateParams struct {
@@ -235,13 +286,25 @@ func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStatePara
 }
 
 const updateImageSyncStatus = `-- name: UpdateImageSyncStatus :exec
-INSERT INTO image_sync_status (image_name, image_tag, status_code, reason, source)
-VALUES ($1, $2, $3, $4, $5) ON CONFLICT (image_name, image_tag) DO
-UPDATE
-    SET
+INSERT INTO image_sync_status(
+    image_name,
+    image_tag,
+    status_code,
+    reason,
+    source)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5)
+ON CONFLICT (
+    image_name,
+    image_tag)
+    DO UPDATE SET
         status_code = $3,
-    reason = $4,
-    updated_at = NOW()
+        reason = $4,
+        updated_at = NOW()
 `
 
 type UpdateImageSyncStatusParams struct {

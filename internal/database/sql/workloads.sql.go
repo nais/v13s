@@ -10,21 +10,24 @@ import (
 )
 
 const addWorkloadEvent = `-- name: AddWorkloadEvent :exec
-INSERT INTO workload_event_log (name,
-                             workload_type,
-                             namespace,
-                             cluster,
-                             event_type,
-                             event_data,
-                              subsystem)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7) ON
-        CONFLICT DO NOTHING
+INSERT INTO workload_event_log(
+    name,
+    workload_type,
+    namespace,
+    cluster,
+    event_type,
+    event_data,
+    subsystem)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7)
+ON CONFLICT
+    DO NOTHING
 `
 
 type AddWorkloadEventParams struct {
@@ -51,8 +54,21 @@ func (q *Queries) AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventPara
 }
 
 const createWorkload = `-- name: CreateWorkload :one
-INSERT INTO workloads (name, workload_type, namespace, cluster, image_name, image_tag)
-VALUES ($1, $2, $3, $4, $5, $6) RETURNING
+INSERT INTO workloads(
+    name,
+    workload_type,
+    namespace,
+    cluster,
+    image_name,
+    image_tag)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6)
+RETURNING
     id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 `
 
@@ -91,12 +107,12 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 }
 
 const deleteWorkload = `-- name: DeleteWorkload :one
-DELETE
-FROM workloads
+DELETE FROM workloads
 WHERE name = $1
-  AND workload_type = $2
-  AND namespace = $3
-  AND cluster = $4 RETURNING
+    AND workload_type = $2
+    AND namespace = $3
+    AND CLUSTER = $4
+RETURNING
     id
 `
 
@@ -120,12 +136,15 @@ func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) 
 }
 
 const getWorkload = `-- name: GetWorkload :one
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
-FROM workloads
-WHERE name = $1
-  AND workload_type = $2
-  AND namespace = $3
-  AND cluster = $4
+SELECT
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+FROM
+    workloads
+WHERE
+    name = $1
+    AND workload_type = $2
+    AND namespace = $3
+    AND CLUSTER = $4
 `
 
 type GetWorkloadParams struct {
@@ -159,32 +178,36 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 }
 
 const initializeWorkload = `-- name: InitializeWorkload :one
-INSERT INTO workloads(name,
-                      workload_type,
-                      namespace,
-                      cluster,
-                      image_name,
-                      image_tag,
-                      state)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        'processing') ON CONFLICT
-ON CONSTRAINT workload_id DO
-UPDATE
-    SET
+INSERT INTO workloads(
+    name,
+    workload_type,
+    namespace,
+    cluster,
+    image_name,
+    image_tag,
+    state)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    'processing')
+ON CONFLICT ON CONSTRAINT workload_id
+    DO UPDATE SET
         state = 'processing',
         updated_at = NOW(),
         image_name = $5,
         image_tag = $6
-    WHERE workloads.state = 'failed' or
-        workloads.state = 'resync' or
-        (workloads.image_name != $5 or workloads.image_tag != $6)
+    WHERE
+        workloads.state = 'failed'
+        OR workloads.state = 'resync'
+        OR (
+            workloads.image_name != $5
+            OR workloads.image_tag != $6)
     RETURNING
-    id
+        id
 `
 
 type InitializeWorkloadParams struct {
@@ -211,10 +234,17 @@ func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkload
 }
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
-FROM workloads
-WHERE cluster = $1
-ORDER BY (name, namespace, cluster, updated_at) DESC
+SELECT
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+FROM
+    workloads
+WHERE
+    CLUSTER = $1
+ORDER BY
+    (name,
+        namespace,
+        CLUSTER,
+        updated_at) DESC
 `
 
 func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([]*Workload, error) {
@@ -249,11 +279,25 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 }
 
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at
-FROM workloads
-WHERE image_name = $1
-  AND image_tag = $2
-ORDER BY name DESC, cluster DESC, updated_at DESC
+SELECT
+    id,
+    name,
+    workload_type,
+    namespace,
+    CLUSTER,
+    image_name,
+    image_tag,
+    created_at,
+    updated_at
+FROM
+    workloads
+WHERE
+    image_name = $1
+    AND image_tag = $2
+ORDER BY
+    name DESC,
+    CLUSTER DESC,
+    updated_at DESC
 `
 
 type ListWorkloadsByImageParams struct {
@@ -305,21 +349,32 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 
 const setWorkloadState = `-- name: SetWorkloadState :many
 WITH updated AS (
-    UPDATE workloads
-    SET state      = $1,
+    UPDATE
+        workloads
+    SET
+        state = $1,
         updated_at = NOW()
-    WHERE (
-            ($2::TEXT IS NULL OR cluster = $2::TEXT)
-            AND ($3::TEXT IS NULL OR namespace = $3::TEXT)
-            AND ($4::TEXT IS NULL OR workload_type = $4::TEXT)
-            AND ($5::TEXT IS NULL OR name = $5::TEXT)
-    )
+    WHERE (($2::TEXT IS NULL
+            OR CLUSTER = $2::TEXT)
+        AND ($3::TEXT IS NULL
+            OR namespace = $3::TEXT)
+        AND ($4::TEXT IS NULL
+            OR workload_type = $4::TEXT)
+        AND ($5::TEXT IS NULL
+            OR name = $5::TEXT))
     AND state = $6
-    RETURNING id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+RETURNING
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
 )
-SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
-FROM updated
-ORDER BY cluster, namespace, name, updated_at DESC
+SELECT
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+FROM
+    updated
+ORDER BY
+    CLUSTER,
+    namespace,
+    name,
+    updated_at DESC
 `
 
 type SetWorkloadStateParams struct {
@@ -383,9 +438,12 @@ func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStatePara
 }
 
 const updateWorkloadState = `-- name: UpdateWorkloadState :exec
-UPDATE workloads
-SET state = $1
-WHERE id = $2
+UPDATE
+    workloads
+SET
+    state = $1
+WHERE
+    id = $2
 `
 
 type UpdateWorkloadStateParams struct {
@@ -399,29 +457,30 @@ func (q *Queries) UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadSta
 }
 
 const upsertWorkload = `-- name: UpsertWorkload :one
-INSERT INTO workloads(name,
-                      workload_type,
-                      namespace,
-                      cluster,
-                      image_name,
-                      image_tag,
-                      state)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        'initialized') ON CONFLICT
-ON CONSTRAINT workload_id DO
-UPDATE
-    SET
+INSERT INTO workloads(
+    name,
+    workload_type,
+    namespace,
+    cluster,
+    image_name,
+    image_tag,
+    state)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    'initialized')
+ON CONFLICT ON CONSTRAINT workload_id
+    DO UPDATE SET
         image_name = $5,
-    image_tag = $6,
-    state = 'initialized',
-    updated_at = NOW()
+        image_tag = $6,
+        state = 'initialized',
+        updated_at = NOW()
     RETURNING
-    id
+        id
 `
 
 type UpsertWorkloadParams struct {

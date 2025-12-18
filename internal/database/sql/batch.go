@@ -17,11 +17,14 @@ var (
 )
 
 const batchUpdateImageState = `-- name: BatchUpdateImageState :batchexec
-UPDATE images
+UPDATE
+    images
 SET
     state = $1,
     updated_at = NOW()
-WHERE name = $2 AND tag = $3
+WHERE
+    name = $2
+    AND tag = $3
 `
 
 type BatchUpdateImageStateBatchResults struct {
@@ -72,36 +75,39 @@ func (b *BatchUpdateImageStateBatchResults) Close() error {
 }
 
 const batchUpsertCve = `-- name: BatchUpsertCve :batchexec
-INSERT INTO cve(cve_id,
-                cve_title,
-                cve_desc,
-                cve_link,
-                severity,
-                refs,
-                cvss_score)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7)
-    ON CONFLICT (cve_id)
-    DO UPDATE
-               SET cve_title = EXCLUDED.cve_title,
-               cve_desc  = EXCLUDED.cve_desc,
-               cve_link  = EXCLUDED.cve_link,
-               severity  = EXCLUDED.severity,
-               refs      = EXCLUDED.refs,
-               cvss_score = EXCLUDED.cvss_score,
-               updated_at = NOW()
-   WHERE
-           cve.cve_title  IS DISTINCT FROM EXCLUDED.cve_title OR
-           cve.cve_desc   IS DISTINCT FROM EXCLUDED.cve_desc OR
-           cve.cve_link   IS DISTINCT FROM EXCLUDED.cve_link OR
-           cve.severity   IS DISTINCT FROM EXCLUDED.severity OR
-           cve.refs       IS DISTINCT FROM EXCLUDED.refs OR
-           cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
+INSERT INTO cve(
+    cve_id,
+    cve_title,
+    cve_desc,
+    cve_link,
+    severity,
+    refs,
+    cvss_score)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7)
+ON CONFLICT (
+    cve_id)
+    DO UPDATE SET
+        cve_title = EXCLUDED.cve_title,
+        cve_desc = EXCLUDED.cve_desc,
+        cve_link = EXCLUDED.cve_link,
+        severity = EXCLUDED.severity,
+        refs = EXCLUDED.refs,
+        cvss_score = EXCLUDED.cvss_score,
+        updated_at = NOW()
+    WHERE
+        cve.cve_title IS DISTINCT FROM EXCLUDED.cve_title
+        OR cve.cve_desc IS DISTINCT FROM EXCLUDED.cve_desc
+        OR cve.cve_link IS DISTINCT FROM EXCLUDED.cve_link
+        OR cve.severity IS DISTINCT FROM EXCLUDED.severity
+        OR cve.refs IS DISTINCT FROM EXCLUDED.refs
+        OR cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -160,14 +166,18 @@ func (b *BatchUpsertCveBatchResults) Close() error {
 }
 
 const batchUpsertCveAlias = `-- name: BatchUpsertCveAlias :batchexec
-INSERT INTO cve_alias(alias,
-                canonical_cve_id)
-VALUES ($1,
-        $2)
-ON CONFLICT (alias) DO UPDATE
-    SET canonical_cve_id = EXCLUDED.canonical_cve_id
-WHERE
-    cve_alias.canonical_cve_id  IS DISTINCT FROM EXCLUDED.canonical_cve_id
+INSERT INTO cve_alias(
+    alias,
+    canonical_cve_id)
+VALUES (
+    $1,
+    $2)
+ON CONFLICT (
+    alias)
+    DO UPDATE SET
+        canonical_cve_id = EXCLUDED.canonical_cve_id
+    WHERE
+        cve_alias.canonical_cve_id IS DISTINCT FROM EXCLUDED.canonical_cve_id
 `
 
 type BatchUpsertCveAliasBatchResults struct {
@@ -216,7 +226,7 @@ func (b *BatchUpsertCveAliasBatchResults) Close() error {
 }
 
 const batchUpsertVulnerabilities = `-- name: BatchUpsertVulnerabilities :batchexec
-INSERT INTO vulnerabilities (
+INSERT INTO vulnerabilities(
     image_name,
     image_tag,
     package,
@@ -225,29 +235,33 @@ INSERT INTO vulnerabilities (
     latest_version,
     last_severity,
     severity_since,
-    cvss_score
-)
+    cvss_score)
 VALUES (
-           $1,
-           $2,
-           $3,
-           $4,
-           $5,
-           $6,
-           $7,
-           COALESCE($8::timestamptz, NOW()),
-           $9) ON CONFLICT (image_name, image_tag, package, cve_id) DO
-UPDATE
-    SET
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    COALESCE(
+        $8::TIMESTAMPTZ, NOW()),
+    $9)
+ON CONFLICT (
+    image_name,
+    image_tag,
+    package,
+    cve_id)
+    DO UPDATE SET
         latest_version = EXCLUDED.latest_version,
-    updated_at = NOW(),
-    last_severity = EXCLUDED.last_severity,
-    cvss_score = EXCLUDED.cvss_score,
-    severity_since = CASE
-    WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity
-    THEN COALESCE (EXCLUDED.severity_since, NOW())
-    ELSE vulnerabilities.severity_since
-END
+        updated_at = NOW(),
+        last_severity = EXCLUDED.last_severity,
+        cvss_score = EXCLUDED.cvss_score,
+        severity_since = CASE WHEN EXCLUDED.last_severity <> vulnerabilities.last_severity THEN
+            COALESCE(EXCLUDED.severity_since, NOW())
+        ELSE
+            vulnerabilities.severity_since
+        END
 `
 
 type BatchUpsertVulnerabilitiesBatchResults struct {
@@ -310,31 +324,33 @@ func (b *BatchUpsertVulnerabilitiesBatchResults) Close() error {
 }
 
 const batchUpsertVulnerabilitySummary = `-- name: BatchUpsertVulnerabilitySummary :batchexec
-INSERT INTO vulnerability_summary(image_name,
-                                  image_tag,
-                                  critical,
-                                  high,
-                                  medium,
-                                  low,
-                                  unassigned,
-                                  risk_score)
-VALUES ($1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8) ON CONFLICT
-ON CONSTRAINT image_name_tag DO
-UPDATE
-    SET critical = $3,
-    high = $4,
-    medium = $5,
-    low = $6,
-    unassigned = $7,
-    risk_score = $8,
-    updated_at = NOW()
+INSERT INTO vulnerability_summary(
+    image_name,
+    image_tag,
+    critical,
+    high,
+    medium,
+    low,
+    unassigned,
+    risk_score)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8)
+ON CONFLICT ON CONSTRAINT image_name_tag
+    DO UPDATE SET
+        critical = $3,
+        high = $4,
+        medium = $5,
+        low = $6,
+        unassigned = $7,
+        risk_score = $8,
+        updated_at = NOW()
 `
 
 type BatchUpsertVulnerabilitySummaryBatchResults struct {

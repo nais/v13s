@@ -19,56 +19,70 @@ WITH matched_workloads AS (
         w.cluster,
         w.image_name,
         w.image_tag
-    FROM workloads w
-    WHERE
-        ($1::TEXT IS NULL OR cluster = $1::TEXT)
-      AND ($2::TEXT IS NULL OR namespace = $2::TEXT)
-      AND ($3::TEXT[] IS NULL OR workload_type = ANY($3::TEXT[]))
-      AND ($4::TEXT IS NULL OR name = $4::TEXT)
+    FROM
+        workloads w
+    WHERE ($1::TEXT IS NULL
+        OR CLUSTER = $1::TEXT)
+    AND ($2::TEXT IS NULL
+        OR namespace = $2::TEXT)
+    AND ($3::TEXT[] IS NULL
+        OR workload_type = ANY ($3::TEXT[]))
+    AND ($4::TEXT IS NULL
+        OR name = $4::TEXT)
 ),
-     filtered_jobs AS (
-         SELECT DISTINCT
-             rj.id,
-             rj.kind,
-             rj.state,
-             rj.metadata,
-             rj.errors,
-             rj.finalized_at,
-             rj.attempt
-         FROM river_job rj
-                  JOIN matched_workloads w ON (
-             (rj.kind = 'add_workload' AND
-              rj.args #>> '{Workload,Name}' = w.name AND
-         rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
-         rj.args #>> '{Workload,Namespace}' = w.namespace AND
-         rj.args #>> '{Workload,Cluster}' = w.cluster)
-                 OR
-             (rj.kind IN ('get_attestation', 'upload_attestation') AND
-              rj.args #>> '{ImageName}' = w.image_name AND
-         rj.args #>> '{ImageTag}' = w.image_tag)
-             )
-     ),
-     total_count AS (
-         SELECT COUNT(*) AS total FROM filtered_jobs
-     ),
-     paged_jobs AS (
-         SELECT id, kind, state, metadata, errors, finalized_at, attempt
-         FROM filtered_jobs
-         ORDER BY id DESC
-    LIMIT $6 OFFSET $5
-    )
+filtered_jobs AS (
+    SELECT DISTINCT
+        rj.id,
+        rj.kind,
+        rj.state,
+        rj.metadata,
+        rj.errors,
+        rj.finalized_at,
+        rj.attempt
+    FROM
+        river_job rj
+        JOIN matched_workloads w ON ((rj.kind = 'add_workload'
+                    AND rj.args #>> '{Workload,Name}' = w.name
+                    AND rj.args #>> '{Workload,WorkloadType}' = w.workload_type
+                    AND rj.args #>> '{Workload,Namespace}' = w.namespace
+                    AND rj.args #>> '{Workload,Cluster}' = w.cluster)
+                OR (rj.kind IN ('get_attestation', 'upload_attestation')
+                    AND rj.args #>> '{ImageName}' = w.image_name
+                    AND rj.args #>> '{ImageTag}' = w.image_tag))
+),
+total_count AS (
+    SELECT
+        COUNT(*) AS total
+    FROM
+        filtered_jobs
+),
+paged_jobs AS (
+    SELECT
+        id, kind, state, metadata, errors, finalized_at, attempt
+    FROM
+        filtered_jobs
+    ORDER BY
+        id DESC
+    LIMIT $6
+    OFFSET $5)
 SELECT
     pj.id AS job_id,
     pj.kind AS job_kind,
     pj.state AS job_state,
-    CASE WHEN pj.metadata::TEXT IS NOT NULL THEN pj.metadata::TEXT END AS job_metadata,
-    CASE WHEN pj.errors::TEXT IS NOT NULL THEN pj.errors::TEXT END AS job_errors,
+    CASE WHEN pj.metadata::TEXT IS NOT NULL THEN
+        pj.metadata::TEXT
+    END AS job_metadata,
+    CASE WHEN pj.errors::TEXT IS NOT NULL THEN
+        pj.errors::TEXT
+    END AS job_errors,
     pj.finalized_at AS job_finalized_at,
     pj.attempt AS job_attempt,
     tc.total
-FROM paged_jobs pj
+FROM
+    paged_jobs pj
 JOIN total_count tc ON TRUE
-ORDER BY pj.id DESC
+ORDER BY
+    pj.id DESC
 `
 
 type ListJobsForWorkloadParams struct {
@@ -128,23 +142,23 @@ func (q *Queries) ListJobsForWorkload(ctx context.Context, arg ListJobsForWorklo
 }
 
 const listRiverJobs = `-- name: ListRiverJobs :many
-SELECT id, state, attempt, max_attempts, attempted_at, created_at, finalized_at, scheduled_at, priority, args, attempted_by, errors, kind, metadata, queue, tags, unique_key, unique_states
-FROM river_job
-WHERE
-    (kind = 'add_workload' AND
-    args->'Workload'->> 'Name' = $1::TEXT AND
-    args->'Workload'->> 'WorkloadType' = $2::TEXT AND
-    args->'Workload'->> 'Namespace' = $3::TEXT AND
-    args->'Workload'->> 'Cluster' = $4::TEXT)
-    OR
-    (kind = 'get_attestation' AND
-     args->> 'ImageName' = $5::TEXT AND
-     args->> 'ImageTag' = $6::TEXT)
-    OR
-    (kind = 'upload_attestation' AND
-     args->> 'ImageName' = $5::TEXT AND
-     args->> 'ImageTag' = $6::TEXT)
-    ORDER BY id
+SELECT
+    id, state, attempt, max_attempts, attempted_at, created_at, finalized_at, scheduled_at, priority, args, attempted_by, errors, kind, metadata, queue, tags, unique_key, unique_states
+FROM
+    river_job
+WHERE (kind = 'add_workload'
+    AND args -> 'Workload' ->> 'Name' = $1::TEXT
+    AND args -> 'Workload' ->> 'WorkloadType' = $2::TEXT
+    AND args -> 'Workload' ->> 'Namespace' = $3::TEXT
+    AND args -> 'Workload' ->> 'Cluster' = $4::TEXT)
+    OR (kind = 'get_attestation'
+        AND args ->> 'ImageName' = $5::TEXT
+        AND args ->> 'ImageTag' = $6::TEXT)
+    OR (kind = 'upload_attestation'
+        AND args ->> 'ImageName' = $5::TEXT
+        AND args ->> 'ImageTag' = $6::TEXT)
+ORDER BY
+    id
 `
 
 type ListRiverJobsParams struct {
@@ -204,21 +218,50 @@ func (q *Queries) ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([
 
 const listWorkloadStatus = `-- name: ListWorkloadStatus :many
 WITH filtered_workloads AS (
-    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
-    FROM workloads
-    WHERE (CASE WHEN $1::TEXT IS NOT NULL THEN cluster = $1::TEXT ELSE TRUE END)
-      AND (CASE WHEN $2::TEXT IS NOT NULL THEN namespace = $2::TEXT ELSE TRUE END)
-      AND (CASE WHEN $3::TEXT IS NOT NULL THEN workload_type = $3::TEXT ELSE TRUE END)
-      AND (CASE WHEN $4::TEXT IS NOT NULL THEN name = $4::TEXT ELSE TRUE END)
+    SELECT
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM
+        workloads
+    WHERE (
+        CASE WHEN $1::TEXT IS NOT NULL THEN
+            CLUSTER = $1::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $2::TEXT IS NOT NULL THEN
+            namespace = $2::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $3::TEXT IS NOT NULL THEN
+            workload_type = $3::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $4::TEXT IS NOT NULL THEN
+            name = $4::TEXT
+        ELSE
+            TRUE
+        END)
 ),
-     total_count AS (
-         SELECT COUNT(*) AS total FROM filtered_workloads
-     ),
-     paged_workloads AS (
-         SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state FROM filtered_workloads
-         ORDER BY id
-    LIMIT $6 OFFSET $5
-    )
+total_count AS (
+    SELECT
+        COUNT(*) AS total
+    FROM
+        filtered_workloads
+),
+paged_workloads AS (
+    SELECT
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM
+        filtered_workloads
+    ORDER BY
+        id
+    LIMIT $6
+    OFFSET $5)
 SELECT
     w.name AS workload_name,
     w.id,
@@ -232,10 +275,13 @@ SELECT
     i.state AS image_state,
     i.updated_at AS image_updated_at,
     tc.total
-FROM paged_workloads w
-         JOIN total_count tc ON TRUE
-         JOIN images i ON w.image_name = i.name AND w.image_tag = i.tag
-ORDER BY w.id
+FROM
+    paged_workloads w
+    JOIN total_count tc ON TRUE
+    JOIN images i ON w.image_name = i.name
+        AND w.image_tag = i.tag
+    ORDER BY
+        w.id
 `
 
 type ListWorkloadStatusParams struct {
@@ -304,22 +350,34 @@ func (q *Queries) ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatus
 
 const listWorkloadStatusWithJobs = `-- name: ListWorkloadStatusWithJobs :many
 WITH filtered_workloads AS (
-    SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
-    FROM workloads
-    WHERE
-        ($1::TEXT IS NULL OR cluster = $1::TEXT)
-      AND ($2::TEXT IS NULL OR namespace = $2::TEXT)
-      AND ($3::TEXT[] IS NULL OR workload_type = ANY($3::TEXT[]))
-      AND ($4::TEXT IS NULL OR name = $4::TEXT)
+    SELECT
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM
+        workloads
+    WHERE ($1::TEXT IS NULL
+        OR CLUSTER = $1::TEXT)
+    AND ($2::TEXT IS NULL
+        OR namespace = $2::TEXT)
+    AND ($3::TEXT[] IS NULL
+        OR workload_type = ANY ($3::TEXT[]))
+    AND ($4::TEXT IS NULL
+        OR name = $4::TEXT)
 ),
-     total_count AS (
-         SELECT COUNT(*) AS total FROM filtered_workloads
-     ),
-     paged_workloads AS (
-         SELECT id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state FROM filtered_workloads
-         ORDER BY id
-    LIMIT $6 OFFSET $5
-    )
+total_count AS (
+    SELECT
+        COUNT(*) AS total
+    FROM
+        filtered_workloads
+),
+paged_workloads AS (
+    SELECT
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM
+        filtered_workloads
+    ORDER BY
+        id
+    LIMIT $6
+    OFFSET $5)
 SELECT
     w.name AS workload_name,
     w.workload_type,
@@ -334,26 +392,30 @@ SELECT
     rj.id AS job_id,
     rj.kind AS job_kind,
     rj.state AS job_state,
-    CASE WHEN rj.metadata::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_metadata,
-    CASE WHEN rj.errors::TEXT IS NOT NULL THEN rj.metadata::TEXT END AS job_errors,
+    CASE WHEN rj.metadata::TEXT IS NOT NULL THEN
+        rj.metadata::TEXT
+    END AS job_metadata,
+    CASE WHEN rj.errors::TEXT IS NOT NULL THEN
+        rj.metadata::TEXT
+    END AS job_errors,
     rj.finalized_at AS job_finalized_at,
     rj.attempt AS job_attempt,
     tc.total
-FROM paged_workloads w
-JOIN total_count tc ON TRUE
-JOIN images i ON w.image_name = i.name AND w.image_tag = i.tag
-LEFT JOIN river_job rj ON (
-    (rj.kind = 'add_workload' AND
-     rj.args #>> '{Workload,Name}' = w.name AND
-     rj.args #>> '{Workload,WorkloadType}' = w.workload_type AND
-     rj.args #>> '{Workload,Namespace}' = w.namespace AND
-     rj.args #>> '{Workload,Cluster}' = w.cluster)
- OR
-    (rj.kind IN ('get_attestation', 'upload_attestation') AND
-     rj.args #>> '{ImageName}' = w.image_name AND
-     rj.args #>> '{ImageTag}' = w.image_tag)
-)
-ORDER BY w.id
+FROM
+    paged_workloads w
+    JOIN total_count tc ON TRUE
+    JOIN images i ON w.image_name = i.name
+        AND w.image_tag = i.tag
+    LEFT JOIN river_job rj ON ((rj.kind = 'add_workload'
+                AND rj.args #>> '{Workload,Name}' = w.name
+                AND rj.args #>> '{Workload,WorkloadType}' = w.workload_type
+                AND rj.args #>> '{Workload,Namespace}' = w.namespace
+                AND rj.args #>> '{Workload,Cluster}' = w.cluster)
+            OR (rj.kind IN ('get_attestation', 'upload_attestation')
+                AND rj.args #>> '{ImageName}' = w.image_name
+                AND rj.args #>> '{ImageTag}' = w.image_tag))
+    ORDER BY
+        w.id
 `
 
 type ListWorkloadStatusWithJobsParams struct {
