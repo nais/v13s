@@ -11,7 +11,7 @@ require (
 	github.com/rodaine/table v1.3.0
 	github.com/sirupsen/logrus v1.9.4-0.20230606125235-dd1b4c2e81af
 	github.com/urfave/cli/v3 v3.6.1
-	google.golang.org/grpc v1.77.0
+	google.golang.org/grpc v1.78.0
 )
 
 require (
