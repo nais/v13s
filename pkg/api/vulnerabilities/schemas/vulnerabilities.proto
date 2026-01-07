@@ -265,6 +265,7 @@ message ListWorkloadsForVulnerabilityRequest {
   int32 limit = 4;
   int32 offset = 5;
   optional OrderBy order_by = 6;
+  optional bool include_management_cluster = 7;
 }
 
 message ListWorkloadsForVulnerabilityResponse {

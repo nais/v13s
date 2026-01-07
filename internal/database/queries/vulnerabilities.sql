@@ -949,6 +949,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (sqlc.narg('includeManagementCluster')::BOOLEAN IS TRUE
+    OR w.cluster != 'management')
 AND (
     CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN
         w.namespace = sqlc.narg('namespace')::TEXT

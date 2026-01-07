@@ -1407,74 +1407,77 @@ AND (
     ELSE
         TRUE
     END)
+AND ($4::BOOLEAN IS TRUE
+    OR w.cluster != 'management')
 AND (
-    CASE WHEN $4::TEXT IS NOT NULL THEN
-        w.namespace = $4::TEXT
+    CASE WHEN $5::TEXT IS NOT NULL THEN
+        w.namespace = $5::TEXT
     ELSE
         TRUE
     END)
-AND ($5::TEXT[] IS NULL
-    OR w.workload_type = ANY ($5::TEXT[]))
-AND (
-    CASE WHEN $6::TEXT IS NOT NULL THEN
-        w.name = $6::TEXT
-    ELSE
-        TRUE
-    END)
+AND ($6::TEXT[] IS NULL
+    OR w.workload_type = ANY ($6::TEXT[]))
 AND (
     CASE WHEN $7::TEXT IS NOT NULL THEN
-        v.image_name = $7::TEXT
+        w.name = $7::TEXT
     ELSE
         TRUE
     END)
 AND (
     CASE WHEN $8::TEXT IS NOT NULL THEN
-        v.image_tag = $8::TEXT
+        v.image_name = $8::TEXT
+    ELSE
+        TRUE
+    END)
+AND (
+    CASE WHEN $9::TEXT IS NOT NULL THEN
+        v.image_tag = $9::TEXT
     ELSE
         TRUE
     END)
 ORDER BY
-    CASE WHEN $9 = 'cve_id_desc' THEN
+    CASE WHEN $10 = 'cve_id_desc' THEN
         v.cve_id
     END DESC,
-    CASE WHEN $9 = 'cve_id_asc' THEN
+    CASE WHEN $10 = 'cve_id_asc' THEN
         v.cve_id
     END ASC,
-    CASE WHEN $9 = 'workload_asc' THEN
+    CASE WHEN $10 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $9 = 'workload_desc' THEN
+    CASE WHEN $10 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $9 = 'namespace_asc' THEN
+    CASE WHEN $10 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $9 = 'namespace_desc' THEN
+    CASE WHEN $10 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $9 = 'cluster_asc' THEN
+    CASE WHEN $10 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $9 = 'cluster_desc' THEN
+    CASE WHEN $10 = 'cluster_desc' THEN
         w.cluster
     END DESC,
     v.id ASC
-LIMIT $11
-OFFSET $10
+LIMIT $12
+OFFSET $11
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
-	CveIds        []string
-	CvssScore     *float64
-	Cluster       *string
-	Namespace     *string
-	WorkloadTypes []string
-	WorkloadName  *string
-	ImageName     *string
-	ImageTag      *string
-	OrderBy       interface{}
-	Offset        int32
-	Limit         int32
+	CveIds                   []string
+	CvssScore                *float64
+	Cluster                  *string
+	IncludeManagementCluster *bool
+	Namespace                *string
+	WorkloadTypes            []string
+	WorkloadName             *string
+	ImageName                *string
+	ImageTag                 *string
+	OrderBy                  interface{}
+	Offset                   int32
+	Limit                    int32
 }
 
 type ListWorkloadsForVulnerabilitiesRow struct {
@@ -1512,6 +1515,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.CveIds,
 		arg.CvssScore,
 		arg.Cluster,
+		arg.IncludeManagementCluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,

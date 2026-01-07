@@ -123,12 +123,13 @@ func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id strin
 func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListWorkloadsForVulnerabilityResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListWorkloadsForVulnerability(ctx, &ListWorkloadsForVulnerabilityRequest{
-		Filter:    o.Filter,
-		Limit:     o.Limit,
-		Offset:    o.Offset,
-		OrderBy:   o.OrderBy,
-		CveIds:    vulnerabilityFilter.CveIds,
-		CvssScore: vulnerabilityFilter.CvssScore,
+		Filter:                   o.Filter,
+		Limit:                    o.Limit,
+		Offset:                   o.Offset,
+		OrderBy:                  o.OrderBy,
+		CveIds:                   vulnerabilityFilter.CveIds,
+		CvssScore:                vulnerabilityFilter.CvssScore,
+		IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
 	})
 }
 

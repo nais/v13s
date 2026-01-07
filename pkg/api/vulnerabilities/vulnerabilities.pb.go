@@ -2250,15 +2250,16 @@ func (x *ListWorkloadsForVulnerabilityByIdResponse) GetWorkloadRef() []*Workload
 }
 
 type ListWorkloadsForVulnerabilityRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	CveIds        []string               `protobuf:"bytes,2,rep,name=cve_ids,json=cveIds,proto3" json:"cve_ids,omitempty"`
-	CvssScore     *float64               `protobuf:"fixed64,3,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
-	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy       *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Filter                   *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	CveIds                   []string               `protobuf:"bytes,2,rep,name=cve_ids,json=cveIds,proto3" json:"cve_ids,omitempty"`
+	CvssScore                *float64               `protobuf:"fixed64,3,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
+	Limit                    int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset                   int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	OrderBy                  *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
+	IncludeManagementCluster *bool                  `protobuf:"varint,7,opt,name=include_management_cluster,json=includeManagementCluster,proto3,oneof" json:"include_management_cluster,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *ListWorkloadsForVulnerabilityRequest) Reset() {
@@ -2331,6 +2332,13 @@ func (x *ListWorkloadsForVulnerabilityRequest) GetOrderBy() *OrderBy {
 		return x.OrderBy
 	}
 	return nil
+}
+
+func (x *ListWorkloadsForVulnerabilityRequest) GetIncludeManagementCluster() bool {
+	if x != nil && x.IncludeManagementCluster != nil {
+		return *x.IncludeManagementCluster
+	}
+	return false
 }
 
 type ListWorkloadsForVulnerabilityResponse struct {
@@ -3732,7 +3740,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"z\n" +
 	")ListWorkloadsForVulnerabilityByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12=\n" +
-	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\x9c\x02\n" +
+	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xfe\x02\n" +
 	"$ListWorkloadsForVulnerabilityRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x17\n" +
 	"\acve_ids\x18\x02 \x03(\tR\x06cveIds\x12\"\n" +
@@ -3740,9 +3748,11 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"cvss_score\x18\x03 \x01(\x01H\x00R\tcvssScore\x88\x01\x01\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\x12:\n" +
-	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01B\r\n" +
+	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01\x12A\n" +
+	"\x1ainclude_management_cluster\x18\a \x01(\bH\x02R\x18includeManagementCluster\x88\x01\x01B\r\n" +
 	"\v_cvss_scoreB\v\n" +
-	"\t_order_by\"\xa4\x01\n" +
+	"\t_order_byB\x1d\n" +
+	"\x1b_include_management_cluster\"\xa4\x01\n" +
 	"%ListWorkloadsForVulnerabilityResponse\x12A\n" +
 	"\x05nodes\x18\x01 \x03(\v2+.v13s.api.protobuf.WorkloadForVulnerabilityR\x05nodes\x128\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xa2\x01\n" +

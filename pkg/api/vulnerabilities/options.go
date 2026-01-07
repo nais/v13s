@@ -90,8 +90,9 @@ type Options struct {
 }
 
 type VulnerabilityFilter struct {
-	CveIds    []string
-	CvssScore *float64
+	CveIds                   []string
+	CvssScore                *float64
+	IncludeManagementCluster bool
 }
 
 type funcOption struct {

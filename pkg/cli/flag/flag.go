@@ -12,25 +12,26 @@ import (
 )
 
 type Options struct {
-	Cluster       string
-	Namespace     string
-	Workload      string
-	Limit         int
-	Order         string
-	Since         string
-	SinceType     string
-	WorkloadType  string
-	ShowJobs      bool
-	WorkloadState string
-	ImageState    string
-	Suppressed    bool
-	Package       string
-	CveId         string
-	Unresolved    bool
-	Severity      string
-	Output        string
-	CveIds        string
-	CvssScore     float64
+	Cluster                  string
+	Namespace                string
+	Workload                 string
+	Limit                    int
+	Order                    string
+	Since                    string
+	SinceType                string
+	WorkloadType             string
+	ShowJobs                 bool
+	WorkloadState            string
+	ImageState               string
+	Suppressed               bool
+	Package                  string
+	CveId                    string
+	Unresolved               bool
+	Severity                 string
+	Output                   string
+	CveIds                   string
+	CvssScore                float64
+	IncludeManagementCluster bool
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -116,6 +117,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Name:        "cvss_score",
 			Usage:       "CVSS score",
 			Destination: &opts.CvssScore,
+		},
+		&cli.BoolFlag{
+			Name:        "include-management-cluster",
+			Aliases:     []string{"imc"},
+			Value:       false,
+			Usage:       "include workloads from management cluster",
+			Destination: &opts.IncludeManagementCluster,
 		},
 	}
 	for _, f := range cFlags {

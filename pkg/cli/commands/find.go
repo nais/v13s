@@ -24,7 +24,7 @@ func FindCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				{
 					Name:  "workloads",
 					Usage: "list workloads matching filter",
-					Flags: flag.CommonFlags(opts),
+					Flags: append(flag.CommonFlags(opts, "order")),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listWorkloads(ctx, cmd, c, opts)
 					},
@@ -74,6 +74,10 @@ func listWorkloads(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 
 		if o.CvssScore > 0 {
 			vulnFilter.CvssScore = &o.CvssScore
+		}
+
+		if o.IncludeManagementCluster {
+			vulnFilter.IncludeManagementCluster = true
 		}
 
 		resp, err := c.ListWorkloadsForVulnerability(ctx, vulnFilter, opts...)
