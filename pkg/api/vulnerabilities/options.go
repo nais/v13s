@@ -79,16 +79,17 @@ func (o OrderByField) IsValid() bool {
 const DefaultLimit = 50
 
 type Options struct {
-	CallOptions       []grpc.CallOption
-	Filter            *Filter
-	IncludeSuppressed bool
-	IncludeUnresolved bool
-	Limit             int32
-	Offset            int32
-	OrderBy           *OrderBy
-	Since             *timestamppb.Timestamp
-	SinceType         *SinceType
-	Severity          *Severity
+	CallOptions              []grpc.CallOption
+	Filter                   *Filter
+	IncludeSuppressed        bool
+	IncludeUnresolved        bool
+	IncludeManagementCluster bool
+	Limit                    int32
+	Offset                   int32
+	OrderBy                  *OrderBy
+	Since                    *timestamppb.Timestamp
+	SinceType                *SinceType
+	Severity                 *Severity
 }
 
 type VulnerabilityFilter struct {
@@ -249,6 +250,12 @@ func IncludeUnresolved() Option {
 func SeverityFilter(sev Severity) Option {
 	return newFuncOption(func(o *Options) {
 		o.Severity = &sev
+	})
+}
+
+func IncludeManagementCluster() Option {
+	return newFuncOption(func(o *Options) {
+		o.IncludeManagementCluster = true
 	})
 }
 

@@ -370,6 +370,227 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 	})
 }
 
+func TestServer_ListCveSummaries(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1", "cluster-2"},
+		namespaces:            []string{"namespace-1", "namespace-2"},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      2,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	t.Run("list all CVE summaries", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+		
+		// We have 2 unique CVEs per workload (CWE-1-1, CWE-1-2, CWE-2-1, CWE-2-2)
+		// across 2 clusters * 2 namespaces * 2 workloads = 8 workloads
+		// Each workload has 2 CVEs, but they overlap
+		// workload-1 has: CWE-1-1, CWE-1-2 (appears 4 times across clusters/namespaces)
+		// workload-2 has: CWE-2-1, CWE-2-2 (appears 4 times across clusters/namespaces)
+		// So we should have 4 unique CVEs total
+		assert.Equal(t, 4, len(resp.Nodes))
+
+		// Verify each CVE summary has affected workload counts
+		for _, cveSummary := range resp.Nodes {
+			assert.NotNil(t, cveSummary.Cve)
+			assert.NotEmpty(t, cveSummary.Cve.Id)
+			// Each CVE should affect 4 workloads (2 clusters * 2 namespaces * 1 workload per CVE)
+			assert.Equal(t, int32(4), cveSummary.AffectedWorkloads)
+		}
+	})
+
+	t.Run("filter by cluster", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, 
+			vulnerabilities.ClusterFilter("cluster-1"),
+			vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+		
+		// With cluster-1 filter: 2 namespaces * 2 workloads = 4 workloads
+		// Still 4 unique CVEs, but each affects only 2 workloads in cluster-1
+		assert.Equal(t, 4, len(resp.Nodes))
+		for _, cveSummary := range resp.Nodes {
+			// Each CVE affects 2 workloads in cluster-1 (2 namespaces * 1 workload per CVE)
+			assert.Equal(t, int32(2), cveSummary.AffectedWorkloads)
+		}
+	})
+
+	t.Run("filter by namespace", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+		
+		// With namespace-1 filter: 2 clusters * 2 workloads = 4 workloads
+		// Still 4 unique CVEs, but each affects only 2 workloads in namespace-1
+		assert.Equal(t, 4, len(resp.Nodes))
+		for _, cveSummary := range resp.Nodes {
+			// Each CVE affects 2 workloads in namespace-1 (2 clusters * 1 workload per CVE)
+			assert.Equal(t, int32(2), cveSummary.AffectedWorkloads)
+		}
+	})
+
+	t.Run("filter by cluster and namespace", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.ClusterFilter("cluster-1"),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+		
+		// With cluster-1 and namespace-1: 2 workloads
+		// Still 4 unique CVEs, but each affects only 1 workload
+		assert.Equal(t, 4, len(resp.Nodes))
+		for _, cveSummary := range resp.Nodes {
+			// Each CVE affects 1 workload in cluster-1/namespace-1
+			assert.Equal(t, int32(1), cveSummary.AffectedWorkloads)
+		}
+	})
+
+	t.Run("filter by workload", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.WorkloadFilter("workload-1"),
+			vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+		
+		// workload-1 has CVEs: CWE-1-1, CWE-1-2
+		// Each appears in 2 clusters * 2 namespaces = 4 times
+		assert.Equal(t, 2, len(resp.Nodes))
+		for _, cveSummary := range resp.Nodes {
+			assert.Equal(t, int32(4), cveSummary.AffectedWorkloads)
+			// Verify it's one of the expected CVEs
+			assert.True(t, cveSummary.Cve.Id == "CWE-1-1" || cveSummary.Cve.Id == "CWE-1-2")
+		}
+	})
+
+	t.Run("filter by image", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.ImageFilter("image-cluster-1-namespace-1-workload-1", "v1.0"),
+			vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+		
+		// This specific image has 2 CVEs
+		assert.Equal(t, 2, len(resp.Nodes))
+		for _, cveSummary := range resp.Nodes {
+			// Each CVE in this image affects only workloads using this specific image
+			// In our test setup, each image is unique per cluster/namespace/workload
+			assert.Equal(t, int32(1), cveSummary.AffectedWorkloads)
+		}
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		// First page with limit 2
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(2),
+			vulnerabilities.Offset(0))
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(resp.Nodes))
+		assert.True(t, resp.PageInfo.HasNextPage)
+		assert.Equal(t, int64(4), resp.PageInfo.TotalCount)
+
+		// Second page
+		resp2, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(2),
+			vulnerabilities.Offset(2))
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(resp2.Nodes))
+		assert.False(t, resp2.PageInfo.HasNextPage)
+		assert.Equal(t, int64(4), resp2.PageInfo.TotalCount)
+
+		// Verify no duplicates between pages
+		firstPageIds := make(map[string]bool)
+		for _, node := range resp.Nodes {
+			firstPageIds[node.Cve.Id] = true
+		}
+		for _, node := range resp2.Nodes {
+			assert.False(t, firstPageIds[node.Cve.Id], "CVE %s appeared in both pages", node.Cve.Id)
+		}
+	})
+
+	t.Run("ordering by affected workloads", func(t *testing.T) {
+		// Add a CVE that affects only one workload
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     "unique-image",
+			Tag:      "v1.0",
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "unique-workload",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    "unique-image",
+			ImageTag:     "v1.0",
+		})
+		assert.NoError(t, err)
+
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+			CveID:    "CVE-UNIQUE",
+			CveTitle: "Unique CVE",
+			CveDesc:  "Description",
+			CveLink:  "http://example.com/CVE-UNIQUE",
+			Severity: 1,
+			Refs:     map[string]string{},
+		}}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+			ImageName: "unique-image",
+			ImageTag:  "v1.0",
+			Package:   "unique-package",
+			CveID:     "CVE-UNIQUE",
+			Source:    "test",
+		}}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		// Order by affected_workloads ASC (which gets flipped to DESC in SanitizeOrderBy)
+		// This means we want CVEs with MORE affected workloads first
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderByAffectedWorkloads, vulnerabilities.Direction_ASC),
+			vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, len(resp.Nodes), 5)
+
+		// Verify ordering - affected workloads should be descending (because ASC was flipped to DESC)
+		for i := 1; i < len(resp.Nodes); i++ {
+			assert.GreaterOrEqual(t, resp.Nodes[i-1].AffectedWorkloads, resp.Nodes[i].AffectedWorkloads,
+				"CVE %s (affects %d) should come before CVE %s (affects %d)",
+				resp.Nodes[i-1].Cve.Id, resp.Nodes[i-1].AffectedWorkloads,
+				resp.Nodes[i].Cve.Id, resp.Nodes[i].AffectedWorkloads)
+		}
+
+		// CVE-UNIQUE should be last (affects only 1 workload)
+		assert.Equal(t, "CVE-UNIQUE", resp.Nodes[len(resp.Nodes)-1].Cve.Id)
+		assert.Equal(t, int32(1), resp.Nodes[len(resp.Nodes)-1].AffectedWorkloads)
+	})
+
+	t.Run("verify CVE details are present", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(1))
+		assert.NoError(t, err)
+		assert.Len(t, resp.Nodes, 1)
+
+		cve := resp.Nodes[0].Cve
+		assert.NotEmpty(t, cve.Id)
+		assert.NotEmpty(t, cve.Title)
+		assert.NotEmpty(t, cve.Description)
+		assert.NotEmpty(t, cve.Link)
+		assert.NotNil(t, cve.Severity)
+		assert.NotNil(t, cve.Created)
+		assert.NotNil(t, cve.LastUpdated)
+	})
+}
+
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
