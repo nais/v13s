@@ -88,7 +88,7 @@ message Cve {
   map<string, string> references = 6;
   optional google.protobuf.Timestamp created = 7;
   optional google.protobuf.Timestamp last_updated = 8;
-  double cvss_score = 9;
+  optional double cvss_score = 9;
 }
 
 message Suppression {
@@ -278,6 +278,24 @@ message WorkloadForVulnerability {
   Vulnerability vulnerability = 2;
 }
 
+message ListCveSummariesRequest {
+  Filter filter = 1;
+  int32 limit = 4;
+  int32 offset = 5;
+  optional OrderBy order_by = 6;
+  optional bool include_management_cluster = 7;
+}
+
+message ListCveSummariesResponse {
+  repeated CveSummary nodes = 1;
+  PageInfo page_info = 2;
+}
+
+message CveSummary {
+  Cve cve = 1;
+  int32 affected_workloads = 2;
+}
+
 message ListMeanTimeToFixTrendBySeverityRequest {
   Filter filter = 1;
   optional google.protobuf.Timestamp since = 2;
@@ -401,6 +419,8 @@ service Vulnerabilities {
   rpc ListWorkloadsForVulnerabilityById(ListWorkloadsForVulnerabilityByIdRequest) returns (ListWorkloadsForVulnerabilityByIdResponse);
 
   rpc ListWorkloadsForVulnerability(ListWorkloadsForVulnerabilityRequest) returns (ListWorkloadsForVulnerabilityResponse);
+
+  rpc ListCveSummaries(ListCveSummariesRequest) returns (ListCveSummariesResponse);
 
   rpc ListMeanTimeToFixTrendBySeverity(ListMeanTimeToFixTrendBySeverityRequest) returns (ListMeanTimeToFixTrendBySeverityResponse);
 

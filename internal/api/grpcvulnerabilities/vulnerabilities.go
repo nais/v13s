@@ -448,6 +448,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 					Title:       row.CveTitle,
 					Description: row.CveDesc,
 					Link:        row.CveLink,
+					CvssScore:   row.CvssScore,
 					Severity:    vulnerabilities.Severity(row.Severity),
 					Created:     timestamppb.New(row.CveCreatedAt.Time),
 					LastUpdated: timestamppb.New(row.CveUpdatedAt.Time),
@@ -526,7 +527,7 @@ func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequ
 			References:  cve.Refs,
 			Created:     timestamppb.New(cve.CreatedAt.Time),
 			LastUpdated: timestamppb.New(cve.UpdatedAt.Time),
-			CvssScore:   cvssScore,
+			CvssScore:   &cvssScore,
 		},
 	}, nil
 }
@@ -613,7 +614,7 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 		field = defaultOrder
 	}
 
-	if field == vulnerabilities.OrderBySeverity {
+	if field == vulnerabilities.OrderBySeverity || field == vulnerabilities.OrderByAffectedWorkloads {
 		if direction == "asc" {
 			direction = "desc"
 		} else {

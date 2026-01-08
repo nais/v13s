@@ -31,6 +31,7 @@ const (
 	Vulnerabilities_ListSeverityVulnerabilitiesSince_FullMethodName  = "/v13s.api.protobuf.Vulnerabilities/ListSeverityVulnerabilitiesSince"
 	Vulnerabilities_ListWorkloadsForVulnerabilityById_FullMethodName = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadsForVulnerabilityById"
 	Vulnerabilities_ListWorkloadsForVulnerability_FullMethodName     = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadsForVulnerability"
+	Vulnerabilities_ListCveSummaries_FullMethodName                  = "/v13s.api.protobuf.Vulnerabilities/ListCveSummaries"
 	Vulnerabilities_ListMeanTimeToFixTrendBySeverity_FullMethodName  = "/v13s.api.protobuf.Vulnerabilities/ListMeanTimeToFixTrendBySeverity"
 	Vulnerabilities_ListWorkloadMTTFBySeverity_FullMethodName        = "/v13s.api.protobuf.Vulnerabilities/ListWorkloadMTTFBySeverity"
 	Vulnerabilities_GetVulnerabilitySummary_FullMethodName           = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilitySummary"
@@ -57,6 +58,7 @@ type VulnerabilitiesClient interface {
 	ListSeverityVulnerabilitiesSince(ctx context.Context, in *ListSeverityVulnerabilitiesSinceRequest, opts ...grpc.CallOption) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, in *ListWorkloadsForVulnerabilityByIdRequest, opts ...grpc.CallOption) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	ListWorkloadsForVulnerability(ctx context.Context, in *ListWorkloadsForVulnerabilityRequest, opts ...grpc.CallOption) (*ListWorkloadsForVulnerabilityResponse, error)
+	ListCveSummaries(ctx context.Context, in *ListCveSummariesRequest, opts ...grpc.CallOption) (*ListCveSummariesResponse, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, in *ListMeanTimeToFixTrendBySeverityRequest, opts ...grpc.CallOption) (*ListMeanTimeToFixTrendBySeverityResponse, error)
 	ListWorkloadMTTFBySeverity(ctx context.Context, in *ListWorkloadMTTFBySeverityRequest, opts ...grpc.CallOption) (*ListWorkloadMTTFBySeverityResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
@@ -148,6 +150,16 @@ func (c *vulnerabilitiesClient) ListWorkloadsForVulnerability(ctx context.Contex
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListWorkloadsForVulnerabilityResponse)
 	err := c.cc.Invoke(ctx, Vulnerabilities_ListWorkloadsForVulnerability_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vulnerabilitiesClient) ListCveSummaries(ctx context.Context, in *ListCveSummariesRequest, opts ...grpc.CallOption) (*ListCveSummariesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCveSummariesResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_ListCveSummaries_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +271,7 @@ type VulnerabilitiesServer interface {
 	ListSeverityVulnerabilitiesSince(context.Context, *ListSeverityVulnerabilitiesSinceRequest) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(context.Context, *ListWorkloadsForVulnerabilityByIdRequest) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	ListWorkloadsForVulnerability(context.Context, *ListWorkloadsForVulnerabilityRequest) (*ListWorkloadsForVulnerabilityResponse, error)
+	ListCveSummaries(context.Context, *ListCveSummariesRequest) (*ListCveSummariesResponse, error)
 	ListMeanTimeToFixTrendBySeverity(context.Context, *ListMeanTimeToFixTrendBySeverityRequest) (*ListMeanTimeToFixTrendBySeverityResponse, error)
 	ListWorkloadMTTFBySeverity(context.Context, *ListWorkloadMTTFBySeverityRequest) (*ListWorkloadMTTFBySeverityResponse, error)
 	// Get the summary of vulnerabilities for the given filters: cluster, namespace, workload, workload_type
@@ -306,6 +319,9 @@ func (UnimplementedVulnerabilitiesServer) ListWorkloadsForVulnerabilityById(cont
 }
 func (UnimplementedVulnerabilitiesServer) ListWorkloadsForVulnerability(context.Context, *ListWorkloadsForVulnerabilityRequest) (*ListWorkloadsForVulnerabilityResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWorkloadsForVulnerability not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) ListCveSummaries(context.Context, *ListCveSummariesRequest) (*ListCveSummariesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListCveSummaries not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) ListMeanTimeToFixTrendBySeverity(context.Context, *ListMeanTimeToFixTrendBySeverityRequest) (*ListMeanTimeToFixTrendBySeverityResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMeanTimeToFixTrendBySeverity not implemented")
@@ -477,6 +493,24 @@ func _Vulnerabilities_ListWorkloadsForVulnerability_Handler(srv interface{}, ctx
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VulnerabilitiesServer).ListWorkloadsForVulnerability(ctx, req.(*ListWorkloadsForVulnerabilityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Vulnerabilities_ListCveSummaries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCveSummariesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).ListCveSummaries(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_ListCveSummaries_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).ListCveSummaries(ctx, req.(*ListCveSummariesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -677,6 +711,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWorkloadsForVulnerability",
 			Handler:    _Vulnerabilities_ListWorkloadsForVulnerability_Handler,
+		},
+		{
+			MethodName: "ListCveSummaries",
+			Handler:    _Vulnerabilities_ListCveSummaries_Handler,
 		},
 		{
 			MethodName: "ListMeanTimeToFixTrendBySeverity",

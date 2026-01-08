@@ -2,6 +2,7 @@ package grpcvulnerabilities
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -235,5 +238,59 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
+	}, nil
+}
+
+func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error) {
+	if request.GetFilter() == nil {
+		request.Filter = &vulnerabilities.Filter{}
+	}
+
+	cveSummaries, err := s.querier.ListCveSummaries(ctx, sql.ListCveSummariesParams{
+		Cluster:                  request.GetFilter().Cluster,
+		Namespace:                request.GetFilter().Namespace,
+		WorkloadName:             request.GetFilter().Workload,
+		WorkloadType:             request.GetFilter().WorkloadType,
+		ImageName:                request.GetFilter().ImageName,
+		ImageTag:                 request.GetFilter().ImageTag,
+		IncludeManagementCluster: request.IncludeManagementCluster,
+		OrderBy:                  SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
+		Limit:                    request.Limit,
+		Offset:                   request.Offset,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list cve summaries")
+	}
+
+	total := 0
+	vulnCveSummaries := collections.Map(cveSummaries, func(row *sql.ListCveSummariesRow) *vulnerabilities.CveSummary {
+		total = int(row.TotalCount)
+		refs := map[string]string{}
+		_ = json.Unmarshal(row.Refs, &refs)
+
+		return &vulnerabilities.CveSummary{
+			Cve: &vulnerabilities.Cve{
+				Id:          row.CveID,
+				Title:       row.CveTitle,
+				Description: row.CveDesc,
+				Link:        row.CveLink,
+				Severity:    vulnerabilities.Severity(row.Severity),
+				References:  refs,
+				Created:     timestamppb.New(row.CreatedAt.Time),
+				LastUpdated: timestamppb.New(row.UpdatedAt.Time),
+				CvssScore:   row.CvssScore,
+			},
+			AffectedWorkloads: row.AffectedWorkloads,
+		}
+	})
+
+	pageInfo, err := grpcpagination.PageInfo(request, total)
+	if err != nil {
+		return nil, err
+	}
+
+	return &vulnerabilities.ListCveSummariesResponse{
+		Nodes:    vulnCveSummaries,
+		PageInfo: pageInfo,
 	}, nil
 }
