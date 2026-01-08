@@ -1415,6 +1415,108 @@ func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 	}
 }
 
+func TestServer_ListCveSummaries(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1", "cluster-2"},
+		namespaces:            []string{"namespace-1", "namespace-2"},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      2,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	t.Run("list all CVE summaries", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, resp.Nodes)
+
+		assert.Equal(t, 4, len(resp.Nodes))
+
+		// Verify each CVE summary has affected workload counts
+		for _, cveSummary := range resp.Nodes {
+			assert.NotNil(t, cveSummary.Cve)
+			assert.NotEmpty(t, cveSummary.Cve.Id)
+			// Each CVE should affect 4 workloads (2 clusters * 2 namespaces * 1 workload per CVE)
+			assert.Equal(t, int32(4), cveSummary.AffectedWorkloads)
+		}
+	})
+
+	t.Run("ordering by affected workloads", func(t *testing.T) {
+		// Add a CVE that affects only one workload
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     "unique-image",
+			Tag:      "v1.0",
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "unique-workload",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    "unique-image",
+			ImageTag:     "v1.0",
+		})
+		assert.NoError(t, err)
+
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+			CveID:    "CVE-UNIQUE",
+			CveTitle: "Unique CVE",
+			CveDesc:  "Description",
+			CveLink:  "http://example.com/CVE-UNIQUE",
+			Severity: 1,
+			Refs:     map[string]string{},
+		}}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+			ImageName: "unique-image",
+			ImageTag:  "v1.0",
+			Package:   "unique-package",
+			CveID:     "CVE-UNIQUE",
+			Source:    "test",
+		}}).Exec(func(i int, err error) {
+			assert.NoError(t, err)
+		})
+
+		// Order by affected_workloads ASC (which gets flipped to DESC in SanitizeOrderBy)
+		// This means we want CVEs with MORE affected workloads first
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(100))
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, len(resp.Nodes), 5)
+
+		// Verify ordering - affected workloads should be descending (because ASC was flipped to DESC)
+		for i := 1; i < len(resp.Nodes); i++ {
+			assert.GreaterOrEqual(t, resp.Nodes[i-1].AffectedWorkloads, resp.Nodes[i].AffectedWorkloads,
+				"CVE %s (affects %d) should come before CVE %s (affects %d)",
+				resp.Nodes[i-1].Cve.Id, resp.Nodes[i-1].AffectedWorkloads,
+				resp.Nodes[i].Cve.Id, resp.Nodes[i].AffectedWorkloads)
+		}
+
+		// CVE-UNIQUE should be last (affects only 1 workload)
+		assert.Equal(t, "CVE-UNIQUE", resp.Nodes[len(resp.Nodes)-1].Cve.Id)
+		assert.Equal(t, int32(1), resp.Nodes[len(resp.Nodes)-1].AffectedWorkloads)
+	})
+
+	t.Run("verify CVE details are present", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(1))
+		assert.NoError(t, err)
+		assert.Len(t, resp.Nodes, 1)
+
+		cve := resp.Nodes[0].Cve
+		assert.NotEmpty(t, cve.Id)
+		assert.NotEmpty(t, cve.Title)
+		assert.NotEmpty(t, cve.Description)
+		assert.NotEmpty(t, cve.Link)
+		assert.NotNil(t, cve.Severity)
+		assert.NotNil(t, cve.Created)
+		assert.NotNil(t, cve.LastUpdated)
+	})
+}
+
 func ptrTime(t time.Time) *time.Time { return &t }
 
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {

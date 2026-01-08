@@ -17,7 +17,7 @@ type Client interface {
 	ListSeverityVulnerabilitiesSince(ctx context.Context, opts ...Option) (*ListSeverityVulnerabilitiesSinceResponse, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, id string) (*ListWorkloadsForVulnerabilityByIdResponse, error)
 	ListWorkloadsForVulnerability(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListWorkloadsForVulnerabilityResponse, error)
-	ListCveSummaries(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListCveSummariesResponse, error)
+	ListCveSummaries(ctx context.Context, opts ...Option) (*ListCveSummariesResponse, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error)
 	ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
@@ -134,14 +134,14 @@ func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilit
 	})
 }
 
-func (c *client) ListCveSummaries(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListCveSummariesResponse, error) {
+func (c *client) ListCveSummaries(ctx context.Context, opts ...Option) (*ListCveSummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListCveSummaries(ctx, &ListCveSummariesRequest{
-		Filter:                   o.Filter,
-		Limit:                    o.Limit,
-		Offset:                   o.Offset,
-		OrderBy:                  o.OrderBy,
-		IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
+		Filter:  o.Filter,
+		Limit:   o.Limit,
+		Offset:  o.Offset,
+		OrderBy: o.OrderBy,
+		// IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
 	}, o.CallOptions...)
 }
 
