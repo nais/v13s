@@ -386,19 +386,18 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.Nodes)
 		
-		// We have 2 unique CVEs per workload (CWE-1-1, CWE-1-2, CWE-2-1, CWE-2-2)
-		// across 2 clusters * 2 namespaces * 2 workloads = 8 workloads
-		// Each workload has 2 CVEs, but they overlap
-		// workload-1 has: CWE-1-1, CWE-1-2 (appears 4 times across clusters/namespaces)
-		// workload-2 has: CWE-2-1, CWE-2-2 (appears 4 times across clusters/namespaces)
-		// So we should have 4 unique CVEs total
+		// Test setup: 2 clusters * 2 namespaces * 2 workloads per namespace = 8 workloads total
+		// Each workload has 2 CVEs based on its workload index:
+		//   workload-1: CWE-1-1, CWE-1-2 (appears in 2 clusters * 2 namespaces = 4 instances)
+		//   workload-2: CWE-2-1, CWE-2-2 (appears in 2 clusters * 2 namespaces = 4 instances)
+		// Result: 4 unique CVEs total, each affecting 4 workloads
 		assert.Equal(t, 4, len(resp.Nodes))
 
 		// Verify each CVE summary has affected workload counts
 		for _, cveSummary := range resp.Nodes {
 			assert.NotNil(t, cveSummary.Cve)
 			assert.NotEmpty(t, cveSummary.Cve.Id)
-			// Each CVE should affect 4 workloads (2 clusters * 2 namespaces * 1 workload per CVE)
+			// Each CVE should affect 4 workloads (2 clusters * 2 namespaces * 1 workload type per CVE)
 			assert.Equal(t, int32(4), cveSummary.AffectedWorkloads)
 		}
 	})
@@ -554,8 +553,10 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		// Order by affected_workloads ASC (which gets flipped to DESC in SanitizeOrderBy)
-		// This means we want CVEs with MORE affected workloads first
+		// Order by affected_workloads ASC
+		// Note: SanitizeOrderBy flips the direction for OrderByAffectedWorkloads to make the API
+		// more intuitive. ASC is flipped to DESC so that CVEs with MORE affected workloads come first,
+		// which is typically what users want when sorting by impact.
 		resp, err := client.ListCveSummaries(ctx,
 			vulnerabilities.Order(vulnerabilities.OrderByAffectedWorkloads, vulnerabilities.Direction_ASC),
 			vulnerabilities.Limit(100))
