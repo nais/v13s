@@ -38,11 +38,7 @@ GROUP BY
 )
 SELECT
     cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, affected_workloads,
-(
-        SELECT
-            COUNT(*)
-        FROM
-            cve_data) AS total_count
+    COUNT(*) OVER()::INT AS total_count
 FROM
     cve_data
 ORDER BY
@@ -86,7 +82,7 @@ type ListCveSummariesRow struct {
 	UpdatedAt         pgtype.Timestamptz
 	CvssScore         *float64
 	AffectedWorkloads int32
-	TotalCount        int64
+	TotalCount        int32
 }
 
 func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesParams) ([]*ListCveSummariesRow, error) {

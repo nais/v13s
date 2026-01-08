@@ -27,11 +27,7 @@ GROUP BY
 )
 SELECT
     *,
-(
-        SELECT
-            COUNT(*)
-        FROM
-            cve_data) AS total_count
+    COUNT(*) OVER()::INT AS total_count
 FROM
     cve_data
 ORDER BY
