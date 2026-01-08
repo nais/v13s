@@ -41,9 +41,10 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	workload := job.Args.Workload
 
 	if err := a.db.CreateImage(ctx, sql.CreateImageParams{
-		Name:     workload.ImageName,
-		Tag:      workload.ImageTag,
-		Metadata: map[string]string{},
+		Name:        workload.ImageName,
+		Tag:         workload.ImageTag,
+		Metadata:    map[string]string{},
+		SbomPending: true,
 	}); err != nil {
 		a.log.WithError(err).Error("Failed to create image")
 		return err

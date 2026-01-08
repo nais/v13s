@@ -131,7 +131,7 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 				RiskScore:  safeInt(row.RiskScore),
 			}
 
-			SetWorkloadMetrics(&sql.ListWorkloadsByImageRow{
+			SetWorkloadMetrics(&sql.Workload{
 				Cluster:   row.Cluster,
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,

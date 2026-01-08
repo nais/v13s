@@ -270,9 +270,10 @@ func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
 		cveAliases = append(cveAliases, i.ToCveAliasSqlParams()...)
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
-			State: sql.ImageStateUpdated,
-			Name:  i.ImageName,
-			Tag:   i.ImageTag,
+			State:       sql.ImageStateUpdated,
+			Name:        i.ImageName,
+			Tag:         i.ImageTag,
+			SbomPending: false,
 		})
 	}
 

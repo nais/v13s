@@ -25,7 +25,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20251211165559-0c6087d2598a
 	github.com/nais/liberator v0.0.0-20260105104644-6981ea2ad74a
-	github.com/nais/v13s/pkg/api v0.0.0-20251211084842-34d8db0f66aa
+	github.com/nais/v13s/pkg/api v0.0.0-20260107083440-b32941aa4d65
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.4

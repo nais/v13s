@@ -415,9 +415,6 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	total := 0
 	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
 		total = int(row.TotalCount)
-		if row.WorkloadName == "flaky-frontend" {
-			fmt.Println("debug")
-		}
 		return &vulnerabilities.WorkloadForVulnerability{
 			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,
@@ -625,13 +622,6 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 	return fmt.Sprintf("%s_%s", field.String(), direction)
 }
 
-func safeInt(val *int32) int32 {
-	if val == nil {
-		return 0
-	}
-	return *val
-}
-
 func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {
 	var suppression *vulnerabilities.Suppression
 	if suppressReason.Valid() {
@@ -652,6 +642,13 @@ func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReas
 		}
 	}
 	return suppression
+}
+
+func safeInt(val *int32) int32 {
+	if val == nil {
+		return 0
+	}
+	return *val
 }
 
 func str(s *string, def string) string {

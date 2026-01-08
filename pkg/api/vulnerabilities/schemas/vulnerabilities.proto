@@ -177,6 +177,11 @@ message SuppressedVulnerability {
   optional bool suppress = 7;
 }
 
+message ImageSbomStatus {
+  bool sbom_present = 1;
+  optional google.protobuf.Timestamp updated_at = 2;
+}
+
 // -------------------- Request / Response Messages --------------------
 
 message ListVulnerabilitiesRequest {
@@ -388,6 +393,15 @@ message GetCveResponse {
   Cve cve = 1;
 }
 
+message GetImageSbomStatusRequest {
+  string image_name = 1;
+  string image_tag = 2;
+}
+
+message GetImageSbomStatusResponse {
+  ImageSbomStatus sbom_status = 1;
+}
+
 message SuppressVulnerabilityRequest {
   string id = 1;
   SuppressState state = 2;
@@ -446,6 +460,8 @@ service Vulnerabilities {
   rpc GetVulnerability(GetVulnerabilityRequest) returns (GetVulnerabilityResponse);
 
   rpc GetCve(GetCveRequest) returns (GetCveResponse);
+
+  rpc GetImageSbomStatus(GetImageSbomStatusRequest) returns (GetImageSbomStatusResponse);
 
   // -------------------- Suppress RPCs --------------------
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);

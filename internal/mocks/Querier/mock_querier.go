@@ -980,6 +980,65 @@ func (_c *MockQuerier_GetImage_Call) RunAndReturn(run func(context.Context, sql.
 	return _c
 }
 
+// GetImageSbomStatus provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetImageSbomStatus(ctx context.Context, arg sql.GetImageSbomStatusParams) (*sql.GetImageSbomStatusRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetImageSbomStatus")
+	}
+
+	var r0 *sql.GetImageSbomStatusRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetImageSbomStatusParams) (*sql.GetImageSbomStatusRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetImageSbomStatusParams) *sql.GetImageSbomStatusRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.GetImageSbomStatusRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetImageSbomStatusParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetImageSbomStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetImageSbomStatus'
+type MockQuerier_GetImageSbomStatus_Call struct {
+	*mock.Call
+}
+
+// GetImageSbomStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetImageSbomStatusParams
+func (_e *MockQuerier_Expecter) GetImageSbomStatus(ctx interface{}, arg interface{}) *MockQuerier_GetImageSbomStatus_Call {
+	return &MockQuerier_GetImageSbomStatus_Call{Call: _e.mock.On("GetImageSbomStatus", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetImageSbomStatus_Call) Run(run func(ctx context.Context, arg sql.GetImageSbomStatusParams)) *MockQuerier_GetImageSbomStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetImageSbomStatusParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetImageSbomStatus_Call) Return(_a0 *sql.GetImageSbomStatusRow, _a1 error) *MockQuerier_GetImageSbomStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetImageSbomStatus_Call) RunAndReturn(run func(context.Context, sql.GetImageSbomStatusParams) (*sql.GetImageSbomStatusRow, error)) *MockQuerier_GetImageSbomStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetImagesScheduledForSync provides a mock function with given fields: ctx
 func (_m *MockQuerier) GetImagesScheduledForSync(ctx context.Context) ([]*sql.Image, error) {
 	ret := _m.Called(ctx)

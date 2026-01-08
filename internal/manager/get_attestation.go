@@ -109,6 +109,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				return noMatchAttestationError
 			}
 			return river.JobCancel(noMatchAttestationError)
+
 		} else if errors.As(err, &unrecoverableError) {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
@@ -130,9 +131,9 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				return fmt.Errorf("failed to set image state: %w", err)
 			}
 			return river.JobCancel(unrecoverableError)
-		} else {
-			return handleJobErr(err)
 		}
+
+		return handleJobErr(err)
 	}
 	if att != nil {
 		compressed, err := att.Compress()

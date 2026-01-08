@@ -39,7 +39,7 @@ func Collectors() []prometheus.Collector {
 	}
 }
 
-func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.VulnerabilitySummary) {
+func SetWorkloadMetrics(w *sql.Workload, summary *sources.VulnerabilitySummary) {
 	labelValues := []string{w.Cluster, w.Namespace, w.Name}
 	WorkloadRiskScore.WithLabelValues(labelValues...).Set(float64(summary.RiskScore))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "CRITICAL")...).Set(float64(summary.Critical))

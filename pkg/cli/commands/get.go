@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/fatih/color"
@@ -35,6 +36,13 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Flags:   flag.CommonFlags(opts),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return getTimeSeries(ctx, cmd, c, opts)
+					},
+				},
+				{
+					Name:  "sbom-status",
+					Usage: "get SBOM status for an image",
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return getImageSbomStatus(ctx, cmd, c)
 					},
 				},
 			},
@@ -121,5 +129,31 @@ func getTimeSeries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 	tbl.Print()
 	duration := time.Since(start).Seconds()
 	fmt.Printf("Fetched %d points in %f seconds.\n", len(resp.GetPoints()), duration)
+	return nil
+}
+
+func getImageSbomStatus(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client) error {
+	imageName, imageTag, err := getImage(cmd)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.GetImageSbomStatus(ctx, imageName, imageTag)
+	if err != nil {
+		return err
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	vulnTbl := table.New("Image Name", "Image Tag", "SBOM Present", "Last Updated")
+	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	vulnTbl.AddRow(
+		imageName,
+		imageTag,
+		strconv.FormatBool(resp.GetSbomStatus().GetSbomPresent()),
+		timeSinceCreation(resp.GetSbomStatus().GetUpdatedAt().AsTime(), time.Now()),
+	)
+	vulnTbl.Print()
 	return nil
 }

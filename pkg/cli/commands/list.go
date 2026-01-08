@@ -88,15 +88,12 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 
 func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	opts := flag.ParseOptions(cmd, o)
-	if cmd.Args().Len() == 0 {
-		return fmt.Errorf("missing image name")
-	}
-	parts := strings.Split(cmd.Args().First(), ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	imageName, imageTag, err := getImage(cmd)
+	if err != nil {
+		return err
 	}
 	start := time.Now()
-	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
+	resp, err := c.ListVulnerabilitiesForImage(ctx, imageName, imageTag, opts...)
 	if err != nil {
 		return err
 	}
@@ -453,4 +450,15 @@ func timeSinceCreation(created, lastUpdated time.Time) string {
 	default:
 		return fmt.Sprintf("%dm", minutes)
 	}
+}
+
+func getImage(cmd *cli.Command) (string, string, error) {
+	if cmd.Args().Len() == 0 {
+		return "", "", fmt.Errorf("missing image name")
+	}
+	parts := strings.Split(cmd.Args().First(), ":")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	}
+	return parts[0], parts[1], nil
 }
