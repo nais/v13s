@@ -146,14 +146,14 @@ func getImageSbomStatus(ctx context.Context, cmd *cli.Command, c vulnerabilities
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	vulnTbl := table.New("Image Name", "Image Tag", "SBOM Present", "Last Updated")
-	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-	vulnTbl.AddRow(
+	sbomStatusTbl := table.New("Image Name", "Image Tag", "SBOM Present", "Last Updated")
+	sbomStatusTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	sbomStatusTbl.AddRow(
 		imageName,
 		imageTag,
 		strconv.FormatBool(resp.GetSbomStatus().GetSbomPresent()),
 		timeSinceCreation(resp.GetSbomStatus().GetUpdatedAt().AsTime(), time.Now()),
 	)
-	vulnTbl.Print()
+	sbomStatusTbl.Print()
 	return nil
 }
