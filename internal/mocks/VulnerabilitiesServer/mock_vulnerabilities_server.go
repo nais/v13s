@@ -376,6 +376,65 @@ func (_c *MockVulnerabilitiesServer_GetVulnerabilitySummaryTimeSeries_Call) RunA
 	return _c
 }
 
+// ListCveSummaries provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) ListCveSummaries(_a0 context.Context, _a1 *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListCveSummaries")
+	}
+
+	var r0 *vulnerabilities.ListCveSummariesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.ListCveSummariesRequest) *vulnerabilities.ListCveSummariesResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vulnerabilities.ListCveSummariesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.ListCveSummariesRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_ListCveSummaries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCveSummaries'
+type MockVulnerabilitiesServer_ListCveSummaries_Call struct {
+	*mock.Call
+}
+
+// ListCveSummaries is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *vulnerabilities.ListCveSummariesRequest
+func (_e *MockVulnerabilitiesServer_Expecter) ListCveSummaries(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_ListCveSummaries_Call {
+	return &MockVulnerabilitiesServer_ListCveSummaries_Call{Call: _e.mock.On("ListCveSummaries", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_ListCveSummaries_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.ListCveSummariesRequest)) *MockVulnerabilitiesServer_ListCveSummaries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*vulnerabilities.ListCveSummariesRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListCveSummaries_Call) Return(_a0 *vulnerabilities.ListCveSummariesResponse, _a1 error) *MockVulnerabilitiesServer_ListCveSummaries_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_ListCveSummaries_Call) RunAndReturn(run func(context.Context, *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error)) *MockVulnerabilitiesServer_ListCveSummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListMeanTimeToFixTrendBySeverity provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) ListMeanTimeToFixTrendBySeverity(_a0 context.Context, _a1 *vulnerabilities.ListMeanTimeToFixTrendBySeverityRequest) (*vulnerabilities.ListMeanTimeToFixTrendBySeverityResponse, error) {
 	ret := _m.Called(_a0, _a1)

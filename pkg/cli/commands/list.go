@@ -57,6 +57,15 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					},
 				},
 				{
+					Name:    "cve-summaries",
+					Aliases: []string{"cs"},
+					Usage:   "list CVE summaries",
+					Flags:   flag.CommonFlags(opts),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return listCveSummaries(ctx, cmd, c, opts)
+					},
+				},
+				{
 					Name:  "mttf",
 					Usage: "list mean time to fix (MTTF) for workload severities",
 					Flags: flag.CommonFlags(opts, "l", "o", "su"),
@@ -302,6 +311,38 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 
 			tbl.Print()
 		}
+
+		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
+	})
+}
+
+func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
+		opts := flag.ParseOptions(cmd, o)
+		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+		resp, err := c.ListCveSummaries(ctx, opts...)
+		if err != nil {
+			return 0, false, fmt.Errorf("failed to list CVE summaries: %w", err)
+		}
+
+		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+		columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+		tbl := table.New("CVE", "Title", "Severity", "CVSS Score", "Affected Workloads")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+		for _, n := range resp.GetNodes() {
+			cve := n.GetCve()
+			tbl.AddRow(
+				cve.GetId(),
+				cve.GetTitle(),
+				cve.GetSeverity(),
+				cve.GetCvssScore(),
+				n.GetAffectedWorkloads(),
+			)
+		}
+
+		tbl.Print()
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 	})
