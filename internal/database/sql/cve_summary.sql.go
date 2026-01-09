@@ -38,10 +38,19 @@ GROUP BY
 )
 SELECT
     cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, affected_workloads,
-    COUNT(*) OVER()::INT AS total_count
+    COUNT(*) OVER ()::INT AS total_count
 FROM
     cve_data
 ORDER BY
+    CASE WHEN $1 = 'cvss_score_desc' THEN
+             CASE WHEN cvss_score = 0 OR cvss_score IS NULL THEN 1 ELSE 0 END
+        END ASC,
+    CASE WHEN $1 = 'cvss_score_desc' THEN
+             cvss_score
+        END DESC,
+    CASE WHEN $1 = 'cvss_score_asc' THEN
+        cvss_score
+    END ASC,
     CASE WHEN $1 = 'affected_workloads_desc' THEN
         affected_workloads
     END DESC,

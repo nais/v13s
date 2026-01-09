@@ -1515,6 +1515,51 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.NotNil(t, cve.Created)
 		assert.NotNil(t, cve.LastUpdated)
 	})
+
+	t.Run("cvss_score descending, zero scores last", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     "image-1",
+			Tag:      "v1.0",
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    "image-1",
+			ImageTag:     "v1.0",
+		})
+		assert.NoError(t, err)
+
+		cvssScoreZero := 0.0
+		cvssScoreLow := 2.5
+		cvssScoreHigh := 9.8
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-LOW", CveTitle: "Low", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreLow, Severity: 2, Refs: map[string]string{}},
+			{CveID: "CVE-HIGH", CveTitle: "High", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreHigh, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-ZERO", CveTitle: "Zero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreZero, Severity: 0, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { assert.NoError(t, err) })
+
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-1", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-LOW", Source: "test"},
+			{ImageName: "image-1", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-HIGH", Source: "test"},
+			{ImageName: "image-1", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-ZERO", Source: "test"},
+		}).Exec(func(i int, err error) { assert.NoError(t, err) })
+
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_DESC), vulnerabilities.Limit(10))
+		assert.NoError(t, err)
+
+		var gotIDs []string
+		for _, node := range resp.Nodes {
+			if node.Cve.Id == "CVE-HIGH" || node.Cve.Id == "CVE-LOW" || node.Cve.Id == "CVE-ZERO" {
+				gotIDs = append(gotIDs, node.Cve.Id)
+			}
+		}
+		assert.Equal(t, []string{"CVE-HIGH", "CVE-LOW", "CVE-ZERO"}, gotIDs)
+	})
 }
 
 func ptrTime(t time.Time) *time.Time { return &t }

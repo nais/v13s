@@ -27,10 +27,24 @@ GROUP BY
 )
 SELECT
     *,
-    COUNT(*) OVER()::INT AS total_count
+    COUNT(*) OVER ()::INT AS total_count
 FROM
     cve_data
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
+        CASE WHEN cvss_score = 0
+            OR cvss_score IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
+        cvss_score
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_asc' THEN
+        cvss_score
+    END ASC,
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
         affected_workloads
     END DESC,

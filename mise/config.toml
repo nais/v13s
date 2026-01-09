@@ -16,5 +16,5 @@ url = "https://github.com/darold/pgFormatter/archive/refs/tags/v{{version}}.tar.
 strip_components = 1
 
 # Make `mise ls-remote http:pgformatter` work using GitHub releases
-version_list_url  = "https://api.github.com/repos/darold/pgFormatter/releases"
+version_list_url = "https://api.github.com/repos/darold/pgFormatter/releases"
 version_json_path = ".[].tag_name"
