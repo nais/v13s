@@ -90,37 +90,13 @@ func createVulnData(ctx context.Context, db sql.Querier, images []string) {
 			}
 		})
 
-		sumRow, err := db.GenerateVulnerabilitySummaryForImage(ctx, sql.GenerateVulnerabilitySummaryForImageParams{
+		if err := db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 			ImageName: image,
 			ImageTag:  "1",
-		})
-		if err != nil {
+		}); err != nil {
 			panic(err)
 		}
-
-		summary := sql.CreateVulnerabilitySummaryParams{
-			ImageName:  image,
-			ImageTag:   "1",
-			Critical:   safeInt32(sumRow.Critical),
-			High:       safeInt32(sumRow.High),
-			Medium:     safeInt32(sumRow.Medium),
-			Low:        safeInt32(sumRow.Low),
-			Unassigned: safeInt32(sumRow.Unassigned),
-			RiskScore:  sumRow.RiskScore,
-		}
-
-		_, err = db.CreateVulnerabilitySummary(ctx, summary)
-		if err != nil {
-			panic(fmt.Errorf("summary error: %v", err))
-		}
 	}
-}
-
-func safeInt32(value int64) int32 {
-	if value > math.MaxInt32 || value < math.MinInt32 {
-		panic(fmt.Errorf("integer overflow: (%d) is out of int32 range", value))
-	}
-	return int32(value)
 }
 
 func createNaisApiWorkloads(ctx context.Context, db sql.Querier, cluster, namespace string) []string {

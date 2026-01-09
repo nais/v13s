@@ -746,65 +746,6 @@ func (_c *MockQuerier_DeleteWorkload_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// GenerateVulnerabilitySummaryForImage provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) GenerateVulnerabilitySummaryForImage(ctx context.Context, arg sql.GenerateVulnerabilitySummaryForImageParams) (*sql.GenerateVulnerabilitySummaryForImageRow, error) {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GenerateVulnerabilitySummaryForImage")
-	}
-
-	var r0 *sql.GenerateVulnerabilitySummaryForImageRow
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GenerateVulnerabilitySummaryForImageParams) (*sql.GenerateVulnerabilitySummaryForImageRow, error)); ok {
-		return rf(ctx, arg)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GenerateVulnerabilitySummaryForImageParams) *sql.GenerateVulnerabilitySummaryForImageRow); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*sql.GenerateVulnerabilitySummaryForImageRow)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, sql.GenerateVulnerabilitySummaryForImageParams) error); ok {
-		r1 = rf(ctx, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_GenerateVulnerabilitySummaryForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GenerateVulnerabilitySummaryForImage'
-type MockQuerier_GenerateVulnerabilitySummaryForImage_Call struct {
-	*mock.Call
-}
-
-// GenerateVulnerabilitySummaryForImage is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg sql.GenerateVulnerabilitySummaryForImageParams
-func (_e *MockQuerier_Expecter) GenerateVulnerabilitySummaryForImage(ctx interface{}, arg interface{}) *MockQuerier_GenerateVulnerabilitySummaryForImage_Call {
-	return &MockQuerier_GenerateVulnerabilitySummaryForImage_Call{Call: _e.mock.On("GenerateVulnerabilitySummaryForImage", ctx, arg)}
-}
-
-func (_c *MockQuerier_GenerateVulnerabilitySummaryForImage_Call) Run(run func(ctx context.Context, arg sql.GenerateVulnerabilitySummaryForImageParams)) *MockQuerier_GenerateVulnerabilitySummaryForImage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(sql.GenerateVulnerabilitySummaryForImageParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GenerateVulnerabilitySummaryForImage_Call) Return(_a0 *sql.GenerateVulnerabilitySummaryForImageRow, _a1 error) *MockQuerier_GenerateVulnerabilitySummaryForImage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_GenerateVulnerabilitySummaryForImage_Call) RunAndReturn(run func(context.Context, sql.GenerateVulnerabilitySummaryForImageParams) (*sql.GenerateVulnerabilitySummaryForImageRow, error)) *MockQuerier_GenerateVulnerabilitySummaryForImage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetCve provides a mock function with given fields: ctx, cveID
 func (_m *MockQuerier) GetCve(ctx context.Context, cveID string) (*sql.Cve, error) {
 	ret := _m.Called(ctx, cveID)

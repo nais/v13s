@@ -43,11 +43,16 @@ FROM
     cve_data
 ORDER BY
     CASE WHEN $1 = 'cvss_score_desc' THEN
-             CASE WHEN cvss_score = 0 OR cvss_score IS NULL THEN 1 ELSE 0 END
-        END ASC,
+        CASE WHEN cvss_score = 0
+            OR cvss_score IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
     CASE WHEN $1 = 'cvss_score_desc' THEN
-             cvss_score
-        END DESC,
+        cvss_score
+    END DESC,
     CASE WHEN $1 = 'cvss_score_asc' THEN
         cvss_score
     END ASC,
