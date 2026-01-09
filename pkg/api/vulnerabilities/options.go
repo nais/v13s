@@ -23,46 +23,48 @@ const (
 )
 
 const (
-	OrderBySeverity          OrderByField = "severity"
-	OrderByPackage           OrderByField = "package"
-	OrderByCveId             OrderByField = "cve_id"
-	OrderBySuppressed        OrderByField = "suppressed"
-	OrderByReason            OrderByField = "reason"
-	OrderByCluster           OrderByField = "cluster"
-	OrderByNamespace         OrderByField = "namespace"
-	OrderByWorkload          OrderByField = "workload"
-	OrderByCritical          OrderByField = "critical"
-	OrderByHigh              OrderByField = "high"
-	OrderByMedium            OrderByField = "medium"
-	OrderByLow               OrderByField = "low"
-	OrderByUnassigned        OrderByField = "unassigned"
-	OrderByRiskScore         OrderByField = "risk_score"
-	OrderByCreatedAt         OrderByField = "created_at"
-	OrderByUpdatedAt         OrderByField = "updated_at"
-	OrderBySeveritySince     OrderByField = "severity_since"
 	OrderByAffectedWorkloads OrderByField = "affected_workloads"
+	OrderByCluster           OrderByField = "cluster"
+	OrderByCreatedAt         OrderByField = "created_at"
+	OrderByCritical          OrderByField = "critical"
+	OrderByCveId             OrderByField = "cve_id"
+	OrderByCvssScore         OrderByField = "cvss_score"
+	OrderByHigh              OrderByField = "high"
+	OrderByLow               OrderByField = "low"
+	OrderByMedium            OrderByField = "medium"
+	OrderByNamespace         OrderByField = "namespace"
+	OrderByPackage           OrderByField = "package"
+	OrderByReason            OrderByField = "reason"
+	OrderByRiskScore         OrderByField = "risk_score"
+	OrderBySeverity          OrderByField = "severity"
+	OrderBySeveritySince     OrderByField = "severity_since"
+	OrderBySuppressed        OrderByField = "suppressed"
+	OrderByUnassigned        OrderByField = "unassigned"
+	OrderByUpdatedAt         OrderByField = "updated_at"
+	OrderByWorkload          OrderByField = "workload"
 )
 
 // Map of valid fields
 var validOrderByFields = map[OrderByField]struct{}{
-	OrderBySeverity:          {},
-	OrderByPackage:           {},
-	OrderByCveId:             {},
-	OrderBySuppressed:        {},
-	OrderByReason:            {},
-	OrderByCluster:           {},
-	OrderByNamespace:         {},
-	OrderByWorkload:          {},
-	OrderByCritical:          {},
-	OrderByHigh:              {},
-	OrderByMedium:            {},
-	OrderByLow:               {},
-	OrderByUnassigned:        {},
-	OrderByRiskScore:         {},
-	OrderByCreatedAt:         {},
-	OrderByUpdatedAt:         {},
-	OrderBySeveritySince:     {},
 	OrderByAffectedWorkloads: {},
+	OrderByCluster:           {},
+	OrderByCreatedAt:         {},
+	OrderByCritical:          {},
+	OrderByCveId:             {},
+	OrderByCvssScore:         {},
+	OrderByHigh:              {},
+	OrderByLow:               {},
+	OrderByMedium:            {},
+	OrderByNamespace:         {},
+	OrderByPackage:           {},
+	OrderByReason:            {},
+	OrderByRiskScore:         {},
+	OrderBySeverity:          {},
+	OrderBySeveritySince:     {},
+	OrderBySuppressed:        {},
+	OrderByUnassigned:        {},
+	OrderByUpdatedAt:         {},
+	OrderByWorkload:          {},
 }
 
 // String method for OrderByField
