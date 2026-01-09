@@ -81,6 +81,65 @@ func (_c *MockVulnerabilitiesServer_GetCve_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetImageSbomStatus provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) GetImageSbomStatus(_a0 context.Context, _a1 *vulnerabilities.GetImageSbomStatusRequest) (*vulnerabilities.GetImageSbomStatusResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetImageSbomStatus")
+	}
+
+	var r0 *vulnerabilities.GetImageSbomStatusResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.GetImageSbomStatusRequest) (*vulnerabilities.GetImageSbomStatusResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.GetImageSbomStatusRequest) *vulnerabilities.GetImageSbomStatusResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vulnerabilities.GetImageSbomStatusResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.GetImageSbomStatusRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_GetImageSbomStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetImageSbomStatus'
+type MockVulnerabilitiesServer_GetImageSbomStatus_Call struct {
+	*mock.Call
+}
+
+// GetImageSbomStatus is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *vulnerabilities.GetImageSbomStatusRequest
+func (_e *MockVulnerabilitiesServer_Expecter) GetImageSbomStatus(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_GetImageSbomStatus_Call {
+	return &MockVulnerabilitiesServer_GetImageSbomStatus_Call{Call: _e.mock.On("GetImageSbomStatus", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_GetImageSbomStatus_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.GetImageSbomStatusRequest)) *MockVulnerabilitiesServer_GetImageSbomStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*vulnerabilities.GetImageSbomStatusRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetImageSbomStatus_Call) Return(_a0 *vulnerabilities.GetImageSbomStatusResponse, _a1 error) *MockVulnerabilitiesServer_GetImageSbomStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetImageSbomStatus_Call) RunAndReturn(run func(context.Context, *vulnerabilities.GetImageSbomStatusRequest) (*vulnerabilities.GetImageSbomStatusResponse, error)) *MockVulnerabilitiesServer_GetImageSbomStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVulnerability provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) GetVulnerability(_a0 context.Context, _a1 *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error) {
 	ret := _m.Called(_a0, _a1)

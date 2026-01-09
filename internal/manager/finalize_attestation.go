@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	KindFinalizeAttestation                      = "finalize_attestation"
-	FinalizeAttestationScheduledForResyncMinutes = 10 * time.Second
-	FinalizeAttestationScheduledWaitSecond       = 30 * time.Second
+	KindFinalizeAttestation                = "finalize_attestation"
+	FinalizeAttestationScheduledForResync  = 10 * time.Second
+	FinalizeAttestationScheduledWaitSecond = 10 * time.Second
 )
 
 type FinalizeAttestationJob struct {
@@ -74,7 +74,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		Tag:   imageTag,
 		State: sql.ImageStateResync,
 		ReadyForResyncAt: pgtype.Timestamptz{
-			Time:  time.Now().Add(FinalizeAttestationScheduledForResyncMinutes),
+			Time:  time.Now().Add(FinalizeAttestationScheduledForResync),
 			Valid: true,
 		},
 	})

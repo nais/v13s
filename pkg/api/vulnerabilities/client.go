@@ -26,6 +26,7 @@ type Client interface {
 	GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error)
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	GetCve(ctx context.Context, id string) (*GetCveResponse, error)
+	GetImageSbomStatus(ctx context.Context, imageName, imageTag string) (*GetImageSbomStatusResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
 	management.ManagementClient
 }
@@ -206,6 +207,13 @@ func (c *client) GetVulnerabilityById(ctx context.Context, id string) (*GetVulne
 func (c *client) GetCve(ctx context.Context, id string) (*GetCveResponse, error) {
 	return c.v.GetCve(ctx, &GetCveRequest{
 		Id: id,
+	})
+}
+
+func (c *client) GetImageSbomStatus(ctx context.Context, imageName, imageTag string) (*GetImageSbomStatusResponse, error) {
+	return c.v.GetImageSbomStatus(ctx, &GetImageSbomStatusRequest{
+		ImageName: imageName,
+		ImageTag:  imageTag,
 	})
 }
 

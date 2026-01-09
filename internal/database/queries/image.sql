@@ -2,12 +2,16 @@
 INSERT INTO images(
     name,
     tag,
-    metadata)
+    metadata,
+    sbom_pending)
 VALUES (
     @name,
     @tag,
-    @metadata)
-ON CONFLICT
+    @metadata,
+    @sbom_pending)
+ON CONFLICT (
+    name,
+    tag)
     DO NOTHING;
 
 -- name: UpdateImage :exec
@@ -57,6 +61,7 @@ UPDATE
     images
 SET
     state = @state,
+    sbom_pending = @sbom_pending,
     updated_at = NOW()
 WHERE
     name = @name
@@ -146,3 +151,13 @@ ON CONFLICT (
         status_code = @status_code,
         reason = @reason,
         updated_at = NOW();
+
+-- name: GetImageSbomStatus :one
+SELECT
+    sbom_pending AS pending,
+    updated_at
+FROM
+    images
+WHERE
+    name = @image_name
+    AND tag = @image_tag;

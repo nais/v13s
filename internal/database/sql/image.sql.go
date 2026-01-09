@@ -14,29 +14,39 @@ const createImage = `-- name: CreateImage :exec
 INSERT INTO images(
     name,
     tag,
-    metadata)
+    metadata,
+    sbom_pending)
 VALUES (
     $1,
     $2,
-    $3)
-ON CONFLICT
+    $3,
+    $4)
+ON CONFLICT (
+    name,
+    tag)
     DO NOTHING
 `
 
 type CreateImageParams struct {
-	Name     string
-	Tag      string
-	Metadata typeext.MapStringString
+	Name        string
+	Tag         string
+	Metadata    typeext.MapStringString
+	SbomPending bool
 }
 
 func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error {
-	_, err := q.db.Exec(ctx, createImage, arg.Name, arg.Tag, arg.Metadata)
+	_, err := q.db.Exec(ctx, createImage,
+		arg.Name,
+		arg.Tag,
+		arg.Metadata,
+		arg.SbomPending,
+	)
 	return err
 }
 
 const getImage = `-- name: GetImage :one
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom_pending
 FROM
     images
 WHERE
@@ -60,13 +70,42 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReadyForResyncAt,
+		&i.SbomPending,
 	)
+	return &i, err
+}
+
+const getImageSbomStatus = `-- name: GetImageSbomStatus :one
+SELECT
+    sbom_pending AS pending,
+    updated_at
+FROM
+    images
+WHERE
+    name = $1
+    AND tag = $2
+`
+
+type GetImageSbomStatusParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+type GetImageSbomStatusRow struct {
+	Pending   bool
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetImageSbomStatus(ctx context.Context, arg GetImageSbomStatusParams) (*GetImageSbomStatusRow, error) {
+	row := q.db.QueryRow(ctx, getImageSbomStatus, arg.ImageName, arg.ImageTag)
+	var i GetImageSbomStatusRow
+	err := row.Scan(&i.Pending, &i.UpdatedAt)
 	return &i, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom_pending
 FROM
     images
 WHERE
@@ -94,6 +133,7 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ReadyForResyncAt,
+			&i.SbomPending,
 		); err != nil {
 			return nil, err
 		}

@@ -319,6 +319,7 @@ type Image struct {
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	ReadyForResyncAt pgtype.Timestamptz
+	SbomPending      bool
 }
 
 type RiverJob struct {

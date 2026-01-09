@@ -21,10 +21,11 @@ UPDATE
     images
 SET
     state = $1,
+    sbom_pending = $2,
     updated_at = NOW()
 WHERE
-    name = $2
-    AND tag = $3
+    name = $3
+    AND tag = $4
 `
 
 type BatchUpdateImageStateBatchResults struct {
@@ -34,9 +35,10 @@ type BatchUpdateImageStateBatchResults struct {
 }
 
 type BatchUpdateImageStateParams struct {
-	State ImageState
-	Name  string
-	Tag   string
+	State       ImageState
+	SbomPending bool
+	Name        string
+	Tag         string
 }
 
 func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults {
@@ -44,6 +46,7 @@ func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateIm
 	for _, a := range arg {
 		vals := []interface{}{
 			a.State,
+			a.SbomPending,
 			a.Name,
 			a.Tag,
 		}
