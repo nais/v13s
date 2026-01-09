@@ -3,7 +3,6 @@ package updater
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -276,10 +275,16 @@ func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		})
 	}
 
-	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
+	collections.SortByFields(cves, func(x sql.BatchUpsertCveParams) string {
 		return x.CveID
 	})
-	sortByFields(vulns,
+	cves = u.ensureCvesForAliases(cves, cveAliases)
+
+	collections.SortByFields(cves, func(x sql.BatchUpsertCveParams) string {
+		return x.CveID
+	})
+
+	collections.SortByFields(vulns,
 		func(x sql.BatchUpsertVulnerabilitiesParams) string {
 			return x.ImageName
 		},
@@ -287,7 +292,7 @@ func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			return x.ImageTag
 		},
 	)
-	sortByFields(imageStates,
+	collections.SortByFields(imageStates,
 		func(x sql.BatchUpdateImageStateParams) string { return x.Name },
 		func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
 	)
@@ -341,17 +346,51 @@ func (u *Updater) runExec(
 	return errCount
 }
 
-func sortByFields[T any](items []T, getters ...func(T) string) {
-	sort.SliceStable(items, func(i, j int) bool {
-		for _, get := range getters {
-			a, b := get(items[i]), get(items[j])
-			if a < b {
-				return true
-			}
-			if a > b {
-				return false
+func (u *Updater) ensureCvesForAliases(cves []sql.BatchUpsertCveParams, aliases []sql.BatchUpsertCveAliasParams) []sql.BatchUpsertCveParams {
+	byID := make(map[string]sql.BatchUpsertCveParams, len(cves))
+
+	for _, c := range cves {
+		if c.CveID == "" {
+			continue
+		}
+		if _, ok := byID[c.CveID]; !ok {
+			byID[c.CveID] = c
+		}
+	}
+
+	for _, a := range aliases {
+		if a.Alias != "" {
+			if _, ok := byID[a.Alias]; !ok {
+				byID[a.Alias] = u.stubCve(a.Alias, "missing alias CVE")
 			}
 		}
-		return false
-	})
+		if a.CanonicalCveID != "" {
+			if _, ok := byID[a.CanonicalCveID]; !ok {
+				byID[a.CanonicalCveID] = u.stubCve(a.CanonicalCveID, "missing canonical CVE")
+			}
+		}
+	}
+
+	out := make([]sql.BatchUpsertCveParams, 0, len(byID))
+	for _, c := range byID {
+		out = append(out, c)
+	}
+	return out
+}
+
+func (u *Updater) stubCve(id string, reason string) sql.BatchUpsertCveParams {
+	u.log.WithFields(logrus.Fields{
+		"cve_id": id,
+		"reason": reason,
+	}).Warn("creating stub CVE to satisfy alias FK")
+
+	return sql.BatchUpsertCveParams{
+		CveID: id,
+		// intentionally empty — real data will overwrite later
+		CveTitle: "",
+		CveDesc:  "",
+		CveLink:  "",
+		Severity: 4, // unassigned
+		Refs:     map[string]string{},
+	}
 }
