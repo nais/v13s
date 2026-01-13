@@ -614,7 +614,7 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 		field = defaultOrder
 	}
 
-	if field == vulnerabilities.OrderBySeverity || field == vulnerabilities.OrderByAffectedWorkloads {
+	if field == vulnerabilities.OrderBySeverity {
 		if direction == "asc" {
 			direction = "desc"
 		} else {
