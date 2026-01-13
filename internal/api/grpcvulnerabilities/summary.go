@@ -246,6 +246,11 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	exNs := request.GetExcludeNamespaces()
+	if exNs == nil {
+		exNs = []string{}
+	}
+
 	cveSummaries, err := s.querier.ListCveSummaries(ctx, sql.ListCveSummariesParams{
 		Cluster:                  request.GetFilter().Cluster,
 		Namespace:                request.GetFilter().Namespace,
@@ -254,6 +259,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		ImageName:                request.GetFilter().ImageName,
 		ImageTag:                 request.GetFilter().ImageTag,
 		IncludeManagementCluster: request.IncludeManagementCluster,
+		ExcludeNamespaces:        exNs,
 		OrderBy:                  SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
 		Limit:                    request.Limit,
 		Offset:                   request.Offset,

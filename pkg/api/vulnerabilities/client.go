@@ -137,10 +137,11 @@ func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilit
 func (c *client) ListCveSummaries(ctx context.Context, opts ...Option) (*ListCveSummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListCveSummaries(ctx, &ListCveSummariesRequest{
-		Filter:  o.Filter,
-		Limit:   o.Limit,
-		Offset:  o.Offset,
-		OrderBy: o.OrderBy,
+		Filter:            o.Filter,
+		Limit:             o.Limit,
+		Offset:            o.Offset,
+		OrderBy:           o.OrderBy,
+		ExcludeNamespaces: o.ExcludeNamespaces,
 		// IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
 	}, o.CallOptions...)
 }

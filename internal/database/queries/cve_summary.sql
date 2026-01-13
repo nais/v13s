@@ -12,6 +12,8 @@ WITH cve_data AS (
         OR w.cluster = sqlc.narg('cluster')::TEXT)
     AND (sqlc.narg('namespace')::TEXT IS NULL
         OR w.namespace = sqlc.narg('namespace')::TEXT)
+    AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
+        OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
     AND (sqlc.narg('workload_type')::TEXT IS NULL
         OR w.workload_type = sqlc.narg('workload_type')::TEXT)
     AND (sqlc.narg('workload_name')::TEXT IS NULL
@@ -48,6 +50,17 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
         affected_workloads
     END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
+        CASE WHEN cvss_score IS NULL
+            OR cvss_score = 0 THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
+        cvss_score
+    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
         affected_workloads
     END ASC,
@@ -56,6 +69,7 @@ ORDER BY
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
         cve_id
-    END DESC
+    END DESC,
+    cve_id ASC
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');

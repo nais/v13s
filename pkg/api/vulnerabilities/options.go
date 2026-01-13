@@ -91,6 +91,7 @@ type Options struct {
 	Since             *timestamppb.Timestamp
 	SinceType         *SinceType
 	Severity          *Severity
+	ExcludeNamespaces []string
 }
 
 type VulnerabilityFilter struct {
@@ -254,6 +255,12 @@ func SeverityFilter(sev Severity) Option {
 	})
 }
 
+func ExcludeNamespacesFilter(namespace ...string) Option {
+	return newFuncOption(func(o *Options) {
+		o.ExcludeNamespaces = append(o.ExcludeNamespaces, namespace...)
+	})
+}
+
 func applyOptions(opts ...Option) *Options {
 	o := &Options{}
 	for _, opt := range opts {
@@ -265,6 +272,12 @@ func applyOptions(opts ...Option) *Options {
 	if o.Limit == 0 {
 		o.Limit = DefaultLimit
 	}
+
+	// If single-namespace include is set, exclude list is irrelevant
+	if o.Filter.Namespace != nil {
+		o.ExcludeNamespaces = nil
+	}
+
 	return o
 }
 

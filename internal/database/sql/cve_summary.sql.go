@@ -23,15 +23,17 @@ WITH cve_data AS (
         OR w.cluster = $4::TEXT)
     AND ($5::TEXT IS NULL
         OR w.namespace = $5::TEXT)
-    AND ($6::TEXT IS NULL
-        OR w.workload_type = $6::TEXT)
+    AND (cardinality($6::TEXT[]) = 0
+        OR w.namespace <> ALL ($6::TEXT[]))
     AND ($7::TEXT IS NULL
-        OR w.name = $7::TEXT)
+        OR w.workload_type = $7::TEXT)
     AND ($8::TEXT IS NULL
-        OR v.image_name = $8::TEXT)
+        OR w.name = $8::TEXT)
     AND ($9::TEXT IS NULL
-        OR v.image_tag = $9::TEXT)
-    AND ($10::BOOLEAN IS TRUE
+        OR v.image_name = $9::TEXT)
+    AND ($10::TEXT IS NULL
+        OR v.image_tag = $10::TEXT)
+    AND ($11::BOOLEAN IS TRUE
         OR w.cluster != 'management')
 GROUP BY
     c.cve_id
@@ -59,6 +61,17 @@ ORDER BY
     CASE WHEN $1 = 'affected_workloads_desc' THEN
         affected_workloads
     END DESC,
+    CASE WHEN $1 = 'affected_workloads_desc' THEN
+        CASE WHEN cvss_score IS NULL
+            OR cvss_score = 0 THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN $1 = 'affected_workloads_desc' THEN
+        cvss_score
+    END DESC,
     CASE WHEN $1 = 'affected_workloads_asc' THEN
         affected_workloads
     END ASC,
@@ -67,7 +80,8 @@ ORDER BY
     END ASC,
     CASE WHEN $1 = 'cve_id_desc' THEN
         cve_id
-    END DESC
+    END DESC,
+    cve_id ASC
 LIMIT $3
     OFFSET $2
 `
@@ -78,6 +92,7 @@ type ListCveSummariesParams struct {
 	Limit                    int32
 	Cluster                  *string
 	Namespace                *string
+	ExcludeNamespaces        []string
 	WorkloadType             *string
 	WorkloadName             *string
 	ImageName                *string
@@ -106,6 +121,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.Limit,
 		arg.Cluster,
 		arg.Namespace,
+		arg.ExcludeNamespaces,
 		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.ImageName,
