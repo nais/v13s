@@ -1317,54 +1317,56 @@ AND (
     ELSE
         TRUE
     END)
-AND ($6::TEXT[] IS NULL
-    OR w.workload_type = ANY ($6::TEXT[]))
-AND (
-    CASE WHEN $7::TEXT IS NOT NULL THEN
-        w.name = $7::TEXT
-    ELSE
-        TRUE
-    END)
+AND (cardinality($6::TEXT[]) = 0
+    OR w.namespace <> ALL ($6::TEXT[]))
+AND ($7::TEXT[] IS NULL
+    OR w.workload_type = ANY ($7::TEXT[]))
 AND (
     CASE WHEN $8::TEXT IS NOT NULL THEN
-        v.image_name = $8::TEXT
+        w.name = $8::TEXT
     ELSE
         TRUE
     END)
 AND (
     CASE WHEN $9::TEXT IS NOT NULL THEN
-        v.image_tag = $9::TEXT
+        v.image_name = $9::TEXT
+    ELSE
+        TRUE
+    END)
+AND (
+    CASE WHEN $10::TEXT IS NOT NULL THEN
+        v.image_tag = $10::TEXT
     ELSE
         TRUE
     END)
 ORDER BY
-    CASE WHEN $10 = 'cve_id_desc' THEN
+    CASE WHEN $11 = 'cve_id_desc' THEN
         v.cve_id
     END DESC,
-    CASE WHEN $10 = 'cve_id_asc' THEN
+    CASE WHEN $11 = 'cve_id_asc' THEN
         v.cve_id
     END ASC,
-    CASE WHEN $10 = 'workload_asc' THEN
+    CASE WHEN $11 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $10 = 'workload_desc' THEN
+    CASE WHEN $11 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $10 = 'namespace_asc' THEN
+    CASE WHEN $11 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $10 = 'namespace_desc' THEN
+    CASE WHEN $11 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $10 = 'cluster_asc' THEN
+    CASE WHEN $11 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $10 = 'cluster_desc' THEN
+    CASE WHEN $11 = 'cluster_desc' THEN
         w.cluster
     END DESC,
     v.id ASC
-LIMIT $12
-OFFSET $11
+LIMIT $13
+OFFSET $12
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
@@ -1373,6 +1375,7 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	Cluster                  *string
 	IncludeManagementCluster *bool
 	Namespace                *string
+	ExcludeNamespaces        []string
 	WorkloadTypes            []string
 	WorkloadName             *string
 	ImageName                *string
@@ -1419,6 +1422,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.Cluster,
 		arg.IncludeManagementCluster,
 		arg.Namespace,
+		arg.ExcludeNamespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.ImageName,

@@ -32,6 +32,7 @@ type Options struct {
 	CveIds                   string
 	CvssScore                float64
 	IncludeManagementCluster bool
+	ExcludeNamespaces        []string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -124,6 +125,12 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Value:       false,
 			Usage:       "include workloads from management cluster",
 			Destination: &opts.IncludeManagementCluster,
+		},
+		&cli.StringSliceFlag{
+			Name:        "exclude-namespaces",
+			Aliases:     []string{"ens"},
+			Usage:       "namespaces to exclude (can be specified multiple times)",
+			Destination: &opts.ExcludeNamespaces,
 		},
 	}
 	for _, f := range cFlags {
@@ -235,6 +242,11 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		}
 		opts = append(opts, vulnerabilities.SeverityFilter(severity))
 	}
+
+	if o.ExcludeNamespaces != nil && len(o.ExcludeNamespaces) > 0 {
+		opts = append(opts, vulnerabilities.ExcludeNamespacesFilter(strings.Join(o.ExcludeNamespaces, ",")))
+	}
+
 	return opts
 }
 

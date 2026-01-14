@@ -2258,6 +2258,7 @@ type ListWorkloadsForVulnerabilityRequest struct {
 	Offset                   int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
 	OrderBy                  *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
 	IncludeManagementCluster *bool                  `protobuf:"varint,7,opt,name=include_management_cluster,json=includeManagementCluster,proto3,oneof" json:"include_management_cluster,omitempty"`
+	ExcludeNamespaces        []string               `protobuf:"bytes,8,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -2339,6 +2340,13 @@ func (x *ListWorkloadsForVulnerabilityRequest) GetIncludeManagementCluster() boo
 		return *x.IncludeManagementCluster
 	}
 	return false
+}
+
+func (x *ListWorkloadsForVulnerabilityRequest) GetExcludeNamespaces() []string {
+	if x != nil {
+		return x.ExcludeNamespaces
+	}
+	return nil
 }
 
 type ListWorkloadsForVulnerabilityResponse struct {
@@ -3929,7 +3937,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"z\n" +
 	")ListWorkloadsForVulnerabilityByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12=\n" +
-	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xfe\x02\n" +
+	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xad\x03\n" +
 	"$ListWorkloadsForVulnerabilityRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x17\n" +
 	"\acve_ids\x18\x02 \x03(\tR\x06cveIds\x12\"\n" +
@@ -3938,7 +3946,8 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\x12:\n" +
 	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01\x12A\n" +
-	"\x1ainclude_management_cluster\x18\a \x01(\bH\x02R\x18includeManagementCluster\x88\x01\x01B\r\n" +
+	"\x1ainclude_management_cluster\x18\a \x01(\bH\x02R\x18includeManagementCluster\x88\x01\x01\x12-\n" +
+	"\x12exclude_namespaces\x18\b \x03(\tR\x11excludeNamespacesB\r\n" +
 	"\v_cvss_scoreB\v\n" +
 	"\t_order_byB\x1d\n" +
 	"\x1b_include_management_cluster\"\xa4\x01\n" +

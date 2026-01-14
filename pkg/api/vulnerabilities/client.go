@@ -131,6 +131,7 @@ func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilit
 		CveIds:                   vulnerabilityFilter.CveIds,
 		CvssScore:                vulnerabilityFilter.CvssScore,
 		IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
+		ExcludeNamespaces:        o.ExcludeNamespaces,
 	})
 }
 

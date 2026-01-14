@@ -890,6 +890,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
+    OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
 AND (sqlc.narg('workload_types')::TEXT[] IS NULL
     OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
 AND (

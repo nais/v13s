@@ -396,6 +396,11 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		filter = &vulnerabilities.Filter{}
 	}
 
+	exNs := request.GetExcludeNamespaces()
+	if exNs == nil {
+		exNs = []string{}
+	}
+
 	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
 		Cluster:                  filter.Cluster,
 		Namespace:                filter.Namespace,
@@ -404,6 +409,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		CveIds:                   request.CveIds,
 		CvssScore:                request.CvssScore,
 		IncludeManagementCluster: request.IncludeManagementCluster,
+		ExcludeNamespaces:        exNs,
 		Offset:                   offset,
 		Limit:                    limit,
 		OrderBy:                  SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
@@ -415,9 +421,6 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	total := 0
 	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
 		total = int(row.TotalCount)
-		if row.WorkloadName == "flaky-frontend" {
-			fmt.Println("debug")
-		}
 		return &vulnerabilities.WorkloadForVulnerability{
 			WorkloadRef: &vulnerabilities.Workload{
 				Cluster:   row.Cluster,

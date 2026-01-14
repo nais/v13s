@@ -251,6 +251,71 @@ func TestServer_ListWorkloadsForVulnerabilityById(t *testing.T) {
 	assert.Equal(t, "v1.0", wl.ImageTag)
 }
 
+func TestServer_ListWorkloadsForVulnerability_ExcludeNamespaces(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1", "namespace-2"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "image-1",
+		Tag:      "v1.0",
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	vulnRespNs1, err := client.GetVulnerability(ctx,
+		"image-cluster-1-namespace-1-workload-1",
+		"v1.0",
+		"package-CWE-1-1",
+		"CWE-1-1",
+	)
+	require.NoError(t, err)
+	cveID := vulnRespNs1.Vulnerability.Cve.Id
+	require.NotEmpty(t, cveID)
+
+	_, err = client.GetVulnerability(ctx,
+		"image-cluster-1-namespace-2-workload-1",
+		"v1.0",
+		"package-CWE-1-1",
+		"CWE-1-1",
+	)
+	require.NoError(t, err)
+
+	t.Run("list workloads for vulnerability without exclude filter", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{cveID},
+		}, vulnerabilities.ExcludeNamespacesFilter("namespace-2"))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		require.Len(t, resp.Nodes, 1)
+		assert.Equal(t, "namespace-1", resp.Nodes[0].WorkloadRef.Namespace)
+	})
+
+	t.Run("list workloads for vulnerability with cluster namespace and workload filter", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{cveID},
+		},
+			vulnerabilities.ClusterFilter("cluster-1"),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.WorkloadFilter("workload-1"),
+		)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		require.Len(t, resp.Nodes, 1)
+		assert.Equal(t, "cluster-1", resp.Nodes[0].WorkloadRef.Cluster)
+		assert.Equal(t, "namespace-1", resp.Nodes[0].WorkloadRef.Namespace)
+		assert.Equal(t, "workload-1", resp.Nodes[0].WorkloadRef.Name)
+	})
+}
+
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
