@@ -38,7 +38,9 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			log.WithError(err).Error("failed to write healthz response")
+		}
 	})
 
 	router.HandleFunc("/pprof/*", pprof.Index)

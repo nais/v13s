@@ -246,26 +246,31 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	exNs := request.GetExcludeNamespaces()
-	if exNs == nil {
-		exNs = []string{}
+	excludeNamespaces := request.GetExcludeNamespaces()
+	if excludeNamespaces == nil {
+		excludeNamespaces = []string{}
+	}
+
+	excludeClusters := request.GetExcludeClusters()
+	if excludeClusters == nil {
+		excludeClusters = []string{}
 	}
 
 	cveSummaries, err := s.querier.ListCveSummaries(ctx, sql.ListCveSummariesParams{
-		Cluster:                  request.GetFilter().Cluster,
-		Namespace:                request.GetFilter().Namespace,
-		WorkloadName:             request.GetFilter().Workload,
-		WorkloadType:             request.GetFilter().WorkloadType,
-		ImageName:                request.GetFilter().ImageName,
-		ImageTag:                 request.GetFilter().ImageTag,
-		IncludeManagementCluster: request.IncludeManagementCluster,
-		ExcludeNamespaces:        exNs,
-		OrderBy:                  SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
-		Limit:                    request.Limit,
-		Offset:                   request.Offset,
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadName:      request.GetFilter().Workload,
+		WorkloadType:      request.GetFilter().WorkloadType,
+		ImageName:         request.GetFilter().ImageName,
+		ImageTag:          request.GetFilter().ImageTag,
+		ExcludeClusters:   excludeClusters,
+		ExcludeNamespaces: excludeNamespaces,
+		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
+		Limit:             request.Limit,
+		Offset:            request.Offset,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to list cve summaries")
+		return nil, status.Error(codes.Internal, "failed to list cve summaries: "+err.Error())
 	}
 
 	total := 0

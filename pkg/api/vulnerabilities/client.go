@@ -124,15 +124,15 @@ func (c *client) ListWorkloadsForVulnerabilityById(ctx context.Context, id strin
 func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilityFilter VulnerabilityFilter, opts ...Option) (*ListWorkloadsForVulnerabilityResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListWorkloadsForVulnerability(ctx, &ListWorkloadsForVulnerabilityRequest{
-		Filter:                   o.Filter,
-		Limit:                    o.Limit,
-		Offset:                   o.Offset,
-		OrderBy:                  o.OrderBy,
-		CveIds:                   vulnerabilityFilter.CveIds,
-		CvssScore:                vulnerabilityFilter.CvssScore,
-		IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
-		ExcludeNamespaces:        o.ExcludeNamespaces,
-	})
+		Filter:            o.Filter,
+		Limit:             o.Limit,
+		Offset:            o.Offset,
+		OrderBy:           o.OrderBy,
+		CveIds:            vulnerabilityFilter.CveIds,
+		CvssScore:         vulnerabilityFilter.CvssScore,
+		ExcludeNamespaces: o.ExcludeNamespaces,
+		ExcludeClusters:   o.ExcludeClusters,
+	}, o.CallOptions...)
 }
 
 func (c *client) ListCveSummaries(ctx context.Context, opts ...Option) (*ListCveSummariesResponse, error) {
@@ -143,7 +143,7 @@ func (c *client) ListCveSummaries(ctx context.Context, opts ...Option) (*ListCve
 		Offset:            o.Offset,
 		OrderBy:           o.OrderBy,
 		ExcludeNamespaces: o.ExcludeNamespaces,
-		// IncludeManagementCluster: &vulnerabilityFilter.IncludeManagementCluster,
+		ExcludeClusters:   o.ExcludeClusters,
 	}, o.CallOptions...)
 }
 

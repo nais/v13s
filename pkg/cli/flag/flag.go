@@ -12,27 +12,27 @@ import (
 )
 
 type Options struct {
-	Cluster                  string
-	Namespace                string
-	Workload                 string
-	Limit                    int
-	Order                    string
-	Since                    string
-	SinceType                string
-	WorkloadType             string
-	ShowJobs                 bool
-	WorkloadState            string
-	ImageState               string
-	Suppressed               bool
-	Package                  string
-	CveId                    string
-	Unresolved               bool
-	Severity                 string
-	Output                   string
-	CveIds                   string
-	CvssScore                float64
-	IncludeManagementCluster bool
-	ExcludeNamespaces        []string
+	Cluster           string
+	Namespace         string
+	Workload          string
+	Limit             int
+	Order             string
+	Since             string
+	SinceType         string
+	WorkloadType      string
+	ShowJobs          bool
+	WorkloadState     string
+	ImageState        string
+	Suppressed        bool
+	Package           string
+	CveId             string
+	Unresolved        bool
+	Severity          string
+	Output            string
+	CveIds            string
+	CvssScore         float64
+	ExcludeClusters   []string
+	ExcludeNamespaces []string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -119,16 +119,15 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Usage:       "CVSS score",
 			Destination: &opts.CvssScore,
 		},
-		&cli.BoolFlag{
-			Name:        "include-management-cluster",
-			Aliases:     []string{"imc"},
-			Value:       false,
-			Usage:       "include workloads from management cluster",
-			Destination: &opts.IncludeManagementCluster,
+		&cli.StringSliceFlag{
+			Name:        "exclude-clusters",
+			Aliases:     []string{"excs"},
+			Usage:       "clusters to exclude (can be specified multiple times)",
+			Destination: &opts.ExcludeClusters,
 		},
 		&cli.StringSliceFlag{
 			Name:        "exclude-namespaces",
-			Aliases:     []string{"ens"},
+			Aliases:     []string{"exns"},
 			Usage:       "namespaces to exclude (can be specified multiple times)",
 			Destination: &opts.ExcludeNamespaces,
 		},
@@ -244,7 +243,11 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 	}
 
 	if o.ExcludeNamespaces != nil && len(o.ExcludeNamespaces) > 0 {
-		opts = append(opts, vulnerabilities.ExcludeNamespacesFilter(strings.Join(o.ExcludeNamespaces, ",")))
+		opts = append(opts, vulnerabilities.ExcludeNamespacesFilter(o.ExcludeNamespaces...))
+	}
+
+	if o.ExcludeClusters != nil && len(o.ExcludeClusters) > 0 {
+		opts = append(opts, vulnerabilities.ExcludeClustersFilter(o.ExcludeClusters...))
 	}
 
 	return opts

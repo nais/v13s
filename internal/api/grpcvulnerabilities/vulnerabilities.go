@@ -396,23 +396,28 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		filter = &vulnerabilities.Filter{}
 	}
 
-	exNs := request.GetExcludeNamespaces()
-	if exNs == nil {
-		exNs = []string{}
+	excludeNamespaces := request.GetExcludeNamespaces()
+	if excludeNamespaces == nil {
+		excludeNamespaces = []string{}
+	}
+
+	excludeClusters := request.GetExcludeClusters()
+	if excludeClusters == nil {
+		excludeClusters = []string{}
 	}
 
 	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
-		Cluster:                  filter.Cluster,
-		Namespace:                filter.Namespace,
-		WorkloadTypes:            filter.GetWorkloadTypes(),
-		WorkloadName:             filter.Workload,
-		CveIds:                   request.CveIds,
-		CvssScore:                request.CvssScore,
-		IncludeManagementCluster: request.IncludeManagementCluster,
-		ExcludeNamespaces:        exNs,
-		Offset:                   offset,
-		Limit:                    limit,
-		OrderBy:                  SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+		Cluster:           filter.Cluster,
+		Namespace:         filter.Namespace,
+		WorkloadTypes:     filter.GetWorkloadTypes(),
+		WorkloadName:      filter.Workload,
+		CveIds:            request.CveIds,
+		CvssScore:         request.CvssScore,
+		ExcludeClusters:   excludeClusters,
+		ExcludeNamespaces: excludeNamespaces,
+		Offset:            offset,
+		Limit:             limit,
+		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list workloads for vulnerability: %w", err)

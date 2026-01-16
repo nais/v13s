@@ -92,12 +92,12 @@ type Options struct {
 	SinceType         *SinceType
 	Severity          *Severity
 	ExcludeNamespaces []string
+	ExcludeClusters   []string
 }
 
 type VulnerabilityFilter struct {
-	CveIds                   []string
-	CvssScore                *float64
-	IncludeManagementCluster bool
+	CveIds    []string
+	CvssScore *float64
 }
 
 type funcOption struct {
@@ -261,6 +261,12 @@ func ExcludeNamespacesFilter(namespace ...string) Option {
 	})
 }
 
+func ExcludeClustersFilter(cluster ...string) Option {
+	return newFuncOption(func(o *Options) {
+		o.ExcludeClusters = append(o.ExcludeClusters, cluster...)
+	})
+}
+
 func applyOptions(opts ...Option) *Options {
 	o := &Options{}
 	for _, opt := range opts {
@@ -276,6 +282,10 @@ func applyOptions(opts ...Option) *Options {
 	// If single-namespace include is set, exclude list is irrelevant
 	if o.Filter.Namespace != nil {
 		o.ExcludeNamespaces = nil
+	}
+
+	if o.Filter.Cluster != nil {
+		o.ExcludeClusters = nil
 	}
 
 	return o

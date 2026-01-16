@@ -5,5 +5,6 @@ package main
 
 import (
 	_ "github.com/sqlc-dev/sqlc/cmd/sqlc"
+	_ "github.com/urfave/cli/v3"
 	_ "github.com/vektra/mockery/v2"
 )

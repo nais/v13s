@@ -33,8 +33,8 @@ WITH cve_data AS (
         OR v.image_name = $9::TEXT)
     AND ($10::TEXT IS NULL
         OR v.image_tag = $10::TEXT)
-    AND ($11::BOOLEAN IS TRUE
-        OR w.cluster != 'management')
+    AND (cardinality($11::TEXT[]) = 0
+        OR w.cluster <> ALL ($11::TEXT[]))
 GROUP BY
     c.cve_id
 )
@@ -87,17 +87,17 @@ LIMIT $3
 `
 
 type ListCveSummariesParams struct {
-	OrderBy                  interface{}
-	Offset                   int32
-	Limit                    int32
-	Cluster                  *string
-	Namespace                *string
-	ExcludeNamespaces        []string
-	WorkloadType             *string
-	WorkloadName             *string
-	ImageName                *string
-	ImageTag                 *string
-	IncludeManagementCluster *bool
+	OrderBy           interface{}
+	Offset            int32
+	Limit             int32
+	Cluster           *string
+	Namespace         *string
+	ExcludeNamespaces []string
+	WorkloadType      *string
+	WorkloadName      *string
+	ImageName         *string
+	ImageTag          *string
+	ExcludeClusters   []string
 }
 
 type ListCveSummariesRow struct {
@@ -126,7 +126,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.WorkloadName,
 		arg.ImageName,
 		arg.ImageTag,
-		arg.IncludeManagementCluster,
+		arg.ExcludeClusters,
 	)
 	if err != nil {
 		return nil, err

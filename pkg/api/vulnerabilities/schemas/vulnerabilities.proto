@@ -265,8 +265,8 @@ message ListWorkloadsForVulnerabilityRequest {
   int32 limit = 4;
   int32 offset = 5;
   optional OrderBy order_by = 6;
-  optional bool include_management_cluster = 7;
-  repeated string exclude_namespaces = 8;
+  repeated string exclude_namespaces = 7;
+  repeated string  exclude_clusters = 8;
 }
 
 message ListWorkloadsForVulnerabilityResponse {
@@ -281,11 +281,11 @@ message WorkloadForVulnerability {
 
 message ListCveSummariesRequest {
   Filter filter = 1;
-  int32 limit = 4;
-  int32 offset = 5;
-  optional OrderBy order_by = 6;
-  optional bool include_management_cluster = 7;
-  repeated string exclude_namespaces = 8;
+  int32 limit = 2;
+  int32 offset = 3;
+  optional OrderBy order_by = 4;
+  repeated string exclude_namespaces = 5;
+  repeated string  exclude_clusters = 6;
 }
 
 message ListCveSummariesResponse {

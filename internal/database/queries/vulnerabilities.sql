@@ -882,8 +882,8 @@ AND (
     ELSE
         TRUE
     END)
-AND (sqlc.narg('includeManagementCluster')::BOOLEAN IS TRUE
-    OR w.cluster != 'management')
+AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
+    OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN
         w.namespace = sqlc.narg('namespace')::TEXT
@@ -913,6 +913,20 @@ AND (
         TRUE
     END)
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
+        CASE WHEN v.cvss_score = 0
+            OR v.cvss_score IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
+        v.cvss_score
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_asc' THEN
+        v.cvss_score
+    END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
         v.cve_id
     END DESC,
