@@ -916,15 +916,17 @@ WITH filtered_data AS (
     AND COALESCE(sv.suppressed, FALSE) = FALSE
 ),
 workload_count AS (
-    SELECT COUNT(DISTINCT workload_id)::INT AS total
-    FROM filtered_data
+    SELECT
+        COUNT(DISTINCT workload_id)::INT AS total
+    FROM
+        filtered_data
 )
 SELECT
     fd.*,
     wc.total AS total_count
 FROM
     filtered_data fd
-CROSS JOIN workload_count wc
+    CROSS JOIN workload_count wc
 ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
         CASE WHEN fd.cvss_score = 0
@@ -966,4 +968,4 @@ ORDER BY
     END DESC,
     fd.id ASC
 LIMIT sqlc.arg('limit')
-OFFSET sqlc.arg('offset');
+    OFFSET sqlc.arg('offset');
