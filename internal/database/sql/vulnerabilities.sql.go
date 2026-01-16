@@ -1265,6 +1265,7 @@ const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilitie
 WITH filtered_data AS (
     SELECT
         v.id,
+        w.id AS workload_id,
         w.name AS workload_name,
         w.workload_type,
         w.namespace,
@@ -1339,17 +1340,18 @@ WITH filtered_data AS (
         ELSE
             TRUE
         END)
+    AND COALESCE(sv.suppressed, FALSE) = FALSE
 ),
 workload_count AS (
-    SELECT COUNT(DISTINCT (cluster, namespace, workload_name, workload_type))::INT AS total_count
+    SELECT COUNT(DISTINCT workload_id)::INT AS total
     FROM filtered_data
 )
 SELECT
-    fd.id, fd.workload_name, fd.workload_type, fd.namespace, fd.cluster, fd.image_name, fd.image_tag, fd.latest_version, fd.package, fd.cve_id, fd.created_at, fd.updated_at, fd.severity_since, fd.last_severity, fd.cve_title, fd.cve_desc, fd.cve_link, fd.severity, fd.cve_created_at, fd.cve_updated_at, fd.suppressed, fd.reason, fd.reason_text, fd.suppressed_by, fd.suppressed_at, fd.cvss_score,
-    wc.total_count
+    fd.id, fd.workload_id, fd.workload_name, fd.workload_type, fd.namespace, fd.cluster, fd.image_name, fd.image_tag, fd.latest_version, fd.package, fd.cve_id, fd.created_at, fd.updated_at, fd.severity_since, fd.last_severity, fd.cve_title, fd.cve_desc, fd.cve_link, fd.severity, fd.cve_created_at, fd.cve_updated_at, fd.suppressed, fd.reason, fd.reason_text, fd.suppressed_by, fd.suppressed_at, fd.cvss_score,
+    wc.total AS total_count
 FROM
-    filtered_data fd,
-    workload_count wc
+    filtered_data fd
+CROSS JOIN workload_count wc
 ORDER BY
     CASE WHEN $1 = 'cvss_score_desc' THEN
         CASE WHEN fd.cvss_score = 0
@@ -1412,6 +1414,7 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 
 type ListWorkloadsForVulnerabilitiesRow struct {
 	ID            pgtype.UUID
+	WorkloadID    pgtype.UUID
 	WorkloadName  string
 	WorkloadType  string
 	Namespace     string
@@ -1465,6 +1468,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		var i ListWorkloadsForVulnerabilitiesRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.WorkloadID,
 			&i.WorkloadName,
 			&i.WorkloadType,
 			&i.Namespace,

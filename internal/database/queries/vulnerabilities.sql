@@ -838,6 +838,7 @@ OFFSET sqlc.arg('offset');
 WITH filtered_data AS (
     SELECT
         v.id,
+        w.id AS workload_id,
         w.name AS workload_name,
         w.workload_type,
         w.namespace,
@@ -912,17 +913,18 @@ WITH filtered_data AS (
         ELSE
             TRUE
         END)
+    AND COALESCE(sv.suppressed, FALSE) = FALSE
 ),
 workload_count AS (
-    SELECT COUNT(DISTINCT (cluster, namespace, workload_name, workload_type))::INT AS total_count
+    SELECT COUNT(DISTINCT workload_id)::INT AS total
     FROM filtered_data
 )
 SELECT
     fd.*,
-    wc.total_count
+    wc.total AS total_count
 FROM
-    filtered_data fd,
-    workload_count wc
+    filtered_data fd
+CROSS JOIN workload_count wc
 ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
         CASE WHEN fd.cvss_score = 0
