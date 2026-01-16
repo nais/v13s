@@ -260,7 +260,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
 		WorkloadName:      request.GetFilter().Workload,
-		WorkloadType:      request.GetFilter().WorkloadType,
+		WorkloadTypes:     request.GetFilter().GetWorkloadTypes(),
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
 		ExcludeClusters:   excludeClusters,

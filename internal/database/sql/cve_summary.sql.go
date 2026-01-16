@@ -28,8 +28,8 @@ WITH cve_data AS (
         OR w.namespace = $5::TEXT)
     AND (cardinality($6::TEXT[]) = 0
         OR w.namespace <> ALL ($6::TEXT[]))
-    AND ($7::TEXT IS NULL
-        OR w.workload_type = $7::TEXT)
+    AND ($7::TEXT[] IS NULL
+        OR w.workload_type = ANY ($7::TEXT[]))
     AND ($8::TEXT IS NULL
         OR w.name = $8::TEXT)
     AND ($9::TEXT IS NULL
@@ -38,6 +38,7 @@ WITH cve_data AS (
         OR v.image_tag = $10::TEXT)
     AND (cardinality($11::TEXT[]) = 0
         OR w.cluster <> ALL ($11::TEXT[]))
+    AND COALESCE(sv.suppressed, FALSE) = FALSE
 GROUP BY
     c.cve_id
 )
@@ -96,7 +97,7 @@ type ListCveSummariesParams struct {
 	Cluster           *string
 	Namespace         *string
 	ExcludeNamespaces []string
-	WorkloadType      *string
+	WorkloadTypes     []string
 	WorkloadName      *string
 	ImageName         *string
 	ImageTag          *string
@@ -125,7 +126,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.Cluster,
 		arg.Namespace,
 		arg.ExcludeNamespaces,
-		arg.WorkloadType,
+		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.ImageName,
 		arg.ImageTag,
