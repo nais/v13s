@@ -2,12 +2,15 @@
 WITH cve_data AS (
     SELECT
         c.*,
-        COUNT(DISTINCT w.id)::INT AS affected_workloads
+        COUNT(DISTINCT v.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
         JOIN cve c ON v.cve_id = c.cve_id
         JOIN workloads w ON w.image_name = v.image_name
             AND w.image_tag = v.image_tag
+        LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
+            AND v.package = sv.package
+            AND v.cve_id = sv.cve_id
     WHERE (sqlc.narg('cluster')::TEXT IS NULL
         OR w.cluster = sqlc.narg('cluster')::TEXT)
     AND (sqlc.narg('namespace')::TEXT IS NULL

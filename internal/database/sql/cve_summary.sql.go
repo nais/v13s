@@ -13,12 +13,15 @@ const listCveSummaries = `-- name: ListCveSummaries :many
 WITH cve_data AS (
     SELECT
         c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score,
-        COUNT(DISTINCT w.id)::INT AS affected_workloads
+        COUNT(DISTINCT v.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
         JOIN cve c ON v.cve_id = c.cve_id
         JOIN workloads w ON w.image_name = v.image_name
             AND w.image_tag = v.image_tag
+        LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
+            AND v.package = sv.package
+            AND v.cve_id = sv.cve_id
     WHERE ($4::TEXT IS NULL
         OR w.cluster = $4::TEXT)
     AND ($5::TEXT IS NULL
