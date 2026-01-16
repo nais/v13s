@@ -862,7 +862,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     v.cvss_score,
-    COUNT(v.id) OVER () AS total_count
+    COUNT(DISTINCT (w.cluster, w.namespace, w.name, w.workload_type)) OVER () AS total_count
 FROM
     vulnerabilities v
     JOIN cve c ON v.cve_id = c.cve_id

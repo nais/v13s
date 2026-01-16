@@ -13,7 +13,7 @@ const listCveSummaries = `-- name: ListCveSummaries :many
 WITH cve_data AS (
     SELECT
         c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score,
-        COUNT(DISTINCT v.id)::INT AS affected_workloads
+        COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
         JOIN cve c ON v.cve_id = c.cve_id

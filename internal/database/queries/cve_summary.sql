@@ -2,7 +2,7 @@
 WITH cve_data AS (
     SELECT
         c.*,
-        COUNT(DISTINCT v.id)::INT AS affected_workloads
+        COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
         JOIN cve c ON v.cve_id = c.cve_id
