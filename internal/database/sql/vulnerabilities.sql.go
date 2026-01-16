@@ -1262,128 +1262,142 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 }
 
 const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilities :many
+WITH filtered_data AS (
+    SELECT
+        v.id,
+        w.name AS workload_name,
+        w.workload_type,
+        w.namespace,
+        w.cluster,
+        w.image_name,
+        w.image_tag,
+        v.latest_version,
+        v.package,
+        v.cve_id,
+        v.created_at,
+        v.updated_at,
+        v.severity_since,
+        v.last_severity,
+        c.cve_title,
+        c.cve_desc,
+        c.cve_link,
+        c.severity AS severity,
+        c.created_at AS cve_created_at,
+        c.updated_at AS cve_updated_at,
+        COALESCE(sv.suppressed, FALSE) AS suppressed,
+        sv.reason,
+        sv.reason_text,
+        sv.suppressed_by,
+        sv.updated_at AS suppressed_at,
+        v.cvss_score
+    FROM
+        vulnerabilities v
+        JOIN cve c ON v.cve_id = c.cve_id
+        JOIN workloads w ON w.image_name = v.image_name
+            AND w.image_tag = v.image_tag
+        LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
+            AND v.package = sv.package
+            AND v.cve_id = sv.cve_id
+    WHERE ($4::TEXT[] IS NULL
+        OR v.cve_id = ANY ($4::TEXT[]))
+    AND ($5::FLOAT8 IS NULL
+        OR (v.cvss_score IS NOT NULL
+            AND v.cvss_score >= $5::FLOAT8))
+    AND (
+        CASE WHEN $6::TEXT IS NOT NULL THEN
+            w.cluster = $6::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (cardinality($7::TEXT[]) = 0
+        OR w.cluster <> ALL ($7::TEXT[]))
+    AND (
+        CASE WHEN $8::TEXT IS NOT NULL THEN
+            w.namespace = $8::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (cardinality($9::TEXT[]) = 0
+        OR w.namespace <> ALL ($9::TEXT[]))
+    AND ($10::TEXT[] IS NULL
+        OR w.workload_type = ANY ($10::TEXT[]))
+    AND (
+        CASE WHEN $11::TEXT IS NOT NULL THEN
+            w.name = $11::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $12::TEXT IS NOT NULL THEN
+            v.image_name = $12::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $13::TEXT IS NOT NULL THEN
+            v.image_tag = $13::TEXT
+        ELSE
+            TRUE
+        END)
+),
+workload_count AS (
+    SELECT COUNT(DISTINCT (cluster, namespace, workload_name, workload_type))::INT AS total_count
+    FROM filtered_data
+)
 SELECT
-    v.id,
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    w.image_name,
-    w.image_tag,
-    v.latest_version,
-    v.package,
-    v.cve_id,
-    v.created_at,
-    v.updated_at,
-    v.severity_since,
-    v.last_severity,
-    c.cve_title,
-    c.cve_desc,
-    c.cve_link,
-    c.severity AS severity,
-    c.created_at AS cve_created_at,
-    c.updated_at AS cve_updated_at,
-    COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
-    sv.reason_text,
-    sv.suppressed_by,
-    sv.updated_at AS suppressed_at,
-    v.cvss_score,
-    COUNT(DISTINCT (w.cluster, w.namespace, w.name, w.workload_type)) OVER () AS total_count
+    fd.id, fd.workload_name, fd.workload_type, fd.namespace, fd.cluster, fd.image_name, fd.image_tag, fd.latest_version, fd.package, fd.cve_id, fd.created_at, fd.updated_at, fd.severity_since, fd.last_severity, fd.cve_title, fd.cve_desc, fd.cve_link, fd.severity, fd.cve_created_at, fd.cve_updated_at, fd.suppressed, fd.reason, fd.reason_text, fd.suppressed_by, fd.suppressed_at, fd.cvss_score,
+    wc.total_count
 FROM
-    vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
-    JOIN workloads w ON w.image_name = v.image_name
-        AND w.image_tag = v.image_tag
-    LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
-        AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
-WHERE ($1::TEXT[] IS NULL
-    OR v.cve_id = ANY ($1::TEXT[]))
-AND ($2::FLOAT8 IS NULL
-    OR (v.cvss_score IS NOT NULL
-        AND v.cvss_score >= $2::FLOAT8))
-AND (
-    CASE WHEN $3::TEXT IS NOT NULL THEN
-        w.cluster = $3::TEXT
-    ELSE
-        TRUE
-    END)
-AND (cardinality($4::TEXT[]) = 0
-    OR w.cluster <> ALL ($4::TEXT[]))
-AND (
-    CASE WHEN $5::TEXT IS NOT NULL THEN
-        w.namespace = $5::TEXT
-    ELSE
-        TRUE
-    END)
-AND (cardinality($6::TEXT[]) = 0
-    OR w.namespace <> ALL ($6::TEXT[]))
-AND ($7::TEXT[] IS NULL
-    OR w.workload_type = ANY ($7::TEXT[]))
-AND (
-    CASE WHEN $8::TEXT IS NOT NULL THEN
-        w.name = $8::TEXT
-    ELSE
-        TRUE
-    END)
-AND (
-    CASE WHEN $9::TEXT IS NOT NULL THEN
-        v.image_name = $9::TEXT
-    ELSE
-        TRUE
-    END)
-AND (
-    CASE WHEN $10::TEXT IS NOT NULL THEN
-        v.image_tag = $10::TEXT
-    ELSE
-        TRUE
-    END)
+    filtered_data fd,
+    workload_count wc
 ORDER BY
-    CASE WHEN $11 = 'cvss_score_desc' THEN
-        CASE WHEN v.cvss_score = 0
-            OR v.cvss_score IS NULL THEN
+    CASE WHEN $1 = 'cvss_score_desc' THEN
+        CASE WHEN fd.cvss_score = 0
+            OR fd.cvss_score IS NULL THEN
             1
         ELSE
             0
         END
     END ASC,
-    CASE WHEN $11 = 'cvss_score_desc' THEN
-        v.cvss_score
+    CASE WHEN $1 = 'cvss_score_desc' THEN
+        fd.cvss_score
     END DESC,
-    CASE WHEN $11 = 'cvss_score_asc' THEN
-        v.cvss_score
+    CASE WHEN $1 = 'cvss_score_asc' THEN
+        fd.cvss_score
     END ASC,
-    CASE WHEN $11 = 'cve_id_desc' THEN
-        v.cve_id
+    CASE WHEN $1 = 'cve_id_desc' THEN
+        fd.cve_id
     END DESC,
-    CASE WHEN $11 = 'cve_id_asc' THEN
-        v.cve_id
+    CASE WHEN $1 = 'cve_id_asc' THEN
+        fd.cve_id
     END ASC,
-    CASE WHEN $11 = 'workload_asc' THEN
-        w.name
+    CASE WHEN $1 = 'workload_asc' THEN
+        fd.workload_name
     END ASC,
-    CASE WHEN $11 = 'workload_desc' THEN
-        w.name
+    CASE WHEN $1 = 'workload_desc' THEN
+        fd.workload_name
     END DESC,
-    CASE WHEN $11 = 'namespace_asc' THEN
-        w.namespace
+    CASE WHEN $1 = 'namespace_asc' THEN
+        fd.namespace
     END ASC,
-    CASE WHEN $11 = 'namespace_desc' THEN
-        w.namespace
+    CASE WHEN $1 = 'namespace_desc' THEN
+        fd.namespace
     END DESC,
-    CASE WHEN $11 = 'cluster_asc' THEN
-        w.cluster
+    CASE WHEN $1 = 'cluster_asc' THEN
+        fd.cluster
     END ASC,
-    CASE WHEN $11 = 'cluster_desc' THEN
-        w.cluster
+    CASE WHEN $1 = 'cluster_desc' THEN
+        fd.cluster
     END DESC,
-    v.id ASC
-LIMIT $13
-OFFSET $12
+    fd.id ASC
+LIMIT $3
+OFFSET $2
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
+	OrderBy           interface{}
+	Offset            int32
+	Limit             int32
 	CveIds            []string
 	CvssScore         *float64
 	Cluster           *string
@@ -1394,9 +1408,6 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	WorkloadName      *string
 	ImageName         *string
 	ImageTag          *string
-	OrderBy           interface{}
-	Offset            int32
-	Limit             int32
 }
 
 type ListWorkloadsForVulnerabilitiesRow struct {
@@ -1426,11 +1437,14 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
 	CvssScore     *float64
-	TotalCount    int64
+	TotalCount    int32
 }
 
 func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListWorkloadsForVulnerabilitiesParams) ([]*ListWorkloadsForVulnerabilitiesRow, error) {
 	rows, err := q.db.Query(ctx, listWorkloadsForVulnerabilities,
+		arg.OrderBy,
+		arg.Offset,
+		arg.Limit,
 		arg.CveIds,
 		arg.CvssScore,
 		arg.Cluster,
@@ -1441,9 +1455,6 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.WorkloadName,
 		arg.ImageName,
 		arg.ImageTag,
-		arg.OrderBy,
-		arg.Offset,
-		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
