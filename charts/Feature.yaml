@@ -1,5 +1,10 @@
 environmentKinds:
   - management
+
+dependencies:
+  - allOf:
+      - dependencytrack
+
 values:
   apiserverIP:
     displayName: API server IP
