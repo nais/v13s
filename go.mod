@@ -16,7 +16,7 @@ require (
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.14.1
 	github.com/exaring/otelpgx v0.10.0
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
