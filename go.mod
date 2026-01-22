@@ -16,7 +16,7 @@ require (
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.14.1
 	github.com/exaring/otelpgx v0.10.0
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.9.0
@@ -36,8 +36,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.10.0
 	github.com/sigstore/cosign/v3 v3.0.4
-	github.com/sigstore/rekor v1.4.3
-	github.com/sirupsen/logrus v1.9.4-0.20230606125235-dd1b4c2e81af
+	github.com/sigstore/rekor v1.5.0
+	github.com/sirupsen/logrus v1.9.4
 	github.com/sqlc-dev/sqlc v1.30.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
@@ -158,12 +158,12 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.24.1 // indirect
-	github.com/go-openapi/errors v0.22.5 // indirect
+	github.com/go-openapi/errors v0.22.6 // indirect
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
 	github.com/go-openapi/jsonreference v0.21.4 // indirect
 	github.com/go-openapi/loads v0.23.2 // indirect
 	github.com/go-openapi/runtime v0.29.2 // indirect
-	github.com/go-openapi/spec v0.22.2 // indirect
+	github.com/go-openapi/spec v0.22.3 // indirect
 	github.com/go-openapi/strfmt v0.25.0 // indirect
 	github.com/go-openapi/swag v0.25.4 // indirect
 	github.com/go-openapi/swag/cmdutils v0.25.4 // indirect
@@ -195,7 +195,7 @@ require (
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.7 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.9 // indirect
 	github.com/googleapis/gax-go/v2 v2.16.0 // indirect
 	github.com/gookit/color v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
@@ -343,7 +343,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/ini.v1 v1.67.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.6.1 // indirect
@@ -358,7 +358,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.20.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/release-utils v0.12.2 // indirect
+	sigs.k8s.io/release-utils v0.12.3 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
