@@ -1,6 +1,8 @@
 package github
 
 import (
+	"strings"
+
 	"github.com/sigstore/cosign/v3/pkg/cosign"
 )
 
@@ -19,12 +21,14 @@ func NewCertificateIdentity(organisations []string) *CertificateIdentity {
 }
 
 func (c *CertificateIdentity) GetIdentities() []cosign.Identity {
-	var ids []cosign.Identity
-	for _, org := range c.Organizations {
-		ids = append(ids, cosign.Identity{
-			Issuer:        IssuerUrl,
-			SubjectRegExp: "^https:\\/\\/github\\.com\\/" + org + "\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/.+?(?:.yaml|.yml).*$",
-		})
+	if len(c.Organizations) == 0 {
+		return nil
 	}
-	return ids
+
+	orgs := strings.Join(c.Organizations, "|")
+	subject := "^https:\\/\\/github\\.com\\/(" + orgs + ")\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/.+?(?:\\.yaml|\\.yml).*$"
+
+	return []cosign.Identity{
+		{Issuer: IssuerUrl, SubjectRegExp: subject},
+	}
 }

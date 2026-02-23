@@ -23,7 +23,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 )
 
 func NewMeterProvider(ctx context.Context, cfg config.MetricConfig, log *logrus.Entry, c ...promClient.Collector) (*sdktrace.TracerProvider, promClient.Gatherer, error) {

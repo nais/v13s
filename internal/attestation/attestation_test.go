@@ -19,8 +19,9 @@ import (
 
 func TestGetAttestation_NoAttestation(t *testing.T) {
 	v := &verifier{
-		log:  logrus.NewEntry(logrus.New()),
-		opts: &cosign.CheckOpts{}, // doesn't need to be real for this test
+		log:        logrus.NewEntry(logrus.New()),
+		optsV3:     &cosign.CheckOpts{NewBundleFormat: true},
+		optsLegacy: &cosign.CheckOpts{NewBundleFormat: false},
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
 			return nil, fmt.Errorf("no matching attestations")
 		},
@@ -38,9 +39,11 @@ func TestGetAttestation_Success(t *testing.T) {
 	rBundle := loadRekorBundleFromFile(t, "testdata/rekor-bundle.json")
 
 	v := &verifier{
-		log:  logrus.NewEntry(logrus.New()),
-		opts: &cosign.CheckOpts{},
+		log:        logrus.NewEntry(logrus.New()),
+		optsV3:     &cosign.CheckOpts{NewBundleFormat: true},
+		optsLegacy: &cosign.CheckOpts{NewBundleFormat: false},
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			// return success regardless of v3/legacy in this unit test
 			return []oci.Signature{&fakeSig{
 				payload: dsse,
 				bundle:  rBundle,
@@ -63,6 +66,35 @@ func TestGetAttestation_Success(t *testing.T) {
 	require.Equal(t, "github-hosted", a.Metadata["runnerEnvironment"])
 	require.Equal(t, "180735265", a.Metadata["logIndex"])
 	require.Equal(t, "1741769683", a.Metadata["integratedTime"])
+}
+
+func TestGetAttestation_TriesBundleThenFallsBack(t *testing.T) {
+	dsse := loadDSSEFromFile(t, "testdata/cyclonedx-dsse.json")
+	rBundle := loadRekorBundleFromFile(t, "testdata/rekor-bundle.json")
+
+	var sawV3, sawLegacy bool
+
+	v := &verifier{
+		log:        logrus.NewEntry(logrus.New()),
+		optsV3:     &cosign.CheckOpts{NewBundleFormat: true},
+		optsLegacy: &cosign.CheckOpts{NewBundleFormat: false},
+		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			if co.NewBundleFormat {
+				sawV3 = true
+				// Simulate: no bundles found in registry
+				return nil, fmt.Errorf("no valid bundles exist in registry")
+			}
+			sawLegacy = true
+			// Legacy succeeds
+			return []oci.Signature{&fakeSig{payload: dsse, bundle: rBundle}}, nil
+		},
+	}
+
+	att, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
+	require.NoError(t, err)
+	require.NotNil(t, att)
+	require.True(t, sawV3, "should try v3 bundle path first")
+	require.True(t, sawLegacy, "should fall back to legacy after v3 fails")
 }
 
 func TestDSSEParsePayload(t *testing.T) {

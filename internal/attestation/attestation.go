@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
@@ -22,15 +23,14 @@ import (
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v3/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
-	"github.com/sigstore/cosign/v3/pkg/cosign/pkcs11key"
 	"github.com/sigstore/cosign/v3/pkg/oci"
 	"github.com/sigstore/cosign/v3/pkg/oci/remote"
-	"github.com/sigstore/cosign/v3/pkg/signature"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	ErrNoAttestation = "no matching attestations"
+	ErrNoAttestation           = "no matching attestations"
+	ErrNoValidBundleInRegistry = "no valid bundles exist in registry"
 )
 
 type Verifier interface {
@@ -39,37 +39,86 @@ type Verifier interface {
 
 var _ Verifier = &verifier{}
 
-type VerifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, *cosign.CheckOpts, error)
-
 type verifier struct {
-	opts       *cosign.CheckOpts
-	log        *logrus.Entry
+	log *logrus.Entry
+
+	optsV3     *cosign.CheckOpts
+	optsLegacy *cosign.CheckOpts
+
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
 func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
 	ids := github.NewCertificateIdentity(organizations).GetIdentities()
-	opts, err := CosignOptions(ctx, "", ids)
-	if err != nil {
-		return nil, err
+
+	keychain := authn.NewMultiKeychain(
+		authn.DefaultKeychain,
+		google.Keychain,
+		gh.Keychain,
+	)
+	registryOpts := []remote.Option{
+		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(keychain)),
 	}
 
-	return &verifier{
-		opts: opts,
-		log:  log,
-		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
-			sigs, _, err := cosign.VerifyImageAttestations(ctx, ref, co)
-			var tErr *transport.Error
-			if errors.As(err, &tErr) {
-				if tErr.StatusCode < 500 && tErr.StatusCode >= 400 {
-					return sigs, model.ToUnrecoverableError(fmt.Errorf("status: %d, error: %w", tErr.StatusCode, tErr), "attestation")
-				} else {
-					return sigs, model.ToRecoverableError(tErr, "attestation")
-				}
-			}
-			return sigs, err
+	trustedRoot, err := cosign.TrustedRoot()
+	if err != nil {
+		return nil, fmt.Errorf("getting trusted root: %w", err)
+	}
+
+	rootCerts, err := fulcio.GetRoots()
+	if err != nil {
+		return nil, fmt.Errorf("getting Fulcio roots: %w", err)
+	}
+	intermediateCerts, err := fulcio.GetIntermediates()
+	if err != nil {
+		return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
+	}
+	rekorPubKeys, err := cosign.GetRekorPubs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting Rekor public keys: %w", err)
+	}
+	ctLogPubKeys, err := cosign.GetCTLogPubs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting CT log public keys: %w", err)
+	}
+
+	v := &verifier{
+		log: log,
+		optsV3: &cosign.CheckOpts{
+			RegistryClientOpts: registryOpts,
+			NewBundleFormat:    true,
+			TrustedMaterial:    trustedRoot,
+			Identities:         ids,
 		},
-	}, nil
+		optsLegacy: &cosign.CheckOpts{
+			RegistryClientOpts: registryOpts,
+			NewBundleFormat:    false,
+			Identities:         ids,
+			RootCerts:          rootCerts,
+			IntermediateCerts:  intermediateCerts,
+			RekorPubKeys:       rekorPubKeys,
+			CTLogPubKeys:       ctLogPubKeys,
+		},
+	}
+
+	v.verifyFunc = func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+		sigs, _, err := cosign.VerifyImageAttestations(ctx, ref, co)
+
+		var tErr *transport.Error
+		if errors.As(err, &tErr) {
+			if tErr.StatusCode >= 400 && tErr.StatusCode < 500 {
+				return sigs, model.ToUnrecoverableError(
+					fmt.Errorf("status: %d, error: %w", tErr.StatusCode, tErr),
+					"attestation",
+				)
+			}
+			return sigs, model.ToRecoverableError(tErr, "attestation")
+		}
+
+		return sigs, err
+	}
+
+	return v, nil
 }
 
 type Attestation struct {
@@ -85,12 +134,10 @@ func (a *Attestation) Compress() ([]byte, error) {
 
 	var buffer bytes.Buffer
 	writer := gzip.NewWriter(&buffer)
-	_, err = writer.Write(data)
-	if err != nil {
+	if _, err := writer.Write(data); err != nil {
 		return nil, err
 	}
-	err = writer.Close()
-	if err != nil {
+	if err := writer.Close(); err != nil {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
@@ -103,13 +150,13 @@ func Decompress(data []byte) (*Attestation, error) {
 		return nil, err
 	}
 	defer reader.Close()
+
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 	var attestation *Attestation
-	err = json.Unmarshal(b, &attestation)
-	if err != nil {
+	if err := json.Unmarshal(b, &attestation); err != nil {
 		return nil, err
 	}
 	return attestation, nil
@@ -121,132 +168,140 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err), "attestation")
 	}
 
-	verified, err := v.verifyFunc(ctx, ref, v.opts)
+	verified, err := v.verifyWithFallback(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
-	att := verified[len(verified)-1]
+	if len(verified) == 0 {
+		return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
+	}
 
-	env, err := att.Payload()
+	chosen, payload, err := pickCycloneDX(verified)
 	if err != nil {
-		return nil, fmt.Errorf("get payload: %v", err)
+		return nil, model.ToUnrecoverableError(err, "attestation")
 	}
-	statement, err := ParseEnvelope(env)
+
+	statement, err := ParseEnvelope(payload)
 	if err != nil {
-		return nil, fmt.Errorf("parse payload: %v", err)
+		return nil, fmt.Errorf("parsing DSSE envelope: %v", err)
 	}
+
 	v.log.WithFields(logrus.Fields{
 		"predicate-type": statement.PredicateType,
 		"statement-type": statement.Type,
 		"ref":            ref.String(),
 	}).Debug("attestation verified and parsed statement")
 
-	if statement.PredicateType != in_toto.PredicateCycloneDX {
-		return nil, model.ToUnrecoverableError(fmt.Errorf("unsupported predicate type: %s", statement.PredicateType), "attestation")
-	}
-
-	predicate, err := json.Marshal(statement.Predicate)
+	ret, err := attestationFromStatement(statement)
 	if err != nil {
-		return nil, fmt.Errorf("marshal predicate: %v", err)
+		return nil, err
 	}
 
-	ret := &Attestation{
-		Predicate: predicate,
+	metadata := v.extractMetadata(chosen)
+	if len(metadata) > 0 {
+		ret.Metadata = metadata
 	}
-
-	// TODO: find an easier way to get the metadata
-	bundle, err := att.Bundle()
-	if err != nil {
-		v.log.Warnf("failed to get bundle: %v", err)
-		return ret, nil
-	}
-	rekor, err := GetRekorMetadata(bundle)
-	if err != nil {
-		v.log.Warnf("failed to get rekor metadata: %v", err)
-		return ret, nil
-	}
-
-	j, err := json.Marshal(rekor)
-	if err != nil {
-		v.log.Warnf("failed to marshal metadata: %v", err)
-		return ret, nil
-	}
-
-	metadata := map[string]string{}
-	err = json.Unmarshal(j, &metadata)
-	if err != nil {
-		v.log.Warnf("failed to unmarshal metadata: %v", err)
-		return ret, nil
-	}
-
-	ret.Metadata = metadata
 
 	return ret, nil
 }
 
-func CosignOptions(ctx context.Context, staticKeyRef string, identities []cosign.Identity) (*cosign.CheckOpts, error) {
-	co := &cosign.CheckOpts{}
+// verifyWithFallback tries v3 bundles first, then legacy tag-based attestations.
+func (v *verifier) verifyWithFallback(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
+	verified, err := v.verifyFunc(ctx, ref, v.optsV3)
+	if err != nil {
+		// 4xx => do not fall back
+		var tErr *transport.Error
+		if errors.As(err, &tErr) && tErr.StatusCode >= 400 && tErr.StatusCode < 500 {
+			return nil, err
+		}
 
-	var err error
-	if !co.IgnoreSCT {
-		co.CTLogPubKeys, err = cosign.GetCTLogPubs(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("getting ctlog public keys: %w", err)
+		// non-attestation error => do not fallback
+		if !isNoAttestationOrBundleError(err) {
+			return nil, err
 		}
 	}
 
-	if staticKeyRef == "" {
-		// This performs an online fetch of the Fulcio roots. This is needed
-		// for verifying keyless certificates (both online and offline).
-		co.RootCerts, err = fulcio.GetRoots()
+	// fallback when v3 produced nothing
+	if err != nil || len(verified) == 0 {
+		verified, err = v.verifyFunc(ctx, ref, v.optsLegacy)
 		if err != nil {
-			return nil, fmt.Errorf("getting Fulcio roots: %w", err)
-		}
-		co.IntermediateCerts, err = fulcio.GetIntermediates()
-		if err != nil {
-			return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
-		}
-		co.Identities = identities
-
-		// This performs an online fetch of the Rekor public keys, but this is needed
-		// for verifying tlog entries (both online and offline).
-		co.RekorPubKeys, err = cosign.GetRekorPubs(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("getting Rekor public keys: %w", err)
+			if isNoAttestationOrBundleError(err) {
+				return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
+			}
+			return nil, err
 		}
 	}
+	return verified, nil
+}
 
-	if staticKeyRef != "" {
-		// ensure that the static public key is used
-		// vao.KeyRef = vao.StaticKeyRef
-		co.SigVerifier, err = signature.PublicKeyFromKeyRef(ctx, staticKeyRef)
+// pickCycloneDX finds the CycloneDX attestation (order-independent) and returns the signature + its payload.
+func pickCycloneDX(verified []oci.Signature) (oci.Signature, []byte, error) {
+	for _, sig := range verified {
+		env, err := sig.Payload()
 		if err != nil {
-			return nil, fmt.Errorf("loading public key: %w", err)
+			continue
 		}
-		pkcs11Key, ok := co.SigVerifier.(*pkcs11key.Key)
-		if ok {
-			defer pkcs11Key.Close()
+		st, err := ParseEnvelope(env)
+		if err != nil {
+			continue
 		}
-		co.IgnoreTlog = true
+		if st.PredicateType == in_toto.PredicateCycloneDX {
+			return sig, env, nil
+		}
+	}
+	return nil, nil, fmt.Errorf("no CycloneDX attestation found among %d attestations", len(verified))
+}
+
+func attestationFromStatement(statement *in_toto.CycloneDXStatement) (*Attestation, error) {
+	if statement.PredicateType != in_toto.PredicateCycloneDX {
+		return nil, model.ToUnrecoverableError(
+			fmt.Errorf("unsupported predicate type: %s", statement.PredicateType),
+			"attestation",
+		)
+	}
+	predicate, err := json.Marshal(statement.Predicate)
+	if err != nil {
+		return nil, fmt.Errorf("marshal predicate: %v", err)
+	}
+	return &Attestation{Predicate: predicate}, nil
+}
+
+// extractMetadata is intentionally best-effort (never fails GetAttestation).
+func (v *verifier) extractMetadata(sig oci.Signature) map[string]string {
+	b, err := sig.Bundle()
+	if err != nil || b == nil {
+		return nil
 	}
 
-	keychain := authn.NewMultiKeychain(
-		authn.DefaultKeychain,
-		google.Keychain,
-		gh.Keychain,
-	)
-
-	co.RegistryClientOpts = []remote.Option{
-		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(keychain)),
+	rekor, err := GetRekorMetadata(b)
+	if err != nil {
+		return nil
 	}
 
-	return co, nil
+	j, err := json.Marshal(rekor)
+	if err != nil {
+		return nil
+	}
+
+	metadata := map[string]string{}
+	if err := json.Unmarshal(j, &metadata); err != nil {
+		return nil
+	}
+	return metadata
+}
+
+func isNoAttestationOrBundleError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, ErrNoAttestation) ||
+		strings.Contains(msg, ErrNoValidBundleInRegistry)
 }
 
 func ParseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
 	env := ssldsse.Envelope{}
-	err := json.Unmarshal(dsseEnvelope, &env)
-	if err != nil {
+	if err := json.Unmarshal(dsseEnvelope, &env); err != nil {
 		return nil, err
 	}
 
@@ -255,8 +310,7 @@ func ParseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
 		return nil, err
 	}
 	stat := &in_toto.CycloneDXStatement{}
-	err = json.Unmarshal(decodedPayload, &stat)
-	if err != nil {
+	if err := json.Unmarshal(decodedPayload, &stat); err != nil {
 		return nil, err
 	}
 	return stat, nil
