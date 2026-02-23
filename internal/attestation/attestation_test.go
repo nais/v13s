@@ -97,6 +97,39 @@ func TestGetAttestation_TriesBundleThenFallsBack(t *testing.T) {
 	require.True(t, sawLegacy, "should fall back to legacy after v3 fails")
 }
 
+func TestGetAttestation_4xxPreventsFallback(t *testing.T) {
+	var legacyCalled bool
+
+	v := &verifier{
+		log:        logrus.NewEntry(logrus.New()),
+		optsV3:     &cosign.CheckOpts{NewBundleFormat: true},
+		optsLegacy: &cosign.CheckOpts{NewBundleFormat: false},
+		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			if co.NewBundleFormat {
+				// Simulate v3 returning a 4xx error
+				return nil, &fakeTransportError{statusCode: 404}
+			}
+			legacyCalled = true
+			return nil, fmt.Errorf("should not be called")
+		},
+	}
+
+	_, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
+	require.Error(t, err)
+	assert.False(t, legacyCalled, "legacy fallback should not be triggered on 4xx error")
+}
+
+// fakeTransportError simulates a transport.Error with a given status code
+// for testing fallback prevention logic.
+type fakeTransportError struct {
+	statusCode int
+}
+
+func (e *fakeTransportError) Error() string {
+	return fmt.Sprintf("fake transport error %d", e.statusCode)
+}
+func (e *fakeTransportError) StatusCode() int { return e.statusCode }
+
 func TestDSSEParsePayload(t *testing.T) {
 	dsse := loadDSSEFromFile(t, "testdata/cyclonedx-dsse.json")
 	got, err := ParseEnvelope(dsse)

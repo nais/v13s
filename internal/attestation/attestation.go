@@ -64,6 +64,9 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 	if err != nil {
 		return nil, fmt.Errorf("getting trusted root: %w", err)
 	}
+	if trustedRoot == nil {
+		return nil, fmt.Errorf("trusted root is nil")
+	}
 
 	rootCerts, err := fulcio.GetRoots()
 	if err != nil {
@@ -239,10 +242,12 @@ func pickCycloneDX(verified []oci.Signature) (oci.Signature, []byte, error) {
 	for _, sig := range verified {
 		env, err := sig.Payload()
 		if err != nil {
+			logrus.Debugf("pickCycloneDX: failed to get payload: %v", err)
 			continue
 		}
 		st, err := ParseEnvelope(env)
 		if err != nil {
+			logrus.Debugf("pickCycloneDX: failed to parse envelope: %v", err)
 			continue
 		}
 		if st.PredicateType == in_toto.PredicateCycloneDX {
