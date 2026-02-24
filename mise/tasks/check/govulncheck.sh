@@ -2,28 +2,27 @@
 #MISE description="Run govulncheck"
 set -euo pipefail
 
-echo "Running govulncheck ..."
+echo "Running govulncheck..."
 
 set +e
-out="$(go tool golang.org/x/vuln/cmd/govulncheck -format=json ./... 2>&1)"
+out="$(go tool golang.org/x/vuln/cmd/govulncheck ./... 2>&1)"
 status=$?
 set -e
 
-# If the tool failed AND we didn't even get findings, treat as real failure
-if [[ $status -ne 0 ]] && ! echo "$out" | jq -e 'select(.finding)' >/dev/null 2>&1; then
+if [[ $status -ne 0 ]] && ! echo "$out" | grep -q '^Vulnerability #'; then
   echo "$out" >&2
   exit "$status"
 fi
 
-# Print: OSV  module@version   (from the first trace element)
-# Dedupe and sort for nice output.
-echo "$out" | jq -r '
-  select(.finding)
-  | .finding as $f
-  | ($f.trace[0].module // "unknown") as $mod
-  | ($f.trace[0].version // "unknown") as $ver
-  | "\($f.osv)  \($mod)@\($ver)"
-' | sort -u
+if echo "$out" | grep -E '^    Fixed in:' | grep -v 'N/A' >/dev/null; then
+  echo "At least one vulnerability has a fix available." >&2
+  exit 1
+fi
+
+echo "$out" | awk '
+  /^Vulnerability/ { vuln=$0 }
+  /^    Fixed in: N\/A/ { print vuln }
+'
 
 echo "Only vulnerabilities without fixes found."
 exit 0
