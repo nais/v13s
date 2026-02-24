@@ -1,6 +1,9 @@
 package github
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/sigstore/cosign/v3/pkg/cosign"
 )
 
@@ -19,12 +22,18 @@ func NewCertificateIdentity(organisations []string) *CertificateIdentity {
 }
 
 func (c *CertificateIdentity) GetIdentities() []cosign.Identity {
-	var ids []cosign.Identity
-	for _, org := range c.Organizations {
-		ids = append(ids, cosign.Identity{
-			Issuer:        IssuerUrl,
-			SubjectRegExp: "^https:\\/\\/github\\.com\\/" + org + "\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/.+?(?:.yaml|.yml).*$",
-		})
+	if len(c.Organizations) == 0 {
+		return nil
 	}
-	return ids
+
+	escapedOrgs := make([]string, len(c.Organizations))
+	for i, org := range c.Organizations {
+		escapedOrgs[i] = regexp.QuoteMeta(org)
+	}
+	orgs := strings.Join(escapedOrgs, "|")
+	subject := "^https:\\/\\/github\\.com\\/(" + orgs + ")\\/[a-zA-Z0-9_.-]+?\\/.github\\/workflows\\/.+?(?:\\.yaml|\\.yml).*$"
+
+	return []cosign.Identity{
+		{Issuer: IssuerUrl, SubjectRegExp: subject},
+	}
 }
