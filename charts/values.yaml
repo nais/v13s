@@ -45,5 +45,5 @@ prometheus:
     duration:
 opentelemetry:
   collector:
-    endpoint:
-  enabled: true
+    endpoint: ""
+    enabled: true

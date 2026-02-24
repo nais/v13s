@@ -141,6 +141,11 @@ values:
     config:
       type: string
 
+  opentelemetry.collector.enabled:
+    displayName: Enable OpenTelemetry
+    config:
+      type: bool
+
   opentelemetry.collector.endpoint:
     displayName: OpenTelemetry collector endpoint
     description: Endpoint for the OpenTelemetry collector
@@ -169,8 +174,3 @@ values:
         {{- end }}
     config:
       type: string
-
-  opentelemetry.enabled:
-    displayName: Enable OpenTelemetry
-    config:
-      type: bool
