@@ -46,4 +46,4 @@ prometheus:
 opentelemetry:
   collector:
     endpoint: ""
-    enabled: true
+    enabled: false
