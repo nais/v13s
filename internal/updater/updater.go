@@ -278,6 +278,7 @@ func (u *Updater) ensureCanonicalsPresent(cves []sql.BatchUpsertCveParams, cveAl
 		u.log.WithField("canonical", canonical).Warn("Canonical CVE referenced by alias is missing from batch; adding minimal record")
 		cves = append(cves, sql.BatchUpsertCveParams{
 			CveID: canonical,
+			Refs:  map[string]string{},
 		})
 	}
 	for alias := range missingAliases {
