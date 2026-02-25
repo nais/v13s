@@ -40,7 +40,7 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
 		},
-		MaxAttempts: 4,
+		MaxAttempts: 2,
 	}
 }
 

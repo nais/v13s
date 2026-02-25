@@ -137,6 +137,7 @@ func (a *Attestation) Compress() ([]byte, error) {
 
 	var buffer bytes.Buffer
 	writer := gzip.NewWriter(&buffer)
+	defer func() { _ = writer.Close() }()
 	if _, err := writer.Write(data); err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func Decompress(data []byte) (*Attestation, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	b, err := io.ReadAll(reader)
 	if err != nil {

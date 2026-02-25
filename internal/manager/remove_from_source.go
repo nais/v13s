@@ -32,7 +32,7 @@ func (u RemoveFromSourceJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: RemoveFromSourceByPeriodMinutes,
 		},
-		MaxAttempts: 8,
+		MaxAttempts: 6,
 	}
 }
 

@@ -26,7 +26,7 @@ func (AddWorkloadJob) Kind() string { return KindAddWorkload }
 func (a AddWorkloadJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       KindAddWorkload,
-		MaxAttempts: 4,
+		MaxAttempts: 3,
 	}
 }
 
