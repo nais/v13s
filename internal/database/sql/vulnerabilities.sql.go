@@ -142,6 +142,17 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
+const getCanonicalCveIdByAlias = `-- name: GetCanonicalCveIdByAlias :one
+SELECT canonical_cve_id FROM cve_alias WHERE alias = $1
+`
+
+func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error) {
+	row := q.db.QueryRow(ctx, getCanonicalCveIdByAlias, alias)
+	var canonical_cve_id string
+	err := row.Scan(&canonical_cve_id)
+	return canonical_cve_id, err
+}
+
 const getCve = `-- name: GetCve :one
 SELECT
     cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score

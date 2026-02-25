@@ -40,7 +40,7 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
 		},
-		MaxAttempts: 2,
+		MaxAttempts: 3,
 	}
 }
 
@@ -112,7 +112,13 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		} else if errors.As(err, &unrecoverableError) {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			g.log.WithError(err).Error("unrecoverable error while getting attestation")
+			g.log.WithFields(
+				logrus.Fields{
+					"image":      imageName,
+					"tag":        imageTag,
+					"workloadId": job.Args.WorkloadId,
+				},
+			).Info("marking workload and image as unrecoverable due to unrecoverable error from attestation source")
 			recordOutput(ctx, JobStatusUnrecoverable)
 			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateUnrecoverable,

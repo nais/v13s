@@ -23,6 +23,7 @@ type Querier interface {
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
 	DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
+	GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)

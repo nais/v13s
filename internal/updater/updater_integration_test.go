@@ -64,7 +64,7 @@ func TestUpdater(t *testing.T) {
 	)
 
 	mgr.Start(ctx)
-	defer mgr.Stop(ctx)
+	defer func() { _ = mgr.Stop(ctx) }()
 
 	for _, project := range projectNames {
 		mockDPTrack.On("GetProject", mock.Anything, project, "v1").Return(&dependencytrack.Project{
@@ -281,7 +281,7 @@ func TestUpdater(t *testing.T) {
 		for rows.Next() {
 			var n, s string
 			var t time.Time
-			rows.Scan(&n, &s, &t)
+			rows.Scan(&n, &s, &t) // ignore error for test
 			fmt.Printf("After updater: row: %s state=%s updated_at=%v older_than_threshold=%v\n",
 				n, s, t, t.Before(threshold))
 		}
@@ -321,7 +321,7 @@ func TestUpdater(t *testing.T) {
 		for rows.Next() {
 			var name, state string
 			var updatedAt time.Time
-			rows.Scan(&name, &state, &updatedAt)
+			rows.Scan(&name, &state, &updatedAt) // ignore error for test
 			fmt.Printf("row: %s state=%s updated_at=%v\n", name, state, updatedAt)
 			switch name {
 			case "project-1", "project-4":
@@ -372,7 +372,7 @@ func TestUpdater(t *testing.T) {
 		for rows.Next() {
 			var n, s string
 			var t time.Time
-			rows.Scan(&n, &s, &t)
+			rows.Scan(&n, &s, &t) // ignore error for test
 			fmt.Printf("row: %s state=%s updated_at=%v\n", n, s, t)
 		}
 
@@ -517,6 +517,87 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 
 		assert.WithinDuration(t, ts, (*got).UTC(), 1*time.Second)
 	})
+}
+
+func TestUpdater_BatchUpdateVulnerabilityData(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, nil, logrus.NewEntry(logrus.StandardLogger()))
+
+	imageName := "test-image"
+	imageTag := "v1.0"
+	vuln := &sources.Vulnerability{
+		Package: "pkg:test",
+		Cve: &sources.Cve{
+			Id:          "CVE-TEST-1",
+			Title:       "Test CVE",
+			Description: "Test description",
+			Link:        "https://example.com/CVE-TEST-1",
+			Severity:    sources.SeverityCritical,
+			References:  map[string]string{"CVE-TEST-1": "GHSA-ALIAS-1"},
+		},
+		CvssScore:     nil,
+		LatestVersion: "1.2.3",
+	}
+	imgVulnData := &updater.ImageVulnerabilityData{
+		ImageName:       imageName,
+		ImageTag:        imageTag,
+		Source:          "test-source",
+		Vulnerabilities: []*sources.Vulnerability{vuln},
+	}
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
+	assert.NoError(t, err)
+
+	_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "workload-test-image",
+		WorkloadType: "app",
+		Namespace:    "namespace-1",
+		Cluster:      "cluster-1",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	assert.NoError(t, err)
+
+	u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{imgVulnData})
+
+	// Assert CVE inserted
+	cve, err := db.GetCve(ctx, "CVE-TEST-1")
+	require.NoError(t, err)
+	assert.Equal(t, "CVE-TEST-1", cve.CveID)
+	assert.Equal(t, "Test CVE", cve.CveTitle)
+	assert.Equal(t, "Test description", cve.CveDesc)
+	assert.Equal(t, "https://example.com/CVE-TEST-1", cve.CveLink)
+
+	// Assert minimal alias CVE inserted (should exist, but fields may be empty)
+	aliasCve, err := db.GetCve(ctx, "GHSA-ALIAS-1")
+	assert.NoError(t, err)
+	assert.Equal(t, "GHSA-ALIAS-1", aliasCve.CveID)
+
+	// Assert alias inserted
+	canonical, err := db.GetCanonicalCveIdByAlias(ctx, "GHSA-ALIAS-1")
+	require.NoError(t, err)
+	assert.Equal(t, "CVE-TEST-1", canonical)
+
+	// Assert vulnerability inserted
+	vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+		ImageName: &imageName,
+		ImageTag:  &imageTag,
+		Limit:     10,
+	})
+	fmt.Printf("Vulnerabilities for %s:%s: %+v\n", imageName, imageTag, vulns)
+	require.NoError(t, err)
+	assert.Len(t, vulns, 1)
+	assert.Equal(t, "CVE-TEST-1", vulns[0].CveID)
+	assert.Equal(t, "pkg:test", vulns[0].Package)
 }
 
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {

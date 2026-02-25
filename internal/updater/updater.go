@@ -249,7 +249,7 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 			break
 		}
 
-		u.batchUpdateVulnerabilityData(ctx, batch)
+		u.BatchUpdateVulnerabilityData(ctx, batch)
 	}
 
 	u.log.WithFields(logrus.Fields{
@@ -259,7 +259,38 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 	return nil
 }
 
-func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) {
+func (u *Updater) ensureCanonicalsPresent(cves []sql.BatchUpsertCveParams, cveAliases []sql.BatchUpsertCveAliasParams) []sql.BatchUpsertCveParams {
+	cveIDSet := make(map[string]struct{})
+	for _, cve := range cves {
+		cveIDSet[cve.CveID] = struct{}{}
+	}
+	missingCanonicals := make(map[string]struct{})
+	missingAliases := make(map[string]struct{})
+	for _, alias := range cveAliases {
+		if _, ok := cveIDSet[alias.CanonicalCveID]; !ok {
+			missingCanonicals[alias.CanonicalCveID] = struct{}{}
+		}
+		if _, ok := cveIDSet[alias.Alias]; !ok {
+			missingAliases[alias.Alias] = struct{}{}
+		}
+	}
+	for canonical := range missingCanonicals {
+		u.log.WithField("canonical", canonical).Warn("Canonical CVE referenced by alias is missing from batch; adding minimal record")
+		cves = append(cves, sql.BatchUpsertCveParams{
+			CveID: canonical,
+		})
+	}
+	for alias := range missingAliases {
+		u.log.WithField("alias", alias).Warn("Alias CVE referenced by alias mapping is missing from batch; adding minimal record")
+		cves = append(cves, sql.BatchUpsertCveParams{
+			CveID: alias,
+			Refs:  map[string]string{},
+		})
+	}
+	return cves
+}
+
+func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) {
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
@@ -275,6 +306,8 @@ func (u *Updater) batchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			Tag:   i.ImageTag,
 		})
 	}
+
+	cves = u.ensureCanonicalsPresent(cves, cveAliases)
 
 	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
 		return x.CveID
