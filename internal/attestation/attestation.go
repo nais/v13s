@@ -27,8 +27,7 @@ import (
 )
 
 const (
-	ErrNoAttestation           = "no matching attestations"
-	ErrNoValidBundleInRegistry = "no valid bundles exist in registry"
+	ErrNoAttestation = "no matching attestations"
 )
 
 type Verifier interface {
@@ -43,7 +42,7 @@ type verifier struct {
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
-func NewVerifier(log *logrus.Entry, organizations ...string) (Verifier, error) {
+func NewVerifier(_ context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
 	ids := github.NewCertificateIdentity(organizations).GetIdentities()
 
 	keychain := authn.NewMultiKeychain(
@@ -132,6 +131,9 @@ func Decompress(data []byte) (*Attestation, error) {
 	if err := json.Unmarshal(b, &attestation); err != nil {
 		return nil, err
 	}
+	if attestation == nil {
+		return nil, fmt.Errorf("attestation payload is null")
+	}
 
 	if attestation.Metadata == nil {
 		attestation.Metadata = map[string]string{}
@@ -142,15 +144,15 @@ func Decompress(data []byte) (*Attestation, error) {
 
 func (v *verifier) verifyAutoBundle(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
 	co := *v.optsV3
-	if co.NewBundleFormat {
-		bundles, _, err := cosign.GetBundles(ctx, ref, co.RegistryClientOpts)
-		if err != nil || len(bundles) == 0 {
-			v.log.WithError(err).WithField("ref", ref.String()).Debug("No v3 bundles found, switching to legacy mode")
-			co.NewBundleFormat = false
-		}
-	}
+	co.NewBundleFormat = true
 
 	sigs, err := v.verifyFunc(ctx, ref, &co)
+	if len(sigs) == 0 {
+		v.log.WithField("ref", ref.String()).Debug("No v3 bundles found, switching to legacy mode")
+		co.NewBundleFormat = false
+		sigs, err = v.verifyFunc(ctx, ref, &co)
+	}
+
 	if err != nil && !co.NewBundleFormat {
 		var errNoMatchAttestationError *cosign.ErrNoMatchingAttestations
 		v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
