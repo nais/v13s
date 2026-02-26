@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
@@ -21,7 +20,6 @@ import (
 	"github.com/nais/v13s/internal/attestation/github"
 	"github.com/nais/v13s/internal/model"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
-	"github.com/sigstore/cosign/v3/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
 	"github.com/sigstore/cosign/v3/pkg/oci"
 	"github.com/sigstore/cosign/v3/pkg/oci/remote"
@@ -40,15 +38,12 @@ type Verifier interface {
 var _ Verifier = &verifier{}
 
 type verifier struct {
-	log *logrus.Entry
-
+	log        *logrus.Entry
 	optsV3     *cosign.CheckOpts
-	optsLegacy *cosign.CheckOpts
-
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
-func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
+func NewVerifier(log *logrus.Entry, organizations ...string) (Verifier, error) {
 	ids := github.NewCertificateIdentity(organizations).GetIdentities()
 
 	keychain := authn.NewMultiKeychain(
@@ -68,23 +63,6 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 		return nil, fmt.Errorf("trusted root is nil")
 	}
 
-	rootCerts, err := fulcio.GetRoots()
-	if err != nil {
-		return nil, fmt.Errorf("getting Fulcio roots: %w", err)
-	}
-	intermediateCerts, err := fulcio.GetIntermediates()
-	if err != nil {
-		return nil, fmt.Errorf("getting Fulcio intermediates: %w", err)
-	}
-	rekorPubKeys, err := cosign.GetRekorPubs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting Rekor public keys: %w", err)
-	}
-	ctLogPubKeys, err := cosign.GetCTLogPubs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting CT log public keys: %w", err)
-	}
-
 	v := &verifier{
 		log: log,
 		optsV3: &cosign.CheckOpts{
@@ -92,15 +70,6 @@ func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string
 			NewBundleFormat:    true,
 			TrustedMaterial:    trustedRoot,
 			Identities:         ids,
-		},
-		optsLegacy: &cosign.CheckOpts{
-			RegistryClientOpts: registryOpts,
-			NewBundleFormat:    false,
-			Identities:         ids,
-			RootCerts:          rootCerts,
-			IntermediateCerts:  intermediateCerts,
-			RekorPubKeys:       rekorPubKeys,
-			CTLogPubKeys:       ctLogPubKeys,
 		},
 	}
 
@@ -163,7 +132,33 @@ func Decompress(data []byte) (*Attestation, error) {
 	if err := json.Unmarshal(b, &attestation); err != nil {
 		return nil, err
 	}
+
+	if attestation.Metadata == nil {
+		attestation.Metadata = map[string]string{}
+	}
+
 	return attestation, nil
+}
+
+func (v *verifier) verifyAutoBundle(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
+	co := *v.optsV3
+	if co.NewBundleFormat {
+		bundles, _, err := cosign.GetBundles(ctx, ref, co.RegistryClientOpts)
+		if err != nil || len(bundles) == 0 {
+			v.log.WithError(err).WithField("ref", ref.String()).Debug("No v3 bundles found, switching to legacy mode")
+			co.NewBundleFormat = false
+		}
+	}
+
+	sigs, err := v.verifyFunc(ctx, ref, &co)
+	if err != nil && !co.NewBundleFormat {
+		var errNoMatchAttestationError *cosign.ErrNoMatchingAttestations
+		v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
+		if errors.As(err, &errNoMatchAttestationError) {
+			return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
+		}
+	}
+	return sigs, err
 }
 
 func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
@@ -172,7 +167,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err), "attestation")
 	}
 
-	verified, err := v.verifyWithFallback(ctx, ref)
+	verified, err := v.verifyAutoBundle(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -201,41 +196,9 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, err
 	}
 
-	metadata := v.extractMetadata(chosen)
-	if len(metadata) > 0 {
-		ret.Metadata = metadata
-	}
+	ret.Metadata = v.extractMetadata(chosen)
 
 	return ret, nil
-}
-
-// verifyWithFallback tries v3 bundles first, then legacy tag-based attestations.
-func (v *verifier) verifyWithFallback(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
-	verified, err := v.verifyFunc(ctx, ref, v.optsV3)
-	if err != nil {
-		// 4xx => do not fall back
-		var tErr *transport.Error
-		if errors.As(err, &tErr) && tErr.StatusCode >= 400 && tErr.StatusCode < 500 {
-			return nil, err
-		}
-
-		// non-attestation error => do not fallback
-		if !isNoAttestationOrBundleError(err) {
-			return nil, err
-		}
-	}
-
-	// fallback when v3 produced nothing
-	if err != nil || len(verified) == 0 {
-		verified, err = v.verifyFunc(ctx, ref, v.optsLegacy)
-		if err != nil {
-			if isNoAttestationOrBundleError(err) {
-				return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
-			}
-			return nil, err
-		}
-	}
-	return verified, nil
 }
 
 // pickCycloneDX finds the CycloneDX attestation (order-independent) and returns the signature + its payload.
@@ -269,40 +232,33 @@ func attestationFromStatement(statement *in_toto.CycloneDXStatement) (*Attestati
 	if err != nil {
 		return nil, fmt.Errorf("marshal predicate: %v", err)
 	}
-	return &Attestation{Predicate: predicate}, nil
+	return &Attestation{Predicate: predicate,
+		Metadata: map[string]string{},
+	}, nil
 }
 
 // extractMetadata is intentionally best-effort (never fails GetAttestation).
 func (v *verifier) extractMetadata(sig oci.Signature) map[string]string {
+	metadata := map[string]string{}
 	b, err := sig.Bundle()
 	if err != nil || b == nil {
-		return nil
+		return metadata
 	}
 
 	rekor, err := GetRekorMetadata(b)
 	if err != nil {
-		return nil
+		return metadata
 	}
 
 	j, err := json.Marshal(rekor)
 	if err != nil {
-		return nil
+		return metadata
 	}
 
-	metadata := map[string]string{}
-	if err := json.Unmarshal(j, &metadata); err != nil {
-		return nil
+	if err = json.Unmarshal(j, &metadata); err != nil {
+		return metadata
 	}
 	return metadata
-}
-
-func isNoAttestationOrBundleError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, ErrNoAttestation) ||
-		strings.Contains(msg, ErrNoValidBundleInRegistry)
 }
 
 func ParseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {

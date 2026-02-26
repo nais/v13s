@@ -18,7 +18,8 @@ INSERT INTO images(
 VALUES (
     $1,
     $2,
-    $3)
+    COALESCE($3, '{}'::jsonb)
+)
 ON CONFLICT
     DO NOTHING
 `
@@ -26,7 +27,7 @@ ON CONFLICT
 type CreateImageParams struct {
 	Name     string
 	Tag      string
-	Metadata typeext.MapStringString
+	Metadata interface{}
 }
 
 func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error {
@@ -238,7 +239,7 @@ const updateImage = `-- name: UpdateImage :exec
 UPDATE
     images
 SET
-    metadata = $1,
+    metadata = COALESCE($1, '{}'::jsonb),
     updated_at = NOW()
 WHERE
     name = $2
