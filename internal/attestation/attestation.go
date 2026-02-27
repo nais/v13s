@@ -143,29 +143,44 @@ func Decompress(data []byte) (*Attestation, error) {
 }
 
 func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
-	co := *v.optsV3
-	co.NewBundleFormat = true
+	coV3 := *v.optsV3
+	coV3.NewBundleFormat = true
 
-	sigs, err := v.verifyFunc(ctx, ref, &co)
-	if len(sigs) == 0 {
-		v.log.WithField("ref", ref.String()).Debug("No v3 bundles found, switching to legacy mode")
-		co.NewBundleFormat = false
-		sigs, err = v.verifyFunc(ctx, ref, &co)
+	sigs, err := v.verifyFunc(ctx, ref, &coV3)
+	if err == nil && len(sigs) > 0 {
+		return sigs, nil
 	}
 
-	if err != nil {
-		var errNoMatchAttestationError *cosign.ErrNoMatchingAttestations
-		if errors.As(err, &errNoMatchAttestationError) {
-			if !co.NewBundleFormat {
-				v.log.WithField("ref", ref.String()).Warn("no attestations found in legacy mode after v3 fallback")
-			}
-			return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
-		}
-		if !co.NewBundleFormat {
-			v.log.WithError(err).WithField("ref", ref.String()).Warn("legacy attestation verification failed after v3 fallback")
-		}
+	shouldFallback := len(sigs) == 0
+	var noMatch *cosign.ErrNoMatchingAttestations
+	if errors.As(err, &noMatch) {
+		shouldFallback = true
 	}
-	return sigs, err
+
+	if !shouldFallback {
+		// v3 failed for a "real" reason (not just absence)
+		return nil, err
+	}
+
+	v.log.WithFields(logrus.Fields{
+		"ref": ref.String(),
+	}).Info("No v3 attestations (or v3 reported none), switching to legacy bundle format")
+
+	coLegacy := *v.optsV3
+	coLegacy.NewBundleFormat = false
+
+	legacySigs, legacyErr := v.verifyFunc(ctx, ref, &coLegacy)
+	if legacyErr == nil && len(legacySigs) > 0 {
+		return legacySigs, nil
+	}
+
+	// Prefer legacy error if we tried it; otherwise return v3 error
+	if legacyErr != nil {
+		v.log.WithError(legacyErr).WithField("ref", ref.String()).Warn("legacy attestation verification failed")
+		return nil, legacyErr
+	}
+	// legacyErr == nil but no sigs
+	return nil, err // err might be nil; if so, caller will treat as no attestation
 }
 
 func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {

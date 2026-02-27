@@ -82,11 +82,6 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		var unrecoverableError model.UnrecoverableError
 		// TODO: handle no attestation found vs error in verifying
 		if errors.As(err, &noMatchAttestationError) {
-			if err.Error() != "no matching attestations: " {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
-				g.log.WithError(err).Error("failed to get attestation")
-			}
 			// TODO: handle errors
 			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 				State: sql.WorkloadStateNoAttestation,
