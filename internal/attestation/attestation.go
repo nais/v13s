@@ -157,12 +157,12 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 		var errNoMatchAttestationError *cosign.ErrNoMatchingAttestations
 		if errors.As(err, &errNoMatchAttestationError) {
 			if !co.NewBundleFormat {
-				v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
+				v.log.WithField("ref", ref.String()).Warn("no attestations found in legacy mode after v3 fallback")
 			}
 			return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
 		}
 		if !co.NewBundleFormat {
-			v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
+			v.log.WithError(err).WithField("ref", ref.String()).Warn("legacy attestation verification failed after v3 fallback")
 		}
 	}
 	return sigs, err
