@@ -45,7 +45,11 @@ func main() {
 		log.Fatalf("creating client: %v", err)
 	}
 
-	defer c.Close()
+	defer func() {
+		if err := c.Close(); err != nil {
+			log.Printf("Error closing client: %v", err)
+		}
+	}()
 
 	opts := &flag.Options{}
 

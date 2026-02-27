@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/nais/v13s/pkg/cli/helpers"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
 )
@@ -175,7 +176,7 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		opts = append(opts, vulnerabilities.WorkloadTypeFilter(o.WorkloadType))
 	}
 	if o.Limit > 0 {
-		opts = append(opts, vulnerabilities.Limit(int32(o.Limit)))
+		opts = append(opts, vulnerabilities.Limit(helpers.MustIntToInt32(o.Limit)))
 	} else {
 		opts = append(opts, vulnerabilities.Limit(30))
 	}

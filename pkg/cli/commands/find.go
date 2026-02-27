@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
+	"github.com/nais/v13s/pkg/cli/helpers"
 	"github.com/nais/v13s/pkg/cli/pagination"
 	"github.com/rodaine/table"
 	"github.com/urfave/cli/v3"
@@ -60,7 +61,7 @@ func FindCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 func listWorkloads(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
-		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+		opts = append(opts, vulnerabilities.Offset(helpers.MustIntToInt32(offset)))
 
 		vulnFilter := vulnerabilities.VulnerabilityFilter{}
 		var cveIds []string

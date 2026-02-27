@@ -14,6 +14,7 @@ import (
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/nais/v13s/pkg/cli/flag"
+	"github.com/nais/v13s/pkg/cli/helpers"
 	"github.com/nais/v13s/pkg/cli/pagination"
 	"github.com/rodaine/table"
 	log "github.com/sirupsen/logrus"
@@ -236,8 +237,8 @@ func getStatus(ctx context.Context, opts *flag.Options, c vulnerabilities.Client
 			Namespace:    namespace,
 			Workload:     workload,
 			WorkloadType: workloadType,
-			Limit:        int32(opts.Limit),
-			Offset:       int32(offset),
+			Limit:        helpers.MustIntToInt32(opts.Limit),
+			Offset:       helpers.MustIntToInt32(offset),
 		})
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get workload status: %w", err)
@@ -277,8 +278,8 @@ func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabili
 			Cluster:   cluster,
 			Namespace: namespace,
 			Workload:  workload,
-			Limit:     int32(opts.Limit),
-			Offset:    int32(offset),
+			Limit:     helpers.MustIntToInt32(opts.Limit),
+			Offset:    helpers.MustIntToInt32(offset),
 		})
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get workload jobs: %w", err)

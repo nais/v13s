@@ -142,7 +142,7 @@ func Decompress(data []byte) (*Attestation, error) {
 	return attestation, nil
 }
 
-func (v *verifier) verifyAutoBundle(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
+func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
 	co := *v.optsV3
 	co.NewBundleFormat = true
 
@@ -153,11 +153,16 @@ func (v *verifier) verifyAutoBundle(ctx context.Context, ref name.Reference) ([]
 		sigs, err = v.verifyFunc(ctx, ref, &co)
 	}
 
-	if err != nil && !co.NewBundleFormat {
+	if err != nil {
 		var errNoMatchAttestationError *cosign.ErrNoMatchingAttestations
-		v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
 		if errors.As(err, &errNoMatchAttestationError) {
+			if !co.NewBundleFormat {
+				v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
+			}
 			return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
+		}
+		if !co.NewBundleFormat {
+			v.log.WithError(err).WithField("ref", ref.String()).Warn("Legacy attestation verification failed after bundle fallback")
 		}
 	}
 	return sigs, err
@@ -169,7 +174,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err), "attestation")
 	}
 
-	verified, err := v.verifyAutoBundle(ctx, ref)
+	verified, err := v.verifyBundleFormat(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
