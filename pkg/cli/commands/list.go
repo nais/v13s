@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
+	"github.com/nais/v13s/pkg/cli/helpers"
 	"github.com/nais/v13s/pkg/cli/pagination"
 	"github.com/rodaine/table"
 	"github.com/urfave/cli/v3"
@@ -193,7 +194,7 @@ func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vuln
 func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	err := pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
-		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+		opts = append(opts, vulnerabilities.Offset(helpers.MustIntToInt32(offset)))
 		resp, err := c.ListVulnerabilitySummaries(ctx, opts...)
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
@@ -248,7 +249,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
-		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+		opts = append(opts, vulnerabilities.Offset(helpers.MustIntToInt32(offset)))
 
 		resp, err := c.ListVulnerabilities(ctx, opts...)
 		if err != nil {
@@ -319,7 +320,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
-		opts = append(opts, vulnerabilities.Offset(int32(offset)))
+		opts = append(opts, vulnerabilities.Offset(helpers.MustIntToInt32(offset)))
 		resp, err := c.ListCveSummaries(ctx, opts...)
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to list CVE summaries: %w", err)

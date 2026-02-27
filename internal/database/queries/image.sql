@@ -6,7 +6,8 @@ INSERT INTO images(
 VALUES (
     @name,
     @tag,
-    @metadata)
+    COALESCE(@metadata, '{}'::jsonb)
+)
 ON CONFLICT
     DO NOTHING;
 
@@ -14,7 +15,7 @@ ON CONFLICT
 UPDATE
     images
 SET
-    metadata = @metadata,
+    metadata = COALESCE(@metadata, '{}'::jsonb),
     updated_at = NOW()
 WHERE
     name = @name

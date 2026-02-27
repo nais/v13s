@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -94,6 +95,13 @@ func newResource() (*resource.Resource, error) {
 		))
 }
 
+func safeIntToInt32(n int) (int32, error) {
+	if n > math.MaxInt32 || n < math.MinInt32 {
+		return 0, fmt.Errorf("integer %d overflows int32", n)
+	}
+	return int32(n), nil
+}
+
 func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
 	db := sql.New(pool)
 	wTypes := []string{"app", "job"}
@@ -117,7 +125,11 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 			break
 		}
 
-		offset += int32(len(summaries))
+		inc, err := safeIntToInt32(len(summaries))
+		if err != nil {
+			return err
+		}
+		offset += inc
 
 		totalRows += len(summaries)
 		for _, row := range summaries {

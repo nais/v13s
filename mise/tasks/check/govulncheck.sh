@@ -15,6 +15,15 @@ if [[ $status -ne 0 ]] && ! echo "$out" | grep -q '^Vulnerability #'; then
 fi
 
 if echo "$out" | grep -E '^    Fixed in:' | grep -v 'N/A' >/dev/null; then
+  echo "$out" | awk '
+    /^Vulnerability/ { block=$0; next }
+    /^    Fixed in:/ {
+      block=block "\n" $0
+      if ($0 !~ /N\/A/) { print block; block="" }
+      next
+    }
+    block { block=block "\n" $0 }
+  '
   echo "At least one vulnerability has a fix available." >&2
   exit 1
 fi

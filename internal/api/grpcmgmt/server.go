@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -261,8 +262,12 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 		}
 	}
 
+	numWorkloads, err := safeIntToInt32(len(workloads))
+	if err != nil {
+		return nil, err
+	}
 	return &management.ResyncResponse{
-		NumWorkloads: int32(len(workloads)),
+		NumWorkloads: numWorkloads,
 		Workloads:    workloads,
 	}, nil
 }
@@ -303,4 +308,11 @@ func (s *Server) DeleteWorkload(ctx context.Context, request *management.DeleteW
 	}
 
 	return &management.DeleteWorkloadResponse{}, nil
+}
+
+func safeIntToInt32(n int) (int32, error) {
+	if n > math.MaxInt32 || n < math.MinInt32 {
+		return 0, fmt.Errorf("integer %d overflows int32", n)
+	}
+	return int32(n), nil
 }
