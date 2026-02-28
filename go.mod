@@ -4,6 +4,9 @@ go 1.25.7
 
 tool (
 	github.com/securego/gosec/v2/cmd/gosec
+	github.com/sqlc-dev/sqlc/cmd/sqlc
+	github.com/urfave/cli/v3
+	github.com/vektra/mockery/v2
 	golang.org/x/tools/cmd/deadcode
 	golang.org/x/vuln/cmd/govulncheck
 	honnef.co/go/tools/cmd/staticcheck
@@ -24,8 +27,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260225080654-8106da02289c
-	github.com/nais/liberator v0.0.0-20260225132510-f328799e0e86
-	github.com/nais/v13s/pkg/api v0.0.0-20260225134059-cb013753b1bc
+	github.com/nais/liberator v0.0.0-20260227081906-1f3e6a705157
+	github.com/nais/v13s/pkg/api v0.0.0-20260227143044-632a87c95e59
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
@@ -38,11 +41,8 @@ require (
 	github.com/sigstore/cosign/v3 v3.0.5
 	github.com/sigstore/rekor v1.5.0
 	github.com/sirupsen/logrus v1.9.4
-	github.com/sqlc-dev/sqlc v1.30.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
-	github.com/urfave/cli/v3 v3.6.2
-	github.com/vektra/mockery/v2 v2.53.6
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.65.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
 	go.opentelemetry.io/otel v1.40.0
@@ -56,9 +56,9 @@ require (
 	golang.org/x/sync v0.19.0
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
-	k8s.io/api v0.35.1
-	k8s.io/apimachinery v0.35.1
-	k8s.io/client-go v0.35.1
+	k8s.io/api v0.35.2
+	k8s.io/apimachinery v0.35.2
+	k8s.io/client-go v0.35.2
 	k8s.io/klog/v2 v2.130.1
 	riverqueue.com/riverui v0.15.0
 )
@@ -241,6 +241,7 @@ require (
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
+	github.com/sqlc-dev/sqlc v1.30.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
@@ -257,7 +258,9 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/transparency-dev/formats v0.0.0-20251017110053-404c0d5b696c // indirect
 	github.com/transparency-dev/merkle v0.0.2 // indirect
+	github.com/urfave/cli/v3 v3.6.2 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
+	github.com/vektra/mockery/v2 v2.53.6 // indirect
 	github.com/wasilibs/go-pgquery v0.0.0-20250409022910-10ac41983c07 // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

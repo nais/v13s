@@ -25,7 +25,9 @@ jobs:
       matrix:
         mise-task:
           - check:deadcode
+          - check:gofix
           - check:govet
+          - check:gosec
           - check:govulncheck
           - check:staticcheck
           - check:helmlint

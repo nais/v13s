@@ -27,7 +27,7 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-check: vet fmt vulncheck deadcode staticcheck goimport helm-lint
+check: vet fmt vulncheck deadcode staticcheck goimport helm-lint gofix
 
 vet:
 	@echo "Running go vet..."
@@ -57,6 +57,9 @@ deadcode:
 gosec:
 	mise run check:gosec
 
+gofix:
+	mise run check:gofix
+
 helm-lint:
 	@echo "Running helm lint..."
 	helm lint --strict ./charts
@@ -78,4 +81,3 @@ refresh-db:
 TENANT ?= nav
 connect-db:
 	mise run db:proxy ${TENANT}
-
