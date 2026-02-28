@@ -243,11 +243,11 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		opts = append(opts, vulnerabilities.SeverityFilter(severity))
 	}
 
-	if o.ExcludeNamespaces != nil && len(o.ExcludeNamespaces) > 0 {
+	if len(o.ExcludeNamespaces) > 0 {
 		opts = append(opts, vulnerabilities.ExcludeNamespacesFilter(o.ExcludeNamespaces...))
 	}
 
-	if o.ExcludeClusters != nil && len(o.ExcludeClusters) > 0 {
+	if len(o.ExcludeClusters) > 0 {
 		opts = append(opts, vulnerabilities.ExcludeClustersFilter(o.ExcludeClusters...))
 	}
 

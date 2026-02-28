@@ -25,7 +25,7 @@ func FindCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				{
 					Name:  "workloads",
 					Usage: "list workloads matching filter",
-					Flags: append(flag.CommonFlags(opts)),
+					Flags: flag.CommonFlags(opts),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listWorkloads(ctx, cmd, c, opts)
 					},

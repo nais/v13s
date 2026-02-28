@@ -7,3 +7,6 @@ go tool github.com/securego/gosec/v2/cmd/gosec --exclude-generated -terse --excl
 
 # Run gosec separately for pkg/cli (separate Go module)
 (cd pkg/cli && go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude-generated -terse ./...)
+
+# Run gosec separatly for pkg/api (separate Go module)
+(cd pkg/api && go run github.com/securego/gosec/v2/cmd/gosec@latest --exclude-generated -terse ./...)

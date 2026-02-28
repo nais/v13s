@@ -122,7 +122,7 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					Name:    "delete",
 					Aliases: []string{"d"},
 					Usage:   "delete workload(s) and associated resources if not used by other workloads",
-					Flags:   append(flag.CommonFlags(opts, "l", "o", "s", "su", "se")),
+					Flags:   flag.CommonFlags(opts, "l", "o", "s", "su", "se"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return deleteWorkload(ctx, opts, c)
 					},
