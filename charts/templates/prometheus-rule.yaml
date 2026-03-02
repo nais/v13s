@@ -63,8 +63,8 @@ spec:
             summary: |
               {{ ":rotating_light: CRITICAL vulnerabilities in workload `{{ $labels.workload_name }}` (namespace `{{ $labels.workload_namespace }}`)" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` in namespace `{{ $labels.workload_namespace }}` has {{ $value }} critical vulnerabilities." }}
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText=nais-io
+              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} critical vulnerabilities." }}
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Potential security risk; workload may be exploitable
             action: |
               Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
