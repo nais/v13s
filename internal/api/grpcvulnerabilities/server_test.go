@@ -1644,6 +1644,8 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
+func ptrTime(t time.Time) *time.Time { return &t }
+
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
