@@ -1,14 +1,6 @@
 package collections
 
-func Filter[T any](s []T, f func(T) bool) []T {
-	var r []T
-	for _, v := range s {
-		if f(v) {
-			r = append(r, v)
-		}
-	}
-	return r
-}
+import "slices"
 
 func Map[T1, T2 any](s []T1, f func(T1) T2) []T2 {
 	r := make([]T2, len(s))
@@ -19,10 +11,5 @@ func Map[T1, T2 any](s []T1, f func(T1) T2) []T2 {
 }
 
 func AnyMatch[T1 any](s []T1, f func(e T1) bool) bool {
-	for _, v := range s {
-		if f(v) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(s, f)
 }

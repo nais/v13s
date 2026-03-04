@@ -147,7 +147,7 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		suppTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		for _, row := range suppressions {
 			// Convert []string to []interface{}
-			rowInterface := make([]interface{}, len(row))
+			rowInterface := make([]any, len(row))
 			for i, v := range row {
 				rowInterface[i] = v
 			}

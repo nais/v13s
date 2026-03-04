@@ -92,7 +92,7 @@ func TestUpdater(t *testing.T) {
 			}
 			// fallback: return default 4 vulns
 			vulns := make([]*dependencytrack.Vulnerability, 4)
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				vulns[i] = &dependencytrack.Vulnerability{
 					Package: "pkg:component-" + uuid + fmt.Sprintf("-%d", i),
 					Cve: &dependencytrack.Cve{

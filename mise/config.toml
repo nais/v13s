@@ -1,10 +1,9 @@
 [tools]
-golang = "1.25.5"
 protoc-gen-go-grpc = "1.5.1"
 protoc-gen-go = "1.36.11"
 protoc = "29.3"
 helm = "3.15.1"
-go = "1.25.7"
+go = "1.26.0"
 
 [settings]
 pin = true
