@@ -1,4 +1,5 @@
 [tools]
+golang = "1.26.0"
 protoc-gen-go-grpc = "1.5.1"
 protoc-gen-go = "1.36.11"
 protoc = "29.3"
