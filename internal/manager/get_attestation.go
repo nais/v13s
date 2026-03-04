@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	KindGetAttestation = "get_attestation"
+	KindGetAttestation   = "get_attestation"
+	attestationDBTimeout = 10 * time.Second
 )
 
 type GetAttestationJob struct {
@@ -40,7 +41,7 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
 		},
-		MaxAttempts: 3,
+		MaxAttempts: 4,
 	}
 }
 
@@ -77,32 +78,47 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			attribute.String("hasAttestation", fmt.Sprint(att != nil)),
 		))
 
+	runDB := func(fn func(dbCtx context.Context) error) error {
+		dbCtx, cancel := context.WithTimeout(ctx, attestationDBTimeout)
+		defer cancel()
+		return fn(dbCtx)
+	}
+
 	if err != nil {
 		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
 		var unrecoverableError model.UnrecoverableError
-		// TODO: handle no attestation found vs error in verifying
+
 		if errors.As(err, &noMatchAttestationError) {
-			// TODO: handle errors
-			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
-				State: sql.WorkloadStateNoAttestation,
-				ID:    job.Args.WorkloadId,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to set workload state: %w", err)
+			// No matching attestations is a terminal but expected state for many images.
+			g.log.WithError(err).WithFields(logrus.Fields{
+				"image":         imageName,
+				"tag":           imageTag,
+				"workloadId":    job.Args.WorkloadId,
+				"workload_type": job.Args.WorkloadType,
+			}).Info("no attestations found for workload image")
+
+			if dbErr := runDB(func(dbCtx context.Context) error {
+				return g.db.UpdateWorkloadState(dbCtx, sql.UpdateWorkloadStateParams{
+					State: sql.WorkloadStateNoAttestation,
+					ID:    job.Args.WorkloadId,
+				})
+			}); dbErr != nil {
+				return fmt.Errorf("failed to set workload state: %w", dbErr)
 			}
 
-			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
-				State: sql.ImageStateFailed,
-				Name:  imageName,
-				Tag:   imageTag,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to set image state: %w", err)
+			if dbErr := runDB(func(dbCtx context.Context) error {
+				return g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+					State: sql.ImageStateFailed,
+					Name:  imageName,
+					Tag:   imageTag,
+				})
+			}); dbErr != nil {
+				return fmt.Errorf("failed to set image state: %w", dbErr)
 			}
+
 			recordOutput(ctx, JobStatusNoAttestation)
-			if job.Args.WorkloadType == model.WorkloadTypeApp {
-				return noMatchAttestationError
-			}
+			span.SetStatus(codes.Ok, "no attestation found")
+			// Always cancel the job so River does not keep retrying this expected condition.
 			return river.JobCancel(noMatchAttestationError)
 		} else if errors.As(err, &unrecoverableError) {
 			span.RecordError(err)
@@ -115,43 +131,53 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				},
 			).Info("marking workload and image as unrecoverable due to unrecoverable error from attestation source")
 			recordOutput(ctx, JobStatusUnrecoverable)
-			err = g.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
-				State: sql.WorkloadStateUnrecoverable,
-				ID:    job.Args.WorkloadId,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to set workload state: %w", err)
+
+			if dbErr := runDB(func(dbCtx context.Context) error {
+				return g.db.UpdateWorkloadState(dbCtx, sql.UpdateWorkloadStateParams{
+					State: sql.WorkloadStateUnrecoverable,
+					ID:    job.Args.WorkloadId,
+				})
+			}); dbErr != nil {
+				return fmt.Errorf("failed to set workload state: %w", dbErr)
 			}
-			err = g.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
-				State: sql.ImageStateFailed,
-				Name:  imageName,
-				Tag:   imageTag,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to set image state: %w", err)
+			if dbErr := runDB(func(dbCtx context.Context) error {
+				return g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+					State: sql.ImageStateFailed,
+					Name:  imageName,
+					Tag:   imageTag,
+				})
+			}); dbErr != nil {
+				return fmt.Errorf("failed to set image state: %w", dbErr)
 			}
 			return river.JobCancel(unrecoverableError)
-		} else {
-			return handleJobErr(err)
 		}
+
+		return handleJobErr(err)
 	}
 	if att != nil {
 		compressed, err := att.Compress()
 		if err != nil {
 			return fmt.Errorf("failed to compress attestation: %w", err)
 		}
-		err = g.jobClient.AddJob(ctx, &UploadAttestationJob{
+		if err := g.jobClient.AddJob(ctx, &UploadAttestationJob{
 			ImageName:   imageName,
 			ImageTag:    imageTag,
 			WorkloadId:  job.Args.WorkloadId,
 			Attestation: compressed,
-		})
-		if err != nil {
+		}); err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 		recordOutput(ctx, JobStatusAttestationDownloaded)
+		g.log.WithFields(logrus.Fields{
+			"image":         imageName,
+			"tag":           imageTag,
+			"workloadId":    job.Args.WorkloadId,
+			"workload_type": job.Args.WorkloadType,
+		}).Debug("attestation downloaded and upload_attestation job enqueued")
 	}
+
+	span.SetStatus(codes.Ok, "attestation processing complete")
 	return nil
 }

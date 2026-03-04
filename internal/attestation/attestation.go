@@ -176,6 +176,12 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 
 	// Prefer legacy error if we tried it; otherwise return v3 error
 	if legacyErr != nil {
+		var noMatch *cosign.ErrNoMatchingAttestations
+		if errors.As(legacyErr, &noMatch) {
+			v.log.WithError(legacyErr).WithField("ref", ref.String()).Info("legacy attestation reported no matching attestations")
+			return nil, legacyErr
+		}
+
 		v.log.WithError(legacyErr).WithField("ref", ref.String()).Warn("legacy attestation verification failed")
 		return nil, legacyErr
 	}
@@ -191,6 +197,10 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 
 	verified, err := v.verifyBundleFormat(ctx, ref)
 	if err != nil {
+		var noMatch *cosign.ErrNoMatchingAttestations
+		if errors.As(err, &noMatch) {
+			return nil, err
+		}
 		return nil, err
 	}
 	if len(verified) == 0 {
@@ -199,7 +209,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 
 	chosen, payload, err := pickCycloneDX(verified)
 	if err != nil {
-		return nil, model.ToUnrecoverableError(err, "attestation")
+		return nil, model.ToRecoverableError(err, "attestation")
 	}
 
 	statement, err := ParseEnvelope(payload)
