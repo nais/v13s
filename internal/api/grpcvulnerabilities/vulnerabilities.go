@@ -125,7 +125,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		Limit:             limit,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Since:             timestamptzFromProto(request.GetSince()),
-		Severity:          new(int32(*request.Severity)),
+		Severity:          toInt32Ptr(request.Severity),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
@@ -677,4 +677,11 @@ func timestamptzFromProto(ts *timestamppb.Timestamp) pgtype.Timestamptz {
 		Time:  ts.AsTime().UTC(),
 		Valid: true,
 	}
+}
+
+func toInt32Ptr(s *vulnerabilities.Severity) *int32 {
+	if s == nil {
+		return nil
+	}
+	return new(int32(*s))
 }
