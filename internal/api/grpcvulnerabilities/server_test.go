@@ -1723,7 +1723,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
-func TestServer_SuppressVulnerability_AliasCanonical(t *testing.T) {
+func TestServer_SuppressAliasCanonicalizesAndIsRespectedEverywhere(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
 		namespaces:            []string{"namespace-1"},
