@@ -1057,7 +1057,6 @@ type ListVulnerabilitiesRow struct {
 	CvssScore     *float64
 }
 
-// TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilities,
 		arg.Cluster,
