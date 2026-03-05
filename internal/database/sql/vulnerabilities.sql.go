@@ -17,8 +17,9 @@ FROM
     suppressed_vulnerabilities sv
     JOIN vulnerabilities v ON sv.image_name = v.image_name
         AND sv.package = v.package
-        AND sv.cve_id = v.cve_id
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+        AND sv.cve_id = c.cve_id
     JOIN workloads w ON v.image_name = w.image_name
         AND v.image_tag = w.image_tag
 WHERE (
@@ -245,10 +246,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.image_name = $1
     AND v.image_tag = $2
@@ -344,10 +346,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.id = $1
 `
@@ -622,8 +625,9 @@ FROM
     suppressed_vulnerabilities sv
     JOIN vulnerabilities v ON sv.image_name = v.image_name
         AND sv.package = v.package
-        AND sv.cve_id = v.cve_id
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+        AND sv.cve_id = c.cve_id
     JOIN workloads w ON v.image_name = w.image_name
         AND v.image_tag = w.image_tag
 WHERE (
