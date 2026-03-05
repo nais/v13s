@@ -41,7 +41,7 @@ func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
 		},
-		MaxAttempts: 4,
+		MaxAttempts: 3,
 	}
 }
 
@@ -54,7 +54,7 @@ type GetAttestationWorker struct {
 	river.WorkerDefaults[GetAttestationJob]
 }
 
-func (g *GetAttestationWorker) NextRetry(job *river.Job[GetAttestationJob]) time.Time {
+func (g *GetAttestationWorker) NextRetry(_ *river.Job[GetAttestationJob]) time.Time {
 	return time.Now().Add(1 * time.Minute)
 }
 
@@ -85,10 +85,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	}
 
 	if err != nil {
-		var noMatchAttestationError *cosign.ErrNoMatchingAttestations
-		var unrecoverableError model.UnrecoverableError
-
-		if errors.As(err, &noMatchAttestationError) {
+		if noMatchAttestationError, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err); ok {
 			// No matching attestations is a terminal but expected state for many images.
 			g.log.WithError(err).WithFields(logrus.Fields{
 				"image":         imageName,
@@ -119,8 +116,8 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 			recordOutput(ctx, JobStatusNoAttestation)
 			span.SetStatus(codes.Ok, "no attestation found")
 			// Always cancel the job so River does not keep retrying this expected condition.
-			return river.JobCancel(noMatchAttestationError)
-		} else if errors.As(err, &unrecoverableError) {
+			return handleJobErr(noMatchAttestationError)
+		} else if unrecoverableError, ok := errors.AsType[model.UnrecoverableError](err); ok {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 			g.log.WithFields(
