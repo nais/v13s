@@ -25,8 +25,7 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 	}
 
 	if request.SinceType != nil {
-		sinceType := strings.ToLower(request.GetSinceType().String())
-		params.SinceType = &sinceType
+		params.SinceType = new(strings.ToLower(request.GetSinceType().String()))
 	}
 
 	metrics, err := s.querier.ListMeanTimeToFixTrendBySeverity(ctx, params)
@@ -66,8 +65,7 @@ func (s *Server) ListWorkloadMTTFBySeverity(ctx context.Context, request *vulner
 	}
 
 	if request.SinceType != nil {
-		sinceType := strings.ToLower(request.GetSinceType().String())
-		params.SinceType = &sinceType
+		params.SinceType = new(strings.ToLower(request.GetSinceType().String()))
 	}
 
 	rows, err := s.querier.ListWorkloadSeverityFixStats(ctx, params)

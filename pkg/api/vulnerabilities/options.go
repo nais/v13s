@@ -295,14 +295,11 @@ func (f *Filter) FuzzyWorkloadType() *string {
 	if f.WorkloadType == nil {
 		return nil
 	}
-	app := string(WorkloadTypeApp)
-	job := string(WorkloadTypeJob)
-
 	switch *f.WorkloadType {
 	case "app", "APP", "application", "Application", "APPLICATION":
-		return &app
+		return new(string(WorkloadTypeApp))
 	case "job", "Job", "JOB", "Naisjob", "NAISJOB", "NaisJob":
-		return &job
+		return new(string(WorkloadTypeJob))
 	}
 	return f.WorkloadType
 }

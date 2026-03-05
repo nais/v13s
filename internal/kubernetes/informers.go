@@ -78,8 +78,7 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 			// Check if the resource is available in the cluster.
 			resList, err := discoveryClient.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
 			if err != nil {
-				var authErr *oauth2.RetrieveError
-				if errors.As(err, &authErr) {
+				if _, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
 					mgr.Stop()
 					return nil, fmt.Errorf("authentication error for cluster %s: %w", cluster, err)
 				}

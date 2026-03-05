@@ -28,7 +28,6 @@ const (
 	JobStatusImageRemovedFromSource     JobStatus = "image_removed_from_source"
 	JobStatusImageStillInUse            JobStatus = "image_still_in_use"
 	JobStatusSourceRefDeleted           JobStatus = "source_ref_deleted"
-	JobStatusSummariesUpdated           JobStatus = "summaries_updated"
 )
 
 func recordOutput(ctx context.Context, status JobStatus) {
@@ -41,8 +40,7 @@ func recordOutput(ctx context.Context, status JobStatus) {
 }
 
 func handleJobErr(originalErr error) error {
-	var uErr model.UnrecoverableError
-	if errors.As(originalErr, &uErr) {
+	if uErr, ok := errors.AsType[model.UnrecoverableError](originalErr); ok {
 		return river.JobCancel(uErr)
 	}
 	return originalErr

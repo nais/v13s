@@ -30,8 +30,7 @@ test-coverage:
 check: vet fmt vulncheck deadcode staticcheck goimport helm-lint gofix
 
 vet:
-	@echo "Running go vet..."
-	go vet ./...
+	mise run check:govet
 
 goimport:
 	@echo "Running goimport..."

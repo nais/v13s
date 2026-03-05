@@ -163,12 +163,10 @@ func (u *Updater) DetermineSeveritySince(
 	}
 
 	if earliest.Valid {
-		t := earliest.Time.UTC()
-		return &t, nil
+		return new(earliest.Time.UTC()), nil
 	}
 
-	now := time.Now().UTC()
-	return &now, nil
+	return new(time.Now().UTC()), nil
 }
 
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
