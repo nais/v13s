@@ -126,11 +126,7 @@ type Vulnerability struct {
 	CvssScore     *float64
 }
 
-type VulnerabilityMetadata interface {
-	/*GetProjectId() string
-	GetComponentId() string
-	GetVulnerabilityId() string*/
-}
+type VulnerabilityMetadata any
 
 type VulnerabilitySummary struct {
 	Id         string

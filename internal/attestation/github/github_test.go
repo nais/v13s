@@ -84,7 +84,6 @@ func TestCertificateIdentity_GetIdentities_RegexMatchesExpectedSamples(t *testin
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			id := NewCertificateIdentity(tt.orgs)
 			ids := id.GetIdentities()

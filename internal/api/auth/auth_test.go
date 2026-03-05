@@ -54,7 +54,7 @@ func TestEnsureValidToken(t *testing.T) {
 				"authorization": "Bearer token-without-email",
 			}),
 			validateFunc: func(ctx context.Context, token, audience string) (*idtoken.Payload, error) {
-				return &idtoken.Payload{Claims: map[string]interface{}{}}, nil
+				return &idtoken.Payload{Claims: map[string]any{}}, nil
 			},
 			expectErrMsg: "invalid token payload",
 		},
@@ -65,7 +65,7 @@ func TestEnsureValidToken(t *testing.T) {
 			}),
 			validateFunc: func(ctx context.Context, token, audience string) (*idtoken.Payload, error) {
 				return &idtoken.Payload{
-					Claims: map[string]interface{}{
+					Claims: map[string]any{
 						"email": "unauthorized@svc.iam.gserviceaccount.com",
 					},
 				}, nil
@@ -82,7 +82,7 @@ func TestEnsureValidToken(t *testing.T) {
 					return nil, errors.New("audience mismatch")
 				}
 				return &idtoken.Payload{
-					Claims: map[string]interface{}{
+					Claims: map[string]any{
 						"email": "good-sa.iam.gserviceaccount.com",
 					},
 				}, nil
@@ -96,7 +96,7 @@ func TestEnsureValidToken(t *testing.T) {
 			}),
 			validateFunc: func(ctx context.Context, token, audience string) (*idtoken.Payload, error) {
 				return &idtoken.Payload{
-					Claims: map[string]interface{}{
+					Claims: map[string]any{
 						"email": "ok-sa.iam.gserviceaccount.com",
 					},
 				}, nil

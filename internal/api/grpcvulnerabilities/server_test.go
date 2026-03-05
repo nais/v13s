@@ -1221,8 +1221,8 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 				FixedAt      *time.Time
 				SnapshotDate time.Time
 			}{
-				{0, now.Add(-10 * 24 * time.Hour), ptrTime(now.Add(-5 * 24 * time.Hour)), now.Add(-10 * 24 * time.Hour)},
-				{1, now.Add(-7 * 24 * time.Hour), ptrTime(now.Add(-2 * 24 * time.Hour)), now.Add(-7 * 24 * time.Hour)},
+				{0, now.Add(-10 * 24 * time.Hour), new(now.Add(-5 * 24 * time.Hour)), now.Add(-10 * 24 * time.Hour)},
+				{1, now.Add(-7 * 24 * time.Hour), new(now.Add(-2 * 24 * time.Hour)), now.Add(-7 * 24 * time.Hour)},
 			}
 
 			for _, v := range vulns {
@@ -1406,8 +1406,8 @@ func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 		for _, w := range workloads {
 			vulns := []vuln{
 				// Fixed critical and high severities
-				{0, now.Add(-10 * 24 * time.Hour), ptrTime(now.Add(-5 * 24 * time.Hour))},
-				{1, now.Add(-7 * 24 * time.Hour), ptrTime(now.Add(-2 * 24 * time.Hour))},
+				{0, now.Add(-10 * 24 * time.Hour), new(now.Add(-5 * 24 * time.Hour))},
+				{1, now.Add(-7 * 24 * time.Hour), new(now.Add(-2 * 24 * time.Hour))},
 				// Unfixed medium severity
 				{2, now.Add(-3 * 24 * time.Hour), nil},
 			}
@@ -1643,8 +1643,6 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.Empty(t, resp.Nodes)
 	})
 }
-
-func ptrTime(t time.Time) *time.Time { return &t }
 
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()

@@ -40,7 +40,7 @@ func TestMaintainSuppressedVulnerabilities(t *testing.T) {
 	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
 		Return(&dependencytrack.Analysis{
 			AnalysisState: "NOT_AFFECTED",
-			IsSuppressed:  ptr(false),
+			IsSuppressed:  new(false),
 		}, nil)
 
 	// Expect UpdateFinding to be called
@@ -59,10 +59,6 @@ func TestMaintainSuppressedVulnerabilities(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockClient.AssertExpectations(t)
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func TestMaintainSuppressedVulnerabilities_GetAnalysisError(t *testing.T) {
@@ -110,7 +106,7 @@ func TestMaintainSuppressedVulnerabilities_UpdateFindingError(t *testing.T) {
 	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
 		Return(&dependencytrack.Analysis{
 			AnalysisState: "ACTIVE", // different state to trigger update
-			IsSuppressed:  ptr(false),
+			IsSuppressed:  new(false),
 		}, nil)
 
 	mockClient.On("UpdateFinding", ctx, mock.Anything).
@@ -142,7 +138,7 @@ func TestMaintainSuppressedVulnerabilities_NoUpdateNeeded(t *testing.T) {
 	mockClient.On("GetAnalysisTrailForImage", ctx, "project-1", "component-1", "vuln-1").
 		Return(&dependencytrack.Analysis{
 			AnalysisState: "NOT_AFFECTED",
-			IsSuppressed:  ptr(true),
+			IsSuppressed:  new(true),
 		}, nil)
 
 	err := source.MaintainSuppressedVulnerabilities(ctx, suppressed)

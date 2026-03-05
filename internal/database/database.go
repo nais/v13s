@@ -37,7 +37,7 @@ func New(ctx context.Context, dsn string, log logrus.FieldLogger) (*pgxpool.Pool
 func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bool) (*pgxpool.Pool, error) {
 	if migrate {
 		var migErr error
-		for i := 0; i < maxRetries; i++ {
+		for i := range maxRetries {
 			migErr = migrateDatabaseSchema("pgx", dsn, log)
 			if migErr == nil {
 				break
@@ -89,7 +89,7 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 
 	var pool *pgxpool.Pool
 	var pingErr error
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		pool, err = pgxpool.NewWithConfig(ctx, config)
 		if err == nil {
 			if pingErr = pool.Ping(ctx); pingErr == nil {

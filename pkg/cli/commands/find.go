@@ -66,8 +66,8 @@ func listWorkloads(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		vulnFilter := vulnerabilities.VulnerabilityFilter{}
 		var cveIds []string
 		if o.CveIds != "" {
-			parts := strings.Split(o.CveIds, ",")
-			for _, p := range parts {
+			parts := strings.SplitSeq(o.CveIds, ",")
+			for p := range parts {
 				cveIds = append(cveIds, strings.TrimSpace(p))
 			}
 			vulnFilter.CveIds = cveIds

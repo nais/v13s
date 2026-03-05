@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -102,9 +103,7 @@ func CreateClusterConfigMap(tenant string, config K8sConfig) (ClusterConfigMap, 
 	}
 
 	staticConfigs := getStaticClusterConfigs(config.StaticClusters)
-	for cluster, cfg := range staticConfigs {
-		configs[cluster] = cfg
-	}
+	maps.Copy(configs, staticConfigs)
 
 	return configs, nil
 }

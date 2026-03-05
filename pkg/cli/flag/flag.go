@@ -2,6 +2,7 @@ package flag
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -143,10 +144,8 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 
 func shouldExclude(f cli.Flag, excludes []string) bool {
 	for _, e := range excludes {
-		for _, n := range f.Names() {
-			if n == e {
-				return true
-			}
+		if slices.Contains(f.Names(), e) {
+			return true
 		}
 	}
 	return false

@@ -170,7 +170,7 @@ func (c *Client) list(ctx context.Context, group, version, resource string) (*un
 		log.WithError(err).Errorf("error listing %s", resource)
 		return &unstructured.UnstructuredList{
 			Items:  []unstructured.Unstructured{},
-			Object: map[string]interface{}{},
+			Object: map[string]any{},
 		}, nil
 	}
 	return list, nil

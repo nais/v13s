@@ -16,10 +16,7 @@ func Paginate(limit int, f func(offset int) (int, bool, error)) error {
 		if err != nil {
 			return err
 		}
-		numFetched := offset + limit
-		if numFetched > total {
-			numFetched = total
-		}
+		numFetched := min(offset+limit, total)
 		fmt.Printf("Fetched %d of total '%d' in %f seconds.\n", numFetched, total, time.Since(start).Seconds())
 
 		// Check if there is another page
