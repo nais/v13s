@@ -627,7 +627,6 @@ ORDER BY
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');
 
--- TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 -- name: ListVulnerabilities :many
 WITH resolved_vulnerabilities AS (
     SELECT
