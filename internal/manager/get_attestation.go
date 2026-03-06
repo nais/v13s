@@ -129,10 +129,14 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 				},
 			).Info("registry unreachable or manifest not found; checking DB SBOM cache before giving up")
 
-			// Attempt to re-upload from the cached SBOM so vulnerability data
-			cached, cacheErr := g.db.GetImageSbom(ctx, sql.GetImageSbomParams{
-				Name: imageName,
-				Tag:  imageTag,
+			// Attempt to re-upload from the cached SBOM so vulnerability data can still be processed
+			var cached *sql.GetImageSbomRow
+			cacheErr := runDB(func(dbCtx context.Context) error {
+				cached, err = g.db.GetImageSbom(dbCtx, sql.GetImageSbomParams{
+					Name: imageName,
+					Tag:  imageTag,
+				})
+				return err
 			})
 			if cacheErr == nil && len(cached.Sbom) > 0 {
 				g.log.WithFields(logrus.Fields{
