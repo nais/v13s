@@ -147,3 +147,26 @@ ON CONFLICT (
         status_code = @status_code,
         reason = @reason,
         updated_at = NOW();
+
+-- name: SaveImageSbom :exec
+UPDATE
+    images
+SET
+    sbom = @sbom,
+    sbom_updated_at = NOW(),
+    updated_at = NOW()
+WHERE
+    name = @name
+    AND tag = @tag;
+
+-- name: GetImageSbom :one
+SELECT
+    sbom,
+    sbom_updated_at
+FROM
+    images
+WHERE
+    name = @name
+    AND tag = @tag
+    AND sbom IS NOT NULL;
+

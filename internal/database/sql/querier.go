@@ -27,6 +27,7 @@ type Querier interface {
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
+	GetImageSbom(ctx context.Context, arg GetImageSbomParams) (*GetImageSbomRow, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
@@ -65,6 +66,7 @@ type Querier interface {
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	ResetDatabase(ctx context.Context) error
+	SaveImageSbom(ctx context.Context, arg SaveImageSbomParams) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error

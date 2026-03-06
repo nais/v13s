@@ -319,6 +319,8 @@ type Image struct {
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	ReadyForResyncAt pgtype.Timestamptz
+	Sbom             []byte
+	SbomUpdatedAt    pgtype.Timestamptz
 }
 
 type RiverJob struct {
