@@ -37,7 +37,7 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 
 const getImage = `-- name: GetImage :one
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom, sbom_updated_at
 FROM
     images
 WHERE
@@ -61,13 +61,44 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReadyForResyncAt,
+		&i.Sbom,
+		&i.SbomUpdatedAt,
 	)
+	return &i, err
+}
+
+const getImageSbom = `-- name: GetImageSbom :one
+SELECT
+    sbom,
+    sbom_updated_at
+FROM
+    images
+WHERE
+    name = $1
+    AND tag = $2
+    AND sbom IS NOT NULL
+`
+
+type GetImageSbomParams struct {
+	Name string
+	Tag  string
+}
+
+type GetImageSbomRow struct {
+	Sbom          []byte
+	SbomUpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetImageSbom(ctx context.Context, arg GetImageSbomParams) (*GetImageSbomRow, error) {
+	row := q.db.QueryRow(ctx, getImageSbom, arg.Name, arg.Tag)
+	var i GetImageSbomRow
+	err := row.Scan(&i.Sbom, &i.SbomUpdatedAt)
 	return &i, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom, sbom_updated_at
 FROM
     images
 WHERE
@@ -95,6 +126,8 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ReadyForResyncAt,
+			&i.Sbom,
+			&i.SbomUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -233,6 +266,29 @@ func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const saveImageSbom = `-- name: SaveImageSbom :exec
+UPDATE
+    images
+SET
+    sbom = $1,
+    sbom_updated_at = NOW(),
+    updated_at = NOW()
+WHERE
+    name = $2
+    AND tag = $3
+`
+
+type SaveImageSbomParams struct {
+	Sbom []byte
+	Name string
+	Tag  string
+}
+
+func (q *Queries) SaveImageSbom(ctx context.Context, arg SaveImageSbomParams) error {
+	_, err := q.db.Exec(ctx, saveImageSbom, arg.Sbom, arg.Name, arg.Tag)
+	return err
 }
 
 const updateImage = `-- name: UpdateImage :exec
