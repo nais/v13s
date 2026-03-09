@@ -1,6 +1,6 @@
 module github.com/nais/v13s/pkg/cli
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/fatih/color v1.18.0
