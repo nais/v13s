@@ -1270,8 +1270,7 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 				snap := v.SnapshotDate.Truncate(24 * time.Hour)
 				var fixed *time.Time
 				if v.FixedAt != nil {
-					tmp := v.FixedAt.Truncate(24 * time.Hour)
-					fixed = &tmp
+					fixed = new(v.FixedAt.Truncate(24 * time.Hour))
 				}
 
 				fixedFlag := fixed != nil
@@ -1632,13 +1631,10 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		cvssScoreZero := 0.0
-		cvssScoreLow := 2.5
-		cvssScoreHigh := 9.8
 		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
-			{CveID: "CVE-LOW", CveTitle: "Low", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreLow, Severity: 2, Refs: map[string]string{}},
-			{CveID: "CVE-HIGH", CveTitle: "High", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreHigh, Severity: 1, Refs: map[string]string{}},
-			{CveID: "CVE-ZERO", CveTitle: "Zero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreZero, Severity: 0, Refs: map[string]string{}},
+			{CveID: "CVE-LOW", CveTitle: "Low", CveDesc: "desc", CveLink: "link", CvssScore: new(2.5), Severity: 2, Refs: map[string]string{}},
+			{CveID: "CVE-HIGH", CveTitle: "High", CveDesc: "desc", CveLink: "link", CvssScore: new(9.8), Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-ZERO", CveTitle: "Zero", CveDesc: "desc", CveLink: "link", CvssScore: new(0.0), Severity: 0, Refs: map[string]string{}},
 		}).Exec(func(i int, err error) { assert.NoError(t, err) })
 
 		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
@@ -1724,6 +1720,206 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			cveIDs = append(cveIDs, node.Cve.Id)
 		}
 		assert.Contains(t, cveIDs, "CWE-1-1", "suppressed CVE should appear when IncludeSuppressed is set")
+	})
+}
+
+func TestServer_SuppressAliasCanonicalizesAndIsRespectedEverywhere(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName   = "image-cluster-1-namespace-1-workload-1"
+		imageTag    = "v1.0"
+		pkg         = "alias-package"
+		canonicalID = "CVE-2025-CANONICAL"
+		aliasID     = "GHSA-2025-ALIAS"
+	)
+
+	// Seed canonical CVE and alias CVE rows.
+	// Both must exist in the cve table because cve_alias.alias has a FK -> cve(cve_id).
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:    canonicalID,
+			CveTitle: "Canonical CVE title",
+			CveDesc:  "Canonical CVE description",
+			CveLink:  "http://example.com/" + canonicalID,
+			Severity: 1, // HIGH
+			Refs:     typeext.MapStringString{},
+		},
+		{
+			CveID:    aliasID,
+			CveTitle: "Alias CVE title",
+			CveDesc:  "Alias CVE description",
+			CveLink:  "http://example.com/" + aliasID,
+			Severity: 1,
+			Refs:     typeext.MapStringString{},
+		},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// Seed alias: aliasID -> canonicalID.
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+		Alias:          aliasID,
+		CanonicalCveID: canonicalID,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// Seed a vulnerability row using the alias CVE ID
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+		ImageName:     imageName,
+		ImageTag:      imageTag,
+		Package:       pkg,
+		CveID:         aliasID,
+		Source:        "test",
+		LatestVersion: "1.0.0",
+		LastSeverity:  1,
+		SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// Obtain the vulnerability UUID via GetVulnerability (lookup by alias cve_id).
+	getResp, err := client.GetVulnerability(ctx, imageName, imageTag, pkg, aliasID)
+	require.NoError(t, err)
+	require.NotNil(t, getResp.GetVulnerability())
+	vulnID := getResp.GetVulnerability().GetId()
+	require.NotEmpty(t, vulnID)
+
+	t.Run("before suppression: GetVulnerability not suppressed", func(t *testing.T) {
+		resp, err := client.GetVulnerability(ctx, imageName, imageTag, pkg, aliasID)
+		require.NoError(t, err)
+		assert.False(t, resp.GetVulnerability().GetSuppression().GetSuppressed())
+	})
+
+	t.Run("before suppression: GetVulnerabilityById not suppressed", func(t *testing.T) {
+		resp, err := client.GetVulnerabilityById(ctx, vulnID)
+		require.NoError(t, err)
+		assert.False(t, resp.GetVulnerability().GetSuppression().GetSuppressed())
+	})
+
+	t.Run("before suppression: ListSuppressedVulnerabilities returns empty", func(t *testing.T) {
+		resp, err := client.ListSuppressedVulnerabilities(ctx,
+			vulnerabilities.ImageFilter(imageName, imageTag),
+		)
+		require.NoError(t, err)
+		// filter to just our package/CVE in case other tests left rows
+		found := false
+		for _, n := range resp.Nodes {
+			if n.GetPackage() == pkg {
+				found = true
+			}
+		}
+		assert.False(t, found, "expected no suppression rows for alias-package before suppression")
+	})
+
+	// Suppress via the vulnerability UUID (internally resolves alias -> canonical).
+	err = client.SuppressVulnerability(
+		ctx,
+		vulnID,
+		"not affected by alias vuln",
+		"alias-tester",
+		vulnerabilities.SuppressState_NOT_AFFECTED,
+		true,
+	)
+	require.NoError(t, err)
+
+	// After suppression: all read paths must reflect suppressed = true.
+	t.Run("after suppression: GetVulnerability is suppressed", func(t *testing.T) {
+		resp, err := client.GetVulnerability(ctx, imageName, imageTag, pkg, aliasID)
+		require.NoError(t, err)
+		sup := resp.GetVulnerability().GetSuppression()
+		require.NotNil(t, sup, "suppression should be set")
+		assert.True(t, sup.GetSuppressed())
+		assert.Equal(t, vulnerabilities.SuppressState_NOT_AFFECTED, sup.GetSuppressedReason())
+		assert.Equal(t, "not affected by alias vuln", sup.GetSuppressedDetails())
+		assert.Equal(t, "alias-tester", sup.GetSuppressedBy())
+	})
+
+	t.Run("after suppression: GetVulnerabilityById is suppressed", func(t *testing.T) {
+		resp, err := client.GetVulnerabilityById(ctx, vulnID)
+		require.NoError(t, err)
+		sup := resp.GetVulnerability().GetSuppression()
+		require.NotNil(t, sup, "suppression should be set")
+		assert.True(t, sup.GetSuppressed())
+		assert.Equal(t, vulnerabilities.SuppressState_NOT_AFFECTED, sup.GetSuppressedReason())
+		assert.Equal(t, "alias-tester", sup.GetSuppressedBy())
+	})
+
+	t.Run("after suppression: ListSuppressedVulnerabilities includes alias-backed vuln", func(t *testing.T) {
+		resp, err := client.ListSuppressedVulnerabilities(ctx,
+			vulnerabilities.ImageFilter(imageName, imageTag),
+		)
+		require.NoError(t, err)
+		found := false
+		for _, n := range resp.Nodes {
+			if n.GetPackage() == pkg {
+				found = true
+				assert.True(t, n.GetSuppress())
+				assert.Equal(t, "alias-tester", n.GetSuppressedBy())
+			}
+		}
+		assert.True(t, found, "expected alias-package to appear in ListSuppressedVulnerabilities")
+	})
+
+	t.Run("after suppression: ListVulnerabilities hides suppressed by default", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(ctx,
+			vulnerabilities.ImageFilter(imageName, imageTag),
+			vulnerabilities.Limit(100),
+		)
+		require.NoError(t, err)
+		for _, n := range resp.Nodes {
+			if n.Vulnerability.Package == pkg {
+				t.Errorf("suppressed vulnerability (package=%s) should not appear without IncludeSuppressed", pkg)
+			}
+		}
+	})
+
+	t.Run("after suppression: ListVulnerabilities with IncludeSuppressed shows suppressed flag", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(ctx,
+			vulnerabilities.ImageFilter(imageName, imageTag),
+			vulnerabilities.IncludeSuppressed(),
+			vulnerabilities.Limit(100),
+		)
+		require.NoError(t, err)
+		found := false
+		for _, n := range resp.Nodes {
+			if n.Vulnerability.Package == pkg {
+				found = true
+				sup := n.Vulnerability.GetSuppression()
+				require.NotNil(t, sup)
+				assert.True(t, sup.GetSuppressed())
+			}
+		}
+		assert.True(t, found)
+	})
+
+	t.Run("suppression row is keyed by canonical CVE ID, not alias", func(t *testing.T) {
+		rows, err := db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+		require.NoError(t, err)
+		found := false
+		for _, r := range rows {
+			if r.Package == pkg {
+				found = true
+				assert.Equal(t, canonicalID, r.CveID,
+					"suppressed_vulnerabilities.cve_id should be the canonical ID, not the alias")
+				assert.NotEqual(t, aliasID, r.CveID,
+					"suppressed_vulnerabilities.cve_id must not be the alias")
+			}
+		}
+		assert.True(t, found, "expected a suppression row for alias-package")
+	})
+
+	t.Run("after unsuppression: GetVulnerability is no longer suppressed", func(t *testing.T) {
+		err := client.SuppressVulnerability(ctx, vulnID, "", "alias-tester",
+			vulnerabilities.SuppressState_NOT_SET, false)
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerability(ctx, imageName, imageTag, pkg, aliasID)
+		require.NoError(t, err)
+		assert.False(t, resp.GetVulnerability().GetSuppression().GetSuppressed())
 	})
 }
 
