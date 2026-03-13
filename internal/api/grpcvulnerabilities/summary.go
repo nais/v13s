@@ -265,6 +265,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		ImageTag:          request.GetFilter().ImageTag,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
+		IncludeSuppressed: request.IncludeSuppressed,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
 		Limit:             request.Limit,
 		Offset:            request.Offset,

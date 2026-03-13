@@ -22,15 +22,6 @@ spec:
             )
             )
 
-        - record: namespace:workload:vulnerabilities:critical:recent_samples
-          expr: max by (workload_namespace, workload_name) (
-            count_over_time(
-            v13s_workload_vulnerabilities{
-            workload_namespace="nais-system"
-            }[15m]
-            ) > 0
-            )
-
         - record: namespace:workload:vulnerabilities:critical:current
           expr: max by (workload_namespace, workload_name) (
             v13s_workload_vulnerabilities{
@@ -46,12 +37,8 @@ spec:
     - name: namespace-workload-vulnerability-alerts
       rules:
         - alert: "workload critical vulnerabilities"
-          expr: (namespace:workload:vulnerabilities:critical:max1h > 0)
-            and (
-            (namespace:workload:vulnerabilities:critical:current > 0)
-            or on(workload_namespace, workload_name)
-            ((namespace:workload:vulnerabilities:critical:recent_samples or vector(0)) == 0)
-            )
+          expr: (namespace:workload:vulnerabilities:critical:current > 0)
+            and (namespace:workload:vulnerabilities:critical:max1h > 0)
           for: 10m
           labels:
             namespace: nais-system

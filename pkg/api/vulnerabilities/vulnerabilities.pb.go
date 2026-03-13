@@ -2259,6 +2259,7 @@ type ListWorkloadsForVulnerabilityRequest struct {
 	OrderBy           *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
 	ExcludeNamespaces []string               `protobuf:"bytes,7,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"`
 	ExcludeClusters   []string               `protobuf:"bytes,8,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"`
+	IncludeSuppressed *bool                  `protobuf:"varint,9,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2347,6 +2348,13 @@ func (x *ListWorkloadsForVulnerabilityRequest) GetExcludeClusters() []string {
 		return x.ExcludeClusters
 	}
 	return nil
+}
+
+func (x *ListWorkloadsForVulnerabilityRequest) GetIncludeSuppressed() bool {
+	if x != nil && x.IncludeSuppressed != nil {
+		return *x.IncludeSuppressed
+	}
+	return false
 }
 
 type ListWorkloadsForVulnerabilityResponse struct {
@@ -2461,6 +2469,7 @@ type ListCveSummariesRequest struct {
 	OrderBy           *OrderBy               `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
 	ExcludeNamespaces []string               `protobuf:"bytes,5,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"`
 	ExcludeClusters   []string               `protobuf:"bytes,6,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"`
+	IncludeSuppressed *bool                  `protobuf:"varint,7,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2535,6 +2544,13 @@ func (x *ListCveSummariesRequest) GetExcludeClusters() []string {
 		return x.ExcludeClusters
 	}
 	return nil
+}
+
+func (x *ListCveSummariesRequest) GetIncludeSuppressed() bool {
+	if x != nil && x.IncludeSuppressed != nil {
+		return *x.IncludeSuppressed
+	}
+	return false
 }
 
 type ListCveSummariesResponse struct {
@@ -3937,7 +3953,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"z\n" +
 	")ListWorkloadsForVulnerabilityByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12=\n" +
-	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xf6\x02\n" +
+	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xc1\x03\n" +
 	"$ListWorkloadsForVulnerabilityRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x17\n" +
 	"\acve_ids\x18\x02 \x03(\tR\x06cveIds\x12\"\n" +
@@ -3947,23 +3963,27 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\x12:\n" +
 	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01\x12-\n" +
 	"\x12exclude_namespaces\x18\a \x03(\tR\x11excludeNamespaces\x12)\n" +
-	"\x10exclude_clusters\x18\b \x03(\tR\x0fexcludeClustersB\r\n" +
+	"\x10exclude_clusters\x18\b \x03(\tR\x0fexcludeClusters\x122\n" +
+	"\x12include_suppressed\x18\t \x01(\bH\x02R\x11includeSuppressed\x88\x01\x01B\r\n" +
 	"\v_cvss_scoreB\v\n" +
-	"\t_order_by\"\xa4\x01\n" +
+	"\t_order_byB\x15\n" +
+	"\x13_include_suppressed\"\xa4\x01\n" +
 	"%ListWorkloadsForVulnerabilityResponse\x12A\n" +
 	"\x05nodes\x18\x01 \x03(\v2+.v13s.api.protobuf.WorkloadForVulnerabilityR\x05nodes\x128\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xa2\x01\n" +
 	"\x18WorkloadForVulnerability\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12F\n" +
-	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\"\x9d\x02\n" +
+	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\"\xe8\x02\n" +
 	"\x17ListCveSummariesRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12:\n" +
 	"\border_by\x18\x04 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x00R\aorderBy\x88\x01\x01\x12-\n" +
 	"\x12exclude_namespaces\x18\x05 \x03(\tR\x11excludeNamespaces\x12)\n" +
-	"\x10exclude_clusters\x18\x06 \x03(\tR\x0fexcludeClustersB\v\n" +
-	"\t_order_by\"\x89\x01\n" +
+	"\x10exclude_clusters\x18\x06 \x03(\tR\x0fexcludeClusters\x122\n" +
+	"\x12include_suppressed\x18\a \x01(\bH\x01R\x11includeSuppressed\x88\x01\x01B\v\n" +
+	"\t_order_byB\x15\n" +
+	"\x13_include_suppressed\"\x89\x01\n" +
 	"\x18ListCveSummariesResponse\x123\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x1d.v13s.api.protobuf.CveSummaryR\x05nodes\x128\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"e\n" +

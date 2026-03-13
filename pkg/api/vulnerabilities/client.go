@@ -132,6 +132,7 @@ func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilit
 		CvssScore:         vulnerabilityFilter.CvssScore,
 		ExcludeNamespaces: o.ExcludeNamespaces,
 		ExcludeClusters:   o.ExcludeClusters,
+		IncludeSuppressed: &o.IncludeSuppressed,
 	}, o.CallOptions...)
 }
 
@@ -144,6 +145,7 @@ func (c *client) ListCveSummaries(ctx context.Context, opts ...Option) (*ListCve
 		OrderBy:           o.OrderBy,
 		ExcludeNamespaces: o.ExcludeNamespaces,
 		ExcludeClusters:   o.ExcludeClusters,
+		IncludeSuppressed: &o.IncludeSuppressed,
 	}, o.CallOptions...)
 }
 

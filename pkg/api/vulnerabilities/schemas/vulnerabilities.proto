@@ -267,6 +267,7 @@ message ListWorkloadsForVulnerabilityRequest {
   optional OrderBy order_by = 6;
   repeated string exclude_namespaces = 7;
   repeated string  exclude_clusters = 8;
+  optional bool include_suppressed = 9;
 }
 
 message ListWorkloadsForVulnerabilityResponse {
@@ -286,6 +287,7 @@ message ListCveSummariesRequest {
   optional OrderBy order_by = 4;
   repeated string exclude_namespaces = 5;
   repeated string  exclude_clusters = 6;
+  optional bool include_suppressed = 7;
 }
 
 message ListCveSummariesResponse {
