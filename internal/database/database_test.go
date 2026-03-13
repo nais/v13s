@@ -231,16 +231,14 @@ func TestSaveImageSbom(t *testing.T) {
 		imageTag  = "v1"
 	)
 	sbomData := []byte(`{"bomFormat":"CycloneDX"}`)
-	freshThreshold := pgtype.Timestamptz{Time: time.Now().Add(-updater.SbomRetentionAge), Valid: true}
 
 	t.Run("saves sbom when none exists", func(t *testing.T) {
 		createTestdata(t, db, imageName, imageTag, true)
 
 		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
-			Name:          imageName,
-			Tag:           imageTag,
-			Sbom:          sbomData,
-			ThresholdTime: freshThreshold,
+			Name: imageName,
+			Tag:  imageTag,
+			Sbom: sbomData,
 		})
 		assert.NoError(t, err)
 
@@ -249,32 +247,12 @@ func TestSaveImageSbom(t *testing.T) {
 		assert.Equal(t, sbomData, row.Sbom)
 	})
 
-	t.Run("does not overwrite sbom that is still within retention period", func(t *testing.T) {
-		// SBOM already saved above (sbom_updated_at = NOW()).
-		// Threshold is now-6months, so the existing SBOM is newer — should NOT be overwritten.
+	t.Run("overwrites existing sbom with new data", func(t *testing.T) {
 		newSbom := []byte(`{"bomFormat":"CycloneDX","version":2}`)
 		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
-			Name:          imageName,
-			Tag:           imageTag,
-			Sbom:          newSbom,
-			ThresholdTime: freshThreshold,
-		})
-		assert.NoError(t, err)
-
-		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: imageName, Tag: imageTag})
-		assert.NoError(t, err)
-		assert.Equal(t, sbomData, row.Sbom, "sbom should not have been overwritten")
-	})
-
-	t.Run("overwrites sbom that is older than retention period", func(t *testing.T) {
-		// Use a threshold in the future so the existing SBOM appears older than the threshold.
-		futureThreshold := pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true}
-		newSbom := []byte(`{"bomFormat":"CycloneDX","version":3}`)
-		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
-			Name:          imageName,
-			Tag:           imageTag,
-			Sbom:          newSbom,
-			ThresholdTime: futureThreshold,
+			Name: imageName,
+			Tag:  imageTag,
+			Sbom: newSbom,
 		})
 		assert.NoError(t, err)
 
@@ -288,10 +266,9 @@ func TestSaveImageSbom(t *testing.T) {
 		createTestdata(t, db, imageName, noWlTag, false)
 
 		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
-			Name:          imageName,
-			Tag:           noWlTag,
-			Sbom:          sbomData,
-			ThresholdTime: freshThreshold,
+			Name: imageName,
+			Tag:  noWlTag,
+			Sbom: sbomData,
 		})
 		assert.NoError(t, err)
 
@@ -315,14 +292,12 @@ func TestNullSbomForUnusedImages(t *testing.T) {
 		activeTag   = "active"
 	)
 	sbomData := []byte(`{"bomFormat":"CycloneDX"}`)
-	futureThreshold := pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true}
 
-	// Create an image without a workload and give it an SBOM.
+	// Create an image with a workload and give it an SBOM, then remove the workload.
 	createTestdata(t, db, unusedImage, unusedTag, true)
 	assert.NoError(t, db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
-		Name: unusedImage, Tag: unusedTag, Sbom: sbomData, ThresholdTime: futureThreshold,
+		Name: unusedImage, Tag: unusedTag, Sbom: sbomData,
 	}))
-	// Remove the workload so the image becomes unused.
 	_, err := db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
 		Name: unusedImage, Namespace: "testnamespace1", Cluster: "testcluster1", WorkloadType: "application",
 	})
@@ -331,10 +306,10 @@ func TestNullSbomForUnusedImages(t *testing.T) {
 	// Create an active image (has workload) and give it an SBOM.
 	createTestdata(t, db, activeImage, activeTag, true)
 	assert.NoError(t, db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
-		Name: activeImage, Tag: activeTag, Sbom: sbomData, ThresholdTime: futureThreshold,
+		Name: activeImage, Tag: activeTag, Sbom: sbomData,
 	}))
 
-	t.Run("does not null sbom within retention period", func(t *testing.T) {
+	t.Run("does not delete sbom within retention period", func(t *testing.T) {
 		// Threshold is now-6months — SBOMs saved just now are within retention, should be kept.
 		rows, err := db.NullSbomForUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(-updater.SbomRetentionAge), Valid: true})
 		assert.NoError(t, err)
@@ -345,17 +320,18 @@ func TestNullSbomForUnusedImages(t *testing.T) {
 		assert.Equal(t, sbomData, row.Sbom)
 	})
 
-	t.Run("nulls sbom for unused image past retention period", func(t *testing.T) {
+	t.Run("deletes sbom for unused image past retention period", func(t *testing.T) {
 		// Threshold in the future — the SBOM appears older than the threshold.
+		futureThreshold := pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true}
 		rows, err := db.NullSbomForUnusedImages(ctx, futureThreshold)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 
 		_, err = db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: unusedImage, Tag: unusedTag})
-		assert.Error(t, err, "sbom should have been nulled")
+		assert.Error(t, err, "sbom row should have been deleted")
 	})
 
-	t.Run("never nulls sbom for active image", func(t *testing.T) {
+	t.Run("never deletes sbom for active image", func(t *testing.T) {
 		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: activeImage, Tag: activeTag})
 		assert.NoError(t, err)
 		assert.Equal(t, sbomData, row.Sbom, "active image sbom should be untouched")

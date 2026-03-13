@@ -37,7 +37,7 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 
 const getImage = `-- name: GetImage :one
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom, sbom_updated_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -61,8 +61,6 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReadyForResyncAt,
-		&i.Sbom,
-		&i.SbomUpdatedAt,
 	)
 	return &i, err
 }
@@ -70,13 +68,12 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 const getImageSbom = `-- name: GetImageSbom :one
 SELECT
     sbom,
-    sbom_updated_at
+    updated_at AS sbom_updated_at
 FROM
-    images
+    image_sboms
 WHERE
-    name = $1
-    AND tag = $2
-    AND sbom IS NOT NULL
+    image_name = $1
+    AND image_tag = $2
 `
 
 type GetImageSbomParams struct {
@@ -98,7 +95,7 @@ func (q *Queries) GetImageSbom(ctx context.Context, arg GetImageSbomParams) (*Ge
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom, sbom_updated_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -126,8 +123,6 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ReadyForResyncAt,
-			&i.Sbom,
-			&i.SbomUpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -269,23 +264,17 @@ func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesPara
 }
 
 const nullSbomForUnusedImages = `-- name: NullSbomForUnusedImages :execrows
-UPDATE
-    images
-SET
-    sbom = NULL,
-    sbom_updated_at = NULL,
-    updated_at = NOW()
+DELETE FROM image_sboms
 WHERE
-    sbom IS NOT NULL
-    AND sbom_updated_at < $1
+    image_sboms.updated_at < $1
     AND NOT EXISTS (
         SELECT
             1
         FROM
             workloads
         WHERE
-            image_name = images.name
-            AND image_tag = images.tag)
+            image_name = image_sboms.image_name
+            AND image_tag = image_sboms.image_tag)
 `
 
 func (q *Queries) NullSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
@@ -297,40 +286,25 @@ func (q *Queries) NullSbomForUnusedImages(ctx context.Context, thresholdTime pgt
 }
 
 const saveImageSbom = `-- name: SaveImageSbom :exec
-UPDATE
-    images
-SET
-    sbom = $1,
-    sbom_updated_at = NOW(),
-    updated_at = NOW()
-WHERE
-    images.name = $2
-    AND images.tag = $3
-    AND (sbom_updated_at IS NULL OR sbom_updated_at < $4)
-    AND EXISTS (
-        SELECT
-            1
-        FROM
-            workloads
-        WHERE
-            image_name = images.name
-            AND image_tag = images.tag)
+INSERT INTO image_sboms(image_name, image_tag, sbom)
+SELECT $1, $2, $3
+WHERE EXISTS (
+    SELECT 1 FROM workloads WHERE image_name = $1 AND image_tag = $2
+)
+ON CONFLICT (image_name, image_tag)
+    DO UPDATE SET
+        sbom = excluded.sbom,
+        updated_at = NOW()
 `
 
 type SaveImageSbomParams struct {
-	Sbom          []byte
-	Name          string
-	Tag           string
-	ThresholdTime pgtype.Timestamptz
+	Name string
+	Tag  string
+	Sbom []byte
 }
 
 func (q *Queries) SaveImageSbom(ctx context.Context, arg SaveImageSbomParams) error {
-	_, err := q.db.Exec(ctx, saveImageSbom,
-		arg.Sbom,
-		arg.Name,
-		arg.Tag,
-		arg.ThresholdTime,
-	)
+	_, err := q.db.Exec(ctx, saveImageSbom, arg.Name, arg.Tag, arg.Sbom)
 	return err
 }
 

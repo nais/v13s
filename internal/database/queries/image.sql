@@ -23,7 +23,7 @@ WHERE
 
 -- name: GetImage :one
 SELECT
-    *
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -32,7 +32,7 @@ WHERE
 
 -- name: GetImagesScheduledForSync :many
 SELECT
-    *
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -149,52 +149,36 @@ ON CONFLICT (
         updated_at = NOW();
 
 -- name: SaveImageSbom :exec
-UPDATE
-    images
-SET
-    sbom = @sbom,
-    sbom_updated_at = NOW(),
-    updated_at = NOW()
-WHERE
-    images.name = @name
-    AND images.tag = @tag
-    AND (sbom_updated_at IS NULL OR sbom_updated_at < @threshold_time)
-    AND EXISTS (
-        SELECT
-            1
-        FROM
-            workloads
-        WHERE
-            image_name = images.name
-            AND image_tag = images.tag);
+INSERT INTO image_sboms(image_name, image_tag, sbom)
+SELECT @name, @tag, @sbom
+WHERE EXISTS (
+    SELECT 1 FROM workloads WHERE image_name = @name AND image_tag = @tag
+)
+ON CONFLICT (image_name, image_tag)
+    DO UPDATE SET
+        sbom = excluded.sbom,
+        updated_at = NOW();
 
 -- name: GetImageSbom :one
 SELECT
     sbom,
-    sbom_updated_at
+    updated_at AS sbom_updated_at
 FROM
-    images
+    image_sboms
 WHERE
-    name = @name
-    AND tag = @tag
-    AND sbom IS NOT NULL;
+    image_name = @name
+    AND image_tag = @tag;
 
 -- name: NullSbomForUnusedImages :execrows
-UPDATE
-    images
-SET
-    sbom = NULL,
-    sbom_updated_at = NULL,
-    updated_at = NOW()
+DELETE FROM image_sboms
 WHERE
-    sbom IS NOT NULL
-    AND sbom_updated_at < @threshold_time
+    image_sboms.updated_at < @threshold_time
     AND NOT EXISTS (
         SELECT
             1
         FROM
             workloads
         WHERE
-            image_name = images.name
-            AND image_tag = images.tag);
+            image_name = image_sboms.image_name
+            AND image_tag = image_sboms.image_tag);
 
