@@ -38,7 +38,8 @@ WITH cve_data AS (
         OR v.image_tag = $10::TEXT)
     AND (cardinality($11::TEXT[]) = 0
         OR w.cluster <> ALL ($11::TEXT[]))
-    AND COALESCE(sv.suppressed, FALSE) = FALSE
+    AND ($12::BOOLEAN IS TRUE
+        OR COALESCE(sv.suppressed, FALSE) = FALSE)
 GROUP BY
     c.cve_id
 )
@@ -102,6 +103,7 @@ type ListCveSummariesParams struct {
 	ImageName         *string
 	ImageTag          *string
 	ExcludeClusters   []string
+	IncludeSuppressed *bool
 }
 
 type ListCveSummariesRow struct {
@@ -131,6 +133,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.ImageName,
 		arg.ImageTag,
 		arg.ExcludeClusters,
+		arg.IncludeSuppressed,
 	)
 	if err != nil {
 		return nil, err
