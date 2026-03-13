@@ -415,6 +415,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		CvssScore:         request.CvssScore,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
+		IncludeSuppressed: request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),

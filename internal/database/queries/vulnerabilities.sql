@@ -912,6 +912,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
+    OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
         CASE WHEN v.cvss_score = 0

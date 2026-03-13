@@ -1350,8 +1350,10 @@ AND (
     ELSE
         TRUE
     END)
+AND ($11::BOOLEAN IS TRUE
+    OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
-    CASE WHEN $11 = 'cvss_score_desc' THEN
+    CASE WHEN $12 = 'cvss_score_desc' THEN
         CASE WHEN v.cvss_score = 0
             OR v.cvss_score IS NULL THEN
             1
@@ -1359,39 +1361,39 @@ ORDER BY
             0
         END
     END ASC,
-    CASE WHEN $11 = 'cvss_score_desc' THEN
+    CASE WHEN $12 = 'cvss_score_desc' THEN
         v.cvss_score
     END DESC,
-    CASE WHEN $11 = 'cvss_score_asc' THEN
+    CASE WHEN $12 = 'cvss_score_asc' THEN
         v.cvss_score
     END ASC,
-    CASE WHEN $11 = 'cve_id_desc' THEN
+    CASE WHEN $12 = 'cve_id_desc' THEN
         v.cve_id
     END DESC,
-    CASE WHEN $11 = 'cve_id_asc' THEN
+    CASE WHEN $12 = 'cve_id_asc' THEN
         v.cve_id
     END ASC,
-    CASE WHEN $11 = 'workload_asc' THEN
+    CASE WHEN $12 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $11 = 'workload_desc' THEN
+    CASE WHEN $12 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $11 = 'namespace_asc' THEN
+    CASE WHEN $12 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $11 = 'namespace_desc' THEN
+    CASE WHEN $12 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $11 = 'cluster_asc' THEN
+    CASE WHEN $12 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $11 = 'cluster_desc' THEN
+    CASE WHEN $12 = 'cluster_desc' THEN
         w.cluster
     END DESC,
     v.id ASC
-LIMIT $13
-OFFSET $12
+LIMIT $14
+OFFSET $13
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
@@ -1405,6 +1407,7 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	WorkloadName      *string
 	ImageName         *string
 	ImageTag          *string
+	IncludeSuppressed *bool
 	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
@@ -1452,6 +1455,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.WorkloadName,
 		arg.ImageName,
 		arg.ImageTag,
+		arg.IncludeSuppressed,
 		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,

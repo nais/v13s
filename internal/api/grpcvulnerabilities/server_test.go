@@ -314,6 +314,46 @@ func TestServer_ListWorkloadsForVulnerability_ExcludeNamespaces(t *testing.T) {
 		assert.Equal(t, "namespace-1", resp.Nodes[0].WorkloadRef.Namespace)
 		assert.Equal(t, "workload-1", resp.Nodes[0].WorkloadRef.Name)
 	})
+
+	imagesToSuppress := []string{
+		"image-cluster-1-namespace-1-workload-1",
+		"image-cluster-1-namespace-2-workload-1",
+	}
+	for _, imageName := range imagesToSuppress {
+		err := db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+			ImageName:    imageName,
+			Package:      "package-CWE-1-1",
+			CveID:        "CWE-1-1",
+			Suppressed:   true,
+			SuppressedBy: "test-user",
+			Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
+			ReasonText:   "test suppression",
+		})
+		require.NoError(t, err)
+	}
+
+	t.Run("suppressed workload is excluded by default", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{cveID},
+		}, vulnerabilities.Limit(10))
+		require.NoError(t, err)
+		assert.Empty(t, resp.Nodes, "suppressed workloads should not appear by default")
+	})
+
+	t.Run("suppressed workload is included when IncludeSuppressed is set", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{cveID},
+		},
+			vulnerabilities.Limit(10),
+			vulnerabilities.IncludeSuppressed(),
+		)
+		require.NoError(t, err)
+		assert.Len(t, resp.Nodes, 2, "both suppressed workloads should appear when IncludeSuppressed is set")
+		for _, node := range resp.Nodes {
+			require.NotNil(t, node.Vulnerability.Suppression, "suppression should be populated for suppressed vulnerability")
+			assert.True(t, node.Vulnerability.Suppression.Suppressed)
+		}
+	})
 }
 
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
@@ -1641,6 +1681,49 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		)
 		assert.NoError(t, err)
 		assert.Empty(t, resp.Nodes)
+	})
+
+	for _, imageName := range []string{
+		"image-cluster-1-namespace-1-workload-1",
+		"image-cluster-1-namespace-2-workload-1",
+		"image-cluster-2-namespace-1-workload-1",
+		"image-cluster-2-namespace-2-workload-1",
+	} {
+		err := db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+			ImageName:    imageName,
+			Package:      "package-CWE-1-1",
+			CveID:        "CWE-1-1",
+			Suppressed:   true,
+			SuppressedBy: "test-user",
+			Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
+			ReasonText:   "test suppression",
+		})
+		require.NoError(t, err)
+	}
+
+	t.Run("suppressed CVE is excluded by default", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		assert.NoError(t, err)
+
+		cveIDs := make([]string, 0, len(resp.Nodes))
+		for _, node := range resp.Nodes {
+			cveIDs = append(cveIDs, node.Cve.Id)
+		}
+		assert.NotContains(t, cveIDs, "CWE-1-1", "suppressed CVE should not appear by default")
+	})
+
+	t.Run("suppressed CVE is included when IncludeSuppressed is set", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(10),
+			vulnerabilities.IncludeSuppressed(),
+		)
+		assert.NoError(t, err)
+
+		cveIDs := make([]string, 0, len(resp.Nodes))
+		for _, node := range resp.Nodes {
+			cveIDs = append(cveIDs, node.Cve.Id)
+		}
+		assert.Contains(t, cveIDs, "CWE-1-1", "suppressed CVE should appear when IncludeSuppressed is set")
 	})
 }
 

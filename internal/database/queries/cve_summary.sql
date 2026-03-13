@@ -27,7 +27,8 @@ WITH cve_data AS (
         OR v.image_tag = sqlc.narg('image_tag')::TEXT)
     AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
         OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
-    AND COALESCE(sv.suppressed, FALSE) = FALSE
+    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
+        OR COALESCE(sv.suppressed, FALSE) = FALSE)
 GROUP BY
     c.cve_id
 )
