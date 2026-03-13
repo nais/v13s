@@ -156,8 +156,17 @@ SET
     sbom_updated_at = NOW(),
     updated_at = NOW()
 WHERE
-    name = @name
-    AND tag = @tag;
+    images.name = @name
+    AND images.tag = @tag
+    AND (sbom_updated_at IS NULL OR sbom_updated_at < @threshold_time)
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag);
 
 -- name: GetImageSbom :one
 SELECT
@@ -169,4 +178,23 @@ WHERE
     name = @name
     AND tag = @tag
     AND sbom IS NOT NULL;
+
+-- name: NullSbomForUnusedImages :execrows
+UPDATE
+    images
+SET
+    sbom = NULL,
+    sbom_updated_at = NULL,
+    updated_at = NOW()
+WHERE
+    sbom IS NOT NULL
+    AND sbom_updated_at < @threshold_time
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag);
 

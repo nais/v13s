@@ -23,7 +23,10 @@ const (
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
 	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
+	NullSbomCronInterval                               = "0 3 * * *"    // every day at 3:00 AM
 	ImageMarkAge                                       = 30 * time.Minute
+	// SbomRetentionAge is how long an SBOM is kept for an image even after it has no active workloads.
+	SbomRetentionAge = 6 * 30 * 24 * time.Hour // ~6 months
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 60 * 4 * time.Minute
 )
@@ -76,6 +79,12 @@ func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, "mark unused images", u.log, func() {
 		if err := u.MarkUnusedImages(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark unused images")
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: NullSbomCronInterval}, "null sbom for unused images", u.log, func() {
+		if err := u.NullSbomForUnusedImages(ctx); err != nil {
+			u.log.WithError(err).Error("Failed to null sbom for unused images")
 		}
 	})
 
@@ -211,6 +220,21 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 		return err
 	}
 	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+	return nil
+}
+
+// NullSbomForUnusedImages clears the cached SBOM for images that are no longer
+// referenced by any workload, but only after they have been unused for at least SbomRetentionAge.
+func (u *Updater) NullSbomForUnusedImages(ctx context.Context) error {
+	rowsAffected, err := u.querier.NullSbomForUnusedImages(ctx, pgtype.Timestamptz{
+		Time:  time.Now().Add(-SbomRetentionAge),
+		Valid: true,
+	})
+	if err != nil {
+		u.log.WithError(err).Error("Failed to null sbom for unused images")
+		return err
+	}
+	u.log.Debugf("NullSbomForUnusedImages affected %d rows", rowsAffected)
 	return nil
 }
 
