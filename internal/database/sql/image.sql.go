@@ -35,6 +35,28 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 	return err
 }
 
+const deleteSbomForUnusedImages = `-- name: DeleteSbomForUnusedImages :execrows
+DELETE FROM image_sboms
+WHERE
+    image_sboms.updated_at < $1
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = image_sboms.image_name
+            AND image_tag = image_sboms.image_tag)
+`
+
+func (q *Queries) DeleteSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSbomForUnusedImages, thresholdTime)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getImage = `-- name: GetImage :one
 SELECT
     name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
@@ -257,28 +279,6 @@ type MarkUnusedImagesParams struct {
 
 func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error) {
 	result, err := q.db.Exec(ctx, markUnusedImages, arg.ThresholdTime, arg.ExcludedStates)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const deleteSbomForUnusedImages = `-- name: DeleteSbomForUnusedImages :execrows
-DELETE FROM image_sboms
-WHERE
-    image_sboms.updated_at < $1
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            workloads
-        WHERE
-            image_name = image_sboms.image_name
-            AND image_tag = image_sboms.image_tag)
-`
-
-func (q *Queries) DeleteSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteSbomForUnusedImages, thresholdTime)
 	if err != nil {
 		return 0, err
 	}

@@ -277,7 +277,7 @@ func TestSaveImageSbom(t *testing.T) {
 	})
 }
 
-func TestNullSbomForUnusedImages(t *testing.T) {
+func TestDeleteSbomForUnusedImages(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
@@ -311,7 +311,7 @@ func TestNullSbomForUnusedImages(t *testing.T) {
 
 	t.Run("does not delete sbom within retention period", func(t *testing.T) {
 		// Threshold is now-6months — SBOMs saved just now are within retention, should be kept.
-		rows, err := db.NullSbomForUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(-updater.SbomRetentionAge), Valid: true})
+		rows, err := db.DeleteSbomForUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(-updater.SbomRetentionAge), Valid: true})
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rows)
 
@@ -323,7 +323,7 @@ func TestNullSbomForUnusedImages(t *testing.T) {
 	t.Run("deletes sbom for unused image past retention period", func(t *testing.T) {
 		// Threshold in the future — the SBOM appears older than the threshold.
 		futureThreshold := pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true}
-		rows, err := db.NullSbomForUnusedImages(ctx, futureThreshold)
+		rows, err := db.DeleteSbomForUnusedImages(ctx, futureThreshold)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 

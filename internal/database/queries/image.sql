@@ -169,7 +169,7 @@ WHERE
     image_name = @name
     AND image_tag = @tag;
 
--- name: NullSbomForUnusedImages :execrows
+-- name: DeleteSbomForUnusedImages :execrows
 DELETE FROM image_sboms
 WHERE
     image_sboms.updated_at < @threshold_time

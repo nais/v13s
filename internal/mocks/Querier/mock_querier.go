@@ -642,6 +642,63 @@ func (_c *MockQuerier_CreateWorkload_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// DeleteSbomForUnusedImages provides a mock function with given fields: ctx, thresholdTime
+func (_m *MockQuerier) DeleteSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
+	ret := _m.Called(ctx, thresholdTime)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteSbomForUnusedImages")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) (int64, error)); ok {
+		return rf(ctx, thresholdTime)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) int64); ok {
+		r0 = rf(ctx, thresholdTime)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, pgtype.Timestamptz) error); ok {
+		r1 = rf(ctx, thresholdTime)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_DeleteSbomForUnusedImages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteSbomForUnusedImages'
+type MockQuerier_DeleteSbomForUnusedImages_Call struct {
+	*mock.Call
+}
+
+// DeleteSbomForUnusedImages is a helper method to define mock.On call
+//   - ctx context.Context
+//   - thresholdTime pgtype.Timestamptz
+func (_e *MockQuerier_Expecter) DeleteSbomForUnusedImages(ctx interface{}, thresholdTime interface{}) *MockQuerier_DeleteSbomForUnusedImages_Call {
+	return &MockQuerier_DeleteSbomForUnusedImages_Call{Call: _e.mock.On("DeleteSbomForUnusedImages", ctx, thresholdTime)}
+}
+
+func (_c *MockQuerier_DeleteSbomForUnusedImages_Call) Run(run func(ctx context.Context, thresholdTime pgtype.Timestamptz)) *MockQuerier_DeleteSbomForUnusedImages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(pgtype.Timestamptz))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteSbomForUnusedImages_Call) Return(_a0 int64, _a1 error) *MockQuerier_DeleteSbomForUnusedImages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteSbomForUnusedImages_Call) RunAndReturn(run func(context.Context, pgtype.Timestamptz) (int64, error)) *MockQuerier_DeleteSbomForUnusedImages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteSourceRef provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) DeleteSourceRef(ctx context.Context, arg sql.DeleteSourceRefParams) error {
 	ret := _m.Called(ctx, arg)
@@ -2957,63 +3014,6 @@ func (_c *MockQuerier_MarkUnusedImages_Call) Return(_a0 int64, _a1 error) *MockQ
 }
 
 func (_c *MockQuerier_MarkUnusedImages_Call) RunAndReturn(run func(context.Context, sql.MarkUnusedImagesParams) (int64, error)) *MockQuerier_MarkUnusedImages_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// NullSbomForUnusedImages provides a mock function with given fields: ctx, thresholdTime
-func (_m *MockQuerier) NullSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
-	ret := _m.Called(ctx, thresholdTime)
-
-	if len(ret) == 0 {
-		panic("no return value specified for NullSbomForUnusedImages")
-	}
-
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) (int64, error)); ok {
-		return rf(ctx, thresholdTime)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) int64); ok {
-		r0 = rf(ctx, thresholdTime)
-	} else {
-		r0 = ret.Get(0).(int64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, pgtype.Timestamptz) error); ok {
-		r1 = rf(ctx, thresholdTime)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_NullSbomForUnusedImages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NullSbomForUnusedImages'
-type MockQuerier_NullSbomForUnusedImages_Call struct {
-	*mock.Call
-}
-
-// NullSbomForUnusedImages is a helper method to define mock.On call
-//   - ctx context.Context
-//   - thresholdTime pgtype.Timestamptz
-func (_e *MockQuerier_Expecter) NullSbomForUnusedImages(ctx interface{}, thresholdTime interface{}) *MockQuerier_NullSbomForUnusedImages_Call {
-	return &MockQuerier_NullSbomForUnusedImages_Call{Call: _e.mock.On("NullSbomForUnusedImages", ctx, thresholdTime)}
-}
-
-func (_c *MockQuerier_NullSbomForUnusedImages_Call) Run(run func(ctx context.Context, thresholdTime pgtype.Timestamptz)) *MockQuerier_NullSbomForUnusedImages_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(pgtype.Timestamptz))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_NullSbomForUnusedImages_Call) Return(_a0 int64, _a1 error) *MockQuerier_NullSbomForUnusedImages_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_NullSbomForUnusedImages_Call) RunAndReturn(run func(context.Context, pgtype.Timestamptz) (int64, error)) *MockQuerier_NullSbomForUnusedImages_Call {
 	_c.Call.Return(run)
 	return _c
 }
