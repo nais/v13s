@@ -23,7 +23,7 @@ WHERE
 
 -- name: GetImage :one
 SELECT
-    *
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -32,7 +32,7 @@ WHERE
 
 -- name: GetImagesScheduledForSync :many
 SELECT
-    *
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -147,3 +147,37 @@ ON CONFLICT (
         status_code = @status_code,
         reason = @reason,
         updated_at = NOW();
+
+-- name: SaveImageSbom :exec
+INSERT INTO image_sboms(image_name, image_tag, sbom)
+SELECT @name, @tag, @sbom
+WHERE EXISTS (
+    SELECT 1 FROM workloads WHERE image_name = @name AND image_tag = @tag
+)
+ON CONFLICT (image_name, image_tag)
+    DO UPDATE SET
+        sbom = excluded.sbom,
+        updated_at = NOW();
+
+-- name: GetImageSbom :one
+SELECT
+    sbom,
+    updated_at AS sbom_updated_at
+FROM
+    image_sboms
+WHERE
+    image_name = @name
+    AND image_tag = @tag;
+
+-- name: DeleteUnusedImages :execrows
+DELETE FROM images
+WHERE
+    images.updated_at < @threshold_time
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag);

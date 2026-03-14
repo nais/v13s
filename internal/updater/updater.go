@@ -23,7 +23,10 @@ const (
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
 	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
+	DeleteUnusedImagesCronInterval                     = "0 3 * * *"    // every day at 3:00 AM
 	ImageMarkAge                                       = 30 * time.Minute
+	// ImageRetentionAge is how long an unused image (and its SBOM via cascade) is kept before deletion.
+	ImageRetentionAge = 6 * 30 * 24 * time.Hour // ~6 months
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 60 * 4 * time.Minute
 )
@@ -76,6 +79,12 @@ func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, "mark unused images", u.log, func() {
 		if err := u.MarkUnusedImages(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark unused images")
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: DeleteUnusedImagesCronInterval}, "delete unused images", u.log, func() {
+		if err := u.DeleteUnusedImages(ctx); err != nil {
+			u.log.WithError(err).Error("Failed to delete unused images")
 		}
 	})
 
@@ -211,6 +220,22 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 		return err
 	}
 	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+	return nil
+}
+
+// DeleteUnusedImages deletes images that are no longer referenced by any workload
+// and have been unused for at least ImageRetentionAge. The associated SBOM in image_sboms
+// is removed automatically via the ON DELETE CASCADE foreign key.
+func (u *Updater) DeleteUnusedImages(ctx context.Context) error {
+	rowsAffected, err := u.querier.DeleteUnusedImages(ctx, pgtype.Timestamptz{
+		Time:  time.Now().Add(-ImageRetentionAge),
+		Valid: true,
+	})
+	if err != nil {
+		u.log.WithError(err).Error("Failed to delete unused images")
+		return err
+	}
+	u.log.Debugf("DeleteUnusedImages affected %d rows", rowsAffected)
 	return nil
 }
 

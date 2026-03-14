@@ -87,7 +87,8 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	if err != nil {
 		if noMatchAttestationError, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err); ok {
 			// No matching attestations is a terminal but expected state for many images.
-			g.log.WithError(err).WithFields(logrus.Fields{
+			g.log.WithFields(logrus.Fields{
+				"error":         noMatchAttestationError.Error(),
 				"image":         imageName,
 				"tag":           imageTag,
 				"workloadId":    job.Args.WorkloadId,
@@ -126,7 +127,40 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 					"tag":        imageTag,
 					"workloadId": job.Args.WorkloadId,
 				},
-			).Info("marking workload and image as unrecoverable due to unrecoverable error from attestation source")
+			).Info("registry unreachable or manifest not found; checking DB SBOM cache before giving up")
+
+			// Attempt to re-upload from the cached SBOM so vulnerability data can still be processed
+			var cached *sql.GetImageSbomRow
+			var dbErr error
+			cacheErr := runDB(func(dbCtx context.Context) error {
+				cached, dbErr = g.db.GetImageSbom(dbCtx, sql.GetImageSbomParams{
+					Name: imageName,
+					Tag:  imageTag,
+				})
+				return dbErr
+			})
+			if cacheErr == nil && len(cached.Sbom) > 0 {
+				g.log.WithFields(logrus.Fields{
+					"image":          imageName,
+					"tag":            imageTag,
+					"sbom_cached_at": cached.SbomUpdatedAt.Time,
+				}).Info("found cached SBOM in DB; enqueuing upload job as fallback")
+
+				if addErr := g.jobClient.AddJob(ctx, &UploadAttestationJob{
+					ImageName:   imageName,
+					ImageTag:    imageTag,
+					WorkloadId:  job.Args.WorkloadId,
+					Attestation: cached.Sbom,
+				}); addErr != nil {
+					g.log.WithError(addErr).Warn("failed to enqueue upload job from cached SBOM")
+				}
+			} else {
+				g.log.WithFields(logrus.Fields{
+					"image": imageName,
+					"tag":   imageTag,
+				}).Info("no cached SBOM found; marking workload as unrecoverable")
+			}
+
 			recordOutput(ctx, JobStatusUnrecoverable)
 
 			if dbErr := runDB(func(dbCtx context.Context) error {
@@ -156,6 +190,22 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		if err != nil {
 			return fmt.Errorf("failed to compress attestation: %w", err)
 		}
+
+		// Persist the SBOM for re-upload, if the registry manifest is
+		// cleaned up (e.g. GCR/GHCR tag expiry).
+		if dbErr := runDB(func(dbCtx context.Context) error {
+			return g.db.SaveImageSbom(dbCtx, sql.SaveImageSbomParams{
+				Name: imageName,
+				Tag:  imageTag,
+				Sbom: compressed,
+			})
+		}); dbErr != nil {
+			g.log.WithError(dbErr).WithFields(logrus.Fields{
+				"image": imageName,
+				"tag":   imageTag,
+			}).Warn("failed to cache SBOM in database; continuing with upload")
+		}
+
 		if err := g.jobClient.AddJob(ctx, &UploadAttestationJob{
 			ImageName:   imageName,
 			ImageTag:    imageTag,
