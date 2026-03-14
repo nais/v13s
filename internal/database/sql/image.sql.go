@@ -263,7 +263,7 @@ func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesPara
 	return result.RowsAffected(), nil
 }
 
-const nullSbomForUnusedImages = `-- name: NullSbomForUnusedImages :execrows
+const deleteSbomForUnusedImages = `-- name: DeleteSbomForUnusedImages :execrows
 DELETE FROM image_sboms
 WHERE
     image_sboms.updated_at < $1
@@ -277,8 +277,8 @@ WHERE
             AND image_tag = image_sboms.image_tag)
 `
 
-func (q *Queries) NullSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, nullSbomForUnusedImages, thresholdTime)
+func (q *Queries) DeleteSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSbomForUnusedImages, thresholdTime)
 	if err != nil {
 		return 0, err
 	}
