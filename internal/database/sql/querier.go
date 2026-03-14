@@ -21,8 +21,8 @@ type Querier interface {
 	CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
-	DeleteSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error)
 	DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error
+	DeleteUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error)
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
 	GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
