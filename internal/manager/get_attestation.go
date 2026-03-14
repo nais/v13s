@@ -131,12 +131,13 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 
 			// Attempt to re-upload from the cached SBOM so vulnerability data can still be processed
 			var cached *sql.GetImageSbomRow
+			var dbErr error
 			cacheErr := runDB(func(dbCtx context.Context) error {
-				cached, err = g.db.GetImageSbom(dbCtx, sql.GetImageSbomParams{
+				cached, dbErr = g.db.GetImageSbom(dbCtx, sql.GetImageSbomParams{
 					Name: imageName,
 					Tag:  imageTag,
 				})
-				return err
+				return dbErr
 			})
 			if cacheErr == nil && len(cached.Sbom) > 0 {
 				g.log.WithFields(logrus.Fields{
