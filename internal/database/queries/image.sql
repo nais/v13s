@@ -170,15 +170,14 @@ WHERE
     AND image_tag = @tag;
 
 -- name: DeleteSbomForUnusedImages :execrows
-DELETE FROM image_sboms
+DELETE FROM images
 WHERE
-    image_sboms.updated_at < @threshold_time
+    images.updated_at < @threshold_time
     AND NOT EXISTS (
         SELECT
             1
         FROM
             workloads
         WHERE
-            image_name = image_sboms.image_name
-            AND image_tag = image_sboms.image_tag);
-
+            image_name = images.name
+            AND image_tag = images.tag);

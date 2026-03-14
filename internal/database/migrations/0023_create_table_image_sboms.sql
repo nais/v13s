@@ -7,7 +7,11 @@ CREATE TABLE image_sboms(
     sbom       BYTEA NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    PRIMARY KEY (image_name, image_tag)
+    PRIMARY KEY (image_name, image_tag),
+    CONSTRAINT image_sboms_image_fk
+        FOREIGN KEY (image_name, image_tag)
+        REFERENCES images (name, tag)
+        ON DELETE CASCADE
 );
 
 -- +goose Down

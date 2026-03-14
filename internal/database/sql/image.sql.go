@@ -36,17 +36,17 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 }
 
 const deleteSbomForUnusedImages = `-- name: DeleteSbomForUnusedImages :execrows
-DELETE FROM image_sboms
+DELETE FROM images
 WHERE
-    image_sboms.updated_at < $1
+    images.updated_at < $1
     AND NOT EXISTS (
         SELECT
             1
         FROM
             workloads
         WHERE
-            image_name = image_sboms.image_name
-            AND image_tag = image_sboms.image_tag)
+            image_name = images.name
+            AND image_tag = images.tag)
 `
 
 func (q *Queries) DeleteSbomForUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {

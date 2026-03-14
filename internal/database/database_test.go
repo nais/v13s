@@ -309,29 +309,37 @@ func TestDeleteSbomForUnusedImages(t *testing.T) {
 		Name: activeImage, Tag: activeTag, Sbom: sbomData,
 	}))
 
-	t.Run("does not delete sbom within retention period", func(t *testing.T) {
-		// Threshold is now-6months — SBOMs saved just now are within retention, should be kept.
+	t.Run("does not delete image within retention period", func(t *testing.T) {
 		rows, err := db.DeleteSbomForUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(-updater.SbomRetentionAge), Valid: true})
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rows)
 
+		// Both the image and its SBOM should still exist.
+		_, err = db.GetImage(ctx, sql.GetImageParams{Name: unusedImage, Tag: unusedTag})
+		assert.NoError(t, err)
 		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: unusedImage, Tag: unusedTag})
 		assert.NoError(t, err)
 		assert.Equal(t, sbomData, row.Sbom)
 	})
 
-	t.Run("deletes sbom for unused image past retention period", func(t *testing.T) {
-		// Threshold in the future — the SBOM appears older than the threshold.
-		futureThreshold := pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true}
-		rows, err := db.DeleteSbomForUnusedImages(ctx, futureThreshold)
+	t.Run("deletes unused image and its sbom past retention period", func(t *testing.T) {
+		rows, err := db.DeleteSbomForUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true})
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 
+		// Image should be gone.
+		_, err = db.GetImage(ctx, sql.GetImageParams{Name: unusedImage, Tag: unusedTag})
+		assert.Error(t, err, "image should have been deleted")
+
+		// SBOM should be gone via cascade.
 		_, err = db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: unusedImage, Tag: unusedTag})
-		assert.Error(t, err, "sbom row should have been deleted")
+		assert.Error(t, err, "sbom should have been deleted via cascade")
 	})
 
-	t.Run("never deletes sbom for active image", func(t *testing.T) {
+	t.Run("never deletes active image or its sbom", func(t *testing.T) {
+		_, err := db.GetImage(ctx, sql.GetImageParams{Name: activeImage, Tag: activeTag})
+		assert.NoError(t, err, "active image should not be deleted")
+
 		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: activeImage, Tag: activeTag})
 		assert.NoError(t, err)
 		assert.Equal(t, sbomData, row.Sbom, "active image sbom should be untouched")

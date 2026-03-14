@@ -25,7 +25,7 @@ const (
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
 	DeleteSbomCronInterval                             = "0 3 * * *"    // every day at 3:00 AM
 	ImageMarkAge                                       = 30 * time.Minute
-	// SbomRetentionAge is how long an SBOM is kept for an image even after it has no active workloads.
+	// SbomRetentionAge is how long an image (and its SBOM) is kept after it has no active workloads.
 	SbomRetentionAge = 6 * 30 * 24 * time.Hour // ~6 months
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 60 * 4 * time.Minute
@@ -223,8 +223,9 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 	return nil
 }
 
-// DeleteSbomForUnusedImages clears the cached SBOM for images that are no longer
-// referenced by any workload, but only after they have been unused for at least SbomRetentionAge.
+// DeleteSbomForUnusedImages deletes images that are no longer referenced by any workload
+// and have been unused for at least SbomRetentionAge. The associated SBOM in image_sboms
+// is removed automatically via the ON DELETE CASCADE foreign key.
 func (u *Updater) DeleteSbomForUnusedImages(ctx context.Context) error {
 	rowsAffected, err := u.querier.DeleteSbomForUnusedImages(ctx, pgtype.Timestamptz{
 		Time:  time.Now().Add(-SbomRetentionAge),
