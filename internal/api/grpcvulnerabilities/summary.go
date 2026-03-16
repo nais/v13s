@@ -243,15 +243,23 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 }
 
 func (s *Server) GetSbom(ctx context.Context, request *vulnerabilities.GetSbomRequest) (*vulnerabilities.GetSbomResponse, error) {
+	filter := request.GetFilter()
+	if filter == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "filter is required")
+	}
+	if filter.GetWorkload() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "filter.workload is required")
+	}
+
 	row, err := s.querier.GetSbomForWorkload(ctx, sql.GetSbomForWorkloadParams{
-		WorkloadName: request.GetFilter().GetWorkload(),
-		Cluster:      request.GetFilter().Cluster,
-		Namespace:    request.GetFilter().Namespace,
-		WorkloadType: request.GetFilter().WorkloadType,
+		WorkloadName: filter.GetWorkload(),
+		Cluster:      filter.Cluster,
+		Namespace:    filter.Namespace,
+		WorkloadType: filter.WorkloadType,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, status.Errorf(codes.NotFound, "no sbom found for workload %s", request.GetFilter().GetWorkload())
+			return nil, status.Errorf(codes.NotFound, "no sbom found for workload %s", filter.GetWorkload())
 		}
 		return nil, fmt.Errorf("failed to get sbom for workload: %w", err)
 	}
