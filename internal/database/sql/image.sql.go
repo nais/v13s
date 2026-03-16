@@ -156,6 +156,45 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 	return items, nil
 }
 
+const getSbomForWorkload = `-- name: GetSbomForWorkload :one
+SELECT
+    s.sbom,
+    s.updated_at AS sbom_updated_at
+FROM
+    workloads w
+    JOIN image_sboms s ON s.image_name = w.image_name AND s.image_tag = w.image_tag
+WHERE
+    w.name = $1
+    AND ($2::TEXT IS NULL OR w.cluster = $2::TEXT)
+    AND ($3::TEXT IS NULL OR w.namespace = $3::TEXT)
+    AND ($4::TEXT IS NULL OR w.workload_type = $4::TEXT)
+LIMIT 1
+`
+
+type GetSbomForWorkloadParams struct {
+	WorkloadName string
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+}
+
+type GetSbomForWorkloadRow struct {
+	Sbom          []byte
+	SbomUpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetSbomForWorkload(ctx context.Context, arg GetSbomForWorkloadParams) (*GetSbomForWorkloadRow, error) {
+	row := q.db.QueryRow(ctx, getSbomForWorkload,
+		arg.WorkloadName,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+	)
+	var i GetSbomForWorkloadRow
+	err := row.Scan(&i.Sbom, &i.SbomUpdatedAt)
+	return &i, err
+}
+
 const listUnusedImages = `-- name: ListUnusedImages :many
 SELECT
     name,

@@ -169,6 +169,20 @@ WHERE
     image_name = @name
     AND image_tag = @tag;
 
+-- name: GetSbomForWorkload :one
+SELECT
+    s.sbom,
+    s.updated_at AS sbom_updated_at
+FROM
+    workloads w
+    JOIN image_sboms s ON s.image_name = w.image_name AND s.image_tag = w.image_tag
+WHERE
+    w.name = @workload_name
+    AND (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
+    AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
+    AND (sqlc.narg('workload_type')::TEXT IS NULL OR w.workload_type = sqlc.narg('workload_type')::TEXT)
+LIMIT 1;
+
 -- name: DeleteUnusedImages :execrows
 DELETE FROM images
 WHERE

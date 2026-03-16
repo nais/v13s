@@ -40,6 +40,7 @@ const (
 	Vulnerabilities_GetVulnerabilityById_FullMethodName              = "/v13s.api.protobuf.Vulnerabilities/GetVulnerabilityById"
 	Vulnerabilities_GetVulnerability_FullMethodName                  = "/v13s.api.protobuf.Vulnerabilities/GetVulnerability"
 	Vulnerabilities_GetCve_FullMethodName                            = "/v13s.api.protobuf.Vulnerabilities/GetCve"
+	Vulnerabilities_GetSbom_FullMethodName                           = "/v13s.api.protobuf.Vulnerabilities/GetSbom"
 	Vulnerabilities_SuppressVulnerability_FullMethodName             = "/v13s.api.protobuf.Vulnerabilities/SuppressVulnerability"
 )
 
@@ -74,6 +75,7 @@ type VulnerabilitiesClient interface {
 	GetVulnerabilityById(ctx context.Context, in *GetVulnerabilityByIdRequest, opts ...grpc.CallOption) (*GetVulnerabilityByIdResponse, error)
 	GetVulnerability(ctx context.Context, in *GetVulnerabilityRequest, opts ...grpc.CallOption) (*GetVulnerabilityResponse, error)
 	GetCve(ctx context.Context, in *GetCveRequest, opts ...grpc.CallOption) (*GetCveResponse, error)
+	GetSbom(ctx context.Context, in *GetSbomRequest, opts ...grpc.CallOption) (*GetSbomResponse, error)
 	// -------------------- Suppress RPCs --------------------
 	SuppressVulnerability(ctx context.Context, in *SuppressVulnerabilityRequest, opts ...grpc.CallOption) (*SuppressVulnerabilityResponse, error)
 }
@@ -246,6 +248,16 @@ func (c *vulnerabilitiesClient) GetCve(ctx context.Context, in *GetCveRequest, o
 	return out, nil
 }
 
+func (c *vulnerabilitiesClient) GetSbom(ctx context.Context, in *GetSbomRequest, opts ...grpc.CallOption) (*GetSbomResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSbomResponse)
+	err := c.cc.Invoke(ctx, Vulnerabilities_GetSbom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vulnerabilitiesClient) SuppressVulnerability(ctx context.Context, in *SuppressVulnerabilityRequest, opts ...grpc.CallOption) (*SuppressVulnerabilityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SuppressVulnerabilityResponse)
@@ -287,6 +299,7 @@ type VulnerabilitiesServer interface {
 	GetVulnerabilityById(context.Context, *GetVulnerabilityByIdRequest) (*GetVulnerabilityByIdResponse, error)
 	GetVulnerability(context.Context, *GetVulnerabilityRequest) (*GetVulnerabilityResponse, error)
 	GetCve(context.Context, *GetCveRequest) (*GetCveResponse, error)
+	GetSbom(context.Context, *GetSbomRequest) (*GetSbomResponse, error)
 	// -------------------- Suppress RPCs --------------------
 	SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error)
 	mustEmbedUnimplementedVulnerabilitiesServer()
@@ -346,6 +359,9 @@ func (UnimplementedVulnerabilitiesServer) GetVulnerability(context.Context, *Get
 }
 func (UnimplementedVulnerabilitiesServer) GetCve(context.Context, *GetCveRequest) (*GetCveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCve not implemented")
+}
+func (UnimplementedVulnerabilitiesServer) GetSbom(context.Context, *GetSbomRequest) (*GetSbomResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSbom not implemented")
 }
 func (UnimplementedVulnerabilitiesServer) SuppressVulnerability(context.Context, *SuppressVulnerabilityRequest) (*SuppressVulnerabilityResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SuppressVulnerability not implemented")
@@ -659,6 +675,24 @@ func _Vulnerabilities_GetCve_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Vulnerabilities_GetSbom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSbomRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VulnerabilitiesServer).GetSbom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Vulnerabilities_GetSbom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VulnerabilitiesServer).GetSbom(ctx, req.(*GetSbomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Vulnerabilities_SuppressVulnerability_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SuppressVulnerabilityRequest)
 	if err := dec(in); err != nil {
@@ -747,6 +781,10 @@ var Vulnerabilities_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCve",
 			Handler:    _Vulnerabilities_GetCve_Handler,
+		},
+		{
+			MethodName: "GetSbom",
+			Handler:    _Vulnerabilities_GetSbom_Handler,
 		},
 		{
 			MethodName: "SuppressVulnerability",

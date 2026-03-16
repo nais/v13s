@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
+	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
@@ -934,6 +935,89 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
+	})
+}
+
+func TestServer_GetSbom(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		workloadName = "workload-1"
+		imageName    = "image-cluster-1-namespace-1-workload-1"
+		imageTag     = "v1.0"
+	)
+
+	predicate := []byte(`{"bomFormat":"CycloneDX","specVersion":"1.4"}`)
+	att := &attestation.Attestation{Predicate: predicate}
+	compressed, err := att.Compress()
+	require.NoError(t, err)
+
+	require.NoError(t, db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
+		Name: imageName,
+		Tag:  imageTag,
+		Sbom: compressed,
+	}))
+
+	t.Run("returns decompressed sbom for workload with exact filters", func(t *testing.T) {
+		resp, err := client.GetSbom(ctx,
+			vulnerabilities.WorkloadFilter(workloadName),
+			vulnerabilities.ClusterFilter("cluster-1"),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.WorkloadTypeFilter("app"),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, predicate, resp.Sbom)
+		assert.NotNil(t, resp.LastUpdated)
+	})
+
+	t.Run("returns sbom with only workload name (no filters)", func(t *testing.T) {
+		resp, err := client.GetSbom(ctx, vulnerabilities.WorkloadFilter(workloadName))
+		require.NoError(t, err)
+		assert.Equal(t, predicate, resp.Sbom)
+	})
+
+	t.Run("returns sbom with partial filter (namespace only)", func(t *testing.T) {
+		resp, err := client.GetSbom(ctx,
+			vulnerabilities.WorkloadFilter(workloadName),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, predicate, resp.Sbom)
+	})
+
+	t.Run("returns not found for unknown workload", func(t *testing.T) {
+		_, err := client.GetSbom(ctx, vulnerabilities.WorkloadFilter("does-not-exist"))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "NotFound")
+	})
+
+	t.Run("returns not found when workload has no sbom", func(t *testing.T) {
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     "no-sbom-image",
+			Tag:      "v1.0",
+			Metadata: map[string]string{},
+		}))
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "no-sbom-workload",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    "no-sbom-image",
+			ImageTag:     "v1.0",
+		})
+		require.NoError(t, err)
+
+		_, err = client.GetSbom(ctx, vulnerabilities.WorkloadFilter("no-sbom-workload"))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "NotFound")
 	})
 }
 

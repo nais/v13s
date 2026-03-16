@@ -31,6 +31,7 @@ type Querier interface {
 	GetImageSbom(ctx context.Context, arg GetImageSbomParams) (*GetImageSbomRow, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
+	GetSbomForWorkload(ctx context.Context, arg GetSbomForWorkloadParams) (*GetSbomForWorkloadRow, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)

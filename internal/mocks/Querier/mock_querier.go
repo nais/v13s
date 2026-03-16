@@ -1208,6 +1208,65 @@ func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) RunAndRet
 	return _c
 }
 
+// GetSbomForWorkload provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetSbomForWorkload(ctx context.Context, arg sql.GetSbomForWorkloadParams) (*sql.GetSbomForWorkloadRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSbomForWorkload")
+	}
+
+	var r0 *sql.GetSbomForWorkloadRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetSbomForWorkloadParams) (*sql.GetSbomForWorkloadRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetSbomForWorkloadParams) *sql.GetSbomForWorkloadRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.GetSbomForWorkloadRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetSbomForWorkloadParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetSbomForWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSbomForWorkload'
+type MockQuerier_GetSbomForWorkload_Call struct {
+	*mock.Call
+}
+
+// GetSbomForWorkload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetSbomForWorkloadParams
+func (_e *MockQuerier_Expecter) GetSbomForWorkload(ctx interface{}, arg interface{}) *MockQuerier_GetSbomForWorkload_Call {
+	return &MockQuerier_GetSbomForWorkload_Call{Call: _e.mock.On("GetSbomForWorkload", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetSbomForWorkload_Call) Run(run func(ctx context.Context, arg sql.GetSbomForWorkloadParams)) *MockQuerier_GetSbomForWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetSbomForWorkloadParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetSbomForWorkload_Call) Return(_a0 *sql.GetSbomForWorkloadRow, _a1 error) *MockQuerier_GetSbomForWorkload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetSbomForWorkload_Call) RunAndReturn(run func(context.Context, sql.GetSbomForWorkloadParams) (*sql.GetSbomForWorkloadRow, error)) *MockQuerier_GetSbomForWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSourceRef provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetSourceRef(ctx context.Context, arg sql.GetSourceRefParams) (*sql.SourceRef, error) {
 	ret := _m.Called(ctx, arg)

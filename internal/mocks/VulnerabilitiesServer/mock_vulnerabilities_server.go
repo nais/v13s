@@ -81,6 +81,65 @@ func (_c *MockVulnerabilitiesServer_GetCve_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetSbom provides a mock function with given fields: _a0, _a1
+func (_m *MockVulnerabilitiesServer) GetSbom(_a0 context.Context, _a1 *vulnerabilities.GetSbomRequest) (*vulnerabilities.GetSbomResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSbom")
+	}
+
+	var r0 *vulnerabilities.GetSbomResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.GetSbomRequest) (*vulnerabilities.GetSbomResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *vulnerabilities.GetSbomRequest) *vulnerabilities.GetSbomResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vulnerabilities.GetSbomResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *vulnerabilities.GetSbomRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockVulnerabilitiesServer_GetSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSbom'
+type MockVulnerabilitiesServer_GetSbom_Call struct {
+	*mock.Call
+}
+
+// GetSbom is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *vulnerabilities.GetSbomRequest
+func (_e *MockVulnerabilitiesServer_Expecter) GetSbom(_a0 interface{}, _a1 interface{}) *MockVulnerabilitiesServer_GetSbom_Call {
+	return &MockVulnerabilitiesServer_GetSbom_Call{Call: _e.mock.On("GetSbom", _a0, _a1)}
+}
+
+func (_c *MockVulnerabilitiesServer_GetSbom_Call) Run(run func(_a0 context.Context, _a1 *vulnerabilities.GetSbomRequest)) *MockVulnerabilitiesServer_GetSbom_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*vulnerabilities.GetSbomRequest))
+	})
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetSbom_Call) Return(_a0 *vulnerabilities.GetSbomResponse, _a1 error) *MockVulnerabilitiesServer_GetSbom_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockVulnerabilitiesServer_GetSbom_Call) RunAndReturn(run func(context.Context, *vulnerabilities.GetSbomRequest) (*vulnerabilities.GetSbomResponse, error)) *MockVulnerabilitiesServer_GetSbom_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVulnerability provides a mock function with given fields: _a0, _a1
 func (_m *MockVulnerabilitiesServer) GetVulnerability(_a0 context.Context, _a1 *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error) {
 	ret := _m.Called(_a0, _a1)
