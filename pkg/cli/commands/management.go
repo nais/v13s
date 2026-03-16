@@ -2,22 +2,18 @@ package commands
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/nais/v13s/pkg/cli/flag"
 	"github.com/nais/v13s/pkg/cli/helpers"
 	"github.com/nais/v13s/pkg/cli/pagination"
 	"github.com/rodaine/table"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
 )
 
@@ -71,23 +67,6 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 					}
 				}
 				return nil
-			},
-		},
-		{
-			Name:    "sbom",
-			Aliases: []string{"s"},
-			Usage:   "download sbom",
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:        "output",
-					Aliases:     []string{"o"},
-					Value:       "",
-					Usage:       "output format (json, raw)",
-					Destination: &opts.Output,
-				},
-			},
-			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return downloadSbom(ctx, cmd, opts)
 			},
 		},
 		{
@@ -306,43 +285,6 @@ func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabili
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func downloadSbom(ctx context.Context, cmd *cli.Command, opts *flag.Options) error {
-	if cmd.Args().Len() == 0 {
-		return fmt.Errorf("missing image")
-	}
-	verifier, err := attestation.NewVerifier(ctx, log.WithField("cmd", "sbom"), "nais", "navikt")
-	if err != nil {
-		return err
-	}
-	att, err := verifier.GetAttestation(ctx, cmd.Args().First())
-	if err != nil {
-		return err
-	}
-
-	if att == nil {
-		return fmt.Errorf("no attestation found for image %s", cmd.Args().First())
-	}
-
-	out, err := json.MarshalIndent(att.Predicate, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if opts.Output == "json" {
-		sbomBytes, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(string(out), `"`, ""))
-		if err != nil {
-			return fmt.Errorf("failed to decode sbom: %w", err)
-		}
-
-		fmt.Println(string(sbomBytes))
-		return nil
-	}
-
-	fmt.Println(string(out))
-
 	return nil
 }
 

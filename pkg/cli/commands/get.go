@@ -1,14 +1,20 @@
 package commands
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
 	"github.com/rodaine/table"
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
 )
 
@@ -35,6 +41,21 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Flags:   flag.CommonFlags(opts),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return getTimeSeries(ctx, cmd, c, opts)
+					},
+				},
+				{
+					Name:    "sbom",
+					Aliases: []string{"s"},
+					Usage:   "download sbom. Pass an image reference (e.g. ghcr.io/org/image:tag) to fetch from the registry, or use --from-server with --workload to fetch from the v13s server",
+					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"),
+						&cli.BoolFlag{
+							Name:        "from-server",
+							Usage:       "fetch sbom from v13s server instead of the registry",
+							Destination: &opts.FromServer,
+						},
+					),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return downloadSbom(ctx, cmd, c, opts)
 					},
 				},
 			},
@@ -121,5 +142,65 @@ func getTimeSeries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 	tbl.Print()
 	duration := time.Since(start).Seconds()
 	fmt.Printf("Fetched %d points in %f seconds.\n", len(resp.GetPoints()), duration)
+	return nil
+}
+
+func downloadSbom(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+	if o.FromServer {
+		return downloadSbomFromServer(ctx, cmd, c, o)
+	}
+	return downloadSbomFromRegistry(ctx, cmd)
+}
+
+func downloadSbomFromServer(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
+	opts := flag.ParseOptions(cmd, o)
+	if o.Workload == "" {
+		return fmt.Errorf("--workload is required when using --from-server")
+	}
+
+	resp, err := c.GetSbom(ctx, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to get sbom: %w", err)
+	}
+
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, resp.Sbom, "", "  "); err != nil {
+		fmt.Println(string(resp.Sbom))
+		return nil
+	}
+	fmt.Println(pretty.String())
+	return nil
+}
+
+func downloadSbomFromRegistry(ctx context.Context, cmd *cli.Command) error {
+	if cmd.Args().Len() == 0 {
+		return fmt.Errorf("missing image reference (e.g. ghcr.io/org/image:tag)")
+	}
+	verifier, err := attestation.NewVerifier(ctx, log.WithField("cmd", "sbom"), "nais", "navikt")
+	if err != nil {
+		return err
+	}
+	att, err := verifier.GetAttestation(ctx, cmd.Args().First())
+	if err != nil {
+		return err
+	}
+	if att == nil {
+		return fmt.Errorf("no attestation found for image %s", cmd.Args().First())
+	}
+
+	raw := att.Predicate
+
+	// Try base64 decode first (older attestation format)
+	decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(string(raw), `"`, ""))
+	if err == nil {
+		raw = decoded
+	}
+
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, raw, "", "  "); err != nil {
+		fmt.Println(string(raw))
+		return nil
+	}
+	fmt.Println(pretty.String())
 	return nil
 }
