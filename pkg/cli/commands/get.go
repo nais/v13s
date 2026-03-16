@@ -45,7 +45,7 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 				},
 				{
 					Name:    "sbom",
-					Aliases: []string{"s"},
+					Aliases: []string{"sb"},
 					Usage:   "download sbom. Pass an image reference (e.g. ghcr.io/org/image:tag) to fetch from the registry, or use --from-server with --workload to fetch from the v13s server",
 					Flags: append(flag.CommonFlags(opts, "limit", "order", "since"),
 						&cli.BoolFlag{
