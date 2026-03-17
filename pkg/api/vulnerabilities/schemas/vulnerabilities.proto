@@ -138,6 +138,7 @@ message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
+  bool stale_summary = 4;
 }
 
 message WorkloadFix {

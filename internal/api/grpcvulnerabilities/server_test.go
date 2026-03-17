@@ -1809,6 +1809,135 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
+// TestServer_ListVulnerabilitySummaries_StaleSummary covers the use-case where
+// a workload's image is updated but the new SBOM has not finished processing yet.
+// The API must fall back to the most-recent summary for the same image name
+// (from the previous tag) and set stale_summary=true on that row.
+func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		oldTag    = "v1.0"
+		newTag    = "v2.0"
+	)
+
+	t.Run("current tag has a summary — stale_summary is false", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitySummaries(ctx)
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+
+		node := resp.Nodes[0]
+		assert.False(t, node.StaleSummary, "summary should not be stale when current image tag has a summary")
+		assert.True(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom should be true")
+		assert.Equal(t, oldTag, node.GetWorkload().ImageTag)
+	})
+
+	t.Run("workload updates to new tag with no summary — falls back to previous tag summary with stale_summary=true", func(t *testing.T) {
+		// Register the new image (no summary yet — simulates SBOM still processing).
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      newTag,
+			Metadata: map[string]string{},
+		})
+		require.NoError(t, err)
+
+		// Point the workload at the new tag.
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     newTag,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.ListVulnerabilitySummaries(ctx)
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+
+		node := resp.Nodes[0]
+		// Workload must report the CURRENT (new) image tag.
+		assert.Equal(t, newTag, node.GetWorkload().ImageTag, "workload should show current image tag")
+		assert.Equal(t, imageName, node.GetWorkload().ImageName)
+
+		// Summary data must come from the previous tag (stale fallback).
+		assert.True(t, node.StaleSummary, "stale_summary must be true while new SBOM is processing")
+		assert.True(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom should still be true (showing previous data)")
+
+		// Counts are carried over from the v1.0 summary.
+		assert.Equal(t, int32(1), node.GetVulnerabilitySummary().High)
+	})
+
+	t.Run("brand-new image with no summary at all — has_sbom is false", func(t *testing.T) {
+		const neverSeenImage = "brand-new-image"
+		const neverSeenTag = "v0.1"
+
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     neverSeenImage,
+			Tag:      neverSeenTag,
+			Metadata: map[string]string{},
+		})
+		require.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-new",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    neverSeenImage,
+			ImageTag:     neverSeenTag,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.WorkloadFilter("workload-new"))
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+
+		node := resp.Nodes[0]
+		assert.False(t, node.StaleSummary, "stale_summary must be false when there is no summary at all")
+		assert.False(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom must be false when no summary exists")
+	})
+
+	t.Run("new tag receives its own summary — stale_summary becomes false again", func(t *testing.T) {
+		// SBOM processing finished for v2.0: upsert its summary.
+		db.BatchUpsertVulnerabilitySummary(ctx, []sql.BatchUpsertVulnerabilitySummaryParams{
+			{
+				ImageName:  imageName,
+				ImageTag:   newTag,
+				Critical:   2,
+				High:       3,
+				Medium:     0,
+				Low:        0,
+				Unassigned: 0,
+			},
+		}).Exec(func(_ int, err error) {
+			require.NoError(t, err)
+		})
+
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.WorkloadFilter("workload-1"))
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+
+		node := resp.Nodes[0]
+		assert.False(t, node.StaleSummary, "stale_summary must be false once the new summary is ready")
+		assert.True(t, node.GetVulnerabilitySummary().HasSbom)
+		assert.Equal(t, newTag, node.GetWorkload().ImageTag)
+		// Counts reflect the NEW summary, not the old v1.0 values.
+		assert.Equal(t, int32(2), node.GetVulnerabilitySummary().Critical)
+		assert.Equal(t, int32(3), node.GetVulnerabilitySummary().High)
+	})
+}
+
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)

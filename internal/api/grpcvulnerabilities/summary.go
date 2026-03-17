@@ -52,15 +52,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		// if a workload does not have a sbom, the image name and tag will be nil from vulnerabilities_summary
-		imageName := row.CurrentImageName
-		if row.ImageName != nil {
-			imageName = *row.ImageName
-		}
-		imageTag := row.CurrentImageTag
-		if row.ImageTag != nil {
-			imageTag = *row.ImageTag
-		}
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
@@ -68,21 +59,26 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
-				ImageName: imageName,
-				ImageTag:  imageTag,
+				// Always show the workload's current image.
+				// When stale_summary is true the vulnerability data comes from a
+				// previous tag; consumers can detect this via StaleSummary.
+				ImageName: row.CurrentImageName,
+				ImageTag:  row.CurrentImageTag,
 			},
-			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
 			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
+				Critical:    row.Critical,
+				High:        row.High,
+				Medium:      row.Medium,
+				Low:         row.Low,
+				Unassigned:  row.Unassigned,
+				Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+				RiskScore:   row.RiskScore,
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			},
+			// StaleSummary is true when the vulnerability data is from a previous
+			// image tag because the current image's SBOM has not finished processing.
+			StaleSummary: row.StaleSummary,
 		}
 	})
 
@@ -127,7 +123,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
 		RiskScore:   row.RiskScore,
 		LastUpdated: timestamppb.New(row.UpdatedAt.Time),
-		HasSbom:     true,
+		HasSbom:     row.WorkloadWithSbom > 0,
 	}
 
 	var coverage float32
