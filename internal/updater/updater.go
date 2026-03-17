@@ -27,6 +27,8 @@ const (
 	ImageMarkAge                                       = 30 * time.Minute
 	// ImageRetentionAge is how long an unused image (and its SBOM via cascade) is kept before deletion.
 	ImageRetentionAge = 6 * 30 * 24 * time.Hour // ~6 months
+	// DeleteUnusedImagesBatchSize is the number of images deleted per batch to avoid long-running transactions.
+	DeleteUnusedImagesBatchSize = 1000
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 60 * 4 * time.Minute
 )
@@ -224,18 +226,33 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 }
 
 // DeleteUnusedImages deletes images that are no longer referenced by any workload
-// and have been unused for at least ImageRetentionAge. The associated SBOM in image_sboms
-// is removed automatically via the ON DELETE CASCADE foreign key.
+// and have been unused for at least ImageRetentionAge. Deletions are batched to avoid
+// long-running transactions. Associated rows in child tables (vulnerabilities,
+// vulnerability_summary, image_sboms, image_sync_status) are removed automatically
+// via ON DELETE CASCADE foreign keys.
 func (u *Updater) DeleteUnusedImages(ctx context.Context) error {
-	rowsAffected, err := u.querier.DeleteUnusedImages(ctx, pgtype.Timestamptz{
+	threshold := pgtype.Timestamptz{
 		Time:  time.Now().Add(-ImageRetentionAge),
 		Valid: true,
-	})
-	if err != nil {
-		u.log.WithError(err).Error("Failed to delete unused images")
-		return err
 	}
-	u.log.Debugf("DeleteUnusedImages affected %d rows", rowsAffected)
+
+	var total int64
+	for {
+		rowsAffected, err := u.querier.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
+			ThresholdTime: threshold,
+			BatchSize:     DeleteUnusedImagesBatchSize,
+		})
+		if err != nil {
+			u.log.WithError(err).Error("Failed to delete unused images")
+			return err
+		}
+		total += rowsAffected
+		if rowsAffected == 0 {
+			break
+		}
+		u.log.Debugf("DeleteUnusedImages batch deleted %d rows (total so far: %d)", rowsAffected, total)
+	}
+	u.log.Infof("DeleteUnusedImages completed, deleted %d images total", total)
 	return nil
 }
 

@@ -310,7 +310,10 @@ func TestDeleteUnusedImages(t *testing.T) {
 	}))
 
 	t.Run("does not delete image within retention period", func(t *testing.T) {
-		rows, err := db.DeleteUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(-updater.ImageRetentionAge), Valid: true})
+		rows, err := db.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
+			ThresholdTime: pgtype.Timestamptz{Time: time.Now().Add(-updater.ImageRetentionAge), Valid: true},
+			BatchSize:     1000,
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rows)
 
@@ -323,7 +326,10 @@ func TestDeleteUnusedImages(t *testing.T) {
 	})
 
 	t.Run("deletes unused image and its sbom past retention period", func(t *testing.T) {
-		rows, err := db.DeleteUnusedImages(ctx, pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true})
+		rows, err := db.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
+			ThresholdTime: pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true},
+			BatchSize:     1000,
+		})
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 

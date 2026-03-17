@@ -14,5 +14,12 @@ CREATE TABLE image_sboms(
         ON DELETE CASCADE
 );
 
+ALTER TABLE image_sync_status
+    ADD CONSTRAINT fk_image
+        FOREIGN KEY (image_name, image_tag)
+            REFERENCES images (name, tag)
+            ON DELETE CASCADE;
+
 -- +goose Down
+ALTER TABLE image_sync_status DROP CONSTRAINT fk_image;
 DROP TABLE IF EXISTS image_sboms;

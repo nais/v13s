@@ -689,9 +689,9 @@ func (_c *MockQuerier_DeleteSourceRef_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// DeleteUnusedImages provides a mock function with given fields: ctx, thresholdTime
-func (_m *MockQuerier) DeleteUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
-	ret := _m.Called(ctx, thresholdTime)
+// DeleteUnusedImages provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) DeleteUnusedImages(ctx context.Context, arg sql.DeleteUnusedImagesParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteUnusedImages")
@@ -699,17 +699,17 @@ func (_m *MockQuerier) DeleteUnusedImages(ctx context.Context, thresholdTime pgt
 
 	var r0 int64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) (int64, error)); ok {
-		return rf(ctx, thresholdTime)
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DeleteUnusedImagesParams) (int64, error)); ok {
+		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, pgtype.Timestamptz) int64); ok {
-		r0 = rf(ctx, thresholdTime)
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DeleteUnusedImagesParams) int64); ok {
+		r0 = rf(ctx, arg)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, pgtype.Timestamptz) error); ok {
-		r1 = rf(ctx, thresholdTime)
+	if rf, ok := ret.Get(1).(func(context.Context, sql.DeleteUnusedImagesParams) error); ok {
+		r1 = rf(ctx, arg)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -724,14 +724,14 @@ type MockQuerier_DeleteUnusedImages_Call struct {
 
 // DeleteUnusedImages is a helper method to define mock.On call
 //   - ctx context.Context
-//   - thresholdTime pgtype.Timestamptz
-func (_e *MockQuerier_Expecter) DeleteUnusedImages(ctx interface{}, thresholdTime interface{}) *MockQuerier_DeleteUnusedImages_Call {
-	return &MockQuerier_DeleteUnusedImages_Call{Call: _e.mock.On("DeleteUnusedImages", ctx, thresholdTime)}
+//   - arg sql.DeleteUnusedImagesParams
+func (_e *MockQuerier_Expecter) DeleteUnusedImages(ctx interface{}, arg interface{}) *MockQuerier_DeleteUnusedImages_Call {
+	return &MockQuerier_DeleteUnusedImages_Call{Call: _e.mock.On("DeleteUnusedImages", ctx, arg)}
 }
 
-func (_c *MockQuerier_DeleteUnusedImages_Call) Run(run func(ctx context.Context, thresholdTime pgtype.Timestamptz)) *MockQuerier_DeleteUnusedImages_Call {
+func (_c *MockQuerier_DeleteUnusedImages_Call) Run(run func(ctx context.Context, arg sql.DeleteUnusedImagesParams)) *MockQuerier_DeleteUnusedImages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(pgtype.Timestamptz))
+		run(args[0].(context.Context), args[1].(sql.DeleteUnusedImagesParams))
 	})
 	return _c
 }
@@ -741,7 +741,7 @@ func (_c *MockQuerier_DeleteUnusedImages_Call) Return(_a0 int64, _a1 error) *Moc
 	return _c
 }
 
-func (_c *MockQuerier_DeleteUnusedImages_Call) RunAndReturn(run func(context.Context, pgtype.Timestamptz) (int64, error)) *MockQuerier_DeleteUnusedImages_Call {
+func (_c *MockQuerier_DeleteUnusedImages_Call) RunAndReturn(run func(context.Context, sql.DeleteUnusedImagesParams) (int64, error)) *MockQuerier_DeleteUnusedImages_Call {
 	_c.Call.Return(run)
 	return _c
 }

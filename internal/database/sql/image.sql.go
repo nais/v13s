@@ -37,20 +37,31 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 
 const deleteUnusedImages = `-- name: DeleteUnusedImages :execrows
 DELETE FROM images
-WHERE
-    images.updated_at < $1
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            workloads
-        WHERE
-            image_name = images.name
-            AND image_tag = images.tag)
+WHERE (name, tag) IN (
+    SELECT
+        i.name, i.tag
+    FROM
+        images i
+    WHERE
+        i.updated_at < $1
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                workloads
+            WHERE
+                image_name = i.name
+                AND image_tag = i.tag)
+    LIMIT $2)
 `
 
-func (q *Queries) DeleteUnusedImages(ctx context.Context, thresholdTime pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteUnusedImages, thresholdTime)
+type DeleteUnusedImagesParams struct {
+	ThresholdTime pgtype.Timestamptz
+	BatchSize     int32
+}
+
+func (q *Queries) DeleteUnusedImages(ctx context.Context, arg DeleteUnusedImagesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUnusedImages, arg.ThresholdTime, arg.BatchSize)
 	if err != nil {
 		return 0, err
 	}

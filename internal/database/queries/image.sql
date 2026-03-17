@@ -185,13 +185,19 @@ LIMIT 1;
 
 -- name: DeleteUnusedImages :execrows
 DELETE FROM images
-WHERE
-    images.updated_at < @threshold_time
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            workloads
-        WHERE
-            image_name = images.name
-            AND image_tag = images.tag);
+WHERE (name, tag) IN (
+    SELECT
+        i.name, i.tag
+    FROM
+        images i
+    WHERE
+        i.updated_at < @threshold_time
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                workloads
+            WHERE
+                image_name = i.name
+                AND image_tag = i.tag)
+    LIMIT @batch_size);
