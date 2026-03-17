@@ -30,6 +30,7 @@ Get operations retrieve specific vulnerability data, and typically return one it
 - `GetVulnerabilityById`: Get a specific vulnerability by ID
 - `GetVulnerability`: Get vulnerability details
 - `GetCve`: Get CVE details
+- `GetSbom`: Get the SBOM (Software Bill of Materials) for a workload. Accepts a `Filter` with `workload` (required), `cluster`, `namespace`, and `workload_type` (all optional). Returns the SBOM as plain JSON bytes — the server decompresses the stored gzip automatically. The SBOM is only available after it has been fetched from the registry and cached by the server.
 
 See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
 
@@ -52,3 +53,7 @@ The Management service provides administrative operations.
 See the [CLI usage documentation](cli-usage.md) for how to interact with the API using the command-line client.
 
 For programmatic access, see the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) and the [protobuf definitions](../pkg/api/vulnerabilities/schemas) for detailed request/response schemas.
+
+## CLI Flag
+
+- `--from-server`: Available on the `sbom` command. Fetches the SBOM from the v13s server cache instead of the registry. Requires `--workload`. Use `--cluster`, `--namespace`, and `--type` to narrow down when multiple workloads share the same name.

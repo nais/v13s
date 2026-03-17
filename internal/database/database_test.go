@@ -217,3 +217,137 @@ func createTestdata(t *testing.T, db sql.Querier, image_name, image_tag string, 
 	})
 	assert.NoError(t, err)
 }
+
+func TestSaveImageSbom(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	assert.NoError(t, db.ResetDatabase(ctx))
+
+	const (
+		imageName = "sbom-test-image"
+		imageTag  = "v1"
+	)
+	sbomData := []byte(`{"bomFormat":"CycloneDX"}`)
+
+	t.Run("saves sbom when none exists", func(t *testing.T) {
+		createTestdata(t, db, imageName, imageTag, true)
+
+		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
+			Name: imageName,
+			Tag:  imageTag,
+			Sbom: sbomData,
+		})
+		assert.NoError(t, err)
+
+		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: imageName, Tag: imageTag})
+		assert.NoError(t, err)
+		assert.Equal(t, sbomData, row.Sbom)
+	})
+
+	t.Run("overwrites existing sbom with new data", func(t *testing.T) {
+		newSbom := []byte(`{"bomFormat":"CycloneDX","version":2}`)
+		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
+			Name: imageName,
+			Tag:  imageTag,
+			Sbom: newSbom,
+		})
+		assert.NoError(t, err)
+
+		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: imageName, Tag: imageTag})
+		assert.NoError(t, err)
+		assert.Equal(t, newSbom, row.Sbom, "sbom should have been overwritten")
+	})
+
+	t.Run("does not save sbom for image without workload", func(t *testing.T) {
+		const noWlTag = "no-workload"
+		createTestdata(t, db, imageName, noWlTag, false)
+
+		err := db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
+			Name: imageName,
+			Tag:  noWlTag,
+			Sbom: sbomData,
+		})
+		assert.NoError(t, err)
+
+		_, err = db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: imageName, Tag: noWlTag})
+		assert.Error(t, err, "sbom should not have been saved for image without workload")
+	})
+}
+
+func TestDeleteUnusedImages(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	assert.NoError(t, db.ResetDatabase(ctx))
+
+	const (
+		unusedImage = "sbom-null-image"
+		unusedTag   = "unused"
+		activeImage = "sbom-active-image"
+		activeTag   = "active"
+	)
+	sbomData := []byte(`{"bomFormat":"CycloneDX"}`)
+
+	// Create an image with a workload and give it an SBOM, then remove the workload.
+	createTestdata(t, db, unusedImage, unusedTag, true)
+	assert.NoError(t, db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
+		Name: unusedImage, Tag: unusedTag, Sbom: sbomData,
+	}))
+	_, err := db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
+		Name: unusedImage, Namespace: "testnamespace1", Cluster: "testcluster1", WorkloadType: "application",
+	})
+	assert.NoError(t, err)
+
+	// Create an active image (has workload) and give it an SBOM.
+	createTestdata(t, db, activeImage, activeTag, true)
+	assert.NoError(t, db.SaveImageSbom(ctx, sql.SaveImageSbomParams{
+		Name: activeImage, Tag: activeTag, Sbom: sbomData,
+	}))
+
+	t.Run("does not delete image within retention period", func(t *testing.T) {
+		rows, err := db.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
+			ThresholdTime: pgtype.Timestamptz{Time: time.Now().Add(-updater.ImageRetentionAge), Valid: true},
+			BatchSize:     1000,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), rows)
+
+		// Both the image and its SBOM should still exist.
+		_, err = db.GetImage(ctx, sql.GetImageParams{Name: unusedImage, Tag: unusedTag})
+		assert.NoError(t, err)
+		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: unusedImage, Tag: unusedTag})
+		assert.NoError(t, err)
+		assert.Equal(t, sbomData, row.Sbom)
+	})
+
+	t.Run("deletes unused image and its sbom past retention period", func(t *testing.T) {
+		rows, err := db.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
+			ThresholdTime: pgtype.Timestamptz{Time: time.Now().Add(1 * time.Minute), Valid: true},
+			BatchSize:     1000,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1), rows)
+
+		// Image should be gone.
+		_, err = db.GetImage(ctx, sql.GetImageParams{Name: unusedImage, Tag: unusedTag})
+		assert.Error(t, err, "image should have been deleted")
+
+		// SBOM should be gone via cascade.
+		_, err = db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: unusedImage, Tag: unusedTag})
+		assert.Error(t, err, "sbom should have been deleted via cascade")
+	})
+
+	t.Run("never deletes active image or its sbom", func(t *testing.T) {
+		_, err := db.GetImage(ctx, sql.GetImageParams{Name: activeImage, Tag: activeTag})
+		assert.NoError(t, err, "active image should not be deleted")
+
+		row, err := db.GetImageSbom(ctx, sql.GetImageSbomParams{Name: activeImage, Tag: activeTag})
+		assert.NoError(t, err)
+		assert.Equal(t, sbomData, row.Sbom, "active image sbom should be untouched")
+	})
+}

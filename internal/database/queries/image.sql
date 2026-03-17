@@ -23,7 +23,7 @@ WHERE
 
 -- name: GetImage :one
 SELECT
-    *
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -32,7 +32,7 @@ WHERE
 
 -- name: GetImagesScheduledForSync :many
 SELECT
-    *
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
 FROM
     images
 WHERE
@@ -147,3 +147,57 @@ ON CONFLICT (
         status_code = @status_code,
         reason = @reason,
         updated_at = NOW();
+
+-- name: SaveImageSbom :exec
+INSERT INTO image_sboms(image_name, image_tag, sbom)
+SELECT @name, @tag, @sbom
+WHERE EXISTS (
+    SELECT 1 FROM workloads WHERE image_name = @name AND image_tag = @tag
+)
+ON CONFLICT (image_name, image_tag)
+    DO UPDATE SET
+        sbom = excluded.sbom,
+        updated_at = NOW();
+
+-- name: GetImageSbom :one
+SELECT
+    sbom,
+    updated_at AS sbom_updated_at
+FROM
+    image_sboms
+WHERE
+    image_name = @name
+    AND image_tag = @tag;
+
+-- name: GetSbomForWorkload :one
+SELECT
+    s.sbom,
+    s.updated_at AS sbom_updated_at
+FROM
+    workloads w
+    JOIN image_sboms s ON s.image_name = w.image_name AND s.image_tag = w.image_tag
+WHERE
+    w.name = @workload_name
+    AND (sqlc.narg('cluster')::TEXT IS NULL OR w.cluster = sqlc.narg('cluster')::TEXT)
+    AND (sqlc.narg('namespace')::TEXT IS NULL OR w.namespace = sqlc.narg('namespace')::TEXT)
+    AND (sqlc.narg('workload_type')::TEXT IS NULL OR w.workload_type = sqlc.narg('workload_type')::TEXT)
+LIMIT 1;
+
+-- name: DeleteUnusedImages :execrows
+DELETE FROM images
+WHERE (name, tag) IN (
+    SELECT
+        i.name, i.tag
+    FROM
+        images i
+    WHERE
+        i.updated_at < @threshold_time
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                workloads
+            WHERE
+                image_name = i.name
+                AND image_tag = i.tag)
+    LIMIT @batch_size);

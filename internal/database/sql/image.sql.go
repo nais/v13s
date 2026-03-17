@@ -35,6 +35,39 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 	return err
 }
 
+const deleteUnusedImages = `-- name: DeleteUnusedImages :execrows
+DELETE FROM images
+WHERE (name, tag) IN (
+    SELECT
+        i.name, i.tag
+    FROM
+        images i
+    WHERE
+        i.updated_at < $1
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                workloads
+            WHERE
+                image_name = i.name
+                AND image_tag = i.tag)
+    LIMIT $2)
+`
+
+type DeleteUnusedImagesParams struct {
+	ThresholdTime pgtype.Timestamptz
+	BatchSize     int32
+}
+
+func (q *Queries) DeleteUnusedImages(ctx context.Context, arg DeleteUnusedImagesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUnusedImages, arg.ThresholdTime, arg.BatchSize)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getImage = `-- name: GetImage :one
 SELECT
     name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
@@ -62,6 +95,34 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.UpdatedAt,
 		&i.ReadyForResyncAt,
 	)
+	return &i, err
+}
+
+const getImageSbom = `-- name: GetImageSbom :one
+SELECT
+    sbom,
+    updated_at AS sbom_updated_at
+FROM
+    image_sboms
+WHERE
+    image_name = $1
+    AND image_tag = $2
+`
+
+type GetImageSbomParams struct {
+	Name string
+	Tag  string
+}
+
+type GetImageSbomRow struct {
+	Sbom          []byte
+	SbomUpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetImageSbom(ctx context.Context, arg GetImageSbomParams) (*GetImageSbomRow, error) {
+	row := q.db.QueryRow(ctx, getImageSbom, arg.Name, arg.Tag)
+	var i GetImageSbomRow
+	err := row.Scan(&i.Sbom, &i.SbomUpdatedAt)
 	return &i, err
 }
 
@@ -104,6 +165,45 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const getSbomForWorkload = `-- name: GetSbomForWorkload :one
+SELECT
+    s.sbom,
+    s.updated_at AS sbom_updated_at
+FROM
+    workloads w
+    JOIN image_sboms s ON s.image_name = w.image_name AND s.image_tag = w.image_tag
+WHERE
+    w.name = $1
+    AND ($2::TEXT IS NULL OR w.cluster = $2::TEXT)
+    AND ($3::TEXT IS NULL OR w.namespace = $3::TEXT)
+    AND ($4::TEXT IS NULL OR w.workload_type = $4::TEXT)
+LIMIT 1
+`
+
+type GetSbomForWorkloadParams struct {
+	WorkloadName string
+	Cluster      *string
+	Namespace    *string
+	WorkloadType *string
+}
+
+type GetSbomForWorkloadRow struct {
+	Sbom          []byte
+	SbomUpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetSbomForWorkload(ctx context.Context, arg GetSbomForWorkloadParams) (*GetSbomForWorkloadRow, error) {
+	row := q.db.QueryRow(ctx, getSbomForWorkload,
+		arg.WorkloadName,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadType,
+	)
+	var i GetSbomForWorkloadRow
+	err := row.Scan(&i.Sbom, &i.SbomUpdatedAt)
+	return &i, err
 }
 
 const listUnusedImages = `-- name: ListUnusedImages :many
@@ -233,6 +333,29 @@ func (q *Queries) MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const saveImageSbom = `-- name: SaveImageSbom :exec
+INSERT INTO image_sboms(image_name, image_tag, sbom)
+SELECT $1, $2, $3
+WHERE EXISTS (
+    SELECT 1 FROM workloads WHERE image_name = $1 AND image_tag = $2
+)
+ON CONFLICT (image_name, image_tag)
+    DO UPDATE SET
+        sbom = excluded.sbom,
+        updated_at = NOW()
+`
+
+type SaveImageSbomParams struct {
+	Name string
+	Tag  string
+	Sbom []byte
+}
+
+func (q *Queries) SaveImageSbom(ctx context.Context, arg SaveImageSbomParams) error {
+	_, err := q.db.Exec(ctx, saveImageSbom, arg.Name, arg.Tag, arg.Sbom)
+	return err
 }
 
 const updateImage = `-- name: UpdateImage :exec

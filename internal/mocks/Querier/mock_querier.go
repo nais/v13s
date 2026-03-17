@@ -689,6 +689,63 @@ func (_c *MockQuerier_DeleteSourceRef_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// DeleteUnusedImages provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) DeleteUnusedImages(ctx context.Context, arg sql.DeleteUnusedImagesParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUnusedImages")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DeleteUnusedImagesParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DeleteUnusedImagesParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.DeleteUnusedImagesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_DeleteUnusedImages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUnusedImages'
+type MockQuerier_DeleteUnusedImages_Call struct {
+	*mock.Call
+}
+
+// DeleteUnusedImages is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.DeleteUnusedImagesParams
+func (_e *MockQuerier_Expecter) DeleteUnusedImages(ctx interface{}, arg interface{}) *MockQuerier_DeleteUnusedImages_Call {
+	return &MockQuerier_DeleteUnusedImages_Call{Call: _e.mock.On("DeleteUnusedImages", ctx, arg)}
+}
+
+func (_c *MockQuerier_DeleteUnusedImages_Call) Run(run func(ctx context.Context, arg sql.DeleteUnusedImagesParams)) *MockQuerier_DeleteUnusedImages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.DeleteUnusedImagesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUnusedImages_Call) Return(_a0 int64, _a1 error) *MockQuerier_DeleteUnusedImages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUnusedImages_Call) RunAndReturn(run func(context.Context, sql.DeleteUnusedImagesParams) (int64, error)) *MockQuerier_DeleteUnusedImages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteWorkload provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) DeleteWorkload(ctx context.Context, arg sql.DeleteWorkloadParams) (pgtype.UUID, error) {
 	ret := _m.Called(ctx, arg)
@@ -978,6 +1035,65 @@ func (_c *MockQuerier_GetImage_Call) RunAndReturn(run func(context.Context, sql.
 	return _c
 }
 
+// GetImageSbom provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetImageSbom(ctx context.Context, arg sql.GetImageSbomParams) (*sql.GetImageSbomRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetImageSbom")
+	}
+
+	var r0 *sql.GetImageSbomRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetImageSbomParams) (*sql.GetImageSbomRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetImageSbomParams) *sql.GetImageSbomRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.GetImageSbomRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetImageSbomParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetImageSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetImageSbom'
+type MockQuerier_GetImageSbom_Call struct {
+	*mock.Call
+}
+
+// GetImageSbom is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetImageSbomParams
+func (_e *MockQuerier_Expecter) GetImageSbom(ctx interface{}, arg interface{}) *MockQuerier_GetImageSbom_Call {
+	return &MockQuerier_GetImageSbom_Call{Call: _e.mock.On("GetImageSbom", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetImageSbom_Call) Run(run func(ctx context.Context, arg sql.GetImageSbomParams)) *MockQuerier_GetImageSbom_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetImageSbomParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetImageSbom_Call) Return(_a0 *sql.GetImageSbomRow, _a1 error) *MockQuerier_GetImageSbom_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetImageSbom_Call) RunAndReturn(run func(context.Context, sql.GetImageSbomParams) (*sql.GetImageSbomRow, error)) *MockQuerier_GetImageSbom_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetImagesScheduledForSync provides a mock function with given fields: ctx
 func (_m *MockQuerier) GetImagesScheduledForSync(ctx context.Context) ([]*sql.Image, error) {
 	ret := _m.Called(ctx)
@@ -1088,6 +1204,65 @@ func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) Return(_a
 }
 
 func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) RunAndReturn(run func(context.Context) (pgtype.Date, error)) *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSbomForWorkload provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetSbomForWorkload(ctx context.Context, arg sql.GetSbomForWorkloadParams) (*sql.GetSbomForWorkloadRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSbomForWorkload")
+	}
+
+	var r0 *sql.GetSbomForWorkloadRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetSbomForWorkloadParams) (*sql.GetSbomForWorkloadRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetSbomForWorkloadParams) *sql.GetSbomForWorkloadRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.GetSbomForWorkloadRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetSbomForWorkloadParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetSbomForWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSbomForWorkload'
+type MockQuerier_GetSbomForWorkload_Call struct {
+	*mock.Call
+}
+
+// GetSbomForWorkload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetSbomForWorkloadParams
+func (_e *MockQuerier_Expecter) GetSbomForWorkload(ctx interface{}, arg interface{}) *MockQuerier_GetSbomForWorkload_Call {
+	return &MockQuerier_GetSbomForWorkload_Call{Call: _e.mock.On("GetSbomForWorkload", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetSbomForWorkload_Call) Run(run func(ctx context.Context, arg sql.GetSbomForWorkloadParams)) *MockQuerier_GetSbomForWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetSbomForWorkloadParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetSbomForWorkload_Call) Return(_a0 *sql.GetSbomForWorkloadRow, _a1 error) *MockQuerier_GetSbomForWorkload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetSbomForWorkload_Call) RunAndReturn(run func(context.Context, sql.GetSbomForWorkloadParams) (*sql.GetSbomForWorkloadRow, error)) *MockQuerier_GetSbomForWorkload_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3084,6 +3259,53 @@ func (_c *MockQuerier_ResetDatabase_Call) Return(_a0 error) *MockQuerier_ResetDa
 }
 
 func (_c *MockQuerier_ResetDatabase_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_ResetDatabase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveImageSbom provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) SaveImageSbom(ctx context.Context, arg sql.SaveImageSbomParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveImageSbom")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.SaveImageSbomParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_SaveImageSbom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveImageSbom'
+type MockQuerier_SaveImageSbom_Call struct {
+	*mock.Call
+}
+
+// SaveImageSbom is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.SaveImageSbomParams
+func (_e *MockQuerier_Expecter) SaveImageSbom(ctx interface{}, arg interface{}) *MockQuerier_SaveImageSbom_Call {
+	return &MockQuerier_SaveImageSbom_Call{Call: _e.mock.On("SaveImageSbom", ctx, arg)}
+}
+
+func (_c *MockQuerier_SaveImageSbom_Call) Run(run func(ctx context.Context, arg sql.SaveImageSbomParams)) *MockQuerier_SaveImageSbom_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.SaveImageSbomParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SaveImageSbom_Call) Return(_a0 error) *MockQuerier_SaveImageSbom_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_SaveImageSbom_Call) RunAndReturn(run func(context.Context, sql.SaveImageSbomParams) error) *MockQuerier_SaveImageSbom_Call {
 	_c.Call.Return(run)
 	return _c
 }

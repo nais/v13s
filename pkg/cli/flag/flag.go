@@ -35,6 +35,7 @@ type Options struct {
 	CvssScore         float64
 	ExcludeClusters   []string
 	ExcludeNamespaces []string
+	FromServer        bool
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
+	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -238,6 +239,39 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
+	}, nil
+}
+
+func (s *Server) GetSbom(ctx context.Context, request *vulnerabilities.GetSbomRequest) (*vulnerabilities.GetSbomResponse, error) {
+	filter := request.GetFilter()
+	if filter == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "filter is required")
+	}
+	if filter.GetWorkload() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "filter.workload is required")
+	}
+
+	row, err := s.querier.GetSbomForWorkload(ctx, sql.GetSbomForWorkloadParams{
+		WorkloadName: filter.GetWorkload(),
+		Cluster:      filter.Cluster,
+		Namespace:    filter.Namespace,
+		WorkloadType: filter.WorkloadType,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Errorf(codes.NotFound, "no sbom found for workload %s", filter.GetWorkload())
+		}
+		return nil, fmt.Errorf("failed to get sbom for workload: %w", err)
+	}
+
+	att, err := attestation.Decompress(row.Sbom)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress sbom: %w", err)
+	}
+
+	return &vulnerabilities.GetSbomResponse{
+		Sbom:        att.Predicate,
+		LastUpdated: timestamppb.New(row.SbomUpdatedAt.Time),
 	}, nil
 }
 

@@ -392,6 +392,15 @@ message GetCveResponse {
   Cve cve = 1;
 }
 
+message GetSbomRequest {
+  Filter filter = 1;
+}
+
+message GetSbomResponse {
+  bytes sbom = 1;
+  google.protobuf.Timestamp last_updated = 2;
+}
+
 message SuppressVulnerabilityRequest {
   string id = 1;
   SuppressState state = 2;
@@ -450,6 +459,8 @@ service Vulnerabilities {
   rpc GetVulnerability(GetVulnerabilityRequest) returns (GetVulnerabilityResponse);
 
   rpc GetCve(GetCveRequest) returns (GetCveResponse);
+
+  rpc GetSbom(GetSbomRequest) returns (GetSbomResponse);
 
   // -------------------- Suppress RPCs --------------------
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
