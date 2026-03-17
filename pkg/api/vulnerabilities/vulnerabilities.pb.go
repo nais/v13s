@@ -1074,6 +1074,7 @@ type WorkloadSummary struct {
 	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Workload             *Workload              `protobuf:"bytes,2,opt,name=workload,proto3" json:"workload,omitempty"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,3,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
+	StaleSummary         bool                   `protobuf:"varint,4,opt,name=stale_summary,json=staleSummary,proto3" json:"stale_summary,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1127,6 +1128,13 @@ func (x *WorkloadSummary) GetVulnerabilitySummary() *Summary {
 		return x.VulnerabilitySummary
 	}
 	return nil
+}
+
+func (x *WorkloadSummary) GetStaleSummary() bool {
+	if x != nil {
+		return x.StaleSummary
+	}
+	return false
 }
 
 type WorkloadFix struct {
@@ -3842,11 +3850,12 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\f_resolved_at\"\xbe\x01\n" +
 	"$WorkloadCriticalVulnerabilityFinding\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12V\n" +
-	"\rvulnerability\x18\x02 \x01(\v20.v13s.api.protobuf.WorkloadCriticalVulnerabilityR\rvulnerability\"\xab\x01\n" +
+	"\rvulnerability\x18\x02 \x01(\v20.v13s.api.protobuf.WorkloadCriticalVulnerabilityR\rvulnerability\"\xd0\x01\n" +
 	"\x0fWorkloadSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\bworkload\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\bworkload\x12O\n" +
-	"\x15vulnerability_summary\x18\x03 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\"\xd9\x03\n" +
+	"\x15vulnerability_summary\x18\x03 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12#\n" +
+	"\rstale_summary\x18\x04 \x01(\bR\fstaleSummary\"\xd9\x03\n" +
 	"\vWorkloadFix\x127\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x1b.v13s.api.protobuf.SeverityR\bseverity\x12D\n" +
 	"\rintroduced_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\fintroducedAt\x88\x01\x01\x12:\n" +
