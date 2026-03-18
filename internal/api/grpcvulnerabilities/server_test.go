@@ -1757,6 +1757,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		assert.False(t, node.StaleSummary, "summary should not be stale when current image tag has a summary")
 		assert.True(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom should be true")
 		assert.Equal(t, oldTag, node.GetWorkload().ImageTag)
+		assert.Equal(t, oldTag, node.GetSummaryImageTag(), "summary_image_tag should match current tag when not stale")
 	})
 
 	t.Run("workload updates to new tag with no summary — falls back to previous tag summary with stale_summary=true", func(t *testing.T) {
@@ -1791,6 +1792,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		// Summary data must come from the previous tag (stale fallback).
 		assert.True(t, node.StaleSummary, "stale_summary must be true while new SBOM is processing")
 		assert.True(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom should still be true (showing previous data)")
+		assert.Equal(t, oldTag, node.GetSummaryImageTag(), "summary_image_tag should be the old tag when stale")
 
 		// Counts are carried over from the v1.0 summary.
 		assert.Equal(t, int32(1), node.GetVulnerabilitySummary().High)
@@ -1824,6 +1826,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		node := resp.Nodes[0]
 		assert.False(t, node.StaleSummary, "stale_summary must be false when there is no summary at all")
 		assert.False(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom must be false when no summary exists")
+		assert.Empty(t, node.GetSummaryImageTag(), "summary_image_tag must be empty when no summary exists")
 	})
 
 	t.Run("new tag receives its own summary — stale_summary becomes false again", func(t *testing.T) {
@@ -1850,6 +1853,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		assert.False(t, node.StaleSummary, "stale_summary must be false once the new summary is ready")
 		assert.True(t, node.GetVulnerabilitySummary().HasSbom)
 		assert.Equal(t, newTag, node.GetWorkload().ImageTag)
+		assert.Equal(t, newTag, node.GetSummaryImageTag(), "summary_image_tag should match new tag once summary exists")
 		// Counts reflect the NEW summary, not the old v1.0 values.
 		assert.Equal(t, int32(2), node.GetVulnerabilitySummary().Critical)
 		assert.Equal(t, int32(3), node.GetVulnerabilitySummary().High)
