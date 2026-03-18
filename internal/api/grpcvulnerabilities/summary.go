@@ -52,6 +52,19 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
+		summary := &vulnerabilities.Summary{
+			Critical:   row.Critical,
+			High:       row.High,
+			Medium:     row.Medium,
+			Low:        row.Low,
+			Unassigned: row.Unassigned,
+			Total:      row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+			RiskScore:  row.RiskScore,
+			HasSbom:    row.HasSbom,
+		}
+		if row.HasSbom && row.SummaryUpdatedAt.Valid {
+			summary.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
+		}
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
@@ -65,17 +78,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				ImageName: row.CurrentImageName,
 				ImageTag:  row.CurrentImageTag,
 			},
-			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    row.Critical,
-				High:        row.High,
-				Medium:      row.Medium,
-				Low:         row.Low,
-				Unassigned:  row.Unassigned,
-				Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-				RiskScore:   row.RiskScore,
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			},
+			VulnerabilitySummary: summary,
 			// StaleSummary is true when the vulnerability data is from a previous
 			// image tag because the current image's SBOM has not finished processing.
 			StaleSummary: row.StaleSummary,
