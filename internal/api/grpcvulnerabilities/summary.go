@@ -79,6 +79,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			// StaleSummary is true when the vulnerability data is from a previous
 			// image tag because the current image's SBOM has not finished processing.
 			StaleSummary: row.StaleSummary,
+			// SummaryImageTag is the tag the vulnerability data actually comes from.
+			SummaryImageTag: row.ImageTag,
 		}
 	})
 

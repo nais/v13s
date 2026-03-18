@@ -151,8 +151,6 @@ type GetVulnerabilitySummaryRow struct {
 	UpdatedAt        pgtype.Timestamptz
 }
 
-// For each image_name, pick the most recently updated summary (any tag).
-// Used as a fallback when the workload's current tag has no summary yet.
 func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerabilitySummary,
 		arg.Cluster,
