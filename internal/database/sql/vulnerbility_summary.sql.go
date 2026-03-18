@@ -426,14 +426,20 @@ vulnerability_data AS (
         ELSE
             FALSE
         END AS has_sbom,
-        -- stale_summary: true only when current tag has no summary but a fallback exists
-        CASE WHEN vs_current.id IS NULL AND vs_fallback.id IS NOT NULL THEN
+        -- COALESCE handles the case where no image row exists (treat as not processed).
+        CASE WHEN vs_current.id IS NULL
+            AND vs_fallback.id IS NOT NULL
+            AND COALESCE(img.state, 'initialized') != 'updated' THEN
             TRUE
         ELSE
             FALSE
         END AS stale_summary
     FROM
         filtered_workloads w
+        -- Image state: used to determine if the SBOM has been processed
+        LEFT JOIN images img
+            ON img.name = w.image_name
+            AND img.tag = w.image_tag
         -- Exact match: summary for the workload's current (image_name, image_tag)
         LEFT JOIN vulnerability_summary vs_current
             ON vs_current.image_name = w.image_name
