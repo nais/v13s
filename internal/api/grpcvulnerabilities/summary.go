@@ -73,21 +73,19 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
 				// Always show the workload's current image.
-				// When stale_summary is true the vulnerability data comes from a
-				// previous tag; consumers can detect this via StaleSummary.
+				// When stale_summary is true the vulnerability data comes from.
 				ImageName: row.CurrentImageName,
 				ImageTag:  row.CurrentImageTag,
 			},
 			VulnerabilitySummary: summary,
 			// StaleSummary is true when the vulnerability data is from a previous
 			// image tag because the current image's SBOM has not finished processing.
-			StaleSummary: row.StaleSummary,
-			// SummaryImageTag is the tag the vulnerability data actually comes from.
-			SummaryImageTag: row.ImageTag,
+			IsSummaryStale:       row.StaleSummary,
+			SummaryStaleImageTag: row.ImageTag,
 		}
 	})
 
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	pageInfo, err := grpcpagination.PageInfo(request, total)
 	if err != nil {
 		return nil, err
 	}

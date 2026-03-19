@@ -138,11 +138,11 @@ message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
-  bool stale_summary = 4;
+  bool is_summary_stale = 4;
   // summary_image_tag is the image tag the vulnerability data actually comes from.
   // When stale_summary is false this equals workload.image_tag.
   // When stale_summary is true this is the previous tag whose data is being shown.
-  string summary_image_tag = 5;
+  string summary_stale_image_tag = 5;
 }
 
 message WorkloadFix {
