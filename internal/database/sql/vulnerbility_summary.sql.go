@@ -426,10 +426,9 @@ vulnerability_data AS (
         ELSE
             FALSE
         END AS has_sbom,
-        -- COALESCE handles the case where no image row exists (treat as not processed).
+        -- stale_summary: true when we are using fallback data (no current summary, fallback exists)
         CASE WHEN vs_current.id IS NULL
-            AND vs_fallback.id IS NOT NULL
-            AND COALESCE(img.state, 'initialized') != 'updated' THEN
+            AND vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE

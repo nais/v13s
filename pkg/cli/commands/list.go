@@ -213,9 +213,9 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 
 		for _, n := range resp.GetNodes() {
 			stale := "-"
-			if n.GetStaleSummary() {
+			if n.GetIsSummaryStale() {
 				staleSince := n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339)
-				stale = fmt.Sprintf("stale (%s, %s)", n.GetSummaryImageTag(), staleSince)
+				stale = fmt.Sprintf("stale (%s, %s)", n.GetSummaryStaleImageTag(), staleSince)
 			}
 			vals := []any{
 				n.Workload.GetName(),
