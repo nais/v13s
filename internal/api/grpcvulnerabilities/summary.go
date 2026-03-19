@@ -3,10 +3,8 @@ package grpcvulnerabilities
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
@@ -188,20 +186,14 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 }
 
 func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryForImageRequest) (*vulnerabilities.GetVulnerabilitySummaryForImageResponse, error) {
-	summary, err := s.querier.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
+	row, err := s.querier.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
-				VulnerabilitySummary: &vulnerabilities.Summary{},
-				WorkloadRef:          make([]*vulnerabilities.Workload, 0),
-			}, nil
-		}
-
 		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 	}
+
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
@@ -222,24 +214,32 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		})
 	}
 
-	vulnSummary := &vulnerabilities.Summary{}
-	if summary != nil {
-		vulnSummary = &vulnerabilities.Summary{
-			Critical:    summary.Critical,
-			High:        summary.High,
-			Medium:      summary.Medium,
-			Low:         summary.Low,
-			Unassigned:  summary.Unassigned,
-			Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
-			RiskScore:   summary.RiskScore,
-			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:     true,
+	vulnSummary := &vulnerabilities.Summary{
+		HasSbom: row.HasSbom,
+	}
+	if row.HasSbom {
+		vulnSummary.Critical = row.Critical
+		vulnSummary.High = row.High
+		vulnSummary.Medium = row.Medium
+		vulnSummary.Low = row.Low
+		vulnSummary.Unassigned = row.Unassigned
+		vulnSummary.Total = row.Critical + row.High + row.Medium + row.Low + row.Unassigned
+		vulnSummary.RiskScore = row.RiskScore
+		if row.UpdatedAt.Valid {
+			vulnSummary.LastUpdated = timestamppb.New(row.UpdatedAt.Time)
 		}
 	}
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
+		IsSummaryStale:       row.IsSummaryStale,
+		SummaryStaleImageTag: func() string {
+			if row.HasSbom {
+				return row.ImageTag
+			}
+			return ""
+		}(),
 	}, nil
 }
 

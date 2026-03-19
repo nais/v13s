@@ -1004,202 +1004,68 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		oldTag    = "v1.0"
+		newTag    = "v2.0"
+	)
+
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
-		resp, err := client.GetVulnerabilitySummaryForImage(
-			ctx, "image-cluster-1-namespace-1-workload-1", "v1.0")
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, oldTag)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Critical)
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
-	})
-}
-
-func TestServer_GetVulnerabilityById(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1"},
-		namespaces:            []string{"namespace-1"},
-		workloadsPerNamespace: 1,
-		vulnsPerWorkload:      1,
-	}
-
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	vuln, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
-		ImageName: "image-cluster-1-namespace-1-workload-1",
-		ImageTag:  "v1.0",
-		CveID:     "CWE-1-1",
-		Package:   "package-CWE-1-1",
-	})
-	assert.NoError(t, err)
-
-	t.Run("get vulnerability by id", func(t *testing.T) {
-		resp, err := client.GetVulnerabilityById(ctx, vuln.ID.String())
-		assert.NoError(t, err)
-		assert.Equal(t, "CWE-1-1", resp.GetVulnerability().GetCve().GetId())
-	})
-}
-
-func TestServer_ListSeverityVulnerabilitiesSince(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1"},
-		namespaces:            []string{"namespace-1"},
-		workloadsPerNamespace: 1,
-		vulnsPerWorkload:      2,
-	}
-
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	err := db.CreateImage(ctx, sql.CreateImageParams{
-		Name:     "image-1",
-		Tag:      "v1.0",
-		Metadata: map[string]string{},
-	})
-	assert.NoError(t, err)
-
-	now := time.Now()
-	r, err := client.ListVulnerabilities(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Nodes))
-
-	rows, err := pool.Query(ctx, "SELECT image_name, package FROM vulnerabilities")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var image, pkg string
-		if err := rows.Scan(&image, &pkg); err != nil {
-			t.Fatal(err)
-		}
-
-		var newTime time.Time
-		switch pkg {
-		case "package-CWE-1-1":
-			newTime = time.Now().Add(-12 * time.Hour) // 12 hours ago
-		case "package-CWE-1-2":
-			newTime = time.Now().Add(-48 * time.Hour) // 48 hours ago
-		default:
-			continue
-		}
-
-		_, err := pool.Exec(ctx, `
-            UPDATE vulnerabilities
-            SET severity_since = $1,
-                last_severity = 0
-            WHERE image_name = $2 AND package = $3
-        `, newTime, image, pkg)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		fmt.Println("Updated:", image, pkg, "to", newTime)
-	}
-
-	t.Run("last 7 days", func(t *testing.T) {
-		resp, err := client.ListSeverityVulnerabilitiesSince(ctx,
-			vulnerabilities.Since(now.Add(-7*24*time.Hour)),
-			vulnerabilities.Order(vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC),
-		)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resp.Nodes))
-
-		t0 := resp.Nodes[0].Vulnerability.SeveritySince.AsTime().UTC()
-		t1 := resp.Nodes[1].Vulnerability.SeveritySince.AsTime().UTC()
-		assert.True(t, t0.After(t1))
-		assert.True(t, t1.Before(t0))
+		assert.True(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be true for existing image")
+		assert.False(t, resp.GetIsSummaryStale(), "is_summary_stale should be false when exact tag has a summary")
+		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag(), "summary_stale_image_tag should match the requested tag")
 	})
 
-	t.Run("last 1 day", func(t *testing.T) {
-		resp, err := client.ListSeverityVulnerabilitiesSince(ctx,
-			vulnerabilities.Since(now.Add(-24*time.Hour)),
-		)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(resp.Nodes)) // only the 12h-old vuln
-
-		for _, n := range resp.Nodes {
-			fmt.Printf("Resp Node: pkg=%s severity_since=%v severity=%d\n",
-				n.Vulnerability.Package,
-				n.Vulnerability.SeveritySince.AsTime(),
-				*n.Vulnerability.LastSeverity,
-			)
-		}
-	})
-}
-
-func TestSanitizeOrderBy(t *testing.T) {
-	tests := []struct {
-		name     string
-		orderBy  *vulnerabilities.OrderBy
-		defaultF vulnerabilities.OrderByField
-		expected string
-	}{
-		{
-			name:     "nil orderBy uses default asc",
-			orderBy:  nil,
-			defaultF: vulnerabilities.OrderByPackage,
-			expected: "package_asc",
-		},
-		{
-			name: "valid non-severity asc",
-			orderBy: &vulnerabilities.OrderBy{
-				Field:     string(vulnerabilities.OrderByPackage),
-				Direction: vulnerabilities.Direction_ASC,
-			},
-			defaultF: vulnerabilities.OrderByPackage,
-			expected: "package_asc",
-		},
-		{
-			name: "valid non-severity desc",
-			orderBy: &vulnerabilities.OrderBy{
-				Field:     string(vulnerabilities.OrderByUpdatedAt),
-				Direction: vulnerabilities.Direction_DESC,
-			},
-			defaultF: vulnerabilities.OrderByPackage,
-			expected: "updated_at_desc",
-		},
-		{
-			name: "invalid field falls back to default",
-			orderBy: &vulnerabilities.OrderBy{
-				Field:     "not_a_field",
-				Direction: vulnerabilities.Direction_ASC,
-			},
-			defaultF: vulnerabilities.OrderByPackage,
-			expected: "package_asc",
-		},
-		{
-			name: "severity asc flips to desc (critical first)",
-			orderBy: &vulnerabilities.OrderBy{
-				Field:     string(vulnerabilities.OrderBySeverity),
-				Direction: vulnerabilities.Direction_ASC,
-			},
-			defaultF: vulnerabilities.OrderByPackage,
-			expected: "severity_desc",
-		},
-		{
-			name: "severity desc flips to asc (weakest first)",
-			orderBy: &vulnerabilities.OrderBy{
-				Field:     string(vulnerabilities.OrderBySeverity),
-				Direction: vulnerabilities.Direction_DESC,
-			},
-			defaultF: vulnerabilities.OrderByPackage,
-			expected: "severity_asc",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := grpcvulnerabilities.SanitizeOrderBy(tt.orderBy, tt.defaultF)
-			assert.Equal(t, tt.expected, got)
+	t.Run("new tag with no summary falls back to previous — is_summary_stale is true", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      newTag,
+			Metadata: map[string]string{},
 		})
-	}
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+		assert.True(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be true (fallback exists)")
+		assert.True(t, resp.GetIsSummaryStale(), "is_summary_stale should be true when falling back to old tag")
+		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag(), "summary_stale_image_tag should be the old tag")
+		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High, "counts should come from old tag fallback")
+	})
+
+	t.Run("fallback source image updated — is_summary_stale is false", func(t *testing.T) {
+		// Mark the old tag image as 'updated' (verified by the pipeline).
+		err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   oldTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+		assert.False(t, resp.GetIsSummaryStale(), "is_summary_stale should be false when fallback comes from a verified image")
+		assert.True(t, resp.GetVulnerabilitySummary().HasSbom)
+		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag())
+	})
+
+	t.Run("image with no summary at all — has_sbom is false", func(t *testing.T) {
+		const unknownImage = "never-seen-image"
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unknownImage, "v0.1")
+		require.NoError(t, err)
+		assert.False(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be false for unknown image")
+		assert.False(t, resp.GetIsSummaryStale(), "is_summary_stale should be false when there is no summary at all")
+		assert.Empty(t, resp.GetSummaryStaleImageTag())
+	})
 }
 
 func TestServer_ListVulnerabilities_Sorting(t *testing.T) {

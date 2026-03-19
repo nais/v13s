@@ -335,6 +335,8 @@ message GetVulnerabilitySummaryForImageRequest {
 message GetVulnerabilitySummaryForImageResponse {
   Summary vulnerability_summary = 1;
   repeated Workload workloadRef = 2;
+  bool is_summary_stale = 3;
+  string summary_stale_image_tag = 4;
 }
 
 message GetVulnerabilitySummaryRequest {
