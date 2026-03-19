@@ -6,7 +6,7 @@ image:
   cloudsql_proxy: gcr.io/cloudsql-docker/gce-proxy:1.37.10
 serviceAccountEmail:
 serviceAccountName: v13s-sa
-updateInterval: 3m
+updateInterval: 1m
 github:
   organizations:
     - nais
