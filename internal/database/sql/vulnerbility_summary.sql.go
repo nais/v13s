@@ -174,13 +174,53 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 }
 
 const getVulnerabilitySummaryForImage = `-- name: GetVulnerabilitySummaryForImage :one
+WITH latest_summary AS (
+    SELECT DISTINCT ON (image_name)
+        id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+    FROM
+        vulnerability_summary
+    WHERE
+        image_name = $1
+    ORDER BY
+        image_name,
+        updated_at DESC
+)
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
-FROM
-    vulnerability_summary
-WHERE
-    image_name = $1
-    AND image_tag = $2
+    COALESCE(vs_current.id, vs_fallback.id) AS id,
+    COALESCE(vs_current.image_name, vs_fallback.image_name, $1::TEXT) AS image_name,
+    COALESCE(vs_current.image_tag, vs_fallback.image_tag, $2::TEXT) AS image_tag,
+    COALESCE(vs_current.critical, vs_fallback.critical, 0) AS critical,
+    COALESCE(vs_current.high, vs_fallback.high, 0) AS high,
+    COALESCE(vs_current.medium, vs_fallback.medium, 0) AS medium,
+    COALESCE(vs_current.low, vs_fallback.low, 0) AS low,
+    COALESCE(vs_current.unassigned, vs_fallback.unassigned, 0) AS unassigned,
+    COALESCE(vs_current.risk_score, vs_fallback.risk_score, 0) AS risk_score,
+    COALESCE(vs_current.created_at, vs_fallback.created_at) AS created_at,
+    COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS updated_at,
+    CASE WHEN vs_current.id IS NOT NULL OR vs_fallback.id IS NOT NULL THEN
+        TRUE
+    ELSE
+        FALSE
+    END AS has_sbom,
+    CASE WHEN vs_current.id IS NULL
+        AND vs_fallback.id IS NOT NULL
+        AND COALESCE(img_fallback.state, 'initialized') != 'updated' THEN
+        TRUE
+    ELSE
+        FALSE
+    END AS is_summary_stale
+FROM (
+    SELECT
+        $1::TEXT AS image_name,
+        $2::TEXT AS image_tag) AS req
+    LEFT JOIN vulnerability_summary vs_current
+        ON vs_current.image_name = req.image_name
+        AND vs_current.image_tag = req.image_tag
+    LEFT JOIN latest_summary vs_fallback
+        ON vs_fallback.image_name = req.image_name
+    LEFT JOIN images img_fallback
+        ON img_fallback.name = vs_fallback.image_name
+        AND img_fallback.tag = vs_fallback.image_tag
 `
 
 type GetVulnerabilitySummaryForImageParams struct {
@@ -188,9 +228,25 @@ type GetVulnerabilitySummaryForImageParams struct {
 	ImageTag  string
 }
 
-func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error) {
+type GetVulnerabilitySummaryForImageRow struct {
+	ID             pgtype.UUID
+	ImageName      string
+	ImageTag       string
+	Critical       int32
+	High           int32
+	Medium         int32
+	Low            int32
+	Unassigned     int32
+	RiskScore      int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	HasSbom        bool
+	IsSummaryStale bool
+}
+
+func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*GetVulnerabilitySummaryForImageRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerabilitySummaryForImage, arg.ImageName, arg.ImageTag)
-	var i VulnerabilitySummary
+	var i GetVulnerabilitySummaryForImageRow
 	err := row.Scan(
 		&i.ID,
 		&i.ImageName,
@@ -203,6 +259,8 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HasSbom,
+		&i.IsSummaryStale,
 	)
 	return &i, err
 }
@@ -426,19 +484,19 @@ vulnerability_data AS (
         ELSE
             FALSE
         END AS has_sbom,
-        -- stale_summary: true when we are using fallback data (no current summary, fallback exists)
+        -- stale_summary: true when showing fallback data AND the fallback
+        -- source image has NOT been verified (state != 'updated').
+        -- If the fallback comes from a verified image, the vulnerability
+        -- data is trustworthy for that image name → not stale.
         CASE WHEN vs_current.id IS NULL
-            AND vs_fallback.id IS NOT NULL THEN
+            AND vs_fallback.id IS NOT NULL
+            AND COALESCE(img_fallback.state, 'initialized') != 'updated' THEN
             TRUE
         ELSE
             FALSE
         END AS stale_summary
     FROM
         filtered_workloads w
-        -- Image state: used to determine if the SBOM has been processed
-        LEFT JOIN images img
-            ON img.name = w.image_name
-            AND img.tag = w.image_tag
         -- Exact match: summary for the workload's current (image_name, image_tag)
         LEFT JOIN vulnerability_summary vs_current
             ON vs_current.image_name = w.image_name
@@ -448,6 +506,10 @@ vulnerability_data AS (
         -- Fallback: most recently updated summary for the same image_name (any tag)
         LEFT JOIN latest_summaries vs_fallback
             ON vs_fallback.image_name = w.image_name
+        -- Fallback source image: used to check if the fallback data is verified
+        LEFT JOIN images img_fallback
+            ON img_fallback.name = vs_fallback.image_name
+            AND img_fallback.tag = vs_fallback.image_tag
     WHERE ($9::TEXT IS NULL
         OR COALESCE(vs_current.image_name, vs_fallback.image_name) = $9::TEXT)
     AND ($10::TEXT IS NULL

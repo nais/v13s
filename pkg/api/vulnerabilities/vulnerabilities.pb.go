@@ -2956,6 +2956,8 @@ type GetVulnerabilitySummaryForImageResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,1,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
 	WorkloadRef          []*Workload            `protobuf:"bytes,2,rep,name=workloadRef,proto3" json:"workloadRef,omitempty"`
+	IsSummaryStale       bool                   `protobuf:"varint,3,opt,name=is_summary_stale,json=isSummaryStale,proto3" json:"is_summary_stale,omitempty"`
+	SummaryStaleImageTag string                 `protobuf:"bytes,4,opt,name=summary_stale_image_tag,json=summaryStaleImageTag,proto3" json:"summary_stale_image_tag,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -3002,6 +3004,20 @@ func (x *GetVulnerabilitySummaryForImageResponse) GetWorkloadRef() []*Workload {
 		return x.WorkloadRef
 	}
 	return nil
+}
+
+func (x *GetVulnerabilitySummaryForImageResponse) GetIsSummaryStale() bool {
+	if x != nil {
+		return x.IsSummaryStale
+	}
+	return false
+}
+
+func (x *GetVulnerabilitySummaryForImageResponse) GetSummaryStaleImageTag() string {
+	if x != nil {
+		return x.SummaryStaleImageTag
+	}
+	return ""
 }
 
 type GetVulnerabilitySummaryRequest struct {
@@ -4035,10 +4051,12 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"&GetVulnerabilitySummaryForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\xb9\x01\n" +
+	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\x9a\x02\n" +
 	"'GetVulnerabilitySummaryForImageResponse\x12O\n" +
 	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12=\n" +
-	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"S\n" +
+	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12(\n" +
+	"\x10is_summary_stale\x18\x03 \x01(\bR\x0eisSummaryStale\x125\n" +
+	"\x17summary_stale_image_tag\x18\x04 \x01(\tR\x14summaryStaleImageTag\"S\n" +
 	"\x1eGetVulnerabilitySummaryRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\"\xa6\x02\n" +
 	"\x1fGetVulnerabilitySummaryResponse\x121\n" +
