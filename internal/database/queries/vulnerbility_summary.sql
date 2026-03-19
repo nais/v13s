@@ -71,9 +71,9 @@ latest_summaries AS (
         vulnerability_summary vs
     WHERE (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
         OR vs.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
-    ORDER BY
-        vs.image_name,
-        vs.updated_at DESC
+ORDER BY
+    vs.image_name,
+    vs.updated_at DESC
 ),
 vulnerability_data AS (
     SELECT
@@ -97,15 +97,16 @@ vulnerability_data AS (
         COALESCE(vs_current.created_at, vs_fallback.created_at) AS summary_created_at,
         COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS summary_updated_at,
         -- has_sbom: true if any summary exists (current or fallback)
-        CASE WHEN vs_current.id IS NOT NULL OR vs_fallback.id IS NOT NULL THEN
+        CASE WHEN vs_current.id IS NOT NULL
+            OR vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE
         END AS has_sbom,
-        -- data is trustworthy for that image name → not stale.
+        -- stale_summary: true whenever we are showing fallback (different tag) data
+        -- because the current tag has no summary yet.
         CASE WHEN vs_current.id IS NULL
-            AND vs_fallback.id IS NOT NULL
-            AND COALESCE(img_fallback.state, 'initialized') != 'updated' THEN
+            AND vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE
@@ -113,18 +114,12 @@ vulnerability_data AS (
     FROM
         filtered_workloads w
         -- Exact match: summary for the workload's current (image_name, image_tag)
-        LEFT JOIN vulnerability_summary vs_current
-            ON vs_current.image_name = w.image_name
+        LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = w.image_name
             AND vs_current.image_tag = w.image_tag
             AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
                 OR vs_current.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
-        -- Fallback: most recently updated summary for the same image_name (any tag)
-        LEFT JOIN latest_summaries vs_fallback
-            ON vs_fallback.image_name = w.image_name
-        -- Fallback source image: used to check if the fallback data is verified
-        LEFT JOIN images img_fallback
-            ON img_fallback.name = vs_fallback.image_name
-            AND img_fallback.tag = vs_fallback.image_tag
+            -- Fallback: most recently updated summary for the same image_name (any tag)
+        LEFT JOIN latest_summaries vs_fallback ON vs_fallback.image_name = w.image_name
     WHERE (sqlc.narg('image_name')::TEXT IS NULL
         OR COALESCE(vs_current.image_name, vs_fallback.image_name) = sqlc.narg('image_name')::TEXT)
     AND (sqlc.narg('image_tag')::TEXT IS NULL
@@ -215,7 +210,8 @@ WITH filtered_workloads AS (
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
-        OR w.name = sqlc.narg('workload_name')::TEXT)),
+        OR w.name = sqlc.narg('workload_name')::TEXT)
+),
 latest_summaries AS (
     SELECT DISTINCT ON (vs.image_name)
         vs.*
@@ -243,7 +239,7 @@ FROM
     -- Exact match: summary for the workload's current (image_name, image_tag)
     LEFT JOIN vulnerability_summary vs_current ON fw.image_name = vs_current.image_name
         AND fw.image_tag = vs_current.image_tag
-    -- Fallback: most recently updated summary for the same image_name (any tag)
+        -- Fallback: most recently updated summary for the same image_name (any tag)
     LEFT JOIN latest_summaries vs_fallback ON vs_fallback.image_name = fw.image_name;
 
 -- name: GetVulnerabilitySummaryTimeSeries :many
@@ -293,7 +289,7 @@ WITH latest_summary AS (
 SELECT
     COALESCE(vs_current.id, vs_fallback.id) AS id,
     COALESCE(vs_current.image_name, vs_fallback.image_name, @image_name::TEXT) AS image_name,
-    COALESCE(vs_current.image_tag, vs_fallback.image_tag, @image_tag::TEXT) AS image_tag,
+    COALESCE(vs_current.image_tag, vs_fallback.image_tag, '') AS image_tag,
     COALESCE(vs_current.critical, vs_fallback.critical, 0) AS critical,
     COALESCE(vs_current.high, vs_fallback.high, 0) AS high,
     COALESCE(vs_current.medium, vs_fallback.medium, 0) AS medium,
@@ -302,14 +298,14 @@ SELECT
     COALESCE(vs_current.risk_score, vs_fallback.risk_score, 0) AS risk_score,
     COALESCE(vs_current.created_at, vs_fallback.created_at) AS created_at,
     COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS updated_at,
-    CASE WHEN vs_current.id IS NOT NULL OR vs_fallback.id IS NOT NULL THEN
+    CASE WHEN vs_current.id IS NOT NULL
+        OR vs_fallback.id IS NOT NULL THEN
         TRUE
     ELSE
         FALSE
     END AS has_sbom,
     CASE WHEN vs_current.id IS NULL
-        AND vs_fallback.id IS NOT NULL
-        AND COALESCE(img_fallback.state, 'initialized') != 'updated' THEN
+        AND vs_fallback.id IS NOT NULL THEN
         TRUE
     ELSE
         FALSE
@@ -318,14 +314,9 @@ FROM (
     SELECT
         @image_name::TEXT AS image_name,
         @image_tag::TEXT AS image_tag) AS req
-    LEFT JOIN vulnerability_summary vs_current
-        ON vs_current.image_name = req.image_name
+    LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = req.image_name
         AND vs_current.image_tag = req.image_tag
-    LEFT JOIN latest_summary vs_fallback
-        ON vs_fallback.image_name = req.image_name
-    LEFT JOIN images img_fallback
-        ON img_fallback.name = vs_fallback.image_name
-        AND img_fallback.tag = vs_fallback.image_tag;
+    LEFT JOIN latest_summary vs_fallback ON vs_fallback.image_name = req.image_name;
 
 -- name: GetLastSnapshotDateForVulnerabilitySummary :one
 SELECT

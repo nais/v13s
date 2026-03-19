@@ -188,7 +188,7 @@ WITH latest_summary AS (
 SELECT
     COALESCE(vs_current.id, vs_fallback.id) AS id,
     COALESCE(vs_current.image_name, vs_fallback.image_name, $1::TEXT) AS image_name,
-    COALESCE(vs_current.image_tag, vs_fallback.image_tag, $2::TEXT) AS image_tag,
+    COALESCE(vs_current.image_tag, vs_fallback.image_tag, '') AS image_tag,
     COALESCE(vs_current.critical, vs_fallback.critical, 0) AS critical,
     COALESCE(vs_current.high, vs_fallback.high, 0) AS high,
     COALESCE(vs_current.medium, vs_fallback.medium, 0) AS medium,
@@ -203,9 +203,8 @@ SELECT
         FALSE
     END AS has_sbom,
     CASE WHEN vs_current.id IS NULL
-        AND vs_fallback.id IS NOT NULL
-        AND COALESCE(img_fallback.state, 'initialized') != 'updated' THEN
-        TRUE
+        AND vs_fallback.id IS NOT NULL THEN
+             TRUE
     ELSE
         FALSE
     END AS is_summary_stale
@@ -218,9 +217,6 @@ FROM (
         AND vs_current.image_tag = req.image_tag
     LEFT JOIN latest_summary vs_fallback
         ON vs_fallback.image_name = req.image_name
-    LEFT JOIN images img_fallback
-        ON img_fallback.name = vs_fallback.image_name
-        AND img_fallback.tag = vs_fallback.image_tag
 `
 
 type GetVulnerabilitySummaryForImageParams struct {
@@ -484,13 +480,10 @@ vulnerability_data AS (
         ELSE
             FALSE
         END AS has_sbom,
-        -- stale_summary: true when showing fallback data AND the fallback
-        -- source image has NOT been verified (state != 'updated').
-        -- If the fallback comes from a verified image, the vulnerability
-        -- data is trustworthy for that image name → not stale.
-        CASE WHEN vs_current.id IS NULL
-            AND vs_fallback.id IS NOT NULL
-            AND COALESCE(img_fallback.state, 'initialized') != 'updated' THEN
+        -- stale_summary: true whenever we are showing fallback (different tag) data
+        -- because the current tag has no summary yet.
+    CASE WHEN vs_current.id IS NULL
+    AND vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE
@@ -506,10 +499,6 @@ vulnerability_data AS (
         -- Fallback: most recently updated summary for the same image_name (any tag)
         LEFT JOIN latest_summaries vs_fallback
             ON vs_fallback.image_name = w.image_name
-        -- Fallback source image: used to check if the fallback data is verified
-        LEFT JOIN images img_fallback
-            ON img_fallback.name = vs_fallback.image_name
-            AND img_fallback.tag = vs_fallback.image_tag
     WHERE ($9::TEXT IS NULL
         OR COALESCE(vs_current.image_name, vs_fallback.image_name) = $9::TEXT)
     AND ($10::TEXT IS NULL

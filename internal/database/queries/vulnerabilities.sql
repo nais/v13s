@@ -958,4 +958,9 @@ LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 
 -- name: GetCanonicalCveIdByAlias :one
-SELECT canonical_cve_id FROM cve_alias WHERE alias = @alias;
+SELECT
+    canonical_cve_id
+FROM
+    cve_alias
+WHERE
+    alias = @alias;

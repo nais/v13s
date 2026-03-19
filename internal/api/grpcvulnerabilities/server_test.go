@@ -960,8 +960,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High, "counts should come from old tag fallback")
 	})
 
-	t.Run("fallback source image updated — is_summary_stale is false", func(t *testing.T) {
-		// Mark the old tag image as 'updated' (verified by the pipeline).
+	t.Run("fallback image verified — is_summary_stale is still true (current tag still missing summary)", func(t *testing.T) {
 		err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   oldTag,
@@ -971,9 +970,9 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
-		assert.False(t, resp.GetIsSummaryStale(), "is_summary_stale should be false when fallback comes from a verified image")
+		assert.True(t, resp.GetIsSummaryStale(), "is_summary_stale must be true: current tag has no summary, we are showing fallback data")
 		assert.True(t, resp.GetVulnerabilitySummary().HasSbom)
-		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag())
+		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag(), "summary_stale_image_tag should be the fallback (old) tag")
 	})
 
 	t.Run("image with no summary at all — has_sbom is false", func(t *testing.T) {
