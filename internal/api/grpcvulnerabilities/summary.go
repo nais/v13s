@@ -234,12 +234,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
 		IsSummaryStale:       row.IsSummaryStale,
-		SummaryStaleImageTag: func() string {
-			if row.HasSbom {
-				return row.ImageTag
-			}
-			return ""
-		}(),
+		SummaryStaleImageTag: row.ImageTag,
 	}, nil
 }
 
