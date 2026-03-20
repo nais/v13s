@@ -1329,23 +1329,23 @@ func (_c *MockQuerier_GetVulnerabilitySummary_Call) RunAndReturn(run func(contex
 }
 
 // GetVulnerabilitySummaryForImage provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) GetVulnerabilitySummaryForImage(ctx context.Context, arg sql.GetVulnerabilitySummaryForImageParams) (*sql.VulnerabilitySummary, error) {
+func (_m *MockQuerier) GetVulnerabilitySummaryForImage(ctx context.Context, arg sql.GetVulnerabilitySummaryForImageParams) (*sql.GetVulnerabilitySummaryForImageRow, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetVulnerabilitySummaryForImage")
 	}
 
-	var r0 *sql.VulnerabilitySummary
+	var r0 *sql.GetVulnerabilitySummaryForImageRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilitySummaryForImageParams) (*sql.VulnerabilitySummary, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilitySummaryForImageParams) (*sql.GetVulnerabilitySummaryForImageRow, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilitySummaryForImageParams) *sql.VulnerabilitySummary); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilitySummaryForImageParams) *sql.GetVulnerabilitySummaryForImageRow); ok {
 		r0 = rf(ctx, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*sql.VulnerabilitySummary)
+			r0 = ret.Get(0).(*sql.GetVulnerabilitySummaryForImageRow)
 		}
 	}
 
@@ -1377,12 +1377,12 @@ func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) Return(_a0 *sql.VulnerabilitySummary, _a1 error) *MockQuerier_GetVulnerabilitySummaryForImage_Call {
+func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) Return(_a0 *sql.GetVulnerabilitySummaryForImageRow, _a1 error) *MockQuerier_GetVulnerabilitySummaryForImage_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) RunAndReturn(run func(context.Context, sql.GetVulnerabilitySummaryForImageParams) (*sql.VulnerabilitySummary, error)) *MockQuerier_GetVulnerabilitySummaryForImage_Call {
+func (_c *MockQuerier_GetVulnerabilitySummaryForImage_Call) RunAndReturn(run func(context.Context, sql.GetVulnerabilitySummaryForImageParams) (*sql.GetVulnerabilitySummaryForImageRow, error)) *MockQuerier_GetVulnerabilitySummaryForImage_Call {
 	_c.Call.Return(run)
 	return _c
 }

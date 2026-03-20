@@ -3,10 +3,8 @@ package grpcvulnerabilities
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
@@ -52,14 +50,18 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		// if a workload does not have a sbom, the image name and tag will be nil from vulnerabilities_summary
-		imageName := row.CurrentImageName
-		if row.ImageName != nil {
-			imageName = *row.ImageName
+		summary := &vulnerabilities.Summary{
+			Critical:   row.Critical,
+			High:       row.High,
+			Medium:     row.Medium,
+			Low:        row.Low,
+			Unassigned: row.Unassigned,
+			Total:      row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+			RiskScore:  row.RiskScore,
+			HasSbom:    row.HasSbom,
 		}
-		imageTag := row.CurrentImageTag
-		if row.ImageTag != nil {
-			imageTag = *row.ImageTag
+		if row.HasSbom && row.SummaryUpdatedAt.Valid {
+			summary.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
 		}
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
@@ -68,25 +70,20 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
-				ImageName: imageName,
-				ImageTag:  imageTag,
+				// Always show the workload's current image.
+				// When stale_summary is true the vulnerability data comes from.
+				ImageName: row.CurrentImageName,
+				ImageTag:  row.CurrentImageTag,
 			},
-			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
-			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			},
+			VulnerabilitySummary: summary,
+			// StaleSummary is true when the vulnerability data is from a previous
+			// image tag because the current image's SBOM has not finished processing.
+			IsSummaryStale:       row.StaleSummary,
+			SummaryStaleImageTag: row.ImageTag,
 		}
 	})
 
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	pageInfo, err := grpcpagination.PageInfo(request, total)
 	if err != nil {
 		return nil, err
 	}
@@ -119,15 +116,18 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	summary := &vulnerabilities.Summary{
-		Critical:    row.Critical,
-		High:        row.High,
-		Medium:      row.Medium,
-		Low:         row.Low,
-		Unassigned:  row.Unassigned,
-		Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-		RiskScore:   row.RiskScore,
-		LastUpdated: timestamppb.New(row.UpdatedAt.Time),
-		HasSbom:     true,
+		Critical:   row.Critical,
+		High:       row.High,
+		Medium:     row.Medium,
+		Low:        row.Low,
+		Unassigned: row.Unassigned,
+		Total:      row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+		RiskScore:  row.RiskScore,
+		HasSbom:    row.WorkloadWithSbom > 0,
+	}
+
+	if row.UpdatedAt.Valid {
+		summary.LastUpdated = timestamppb.New(row.UpdatedAt.Time)
 	}
 
 	var coverage float32
@@ -186,20 +186,14 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 }
 
 func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryForImageRequest) (*vulnerabilities.GetVulnerabilitySummaryForImageResponse, error) {
-	summary, err := s.querier.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
+	row, err := s.querier.GetVulnerabilitySummaryForImage(ctx, sql.GetVulnerabilitySummaryForImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
-				VulnerabilitySummary: &vulnerabilities.Summary{},
-				WorkloadRef:          make([]*vulnerabilities.Workload, 0),
-			}, nil
-		}
-
 		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 	}
+
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
@@ -220,24 +214,27 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		})
 	}
 
-	vulnSummary := &vulnerabilities.Summary{}
-	if summary != nil {
-		vulnSummary = &vulnerabilities.Summary{
-			Critical:    summary.Critical,
-			High:        summary.High,
-			Medium:      summary.Medium,
-			Low:         summary.Low,
-			Unassigned:  summary.Unassigned,
-			Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
-			RiskScore:   summary.RiskScore,
-			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:     true,
+	vulnSummary := &vulnerabilities.Summary{
+		HasSbom: row.HasSbom,
+	}
+	if row.HasSbom {
+		vulnSummary.Critical = row.Critical
+		vulnSummary.High = row.High
+		vulnSummary.Medium = row.Medium
+		vulnSummary.Low = row.Low
+		vulnSummary.Unassigned = row.Unassigned
+		vulnSummary.Total = row.Critical + row.High + row.Medium + row.Low + row.Unassigned
+		vulnSummary.RiskScore = row.RiskScore
+		if row.UpdatedAt.Valid {
+			vulnSummary.LastUpdated = timestamppb.New(row.UpdatedAt.Time)
 		}
 	}
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
+		IsSummaryStale:       row.IsSummaryStale,
+		SummaryStaleImageTag: row.ImageTag,
 	}, nil
 }
 

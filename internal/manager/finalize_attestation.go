@@ -15,8 +15,8 @@ import (
 
 const (
 	KindFinalizeAttestation                      = "finalize_attestation"
-	FinalizeAttestationScheduledForResyncMinutes = 10 * time.Second
-	FinalizeAttestationScheduledWaitSecond       = 30 * time.Second
+	FinalizeAttestationScheduledForResyncMinutes = 5 * time.Second
+	FinalizeAttestationScheduledWaitSecond       = 10 * time.Second
 )
 
 type FinalizeAttestationJob struct {

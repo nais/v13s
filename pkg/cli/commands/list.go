@@ -203,7 +203,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Current Tag", "Has SBOM", "Stale", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag")
 			headers = append(headers, "Last Updated")
@@ -212,14 +212,19 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
+			stale := "-"
+			if n.GetIsSummaryStale() {
+				staleSince := n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339)
+				stale = fmt.Sprintf("stale (%s, %s)", n.GetSummaryStaleImageTag(), staleSince)
+			}
 			vals := []any{
-				// kills the layout
-				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
 				n.Workload.GetName(),
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
+				n.Workload.GetImageTag(),
 				n.GetVulnerabilitySummary().GetHasSbom(),
+				stale,
 				n.GetVulnerabilitySummary().GetCritical(),
 				n.GetVulnerabilitySummary().GetHigh(),
 				n.GetVulnerabilitySummary().GetMedium(),

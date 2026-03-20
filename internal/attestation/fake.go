@@ -30,6 +30,7 @@ func (f *fakeSig) DiffID() (v1.Hash, error) { return v1.Hash{}, nil }
 func (f *fakeSig) Compressed() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(nil)), nil
 }
+
 func (f *fakeSig) Uncompressed() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(nil)), nil
 }
