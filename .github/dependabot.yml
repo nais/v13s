@@ -4,19 +4,48 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns:
+          - "*"
+
   - package-ecosystem: "gomod"
     directory: "/pkg/cli"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns:
+          - "*"
+
   - package-ecosystem: "gomod"
     directory: "/pkg/api"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns:
+          - "*"
+
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns:
+          - "*"
