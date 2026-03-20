@@ -4,19 +4,48 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      semver:
+        major: 30
+        minor: 7
+        patch: 3
+
   - package-ecosystem: "gomod"
     directory: "/pkg/cli"
     schedule:
       interval: "weekly"
+    cooldown:
+      semver:
+        major: 30
+        minor: 7
+        patch: 3
+
   - package-ecosystem: "gomod"
     directory: "/pkg/api"
     schedule:
       interval: "weekly"
+    cooldown:
+      semver:
+        major: 30
+        minor: 7
+        patch: 3
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      semver:
+        major: 30
+        minor: 7
+        patch: 3
+
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      semver:
+        major: 30
+        minor: 7
+        patch: 3
