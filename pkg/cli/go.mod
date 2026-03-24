@@ -3,7 +3,7 @@ module github.com/nais/v13s/pkg/cli
 go 1.26.1
 
 require (
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nais/v13s v0.0.0-20260319085619-1ee89ad41729
