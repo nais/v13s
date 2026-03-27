@@ -131,6 +131,13 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
 
+	staleImageTag := ""
+	if len(vulnz) > 0 {
+		if t, ok := vulnz[0].StaleImageTag.(string); ok {
+			staleImageTag = t
+		}
+	}
+
 	total := 0
 	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
 		total = int(row.TotalCount)
@@ -171,8 +178,9 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:    nodes,
-		PageInfo: pageInfo,
+		Nodes:                nodes,
+		PageInfo:             pageInfo,
+		SummaryStaleImageTag: staleImageTag,
 	}, nil
 }
 

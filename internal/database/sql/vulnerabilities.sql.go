@@ -143,7 +143,12 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 }
 
 const getCanonicalCveIdByAlias = `-- name: GetCanonicalCveIdByAlias :one
-SELECT canonical_cve_id FROM cve_alias WHERE alias = $1
+SELECT
+    canonical_cve_id
+FROM
+    cve_alias
+WHERE
+    alias = $1
 `
 
 func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error) {
@@ -1045,15 +1050,47 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 }
 
 const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
-WITH image_all_vulns AS (
-    -- Only the vulnerabilities for this image/tag
-    SELECT
-        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score
+WITH fallback_tag AS (
+    -- Most recently updated tag with vulnerabilities for this image name.
+    -- Used when the requested tag has no vulnerabilities yet (SBOM still processing).
+    SELECT DISTINCT ON (vf.image_name)
+        vf.image_tag
     FROM
-        vulnerabilities v
+        vulnerabilities vf
     WHERE
-        v.image_name = $4
-        AND v.image_tag = $5
+        vf.image_name = $5
+    ORDER BY
+        vf.image_name,
+        vf.updated_at DESC
+),
+effective_tag AS (
+    SELECT
+        CASE WHEN EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerabilities ve
+            WHERE
+                ve.image_name = $5
+                AND ve.image_tag = $1) THEN
+            $1::TEXT
+        ELSE
+            COALESCE((
+                SELECT
+                    image_tag
+                FROM fallback_tag), $1::TEXT)
+        END AS image_tag
+),
+image_all_vulns AS (
+    -- Vulnerabilities for the effective tag (requested tag, or latest fallback).
+    SELECT
+        v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score
+    FROM
+        vulnerabilities v,
+        effective_tag et
+    WHERE
+        v.image_name = $5
+        AND v.image_tag = et.image_tag
 ),
 resolved_vulnerabilities AS (
     SELECT
@@ -1124,70 +1161,80 @@ SELECT
     reason_text,
     suppressed_by,
     suppressed_at,
+(
+        SELECT
+            image_tag
+        FROM
+            effective_tag) AS stale_image_tag,
+(
+        SELECT
+            image_tag
+        FROM
+            effective_tag) != $1::TEXT AS is_stale,
     COUNT(id) OVER () AS total_count
-FROM
-    distinct_image_vulnerabilities
-ORDER BY
-    CASE WHEN $1 = 'severity_asc' THEN
-        severity
-    END ASC,
-    CASE WHEN $1 = 'severity_desc' THEN
-        severity
-    END DESC,
-    CASE WHEN $1 = 'severity_since_asc' THEN
-        severity_since
-    END ASC,
-    CASE WHEN $1 = 'severity_since_desc' THEN
-        severity_since
-    END DESC,
-    CASE WHEN $1 = 'package_asc' THEN
-        package
-    END ASC,
-    CASE WHEN $1 = 'package_desc' THEN
-        package
-    END DESC,
-    CASE WHEN $1 = 'cve_id_asc' THEN
-        cve_id
-    END ASC,
-    CASE WHEN $1 = 'cve_id_desc' THEN
-        cve_id
-    END DESC,
-    CASE WHEN $1 = 'suppressed_asc' THEN
+    FROM
+        distinct_image_vulnerabilities
+    ORDER BY
+        CASE WHEN $2 = 'severity_asc' THEN
+            severity
+        END ASC,
+        CASE WHEN $2 = 'severity_desc' THEN
+            severity
+        END DESC,
+        CASE WHEN $2 = 'severity_since_asc' THEN
+            severity_since
+        END ASC,
+        CASE WHEN $2 = 'severity_since_desc' THEN
+            severity_since
+        END DESC,
+        CASE WHEN $2 = 'package_asc' THEN
+            package
+        END ASC,
+        CASE WHEN $2 = 'package_desc' THEN
+            package
+        END DESC,
+        CASE WHEN $2 = 'cve_id_asc' THEN
+            cve_id
+        END ASC,
+        CASE WHEN $2 = 'cve_id_desc' THEN
+            cve_id
+        END DESC,
+        CASE WHEN $2 = 'suppressed_asc' THEN
+            COALESCE(suppressed, FALSE)
+        END ASC,
+    CASE WHEN $2 = 'suppressed_desc' THEN
         COALESCE(suppressed, FALSE)
-    END ASC,
-    CASE WHEN $1 = 'suppressed_desc' THEN
-        COALESCE(suppressed, FALSE)
     END DESC,
-    CASE WHEN $1 = 'reason_asc' THEN
+    CASE WHEN $2 = 'reason_asc' THEN
         reason
     END ASC,
-    CASE WHEN $1 = 'reason_desc' THEN
+    CASE WHEN $2 = 'reason_desc' THEN
         reason
     END DESC,
-    CASE WHEN $1 = 'created_at_asc' THEN
+    CASE WHEN $2 = 'created_at_asc' THEN
         created_at
     END ASC,
-    CASE WHEN $1 = 'created_at_desc' THEN
+    CASE WHEN $2 = 'created_at_desc' THEN
         created_at
     END DESC,
-    CASE WHEN $1 = 'updated_at_asc' THEN
+    CASE WHEN $2 = 'updated_at_asc' THEN
         updated_at
     END ASC,
-    CASE WHEN $1 = 'updated_at_desc' THEN
+    CASE WHEN $2 = 'updated_at_desc' THEN
         updated_at
     END DESC,
     severity,
     id ASC
-LIMIT $3
-    OFFSET $2
+LIMIT $4
+    OFFSET $3
 `
 
 type ListVulnerabilitiesForImageParams struct {
+	ImageTag          string
 	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
 	ImageName         string
-	ImageTag          string
 	IncludeSuppressed *bool
 	Since             pgtype.Timestamptz
 	Severity          *int32
@@ -1216,16 +1263,18 @@ type ListVulnerabilitiesForImageRow struct {
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	StaleImageTag interface{}
+	IsStale       bool
 	TotalCount    int64
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilitiesForImage,
+		arg.ImageTag,
 		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
 		arg.ImageName,
-		arg.ImageTag,
 		arg.IncludeSuppressed,
 		arg.Since,
 		arg.Severity,
@@ -1260,6 +1309,8 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.ReasonText,
 			&i.SuppressedBy,
 			&i.SuppressedAt,
+			&i.StaleImageTag,
+			&i.IsStale,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

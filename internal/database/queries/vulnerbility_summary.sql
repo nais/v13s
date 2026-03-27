@@ -110,10 +110,14 @@ vulnerability_data AS (
             TRUE
         ELSE
             FALSE
-        END AS stale_summary
+        END AS stale_summary,
+        w.state AS workload_state,
+        i.state AS image_state
     FROM
         filtered_workloads w
-        -- Exact match: summary for the workload's current (image_name, image_tag)
+        LEFT JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
+            -- Exact match: summary for the workload's current (image_name, image_tag)
         LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = w.image_name
             AND vs_current.image_tag = w.image_tag
             AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
@@ -309,14 +313,17 @@ SELECT
         TRUE
     ELSE
         FALSE
-    END AS is_summary_stale
+    END AS is_summary_stale,
+    i.state AS image_state
 FROM (
     SELECT
         @image_name::TEXT AS image_name,
         @image_tag::TEXT AS image_tag) AS req
     LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = req.image_name
         AND vs_current.image_tag = req.image_tag
-    LEFT JOIN latest_summary vs_fallback ON vs_fallback.image_name = req.image_name;
+    LEFT JOIN latest_summary vs_fallback ON vs_fallback.image_name = req.image_name
+    LEFT JOIN images i ON i.name = req.image_name
+        AND i.tag = req.image_tag;
 
 -- name: GetLastSnapshotDateForVulnerabilitySummary :one
 SELECT

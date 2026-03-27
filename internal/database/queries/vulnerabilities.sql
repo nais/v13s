@@ -466,15 +466,47 @@ AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE);
 
 -- name: ListVulnerabilitiesForImage :many
-WITH image_all_vulns AS (
-    -- Only the vulnerabilities for this image/tag
-    SELECT
-        *
+WITH fallback_tag AS (
+    -- Most recently updated tag with vulnerabilities for this image name.
+    -- Used when the requested tag has no vulnerabilities yet (SBOM still processing).
+    SELECT DISTINCT ON (vf.image_name)
+        vf.image_tag
     FROM
-        vulnerabilities v
+        vulnerabilities vf
+    WHERE
+        vf.image_name = @image_name
+    ORDER BY
+        vf.image_name,
+        vf.updated_at DESC
+),
+effective_tag AS (
+    SELECT
+        CASE WHEN EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerabilities ve
+            WHERE
+                ve.image_name = @image_name
+                AND ve.image_tag = @image_tag) THEN
+            @image_tag::TEXT
+        ELSE
+            COALESCE((
+                SELECT
+                    image_tag
+                FROM fallback_tag), @image_tag::TEXT)
+        END AS image_tag
+),
+image_all_vulns AS (
+    -- Vulnerabilities for the effective tag (requested tag, or latest fallback).
+    SELECT
+        v.*
+    FROM
+        vulnerabilities v,
+        effective_tag et
     WHERE
         v.image_name = @image_name
-        AND v.image_tag = @image_tag
+        AND v.image_tag = et.image_tag
 ),
 resolved_vulnerabilities AS (
     SELECT
@@ -545,37 +577,47 @@ SELECT
     reason_text,
     suppressed_by,
     suppressed_at,
+(
+        SELECT
+            image_tag
+        FROM
+            effective_tag) AS stale_image_tag,
+(
+        SELECT
+            image_tag
+        FROM
+            effective_tag) != @image_tag::TEXT AS is_stale,
     COUNT(id) OVER () AS total_count
-FROM
-    distinct_image_vulnerabilities
-ORDER BY
-    CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
-        severity
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN
-        severity
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN
-        severity_since
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN
-        severity_since
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN
-        package
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN
-        package
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
-        cve_id
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
-        cve_id
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN
-        COALESCE(suppressed, FALSE)
-    END ASC,
+    FROM
+        distinct_image_vulnerabilities
+    ORDER BY
+        CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
+            severity
+        END ASC,
+        CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN
+            severity
+        END DESC,
+        CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN
+            severity_since
+        END ASC,
+        CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN
+            severity_since
+        END DESC,
+        CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN
+            package
+        END ASC,
+        CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN
+            package
+        END DESC,
+        CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
+            cve_id
+        END ASC,
+        CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
+            cve_id
+        END DESC,
+        CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN
+            COALESCE(suppressed, FALSE)
+        END ASC,
     CASE WHEN sqlc.narg('order_by') = 'suppressed_desc' THEN
         COALESCE(suppressed, FALSE)
     END DESC,

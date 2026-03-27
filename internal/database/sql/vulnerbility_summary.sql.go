@@ -100,7 +100,8 @@ WITH filtered_workloads AS (
     AND ($3::TEXT[] IS NULL
         OR w.workload_type = ANY ($3::TEXT[]))
     AND ($4::TEXT IS NULL
-        OR w.name = $4::TEXT)),
+        OR w.name = $4::TEXT)
+),
 latest_summaries AS (
     SELECT DISTINCT ON (vs.image_name)
         vs.id, vs.image_name, vs.image_tag, vs.critical, vs.high, vs.medium, vs.low, vs.unassigned, vs.risk_score, vs.created_at, vs.updated_at
@@ -128,7 +129,7 @@ FROM
     -- Exact match: summary for the workload's current (image_name, image_tag)
     LEFT JOIN vulnerability_summary vs_current ON fw.image_name = vs_current.image_name
         AND fw.image_tag = vs_current.image_tag
-    -- Fallback: most recently updated summary for the same image_name (any tag)
+        -- Fallback: most recently updated summary for the same image_name (any tag)
     LEFT JOIN latest_summaries vs_fallback ON vs_fallback.image_name = fw.image_name
 `
 
@@ -197,26 +198,28 @@ SELECT
     COALESCE(vs_current.risk_score, vs_fallback.risk_score, 0) AS risk_score,
     COALESCE(vs_current.created_at, vs_fallback.created_at) AS created_at,
     COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS updated_at,
-    CASE WHEN vs_current.id IS NOT NULL OR vs_fallback.id IS NOT NULL THEN
+    CASE WHEN vs_current.id IS NOT NULL
+        OR vs_fallback.id IS NOT NULL THEN
         TRUE
     ELSE
         FALSE
     END AS has_sbom,
     CASE WHEN vs_current.id IS NULL
         AND vs_fallback.id IS NOT NULL THEN
-             TRUE
+        TRUE
     ELSE
         FALSE
-    END AS is_summary_stale
+    END AS is_summary_stale,
+    i.state AS image_state
 FROM (
     SELECT
         $1::TEXT AS image_name,
         $2::TEXT AS image_tag) AS req
-    LEFT JOIN vulnerability_summary vs_current
-        ON vs_current.image_name = req.image_name
+    LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = req.image_name
         AND vs_current.image_tag = req.image_tag
-    LEFT JOIN latest_summary vs_fallback
-        ON vs_fallback.image_name = req.image_name
+    LEFT JOIN latest_summary vs_fallback ON vs_fallback.image_name = req.image_name
+    LEFT JOIN images i ON i.name = req.image_name
+        AND i.tag = req.image_tag
 `
 
 type GetVulnerabilitySummaryForImageParams struct {
@@ -238,6 +241,7 @@ type GetVulnerabilitySummaryForImageRow struct {
 	UpdatedAt      pgtype.Timestamptz
 	HasSbom        bool
 	IsSummaryStale bool
+	ImageState     NullImageState
 }
 
 func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*GetVulnerabilitySummaryForImageRow, error) {
@@ -257,6 +261,7 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 		&i.UpdatedAt,
 		&i.HasSbom,
 		&i.IsSummaryStale,
+		&i.ImageState,
 	)
 	return &i, err
 }
@@ -449,9 +454,9 @@ latest_summaries AS (
         vulnerability_summary vs
     WHERE ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR vs.updated_at > $8::TIMESTAMP WITH TIME ZONE)
-    ORDER BY
-        vs.image_name,
-        vs.updated_at DESC
+ORDER BY
+    vs.image_name,
+    vs.updated_at DESC
 ),
 vulnerability_data AS (
     SELECT
@@ -475,30 +480,33 @@ vulnerability_data AS (
         COALESCE(vs_current.created_at, vs_fallback.created_at) AS summary_created_at,
         COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS summary_updated_at,
         -- has_sbom: true if any summary exists (current or fallback)
-        CASE WHEN vs_current.id IS NOT NULL OR vs_fallback.id IS NOT NULL THEN
+        CASE WHEN vs_current.id IS NOT NULL
+            OR vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE
         END AS has_sbom,
         -- stale_summary: true whenever we are showing fallback (different tag) data
         -- because the current tag has no summary yet.
-    CASE WHEN vs_current.id IS NULL
-    AND vs_fallback.id IS NOT NULL THEN
+        CASE WHEN vs_current.id IS NULL
+            AND vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE
-        END AS stale_summary
+        END AS stale_summary,
+        w.state AS workload_state,
+        i.state AS image_state
     FROM
         filtered_workloads w
-        -- Exact match: summary for the workload's current (image_name, image_tag)
-        LEFT JOIN vulnerability_summary vs_current
-            ON vs_current.image_name = w.image_name
+        LEFT JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
+            -- Exact match: summary for the workload's current (image_name, image_tag)
+        LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = w.image_name
             AND vs_current.image_tag = w.image_tag
             AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
                 OR vs_current.updated_at > $8::TIMESTAMP WITH TIME ZONE)
-        -- Fallback: most recently updated summary for the same image_name (any tag)
-        LEFT JOIN latest_summaries vs_fallback
-            ON vs_fallback.image_name = w.image_name
+            -- Fallback: most recently updated summary for the same image_name (any tag)
+        LEFT JOIN latest_summaries vs_fallback ON vs_fallback.image_name = w.image_name
     WHERE ($9::TEXT IS NULL
         OR COALESCE(vs_current.image_name, vs_fallback.image_name) = $9::TEXT)
     AND ($10::TEXT IS NULL
@@ -506,7 +514,7 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR COALESCE(vs_current.updated_at, vs_fallback.updated_at) > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, stale_summary,
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, stale_summary, workload_state, image_state,
 (
         SELECT
             COUNT(*)
@@ -610,6 +618,8 @@ type ListVulnerabilitySummariesRow struct {
 	SummaryUpdatedAt  pgtype.Timestamptz
 	HasSbom           bool
 	StaleSummary      bool
+	WorkloadState     WorkloadState
+	ImageState        NullImageState
 	TotalCount        int64
 }
 
@@ -655,6 +665,8 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.SummaryUpdatedAt,
 			&i.HasSbom,
 			&i.StaleSummary,
+			&i.WorkloadState,
+			&i.ImageState,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

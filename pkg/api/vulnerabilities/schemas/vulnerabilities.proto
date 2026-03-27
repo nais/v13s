@@ -134,15 +134,29 @@ message WorkloadCriticalVulnerabilityFinding {
   WorkloadCriticalVulnerability vulnerability = 2;
 }
 
+// StaleSeverity tells consumers how to interpret is_summary_stale.
+// STALE_NONE        – data is current, nothing to flag.
+// STALE_PROCESSING  – SBOM is being processed; data will be refreshed soon.
+// STALE_PERMANENT   – SBOM cannot be produced (no attestation / unrecoverable /
+//                     untracked image); data will not refresh on its own.
+enum StaleSeverity {
+  STALE_NONE = 0;
+  STALE_PROCESSING = 1;
+  STALE_PERMANENT = 2;
+}
+
 message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
-  bool is_summary_stale = 4;
-  // summary_image_tag is the image tag the vulnerability data actually comes from.
-  // When stale_summary is false this equals workload.image_tag.
-  // When stale_summary is true this is the previous tag whose data is being shown.
-  string summary_stale_image_tag = 5;
+  // summary_stale_image_tag is the image tag the vulnerability data actually comes from.
+  // When stale_severity is STALE_NONE this equals workload.image_tag.
+  // When stale_severity is STALE_PROCESSING or STALE_PERMANENT this is the previous tag whose data is being shown.
+  string summary_stale_image_tag = 4;
+  // stale_severity tells consumers WHY the summary is stale so they can render
+  // an appropriate UI without knowing internal workload/image processing states.
+  // STALE_NONE = data is current; STALE_PROCESSING = will self-resolve; STALE_PERMANENT = needs manual action.
+  StaleSeverity stale_severity = 5;
 }
 
 message WorkloadFix {
@@ -212,6 +226,9 @@ message ListVulnerabilitiesForImageRequest {
 message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
+  // summary_stale_image_tag is set when vulnerabilities are from a fallback tag
+  // (the requested tag has no SBOM yet). Empty when data is current.
+  string summary_stale_image_tag = 3;
 }
 
 message ListVulnerabilitySummariesRequest {
@@ -335,8 +352,10 @@ message GetVulnerabilitySummaryForImageRequest {
 message GetVulnerabilitySummaryForImageResponse {
   Summary vulnerability_summary = 1;
   repeated Workload workloadRef = 2;
-  bool is_summary_stale = 3;
-  string summary_stale_image_tag = 4;
+  // summary_stale_image_tag is set when the summary is from a fallback or outdated SBOM.
+  // Empty when data is current.
+  string summary_stale_image_tag = 3;
+  StaleSeverity stale_severity = 4;
 }
 
 message GetVulnerabilitySummaryRequest {

@@ -15,6 +15,31 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState) vulnerabilities.StaleSeverity {
+	imageUpdated := imageState.Valid && imageState.ImageState == sql.ImageStateUpdated
+
+	terminalWorkload := false
+	if workloadState != nil {
+		terminalWorkload = !imageUpdated && (*workloadState == sql.WorkloadStateNoAttestation ||
+			*workloadState == sql.WorkloadStateUnrecoverable)
+	}
+
+	terminalImage := imageState.Valid && (imageState.ImageState == sql.ImageStateUntracked ||
+		imageState.ImageState == sql.ImageStateFailed)
+
+	isSummaryStale := staleSummary || terminalWorkload || terminalImage
+
+	if !isSummaryStale {
+		return vulnerabilities.StaleSeverity_STALE_NONE
+	}
+
+	if terminalWorkload || terminalImage {
+		return vulnerabilities.StaleSeverity_STALE_PERMANENT
+	}
+
+	return vulnerabilities.StaleSeverity_STALE_PROCESSING
+}
+
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -63,6 +88,9 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		if row.HasSbom && row.SummaryUpdatedAt.Valid {
 			summary.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
 		}
+
+		staleSeverity := CalculateStaleSeverity(row.StaleSummary, row.ImageState, &row.WorkloadState)
+
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
@@ -70,16 +98,12 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Namespace: row.Namespace,
 				Name:      row.WorkloadName,
 				Type:      row.WorkloadType,
-				// Always show the workload's current image.
-				// When stale_summary is true the vulnerability data comes from.
 				ImageName: row.CurrentImageName,
 				ImageTag:  row.CurrentImageTag,
 			},
 			VulnerabilitySummary: summary,
-			// StaleSummary is true when the vulnerability data is from a previous
-			// image tag because the current image's SBOM has not finished processing.
-			IsSummaryStale:       row.StaleSummary,
 			SummaryStaleImageTag: row.ImageTag,
+			StaleSeverity:        staleSeverity,
 		}
 	})
 
@@ -230,11 +254,18 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 	}
 
+	staleSeverity := CalculateStaleSeverity(row.IsSummaryStale, row.ImageState, nil)
+
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
-		IsSummaryStale:       row.IsSummaryStale,
-		SummaryStaleImageTag: row.ImageTag,
+		SummaryStaleImageTag: func() string {
+			if row.HasSbom {
+				return row.ImageTag
+			}
+			return ""
+		}(),
+		StaleSeverity: staleSeverity,
 	}, nil
 }
 
