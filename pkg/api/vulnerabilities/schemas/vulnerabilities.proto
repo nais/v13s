@@ -157,6 +157,8 @@ message WorkloadSummary {
   // an appropriate UI without knowing internal workload/image processing states.
   // STALE_NONE = data is current; STALE_PROCESSING = will self-resolve; STALE_PERMANENT = needs manual action.
   StaleSeverity stale_severity = 5;
+  // stale_reason provides a human-readable explanation for the stale_severity.
+  string stale_reason = 6;
 }
 
 message WorkloadFix {
@@ -356,6 +358,7 @@ message GetVulnerabilitySummaryForImageResponse {
   // Empty when data is current.
   string summary_stale_image_tag = 3;
   StaleSeverity stale_severity = 4;
+  string stale_reason = 5;
 }
 
 message GetVulnerabilitySummaryRequest {

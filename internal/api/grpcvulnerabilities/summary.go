@@ -15,29 +15,39 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState) vulnerabilities.StaleSeverity {
+type StaleResult struct {
+	Severity vulnerabilities.StaleSeverity
+	Reason   string
+}
+
+func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState) StaleResult {
 	imageUpdated := imageState.Valid && imageState.ImageState == sql.ImageStateUpdated
 
-	terminalWorkload := false
-	if workloadState != nil {
-		terminalWorkload = !imageUpdated && (*workloadState == sql.WorkloadStateNoAttestation ||
-			*workloadState == sql.WorkloadStateUnrecoverable)
+	if workloadState != nil && !imageUpdated {
+		switch *workloadState {
+		case sql.WorkloadStateNoAttestation:
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "workload has no attestation"}
+		case sql.WorkloadStateUnrecoverable:
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "workload is in unrecoverable state"}
+		case sql.WorkloadStateFailed:
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "workload failed to process"}
+		}
 	}
 
-	terminalImage := imageState.Valid && (imageState.ImageState == sql.ImageStateUntracked ||
-		imageState.ImageState == sql.ImageStateFailed)
-
-	isSummaryStale := staleSummary || terminalWorkload || terminalImage
-
-	if !isSummaryStale {
-		return vulnerabilities.StaleSeverity_STALE_NONE
+	if imageState.Valid {
+		switch imageState.ImageState {
+		case sql.ImageStateUntracked:
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "image is untracked"}
+		case sql.ImageStateFailed:
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "image failed to upload"}
+		}
 	}
 
-	if terminalWorkload || terminalImage {
-		return vulnerabilities.StaleSeverity_STALE_PERMANENT
+	if staleSummary {
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, "SBOM is being processed"}
 	}
 
-	return vulnerabilities.StaleSeverity_STALE_PROCESSING
+	return StaleResult{vulnerabilities.StaleSeverity_STALE_NONE, ""}
 }
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
@@ -89,7 +99,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			summary.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
 		}
 
-		staleSeverity := CalculateStaleSeverity(row.StaleSummary, row.ImageState, &row.WorkloadState)
+		stale := CalculateStaleSeverity(row.StaleSummary, row.ImageState, &row.WorkloadState)
 
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
@@ -103,7 +113,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			},
 			VulnerabilitySummary: summary,
 			SummaryStaleImageTag: row.ImageTag,
-			StaleSeverity:        staleSeverity,
+			StaleSeverity:        stale.Severity,
+			StaleReason:          stale.Reason,
 		}
 	})
 
@@ -254,7 +265,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 	}
 
-	staleSeverity := CalculateStaleSeverity(row.IsSummaryStale, row.ImageState, nil)
+	stale := CalculateStaleSeverity(row.IsSummaryStale, row.ImageState, nil)
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
@@ -265,7 +276,8 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			}
 			return ""
 		}(),
-		StaleSeverity: staleSeverity,
+		StaleSeverity: stale.Severity,
+		StaleReason:   stale.Reason,
 	}, nil
 }
 
