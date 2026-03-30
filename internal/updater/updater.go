@@ -211,6 +211,15 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 		return err
 	}
 	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+
+	// Also update workload states for workloads using untracked images
+	workloadsAffected, err := u.querier.MarkWorkloadsWithUntrackedImages(ctx)
+	if err != nil {
+		u.log.WithError(err).Error("Failed to mark workloads with untracked images")
+		return err
+	}
+	u.log.Debugf("MarkWorkloadsWithUntrackedImages affected %d rows", workloadsAffected)
+
 	return nil
 }
 

@@ -50,6 +50,10 @@ ON CONFLICT ON CONSTRAINT workload_id
     WHERE
         workloads.state = 'failed'
         OR workloads.state = 'resync'
+        -- Only retry unrecoverable workloads when image changes (new deployment)
+        OR (workloads.state = 'unrecoverable' AND (
+            workloads.image_name != @image_name
+            OR workloads.image_tag != @image_tag))
         OR (
             workloads.image_name != @image_name
             OR workloads.image_tag != @image_tag)
@@ -184,3 +188,17 @@ ORDER BY
         namespace,
         CLUSTER,
         updated_at) DESC;
+
+-- name: MarkWorkloadsWithUntrackedImages :execrows
+UPDATE
+    workloads w
+SET
+    state = 'failed',
+    updated_at = NOW()
+FROM
+    images i
+WHERE
+    w.image_name = i.name
+    AND w.image_tag = i.tag
+    AND i.state = 'untracked'
+    AND w.state = 'processing';

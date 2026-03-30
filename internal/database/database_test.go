@@ -217,3 +217,296 @@ func createTestdata(t *testing.T, db sql.Querier, image_name, image_tag string, 
 	})
 	assert.NoError(t, err)
 }
+
+func TestMarkWorkloadsWithUntrackedImages(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	err := db.ResetDatabase(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("workload in processing state with untracked image should be marked as failed", func(t *testing.T) {
+		imageName := "untracked-image-1"
+		imageTag := "v1"
+
+		// Create image
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// Create workload in processing state
+		_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-processing",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		assert.NoError(t, err)
+
+		// Mark image as untracked
+		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUntracked,
+		})
+		assert.NoError(t, err)
+
+		// Run MarkWorkloadsWithUntrackedImages
+		affectedRows, err := db.MarkWorkloadsWithUntrackedImages(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1), affectedRows)
+
+		// Verify workload state is now failed
+		workload, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-processing",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.WorkloadStateFailed, workload.State)
+	})
+
+	t.Run("workload NOT in processing state should NOT be affected", func(t *testing.T) {
+		imageName := "untracked-image-2"
+		imageTag := "v1"
+
+		// Create image
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// Create workload and set to updated state
+		id, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-updated",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		assert.NoError(t, err)
+
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID:    id,
+			State: sql.WorkloadStateUpdated,
+		})
+		assert.NoError(t, err)
+
+		// Mark image as untracked
+		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUntracked,
+		})
+		assert.NoError(t, err)
+
+		// Run MarkWorkloadsWithUntrackedImages
+		affectedRows, err := db.MarkWorkloadsWithUntrackedImages(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), affectedRows)
+
+		// Verify workload state is still updated
+		workload, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-updated",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.WorkloadStateUpdated, workload.State)
+	})
+}
+
+func TestInitializeWorkload_UnrecoverableState(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	err := db.ResetDatabase(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("unrecoverable workload should NOT be reset when image is the same", func(t *testing.T) {
+		imageName := "unrecoverable-image-1"
+		imageTag := "v1"
+
+		// Create image
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// Create workload
+		id, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-unrecoverable",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		assert.NoError(t, err)
+
+		// Set workload to unrecoverable
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID:    id,
+			State: sql.WorkloadStateUnrecoverable,
+		})
+		assert.NoError(t, err)
+
+		// Try to initialize again with same image - should NOT reset (returns no rows)
+		_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-unrecoverable",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		// Should return ErrNoRows because the workload was not updated
+		assert.Error(t, err)
+
+		// Verify workload state is still unrecoverable
+		workload, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-unrecoverable",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.WorkloadStateUnrecoverable, workload.State)
+	})
+
+	t.Run("unrecoverable workload SHOULD be reset when image changes", func(t *testing.T) {
+		imageName := "unrecoverable-image-2"
+		imageTag := "v1"
+		newImageTag := "v2"
+
+		// Create images
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		err = db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      newImageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// Create workload
+		id, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-unrecoverable-new-image",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		assert.NoError(t, err)
+
+		// Set workload to unrecoverable
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID:    id,
+			State: sql.WorkloadStateUnrecoverable,
+		})
+		assert.NoError(t, err)
+
+		// Initialize with NEW image tag - should reset
+		newId, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-unrecoverable-new-image",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     newImageTag,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, id, newId) // Same workload ID
+
+		// Verify workload state is now processing with new image
+		workload, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-unrecoverable-new-image",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.WorkloadStateProcessing, workload.State)
+		assert.Equal(t, newImageTag, workload.ImageTag)
+	})
+
+	t.Run("failed workload SHOULD be reset even with same image", func(t *testing.T) {
+		imageName := "failed-image-1"
+		imageTag := "v1"
+
+		// Create image
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// Create workload
+		id, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-failed",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		assert.NoError(t, err)
+
+		// Set workload to failed
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID:    id,
+			State: sql.WorkloadStateFailed,
+		})
+		assert.NoError(t, err)
+
+		// Initialize again with same image - should reset because state is failed
+		newId, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+			Name:         "workload-failed",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, id, newId)
+
+		// Verify workload state is now processing
+		workload, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name:         "workload-failed",
+			WorkloadType: "app",
+			Namespace:    "test",
+			Cluster:      "test",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.WorkloadStateProcessing, workload.State)
+	})
+}
+

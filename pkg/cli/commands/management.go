@@ -38,6 +38,12 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 							Aliases:     []string{"i"},
 							Usage:       "filter by image state",
 							Destination: &opts.ImageState,
+						},
+						&cli.StringFlag{
+							Name:        "workload-state",
+							Aliases:     []string{"ws"},
+							Usage:       "filter by workload state (e.g., 'updated', 'failed', 'unrecoverable')",
+							Destination: &opts.WorkloadState,
 						}),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						err := trigger(ctx, opts, c)
@@ -199,12 +205,17 @@ func trigger(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) 
 	if opts.ImageState != "" {
 		imageState = &opts.ImageState
 	}
+	var workloadState *string
+	if opts.WorkloadState != "" {
+		workloadState = &opts.WorkloadState
+	}
 	resp, err := c.Resync(ctx, &management.ResyncRequest{
-		Cluster:      cluster,
-		Namespace:    namespace,
-		Workload:     workload,
-		WorkloadType: workloadType,
-		ImageState:   imageState,
+		Cluster:       cluster,
+		Namespace:     namespace,
+		Workload:      workload,
+		WorkloadType:  workloadType,
+		ImageState:    imageState,
+		WorkloadState: workloadState,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to trigger sync: %w", err)

@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
+	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -123,10 +124,30 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	if upErr != nil {
 		span.RecordError(upErr)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
-		// TODO: consider creating a table to track sbom upload failures
-		// can be used to alert teams of persistent upload failures
-		// now we just delete the dangling project and try again
-		return handleJobErr(upErr)
+
+		// Check if this is an unrecoverable error (e.g., 400 Bad Request - unsupported SBOM format)
+		if unrecoverableErr, ok := errors.AsType[model.UnrecoverableError](upErr); ok {
+			u.log.WithFields(logrus.Fields{
+				"image": imageName,
+				"tag":   imageTag,
+				"error": upErr.Error(),
+			}).Warn("marking image as failed due to unrecoverable upload error")
+
+			// Update image state to failed
+			if dbErr := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				Name:  imageName,
+				Tag:   imageTag,
+				State: sql.ImageStateFailed,
+			}); dbErr != nil {
+				u.log.WithError(dbErr).Error("failed to update image state to failed")
+			}
+
+			recordOutput(ctx, JobStatusUnrecoverable)
+			return river.JobCancel(unrecoverableErr)
+		}
+
+		// For recoverable errors, just return the error for retry
+		return fmt.Errorf("failed to upload SBOM: %w", upErr)
 	}
 
 	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{

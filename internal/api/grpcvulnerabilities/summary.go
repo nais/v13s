@@ -28,26 +28,37 @@ func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.Null
 		return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no attestation found for image tag %s", currentTag)}
 	}
 
-	// Only report "no SBOM found" or "failed to upload" if there's actually no SBOM data at all
-	if imageState.Valid && !hasSbom {
+	// If we have a current summary (not using fallback), return STALE_NONE
+	if !staleSummary {
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_NONE, "SBOM is up to date"}
+	}
+
+	// From here on, we know staleSummary is true (we're using fallback data)
+	// Check image state to determine why we don't have current data
+	if imageState.Valid {
 		switch imageState.ImageState {
 		case sql.ImageStateUntracked:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no SBOM found for image tag %s", currentTag)}
+			if !hasSbom {
+				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no SBOM found for image tag %s", currentTag)}
+			}
+			// Has fallback SBOM - fall through to processing message
 		case sql.ImageStateFailed:
+			// Failed state is permanent - show appropriate message
+			if fallbackTag != "" && fallbackTag != currentTag {
+				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s, showing data from %s", currentTag, fallbackTag)}
+			}
 			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag)}
 		}
 	}
 
-	if staleSummary && fallbackTag != "" {
+	// Default stale processing message
+	if fallbackTag != "" && fallbackTag != currentTag {
 		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed, showing data from %s", currentTag, fallbackTag)}
 	}
 
-	if staleSummary {
-		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag)}
-	}
-
-	return StaleResult{vulnerabilities.StaleSeverity_STALE_NONE, "SBOM is up to date"}
+	return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag)}
 }
+
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)

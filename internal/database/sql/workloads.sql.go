@@ -203,6 +203,10 @@ ON CONFLICT ON CONSTRAINT workload_id
     WHERE
         workloads.state = 'failed'
         OR workloads.state = 'resync'
+        -- Only retry unrecoverable workloads when image changes (new deployment)
+        OR (workloads.state = 'unrecoverable' AND (
+            workloads.image_name != $5
+            OR workloads.image_tag != $6))
         OR (
             workloads.image_name != $5
             OR workloads.image_tag != $6)
@@ -345,6 +349,29 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 		return nil, err
 	}
 	return items, nil
+}
+
+const markWorkloadsWithUntrackedImages = `-- name: MarkWorkloadsWithUntrackedImages :execrows
+UPDATE
+    workloads w
+SET
+    state = 'failed',
+    updated_at = NOW()
+FROM
+    images i
+WHERE
+    w.image_name = i.name
+    AND w.image_tag = i.tag
+    AND i.state = 'untracked'
+    AND w.state = 'processing'
+`
+
+func (q *Queries) MarkWorkloadsWithUntrackedImages(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, markWorkloadsWithUntrackedImages)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setWorkloadState = `-- name: SetWorkloadState :many
