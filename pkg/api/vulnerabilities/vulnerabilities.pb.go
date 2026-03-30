@@ -1129,18 +1129,10 @@ type WorkloadSummary struct {
 	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Workload             *Workload              `protobuf:"bytes,2,opt,name=workload,proto3" json:"workload,omitempty"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,3,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
-	// summary_stale_image_tag is the image tag the vulnerability data actually comes from.
-	// When stale_severity is STALE_NONE this equals workload.image_tag.
-	// When stale_severity is STALE_PROCESSING or STALE_PERMANENT this is the previous tag whose data is being shown.
-	SummaryStaleImageTag string `protobuf:"bytes,4,opt,name=summary_stale_image_tag,json=summaryStaleImageTag,proto3" json:"summary_stale_image_tag,omitempty"`
-	// stale_severity tells consumers WHY the summary is stale so they can render
-	// an appropriate UI without knowing internal workload/image processing states.
-	// STALE_NONE = data is current; STALE_PROCESSING = will self-resolve; STALE_PERMANENT = needs manual action.
-	StaleSeverity StaleSeverity `protobuf:"varint,5,opt,name=stale_severity,json=staleSeverity,proto3,enum=v13s.api.protobuf.StaleSeverity" json:"stale_severity,omitempty"`
-	// stale_reason provides a human-readable explanation for the stale_severity.
-	StaleReason   string `protobuf:"bytes,6,opt,name=stale_reason,json=staleReason,proto3" json:"stale_reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	StaleSeverity        StaleSeverity          `protobuf:"varint,4,opt,name=stale_severity,json=staleSeverity,proto3,enum=v13s.api.protobuf.StaleSeverity" json:"stale_severity,omitempty"`
+	StaleReason          string                 `protobuf:"bytes,5,opt,name=stale_reason,json=staleReason,proto3" json:"stale_reason,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *WorkloadSummary) Reset() {
@@ -1192,13 +1184,6 @@ func (x *WorkloadSummary) GetVulnerabilitySummary() *Summary {
 		return x.VulnerabilitySummary
 	}
 	return nil
-}
-
-func (x *WorkloadSummary) GetSummaryStaleImageTag() string {
-	if x != nil {
-		return x.SummaryStaleImageTag
-	}
-	return ""
 }
 
 func (x *WorkloadSummary) GetStaleSeverity() StaleSeverity {
@@ -3033,11 +3018,8 @@ type GetVulnerabilitySummaryForImageResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,1,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
 	WorkloadRef          []*Workload            `protobuf:"bytes,2,rep,name=workloadRef,proto3" json:"workloadRef,omitempty"`
-	// summary_stale_image_tag is set when the summary is from a fallback or outdated SBOM.
-	// Empty when data is current.
-	SummaryStaleImageTag string        `protobuf:"bytes,3,opt,name=summary_stale_image_tag,json=summaryStaleImageTag,proto3" json:"summary_stale_image_tag,omitempty"`
-	StaleSeverity        StaleSeverity `protobuf:"varint,4,opt,name=stale_severity,json=staleSeverity,proto3,enum=v13s.api.protobuf.StaleSeverity" json:"stale_severity,omitempty"`
-	StaleReason          string        `protobuf:"bytes,5,opt,name=stale_reason,json=staleReason,proto3" json:"stale_reason,omitempty"`
+	StaleSeverity        StaleSeverity          `protobuf:"varint,4,opt,name=stale_severity,json=staleSeverity,proto3,enum=v13s.api.protobuf.StaleSeverity" json:"stale_severity,omitempty"`
+	StaleReason          string                 `protobuf:"bytes,5,opt,name=stale_reason,json=staleReason,proto3" json:"stale_reason,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -3084,13 +3066,6 @@ func (x *GetVulnerabilitySummaryForImageResponse) GetWorkloadRef() []*Workload {
 		return x.WorkloadRef
 	}
 	return nil
-}
-
-func (x *GetVulnerabilitySummaryForImageResponse) GetSummaryStaleImageTag() string {
-	if x != nil {
-		return x.SummaryStaleImageTag
-	}
-	return ""
 }
 
 func (x *GetVulnerabilitySummaryForImageResponse) GetStaleSeverity() StaleSeverity {
@@ -3964,14 +3939,13 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\f_resolved_at\"\xbe\x01\n" +
 	"$WorkloadCriticalVulnerabilityFinding\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12V\n" +
-	"\rvulnerability\x18\x02 \x01(\v20.v13s.api.protobuf.WorkloadCriticalVulnerabilityR\rvulnerability\"\xce\x02\n" +
+	"\rvulnerability\x18\x02 \x01(\v20.v13s.api.protobuf.WorkloadCriticalVulnerabilityR\rvulnerability\"\x97\x02\n" +
 	"\x0fWorkloadSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\bworkload\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\bworkload\x12O\n" +
-	"\x15vulnerability_summary\x18\x03 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x125\n" +
-	"\x17summary_stale_image_tag\x18\x04 \x01(\tR\x14summaryStaleImageTag\x12G\n" +
-	"\x0estale_severity\x18\x05 \x01(\x0e2 .v13s.api.protobuf.StaleSeverityR\rstaleSeverity\x12!\n" +
-	"\fstale_reason\x18\x06 \x01(\tR\vstaleReason\"\xd9\x03\n" +
+	"\x15vulnerability_summary\x18\x03 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12G\n" +
+	"\x0estale_severity\x18\x04 \x01(\x0e2 .v13s.api.protobuf.StaleSeverityR\rstaleSeverity\x12!\n" +
+	"\fstale_reason\x18\x05 \x01(\tR\vstaleReason\"\xd9\x03\n" +
 	"\vWorkloadFix\x127\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x1b.v13s.api.protobuf.SeverityR\bseverity\x12D\n" +
 	"\rintroduced_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\fintroducedAt\x88\x01\x01\x12:\n" +
@@ -4140,11 +4114,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"&GetVulnerabilitySummaryForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\xdc\x02\n" +
+	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\xa5\x02\n" +
 	"'GetVulnerabilitySummaryForImageResponse\x12O\n" +
 	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12=\n" +
-	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x125\n" +
-	"\x17summary_stale_image_tag\x18\x03 \x01(\tR\x14summaryStaleImageTag\x12G\n" +
+	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12G\n" +
 	"\x0estale_severity\x18\x04 \x01(\x0e2 .v13s.api.protobuf.StaleSeverityR\rstaleSeverity\x12!\n" +
 	"\fstale_reason\x18\x05 \x01(\tR\vstaleReason\"S\n" +
 	"\x1eGetVulnerabilitySummaryRequest\x121\n" +

@@ -20,7 +20,7 @@ type StaleResult struct {
 	Reason   string
 }
 
-func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState) StaleResult {
+func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState, currentTag, fallbackTag string) StaleResult {
 	imageUpdated := imageState.Valid && imageState.ImageState == sql.ImageStateUpdated
 
 	if workloadState != nil && !imageUpdated {
@@ -37,14 +37,18 @@ func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, wo
 	if imageState.Valid {
 		switch imageState.ImageState {
 		case sql.ImageStateUntracked:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "image is untracked"}
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("image tag %s is untracked", currentTag)}
 		case sql.ImageStateFailed:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "image failed to upload"}
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("image tag %s failed to upload", currentTag)}
 		}
 	}
 
+	if staleSummary && fallbackTag != "" {
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed, showing data from %s", currentTag, fallbackTag)}
+	}
+
 	if staleSummary {
-		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, "SBOM is being processed"}
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag)}
 	}
 
 	return StaleResult{vulnerabilities.StaleSeverity_STALE_NONE, ""}
@@ -99,7 +103,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			summary.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
 		}
 
-		stale := CalculateStaleSeverity(row.StaleSummary, row.ImageState, &row.WorkloadState)
+		stale := CalculateStaleSeverity(row.StaleSummary, row.ImageState, &row.WorkloadState, row.CurrentImageTag, row.ImageTag)
 
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
@@ -112,7 +116,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				ImageTag:  row.CurrentImageTag,
 			},
 			VulnerabilitySummary: summary,
-			SummaryStaleImageTag: row.ImageTag,
 			StaleSeverity:        stale.Severity,
 			StaleReason:          stale.Reason,
 		}
@@ -265,19 +268,13 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 	}
 
-	stale := CalculateStaleSeverity(row.IsSummaryStale, row.ImageState, nil)
+	stale := CalculateStaleSeverity(row.IsSummaryStale, row.ImageState, nil, request.ImageTag, row.ImageTag)
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
-		SummaryStaleImageTag: func() string {
-			if row.HasSbom {
-				return row.ImageTag
-			}
-			return ""
-		}(),
-		StaleSeverity: stale.Severity,
-		StaleReason:   stale.Reason,
+		StaleSeverity:        stale.Severity,
+		StaleReason:          stale.Reason,
 	}, nil
 }
 

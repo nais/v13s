@@ -1022,8 +1022,8 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 		assert.True(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be true for existing image")
-		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "is_summary_stale should be false when exact tag has a summary")
-		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag(), "summary_stale_image_tag should match the requested tag")
+		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "stale_severity should be STALE_NONE when exact tag has a summary")
+		assert.Empty(t, resp.GetStaleReason(), "stale_reason should be empty when not stale")
 	})
 
 	t.Run("new tag with no summary falls back to previous — is_summary_stale is true", func(t *testing.T) {
@@ -1037,8 +1037,8 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
 		assert.True(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be true (fallback exists)")
-		assert.NotEqual(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "is_summary_stale should be true when falling back to old tag")
-		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag(), "summary_stale_image_tag should be the old tag")
+		assert.NotEqual(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "stale_severity should not be STALE_NONE when falling back to old tag")
+		assert.Contains(t, resp.GetStaleReason(), oldTag, "stale_reason should mention the fallback tag")
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High, "counts should come from old tag fallback")
 	})
 
@@ -1052,9 +1052,9 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
-		assert.NotEqual(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "is_summary_stale must be true: current tag has no summary, we are showing fallback data")
+		assert.NotEqual(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "stale_severity must not be STALE_NONE: current tag has no summary, we are showing fallback data")
 		assert.True(t, resp.GetVulnerabilitySummary().HasSbom)
-		assert.Equal(t, oldTag, resp.GetSummaryStaleImageTag(), "summary_stale_image_tag should be the fallback (old) tag")
+		assert.Contains(t, resp.GetStaleReason(), oldTag, "stale_reason should mention the fallback tag")
 	})
 
 	t.Run("image with no summary at all — has_sbom is false", func(t *testing.T) {
@@ -1062,8 +1062,8 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unknownImage, "v0.1")
 		require.NoError(t, err)
 		assert.False(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be false for unknown image")
-		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "is_summary_stale should be false when there is no summary at all")
-		assert.Empty(t, resp.GetSummaryStaleImageTag())
+		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, resp.GetStaleSeverity(), "stale_severity should be STALE_NONE when there is no summary at all")
+		assert.Empty(t, resp.GetStaleReason())
 	})
 }
 
@@ -1700,7 +1700,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, node.GetStaleSeverity(), "summary should not be stale when current image tag has a summary")
 		assert.True(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom should be true")
 		assert.Equal(t, oldTag, node.GetWorkload().ImageTag)
-		assert.Equal(t, oldTag, node.GetSummaryStaleImageTag(), "summary_image_tag should match current tag when not stale")
+		assert.Empty(t, node.GetStaleReason(), "stale_reason should be empty when not stale")
 	})
 
 	t.Run("workload updates to new tag with no summary — falls back to previous tag summary with stale_summary=true", func(t *testing.T) {
@@ -1735,7 +1735,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		// Summary data must come from the previous tag (stale fallback).
 		assert.NotEqual(t, vulnerabilities.StaleSeverity_STALE_NONE, node.GetStaleSeverity(), "stale_summary must be true while new SBOM is processing")
 		assert.True(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom should still be true (showing previous data)")
-		assert.Equal(t, oldTag, node.GetSummaryStaleImageTag(), "summary_image_tag should be the old tag when stale")
+		assert.Contains(t, node.GetStaleReason(), oldTag, "stale_reason should mention the fallback tag")
 
 		// Counts are carried over from the v1.0 summary.
 		assert.Equal(t, int32(1), node.GetVulnerabilitySummary().High)
@@ -1769,7 +1769,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		node := resp.Nodes[0]
 		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, node.GetStaleSeverity(), "stale_summary must be false when there is no summary at all")
 		assert.False(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom must be false when no summary exists")
-		assert.Empty(t, node.GetSummaryStaleImageTag(), "summary_image_tag must be empty when no summary exists")
+		assert.Empty(t, node.GetStaleReason(), "stale_reason must be empty when no summary exists")
 	})
 
 	t.Run("new tag receives its own summary — stale_summary becomes false again", func(t *testing.T) {
@@ -1796,7 +1796,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_NONE, node.GetStaleSeverity(), "stale_summary must be false once the new summary is ready")
 		assert.True(t, node.GetVulnerabilitySummary().HasSbom)
 		assert.Equal(t, newTag, node.GetWorkload().ImageTag)
-		assert.Equal(t, newTag, node.GetSummaryStaleImageTag(), "summary_image_tag should match new tag once summary exists")
+		assert.Empty(t, node.GetStaleReason(), "stale_reason should be empty once summary exists")
 		// Counts reflect the NEW summary, not the old v1.0 values.
 		assert.Equal(t, int32(2), node.GetVulnerabilitySummary().Critical)
 		assert.Equal(t, int32(3), node.GetVulnerabilitySummary().High)
