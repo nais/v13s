@@ -131,11 +131,15 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
 
-	staleImageTag := ""
+	stale := StaleResult{Severity: vulnerabilities.StaleSeverity_STALE_NONE, Reason: "SBOM is up to date"}
 	if len(vulnz) > 0 {
+		fallbackTag := ""
 		if t, ok := vulnz[0].StaleImageTag.(string); ok {
-			staleImageTag = t
+			fallbackTag = t
 		}
+		// hasSbom is true when we have vulnerabilities data (len > 0)
+		imageState := sql.NullImageState{ImageState: vulnz[0].ImageState, Valid: vulnz[0].ImageState != ""}
+		stale = CalculateStaleSeverity(vulnz[0].IsStale, true, imageState, nil, request.GetImageTag(), fallbackTag)
 	}
 
 	total := 0
@@ -178,9 +182,10 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:                nodes,
-		PageInfo:             pageInfo,
-		SummaryStaleImageTag: staleImageTag,
+		Nodes:         nodes,
+		PageInfo:      pageInfo,
+		StaleSeverity: stale.Severity,
+		StaleReason:   stale.Reason,
 	}, nil
 }
 

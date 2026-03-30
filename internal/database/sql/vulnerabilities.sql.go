@@ -1058,7 +1058,7 @@ WITH fallback_tag AS (
     FROM
         vulnerabilities vf
     WHERE
-        vf.image_name = $5
+        vf.image_name = $2
     ORDER BY
         vf.image_name,
         vf.updated_at DESC
@@ -1071,7 +1071,7 @@ effective_tag AS (
             FROM
                 vulnerabilities ve
             WHERE
-                ve.image_name = $5
+                ve.image_name = $2
                 AND ve.image_tag = $1) THEN
             $1::TEXT
         ELSE
@@ -1089,7 +1089,7 @@ image_all_vulns AS (
         vulnerabilities v,
         effective_tag et
     WHERE
-        v.image_name = $5
+        v.image_name = $2
         AND v.image_tag = et.image_tag
 ),
 resolved_vulnerabilities AS (
@@ -1171,70 +1171,78 @@ SELECT
             image_tag
         FROM
             effective_tag) != $1::TEXT AS is_stale,
+(
+        SELECT
+            i.state
+        FROM
+            images i
+        WHERE
+            i.name = $2
+            AND i.tag = $1) AS image_state,
     COUNT(id) OVER () AS total_count
     FROM
         distinct_image_vulnerabilities
     ORDER BY
-        CASE WHEN $2 = 'severity_asc' THEN
+        CASE WHEN $3 = 'severity_asc' THEN
             severity
         END ASC,
-        CASE WHEN $2 = 'severity_desc' THEN
+        CASE WHEN $3 = 'severity_desc' THEN
             severity
         END DESC,
-        CASE WHEN $2 = 'severity_since_asc' THEN
+        CASE WHEN $3 = 'severity_since_asc' THEN
             severity_since
         END ASC,
-        CASE WHEN $2 = 'severity_since_desc' THEN
+        CASE WHEN $3 = 'severity_since_desc' THEN
             severity_since
         END DESC,
-        CASE WHEN $2 = 'package_asc' THEN
+        CASE WHEN $3 = 'package_asc' THEN
             package
         END ASC,
-        CASE WHEN $2 = 'package_desc' THEN
+        CASE WHEN $3 = 'package_desc' THEN
             package
         END DESC,
-        CASE WHEN $2 = 'cve_id_asc' THEN
+        CASE WHEN $3 = 'cve_id_asc' THEN
             cve_id
         END ASC,
-        CASE WHEN $2 = 'cve_id_desc' THEN
+        CASE WHEN $3 = 'cve_id_desc' THEN
             cve_id
         END DESC,
-        CASE WHEN $2 = 'suppressed_asc' THEN
+        CASE WHEN $3 = 'suppressed_asc' THEN
             COALESCE(suppressed, FALSE)
         END ASC,
-    CASE WHEN $2 = 'suppressed_desc' THEN
+    CASE WHEN $3 = 'suppressed_desc' THEN
         COALESCE(suppressed, FALSE)
     END DESC,
-    CASE WHEN $2 = 'reason_asc' THEN
+    CASE WHEN $3 = 'reason_asc' THEN
         reason
     END ASC,
-    CASE WHEN $2 = 'reason_desc' THEN
+    CASE WHEN $3 = 'reason_desc' THEN
         reason
     END DESC,
-    CASE WHEN $2 = 'created_at_asc' THEN
+    CASE WHEN $3 = 'created_at_asc' THEN
         created_at
     END ASC,
-    CASE WHEN $2 = 'created_at_desc' THEN
+    CASE WHEN $3 = 'created_at_desc' THEN
         created_at
     END DESC,
-    CASE WHEN $2 = 'updated_at_asc' THEN
+    CASE WHEN $3 = 'updated_at_asc' THEN
         updated_at
     END ASC,
-    CASE WHEN $2 = 'updated_at_desc' THEN
+    CASE WHEN $3 = 'updated_at_desc' THEN
         updated_at
     END DESC,
     severity,
     id ASC
-LIMIT $4
-    OFFSET $3
+LIMIT $5
+    OFFSET $4
 `
 
 type ListVulnerabilitiesForImageParams struct {
 	ImageTag          string
+	ImageName         string
 	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
-	ImageName         string
 	IncludeSuppressed *bool
 	Since             pgtype.Timestamptz
 	Severity          *int32
@@ -1265,16 +1273,17 @@ type ListVulnerabilitiesForImageRow struct {
 	SuppressedAt  pgtype.Timestamptz
 	StaleImageTag interface{}
 	IsStale       bool
+	ImageState    ImageState
 	TotalCount    int64
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilitiesForImage,
 		arg.ImageTag,
+		arg.ImageName,
 		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
-		arg.ImageName,
 		arg.IncludeSuppressed,
 		arg.Since,
 		arg.Severity,
@@ -1311,6 +1320,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.SuppressedAt,
 			&i.StaleImageTag,
 			&i.IsStale,
+			&i.ImageState,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

@@ -108,10 +108,9 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	vulnTbl := table.New("Package", "CVE", "Title", "Severity", "Severity Since", "Created", "Last Updated", "Suppressed")
 	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
-	if resp.GetSummaryStaleImageTag() != "" {
+	if resp.GetStaleSeverity() != vulnerabilities.StaleSeverity_STALE_NONE {
 		staleMsg := color.New(color.FgYellow, color.Bold).SprintfFunc()
-		fmt.Println(staleMsg("⚠  Showing vulnerabilities from fallback tag %q — the requested tag has no SBOM yet",
-			resp.GetSummaryStaleImageTag()))
+		fmt.Println(staleMsg("⚠  %s", resp.GetStaleReason()))
 	}
 
 	var suppressions [][]string
@@ -218,13 +217,9 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
-			stale := "-"
-			switch n.GetStaleSeverity() {
-			case vulnerabilities.StaleSeverity_STALE_PERMANENT:
-				stale = "failed"
-			case vulnerabilities.StaleSeverity_STALE_PROCESSING:
-				staleSince := n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339)
-				stale = fmt.Sprintf("stale (%s, %s)", n.GetSummaryStaleImageTag(), staleSince)
+			stale := n.GetStaleReason()
+			if n.GetStaleSeverity() == vulnerabilities.StaleSeverity_STALE_NONE {
+				stale = "-"
 			}
 			vals := []any{
 				n.Workload.GetName(),

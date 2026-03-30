@@ -20,12 +20,16 @@ type StaleResult struct {
 	Reason   string
 }
 
-func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState, currentTag, fallbackTag string) StaleResult {
+func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.NullImageState, workloadState *sql.WorkloadState, currentTag, fallbackTag string) StaleResult {
 	if workloadState != nil && *workloadState == sql.WorkloadStateNoAttestation {
+		if fallbackTag != "" && fallbackTag != currentTag {
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no attestation found for image tag %s, showing data from %s", currentTag, fallbackTag)}
+		}
 		return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no attestation found for image tag %s", currentTag)}
 	}
 
-	if imageState.Valid {
+	// Only report "no SBOM found" or "failed to upload" if there's actually no SBOM data at all
+	if imageState.Valid && !hasSbom {
 		switch imageState.ImageState {
 		case sql.ImageStateUntracked:
 			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no SBOM found for image tag %s", currentTag)}
@@ -94,7 +98,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			summary.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
 		}
 
-		stale := CalculateStaleSeverity(row.StaleSummary, row.ImageState, &row.WorkloadState, row.CurrentImageTag, row.ImageTag)
+		stale := CalculateStaleSeverity(row.StaleSummary, row.HasSbom, row.ImageState, &row.WorkloadState, row.CurrentImageTag, row.ImageTag)
 
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
@@ -259,7 +263,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 	}
 
-	stale := CalculateStaleSeverity(row.IsSummaryStale, row.ImageState, nil, request.ImageTag, row.ImageTag)
+	stale := CalculateStaleSeverity(row.IsSummaryStale, row.HasSbom, row.ImageState, nil, request.ImageTag, row.ImageTag)
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,

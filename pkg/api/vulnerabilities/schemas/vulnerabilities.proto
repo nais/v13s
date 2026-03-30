@@ -220,9 +220,8 @@ message ListVulnerabilitiesForImageRequest {
 message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
-  // summary_stale_image_tag is set when vulnerabilities are from a fallback tag
-  // (the requested tag has no SBOM yet). Empty when data is current.
-  string summary_stale_image_tag = 3;
+  StaleSeverity stale_severity = 4;
+  string stale_reason = 5;
 }
 
 message ListVulnerabilitySummariesRequest {
