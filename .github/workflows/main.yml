@@ -31,7 +31,8 @@ jobs:
           - check:govulncheck
           - check:staticcheck
           - check:helmlint
-          - check:fmt
+          - fmt:go
+          - fmt:sql
           - test
     runs-on: ubuntu-latest
     steps:
