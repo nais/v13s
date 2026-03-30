@@ -21,25 +21,16 @@ type StaleResult struct {
 }
 
 func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, workloadState *sql.WorkloadState, currentTag, fallbackTag string) StaleResult {
-	imageUpdated := imageState.Valid && imageState.ImageState == sql.ImageStateUpdated
-
-	if workloadState != nil && !imageUpdated {
-		switch *workloadState {
-		case sql.WorkloadStateNoAttestation:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "workload has no attestation"}
-		case sql.WorkloadStateUnrecoverable:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "workload is in unrecoverable state"}
-		case sql.WorkloadStateFailed:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, "workload failed to process"}
-		}
+	if workloadState != nil && *workloadState == sql.WorkloadStateNoAttestation {
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no attestation found for image tag %s", currentTag)}
 	}
 
 	if imageState.Valid {
 		switch imageState.ImageState {
 		case sql.ImageStateUntracked:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("image tag %s is untracked", currentTag)}
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no SBOM found for image tag %s", currentTag)}
 		case sql.ImageStateFailed:
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("image tag %s failed to upload", currentTag)}
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag)}
 		}
 	}
 
@@ -51,7 +42,7 @@ func CalculateStaleSeverity(staleSummary bool, imageState sql.NullImageState, wo
 		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag)}
 	}
 
-	return StaleResult{vulnerabilities.StaleSeverity_STALE_NONE, ""}
+	return StaleResult{vulnerabilities.StaleSeverity_STALE_NONE, "SBOM is up to date"}
 }
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
