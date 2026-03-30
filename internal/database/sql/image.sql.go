@@ -19,7 +19,7 @@ VALUES (
     $1,
     $2,
     COALESCE(
-        $3, '{}' ::JSONB))
+        $3, '{}' ::jsonb))
 ON CONFLICT
     DO NOTHING
 `
@@ -239,7 +239,7 @@ const updateImage = `-- name: UpdateImage :exec
 UPDATE
     images
 SET
-    metadata = COALESCE($1, '{}'::JSONB),
+    metadata = COALESCE($1, '{}'::jsonb),
     updated_at = NOW()
 WHERE
     name = $2
