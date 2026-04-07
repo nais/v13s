@@ -494,7 +494,7 @@ resolved_vulnerabilities AS (
         v.created_at,
         v.updated_at,
         v.severity_since,
-        v.cvss_score
+        c.cvss_score
     FROM
         image_all_vulns v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias

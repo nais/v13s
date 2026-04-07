@@ -125,9 +125,9 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		limit := int32(10)
 		offset := int32(0)
 		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.Limit(limit),
-			vulnerabilities.Offset(offset),
+		 ctx,
+		 vulnerabilities.Limit(limit),
+		 vulnerabilities.Offset(offset),
 		)
 		assert.NoError(t, err)
 		uniqueRows := map[string]bool{}
@@ -440,6 +440,88 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		}
 		assert.Contains(t, ids, "CVE-1")
 		assert.NotContains(t, ids, "GHSA-1")
+	})
+
+	t.Run("resolved alias returns canonical metadata and canonical cvss score", func(t *testing.T) {
+		const (
+			imageName      = "image-cluster-1-namespace-1-workload-1"
+			imageTag       = "v1.0"
+			canonicalCVEID = "CVE-ALIAS-CANONICAL-1"
+			aliasCVEID     = "GHSA-ALIAS-CANONICAL-1"
+			pkgName        = "pkg-alias-canonical-cvss"
+		)
+
+		canonicalScore := 9.8
+		aliasScore := 7.5
+		queries.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{
+				CveID:     canonicalCVEID,
+				CveTitle:  "canonical title",
+				CveDesc:   "canonical description",
+				CveLink:   "https://example.com/canonical",
+				Severity:  int32(vulnerabilities.Severity_CRITICAL),
+				Refs:      map[string]string{canonicalCVEID: aliasCVEID},
+				CvssScore: &canonicalScore,
+			},
+			{
+				CveID:     aliasCVEID,
+				CveTitle:  "alias title",
+				CveDesc:   "alias description",
+				CveLink:   "https://example.com/alias",
+				Severity:  int32(vulnerabilities.Severity_HIGH),
+				Refs:      map[string]string{},
+				CvssScore: &aliasScore,
+			},
+		}).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert cve: %v", err)
+			}
+		})
+
+		queries.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+			Alias:          aliasCVEID,
+			CanonicalCveID: canonicalCVEID,
+		}}).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert cve alias: %v", err)
+			}
+		})
+
+		queries.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+			ImageName:     imageName,
+			ImageTag:      imageTag,
+			Package:       pkgName,
+			CveID:         aliasCVEID,
+			Source:        "test",
+			LatestVersion: "1.0.1",
+			LastSeverity:  int32(vulnerabilities.Severity_HIGH),
+			CvssScore:     &aliasScore,
+		}}).Exec(func(i int, err error) {
+			if err != nil {
+				t.Fatalf("failed to upsert vulnerability: %v", err)
+			}
+		})
+
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag, vulnerabilities.Limit(50))
+		require.NoError(t, err)
+
+		var resolved *vulnerabilities.Vulnerability
+		for _, node := range resp.Nodes {
+			if node.GetPackage() == pkgName {
+				resolved = node
+				break
+			}
+		}
+
+		require.NotNil(t, resolved, "expected seeded alias-backed vulnerability to be returned")
+		assert.Equal(t, canonicalCVEID, resolved.GetCve().GetId())
+		assert.Equal(t, "canonical title", resolved.GetCve().GetTitle())
+		assert.Equal(t, "canonical description", resolved.GetCve().GetDescription())
+		assert.Equal(t, "https://example.com/canonical", resolved.GetCve().GetLink())
+		assert.Equal(t, vulnerabilities.Severity_CRITICAL, resolved.GetCve().GetSeverity())
+		assert.Equal(t, aliasCVEID, resolved.GetCve().GetReferences()[canonicalCVEID])
+		assert.InDelta(t, canonicalScore, resolved.GetCvssScore(), 0.0001)
+		assert.NotEqual(t, aliasScore, resolved.GetCvssScore())
 	})
 }
 
