@@ -264,8 +264,9 @@ func attestationFromStatement(statement *in_toto.CycloneDXStatement) (*Attestati
 	if err != nil {
 		return nil, fmt.Errorf("marshal predicate: %v", err)
 	}
-	return &Attestation{Predicate: predicate,
-		Metadata: map[string]string{},
+	return &Attestation{
+		Predicate: predicate,
+		Metadata:  map[string]string{},
 	}, nil
 }
 

@@ -125,9 +125,9 @@ func TestServer_ListVulnerabilities(t *testing.T) {
 		limit := int32(10)
 		offset := int32(0)
 		resp, err := client.ListVulnerabilities(
-		 ctx,
-		 vulnerabilities.Limit(limit),
-		 vulnerabilities.Offset(offset),
+			ctx,
+			vulnerabilities.Limit(limit),
+			vulnerabilities.Offset(offset),
 		)
 		assert.NoError(t, err)
 		uniqueRows := map[string]bool{}
