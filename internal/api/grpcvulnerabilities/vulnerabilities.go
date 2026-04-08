@@ -138,7 +138,19 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 			fallbackTag = t
 		}
 		// hasSbom is true when we have vulnerabilities data (len > 0)
-		imageState := sql.NullImageState{ImageState: vulnz[0].ImageState, Valid: vulnz[0].ImageState != ""}
+		imageState := sql.NullImageState{}
+		switch state := vulnz[0].ImageState.(type) {
+		case sql.ImageState:
+			imageState = sql.NullImageState{ImageState: state, Valid: state != ""}
+		case string:
+			if state != "" {
+				imageState = sql.NullImageState{ImageState: sql.ImageState(state), Valid: true}
+			}
+		case []byte:
+			if len(state) > 0 {
+				imageState = sql.NullImageState{ImageState: sql.ImageState(string(state)), Valid: true}
+			}
+		}
 		stale = CalculateStaleSeverity(vulnz[0].IsStale, true, imageState, nil, request.GetImageTag(), fallbackTag)
 	}
 

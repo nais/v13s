@@ -36,6 +36,20 @@ func TestCalculateStaleSeverity(t *testing.T) {
 		assert.Equal(t, "SBOM not found for image tag v1.0.0", result.Reason)
 	})
 
+	t.Run("returns STALE_PROCESSING when summary is not stale, no sbom, and image is initialized", func(t *testing.T) {
+		result := CalculateStaleSeverity(
+			false,
+			false,
+			sql.NullImageState{ImageState: sql.ImageStateInitialized, Valid: true},
+			nil,
+			"v1.0.0",
+			"",
+		)
+		assert.Equal(t, vulnerabilities.StaleSeverity_STALE_PROCESSING, result.Severity)
+		assert.Equal(t, vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING, result.Code)
+		assert.Equal(t, "SBOM for tag v1.0.0 is being processed", result.Reason)
+	})
+
 	t.Run("returns STALE_PROCESSING when summary is stale with fallback", func(t *testing.T) {
 		result := CalculateStaleSeverity(
 			true,

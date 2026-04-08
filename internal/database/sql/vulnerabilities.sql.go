@@ -961,14 +961,14 @@ SELECT
             image_tag
         FROM
             effective_tag) != $1::TEXT AS is_stale,
-(
-        SELECT
-            i.state
-        FROM
-            images i
-        WHERE
-            i.name = $2
-            AND i.tag = $1) AS image_state,
+    COALESCE((
+            SELECT
+                i.state
+            FROM
+                images i
+            WHERE
+                i.name = $2
+                AND i.tag = $1), 'initialized'::image_state) AS image_state,
     COUNT(id) OVER () AS total_count
     FROM
         distinct_image_vulnerabilities
@@ -1063,7 +1063,7 @@ type ListVulnerabilitiesForImageRow struct {
 	SuppressedAt  pgtype.Timestamptz
 	StaleImageTag interface{}
 	IsStale       bool
-	ImageState    ImageState
+	ImageState    interface{}
 	TotalCount    int64
 }
 

@@ -587,14 +587,14 @@ SELECT
             image_tag
         FROM
             effective_tag) != @image_tag::TEXT AS is_stale,
-(
-        SELECT
-            i.state
-        FROM
-            images i
-        WHERE
-            i.name = @image_name
-            AND i.tag = @image_tag) AS image_state,
+    COALESCE((
+            SELECT
+                i.state
+            FROM
+                images i
+            WHERE
+                i.name = @image_name
+                AND i.tag = @image_tag), 'initialized'::image_state) AS image_state,
     COUNT(id) OVER () AS total_count
     FROM
         distinct_image_vulnerabilities

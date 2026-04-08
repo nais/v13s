@@ -376,6 +376,16 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		assert.Equal(t, 1, len(resp.Nodes))
 	})
 
+	t.Run("fallback vulnerabilities do not fail when requested tag has no image row", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(
+			ctx,
+			"image-cluster-1-namespace-1-workload-1", "v2.0",
+		)
+		require.NoError(t, err)
+		require.NotEmpty(t, resp.Nodes)
+		assertStaleStatus(t, resp, vulnerabilities.StaleSeverity_STALE_PROCESSING, vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING_WITH_FALLBACK, "v1.0")
+	})
+
 	addVulns := func(image string, cves ...string) {
 		cveParams := make([]sql.BatchUpsertCveParams, 0)
 		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
@@ -1061,6 +1071,23 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.False(t, resp.GetVulnerabilitySummary().HasSbom, "has_sbom should be false for unknown image")
 		assertStaleStatus(t, resp, vulnerabilities.StaleSeverity_STALE_PERMANENT, vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_SBOM, "v0.1")
 	})
+
+	t.Run("known image with no summary yet — indicates processing for first deploy", func(t *testing.T) {
+		const firstDeployImage = "first-deploy-image"
+		const firstDeployTag = "v0.1"
+
+		err := db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     firstDeployImage,
+			Tag:      firstDeployTag,
+			Metadata: map[string]string{},
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, firstDeployImage, firstDeployTag)
+		require.NoError(t, err)
+		assert.False(t, resp.GetVulnerabilitySummary().HasSbom)
+		assertStaleStatus(t, resp, vulnerabilities.StaleSeverity_STALE_PROCESSING, vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING, firstDeployTag)
+	})
 }
 
 func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
@@ -1735,7 +1762,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		assert.Equal(t, int32(1), node.GetVulnerabilitySummary().High)
 	})
 
-	t.Run("brand-new image with no summary at all — has_sbom is false", func(t *testing.T) {
+	t.Run("brand-new image with no summary at all — first deploy is processing", func(t *testing.T) {
 		const neverSeenImage = "brand-new-image"
 		const neverSeenTag = "v0.1"
 
@@ -1761,7 +1788,7 @@ func TestServer_ListVulnerabilitySummaries_StaleSummary(t *testing.T) {
 		require.Len(t, resp.Nodes, 1)
 
 		node := resp.Nodes[0]
-		assertStaleStatus(t, node, vulnerabilities.StaleSeverity_STALE_PERMANENT, vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_SBOM, neverSeenTag)
+		assertStaleStatus(t, node, vulnerabilities.StaleSeverity_STALE_PROCESSING, vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING, neverSeenTag)
 		assert.False(t, node.GetVulnerabilitySummary().HasSbom, "has_sbom must be false when no summary exists")
 	})
 

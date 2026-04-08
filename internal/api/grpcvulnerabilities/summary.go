@@ -31,6 +31,16 @@ func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.Null
 
 	// A current summary cannot be up to date if we do not have an SBOM for the image.
 	if !staleSummary && !hasSbom {
+		if imageState.Valid {
+			switch imageState.ImageState {
+			case sql.ImageStateInitialized, sql.ImageStateResync, sql.ImageStateOutdated:
+				return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING}
+			case sql.ImageStateFailed:
+				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_SBOM_UPLOAD_FAILED}
+			case sql.ImageStateUntracked:
+				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("SBOM not found for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_SBOM}
+			}
+		}
 		return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("SBOM not found for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_SBOM}
 	}
 
