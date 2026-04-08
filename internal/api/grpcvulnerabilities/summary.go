@@ -53,12 +53,11 @@ func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.Null
 
 	// Default stale processing message
 	if fallbackTag != "" && fallbackTag != currentTag {
-		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed, showing data from %s", currentTag, fallbackTag)}
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("Tag %s is processing, data from %s", currentTag, fallbackTag)}
 	}
 
 	return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag)}
 }
-
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
