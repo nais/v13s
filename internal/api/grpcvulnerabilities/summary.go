@@ -21,12 +21,18 @@ type StaleResult struct {
 	Code     vulnerabilities.StaleReasonCode
 }
 
+// withFallback formats a message, optionally appending fallback tag info if present and different.
+func withFallback(msg string, currentTag, fallbackTag string) string {
+	if fallbackTag != "" && fallbackTag != currentTag {
+		return msg + fmt.Sprintf(", showing data from %s", fallbackTag)
+	}
+	return msg
+}
+
 func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.NullImageState, workloadState *sql.WorkloadState, currentTag, fallbackTag string) StaleResult {
 	if workloadState != nil && *workloadState == sql.WorkloadStateNoAttestation {
-		if fallbackTag != "" && fallbackTag != currentTag {
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no attestation found for image tag %s, showing data from %s", currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_ATTESTATION}
-		}
-		return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("no attestation found for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_ATTESTATION}
+		msg := fmt.Sprintf("no attestation found for image tag %s", currentTag)
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, withFallback(msg, currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_ATTESTATION}
 	}
 
 	// A current summary cannot be up to date if we do not have an SBOM for the image.
@@ -36,7 +42,8 @@ func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.Null
 			case sql.ImageStateInitialized, sql.ImageStateResync, sql.ImageStateOutdated:
 				return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING}
 			case sql.ImageStateFailed:
-				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_SBOM_UPLOAD_FAILED}
+				msg := fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag)
+				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, withFallback(msg, currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_SBOM_UPLOAD_FAILED}
 			case sql.ImageStateUntracked:
 				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("SBOM not found for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_NO_SBOM}
 			}
@@ -60,16 +67,14 @@ func CalculateStaleSeverity(staleSummary bool, hasSbom bool, imageState sql.Null
 			// Has fallback SBOM - fall through to processing message
 		case sql.ImageStateFailed:
 			// Failed state is permanent - show appropriate message
-			if fallbackTag != "" && fallbackTag != currentTag {
-				return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s, showing data from %s", currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_SBOM_UPLOAD_FAILED}
-			}
-			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_SBOM_UPLOAD_FAILED}
+			msg := fmt.Sprintf("failed to upload SBOM for image tag %s", currentTag)
+			return StaleResult{vulnerabilities.StaleSeverity_STALE_PERMANENT, withFallback(msg, currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_SBOM_UPLOAD_FAILED}
 		}
 	}
 
 	// Default stale processing message
 	if fallbackTag != "" && fallbackTag != currentTag {
-		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("Tag %s is processing, data from %s", currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING_WITH_FALLBACK}
+		return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("tag %s is processing, showing data from %s", currentTag, fallbackTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING_WITH_FALLBACK}
 	}
 
 	return StaleResult{vulnerabilities.StaleSeverity_STALE_PROCESSING, fmt.Sprintf("SBOM for tag %s is being processed", currentTag), vulnerabilities.StaleReasonCode_STALE_REASON_CODE_PROCESSING}
