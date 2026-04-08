@@ -133,24 +133,9 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 
 	stale := StaleResult{Severity: vulnerabilities.StaleSeverity_STALE_NONE, Reason: "SBOM is up to date"}
 	if len(vulnz) > 0 {
-		fallbackTag := ""
-		if t, ok := vulnz[0].StaleImageTag.(string); ok {
-			fallbackTag = t
-		}
+		fallbackTag := vulnz[0].StaleImageTag
 		// hasSbom is true when we have vulnerabilities data (len > 0)
-		imageState := sql.NullImageState{}
-		switch state := vulnz[0].ImageState.(type) {
-		case sql.ImageState:
-			imageState = sql.NullImageState{ImageState: state, Valid: state != ""}
-		case string:
-			if state != "" {
-				imageState = sql.NullImageState{ImageState: sql.ImageState(state), Valid: true}
-			}
-		case []byte:
-			if len(state) > 0 {
-				imageState = sql.NullImageState{ImageState: sql.ImageState(string(state)), Valid: true}
-			}
-		}
+		imageState := sql.NullImageState{ImageState: vulnz[0].ImageState, Valid: vulnz[0].ImageState != ""}
 		stale = CalculateStaleSeverity(vulnz[0].IsStale, true, imageState, nil, request.GetImageTag(), fallbackTag)
 	}
 
@@ -620,3 +605,5 @@ func toInt32Ptr(s *vulnerabilities.Severity) *int32 {
 	}
 	return new(int32(*s))
 }
+
+

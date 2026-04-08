@@ -555,100 +555,88 @@ distinct_image_vulnerabilities AS (
     AND (sqlc.narg('severity')::INT IS NULL
         OR v.severity = sqlc.narg('severity')::INT))
 SELECT
-    id,
-    image_name,
-    image_tag,
-    package,
-    cve_id,
-    latest_version,
-    created_at,
-    updated_at,
-    severity_since,
-    cvss_score,
-    cve_title,
-    cve_desc,
-    cve_link,
-    severity,
-    cve_refs AS cve_refs,
-    cve_created_at,
-    cve_updated_at,
-    COALESCE(suppressed, FALSE) AS suppressed,
-    reason,
-    reason_text,
-    suppressed_by,
-    suppressed_at,
-(
-        SELECT
-            image_tag
-        FROM
-            effective_tag) AS stale_image_tag,
-(
-        SELECT
-            image_tag
-        FROM
-            effective_tag) != @image_tag::TEXT AS is_stale,
-    COALESCE((
-            SELECT
-                i.state
-            FROM
-                images i
-            WHERE
-                i.name = @image_name
-                AND i.tag = @image_tag), 'initialized'::image_state) AS image_state,
-    COUNT(id) OVER () AS total_count
-    FROM
-        distinct_image_vulnerabilities
+    d.id,
+    d.image_name,
+    d.image_tag,
+    d.package,
+    d.cve_id,
+    d.latest_version,
+    d.created_at,
+    d.updated_at,
+    d.severity_since,
+    d.cvss_score,
+    d.cve_title,
+    d.cve_desc,
+    d.cve_link,
+    d.severity,
+    d.cve_refs AS cve_refs,
+    d.cve_created_at,
+    d.cve_updated_at,
+    COALESCE(d.suppressed, FALSE) AS suppressed,
+    d.reason,
+    d.reason_text,
+    d.suppressed_by,
+    d.suppressed_at,
+    et.image_tag::TEXT AS stale_image_tag,
+    et.image_tag != @image_tag::TEXT AS is_stale,
+    COALESCE(i.state, 'initialized'::image_state) AS image_state,
+    COUNT(d.id) OVER () AS total_count
+FROM
+    distinct_image_vulnerabilities d
+    CROSS JOIN effective_tag et
+    LEFT JOIN images i ON i.name = @image_name
+        AND i.tag = @image_tag
     ORDER BY
         CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
-            severity
+            d.severity
         END ASC,
         CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN
-            severity
+            d.severity
         END DESC,
         CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN
-            severity_since
+            d.severity_since
         END ASC,
         CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN
-            severity_since
+            d.severity_since
         END DESC,
         CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN
-            package
+            d.package
         END ASC,
         CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN
-            package
+            d.package
         END DESC,
         CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
-            cve_id
+            d.cve_id
         END ASC,
         CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
-            cve_id
+            d.cve_id
         END DESC,
         CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN
-            COALESCE(suppressed, FALSE)
+            COALESCE(d.suppressed, FALSE)
         END ASC,
     CASE WHEN sqlc.narg('order_by') = 'suppressed_desc' THEN
-        COALESCE(suppressed, FALSE)
+        COALESCE(d.suppressed, FALSE)
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'reason_asc' THEN
-        reason
+        d.reason
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'reason_desc' THEN
-        reason
+        d.reason
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'created_at_asc' THEN
-        created_at
+        d.created_at
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'created_at_desc' THEN
-        created_at
+        d.created_at
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'updated_at_asc' THEN
-        updated_at
+        d.updated_at
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN
-        updated_at
+        d.updated_at
     END DESC,
-    severity,
-    id ASC
+    d.severity,
+    d.id ASC
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');
 
