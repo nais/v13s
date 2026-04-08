@@ -51,9 +51,11 @@ ON CONFLICT ON CONSTRAINT workload_id
         workloads.state = 'failed'
         OR workloads.state = 'resync'
         -- Only retry unrecoverable workloads when image changes (new deployment)
-        OR (workloads.state = 'unrecoverable' AND (
-            workloads.image_name != @image_name
-            OR workloads.image_tag != @image_tag))
+        OR (
+            workloads.state = 'unrecoverable'
+            AND (
+                workloads.image_name != @image_name
+                OR workloads.image_tag != @image_tag))
         OR (
             workloads.image_name != @image_name
             OR workloads.image_tag != @image_tag)

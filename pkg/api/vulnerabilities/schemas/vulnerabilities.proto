@@ -145,12 +145,24 @@ enum StaleSeverity {
   STALE_PERMANENT = 2;
 }
 
+// StaleReasonCode is a stable machine-readable reason for stale data.
+enum StaleReasonCode {
+  STALE_REASON_CODE_UNSPECIFIED = 0;
+  STALE_REASON_CODE_UP_TO_DATE = 1;
+  STALE_REASON_CODE_PROCESSING = 2;
+  STALE_REASON_CODE_PROCESSING_WITH_FALLBACK = 3;
+  STALE_REASON_CODE_NO_SBOM = 4;
+  STALE_REASON_CODE_SBOM_UPLOAD_FAILED = 5;
+  STALE_REASON_CODE_NO_ATTESTATION = 6;
+}
+
 message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
   StaleSeverity stale_severity = 4;
   string stale_reason = 5;
+  StaleReasonCode stale_reason_code = 6;
 }
 
 message WorkloadFix {
@@ -222,6 +234,7 @@ message ListVulnerabilitiesForImageResponse {
   PageInfo page_info = 2;
   StaleSeverity stale_severity = 4;
   string stale_reason = 5;
+  StaleReasonCode stale_reason_code = 6;
 }
 
 message ListVulnerabilitySummariesRequest {
@@ -332,6 +345,7 @@ message GetVulnerabilitySummaryForImageResponse {
   repeated Workload workloadRef = 2;
   StaleSeverity stale_severity = 4;
   string stale_reason = 5;
+  StaleReasonCode stale_reason_code = 6;
 }
 
 message GetVulnerabilitySummaryRequest {

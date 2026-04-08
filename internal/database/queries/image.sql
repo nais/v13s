@@ -7,7 +7,7 @@ VALUES (
     @name,
     @tag,
     COALESCE(
-        @metadata, '{}' ::jsonb))
+        @metadata, '{}' ::JSONB))
 ON CONFLICT
     DO NOTHING;
 
@@ -15,7 +15,7 @@ ON CONFLICT
 UPDATE
     images
 SET
-    metadata = COALESCE(@metadata, '{}'::jsonb),
+    metadata = COALESCE(@metadata, '{}'::JSONB),
     updated_at = NOW()
 WHERE
     name = @name

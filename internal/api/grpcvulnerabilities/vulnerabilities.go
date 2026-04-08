@@ -182,10 +182,11 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:         nodes,
-		PageInfo:      pageInfo,
-		StaleSeverity: stale.Severity,
-		StaleReason:   stale.Reason,
+		Nodes:           nodes,
+		PageInfo:        pageInfo,
+		StaleSeverity:   stale.Severity,
+		StaleReason:     stale.Reason,
+		StaleReasonCode: stale.Code,
 	}, nil
 }
 

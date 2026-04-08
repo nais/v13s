@@ -509,4 +509,3 @@ func TestInitializeWorkload_UnrecoverableState(t *testing.T) {
 		assert.Equal(t, sql.WorkloadStateProcessing, workload.State)
 	})
 }
-
