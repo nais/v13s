@@ -104,7 +104,7 @@ func safeIntToInt32(n int) (int32, error) {
 
 func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
 	db := sql.New(pool)
-	wTypes := []string{"app", "job", "deployment"}
+	wTypes := []string{"app", "job", "deployment", "platform"}
 
 	const pageSize = 300
 	offset := int32(0)
