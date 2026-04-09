@@ -25,7 +25,7 @@ const (
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
 	ImageMarkAge                                       = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
-	ResyncImagesOlderThanMinutesDefault = 60 * 4 * time.Minute
+	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
 )
 
 type Updater struct {
