@@ -401,7 +401,6 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		// Set ReadyForResyncAt to 5 minutes ago
 		readyAt := time.Now().Add(-manager.FinalizeAttestationResync)
 		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
