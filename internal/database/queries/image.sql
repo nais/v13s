@@ -71,7 +71,15 @@ SET
     updated_at = NOW()
 WHERE
     state = ANY (@included_states::image_state[])
-    AND updated_at < @threshold_time;
+    AND updated_at < @threshold_time
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag);
 
 -- name: MarkUnusedImages :execrows
 UPDATE

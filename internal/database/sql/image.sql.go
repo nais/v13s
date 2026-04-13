@@ -161,6 +161,14 @@ SET
 WHERE
     state = ANY ($1::image_state[])
     AND updated_at < $2
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag)
 `
 
 type MarkImagesAsUntrackedParams struct {

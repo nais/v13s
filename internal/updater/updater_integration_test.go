@@ -294,6 +294,38 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateUntracked, image.State)
 	})
 
+	t.Run("images older than threshold without workloads should not be marked as untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		// insert an image with no associated workload
+		orphanImage := "orphan-image"
+		orphanTag := "v1"
+		err = db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     orphanImage,
+			Tag:      orphanTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// set to initialized state, older than threshold
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state=$1, updated_at=$2 WHERE name=$3 AND tag=$4",
+			sql.ImageStateInitialized, time.Now().UTC().Add(-1*time.Hour), orphanImage, orphanTag)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.MarkImagesAsUntracked(ctx)
+		assert.NoError(t, err)
+
+		// image without a workload must NOT become untracked — MarkUnusedImages handles that
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: orphanImage, Tag: orphanTag})
+		assert.NoError(t, err)
+		assert.NotEqual(t, sql.ImageStateUntracked, image.State, "image without workload should not be marked untracked")
+		assert.Equal(t, sql.ImageStateInitialized, image.State, "image without workload should remain initialized")
+	})
+
 	t.Run("images older than threshold without workloads should be marked as unused", func(t *testing.T) {
 		err := db.ResetDatabase(ctx)
 		assert.NoError(t, err)
