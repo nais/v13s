@@ -203,7 +203,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Has SBOM", "Stale", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag")
 			headers = append(headers, "Last Updated")
@@ -220,6 +220,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
 				n.GetVulnerabilitySummary().GetHasSbom(),
+				n.GetVulnerabilitySummary().GetStaleSummary(),
 				n.GetVulnerabilitySummary().GetCritical(),
 				n.GetVulnerabilitySummary().GetHigh(),
 				n.GetVulnerabilitySummary().GetMedium(),
