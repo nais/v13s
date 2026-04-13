@@ -44,7 +44,7 @@ func recordStatusOutput(ctx context.Context, status JobStatus) {
 }
 
 func recordStructuredOutput(ctx context.Context, out JobOutput) {
-	if out.Status == "" && out.Event == "" && out.Decision == "" && len(out.Details) == 0 {
+	if out.Status == "" && out.Event == "" && out.Decision == "" && out.Retryable == nil && len(out.Details) == 0 {
 		logrus.Warn("recordStructuredOutput called with no status, event, decision, or details")
 	}
 	err := river.RecordOutput(ctx, out)
