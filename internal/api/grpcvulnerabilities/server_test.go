@@ -533,7 +533,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
@@ -554,6 +554,48 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, "app", resp.Nodes[0].GetWorkload().Type, "app")
 		assert.Equal(t, "image-cluster-1-namespace-1-workload-1", resp.Nodes[0].GetWorkload().ImageName, "image-cluster-1-namespace-1-workload-1")
 		assert.Equal(t, "v1.0", resp.Nodes[0].GetWorkload().ImageTag, "v1.0")
+		assert.False(t, resp.Nodes[0].GetVulnerabilitySummary().GetStaleSummary())
+	})
+
+	t.Run("list summaries marks stale_summary when using fallback tag summary", func(t *testing.T) {
+		const (
+			imageName = "fallback-list-image"
+			oldTag    = "v1.0"
+			newTag    = "v2.0"
+		)
+
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: oldTag, Metadata: map[string]string{}}))
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}}))
+
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "fallback-list-workload",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     newTag,
+		})
+		require.NoError(t, err)
+
+		db.BatchUpsertVulnerabilitySummary(ctx, []sql.BatchUpsertVulnerabilitySummaryParams{{
+			ImageName:  imageName,
+			ImageTag:   oldTag,
+			Critical:   1,
+			High:       0,
+			Medium:     0,
+			Low:        0,
+			Unassigned: 0,
+			RiskScore:  10,
+		}}).Exec(func(i int, err error) {
+			require.NoError(t, err)
+		})
+
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.WorkloadFilter("fallback-list-workload"))
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+		assert.True(t, resp.Nodes[0].GetVulnerabilitySummary().GetHasSbom())
+		assert.True(t, resp.Nodes[0].GetVulnerabilitySummary().GetStaleSummary())
+		assert.Equal(t, int32(1), resp.Nodes[0].GetVulnerabilitySummary().GetCritical())
 	})
 }
 
@@ -1004,7 +1046,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
@@ -1016,6 +1058,55 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
+		assert.False(t, resp.GetVulnerabilitySummary().GetStaleSummary())
+	})
+
+	t.Run("falls back to latest summary for same image name when current tag has no summary", func(t *testing.T) {
+		const (
+			imageName = "fallback-image"
+			oldTag    = "v1.0"
+			newTag    = "v2.0"
+		)
+
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: oldTag, Metadata: map[string]string{}}))
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}}))
+
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "fallback-workload",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     newTag,
+		})
+		require.NoError(t, err)
+
+		db.BatchUpsertVulnerabilitySummary(ctx, []sql.BatchUpsertVulnerabilitySummaryParams{{
+			ImageName:  imageName,
+			ImageTag:   oldTag,
+			Critical:   2,
+			High:       1,
+			Medium:     0,
+			Low:        0,
+			Unassigned: 0,
+			RiskScore:  25,
+		}}).Exec(func(i int, err error) {
+			require.NoError(t, err)
+		})
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+		require.NotNil(t, resp.GetVulnerabilitySummary())
+
+		assert.True(t, resp.GetVulnerabilitySummary().GetHasSbom())
+		assert.Equal(t, int32(2), resp.GetVulnerabilitySummary().GetCritical())
+		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHigh())
+		assert.Equal(t, int32(25), resp.GetVulnerabilitySummary().GetRiskScore())
+		assert.Equal(t, int32(3), resp.GetVulnerabilitySummary().GetTotal())
+		assert.True(t, resp.GetVulnerabilitySummary().GetStaleSummary())
+
+		require.Len(t, resp.GetWorkloadRef(), 1)
+		assert.Equal(t, newTag, resp.GetWorkloadRef()[0].GetImageTag())
 	})
 }
 

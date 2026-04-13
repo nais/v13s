@@ -64,48 +64,63 @@ WITH filtered_workloads AS (
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
 ),
+latest_summaries AS (
+    SELECT DISTINCT ON (vs.image_name)
+        vs.*
+    FROM
+        vulnerability_summary vs
+    WHERE (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
+        OR vs.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
+    ORDER BY
+        vs.image_name,
+        vs.updated_at DESC
+),
 vulnerability_data AS (
     SELECT
-        v.id,
+        COALESCE(vs_current.id, vs_fallback.id) AS id,
         w.name AS workload_name,
         w.workload_type,
         w.namespace,
         w.cluster,
         w.image_name AS current_image_name,
         w.image_tag AS current_image_tag,
-        v.image_name,
-        v.image_tag,
-        v.critical,
-        v.high,
-        v.medium,
-        v.low,
-        v.unassigned,
-        v.risk_score,
+        COALESCE(vs_current.image_name, vs_fallback.image_name, '') AS image_name,
+        COALESCE(vs_current.image_tag, vs_fallback.image_tag, '') AS image_tag,
+        COALESCE(vs_current.critical, vs_fallback.critical, 0) AS critical,
+        COALESCE(vs_current.high, vs_fallback.high, 0) AS high,
+        COALESCE(vs_current.medium, vs_fallback.medium, 0) AS medium,
+        COALESCE(vs_current.low, vs_fallback.low, 0) AS low,
+        COALESCE(vs_current.unassigned, vs_fallback.unassigned, 0) AS unassigned,
+        COALESCE(vs_current.risk_score, vs_fallback.risk_score, 0) AS risk_score,
         w.created_at AS workload_created_at,
         w.updated_at AS workload_updated_at,
-        v.created_at AS summary_created_at,
-        v.updated_at AS summary_updated_at,
-        CASE WHEN v.image_name IS NOT NULL THEN
+        COALESCE(vs_current.created_at, vs_fallback.created_at) AS summary_created_at,
+        COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS summary_updated_at,
+        CASE WHEN vs_current.id IS NOT NULL
+            OR vs_fallback.id IS NOT NULL THEN
             TRUE
         ELSE
             FALSE
-        END AS has_sbom
+        END AS has_sbom,
+        CASE WHEN vs_current.id IS NULL
+            AND vs_fallback.id IS NOT NULL THEN
+            TRUE
+        ELSE
+            FALSE
+        END AS stale_summary
     FROM
         filtered_workloads w
-        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
-            AND (
-                -- If no since join on image_tag, if since is set ignore image_tag
-                CASE WHEN sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL THEN
-                    w.image_tag = v.image_tag
-                ELSE
-                    TRUE
-                END)
+        LEFT JOIN vulnerability_summary vs_current ON w.image_name = vs_current.image_name
+            AND w.image_tag = vs_current.image_tag
+            AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
+                OR vs_current.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
+        LEFT JOIN latest_summaries vs_fallback ON w.image_name = vs_fallback.image_name
     WHERE (sqlc.narg('image_name')::TEXT IS NULL
-        OR v.image_name = sqlc.narg('image_name')::TEXT)
+        OR COALESCE(vs_current.image_name, vs_fallback.image_name) = sqlc.narg('image_name')::TEXT)
     AND (sqlc.narg('image_tag')::TEXT IS NULL
-        OR v.image_tag = sqlc.narg('image_tag')::TEXT)
+        OR COALESCE(vs_current.image_tag, vs_fallback.image_tag) = sqlc.narg('image_tag')::TEXT)
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
-        OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE))
+        OR COALESCE(vs_current.updated_at, vs_fallback.updated_at) > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE))
 SELECT
     *,
 (
@@ -190,23 +205,35 @@ WITH filtered_workloads AS (
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
-        OR w.name = sqlc.narg('workload_name')::TEXT))
+        OR w.name = sqlc.narg('workload_name')::TEXT)
+),
+latest_summaries AS (
+    SELECT DISTINCT ON (vs.image_name)
+        vs.*
+    FROM
+        vulnerability_summary vs
+    ORDER BY
+        vs.image_name,
+        vs.updated_at DESC
+)
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN
+    CAST(COUNT(DISTINCT CASE WHEN vs_current.image_name IS NOT NULL
+                OR vs_fallback.image_name IS NOT NULL THEN
                 fw.id
             END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS risk_score,
-    MAX(v.updated_at)::TIMESTAMPTZ AS updated_at
+    CAST(COALESCE(SUM(COALESCE(vs_current.critical, vs_fallback.critical, 0)), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(COALESCE(vs_current.high, vs_fallback.high, 0)), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(COALESCE(vs_current.medium, vs_fallback.medium, 0)), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(COALESCE(vs_current.low, vs_fallback.low, 0)), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(COALESCE(vs_current.unassigned, vs_fallback.unassigned, 0)), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(COALESCE(vs_current.risk_score, vs_fallback.risk_score, 0)), 0) AS INT4) AS risk_score,
+    MAX(COALESCE(vs_current.updated_at, vs_fallback.updated_at))::TIMESTAMPTZ AS updated_at
 FROM
     filtered_workloads fw
-    LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
-        AND fw.image_tag = v.image_tag;
+    LEFT JOIN vulnerability_summary vs_current ON fw.image_name = vs_current.image_name
+        AND fw.image_tag = vs_current.image_tag
+    LEFT JOIN latest_summaries vs_fallback ON fw.image_name = vs_fallback.image_name;
 
 -- name: GetVulnerabilitySummaryTimeSeries :many
 SELECT
@@ -241,13 +268,48 @@ ORDER BY
 REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_summary_daily_by_workload;
 
 -- name: GetVulnerabilitySummaryForImage :one
+WITH latest_summary AS (
+    SELECT DISTINCT ON (image_name)
+        *
+    FROM
+        vulnerability_summary
+    WHERE
+        image_name = @image_name
+    ORDER BY
+        image_name,
+        updated_at DESC
+)
 SELECT
-    *
-FROM
-    vulnerability_summary
-WHERE
-    image_name = @image_name
-    AND image_tag = @image_tag;
+    COALESCE(vs_current.id, vs_fallback.id) AS id,
+    COALESCE(vs_current.image_name, vs_fallback.image_name, @image_name::TEXT) AS image_name,
+    COALESCE(vs_current.image_tag, vs_fallback.image_tag, '') AS image_tag,
+    COALESCE(vs_current.critical, vs_fallback.critical, 0) AS critical,
+    COALESCE(vs_current.high, vs_fallback.high, 0) AS high,
+    COALESCE(vs_current.medium, vs_fallback.medium, 0) AS medium,
+    COALESCE(vs_current.low, vs_fallback.low, 0) AS low,
+    COALESCE(vs_current.unassigned, vs_fallback.unassigned, 0) AS unassigned,
+    COALESCE(vs_current.risk_score, vs_fallback.risk_score, 0) AS risk_score,
+    COALESCE(vs_current.created_at, vs_fallback.created_at) AS created_at,
+    COALESCE(vs_current.updated_at, vs_fallback.updated_at) AS updated_at,
+    CASE WHEN vs_current.id IS NOT NULL
+        OR vs_fallback.id IS NOT NULL THEN
+        TRUE
+    ELSE
+        FALSE
+    END AS has_sbom,
+    CASE WHEN vs_current.id IS NULL
+        AND vs_fallback.id IS NOT NULL THEN
+        TRUE
+    ELSE
+        FALSE
+    END AS is_summary_stale
+FROM (
+    SELECT
+        @image_name::TEXT AS image_name,
+        @image_tag::TEXT AS image_tag) AS req
+    LEFT JOIN vulnerability_summary vs_current ON vs_current.image_name = req.image_name
+        AND vs_current.image_tag = req.image_tag
+    LEFT JOIN latest_summary vs_fallback ON vs_fallback.image_name = req.image_name;
 
 -- name: GetLastSnapshotDateForVulnerabilitySummary :one
 SELECT
