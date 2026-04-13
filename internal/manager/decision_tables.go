@@ -16,6 +16,7 @@ type Event string
 
 // lookupDecision returns the decision for an event or a descriptive error if the
 // table is missing that event. Workers decide whether that error should cancel
+// the job or be returned for retry.
 func lookupDecision[T any](table map[Event]T, event Event, tableName string) (T, error) {
 	decision, ok := table[event]
 	if ok {
