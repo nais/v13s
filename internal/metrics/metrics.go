@@ -114,7 +114,6 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 	const pageSize = 300
 	offset := int32(0)
 
-
 	rows := make([]metricRow, 0, pageSize)
 
 	for {
@@ -140,20 +139,20 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 		for _, row := range summaries {
 			rows = append(rows, metricRow{
 				workload: sql.ListWorkloadsByImageRow{
-					Cluster:   row.Cluster,
-					Namespace: row.Namespace,
-					Name:      row.WorkloadName,
+					Cluster:      row.Cluster,
+					Namespace:    row.Namespace,
+					Name:         row.WorkloadName,
 					WorkloadType: row.WorkloadType,
-					ImageName: row.CurrentImageName,
-					ImageTag:  row.CurrentImageTag,
+					ImageName:    row.CurrentImageName,
+					ImageTag:     row.CurrentImageTag,
 				},
 				summary: sources.VulnerabilitySummary{
-				Critical:   safeInt(row.Critical),
-				High:       safeInt(row.High),
-				Medium:     safeInt(row.Medium),
-				Low:        safeInt(row.Low),
-				Unassigned: safeInt(row.Unassigned),
-				RiskScore:  safeInt(row.RiskScore),
+					Critical:   safeInt(row.Critical),
+					High:       safeInt(row.High),
+					Medium:     safeInt(row.Medium),
+					Low:        safeInt(row.Low),
+					Unassigned: safeInt(row.Unassigned),
+					RiskScore:  safeInt(row.RiskScore),
 				},
 			})
 		}

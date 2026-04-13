@@ -72,7 +72,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}()
 
-	if err = metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-push")); err != nil {
+	if err = metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-load")); err != nil {
 		log.WithError(err).Error("failed to load metrics from DB")
 	}
 

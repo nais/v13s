@@ -69,6 +69,6 @@ func (r *RemoveFromSourceWorker) Work(ctx context.Context, job *river.Job[Remove
 		return handleJobErr(err)
 	}
 
-	recordOutput(ctx, JobStatusSourceRefDeleted)
+	recordStatusOutput(ctx, JobStatusSourceRefDeleted)
 	return nil
 }

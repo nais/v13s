@@ -64,8 +64,8 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			recordOutput(ctx, JobStatusInitializeWorkloadSkipped)
-			a.log.WithField("workload", workload).Debug("workload already initialized, skipping")
+			recordStatusOutput(ctx, JobStatusInitializeWorkloadSkipped)
+			// a.log.WithField("workload", workload).Debug("workload already initialized, skipping")
 			return nil
 		}
 
@@ -92,6 +92,6 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	if err != nil {
 		return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
 	}
-	recordOutput(ctx, JobStatusUpdated)
+	recordStatusOutput(ctx, JobStatusUpdated)
 	return nil
 }
