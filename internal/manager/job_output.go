@@ -39,7 +39,7 @@ func recordStatusOutput(ctx context.Context, status JobStatus) {
 		Status: status,
 	})
 	if err != nil {
-		logrus.Error("failed to record job output: %w", err)
+		logrus.WithError(err).Error("failed to record job output")
 	}
 }
 

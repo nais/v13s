@@ -27,6 +27,10 @@ func lookupDecision[T any](table map[Event]T, event Event, tableName string) (T,
 	return zero, fmt.Errorf("no %s decision defined for event %q: this is a bug", tableName, event)
 }
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 const (
 	// get_attestation events
 	EventAttestationFound       Event = "attestation_found"
@@ -68,16 +72,16 @@ var getAttestationDecisions = map[Event]Decision{
 	// No matching attestations: mark the workload/image, then let River retry
 	// according to the get_attestation job's MaxAttempts.
 	EventNoMatchingAttestations: {
-		WorkloadState: new(sql.WorkloadStateNoAttestation),
-		ImageState:    new(sql.ImageStateFailed),
+		WorkloadState: ptr(sql.WorkloadStateNoAttestation),
+		ImageState:    ptr(sql.ImageStateFailed),
 		JobStatus:     JobStatusNoAttestation,
 	},
 
 	// Unrecoverable error (e.g. 4xx from registry, invalid image ref).
 	// Mark the workload/image and tell River to stop retrying.
 	EventUnrecoverable: {
-		WorkloadState: new(sql.WorkloadStateUnrecoverable),
-		ImageState:    new(sql.ImageStateFailed),
+		WorkloadState: ptr(sql.WorkloadStateUnrecoverable),
+		ImageState:    ptr(sql.ImageStateFailed),
 		JobStatus:     JobStatusUnrecoverable,
 		CancelJob:     true,
 	},

@@ -84,9 +84,9 @@ func TestGetAttestationDecisions_Completeness(t *testing.T) {
 }
 
 func TestGetAttestationDecisions_Correctness(t *testing.T) {
-	noAttest := new(sql.WorkloadStateNoAttestation)
-	unrecov := new(sql.WorkloadStateUnrecoverable)
-	failed := new(sql.ImageStateFailed)
+	noAttest := ptr(sql.WorkloadStateNoAttestation)
+	unrecov := ptr(sql.WorkloadStateUnrecoverable)
+	failed := ptr(sql.ImageStateFailed)
 
 	tests := []struct {
 		event             Event
