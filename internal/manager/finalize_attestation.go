@@ -51,7 +51,9 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 
-	if job.Args.ProcessToken == "" {
+	processToken := job.Args.ProcessToken
+
+	if processToken == "" {
 		f.log.WithFields(logrus.Fields{
 			"image": imageName,
 			"tag":   imageTag,
@@ -59,13 +61,18 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	}
 
 	// 1. Check whether external processing is complete.
-	inProgress, err := f.source.IsTaskInProgress(ctx, job.Args.ProcessToken)
-	if err != nil {
-		return fmt.Errorf("failed to check task progress: %w", err)
+	// Empty tokens are treated as complete to avoid source-specific parse errors
+	// (e.g. dependencytrack expects UUID process tokens).
+	event := EventTaskComplete
+	if processToken != "" {
+		inProgress, err := f.source.IsTaskInProgress(ctx, processToken)
+		if err != nil {
+			return fmt.Errorf("failed to check task progress: %w", err)
+		}
+		event = classifyFinalizeEvent(inProgress)
 	}
 
 	// 2. Translate the progress check into a decision.
-	event := classifyFinalizeEvent(inProgress)
 	decision, lookupErr := lookupDecision(finalizeDecisions, event, "finalize_attestation")
 	if lookupErr != nil {
 		return river.JobCancel(lookupErr)
