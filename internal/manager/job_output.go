@@ -10,7 +10,11 @@ import (
 )
 
 type JobOutput struct {
-	Status JobStatus `json:"status"`
+	Status    JobStatus         `json:"status"`
+	Event     string            `json:"event,omitempty"`     // domain event that triggered the decision
+	Decision  string            `json:"decision,omitempty"`  // what was decided (retry, cancel, upload, mark_resync, etc)
+	Retryable *bool             `json:"retryable,omitempty"` // whether the job will be retried
+	Details   map[string]string `json:"details,omitempty"`   // context: image, tag, token_present, etc
 }
 
 type JobStatus = string
@@ -30,12 +34,22 @@ const (
 	JobStatusSourceRefDeleted           JobStatus = "source_ref_deleted"
 )
 
-func recordOutput(ctx context.Context, status JobStatus) {
+func recordStatusOutput(ctx context.Context, status JobStatus) {
 	err := river.RecordOutput(ctx, JobOutput{
 		Status: status,
 	})
 	if err != nil {
 		logrus.Error("failed to record job output: %w", err)
+	}
+}
+
+func recordStructuredOutput(ctx context.Context, out JobOutput) {
+	if out.Status == "" && out.Event == "" && out.Decision == "" && len(out.Details) == 0 {
+		logrus.Warn("recordStructuredOutput called with no status, event, decision, or details")
+	}
+	err := river.RecordOutput(ctx, out)
+	if err != nil {
+		logrus.WithError(err).Error("failed to record structured job output")
 	}
 }
 

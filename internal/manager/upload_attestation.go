@@ -56,50 +56,29 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	ctx, span := otel.Tracer("v13s/upload-attestation").Start(ctx, "UploadAttestationWorker")
 	defer span.End()
 
-	span.SetAttributes(
-		attribute.String("image.name", job.Args.ImageName),
-		attribute.String("image.tag", job.Args.ImageTag),
-		attribute.String("workload.id", job.Args.WorkloadId.String()),
-	)
-
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
 
-	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
-		ImageName:  imageName,
-		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
-	})
+	span.SetAttributes(
+		attribute.String("image.name", imageName),
+		attribute.String("image.tag", imageTag),
+		attribute.String("workload.id", job.Args.WorkloadId.String()),
+	)
 
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("failed to check source ref: %w", err)
+	// 1. Check source-ref state and classify the result.
+	sourceRefFound, projectExists, err := u.checkSourceRef(ctx, imageName, imageTag)
+	if err != nil {
+		return err // recoverable; River retries
 	}
 
-	if err == nil {
-		// sourceRef exists → check if the project actually exists
-		exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
-		if err != nil {
-			return fmt.Errorf("failed to verify project existence: %w", err)
-		}
-		if exists {
-			err = u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
-				Name:  imageName,
-				Tag:   imageTag,
-				State: sql.ImageStateResync,
-				ReadyForResyncAt: pgtype.Timestamptz{
-					Time:  time.Now(),
-					Valid: true,
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("failed to update image state: %w", err)
-			}
+	sourceRefEvent := classifySourceRefEvent(sourceRefFound, projectExists)
+	sourceRefDecision, lookupErr := lookupDecision(sourceRefDecisions, sourceRefEvent, "upload_attestation source_ref")
+	if lookupErr != nil {
+		return river.JobCancel(lookupErr)
+	}
 
-			recordOutput(ctx, JobStatusSourceRefExists)
-			return nil
-		}
-
-		// project does not exist → delete stale sourceRef
+	// 2. Apply source-ref decision side effects.
+	if sourceRefDecision.DeleteStale {
 		if err := u.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
 			ImageName:  imageName,
 			ImageTag:   imageTag,
@@ -113,54 +92,103 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		}).Warn("deleted stale sourceRef; will attempt to create new project")
 	}
 
+	if sourceRefDecision.ResyncAndReturn {
+		if err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateResync,
+			ReadyForResyncAt: pgtype.Timestamptz{
+				Time:  time.Now(),
+				Valid: true,
+			},
+		}); err != nil {
+			return fmt.Errorf("failed to update image state: %w", err)
+		}
+		recordStructuredOutput(ctx, JobOutput{
+			Status:   sourceRefDecision.JobStatus,
+			Event:    string(sourceRefEvent),
+			Decision: "resync_and_return",
+			Details: map[string]string{
+				"image": imageName,
+				"tag":   imageTag,
+			},
+		})
+		return nil
+	}
+
+	// 3. Decompress the attestation payload.
 	att, err := attestation.Decompress(job.Args.Attestation)
 	if err != nil {
 		return fmt.Errorf("failed to decompress attestation: %w", err)
 	}
 
-	// Upload attestation and create new sourceRef
+	// 4. Upload attestation to the source.
+	// TODO: consider a table to track persistent upload failures for team alerting.
 	uploadRes, upErr := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
 	if upErr != nil {
 		span.RecordError(upErr)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
-		// TODO: consider creating a table to track sbom upload failures
-		// can be used to alert teams of persistent upload failures
-		// now we just delete the dangling project and try again
 		return handleJobErr(upErr)
 	}
 
-	err = u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
-		SourceID: pgtype.UUID{
-			Bytes: uploadRes.AttestationId,
-			Valid: true,
+	// 5. Persist upload results.
+	if err := u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
+		SourceID:   pgtype.UUID{Bytes: uploadRes.AttestationId, Valid: true},
+		ImageName:  imageName,
+		ImageTag:   imageTag,
+		SourceType: u.source.Name(),
+	}); err != nil {
+		return err
+	}
+
+	if err := u.db.UpdateImage(ctx, sql.UpdateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: att.Metadata,
+	}); err != nil {
+		return fmt.Errorf("failed to update image metadata: %w", err)
+	}
+
+	// 6. Enqueue the finalize job.
+	if err := u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+		ProcessToken: uploadRes.ProcessToken,
+	}); err != nil {
+		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
+	}
+
+	recordStructuredOutput(ctx, JobOutput{
+		Status:   JobStatusAttestationUploaded,
+		Event:    string(sourceRefEvent),
+		Decision: "upload_and_enqueue_finalize",
+		Details: map[string]string{
+			"image":                imageName,
+			"tag":                  imageTag,
+			"process_token_exists": fmt.Sprint(uploadRes.ProcessToken != ""),
 		},
+	})
+	return nil
+}
+
+// checkSourceRef looks up an existing source ref for the image and checks whether
+// its upstream project is still alive. Returns (found, projectExists, error).
+func (u *UploadAttestationWorker) checkSourceRef(ctx context.Context, imageName, imageTag string) (found bool, projectExists bool, err error) {
+	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,
 		SourceType: u.source.Name(),
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, nil
+	}
 	if err != nil {
-		return err
+		return false, false, fmt.Errorf("failed to check source ref: %w", err)
 	}
 
-	err = u.db.UpdateImage(ctx, sql.UpdateImageParams{
-		Name:     imageName,
-		Tag:      imageTag,
-		Metadata: att.Metadata,
-	})
+	exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
 	if err != nil {
-		return fmt.Errorf("failed to set ReadyForResyncAt: %w", err)
+		return true, false, fmt.Errorf("failed to verify project existence: %w", err)
 	}
-
-	// enqueue finalize job
-	err = u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
-		ImageName:    imageName,
-		ImageTag:     imageTag,
-		ProcessToken: uploadRes.ProcessToken,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
-	}
-
-	recordOutput(ctx, JobStatusAttestationUploaded)
-	return nil
+	return true, exists, nil
 }

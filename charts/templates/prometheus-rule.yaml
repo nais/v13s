@@ -54,5 +54,8 @@ spec:
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Potential security risk; workload may be exploitable
             action: |
-              Check vulnerabilities in Salsa. Consider patching or redeploying the affected workload.
+              1. Visit Salsa and filter workloads by "nais.io/nais" with CRITICAL vulnerabilities
+              2. Prioritize by criticality of CVEs per workload
+              3. Check for available patches and update images
+              4. Redeploy affected workloads
 {{- end }}

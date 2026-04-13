@@ -9,7 +9,6 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
@@ -36,33 +35,35 @@ func (u DeleteWorkloadJob) InsertOpts() river.InsertOpts {
 }
 
 type DeleteWorkloadWorker struct {
-	db     sql.Querier
-	source sources.Source
-	log    logrus.FieldLogger
+	db  sql.Querier
+	log logrus.FieldLogger
 	river.WorkerDefaults[DeleteWorkloadJob]
 	jobClient job.Client
 }
 
 func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWorkloadJob]) error {
-	w := job.Args.Workload
-	d.log.WithField("workload", w).Debug("deleting workload")
+	workload := job.Args.Workload
+	d.log.WithField("workload", workload).Debug("deleting workload")
+
+	// Remove the workload row first.
 	_, err := d.db.DeleteWorkload(ctx, sql.DeleteWorkloadParams{
-		Name:         w.Name,
-		Cluster:      w.Cluster,
-		Namespace:    w.Namespace,
-		WorkloadType: string(w.Type),
+		Name:         workload.Name,
+		Cluster:      workload.Cluster,
+		Namespace:    workload.Namespace,
+		WorkloadType: string(workload.Type),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			recordOutput(ctx, JobStatusSourceRefDeleteSkipped)
+			recordStatusOutput(ctx, JobStatusSourceRefDeleteSkipped)
 			return nil
 		}
 		return err
 	}
 
+	// If this image is no longer referenced by any workload, schedule source cleanup.
 	rows, err := d.db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
-		ImageName: w.ImageName,
-		ImageTag:  w.ImageTag,
+		ImageName: workload.ImageName,
+		ImageTag:  workload.ImageTag,
 	})
 	if err != nil {
 		return err
@@ -70,16 +71,16 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 
 	if len(rows) == 0 {
 		err = d.jobClient.AddJob(ctx, &RemoveFromSourceJob{
-			ImageName: w.ImageName,
-			ImageTag:  w.ImageTag,
+			ImageName: workload.ImageName,
+			ImageTag:  workload.ImageTag,
 		})
 		if err != nil {
 			d.log.WithError(err).Error("failed to add remove from source job")
 			return err
 		}
-		recordOutput(ctx, JobStatusImageRemovedFromSource)
+		recordStatusOutput(ctx, JobStatusImageRemovedFromSource)
 	} else {
-		recordOutput(ctx, JobStatusImageStillInUse)
+		recordStatusOutput(ctx, JobStatusImageStillInUse)
 	}
 	return nil
 }
