@@ -634,13 +634,6 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 	return fmt.Sprintf("%s_%s", field.String(), direction)
 }
 
-func safeInt(val *int32) int32 {
-	if val == nil {
-		return 0
-	}
-	return *val
-}
-
 func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {
 	var suppression *vulnerabilities.Suppression
 	if suppressReason.Valid() {
