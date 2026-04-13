@@ -76,6 +76,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.WithError(err).Error("failed to load metrics from DB")
 	}
 
+	metrics.StartWorkloadMetricsRefresher(
+		ctx,
+		pool,
+		cfg.Metrics.WorkloadMetricsRefreshDuration,
+		log.WithField("subsystem", "metrics-refresh"),
+	)
+
 	if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
 		metrics.PushOnce(cfg.Metrics, promReg, log)
 		metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)

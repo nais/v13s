@@ -10,7 +10,7 @@ const (
 	Namespace = "v13s"
 )
 
-var labels = []string{"workload_cluster", "workload_namespace", "workload_name"}
+var labels = []string{"workload_cluster", "workload_namespace", "workload_name", "workload_type"}
 
 var (
 	WorkloadRiskScore = prometheus.NewGaugeVec(
@@ -39,8 +39,13 @@ func Collectors() []prometheus.Collector {
 	}
 }
 
+func ResetWorkloadMetrics() {
+	WorkloadRiskScore.Reset()
+	WorkloadVulnerabilities.Reset()
+}
+
 func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.VulnerabilitySummary) {
-	labelValues := []string{w.Cluster, w.Namespace, w.Name}
+	labelValues := []string{w.Cluster, w.Namespace, w.Name, w.WorkloadType}
 	WorkloadRiskScore.WithLabelValues(labelValues...).Set(float64(summary.RiskScore))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "CRITICAL")...).Set(float64(summary.Critical))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "HIGH")...).Set(float64(summary.High))

@@ -102,6 +102,11 @@ func safeIntToInt32(n int) (int32, error) {
 	return int32(n), nil
 }
 
+type metricRow struct {
+	workload sql.ListWorkloadsByImageRow
+	summary  sources.VulnerabilitySummary
+}
+
 func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
 	db := sql.New(pool)
 	wTypes := []string{"app", "job", "deployment", "platform"}
@@ -109,7 +114,8 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 	const pageSize = 300
 	offset := int32(0)
 
-	totalRows := 0
+
+	rows := make([]metricRow, 0, pageSize)
 
 	for {
 		summaries, err := db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
@@ -131,30 +137,60 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 		}
 		offset += inc
 
-		totalRows += len(summaries)
 		for _, row := range summaries {
-
-			summary := sources.VulnerabilitySummary{
+			rows = append(rows, metricRow{
+				workload: sql.ListWorkloadsByImageRow{
+					Cluster:   row.Cluster,
+					Namespace: row.Namespace,
+					Name:      row.WorkloadName,
+					WorkloadType: row.WorkloadType,
+					ImageName: row.CurrentImageName,
+					ImageTag:  row.CurrentImageTag,
+				},
+				summary: sources.VulnerabilitySummary{
 				Critical:   safeInt(row.Critical),
 				High:       safeInt(row.High),
 				Medium:     safeInt(row.Medium),
 				Low:        safeInt(row.Low),
 				Unassigned: safeInt(row.Unassigned),
 				RiskScore:  safeInt(row.RiskScore),
-			}
-
-			SetWorkloadMetrics(&sql.ListWorkloadsByImageRow{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				ImageName: row.CurrentImageName,
-				ImageTag:  row.CurrentImageTag,
-			}, &summary)
+				},
+			})
 		}
 	}
 
-	log.Infof("loaded %d workload metrics", totalRows)
+	ResetWorkloadMetrics()
+	for _, row := range rows {
+		SetWorkloadMetrics(&row.workload, &row.summary)
+	}
+
+	log.Infof("loaded %d workload metrics", len(rows))
 	return nil
+}
+
+func StartWorkloadMetricsRefresher(ctx context.Context, pool *pgxpool.Pool, interval time.Duration, log logrus.FieldLogger) {
+	if interval <= 0 {
+		log.Warn("workload metrics refresher disabled due to non-positive interval")
+		return
+	}
+
+	ticker := time.NewTicker(interval)
+
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := LoadWorkloadMetrics(ctx, pool, log); err != nil {
+					log.WithError(err).Error("failed to refresh workload metrics from DB")
+				} else {
+					log.Debug("workload metrics refresh succeeded")
+				}
+			}
+		}
+	}()
 }
 
 func safeInt(val *int32) int32 {

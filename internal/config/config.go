@@ -55,6 +55,7 @@ type MetricConfig struct {
 	OtelExporterOtlpEndpoint             string        `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	PrometheusMetricsPushgatewayEndpoint string        `envconfig:"PROMETHEUS_METRICS_PUSHGATEWAY_ENDPOINT"`
 	PrometheusPushgatewayDuration        time.Duration `envconfig:"PROMETHEUS_PUSHGATEWAY_DURATION" default:"2m"`
+	WorkloadMetricsRefreshDuration       time.Duration `envconfig:"WORKLOAD_METRICS_REFRESH_DURATION" default:"5m"`
 }
 
 func (k *K8sConfig) AllClusterNames() []string {
