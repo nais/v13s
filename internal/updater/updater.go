@@ -69,7 +69,6 @@ func (u *Updater) Run(ctx context.Context) {
 		}
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
-			return
 		}
 		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
