@@ -60,6 +60,7 @@ type Querier interface {
 	ListWorkloadsForVulnerabilityById(ctx context.Context, vulnerabilityID pgtype.UUID) ([]*ListWorkloadsForVulnerabilityByIdRow, error)
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
+	MarkUntrackedImagesForResync(ctx context.Context) (int64, error)
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
 	RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error

@@ -64,9 +64,11 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.Workload
 // Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
 func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, u.updateSchedule, "mark and resync images and sync workload vulnerabilities", u.log, func() {
+		if err := u.RecoverUntrackedImages(ctx); err != nil {
+			u.log.WithError(err).Error("Failed to recover untracked images")
+		}
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
-			return
 		}
 		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to resync images")
@@ -211,6 +213,18 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 		return err
 	}
 	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+	return nil
+}
+
+func (u *Updater) RecoverUntrackedImages(ctx context.Context) error {
+	rowsAffected, err := u.querier.MarkUntrackedImagesForResync(ctx)
+	if err != nil {
+		u.log.WithError(err).Error("Failed to mark untracked images for resync")
+		return err
+	}
+	if rowsAffected > 0 {
+		u.log.Infof("MarkUntrackedImagesForResync recovered %d untracked images", rowsAffected)
+	}
 	return nil
 }
 

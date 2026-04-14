@@ -21,6 +21,7 @@ UPDATE
     images
 SET
     state = $1,
+    ready_for_resync_at = NULL,
     updated_at = NOW()
 WHERE
     name = $2

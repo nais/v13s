@@ -18,8 +18,8 @@ INSERT INTO images(
 VALUES (
     $1,
     $2,
-    COALESCE($3, '{}'::jsonb)
-)
+    COALESCE(
+        $3, '{}' ::JSONB))
 ON CONFLICT
     DO NOTHING
 `
@@ -159,8 +159,17 @@ SET
     state = 'untracked',
     updated_at = NOW()
 WHERE
-    state = ANY ($1::image_state[])
-    AND updated_at < $2
+    images.state = ANY ($1::image_state[])
+    AND images.updated_at < $2
+    AND images.ready_for_resync_at IS NULL
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag)
 `
 
 type MarkImagesAsUntrackedParams struct {
@@ -202,6 +211,33 @@ func (q *Queries) MarkImagesForResync(ctx context.Context, arg MarkImagesForResy
 	return err
 }
 
+const markUntrackedImagesForResync = `-- name: MarkUntrackedImagesForResync :execrows
+UPDATE
+    images
+SET
+    state = 'resync',
+    ready_for_resync_at = NOW(),
+    updated_at = NOW()
+WHERE
+    state = 'untracked'
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag)
+`
+
+func (q *Queries) MarkUntrackedImagesForResync(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, markUntrackedImagesForResync)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const markUnusedImages = `-- name: MarkUnusedImages :execrows
 UPDATE
     images
@@ -239,7 +275,7 @@ const updateImage = `-- name: UpdateImage :exec
 UPDATE
     images
 SET
-    metadata = COALESCE($1, '{}'::jsonb),
+    metadata = COALESCE($1, '{}'::JSONB),
     updated_at = NOW()
 WHERE
     name = $2

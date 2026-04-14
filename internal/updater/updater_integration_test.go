@@ -294,6 +294,120 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateUntracked, image.State)
 	})
 
+	t.Run("image in resync state with non-null ready_for_resync_at should not be marked as untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		// Simulate an image that has been through at least one resync cycle:
+		// state = resync, ready_for_resync_at is non-NULL, updated_at is old enough to pass the threshold.
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1, ready_for_resync_at = $2, updated_at = $3 WHERE name = $4 AND tag = $5",
+			sql.ImageStateResync,
+			time.Now().Add(-1*time.Hour), // non-NULL ready_for_resync_at
+			time.Now().Add(-1*time.Hour), // old enough to pass threshold
+			imageName, imageVersion,
+		)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.MarkImagesAsUntracked(ctx)
+		assert.NoError(t, err)
+
+		// The image must NOT be flipped to untracked because ready_for_resync_at IS NOT NULL,
+		// which indicates an active or recently-scheduled resync.
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.NotEqual(t, sql.ImageStateUntracked, image.State, "image with non-null ready_for_resync_at should not be marked untracked")
+		assert.Equal(t, sql.ImageStateResync, image.State, "image should remain in resync state")
+	})
+
+	t.Run("images older than threshold without workloads should not be marked as untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		// insert an image with no associated workload
+		orphanImage := "orphan-image"
+		orphanTag := "v1"
+		err = db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     orphanImage,
+			Tag:      orphanTag,
+			Metadata: map[string]string{},
+		})
+		assert.NoError(t, err)
+
+		// set to initialized state, older than threshold
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state=$1, updated_at=$2 WHERE name=$3 AND tag=$4",
+			sql.ImageStateInitialized, time.Now().UTC().Add(-1*time.Hour), orphanImage, orphanTag)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.MarkImagesAsUntracked(ctx)
+		assert.NoError(t, err)
+
+		// image without a workload must NOT become untracked — MarkUnusedImages handles that
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: orphanImage, Tag: orphanTag})
+		assert.NoError(t, err)
+		assert.NotEqual(t, sql.ImageStateUntracked, image.State, "image without workload should not be marked untracked")
+		assert.Equal(t, sql.ImageStateInitialized, image.State, "image without workload should remain initialized")
+	})
+
+	t.Run("untracked images with workloads should be marked for resync automatically", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1, ready_for_resync_at = NULL, updated_at = $2 WHERE name = $3 AND tag = $4",
+			sql.ImageStateUntracked, time.Now().Add(-1*time.Hour), imageName, imageVersion,
+		)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.RecoverUntrackedImages(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State)
+		assert.True(t, image.ReadyForResyncAt.Valid)
+		now := time.Now()
+		assert.WithinDuration(t, now, image.ReadyForResyncAt.Time, 2*time.Second)
+	})
+
+	t.Run("untracked images without workloads should remain untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+
+		_, err = pool.Exec(ctx,
+			"INSERT INTO images (name, tag, state, updated_at) VALUES ($1, $2, $3, $4)",
+			imageName, imageVersion, sql.ImageStateUntracked, time.Now().Add(-1*time.Hour),
+		)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.RecoverUntrackedImages(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateUntracked, image.State)
+	})
+
 	t.Run("images older than threshold without workloads should be marked as unused", func(t *testing.T) {
 		err := db.ResetDatabase(ctx)
 		assert.NoError(t, err)
