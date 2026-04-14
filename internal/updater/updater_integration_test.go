@@ -326,6 +326,56 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateInitialized, image.State, "image without workload should remain initialized")
 	})
 
+	t.Run("untracked images with workloads should be marked for resync automatically", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1, ready_for_resync_at = NULL, updated_at = $2 WHERE name = $3 AND tag = $4",
+			sql.ImageStateUntracked, time.Now().Add(-1*time.Hour), imageName, imageVersion,
+		)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.RecoverUntrackedImages(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State)
+		assert.True(t, image.ReadyForResyncAt.Valid)
+		now := time.Now()
+		assert.WithinDuration(t, now, image.ReadyForResyncAt.Time, 2*time.Second)
+	})
+
+	t.Run("untracked images without workloads should remain untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+
+		_, err = pool.Exec(ctx,
+			"INSERT INTO images (name, tag, state, updated_at) VALUES ($1, $2, $3, $4)",
+			imageName, imageVersion, sql.ImageStateUntracked, time.Now().Add(-1*time.Hour),
+		)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.RecoverUntrackedImages(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateUntracked, image.State)
+	})
+
 	t.Run("images older than threshold without workloads should be marked as unused", func(t *testing.T) {
 		err := db.ResetDatabase(ctx)
 		assert.NoError(t, err)

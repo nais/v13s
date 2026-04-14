@@ -70,8 +70,9 @@ SET
     state = 'untracked',
     updated_at = NOW()
 WHERE
-    state = ANY (@included_states::image_state[])
-    AND updated_at < @threshold_time
+    images.state = ANY (@included_states::image_state[])
+    AND images.updated_at < @threshold_time
+    AND images.ready_for_resync_at IS NULL
     AND EXISTS (
         SELECT
             1
@@ -134,6 +135,24 @@ WHERE
     AND images.updated_at < @threshold_time
     AND images.state != 'resync'
     AND images.state != ANY (@excluded_states::image_state[]);
+
+-- name: MarkUntrackedImagesForResync :execrows
+UPDATE
+    images
+SET
+    state = 'resync',
+    ready_for_resync_at = NOW(),
+    updated_at = NOW()
+WHERE
+    state = 'untracked'
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads
+        WHERE
+            image_name = images.name
+            AND image_tag = images.tag);
 
 -- name: UpdateImageSyncStatus :exec
 INSERT INTO image_sync_status(
