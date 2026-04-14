@@ -294,6 +294,38 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateUntracked, image.State)
 	})
 
+	t.Run("image in resync state with non-null ready_for_resync_at should not be marked as untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		// Simulate an image that has been through at least one resync cycle:
+		// state = resync, ready_for_resync_at is non-NULL, updated_at is old enough to pass the threshold.
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1, ready_for_resync_at = $2, updated_at = $3 WHERE name = $4 AND tag = $5",
+			sql.ImageStateResync,
+			time.Now().Add(-1*time.Hour), // non-NULL ready_for_resync_at
+			time.Now().Add(-1*time.Hour), // old enough to pass threshold
+			imageName, imageVersion,
+		)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.MarkImagesAsUntracked(ctx)
+		assert.NoError(t, err)
+
+		// The image must NOT be flipped to untracked because ready_for_resync_at IS NOT NULL,
+		// which indicates an active or recently-scheduled resync.
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.NotEqual(t, sql.ImageStateUntracked, image.State, "image with non-null ready_for_resync_at should not be marked untracked")
+		assert.Equal(t, sql.ImageStateResync, image.State, "image should remain in resync state")
+	})
+
 	t.Run("images older than threshold without workloads should not be marked as untracked", func(t *testing.T) {
 		err = db.ResetDatabase(ctx)
 		assert.NoError(t, err)

@@ -58,6 +58,7 @@ UPDATE
     images
 SET
     state = @state,
+    ready_for_resync_at = NULL,
     updated_at = NOW()
 WHERE
     name = @name

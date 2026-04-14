@@ -66,7 +66,6 @@ func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, u.updateSchedule, "mark and resync images and sync workload vulnerabilities", u.log, func() {
 		if err := u.RecoverUntrackedImages(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to recover untracked images")
-			return
 		}
 		if err := u.MarkForResync(ctx); err != nil {
 			u.log.WithError(err).Error("Failed to mark images for resync")
