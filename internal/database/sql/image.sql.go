@@ -190,6 +190,7 @@ UPDATE
     images
 SET
     state = 'resync',
+    ready_for_resync_at = NOW(),
     updated_at = NOW()
 FROM
     workloads w

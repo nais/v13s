@@ -143,7 +143,12 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 }
 
 const getCanonicalCveIdByAlias = `-- name: GetCanonicalCveIdByAlias :one
-SELECT canonical_cve_id FROM cve_alias WHERE alias = $1
+SELECT
+    canonical_cve_id
+FROM
+    cve_alias
+WHERE
+    alias = $1
 `
 
 func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error) {

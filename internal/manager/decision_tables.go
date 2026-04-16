@@ -27,8 +27,9 @@ func lookupDecision[T any](table map[Event]T, event Event, tableName string) (T,
 	return zero, fmt.Errorf("no %s decision defined for event %q: this is a bug", tableName, event)
 }
 
+//go:fix inline
 func ptr[T any](v T) *T {
-	return &v
+	return new(v)
 }
 
 const (
@@ -139,6 +140,32 @@ var sourceRefDecisions = map[Event]SourceRefDecision{
 	},
 	// No source ref at all: proceed straight to upload.
 	EventSourceRefMissing: {},
+}
+
+const (
+	// EventUploadUnrecoverable means upload failed permanently (e.g. 4xx/schema invalid).
+	EventUploadUnrecoverable Event = "upload_unrecoverable"
+	// EventUploadRecoverableError means upload failed transiently and should be retried.
+	EventUploadRecoverableError Event = "upload_recoverable_error"
+)
+
+// uploadAttestationDecisions contains terminal/retry behavior for upload errors.
+var uploadAttestationDecisions = map[Event]Decision{
+	EventUploadUnrecoverable: {
+		WorkloadState: ptr(sql.WorkloadStateUnrecoverable),
+		ImageState:    ptr(sql.ImageStateFailed),
+		JobStatus:     JobStatusUnrecoverable,
+		CancelJob:     true,
+	},
+	EventUploadRecoverableError: {},
+}
+
+// classifyUploadAttestationEvent maps UploadAttestation source errors to a domain event.
+func classifyUploadAttestationEvent(err error) Event {
+	if _, ok := errors.AsType[model.UnrecoverableError](err); ok {
+		return EventUploadUnrecoverable
+	}
+	return EventUploadRecoverableError
 }
 
 // classifySourceRefEvent turns the source-ref lookup and ProjectExists result

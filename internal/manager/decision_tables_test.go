@@ -226,6 +226,93 @@ func TestSourceRefDecisions_Correctness(t *testing.T) {
 	}
 }
 
+func TestClassifyUploadAttestationEvent(t *testing.T) {
+	tests := []struct {
+		name    string
+		err     error
+		wantEvt Event
+	}{
+		{
+			name:    "unrecoverable error",
+			err:     model.ToUnrecoverableError(errors.New("invalid sbom"), "upload"),
+			wantEvt: EventUploadUnrecoverable,
+		},
+		{
+			name:    "recoverable error",
+			err:     errors.New("timeout"),
+			wantEvt: EventUploadRecoverableError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := classifyUploadAttestationEvent(tc.err)
+			if got != tc.wantEvt {
+				t.Errorf("classifyUploadAttestationEvent() = %q, want %q", got, tc.wantEvt)
+			}
+		})
+	}
+}
+
+func TestUploadAttestationDecisions_Completeness(t *testing.T) {
+	allEvents := []Event{EventUploadUnrecoverable, EventUploadRecoverableError}
+	for _, ev := range allEvents {
+		if _, ok := uploadAttestationDecisions[ev]; !ok {
+			t.Errorf("uploadAttestationDecisions: missing entry for event %q", ev)
+		}
+	}
+}
+
+func TestUploadAttestationDecisions_Correctness(t *testing.T) {
+	unrecov := ptr(sql.WorkloadStateUnrecoverable)
+	failed := ptr(sql.ImageStateFailed)
+
+	tests := []struct {
+		event             Event
+		wantWorkloadState *sql.WorkloadState
+		wantImageState    *sql.ImageState
+		wantJobStatus     JobStatus
+		wantCancel        bool
+	}{
+		{
+			event:             EventUploadUnrecoverable,
+			wantWorkloadState: unrecov,
+			wantImageState:    failed,
+			wantJobStatus:     JobStatusUnrecoverable,
+			wantCancel:        true,
+		},
+		{
+			event:             EventUploadRecoverableError,
+			wantWorkloadState: nil,
+			wantImageState:    nil,
+			wantJobStatus:     "",
+			wantCancel:        false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(string(tc.event), func(t *testing.T) {
+			d, ok := uploadAttestationDecisions[tc.event]
+			if !ok {
+				t.Fatalf("no decision found for event %q", tc.event)
+			}
+
+			if !workloadStateEqual(d.WorkloadState, tc.wantWorkloadState) {
+				t.Errorf("WorkloadState = %v, want %v", derefWS(d.WorkloadState), derefWS(tc.wantWorkloadState))
+			}
+			if !imageStateEqual(d.ImageState, tc.wantImageState) {
+				t.Errorf("ImageState = %v, want %v", derefIS(d.ImageState), derefIS(tc.wantImageState))
+			}
+			if d.JobStatus != tc.wantJobStatus {
+				t.Errorf("JobStatus = %q, want %q", d.JobStatus, tc.wantJobStatus)
+			}
+			if d.CancelJob != tc.wantCancel {
+				t.Errorf("CancelJob = %v, want %v", d.CancelJob, tc.wantCancel)
+			}
+		})
+	}
+}
+
 func TestClassifyFinalizeEvent(t *testing.T) {
 	tests := []struct {
 		name       string
