@@ -255,11 +255,11 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 				}
 			}()
 		}
+	}
 
-		if len(workloads) == 0 {
-			s.log.Debugf("no workloads to resync")
-			return &management.ResyncResponse{}, nil
-		}
+	if len(workloads) == 0 {
+		s.log.Debugf("no workloads to resync")
+		return &management.ResyncResponse{}, nil
 	}
 
 	numWorkloads, err := safeIntToInt32(len(workloads))

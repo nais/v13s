@@ -497,6 +497,77 @@ func TestUpdater(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateResync, image.State)
+		// ready_for_resync_at must be set so GetImagesScheduledForSync can pick it up
+		assert.True(t, image.ReadyForResyncAt.Valid, "ready_for_resync_at should be set by MarkForResync")
+
+		scheduled, err := db.GetImagesScheduledForSync(ctx)
+		assert.NoError(t, err)
+		assert.Len(t, scheduled, 1, "image should be immediately visible to GetImagesScheduledForSync after MarkForResync")
+		assert.Equal(t, imageName, scheduled[0].Name)
+		assert.Equal(t, imageVersion, scheduled[0].Tag)
+	})
+
+	t.Run("images marked for resync by MarkForResync should not be flipped to untracked", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		// Set image to updated state, old enough to be picked up by MarkForResync.
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1, updated_at = $2 WHERE name = $3 AND tag = $4",
+			sql.ImageStateUpdated,
+			time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault-time.Hour),
+			imageName, imageVersion)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.MarkForResync(ctx)
+		assert.NoError(t, err)
+
+		// Immediately run MarkImagesAsUntracked — the image must NOT be flipped to untracked
+		// because MarkForResync now sets ready_for_resync_at, which acts as the protection guard.
+		err = u.MarkImagesAsUntracked(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State,
+			"image queued by MarkForResync must not be flipped to untracked by MarkImagesAsUntracked")
+	})
+
+	t.Run("MarkForResync does not reset ready_for_resync_at of an image already in resync state", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-1"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		// Image already in resync with a future ready_for_resync_at.
+		futureResync := time.Now().Add(5 * time.Minute)
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = $1, ready_for_resync_at = $2, updated_at = $3 WHERE name = $4 AND tag = $5",
+			sql.ImageStateResync,
+			futureResync,
+			time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault-time.Hour),
+			imageName, imageVersion)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()))
+
+		err = u.MarkForResync(ctx)
+		assert.NoError(t, err)
+
+		// The image was already in resync — MarkForResync excludes state='resync', so it must be untouched.
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State)
+		assert.WithinDuration(t, futureResync, image.ReadyForResyncAt.Time, time.Second,
+			"ready_for_resync_at of an already-resync image must not be overwritten by MarkForResync")
 	})
 
 	t.Run("images ready for resync after SBOM upload", func(t *testing.T) {
@@ -530,7 +601,9 @@ func TestUpdater(t *testing.T) {
 		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateResync, image.State)
-		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
+		assert.True(t, image.ReadyForResyncAt.Valid, "ready_for_resync_at should be set")
+		assert.WithinDuration(t, readyAt, image.ReadyForResyncAt.Time, 2*time.Second,
+			"ready_for_resync_at should match the value we set")
 
 		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, nil, logrus.NewEntry(logrus.StandardLogger()))
 

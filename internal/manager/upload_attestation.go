@@ -128,7 +128,62 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	if upErr != nil {
 		span.RecordError(upErr)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
-		return handleJobErr(upErr)
+
+		event := classifyUploadAttestationEvent(upErr)
+		decision, lookupErr := lookupDecision(uploadAttestationDecisions, event, "upload_attestation")
+		if lookupErr != nil {
+			return river.JobCancel(lookupErr)
+		}
+
+		dbCtx, cancel := context.WithTimeout(ctx, attestationDBTimeout)
+		defer cancel()
+
+		if decision.WorkloadState != nil {
+			if dbErr := u.db.UpdateWorkloadState(dbCtx, sql.UpdateWorkloadStateParams{
+				State: *decision.WorkloadState,
+				ID:    job.Args.WorkloadId,
+			}); dbErr != nil {
+				return fmt.Errorf("failed to set workload state: %w", dbErr)
+			}
+		}
+
+		if decision.ImageState != nil {
+			if dbErr := u.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+				State: *decision.ImageState,
+				Name:  imageName,
+				Tag:   imageTag,
+			}); dbErr != nil {
+				return fmt.Errorf("failed to set image state: %w", dbErr)
+			}
+		}
+
+		if decision.JobStatus != "" {
+			retry := !decision.CancelJob
+			recordStructuredOutput(ctx, JobOutput{
+				Status:    decision.JobStatus,
+				Event:     string(event),
+				Decision:  describeUploadAttestationDecision(decision),
+				Retryable: &retry,
+				Details: map[string]string{
+					"image":         imageName,
+					"tag":           imageTag,
+					"error_type":    fmt.Sprintf("%T", upErr),
+					"unrecoverable": fmt.Sprint(decision.CancelJob),
+				},
+			})
+		}
+
+		if decision.CancelJob {
+			u.log.WithError(upErr).WithFields(logrus.Fields{
+				"image": imageName,
+				"tag":   imageTag,
+			}).Warn("upload attestation failed with unrecoverable error; marked workload/image as terminal")
+		}
+
+		if decision.CancelJob {
+			return river.JobCancel(upErr)
+		}
+		return upErr
 	}
 
 	// 5. Persist upload results.
@@ -169,6 +224,16 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		},
 	})
 	return nil
+}
+
+func describeUploadAttestationDecision(d Decision) string {
+	if d.CancelJob {
+		return "mark_failed_and_cancel"
+	}
+	if d.WorkloadState != nil || d.ImageState != nil {
+		return "update_state"
+	}
+	return "retry"
 }
 
 // checkSourceRef looks up an existing source ref for the image and checks whether
