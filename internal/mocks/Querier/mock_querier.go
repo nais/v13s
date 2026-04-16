@@ -3298,21 +3298,31 @@ func (_c *MockQuerier_UpdateImage_Call) RunAndReturn(run func(context.Context, s
 }
 
 // UpdateImageState provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) UpdateImageState(ctx context.Context, arg sql.UpdateImageStateParams) error {
+func (_m *MockQuerier) UpdateImageState(ctx context.Context, arg sql.UpdateImageStateParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateImageState")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateImageStateParams) error); ok {
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateImageStateParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateImageStateParams) int64); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int64)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, sql.UpdateImageStateParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockQuerier_UpdateImageState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateImageState'
@@ -3334,12 +3344,12 @@ func (_c *MockQuerier_UpdateImageState_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockQuerier_UpdateImageState_Call) Return(_a0 error) *MockQuerier_UpdateImageState_Call {
-	_c.Call.Return(_a0)
+func (_c *MockQuerier_UpdateImageState_Call) Return(_a0 int64, _a1 error) *MockQuerier_UpdateImageState_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_UpdateImageState_Call) RunAndReturn(run func(context.Context, sql.UpdateImageStateParams) error) *MockQuerier_UpdateImageState_Call {
+func (_c *MockQuerier_UpdateImageState_Call) RunAndReturn(run func(context.Context, sql.UpdateImageStateParams) (int64, error)) *MockQuerier_UpdateImageState_Call {
 	_c.Call.Return(run)
 	return _c
 }

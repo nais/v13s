@@ -235,7 +235,7 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
 
 		if request.ImageState != nil {
-			err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			_, err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageState(*request.ImageState),
 				Name:  workload.ImageName,
 				Tag:   workload.ImageTag,

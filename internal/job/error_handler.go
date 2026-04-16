@@ -53,16 +53,23 @@ func (h *attestationErrorHandler) markImageFailed(ctx context.Context, job *rive
 		h.log.Error("error_handler: failed to decode get_attestation args", "job_id", job.ID, "err", err)
 		return
 	}
-	if err := h.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	n, err := h.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateFailed,
 		Name:  args.ImageName,
 		Tag:   args.ImageTag,
-	}); err != nil {
+	})
+	if err != nil {
 		h.log.Error("error_handler: failed to mark image as failed after get_attestation exhausted all attempts",
 			"job_id", job.ID,
 			"image", args.ImageName,
 			"tag", args.ImageTag,
 			"err", err,
+		)
+	} else if n == 0 {
+		h.log.Warn("error_handler: UpdateImageState matched no rows, image may already be gone",
+			"job_id", job.ID,
+			"image", args.ImageName,
+			"tag", args.ImageTag,
 		)
 	} else {
 		h.log.Info("error_handler: marked image as failed after get_attestation exhausted all attempts",

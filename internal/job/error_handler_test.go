@@ -33,7 +33,7 @@ func TestAttestationErrorHandler_HandleError(t *testing.T) {
 			State: sql.ImageStateFailed,
 			Name:  "docker.io/devopsfaith/krakend",
 			Tag:   "2.5.1",
-		}).Return(nil).Once()
+		}).Return(int64(1), nil).Once()
 
 		h := &attestationErrorHandler{db: querier, log: slog.Default()}
 
@@ -102,7 +102,7 @@ func TestAttestationErrorHandler_HandlePanic(t *testing.T) {
 			State: sql.ImageStateFailed,
 			Name:  "docker.io/devopsfaith/krakend",
 			Tag:   "2.5.1",
-		}).Return(nil).Once()
+		}).Return(int64(1), nil).Once()
 
 		h := &attestationErrorHandler{db: querier, log: slog.Default()}
 

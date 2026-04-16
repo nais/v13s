@@ -42,7 +42,7 @@ WHERE
 ORDER BY
     updated_at DESC;
 
--- name: UpdateImageState :exec
+-- name: UpdateImageState :execrows
 UPDATE
     images
 SET
