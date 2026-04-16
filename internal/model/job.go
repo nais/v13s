@@ -1,6 +1,6 @@
 package model
 
-// JobKindGetAttestation Job kind constants for River job types.
+// JobKindGetAttestation is the job kind for get attestation jobs.
 const (
 	JobKindGetAttestation = "get_attestation"
 )
