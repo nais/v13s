@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
@@ -11,6 +12,8 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 )
+
+const errorHandlerDBTimeout = 5 * time.Second
 
 type attestationErrorHandler struct {
 	db  sql.Querier
@@ -53,7 +56,11 @@ func (h *attestationErrorHandler) markImageFailed(ctx context.Context, job *rive
 		h.log.Error("error_handler: failed to decode get_attestation args", "job_id", job.ID, "err", err)
 		return
 	}
-	n, err := h.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+
+	dbCtx, cancel := context.WithTimeout(ctx, errorHandlerDBTimeout)
+	defer cancel()
+
+	n, err := h.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
 		State: sql.ImageStateFailed,
 		Name:  args.ImageName,
 		Tag:   args.ImageTag,
