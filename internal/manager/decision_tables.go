@@ -27,7 +27,6 @@ func lookupDecision[T any](table map[Event]T, event Event, tableName string) (T,
 	return zero, fmt.Errorf("no %s decision defined for event %q: this is a bug", tableName, event)
 }
 
-//go:fix inline
 func ptr[T any](v T) *T {
 	return new(v)
 }
