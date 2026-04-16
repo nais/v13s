@@ -26,9 +26,9 @@ require (
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260407070242-bbb785c6c1b1
-	github.com/nais/liberator v0.0.0-20260319092636-2e16dcc8b03f
-	github.com/nais/v13s/pkg/api v0.0.0-20260320074210-f799064a5fe2
+	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260408070141-a4bd2115b6e2
+	github.com/nais/liberator v0.0.0-20260408103120-f638cfb83018
+	github.com/nais/v13s/pkg/api v0.0.0-20260416123111-494a3c650860
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
@@ -288,7 +288,7 @@ require (
 	golang.org/x/tools v0.44.0 // indirect
 	golang.org/x/vuln v1.1.4 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/api v0.275.0 // indirect
+	google.golang.org/api v0.276.0 // indirect
 	google.golang.org/genai v1.47.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260406210006-6f92a3bedf2d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
