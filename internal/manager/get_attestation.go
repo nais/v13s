@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	KindGetAttestation   = "get_attestation"
 	attestationDBTimeout = 10 * time.Second
 )
 
@@ -30,11 +29,11 @@ type GetAttestationJob struct {
 	WorkloadType model.WorkloadType
 }
 
-func (GetAttestationJob) Kind() string { return KindGetAttestation }
+func (GetAttestationJob) Kind() string { return model.JobKindGetAttestation }
 
 func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		Queue: KindGetAttestation,
+		Queue: model.JobKindGetAttestation,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,

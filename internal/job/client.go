@@ -66,11 +66,14 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	workers := river.NewWorkers()
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		})),
+		ErrorHandler:         newAttestationErrorHandler(pool, logger),
+		Logger:               logger,
 		Queues:               queues,
 		Workers:              workers,
 		JobTimeout:           5 * time.Minute,
