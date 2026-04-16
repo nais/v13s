@@ -93,7 +93,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 
 	// 4. Mark image as ready for resync.
 	if decision.MarkResync {
-		if err := f.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		n, err := f.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
 			State: sql.ImageStateResync,
@@ -101,8 +101,12 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 				Time:  time.Now().Add(FinalizeAttestationResync),
 				Valid: true,
 			},
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("failed to update image state: %w", err)
+		}
+		if n == 0 {
+			f.log.WithFields(logrus.Fields{"image": imageName, "tag": imageTag}).Warn("UpdateImageState matched no rows, image may already be gone")
 		}
 	}
 

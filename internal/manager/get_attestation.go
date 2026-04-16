@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	KindGetAttestation   = "get_attestation"
 	attestationDBTimeout = 10 * time.Second
 )
 
@@ -30,11 +29,11 @@ type GetAttestationJob struct {
 	WorkloadType model.WorkloadType
 }
 
-func (GetAttestationJob) Kind() string { return KindGetAttestation }
+func (GetAttestationJob) Kind() string { return model.JobKindGetAttestation }
 
 func (g GetAttestationJob) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		Queue: KindGetAttestation,
+		Queue: model.JobKindGetAttestation,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
 			ByPeriod: 1 * time.Minute,
@@ -115,12 +114,16 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	}
 
 	if decision.ImageState != nil {
-		if dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+		n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
 			State: *decision.ImageState,
 			Name:  imageName,
 			Tag:   imageTag,
-		}); dbErr != nil {
+		})
+		if dbErr != nil {
 			return fmt.Errorf("failed to set image state: %w", dbErr)
+		}
+		if n == 0 {
+			g.log.WithFields(logFields).Warn("UpdateImageState matched no rows, image may already be gone")
 		}
 	}
 

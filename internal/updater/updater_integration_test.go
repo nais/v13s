@@ -587,7 +587,7 @@ func TestUpdater(t *testing.T) {
 		assert.NoError(t, err)
 
 		readyAt := time.Now().Add(-manager.FinalizeAttestationResync)
-		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
 			State: sql.ImageStateResync,

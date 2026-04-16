@@ -294,7 +294,7 @@ func (q *Queries) UpdateImage(ctx context.Context, arg UpdateImageParams) error 
 	return err
 }
 
-const updateImageState = `-- name: UpdateImageState :exec
+const updateImageState = `-- name: UpdateImageState :execrows
 UPDATE
     images
 SET
@@ -313,14 +313,17 @@ type UpdateImageStateParams struct {
 	Tag              string
 }
 
-func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error {
-	_, err := q.db.Exec(ctx, updateImageState,
+func (q *Queries) UpdateImageState(ctx context.Context, arg UpdateImageStateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateImageState,
 		arg.State,
 		arg.ReadyForResyncAt,
 		arg.Name,
 		arg.Tag,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateImageSyncStatus = `-- name: UpdateImageSyncStatus :exec

@@ -69,7 +69,7 @@ type Querier interface {
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
-	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) error
+	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) (int64, error)
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error
 	UpsertVulnerabilityLifetimes(ctx context.Context) error

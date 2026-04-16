@@ -38,7 +38,7 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 	if err != nil {
 		err = handleError(ctx, imageName, imageTag, source, err)
 		if err != nil {
-			err = d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			n, err := d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				Name:  imageName,
 				Tag:   imageTag,
 				State: sql.ImageStateFailed,
@@ -46,6 +46,9 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 			if err != nil {
 				d.log.Errorf("failed to update image state: %v", err)
 				return fmt.Errorf("updating image state: %w", err)
+			}
+			if n == 0 {
+				d.log.Warnf("UpdateImageState matched no rows for image %s:%s, image may already be gone", imageName, imageTag)
 			}
 			return nil
 		}

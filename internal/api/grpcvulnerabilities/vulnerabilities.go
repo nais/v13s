@@ -582,7 +582,7 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 		return nil, fmt.Errorf("recalculate vulnerability summary: %w", err)
 	}
 
-	err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	_, err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 		State: sql.ImageStateResync,
 		Name:  vuln.ImageName,
 		Tag:   vuln.ImageTag,

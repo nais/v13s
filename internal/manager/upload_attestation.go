@@ -93,7 +93,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	if sourceRefDecision.ResyncAndReturn {
-		if err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		n, err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
 			State: sql.ImageStateResync,
@@ -101,8 +101,12 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 				Time:  time.Now(),
 				Valid: true,
 			},
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("failed to update image state: %w", err)
+		}
+		if n == 0 {
+			u.log.WithFields(logrus.Fields{"image": imageName, "tag": imageTag}).Warn("UpdateImageState matched no rows, image may already be gone")
 		}
 		recordStructuredOutput(ctx, JobOutput{
 			Status:   sourceRefDecision.JobStatus,
@@ -148,12 +152,16 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		}
 
 		if decision.ImageState != nil {
-			if dbErr := u.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+			n, dbErr := u.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
 				State: *decision.ImageState,
 				Name:  imageName,
 				Tag:   imageTag,
-			}); dbErr != nil {
+			})
+			if dbErr != nil {
 				return fmt.Errorf("failed to set image state: %w", dbErr)
+			}
+			if n == 0 {
+				u.log.WithFields(logrus.Fields{"image": imageName, "tag": imageTag}).Warn("UpdateImageState matched no rows, image may already be gone")
 			}
 		}
 

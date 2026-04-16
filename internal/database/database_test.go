@@ -58,7 +58,7 @@ func TestMarkImagesAsUnused(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  image.Name,
 			Tag:   image.Tag,
 			State: sql.ImageStateResync,
