@@ -499,12 +499,12 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, sql.ImageStateResync, image.State)
 		// ready_for_resync_at must be set so GetImagesScheduledForSync can pick it up
 		assert.True(t, image.ReadyForResyncAt.Valid, "ready_for_resync_at should be set by MarkForResync")
-		assert.False(t, image.ReadyForResyncAt.Time.After(time.Now()), "ready_for_resync_at should not be in the future")
 
 		scheduled, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)
 		assert.Len(t, scheduled, 1, "image should be immediately visible to GetImagesScheduledForSync after MarkForResync")
 		assert.Equal(t, imageName, scheduled[0].Name)
+		assert.Equal(t, imageVersion, scheduled[0].Tag)
 	})
 
 	t.Run("images marked for resync by MarkForResync should not be flipped to untracked", func(t *testing.T) {
@@ -601,7 +601,9 @@ func TestUpdater(t *testing.T) {
 		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
 		assert.NoError(t, err)
 		assert.Equal(t, sql.ImageStateResync, image.State)
-		assert.True(t, image.ReadyForResyncAt.Time.Before(time.Now()))
+		assert.True(t, image.ReadyForResyncAt.Valid, "ready_for_resync_at should be set")
+		assert.WithinDuration(t, readyAt, image.ReadyForResyncAt.Time, 2*time.Second,
+			"ready_for_resync_at should match the value we set")
 
 		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, nil, logrus.NewEntry(logrus.StandardLogger()))
 
