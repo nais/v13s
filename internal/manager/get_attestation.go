@@ -114,16 +114,22 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	}
 
 	if decision.ImageState != nil {
-		n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
-			State: *decision.ImageState,
-			Name:  imageName,
-			Tag:   imageTag,
-		})
-		if dbErr != nil {
-			return fmt.Errorf("failed to set image state: %w", dbErr)
-		}
-		if n == 0 {
-			g.log.WithFields(logFields).Warn("UpdateImageState matched no rows, image may already be gone")
+		// Only persist a terminal image state (failed) on the final attempt.
+		// On intermediate retries, leave the image state unchanged so a
+		// previously-successful resync or updated state is not clobbered.
+		isFinalAttempt := job.Attempt >= job.MaxAttempts
+		if *decision.ImageState != sql.ImageStateFailed || isFinalAttempt {
+			n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+				State: *decision.ImageState,
+				Name:  imageName,
+				Tag:   imageTag,
+			})
+			if dbErr != nil {
+				return fmt.Errorf("failed to set image state: %w", dbErr)
+			}
+			if n == 0 {
+				g.log.WithFields(logFields).Warn("UpdateImageState matched no rows, image may already be gone")
+			}
 		}
 	}
 

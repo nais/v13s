@@ -2328,6 +2328,65 @@ func (_c *MockQuerier_ListVulnerabilitySummaries_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// ListWorkloadSbomStatusByImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListWorkloadSbomStatusByImage(ctx context.Context, arg sql.ListWorkloadSbomStatusByImageParams) ([]*sql.ListWorkloadSbomStatusByImageRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadSbomStatusByImage")
+	}
+
+	var r0 []*sql.ListWorkloadSbomStatusByImageRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListWorkloadSbomStatusByImageParams) ([]*sql.ListWorkloadSbomStatusByImageRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListWorkloadSbomStatusByImageParams) []*sql.ListWorkloadSbomStatusByImageRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListWorkloadSbomStatusByImageRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListWorkloadSbomStatusByImageParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListWorkloadSbomStatusByImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadSbomStatusByImage'
+type MockQuerier_ListWorkloadSbomStatusByImage_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadSbomStatusByImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListWorkloadSbomStatusByImageParams
+func (_e *MockQuerier_Expecter) ListWorkloadSbomStatusByImage(ctx interface{}, arg interface{}) *MockQuerier_ListWorkloadSbomStatusByImage_Call {
+	return &MockQuerier_ListWorkloadSbomStatusByImage_Call{Call: _e.mock.On("ListWorkloadSbomStatusByImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListWorkloadSbomStatusByImage_Call) Run(run func(ctx context.Context, arg sql.ListWorkloadSbomStatusByImageParams)) *MockQuerier_ListWorkloadSbomStatusByImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListWorkloadSbomStatusByImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadSbomStatusByImage_Call) Return(_a0 []*sql.ListWorkloadSbomStatusByImageRow, _a1 error) *MockQuerier_ListWorkloadSbomStatusByImage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadSbomStatusByImage_Call) RunAndReturn(run func(context.Context, sql.ListWorkloadSbomStatusByImageParams) ([]*sql.ListWorkloadSbomStatusByImageRow, error)) *MockQuerier_ListWorkloadSbomStatusByImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListWorkloadSeverityFixStats provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListWorkloadSeverityFixStats(ctx context.Context, arg sql.ListWorkloadSeverityFixStatsParams) ([]*sql.ListWorkloadSeverityFixStatsRow, error) {
 	ret := _m.Called(ctx, arg)
@@ -3444,6 +3503,53 @@ func (_c *MockQuerier_UpdateWorkloadState_Call) Return(_a0 error) *MockQuerier_U
 }
 
 func (_c *MockQuerier_UpdateWorkloadState_Call) RunAndReturn(run func(context.Context, sql.UpdateWorkloadStateParams) error) *MockQuerier_UpdateWorkloadState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateWorkloadStateByImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) UpdateWorkloadStateByImage(ctx context.Context, arg sql.UpdateWorkloadStateByImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateWorkloadStateByImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateWorkloadStateByImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpdateWorkloadStateByImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWorkloadStateByImage'
+type MockQuerier_UpdateWorkloadStateByImage_Call struct {
+	*mock.Call
+}
+
+// UpdateWorkloadStateByImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.UpdateWorkloadStateByImageParams
+func (_e *MockQuerier_Expecter) UpdateWorkloadStateByImage(ctx interface{}, arg interface{}) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	return &MockQuerier_UpdateWorkloadStateByImage_Call{Call: _e.mock.On("UpdateWorkloadStateByImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) Run(run func(ctx context.Context, arg sql.UpdateWorkloadStateByImageParams)) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.UpdateWorkloadStateByImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) Return(_a0 error) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) RunAndReturn(run func(context.Context, sql.UpdateWorkloadStateByImageParams) error) *MockQuerier_UpdateWorkloadStateByImage_Call {
 	_c.Call.Return(run)
 	return _c
 }

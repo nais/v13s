@@ -85,6 +85,9 @@ vulnerability_data AS (
         w.updated_at AS workload_updated_at,
         v.created_at AS summary_created_at,
         v.updated_at AS summary_updated_at,
+        w.state AS workload_state,
+        i.state AS image_state,
+        i.updated_at AS image_updated_at,
         CASE WHEN v.image_name IS NOT NULL THEN
             TRUE
         ELSE
@@ -92,6 +95,7 @@ vulnerability_data AS (
         END AS has_sbom
     FROM
         filtered_workloads w
+        JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
                 -- If no since join on image_tag, if since is set ignore image_tag

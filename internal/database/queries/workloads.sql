@@ -48,8 +48,7 @@ ON CONFLICT ON CONSTRAINT workload_id
         image_name = @image_name,
         image_tag = @image_tag
     WHERE
-        workloads.state = 'failed'
-        OR workloads.state = 'resync'
+        workloads.state = 'resync'
         OR (
             workloads.image_name != @image_name
             OR workloads.image_tag != @image_tag)
@@ -171,6 +170,16 @@ ORDER BY
     name DESC,
     CLUSTER DESC,
     updated_at DESC;
+
+-- name: UpdateWorkloadStateByImage :exec
+UPDATE
+    workloads
+SET
+    state = @state,
+    updated_at = NOW()
+WHERE
+    image_name = @image_name
+    AND image_tag = @image_tag;
 
 -- name: ListWorkloadsByCluster :many
 SELECT

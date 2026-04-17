@@ -555,6 +555,14 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, "image-cluster-1-namespace-1-workload-1", resp.Nodes[0].GetWorkload().ImageName, "image-cluster-1-namespace-1-workload-1")
 		assert.Equal(t, "v1.0", resp.Nodes[0].GetWorkload().ImageTag, "v1.0")
 	})
+
+	t.Run("sbom_status is PENDING for freshly seeded workload (image state: initialized)", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitySummaries(ctx)
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+		// Default DB state for both image and workload is 'initialized' → PENDING
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PENDING, resp.Nodes[0].GetSbomStatus())
+	})
 }
 
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
@@ -1004,18 +1012,149 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
+
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(
-			ctx, "image-cluster-1-namespace-1-workload-1", "v1.0")
+			ctx, imageName, imageTag)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Critical)
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
+	})
+
+	t.Run("image_sbom_status is PENDING and is_stale=true for freshly seeded image", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		// Default state for image and workload is 'initialized' → PENDING → stale
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PENDING, resp.GetImageSbomStatus())
+		assert.True(t, resp.GetIsStale())
+		require.Len(t, resp.GetWorkloadSbomStatuses(), 1)
+		ws := resp.GetWorkloadSbomStatuses()[0]
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PENDING, ws.GetSbomStatus())
+		assert.True(t, ws.GetIsStale())
+		assert.Equal(t, "cluster-1", ws.GetWorkload().GetCluster())
+		assert.Equal(t, "namespace-1", ws.GetWorkload().GetNamespace())
+		assert.Equal(t, "workload-1", ws.GetWorkload().GetName())
+	})
+
+	t.Run("image_sbom_status is READY and is_stale=false after image state set to updated", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetImageSbomStatus())
+		assert.False(t, resp.GetIsStale())
+		require.Len(t, resp.GetWorkloadSbomStatuses(), 1)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetWorkloadSbomStatuses()[0].GetSbomStatus())
+		assert.False(t, resp.GetWorkloadSbomStatuses()[0].GetIsStale())
+	})
+
+	t.Run("pagination defaults: 1 workload returned", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		require.Len(t, resp.GetWorkloadSbomStatuses(), 1)
+	})
+}
+
+func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
+	// Two clusters both running the same image — one workload will be set to
+	// no_attestation so the image-level rollup must surface FAILED (worst case).
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-a", "cluster-b"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	// Both workloads happen to share the same image (first cluster's image name/tag)
+	// as seeded by generateTestWorkloads. Override cluster-b's workload to use
+	// cluster-a's image so we have two workloads on one image.
+	sharedImage := "image-cluster-a-namespace-1-workload-1"
+	sharedTag := "v1.0"
+
+	_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "workload-1",
+		WorkloadType: "app",
+		Namespace:    "namespace-1",
+		Cluster:      "cluster-b",
+		ImageName:    sharedImage,
+		ImageTag:     sharedTag,
+	})
+	require.NoError(t, err)
+
+	t.Run("both workloads PENDING → image_sbom_status PENDING", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PENDING, resp.GetImageSbomStatus())
+		assert.True(t, resp.GetIsStale())
+		assert.Len(t, resp.GetWorkloadSbomStatuses(), 2)
+	})
+
+	t.Run("one workload READY, one PROCESSING → image_sbom_status PROCESSING (worst case)", func(t *testing.T) {
+		// Set image to updated so workloads that fall through to image switch become READY
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  sharedImage,
+			Tag:   sharedTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+		// Set cluster-a workload to updated → falls through to image switch → READY
+		wlA, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name: "workload-1", WorkloadType: "app",
+			Namespace: "namespace-1", Cluster: "cluster-a",
+		})
+		require.NoError(t, err)
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID: wlA.ID, State: sql.WorkloadStateUpdated,
+		})
+		require.NoError(t, err)
+		// Set cluster-b workload to processing → PROCESSING (worse than READY)
+		wlB, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name: "workload-1", WorkloadType: "app",
+			Namespace: "namespace-1", Cluster: "cluster-b",
+		})
+		require.NoError(t, err)
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID: wlB.ID, State: sql.WorkloadStateProcessing,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetImageSbomStatus())
+		assert.True(t, resp.GetIsStale())
+	})
+
+	t.Run("one workload no_attestation → image_sbom_status NO_ATTESTATION (worst case)", func(t *testing.T) {
+		wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+			Name: "workload-1", WorkloadType: "app",
+			Namespace: "namespace-1", Cluster: "cluster-b",
+		})
+		require.NoError(t, err)
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID: wl.ID, State: sql.WorkloadStateNoAttestation,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_ATTESTATION, resp.GetImageSbomStatus())
+		assert.True(t, resp.GetIsStale())
 	})
 }
 

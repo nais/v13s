@@ -203,7 +203,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag")
 			headers = append(headers, "Last Updated")
@@ -219,13 +219,13 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
-				n.GetVulnerabilitySummary().GetHasSbom(),
-				n.GetVulnerabilitySummary().GetCritical(),
-				n.GetVulnerabilitySummary().GetHigh(),
-				n.GetVulnerabilitySummary().GetMedium(),
-				n.GetVulnerabilitySummary().GetLow(),
-				n.GetVulnerabilitySummary().GetUnassigned(),
-				n.GetVulnerabilitySummary().GetRiskScore(),
+				n.GetSbomStatus(),
+				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetCritical()),
+				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetHigh()),
+				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetMedium()),
+				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetLow()),
+				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetUnassigned()),
+				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetRiskScore()),
 			}
 			if o.Since != "" {
 				vals = append(vals, n.Workload.GetImageTag())
@@ -454,4 +454,11 @@ func timeSinceCreation(created, lastUpdated time.Time) string {
 	default:
 		return fmt.Sprintf("%dm", minutes)
 	}
+}
+
+func intOrDash(hasSbom bool, val int32) any {
+	if !hasSbom {
+		return "-"
+	}
+	return val
 }

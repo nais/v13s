@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -26,6 +27,14 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Flags:   flag.CommonFlags(opts),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return getSummary(ctx, cmd, c, opts)
+					},
+				},
+				{
+					Name:    "image-summary",
+					Aliases: []string{"is"},
+					Usage:   "get vulnerability summary for a specific image (format: <image>:<tag>)",
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return getImageSummary(ctx, cmd, c)
 					},
 				},
 				{
@@ -121,5 +130,70 @@ func getTimeSeries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 	tbl.Print()
 	duration := time.Since(start).Seconds()
 	fmt.Printf("Fetched %d points in %f seconds.\n", len(resp.GetPoints()), duration)
+	return nil
+}
+
+func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client) error {
+	if cmd.Args().Len() == 0 {
+		return fmt.Errorf("missing image argument, expected format: <image>:<tag>")
+	}
+	parts := strings.SplitN(cmd.Args().First(), ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	}
+	imageName, imageTag := parts[0], parts[1]
+
+	start := time.Now()
+	resp, err := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+	if err != nil {
+		return fmt.Errorf("failed to get image summary: %w", err)
+	}
+
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+	// Image-level summary
+	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
+	fmt.Printf("SBOM Status: %s\n", resp.GetImageSbomStatus())
+	fmt.Printf("Is Stale:    %v\n\n", resp.GetIsStale())
+
+	if s := resp.GetVulnerabilitySummary(); s != nil {
+		tbl := table.New("Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Last Updated")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		tbl.AddRow(
+			s.GetCritical(),
+			s.GetHigh(),
+			s.GetMedium(),
+			s.GetLow(),
+			s.GetUnassigned(),
+			s.GetRiskScore(),
+			s.GetLastUpdated().AsTime().Format(time.RFC3339),
+		)
+		tbl.Print()
+		fmt.Println()
+	}
+
+	// Per-workload SBOM statuses
+	workloads := resp.GetWorkloadSbomStatuses()
+	if len(workloads) > 0 {
+		fmt.Println("Workload SBOM Statuses:")
+		wTbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status", "Is Stale")
+		wTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		for _, ws := range workloads {
+			w := ws.GetWorkload()
+			wTbl.AddRow(
+				w.GetName(),
+				w.GetType(),
+				w.GetNamespace(),
+				w.GetCluster(),
+				ws.GetSbomStatus(),
+				ws.GetIsStale(),
+			)
+		}
+		wTbl.Print()
+		fmt.Println()
+	}
+
+	fmt.Println("Fetched image summary in", time.Since(start).Seconds(), "seconds")
 	return nil
 }

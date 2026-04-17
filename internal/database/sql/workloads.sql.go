@@ -201,8 +201,7 @@ ON CONFLICT ON CONSTRAINT workload_id
         image_name = $5,
         image_tag = $6
     WHERE
-        workloads.state = 'failed'
-        OR workloads.state = 'resync'
+        workloads.state = 'resync'
         OR (
             workloads.image_name != $5
             OR workloads.image_tag != $6)
@@ -453,6 +452,28 @@ type UpdateWorkloadStateParams struct {
 
 func (q *Queries) UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error {
 	_, err := q.db.Exec(ctx, updateWorkloadState, arg.State, arg.ID)
+	return err
+}
+
+const updateWorkloadStateByImage = `-- name: UpdateWorkloadStateByImage :exec
+UPDATE
+    workloads
+SET
+    state = $1,
+    updated_at = NOW()
+WHERE
+    image_name = $2
+    AND image_tag = $3
+`
+
+type UpdateWorkloadStateByImageParams struct {
+	State     WorkloadState
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error {
+	_, err := q.db.Exec(ctx, updateWorkloadStateByImage, arg.State, arg.ImageName, arg.ImageTag)
 	return err
 }
 

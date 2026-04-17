@@ -227,3 +227,19 @@ FROM
 JOIN total_count tc ON TRUE
 ORDER BY
     pj.id DESC;
+
+-- name: ListWorkloadSbomStatusByImage :many
+SELECT
+    w.cluster,
+    w.namespace,
+    w.name,
+    w.workload_type,
+    w.image_name,
+    w.image_tag,
+    w.state             AS workload_state,
+    i.state             AS image_state
+FROM workloads w
+JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
+WHERE w.image_name = @image_name
+  AND w.image_tag  = @image_tag
+ORDER BY w.cluster, w.namespace, w.name;

@@ -83,6 +83,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			},
+			SbomStatus:     deriveSbomStatus(row.ImageState, row.WorkloadState),
+			ImageUpdatedAt: timestamppb.New(row.ImageUpdatedAt.Time),
 		}
 	})
 
@@ -220,6 +222,33 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		})
 	}
 
+	sbomRows, err := s.querier.ListWorkloadSbomStatusByImage(ctx, sql.ListWorkloadSbomStatusByImageParams{
+		ImageName: request.ImageName,
+		ImageTag:  request.ImageTag,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workload sbom statuses: %w", err)
+	}
+
+	imageSbomStatus := vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
+	workloadSbomStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(sbomRows))
+	for _, row := range sbomRows {
+		s := deriveSbomStatus(row.ImageState, row.WorkloadState)
+		imageSbomStatus = worstCase(imageSbomStatus, s)
+		workloadSbomStatuses = append(workloadSbomStatuses, &vulnerabilities.WorkloadSbomStatus{
+			Workload: &vulnerabilities.Workload{
+				Cluster:   row.Cluster,
+				Namespace: row.Namespace,
+				Name:      row.Name,
+				Type:      row.WorkloadType,
+				ImageName: row.ImageName,
+				ImageTag:  row.ImageTag,
+			},
+			SbomStatus: s,
+			IsStale:    s != vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+		})
+	}
+
 	vulnSummary := &vulnerabilities.Summary{}
 	if summary != nil {
 		vulnSummary = &vulnerabilities.Summary{
@@ -238,6 +267,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
+		ImageSbomStatus:      imageSbomStatus,
+		IsStale:              imageSbomStatus != vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+		WorkloadSbomStatuses: workloadSbomStatuses,
 	}, nil
 }
 
