@@ -398,6 +398,7 @@ vulnerability_data AS (
         v.updated_at AS summary_updated_at,
         w.state AS workload_state,
         i.state AS image_state,
+        i.updated_at AS image_updated_at,
         CASE WHEN v.image_name IS NOT NULL THEN
             TRUE
         ELSE
@@ -405,7 +406,8 @@ vulnerability_data AS (
         END AS has_sbom
     FROM
         filtered_workloads w
-        JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
+        JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
                 -- If no since join on image_tag, if since is set ignore image_tag
@@ -421,7 +423,7 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, has_sbom,
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, image_updated_at, has_sbom,
 (
         SELECT
             COUNT(*)

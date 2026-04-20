@@ -95,7 +95,8 @@ vulnerability_data AS (
         END AS has_sbom
     FROM
         filtered_workloads w
-        JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
+        JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
                 -- If no since join on image_tag, if since is set ignore image_tag

@@ -192,16 +192,10 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
-				VulnerabilitySummary: &vulnerabilities.Summary{},
-				WorkloadRef:          make([]*vulnerabilities.Workload, 0),
-			}, nil
-		}
-
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 	}
+	// summary may be nil when no vulnerability_summary row exists yet (e.g. still processing)
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
@@ -230,7 +224,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		return nil, fmt.Errorf("failed to list workload sbom statuses: %w", err)
 	}
 
-	imageSbomStatus := vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
+	imageSbomStatus := vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 	workloadSbomStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(sbomRows))
 	for _, row := range sbomRows {
 		s := deriveSbomStatus(row.ImageState, row.WorkloadState)
@@ -244,23 +238,33 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 				ImageName: row.ImageName,
 				ImageTag:  row.ImageTag,
 			},
-			SbomStatus: s,
-			IsStale:    s != vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+			SbomStatus:     s,
+			ImageUpdatedAt: timestamppb.New(row.WorkloadUpdatedAt.Time),
 		})
 	}
 
-	vulnSummary := &vulnerabilities.Summary{}
-	if summary != nil {
-		vulnSummary = &vulnerabilities.Summary{
-			Critical:    summary.Critical,
-			High:        summary.High,
-			Medium:      summary.Medium,
-			Low:         summary.Low,
-			Unassigned:  summary.Unassigned,
-			Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
-			RiskScore:   summary.RiskScore,
-			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:     true,
+	var vulnSummary *vulnerabilities.Summary
+	switch imageSbomStatus {
+	case vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:
+		// No SBOM exists — return nil so callers know there is no data
+		vulnSummary = nil
+	case vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING:
+		// Still processing — return an empty summary so callers can show a loading state
+		vulnSummary = &vulnerabilities.Summary{}
+	default:
+		// READY or FAILED — return whatever we have from the DB
+		if summary != nil {
+			vulnSummary = &vulnerabilities.Summary{
+				Critical:    summary.Critical,
+				High:        summary.High,
+				Medium:      summary.Medium,
+				Low:         summary.Low,
+				Unassigned:  summary.Unassigned,
+				Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
+				RiskScore:   summary.RiskScore,
+				LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
+				HasSbom:     true,
+			}
 		}
 	}
 
@@ -268,7 +272,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
 		ImageSbomStatus:      imageSbomStatus,
-		IsStale:              imageSbomStatus != vulnerabilities.SbomStatus_SBOM_STATUS_READY,
 		WorkloadSbomStatuses: workloadSbomStatuses,
 	}, nil
 }

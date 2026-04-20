@@ -154,8 +154,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 
 	// Image-level summary
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
-	fmt.Printf("SBOM Status: %s\n", resp.GetImageSbomStatus())
-	fmt.Printf("Is Stale:    %v\n\n", resp.GetIsStale())
+	fmt.Printf("SBOM Status: %s\n\n", resp.GetImageSbomStatus())
 
 	if s := resp.GetVulnerabilitySummary(); s != nil {
 		tbl := table.New("Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Last Updated")
@@ -177,7 +176,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	workloads := resp.GetWorkloadSbomStatuses()
 	if len(workloads) > 0 {
 		fmt.Println("Workload SBOM Statuses:")
-		wTbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status", "Is Stale")
+		wTbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
 		wTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		for _, ws := range workloads {
 			w := ws.GetWorkload()
@@ -187,7 +186,6 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 				w.GetNamespace(),
 				w.GetCluster(),
 				ws.GetSbomStatus(),
-				ws.GetIsStale(),
 			)
 		}
 		wTbl.Print()

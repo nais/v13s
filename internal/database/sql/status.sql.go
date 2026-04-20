@@ -224,13 +224,20 @@ SELECT
     w.workload_type,
     w.image_name,
     w.image_tag,
-    w.state             AS workload_state,
-    i.state             AS image_state
-FROM workloads w
-JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
-WHERE w.image_name = $1
-  AND w.image_tag  = $2
-ORDER BY w.cluster, w.namespace, w.name
+    w.state AS workload_state,
+    w.updated_at AS workload_updated_at,
+    i.state AS image_state
+FROM
+    workloads w
+    JOIN images i ON i.name = w.image_name
+        AND i.tag = w.image_tag
+WHERE
+    w.image_name = $1
+    AND w.image_tag = $2
+ORDER BY
+    w.cluster,
+    w.namespace,
+    w.name
 `
 
 type ListWorkloadSbomStatusByImageParams struct {
@@ -239,14 +246,15 @@ type ListWorkloadSbomStatusByImageParams struct {
 }
 
 type ListWorkloadSbomStatusByImageRow struct {
-	Cluster       string
-	Namespace     string
-	Name          string
-	WorkloadType  string
-	ImageName     string
-	ImageTag      string
-	WorkloadState WorkloadState
-	ImageState    ImageState
+	Cluster           string
+	Namespace         string
+	Name              string
+	WorkloadType      string
+	ImageName         string
+	ImageTag          string
+	WorkloadState     WorkloadState
+	WorkloadUpdatedAt pgtype.Timestamptz
+	ImageState        ImageState
 }
 
 func (q *Queries) ListWorkloadSbomStatusByImage(ctx context.Context, arg ListWorkloadSbomStatusByImageParams) ([]*ListWorkloadSbomStatusByImageRow, error) {
@@ -266,6 +274,7 @@ func (q *Queries) ListWorkloadSbomStatusByImage(ctx context.Context, arg ListWor
 			&i.ImageName,
 			&i.ImageTag,
 			&i.WorkloadState,
+			&i.WorkloadUpdatedAt,
 			&i.ImageState,
 		); err != nil {
 			return nil, err
