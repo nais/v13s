@@ -237,7 +237,7 @@ SELECT
     w.image_name,
     w.image_tag,
     w.state AS workload_state,
-    w.updated_at AS workload_updated_at,
+    i.sbom_processing_started_at,
     i.state AS image_state
 FROM
     workloads w

@@ -147,13 +147,13 @@ message WorkloadSummary {
   Workload workload = 2;
   Summary vulnerability_summary = 3;
   SbomStatus sbom_status = 4;
-  google.protobuf.Timestamp image_updated_at = 5;
+  google.protobuf.Timestamp sbom_processing_started_at = 5;
 }
 
 message WorkloadSbomStatus {
   Workload   workload         = 1;
   SbomStatus sbom_status      = 2;
-  google.protobuf.Timestamp image_updated_at = 3;
+  google.protobuf.Timestamp sbom_processing_started_at = 3;
 }
 
 message WorkloadFix {

@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMarkImagesAsUnused(t *testing.T) {
@@ -193,6 +195,184 @@ func TestDeleteUnusedSourceRefs(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, imageTagUsed, srcUsed.ImageTag)
+}
+
+func TestInitializeWorkload_Failed_Skipped(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	imageName := "failed-image"
+	imageTag := "v1.0"
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	}))
+	_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	require.NoError(t, err)
+
+	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateFailed,
+		ID:    wl.ID,
+	}))
+
+	_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+
+	assert.ErrorIs(t, err, pgx.ErrNoRows,
+		"InitializeWorkload should skip a workload in failed state — manual retry required")
+
+	wl, err = db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, sql.WorkloadStateFailed, wl.State,
+		"workload state should remain failed after skipped InitializeWorkload")
+}
+
+func TestInitializeWorkload_Updated_Skipped(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	imageName := "updated-image"
+	imageTag := "v1.0"
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	}))
+	_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	require.NoError(t, err)
+
+	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateUpdated,
+		ID:    wl.ID,
+	}))
+
+	// Same image — should be skipped (returns ErrNoRows)
+	_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+
+	assert.ErrorIs(t, err, pgx.ErrNoRows,
+		"InitializeWorkload should skip a workload in updated state with the same image")
+}
+
+func TestInitializeWorkload_NoAttestation_Skipped(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	imageName := "retriggered-image"
+	imageTag := "v1.0"
+
+	// Seed image and workload
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	}))
+	_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	require.NoError(t, err)
+
+	// Simulate get_attestation failing: set workload → no_attestation
+	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateNoAttestation,
+		ID:    wl.ID,
+	}))
+
+	// Call InitializeWorkload again for the same image — should be skipped
+	_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+
+	assert.ErrorIs(t, err, pgx.ErrNoRows,
+		"InitializeWorkload should skip a workload in no_attestation state — healing is done by the Updater cron")
+
+	// Workload state must remain no_attestation (unchanged)
+	wl, err = db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "my-workload",
+		WorkloadType: "app",
+		Namespace:    "default",
+		Cluster:      "dev",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, sql.WorkloadStateNoAttestation, wl.State,
+		"workload state should remain no_attestation after skipped InitializeWorkload")
 }
 
 func createTestdata(t *testing.T, db sql.Querier, image_name, image_tag string, createWorkload bool) {

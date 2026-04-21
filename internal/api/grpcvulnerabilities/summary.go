@@ -83,8 +83,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			},
-			SbomStatus:     deriveSbomStatus(row.ImageState, row.WorkloadState),
-			ImageUpdatedAt: timestamppb.New(row.ImageUpdatedAt.Time),
+			SbomStatus:              deriveSbomStatus(row.ImageState, row.WorkloadState),
+			SbomProcessingStartedAt: timestamppb.New(row.ImageUpdatedAt.Time),
 		}
 	})
 
@@ -238,8 +238,8 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 				ImageName: row.ImageName,
 				ImageTag:  row.ImageTag,
 			},
-			SbomStatus:     s,
-			ImageUpdatedAt: timestamppb.New(row.WorkloadUpdatedAt.Time),
+			SbomStatus:              s,
+			SbomProcessingStartedAt: timestamppb.New(row.SbomProcessingStartedAt.Time),
 		})
 	}
 

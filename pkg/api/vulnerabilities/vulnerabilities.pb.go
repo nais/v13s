@@ -1125,14 +1125,14 @@ func (x *WorkloadCriticalVulnerabilityFinding) GetVulnerability() *WorkloadCriti
 }
 
 type WorkloadSummary struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Workload             *Workload              `protobuf:"bytes,2,opt,name=workload,proto3" json:"workload,omitempty"`
-	VulnerabilitySummary *Summary               `protobuf:"bytes,3,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
-	SbomStatus           SbomStatus             `protobuf:"varint,4,opt,name=sbom_status,json=sbomStatus,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_status,omitempty"`
-	ImageUpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=image_updated_at,json=imageUpdatedAt,proto3" json:"image_updated_at,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Id                      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Workload                *Workload              `protobuf:"bytes,2,opt,name=workload,proto3" json:"workload,omitempty"`
+	VulnerabilitySummary    *Summary               `protobuf:"bytes,3,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
+	SbomStatus              SbomStatus             `protobuf:"varint,4,opt,name=sbom_status,json=sbomStatus,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_status,omitempty"`
+	SbomProcessingStartedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=sbom_processing_started_at,json=sbomProcessingStartedAt,proto3" json:"sbom_processing_started_at,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *WorkloadSummary) Reset() {
@@ -1193,20 +1193,20 @@ func (x *WorkloadSummary) GetSbomStatus() SbomStatus {
 	return SbomStatus_SBOM_STATUS_UNSPECIFIED
 }
 
-func (x *WorkloadSummary) GetImageUpdatedAt() *timestamppb.Timestamp {
+func (x *WorkloadSummary) GetSbomProcessingStartedAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.ImageUpdatedAt
+		return x.SbomProcessingStartedAt
 	}
 	return nil
 }
 
 type WorkloadSbomStatus struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Workload       *Workload              `protobuf:"bytes,1,opt,name=workload,proto3" json:"workload,omitempty"`
-	SbomStatus     SbomStatus             `protobuf:"varint,2,opt,name=sbom_status,json=sbomStatus,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_status,omitempty"`
-	ImageUpdatedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=image_updated_at,json=imageUpdatedAt,proto3" json:"image_updated_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Workload                *Workload              `protobuf:"bytes,1,opt,name=workload,proto3" json:"workload,omitempty"`
+	SbomStatus              SbomStatus             `protobuf:"varint,2,opt,name=sbom_status,json=sbomStatus,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_status,omitempty"`
+	SbomProcessingStartedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=sbom_processing_started_at,json=sbomProcessingStartedAt,proto3" json:"sbom_processing_started_at,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *WorkloadSbomStatus) Reset() {
@@ -1253,9 +1253,9 @@ func (x *WorkloadSbomStatus) GetSbomStatus() SbomStatus {
 	return SbomStatus_SBOM_STATUS_UNSPECIFIED
 }
 
-func (x *WorkloadSbomStatus) GetImageUpdatedAt() *timestamppb.Timestamp {
+func (x *WorkloadSbomStatus) GetSbomProcessingStartedAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.ImageUpdatedAt
+		return x.SbomProcessingStartedAt
 	}
 	return nil
 }
@@ -3989,19 +3989,19 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\f_resolved_at\"\xbe\x01\n" +
 	"$WorkloadCriticalVulnerabilityFinding\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12V\n" +
-	"\rvulnerability\x18\x02 \x01(\v20.v13s.api.protobuf.WorkloadCriticalVulnerabilityR\rvulnerability\"\xb1\x02\n" +
+	"\rvulnerability\x18\x02 \x01(\v20.v13s.api.protobuf.WorkloadCriticalVulnerabilityR\rvulnerability\"\xc4\x02\n" +
 	"\x0fWorkloadSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\bworkload\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\bworkload\x12O\n" +
 	"\x15vulnerability_summary\x18\x03 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12>\n" +
 	"\vsbom_status\x18\x04 \x01(\x0e2\x1d.v13s.api.protobuf.SbomStatusR\n" +
-	"sbomStatus\x12D\n" +
-	"\x10image_updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x0eimageUpdatedAt\"\xd3\x01\n" +
+	"sbomStatus\x12W\n" +
+	"\x1asbom_processing_started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x17sbomProcessingStartedAt\"\xe6\x01\n" +
 	"\x12WorkloadSbomStatus\x127\n" +
 	"\bworkload\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\bworkload\x12>\n" +
 	"\vsbom_status\x18\x02 \x01(\x0e2\x1d.v13s.api.protobuf.SbomStatusR\n" +
-	"sbomStatus\x12D\n" +
-	"\x10image_updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x0eimageUpdatedAt\"\xd9\x03\n" +
+	"sbomStatus\x12W\n" +
+	"\x1asbom_processing_started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x17sbomProcessingStartedAt\"\xd9\x03\n" +
 	"\vWorkloadFix\x127\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x1b.v13s.api.protobuf.SeverityR\bseverity\x12D\n" +
 	"\rintroduced_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\fintroducedAt\x88\x01\x01\x12:\n" +
@@ -4384,10 +4384,10 @@ var file_vulnerabilities_proto_depIdxs = []int32{
 	7,   // 23: v13s.api.protobuf.WorkloadSummary.workload:type_name -> v13s.api.protobuf.Workload
 	8,   // 24: v13s.api.protobuf.WorkloadSummary.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
 	4,   // 25: v13s.api.protobuf.WorkloadSummary.sbom_status:type_name -> v13s.api.protobuf.SbomStatus
-	59,  // 26: v13s.api.protobuf.WorkloadSummary.image_updated_at:type_name -> google.protobuf.Timestamp
+	59,  // 26: v13s.api.protobuf.WorkloadSummary.sbom_processing_started_at:type_name -> google.protobuf.Timestamp
 	7,   // 27: v13s.api.protobuf.WorkloadSbomStatus.workload:type_name -> v13s.api.protobuf.Workload
 	4,   // 28: v13s.api.protobuf.WorkloadSbomStatus.sbom_status:type_name -> v13s.api.protobuf.SbomStatus
-	59,  // 29: v13s.api.protobuf.WorkloadSbomStatus.image_updated_at:type_name -> google.protobuf.Timestamp
+	59,  // 29: v13s.api.protobuf.WorkloadSbomStatus.sbom_processing_started_at:type_name -> google.protobuf.Timestamp
 	2,   // 30: v13s.api.protobuf.WorkloadFix.severity:type_name -> v13s.api.protobuf.Severity
 	59,  // 31: v13s.api.protobuf.WorkloadFix.introduced_at:type_name -> google.protobuf.Timestamp
 	59,  // 32: v13s.api.protobuf.WorkloadFix.fixed_at:type_name -> google.protobuf.Timestamp

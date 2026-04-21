@@ -65,7 +65,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				Package: row.Package,
 				Suppression: toSuppression(
 					row.Suppressed,
-					row.Reason.VulnerabilitySuppressReason,
+					derefReason(row.Reason),
 					row.ReasonText,
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
@@ -142,7 +142,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 			Package: row.Package,
 			Suppression: toSuppression(
 				row.Suppressed,
-				row.Reason.VulnerabilitySuppressReason,
+				derefReason(row.Reason),
 				row.ReasonText,
 				row.SuppressedBy,
 				row.SuppressedAt.Time,
@@ -216,7 +216,7 @@ func (s *Server) ListSeverityVulnerabilitiesSince(ctx context.Context, request *
 				Package: row.Package,
 				Suppression: toSuppression(
 					row.Suppressed,
-					row.Reason.VulnerabilitySuppressReason,
+					derefReason(row.Reason),
 					row.ReasonText,
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
@@ -342,7 +342,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 		Vulnerability: &vulnerabilities.Vulnerability{
 			Id:            row.ID.String(),
 			Package:       row.Package,
-			Suppression:   toSuppression(row.Suppressed, row.Reason.VulnerabilitySuppressReason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
+			Suppression:   toSuppression(row.Suppressed, derefReason(row.Reason), row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
 			LatestVersion: row.LatestVersion,
 			ImageName:     row.ImageName,
 			Cve: &vulnerabilities.Cve{
@@ -441,7 +441,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 				Package: row.Package,
 				Suppression: toSuppression(
 					row.Suppressed,
-					row.Reason.VulnerabilitySuppressReason,
+					derefReason(row.Reason),
 					row.ReasonText,
 					row.SuppressedBy,
 					row.SuppressedAt.Time,
@@ -495,7 +495,7 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 		Vulnerability: &vulnerabilities.Vulnerability{
 			Id:            row.ID.String(),
 			Package:       row.Package,
-			Suppression:   toSuppression(row.Suppressed, row.Reason.VulnerabilitySuppressReason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
+			Suppression:   toSuppression(row.Suppressed, derefReason(row.Reason), row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
 			LatestVersion: row.LatestVersion,
 			Cve: &vulnerabilities.Cve{
 				Id:          row.CveID,
@@ -639,6 +639,13 @@ func safeInt(val *int32) int32 {
 		return 0
 	}
 	return *val
+}
+
+func derefReason(r sql.NullVulnerabilitySuppressReason) sql.VulnerabilitySuppressReason {
+	if !r.Valid {
+		return ""
+	}
+	return r.VulnerabilitySuppressReason
 }
 
 func toSuppression(suppressed bool, suppressReason sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {

@@ -225,7 +225,7 @@ SELECT
     w.image_name,
     w.image_tag,
     w.state AS workload_state,
-    w.updated_at AS workload_updated_at,
+    i.sbom_processing_started_at,
     i.state AS image_state
 FROM
     workloads w
@@ -246,15 +246,15 @@ type ListWorkloadSbomStatusByImageParams struct {
 }
 
 type ListWorkloadSbomStatusByImageRow struct {
-	Cluster           string
-	Namespace         string
-	Name              string
-	WorkloadType      string
-	ImageName         string
-	ImageTag          string
-	WorkloadState     WorkloadState
-	WorkloadUpdatedAt pgtype.Timestamptz
-	ImageState        ImageState
+	Cluster                 string
+	Namespace               string
+	Name                    string
+	WorkloadType            string
+	ImageName               string
+	ImageTag                string
+	WorkloadState           WorkloadState
+	SbomProcessingStartedAt pgtype.Timestamptz
+	ImageState              ImageState
 }
 
 func (q *Queries) ListWorkloadSbomStatusByImage(ctx context.Context, arg ListWorkloadSbomStatusByImageParams) ([]*ListWorkloadSbomStatusByImageRow, error) {
@@ -274,7 +274,7 @@ func (q *Queries) ListWorkloadSbomStatusByImage(ctx context.Context, arg ListWor
 			&i.ImageName,
 			&i.ImageTag,
 			&i.WorkloadState,
-			&i.WorkloadUpdatedAt,
+			&i.SbomProcessingStartedAt,
 			&i.ImageState,
 		); err != nil {
 			return nil, err

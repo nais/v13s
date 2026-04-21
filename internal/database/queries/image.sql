@@ -2,12 +2,14 @@
 INSERT INTO images(
     name,
     tag,
-    metadata)
+    metadata,
+    sbom_processing_started_at)
 VALUES (
     @name,
     @tag,
     COALESCE(
-        @metadata, '{}' ::JSONB))
+        @metadata, '{}' ::JSONB),
+    NOW())
 ON CONFLICT
     DO NOTHING;
 
@@ -48,7 +50,14 @@ UPDATE
 SET
     state = @state,
     ready_for_resync_at = @ready_for_resync_at,
-    updated_at = NOW()
+    updated_at = NOW(),
+    sbom_processing_started_at = CASE WHEN @state::image_state IN ('initialized', 'resync') THEN
+        NOW()
+    WHEN @state::image_state = 'updated' THEN
+        NULL
+    ELSE
+        sbom_processing_started_at
+    END
 WHERE
     name = @name
     AND tag = @tag;
