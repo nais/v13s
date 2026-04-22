@@ -51,7 +51,6 @@ type Querier interface {
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
-	ListWorkloadSbomStatusByImage(ctx context.Context, arg ListWorkloadSbomStatusByImageParams) ([]*ListWorkloadSbomStatusByImageRow, error)
 	ListWorkloadSeverityFixStats(ctx context.Context, arg ListWorkloadSeverityFixStatsParams) ([]*ListWorkloadSeverityFixStatsRow, error)
 	ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatusParams) ([]*ListWorkloadStatusRow, error)
 	ListWorkloadStatusWithJobs(ctx context.Context, arg ListWorkloadStatusWithJobsParams) ([]*ListWorkloadStatusWithJobsRow, error)

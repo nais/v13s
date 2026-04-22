@@ -15,6 +15,10 @@ func deriveSbomStatus(imageState sql.ImageState, workloadState sql.WorkloadState
 		return vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 	}
 
+	return deriveImageSbomStatus(imageState)
+}
+
+func deriveImageSbomStatus(imageState sql.ImageState) vulnerabilities.SbomStatus {
 	switch imageState {
 	case sql.ImageStateUpdated:
 		return vulnerabilities.SbomStatus_SBOM_STATUS_READY

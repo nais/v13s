@@ -212,31 +212,19 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		})
 	}
 
-	sbomRows, err := s.querier.ListWorkloadSbomStatusByImage(ctx, sql.ListWorkloadSbomStatusByImageParams{
-		ImageName: request.ImageName,
-		ImageTag:  request.ImageTag,
+	image, err := s.querier.GetImage(ctx, sql.GetImageParams{
+		Name: request.ImageName,
+		Tag:  request.ImageTag,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list workload sbom statuses: %w", err)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get image: %w", err)
 	}
 
-	imageSbomStatus := vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
-	workloadSbomStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(sbomRows))
-	for _, row := range sbomRows {
-		s := deriveSbomStatus(row.ImageState, row.WorkloadState)
-		imageSbomStatus = worstCase(imageSbomStatus, s)
-		workloadSbomStatuses = append(workloadSbomStatuses, &vulnerabilities.WorkloadSbomStatus{
-			Workload: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.Name,
-				Type:      row.WorkloadType,
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
-			},
-			SbomStatus:              s,
-			SbomProcessingStartedAt: timestamppb.New(row.SbomProcessingStartedAt.Time),
-		})
+	var imageSbomStatus vulnerabilities.SbomStatus
+	if image != nil {
+		imageSbomStatus = deriveImageSbomStatus(image.State)
+	} else {
+		imageSbomStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
 	}
 
 	var vulnSummary *vulnerabilities.Summary
@@ -265,7 +253,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
 		ImageSbomStatus:      imageSbomStatus,
-		WorkloadSbomStatuses: workloadSbomStatuses,
 	}, nil
 }
 
