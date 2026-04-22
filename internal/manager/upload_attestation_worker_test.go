@@ -43,10 +43,8 @@ func TestUploadAttestationWorker_SourceRefAlive_UpdatesWorkloads(t *testing.T) {
 	workloadId := pgtype.UUID{Bytes: [16]byte{4}, Valid: true}
 	sourceName := "dependencytrack"
 
-	// Source reports its name for the GetSourceRef lookup
 	source.EXPECT().Name().Return(sourceName)
 
-	// Source ref exists in DB
 	sourceRef := &sql.SourceRef{ImageName: imageName, ImageTag: imageTag}
 	db.EXPECT().GetSourceRef(mock.Anything, sql.GetSourceRefParams{
 		ImageName:  imageName,
@@ -54,24 +52,20 @@ func TestUploadAttestationWorker_SourceRefAlive_UpdatesWorkloads(t *testing.T) {
 		SourceType: sourceName,
 	}).Return(sourceRef, nil)
 
-	// Project is alive upstream
 	source.EXPECT().ProjectExists(mock.Anything, imageName, imageTag).Return(true, nil)
 
-	// Image → resync (ready_for_resync_at = now)
 	db.EXPECT().UpdateImageState(mock.Anything, mock.MatchedBy(func(p sql.UpdateImageStateParams) bool {
 		return p.Name == imageName && p.Tag == imageTag &&
 			p.State == sql.ImageStateResync &&
 			p.ReadyForResyncAt.Valid
 	})).Return(int64(1), nil)
 
-	// All workloads for this image → updated
 	db.EXPECT().UpdateWorkloadStateByImage(mock.Anything, sql.UpdateWorkloadStateByImageParams{
 		State:     sql.WorkloadStateUpdated,
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	}).Return(nil)
 
-	// No upload, no finalize job enqueued
 	worker := &UploadAttestationWorker{
 		db:        db,
 		source:    source,
@@ -101,15 +95,12 @@ func TestUploadAttestationWorker_SourceRefMissing_DoesNotUpdateWorkloadEarly(t *
 
 	source.EXPECT().Name().Return(sourceName)
 
-	// No source ref in DB
 	db.EXPECT().GetSourceRef(mock.Anything, sql.GetSourceRefParams{
 		ImageName:  imageName,
 		ImageTag:   imageTag,
 		SourceType: sourceName,
 	}).Return(nil, pgx.ErrNoRows)
 
-	// No ProjectExists call expected — source_ref_missing skips it
-	// No UpdateWorkloadStateByImage expected at this point — that only happens in finalize
 	worker := &UploadAttestationWorker{
 		db:        db,
 		source:    source,

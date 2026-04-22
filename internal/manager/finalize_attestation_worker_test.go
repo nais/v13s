@@ -41,22 +41,18 @@ func TestFinalizeAttestationWorker_TaskComplete_UpdatesWorkloads(t *testing.T) {
 	imageTag := "v1.0"
 	processToken := "token-abc"
 
-	// Source reports task is complete
 	source.EXPECT().IsTaskInProgress(mock.Anything, processToken).Return(false, nil)
 
-	// Image → resync
 	db.EXPECT().UpdateImageState(mock.Anything, mock.MatchedBy(func(p sql.UpdateImageStateParams) bool {
 		return p.Name == imageName && p.Tag == imageTag && p.State == sql.ImageStateResync && p.ReadyForResyncAt.Valid
 	})).Return(int64(1), nil)
 
-	// All workloads for the image → updated
 	db.EXPECT().UpdateWorkloadStateByImage(mock.Anything, sql.UpdateWorkloadStateByImageParams{
 		State:     sql.WorkloadStateUpdated,
 		ImageName: imageName,
 		ImageTag:  imageTag,
 	}).Return(nil)
 
-	// No unused source refs
 	db.EXPECT().ListUnusedSourceRefs(mock.Anything, &imageName).Return(nil, nil)
 
 	worker := &FinalizeAttestationWorker{
@@ -85,10 +81,8 @@ func TestFinalizeAttestationWorker_TaskInProgress_RetryLater(t *testing.T) {
 	imageTag := "v1.0"
 	processToken := "token-xyz"
 
-	// Task still running
 	source.EXPECT().IsTaskInProgress(mock.Anything, processToken).Return(true, nil)
 
-	// No DB calls expected — worker should return early with error for retry
 	worker := &FinalizeAttestationWorker{
 		db:        db,
 		source:    source,
@@ -113,8 +107,6 @@ func TestFinalizeAttestationWorker_EmptyToken_TreatedAsComplete(t *testing.T) {
 
 	imageName := "my-image"
 	imageTag := "v1.0"
-
-	// No source.IsTaskInProgress call expected — empty token skips it
 
 	db.EXPECT().UpdateImageState(mock.Anything, mock.MatchedBy(func(p sql.UpdateImageStateParams) bool {
 		return p.Name == imageName && p.Tag == imageTag &&
@@ -143,7 +135,7 @@ func TestFinalizeAttestationWorker_EmptyToken_TreatedAsComplete(t *testing.T) {
 
 	require.NoError(t, err)
 	db.AssertExpectations(t)
-	source.AssertExpectations(t) // no calls expected
+	source.AssertExpectations(t)
 }
 
 func TestFinalizeAttestationWorker_UpdatesWorkloads_WithUnusedSourceRefs(t *testing.T) {
@@ -175,7 +167,6 @@ func TestFinalizeAttestationWorker_UpdatesWorkloads_WithUnusedSourceRefs(t *test
 	}
 	db.EXPECT().ListUnusedSourceRefs(mock.Anything, &imageName).Return([]*sql.SourceRef{unusedRef}, nil)
 
-	// One RemoveFromSourceJob should be enqueued
 	enqueueCount := 0
 	jobClient := &capturingJobClient{onAdd: func(args river.JobArgs) {
 		if _, ok := args.(*RemoveFromSourceJob); ok {
@@ -199,5 +190,4 @@ func TestFinalizeAttestationWorker_UpdatesWorkloads_WithUnusedSourceRefs(t *test
 	source.AssertExpectations(t)
 }
 
-// helper to get a pgtype.Timestamptz for MatchedBy assertions
 var _ = pgtype.Timestamptz{}

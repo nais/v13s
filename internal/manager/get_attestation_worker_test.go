@@ -20,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/metric/noop"
 )
 
-// stubJobClient is a no-op job.Client used in tests where job enqueueing is irrelevant.
 type stubJobClient struct{}
 
 func (s *stubJobClient) AddJob(_ context.Context, _ river.JobArgs) error { return nil }
@@ -28,7 +27,6 @@ func (s *stubJobClient) GetWorkers() *river.Workers                      { retur
 func (s *stubJobClient) Start(_ context.Context) error                   { return nil }
 func (s *stubJobClient) Stop(_ context.Context) error                    { return nil }
 
-// capturingJobClient records the enqueued job args for assertion.
 type capturingJobClient struct {
 	onAdd func(args river.JobArgs)
 }
@@ -54,18 +52,14 @@ func TestGetAttestationWorker_NoAttestation_IntermediateAttempt(t *testing.T) {
 	imageName := "my-image"
 	imageTag := "v1.0"
 
-	// Verifier returns "no matching attestations" on this attempt
 	verifier.EXPECT().GetAttestation(mock.Anything, fmt.Sprintf("%s:%s", imageName, imageTag)).
 		Return(nil, &cosign.ErrNoMatchingAttestations{})
 
-	// Workload state SHOULD be updated to no_attestation
 	db.EXPECT().UpdateWorkloadState(mock.Anything, sql.UpdateWorkloadStateParams{
 		State: sql.WorkloadStateNoAttestation,
 		ID:    workloadId,
 	}).Return(nil)
 
-	// Image state MUST NOT be updated (intermediate attempt — not final)
-	// No call to UpdateImageState expected.
 	worker := &GetAttestationWorker{
 		db:              db,
 		verifier:        verifier,
@@ -74,11 +68,9 @@ func TestGetAttestationWorker_NoAttestation_IntermediateAttempt(t *testing.T) {
 		workloadCounter: noop.Int64UpDownCounter{},
 	}
 
-	// Attempt 1 of 4 — intermediate
 	job := makeGetAttestationJob(1, 4, imageName, imageTag, workloadId)
 	err := worker.Work(ctx, job)
 
-	// Returns the cosign error so River schedules a retry
 	require.Error(t, err)
 	db.AssertExpectations(t)
 	verifier.AssertExpectations(t)
@@ -98,13 +90,11 @@ func TestGetAttestationWorker_NoAttestation_FinalAttempt(t *testing.T) {
 	verifier.EXPECT().GetAttestation(mock.Anything, fmt.Sprintf("%s:%s", imageName, imageTag)).
 		Return(nil, &cosign.ErrNoMatchingAttestations{})
 
-	// Workload → no_attestation
 	db.EXPECT().UpdateWorkloadState(mock.Anything, sql.UpdateWorkloadStateParams{
 		State: sql.WorkloadStateNoAttestation,
 		ID:    workloadId,
 	}).Return(nil)
 
-	// Image → failed (final attempt only)
 	db.EXPECT().UpdateImageState(mock.Anything, sql.UpdateImageStateParams{
 		State: sql.ImageStateFailed,
 		Name:  imageName,
@@ -119,7 +109,6 @@ func TestGetAttestationWorker_NoAttestation_FinalAttempt(t *testing.T) {
 		workloadCounter: noop.Int64UpDownCounter{},
 	}
 
-	// Attempt 4 of 4 — final
 	job := makeGetAttestationJob(4, 4, imageName, imageTag, workloadId)
 	err := worker.Work(ctx, job)
 
@@ -143,8 +132,6 @@ func TestGetAttestationWorker_AttestationFound(t *testing.T) {
 	verifier.EXPECT().GetAttestation(mock.Anything, fmt.Sprintf("%s:%s", imageName, imageTag)).
 		Return(att, nil)
 
-	// No DB state changes expected — only upload is enqueued (via jobClient stub)
-
 	enqueued := false
 	jobClient := &capturingJobClient{onAdd: func(args river.JobArgs) {
 		_, ok := args.(*UploadAttestationJob)
@@ -165,7 +152,7 @@ func TestGetAttestationWorker_AttestationFound(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, enqueued, "expected upload_attestation job to be enqueued")
-	db.AssertExpectations(t) // no DB calls expected
+	db.AssertExpectations(t)
 	verifier.AssertExpectations(t)
 }
 

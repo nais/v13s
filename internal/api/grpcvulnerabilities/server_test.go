@@ -560,7 +560,6 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		resp, err := client.ListVulnerabilitySummaries(ctx)
 		require.NoError(t, err)
 		require.Len(t, resp.Nodes, 1)
-		// Default DB state for both image and workload is 'initialized' → PROCESSING
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.Nodes[0].GetSbomStatus())
 	})
 }
@@ -1019,7 +1018,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 	imageTag := "v1.0"
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
-		// Advance image to updated state so status is READY and vulnerability data is returned
 		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
@@ -1036,7 +1034,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 
-		// Reset image state back to initialized for subsequent sub-tests
 		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
@@ -1048,9 +1045,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 	t.Run("image_sbom_status is PROCESSING for freshly seeded image", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 		require.NoError(t, err)
-		// Default state for image and workload is 'initialized' → PROCESSING
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetImageSbomStatus())
-		// PROCESSING → empty summary (not nil), no vulnerability data yet
 		assert.NotNil(t, resp.GetVulnerabilitySummary())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetTotal())
 		require.Len(t, resp.GetWorkloadSbomStatuses(), 1)
@@ -1062,9 +1057,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 	})
 
 	t.Run("image_sbom_status is PROCESSING when workload state is processing (no summary row yet)", func(t *testing.T) {
-		// Simulate the common case: workload exists and is being processed but
-		// vulnerability_summary has no row yet (ErrNoRows path). The status must
-		// be derived from workload state rather than returning UNSPECIFIED.
 		wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
 			Name: "workload-1", WorkloadType: "app",
 			Namespace: "namespace-1", Cluster: "cluster-1",
@@ -1081,7 +1073,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		require.Len(t, resp.GetWorkloadSbomStatuses(), 1)
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetWorkloadSbomStatuses()[0].GetSbomStatus())
 
-		// Reset state for subsequent sub-tests
 		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
 			ID: wl.ID, State: sql.WorkloadStateInitialized,
 		})
@@ -1111,8 +1102,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 }
 
 func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
-	// Two clusters both running the same image — one workload will be set to
-	// no_sbom so the image-level rollup must surface FAILED (worst case).
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-a", "cluster-b"},
 		namespaces:            []string{"namespace-1"},
@@ -1123,9 +1112,6 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	// Both workloads happen to share the same image (first cluster's image name/tag)
-	// as seeded by generateTestWorkloads. Override cluster-b's workload to use
-	// cluster-a's image so we have two workloads on one image.
 	sharedImage := "image-cluster-a-namespace-1-workload-1"
 	sharedTag := "v1.0"
 
@@ -1147,14 +1133,12 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 	})
 
 	t.Run("one workload READY, one PROCESSING → image_sbom_status READY (worst case)", func(t *testing.T) {
-		// Set image to updated so workloads that fall through to image switch become READY
 		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  sharedImage,
 			Tag:   sharedTag,
 			State: sql.ImageStateUpdated,
 		})
 		require.NoError(t, err)
-		// Set cluster-a workload to updated → falls through to image switch → READY
 		wlA, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
 			Name: "workload-1", WorkloadType: "app",
 			Namespace: "namespace-1", Cluster: "cluster-a",
@@ -1164,7 +1148,6 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 			ID: wlA.ID, State: sql.WorkloadStateUpdated,
 		})
 		require.NoError(t, err)
-		// Set cluster-b workload to processing → PROCESSING (worse than READY)
 		wlB, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
 			Name: "workload-1", WorkloadType: "app",
 			Namespace: "namespace-1", Cluster: "cluster-b",
@@ -1194,7 +1177,6 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
 		require.NoError(t, err)
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetImageSbomStatus())
-		// NO_SBOM → nil summary, no vulnerability data at all
 		assert.Nil(t, resp.GetVulnerabilitySummary())
 	})
 }

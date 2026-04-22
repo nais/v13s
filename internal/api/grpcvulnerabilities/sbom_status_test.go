@@ -118,7 +118,6 @@ func TestWorstCase(t *testing.T) {
 			want: vulnerabilities.SbomStatus_SBOM_STATUS_READY,
 		},
 		{
-			// PROCESSING is the accumulator sentinel; any definitive status beats it
 			a:    vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
 			b:    vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 			want: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
@@ -136,7 +135,6 @@ func TestWorstCase(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("worstCase(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
 			}
-			// commutativity: worstCase(a, b) == worstCase(b, a)
 			got2 := worstCase(tt.b, tt.a)
 			if got2 != tt.want {
 				t.Errorf("worstCase(%v, %v) [commuted] = %v, want %v", tt.b, tt.a, got2, tt.want)
@@ -145,8 +143,6 @@ func TestWorstCase(t *testing.T) {
 	}
 }
 
-// TestWorstCaseRollup verifies that folding worstCase over a slice produces the
-// correct image-level status — this mirrors the accumulation logic in the handler.
 func TestWorstCaseRollup(t *testing.T) {
 	tests := []struct {
 		name     string

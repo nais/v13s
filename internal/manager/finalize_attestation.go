@@ -91,7 +91,6 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		return fmt.Errorf("attestation task for image %s:%s is still in progress", imageName, imageTag)
 	}
 
-	// 4. Mark image as ready for resync and all workloads as updated.
 	if decision.MarkResync {
 		n, err := f.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,

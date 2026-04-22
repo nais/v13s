@@ -52,7 +52,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		// if a workload does not have a sbom, the image name and tag will be nil from vulnerabilities_summary
 		imageName := row.CurrentImageName
 		if row.ImageName != nil {
 			imageName = *row.ImageName
@@ -99,8 +98,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	return response, nil
 }
 
-// TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
-// TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
@@ -195,7 +192,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 	}
-	// summary may be nil when no vulnerability_summary row exists yet (e.g. still processing)
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
@@ -246,13 +242,10 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	var vulnSummary *vulnerabilities.Summary
 	switch imageSbomStatus {
 	case vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:
-		// No SBOM exists — return nil so callers know there is no data
 		vulnSummary = nil
 	case vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING:
-		// Still processing — return an empty summary so callers can show a loading state
 		vulnSummary = &vulnerabilities.Summary{}
 	default:
-		// READY or FAILED — return whatever we have from the DB
 		if summary != nil {
 			vulnSummary = &vulnerabilities.Summary{
 				Critical:    summary.Critical,

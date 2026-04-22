@@ -114,9 +114,6 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	}
 
 	if decision.ImageState != nil {
-		// Only persist a terminal image state (failed) on the final attempt.
-		// On intermediate retries, leave the image state unchanged so a
-		// previously-successful resync or updated state is not clobbered.
 		isFinalAttempt := job.Attempt >= job.MaxAttempts
 		if *decision.ImageState != sql.ImageStateFailed || isFinalAttempt {
 			n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{

@@ -296,7 +296,6 @@ func TestInitializeWorkload_Updated_Skipped(t *testing.T) {
 		ID:    wl.ID,
 	}))
 
-	// Same image — should be skipped (returns ErrNoRows)
 	_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
 		Name:         "my-workload",
 		WorkloadType: "app",
@@ -321,7 +320,6 @@ func TestInitializeWorkload_NoAttestation_Skipped(t *testing.T) {
 	imageName := "retriggered-image"
 	imageTag := "v1.0"
 
-	// Seed image and workload
 	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
 		Name:     imageName,
 		Tag:      imageTag,
@@ -337,7 +335,6 @@ func TestInitializeWorkload_NoAttestation_Skipped(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Simulate get_attestation failing: set workload → no_attestation
 	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
 		Name:         "my-workload",
 		WorkloadType: "app",
@@ -350,7 +347,6 @@ func TestInitializeWorkload_NoAttestation_Skipped(t *testing.T) {
 		ID:    wl.ID,
 	}))
 
-	// Call InitializeWorkload again for the same image — should be skipped
 	_, err = db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
 		Name:         "my-workload",
 		WorkloadType: "app",
@@ -363,7 +359,6 @@ func TestInitializeWorkload_NoAttestation_Skipped(t *testing.T) {
 	assert.ErrorIs(t, err, pgx.ErrNoRows,
 		"InitializeWorkload should skip a workload in no_attestation state — healing is done by the Updater cron")
 
-	// Workload state must remain no_attestation (unchanged)
 	wl, err = db.GetWorkload(ctx, sql.GetWorkloadParams{
 		Name:         "my-workload",
 		WorkloadType: "app",
