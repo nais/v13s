@@ -85,8 +85,8 @@ func TestDeriveSbomStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := deriveSbomStatus(tt.imageState, tt.workloadState)
-			if got != tt.want {
-				t.Errorf("deriveSbomStatus() = %v, want %v", got, tt.want)
+			if got.GetStatus() != tt.want {
+				t.Errorf("deriveSbomStatus() = %v, want %v", got.GetStatus(), tt.want)
 			}
 		})
 	}

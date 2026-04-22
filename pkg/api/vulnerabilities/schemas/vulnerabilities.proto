@@ -146,14 +146,18 @@ message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
-  SbomStatus sbom_status = 4;
-  google.protobuf.Timestamp sbom_processing_started_at = 5;
+  SbomStatusInfo sbom_status = 4;
 }
 
 message WorkloadSbomStatus {
   Workload   workload         = 1;
   SbomStatus sbom_status      = 2;
   google.protobuf.Timestamp sbom_processing_started_at = 3;
+}
+
+message SbomStatusInfo {
+  SbomStatus status                                         = 1;
+  optional google.protobuf.Timestamp processing_started_at = 2;
 }
 
 message WorkloadFix {
@@ -344,9 +348,9 @@ message GetVulnerabilitySummaryForImageRequest {
 }
 
 message GetVulnerabilitySummaryForImageResponse {
-  Summary    vulnerability_summary              = 1;
-  repeated Workload workloadRef                 = 2;
-  SbomStatus image_sbom_status                  = 3;
+  Summary           vulnerability_summary = 1;
+  repeated Workload workload_ref          = 2;
+  SbomStatusInfo    sbom_status           = 3;
 }
 
 message GetVulnerabilitySummaryRequest {

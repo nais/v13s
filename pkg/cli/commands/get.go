@@ -154,7 +154,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 
 	// Image-level summary
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
-	fmt.Printf("SBOM Status: %s\n\n", resp.GetImageSbomStatus())
+	fmt.Printf("SBOM Status: %s\n\n", resp.GetSbomStatus().GetStatus())
 
 	if s := resp.GetVulnerabilitySummary(); s != nil {
 		tbl := table.New("Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Last Updated")

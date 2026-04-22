@@ -82,8 +82,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			},
-			SbomStatus:              deriveSbomStatus(row.ImageState, row.WorkloadState),
-			SbomProcessingStartedAt: timestamppb.New(row.ImageUpdatedAt.Time),
+			SbomStatus: deriveSbomStatus(row.ImageState, row.WorkloadState),
 		}
 	})
 
@@ -220,15 +219,19 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		return nil, fmt.Errorf("failed to get image: %w", err)
 	}
 
-	var imageSbomStatus vulnerabilities.SbomStatus
+	var sbomStatus *vulnerabilities.SbomStatusInfo
 	if image != nil {
-		imageSbomStatus = deriveImageSbomStatus(image.State)
+		var processingStartedAt *timestamppb.Timestamp
+		if image.SbomProcessingStartedAt.Valid {
+			processingStartedAt = timestamppb.New(image.SbomProcessingStartedAt.Time)
+		}
+		sbomStatus = deriveImageSbomStatus(image.State, processingStartedAt)
 	} else {
-		imageSbomStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
+		sbomStatus = &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
 	}
 
 	var vulnSummary *vulnerabilities.Summary
-	switch imageSbomStatus {
+	switch sbomStatus.GetStatus() {
 	case vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:
 		vulnSummary = nil
 	case vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING:
@@ -252,7 +255,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          refs,
-		ImageSbomStatus:      imageSbomStatus,
+		SbomStatus:           sbomStatus,
 	}, nil
 }
 

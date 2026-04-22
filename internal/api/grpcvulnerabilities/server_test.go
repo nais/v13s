@@ -560,7 +560,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		resp, err := client.ListVulnerabilitySummaries(ctx)
 		require.NoError(t, err)
 		require.Len(t, resp.Nodes, 1)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.Nodes[0].GetSbomStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.Nodes[0].GetSbomStatus().GetStatus())
 	})
 }
 
@@ -1045,7 +1045,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 	t.Run("image_sbom_status is PROCESSING for freshly seeded image", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 		require.NoError(t, err)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetImageSbomStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 		assert.NotNil(t, resp.GetVulnerabilitySummary())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetTotal())
 	})
@@ -1060,7 +1060,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 		require.NoError(t, err)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetImageSbomStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
 	})
 }
 
@@ -1091,7 +1091,7 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 	t.Run("both workloads PROCESSING → image_sbom_status PROCESSING", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
 		require.NoError(t, err)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetImageSbomStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
 	t.Run("image updated → image_sbom_status READY", func(t *testing.T) {
@@ -1104,7 +1104,7 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
 		require.NoError(t, err)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetImageSbomStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
 	})
 
 	t.Run("image failed → image_sbom_status FAILED", func(t *testing.T) {
@@ -1117,7 +1117,7 @@ func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
 		require.NoError(t, err)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, resp.GetImageSbomStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, resp.GetSbomStatus().GetStatus())
 	})
 }
 
