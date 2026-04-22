@@ -533,10 +533,28 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
+
+	t.Run("vulnerability summary is nil when image is PROCESSING", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitySummaries(ctx)
+		assert.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+		assert.Nil(t, resp.Nodes[0].GetVulnerabilitySummary())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.Nodes[0].GetSbomStatus().GetStatus())
+	})
+
 	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
 		resp, err := client.ListVulnerabilitySummaries(ctx)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.Nodes)
@@ -556,12 +574,6 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, "v1.0", resp.Nodes[0].GetWorkload().ImageTag, "v1.0")
 	})
 
-	t.Run("sbom_status is PROCESSING for freshly seeded workload (image state: initialized)", func(t *testing.T) {
-		resp, err := client.ListVulnerabilitySummaries(ctx)
-		require.NoError(t, err)
-		require.Len(t, resp.Nodes, 1)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.Nodes[0].GetSbomStatus().GetStatus())
-	})
 }
 
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
