@@ -137,11 +137,13 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image argument, expected format: <image>:<tag>")
 	}
-	parts := strings.SplitN(cmd.Args().First(), ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	imageRef := cmd.Args().First()
+	tagSep := strings.LastIndex(imageRef, ":")
+	lastSlash := strings.LastIndex(imageRef, "/")
+	if tagSep == -1 || tagSep < lastSlash || tagSep == len(imageRef)-1 {
+		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", imageRef)
 	}
-	imageName, imageTag := parts[0], parts[1]
+	imageName, imageTag := imageRef[:tagSep], imageRef[tagSep+1:]
 
 	start := time.Now()
 	resp, err := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
