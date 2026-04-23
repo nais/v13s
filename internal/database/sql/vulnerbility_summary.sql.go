@@ -399,6 +399,7 @@ vulnerability_data AS (
         w.state AS workload_state,
         i.state AS image_state,
         i.updated_at AS image_updated_at,
+        i.sbom_processing_started_at,
         CASE WHEN v.image_name IS NOT NULL THEN
             TRUE
         ELSE
@@ -423,7 +424,7 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, image_updated_at, has_sbom,
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, image_updated_at, sbom_processing_started_at, has_sbom,
 (
         SELECT
             COUNT(*)
@@ -506,30 +507,31 @@ type ListVulnerabilitySummariesParams struct {
 }
 
 type ListVulnerabilitySummariesRow struct {
-	ID                pgtype.UUID
-	WorkloadName      string
-	WorkloadType      string
-	Namespace         string
-	Cluster           string
-	CurrentImageName  string
-	CurrentImageTag   string
-	ImageName         *string
-	ImageTag          *string
-	Critical          *int32
-	High              *int32
-	Medium            *int32
-	Low               *int32
-	Unassigned        *int32
-	RiskScore         *int32
-	WorkloadCreatedAt pgtype.Timestamptz
-	WorkloadUpdatedAt pgtype.Timestamptz
-	SummaryCreatedAt  pgtype.Timestamptz
-	SummaryUpdatedAt  pgtype.Timestamptz
-	WorkloadState     WorkloadState
-	ImageState        ImageState
-	ImageUpdatedAt    pgtype.Timestamptz
-	HasSbom           bool
-	TotalCount        int64
+	ID                      pgtype.UUID
+	WorkloadName            string
+	WorkloadType            string
+	Namespace               string
+	Cluster                 string
+	CurrentImageName        string
+	CurrentImageTag         string
+	ImageName               *string
+	ImageTag                *string
+	Critical                *int32
+	High                    *int32
+	Medium                  *int32
+	Low                     *int32
+	Unassigned              *int32
+	RiskScore               *int32
+	WorkloadCreatedAt       pgtype.Timestamptz
+	WorkloadUpdatedAt       pgtype.Timestamptz
+	SummaryCreatedAt        pgtype.Timestamptz
+	SummaryUpdatedAt        pgtype.Timestamptz
+	WorkloadState           WorkloadState
+	ImageState              ImageState
+	ImageUpdatedAt          pgtype.Timestamptz
+	SbomProcessingStartedAt pgtype.Timestamptz
+	HasSbom                 bool
+	TotalCount              int64
 }
 
 func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error) {
@@ -575,6 +577,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.WorkloadState,
 			&i.ImageState,
 			&i.ImageUpdatedAt,
+			&i.SbomProcessingStartedAt,
 			&i.HasSbom,
 			&i.TotalCount,
 		); err != nil {

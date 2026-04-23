@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/pkg/cli/flag"
 	"github.com/rodaine/table"
 	"github.com/urfave/cli/v3"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
@@ -76,7 +77,7 @@ func getSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client,
 		resp.GetVulnerabilitySummary().GetRiskScore(),
 		resp.GetCoverage(),
 		resp.GetWorkloadCount()-resp.GetSbomCount(),
-		resp.GetVulnerabilitySummary().LastUpdated.AsTime().Format(time.RFC3339),
+		formatLastUpdated(resp.GetVulnerabilitySummary().GetLastUpdated()),
 	)
 
 	tbl.Print()
@@ -168,7 +169,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 			s.GetLow(),
 			s.GetUnassigned(),
 			s.GetRiskScore(),
-			s.GetLastUpdated().AsTime().Format(time.RFC3339),
+			formatLastUpdated(s.GetLastUpdated()),
 		)
 		tbl.Print()
 		fmt.Println()
@@ -176,4 +177,11 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 
 	fmt.Println("Fetched image summary in", time.Since(start).Seconds(), "seconds")
 	return nil
+}
+
+func formatLastUpdated(ts *timestamppb.Timestamp) string {
+	if ts == nil {
+		return "N/A"
+	}
+	return ts.AsTime().Format(time.RFC3339)
 }

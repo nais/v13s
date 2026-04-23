@@ -573,7 +573,6 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, "image-cluster-1-namespace-1-workload-1", resp.Nodes[0].GetWorkload().ImageName, "image-cluster-1-namespace-1-workload-1")
 		assert.Equal(t, "v1.0", resp.Nodes[0].GetWorkload().ImageTag, "v1.0")
 	})
-
 }
 
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {

@@ -60,7 +60,11 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		if row.ImageTag != nil {
 			imageTag = *row.ImageTag
 		}
-		sbomStatus := deriveSbomStatus(row.ImageState, row.WorkloadState)
+		var processingStartedAt *timestamppb.Timestamp
+		if row.SbomProcessingStartedAt.Valid {
+			processingStartedAt = timestamppb.New(row.SbomProcessingStartedAt.Time)
+		}
+		sbomStatus := deriveSbomStatus(row.ImageState, row.WorkloadState, processingStartedAt)
 		var vulnSummary *vulnerabilities.Summary
 		switch sbomStatus.GetStatus() {
 		case vulnerabilities.SbomStatus_SBOM_STATUS_READY:
@@ -91,7 +95,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		}
 	})
 
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
+	pageInfo, err := grpcpagination.PageInfo(request, total)
 	if err != nil {
 		return nil, err
 	}

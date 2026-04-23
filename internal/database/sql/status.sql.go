@@ -440,7 +440,7 @@ type ListWorkloadStatusWithJobsRow struct {
 	ImageUpdatedAt    pgtype.Timestamptz
 	JobID             *int64
 	JobKind           *string
-	JobState          NullRiverJobState
+	JobState          *RiverJobState
 	JobMetadata       interface{}
 	JobErrors         interface{}
 	JobFinalizedAt    pgtype.Timestamptz

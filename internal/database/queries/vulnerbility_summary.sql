@@ -88,6 +88,7 @@ vulnerability_data AS (
         w.state AS workload_state,
         i.state AS image_state,
         i.updated_at AS image_updated_at,
+        i.sbom_processing_started_at,
         CASE WHEN v.image_name IS NOT NULL THEN
             TRUE
         ELSE

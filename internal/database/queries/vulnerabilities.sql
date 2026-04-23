@@ -213,7 +213,7 @@ SELECT
     c.severity AS severity,
     c.refs,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
@@ -246,7 +246,7 @@ SELECT
     c.severity AS severity,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
     c.refs,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
@@ -507,7 +507,7 @@ distinct_image_vulnerabilities AS (
         v.cve_id)
         v.*,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
-        sv.reason,
+        COALESCE(sv.reason, 'not_set') AS reason,
         sv.reason_text,
         sv.suppressed_by,
         sv.updated_at AS suppressed_at
@@ -625,7 +625,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
@@ -750,7 +750,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
@@ -857,7 +857,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,

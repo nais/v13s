@@ -244,7 +244,7 @@ SELECT
     c.severity AS severity,
     c.refs,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
@@ -286,7 +286,7 @@ type GetVulnerabilityRow struct {
 	Severity      int32
 	Refs          typeext.MapStringString
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -343,7 +343,7 @@ SELECT
     c.severity AS severity,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
     c.refs,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
@@ -373,7 +373,7 @@ type GetVulnerabilityByIdRow struct {
 	Severity      int32
 	Suppressed    bool
 	Refs          typeext.MapStringString
-	Reason        NullVulnerabilitySuppressReason
+	Reason        VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -429,7 +429,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
@@ -550,7 +550,7 @@ type ListSeverityVulnerabilitiesSinceRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -857,7 +857,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
@@ -984,7 +984,7 @@ type ListVulnerabilitiesRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1091,7 +1091,7 @@ distinct_image_vulnerabilities AS (
         v.cve_id)
         v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
-        sv.reason,
+        COALESCE(sv.reason, 'not_set') AS reason,
         sv.reason_text,
         sv.suppressed_by,
         sv.updated_at AS suppressed_at
@@ -1217,7 +1217,7 @@ type ListVulnerabilitiesForImageRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1300,7 +1300,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
@@ -1440,7 +1440,7 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
