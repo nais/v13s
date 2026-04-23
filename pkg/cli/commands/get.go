@@ -157,9 +157,16 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 
 	// Image-level summary
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
-	fmt.Printf("SBOM Status: %s\n\n", resp.GetSbomStatus().GetStatus())
 
-	if s := resp.GetVulnerabilitySummary(); s != nil {
+	sbomStatus := resp.GetSbomStatus().GetStatus()
+	if sbomStatus == 0 {
+		sbomStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
+	}
+	fmt.Printf("SBOM Status: %s\n\n", sbomStatus)
+
+	if sbomStatus == vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM || sbomStatus == vulnerabilities.SbomStatus_SBOM_STATUS_FAILED {
+		fmt.Println("No vulnerability data available for this image.")
+	} else if s := resp.GetVulnerabilitySummary(); s != nil {
 		tbl := table.New("Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Last Updated")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		tbl.AddRow(

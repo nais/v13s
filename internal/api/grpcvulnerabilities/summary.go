@@ -212,6 +212,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	refs := make([]*vulnerabilities.Workload, 0)
+	var workloadState sql.WorkloadState
 	for _, w := range workloads {
 		refs = append(refs, &vulnerabilities.Workload{
 			Cluster:   w.Cluster,
@@ -221,6 +222,11 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageName: w.ImageName,
 			ImageTag:  w.ImageTag,
 		})
+		if w.State == sql.WorkloadStateNoAttestation {
+			workloadState = sql.WorkloadStateNoAttestation
+		} else if workloadState != sql.WorkloadStateNoAttestation {
+			workloadState = w.State
+		}
 	}
 
 	image, err := s.querier.GetImage(ctx, sql.GetImageParams{
@@ -232,16 +238,15 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	var sbomStatus *vulnerabilities.SbomStatusInfo
-	if image != nil {
+	if len(workloads) == 0 {
+		// No workloads reference this image in v13s — treat as no SBOM regardless of any stale image record.
+		sbomStatus = &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
+	} else if image != nil {
 		var processingStartedAt *timestamppb.Timestamp
 		if image.SbomProcessingStartedAt.Valid {
 			processingStartedAt = timestamppb.New(image.SbomProcessingStartedAt.Time)
 		}
-		if image.State == sql.ImageStateFailed && summary == nil {
-			sbomStatus = &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
-		} else {
-			sbomStatus = deriveImageSbomStatus(image.State, processingStartedAt)
-		}
+		sbomStatus = deriveSbomStatus(image.State, workloadState, processingStartedAt)
 	} else {
 		sbomStatus = &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
 	}

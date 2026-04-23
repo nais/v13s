@@ -176,7 +176,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}, nil
 }
 
-
 func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vulnerabilities.ListSuppressedVulnerabilitiesRequest) (*vulnerabilities.ListSuppressedVulnerabilitiesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {

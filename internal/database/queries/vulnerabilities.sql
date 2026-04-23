@@ -727,7 +727,6 @@ WHERE
 ORDER BY
     updated_at DESC;
 
-
 -- name: ListWorkloadsForVulnerabilities :many
 SELECT
     v.id,

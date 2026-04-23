@@ -159,6 +159,7 @@ SELECT
     CLUSTER,
     image_name,
     image_tag,
+    state,
     created_at,
     updated_at
 FROM

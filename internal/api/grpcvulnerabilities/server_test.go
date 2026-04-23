@@ -1158,7 +1158,6 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 	})
 }
 
-
 func TestSanitizeOrderBy(t *testing.T) {
 	tests := []struct {
 		name     string

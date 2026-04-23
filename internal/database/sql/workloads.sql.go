@@ -286,6 +286,7 @@ SELECT
     CLUSTER,
     image_name,
     image_tag,
+    state,
     created_at,
     updated_at
 FROM
@@ -312,6 +313,7 @@ type ListWorkloadsByImageRow struct {
 	Cluster      string
 	ImageName    string
 	ImageTag     string
+	State        WorkloadState
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }
@@ -333,6 +335,7 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 			&i.Cluster,
 			&i.ImageName,
 			&i.ImageTag,
+			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
