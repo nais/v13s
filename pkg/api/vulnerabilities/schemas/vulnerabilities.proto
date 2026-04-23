@@ -254,21 +254,6 @@ message ListSuppressedVulnerabilitiesResponse {
   PageInfo page_info = 2;
 }
 
-message ListSeverityVulnerabilitiesSinceRequest {
-  Filter filter = 1;
-  optional bool include_suppressed = 3;
-  int32 limit = 4;
-  int32 offset = 5;
-  optional OrderBy order_by = 6;
-  optional google.protobuf.Timestamp since = 7;
-}
-
-message ListSeverityVulnerabilitiesSinceResponse {
-  Filter filter = 1;
-  repeated Finding nodes = 2;
-  PageInfo page_info = 3;
-}
-
 message ListWorkloadsForVulnerabilityByIdRequest {
   string id = 1;
 }
@@ -439,7 +424,6 @@ service Vulnerabilities {
 
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
 
-  rpc ListSeverityVulnerabilitiesSince(ListSeverityVulnerabilitiesSinceRequest) returns (ListSeverityVulnerabilitiesSinceResponse);
 
   rpc ListWorkloadsForVulnerabilityById(ListWorkloadsForVulnerabilityByIdRequest) returns (ListWorkloadsForVulnerabilityByIdResponse);
 
