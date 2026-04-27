@@ -273,38 +273,6 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 	return nil
 }
 
-//func (u *Updater) ensureCanonicalsPresent(cves []sql.BatchUpsertCveParams, cveAliases []sql.BatchUpsertCveAliasParams) []sql.BatchUpsertCveParams {
-//	cveIDSet := make(map[string]struct{})
-//	for _, cve := range cves {
-//		cveIDSet[cve.CveID] = struct{}{}
-//	}
-//	missingCanonicals := make(map[string]struct{})
-//	missingAliases := make(map[string]struct{})
-//	for _, alias := range cveAliases {
-//		if _, ok := cveIDSet[alias.CanonicalCveID]; !ok {
-//			missingCanonicals[alias.CanonicalCveID] = struct{}{}
-//		}
-//		if _, ok := cveIDSet[alias.Alias]; !ok {
-//			missingAliases[alias.Alias] = struct{}{}
-//		}
-//	}
-//	for canonical := range missingCanonicals {
-//		u.log.WithField("canonical", canonical).Warning("Canonical CVE referenced by alias is missing from batch; adding minimal record")
-//		cves = append(cves, sql.BatchUpsertCveParams{
-//			CveID: canonical,
-//			Refs:  map[string]string{},
-//		})
-//	}
-//	for alias := range missingAliases {
-//		u.log.WithField("alias", alias).Debug("Alias CVE referenced by alias mapping is missing from batch; adding minimal record")
-//		cves = append(cves, sql.BatchUpsertCveParams{
-//			CveID: alias,
-//			Refs:  map[string]string{},
-//		})
-//	}
-//	return cves
-//}
-
 func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) {
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
@@ -322,7 +290,21 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		})
 	}
 
-	// cves = u.ensureCanonicalsPresent(cves, cveAliases)
+	// Only insert alias rows whose canonical_cve_id is present in this batch.
+	// The canonical may belong to a different image processed in a separate resync
+	// cycle; attempting to insert before the canonical exists violates the FK
+	// constraint cve_alias_canonical_fkey. The alias will be retried on the next
+	// resync cycle once the canonical CVE row is present.
+	cveIDSet := make(map[string]struct{}, len(cves))
+	for _, c := range cves {
+		cveIDSet[c.CveID] = struct{}{}
+	}
+	filteredAliases := make([]sql.BatchUpsertCveAliasParams, 0, len(cveAliases))
+	for _, a := range cveAliases {
+		if _, ok := cveIDSet[a.CanonicalCveID]; ok {
+			filteredAliases = append(filteredAliases, a)
+		}
+	}
 
 	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
 		return x.CveID
@@ -341,7 +323,7 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	)
 
 	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
-	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
+	u.runExec("upsert CVE aliases", len(filteredAliases), u.querier.BatchUpsertCveAlias(ctx, filteredAliases).Exec)
 	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
 
 	for _, i := range images {
