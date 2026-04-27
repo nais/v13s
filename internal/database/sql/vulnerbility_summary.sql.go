@@ -407,7 +407,7 @@ vulnerability_data AS (
         END AS has_sbom
     FROM
         filtered_workloads w
-        JOIN images i ON i.name = w.image_name
+        LEFT JOIN images i ON i.name = w.image_name
             AND i.tag = w.image_tag
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
@@ -527,7 +527,7 @@ type ListVulnerabilitySummariesRow struct {
 	SummaryCreatedAt        pgtype.Timestamptz
 	SummaryUpdatedAt        pgtype.Timestamptz
 	WorkloadState           WorkloadState
-	ImageState              ImageState
+	ImageState              NullImageState
 	ImageUpdatedAt          pgtype.Timestamptz
 	SbomProcessingStartedAt pgtype.Timestamptz
 	HasSbom                 bool

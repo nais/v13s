@@ -196,7 +196,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageTag:  w.ImageTag,
 		})
 		if image != nil {
-			perWorkload := deriveSbomStatus(image.State, w.State, processingStartedAt)
+			perWorkload := deriveSbomStatus(sql.NullImageState{ImageState: image.State, Valid: true}, w.State, processingStartedAt)
 			aggregatedStatus = worstCase(aggregatedStatus, perWorkload.GetStatus())
 		}
 	}

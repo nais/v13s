@@ -10,75 +10,81 @@ import (
 func TestDeriveSbomStatus(t *testing.T) {
 	tests := []struct {
 		name          string
-		imageState    sql.ImageState
+		imageState    sql.NullImageState
 		workloadState sql.WorkloadState
 		want          vulnerabilities.SbomStatus
 	}{
 		{
 			name:          "workload failed → FAILED",
-			imageState:    sql.ImageStateUpdated,
+			imageState:    nullImageState(sql.ImageStateUpdated),
 			workloadState: sql.WorkloadStateFailed,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
 		},
 		{
 			name:          "workload unrecoverable → FAILED",
-			imageState:    sql.ImageStateUpdated,
+			imageState:    nullImageState(sql.ImageStateUpdated),
 			workloadState: sql.WorkloadStateUnrecoverable,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
 		},
 		{
 			name:          "workload no_sbom → NO_SBOM",
-			imageState:    sql.ImageStateUpdated,
+			imageState:    nullImageState(sql.ImageStateUpdated),
 			workloadState: sql.WorkloadStateNoAttestation,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 		},
 		{
 			name:          "workload processing → PROCESSING",
-			imageState:    sql.ImageStateInitialized,
+			imageState:    nullImageState(sql.ImageStateInitialized),
 			workloadState: sql.WorkloadStateProcessing,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
 		},
 		{
 			name:          "image updated, workload updated → READY",
-			imageState:    sql.ImageStateUpdated,
+			imageState:    nullImageState(sql.ImageStateUpdated),
 			workloadState: sql.WorkloadStateUpdated,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_READY,
 		},
 		{
 			name:          "image failed → FAILED",
-			imageState:    sql.ImageStateFailed,
+			imageState:    nullImageState(sql.ImageStateFailed),
 			workloadState: sql.WorkloadStateInitialized,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
 		},
 		{
 			name:          "image untracked → NO_SBOM",
-			imageState:    sql.ImageStateUntracked,
+			imageState:    nullImageState(sql.ImageStateUntracked),
 			workloadState: sql.WorkloadStateInitialized,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 		},
 		{
 			name:          "image unused → NO_SBOM",
-			imageState:    sql.ImageStateUnused,
+			imageState:    nullImageState(sql.ImageStateUnused),
 			workloadState: sql.WorkloadStateInitialized,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 		},
 		{
 			name:          "image initialized → PROCESSING",
-			imageState:    sql.ImageStateInitialized,
+			imageState:    nullImageState(sql.ImageStateInitialized),
 			workloadState: sql.WorkloadStateInitialized,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
 		},
 		{
 			name:          "image resync → PROCESSING",
-			imageState:    sql.ImageStateResync,
+			imageState:    nullImageState(sql.ImageStateResync),
 			workloadState: sql.WorkloadStateResync,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
 		},
 		{
 			name:          "image outdated → PROCESSING",
-			imageState:    sql.ImageStateOutdated,
+			imageState:    nullImageState(sql.ImageStateOutdated),
 			workloadState: sql.WorkloadStateInitialized,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+		},
+		{
+			name:          "no image record → NO_SBOM",
+			imageState:    sql.NullImageState{Valid: false},
+			workloadState: sql.WorkloadStateInitialized,
+			want:          vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 		},
 	}
 
@@ -227,4 +233,8 @@ func TestWorstCaseRollup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func nullImageState(s sql.ImageState) sql.NullImageState {
+	return sql.NullImageState{ImageState: s, Valid: true}
 }

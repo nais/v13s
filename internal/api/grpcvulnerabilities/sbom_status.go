@@ -6,7 +6,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func deriveSbomStatus(imageState sql.ImageState, workloadState sql.WorkloadState, processingStartedAt *timestamppb.Timestamp) *vulnerabilities.SbomStatusInfo {
+func deriveSbomStatus(imageState sql.NullImageState, workloadState sql.WorkloadState, processingStartedAt *timestamppb.Timestamp) *vulnerabilities.SbomStatusInfo {
 	switch workloadState {
 	case sql.WorkloadStateFailed, sql.WorkloadStateUnrecoverable:
 		return &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_FAILED}
@@ -16,7 +16,10 @@ func deriveSbomStatus(imageState sql.ImageState, workloadState sql.WorkloadState
 		return &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING}
 	}
 
-	return deriveImageSbomStatus(imageState, processingStartedAt)
+	if !imageState.Valid {
+		return &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
+	}
+	return deriveImageSbomStatus(imageState.ImageState, processingStartedAt)
 }
 
 func deriveImageSbomStatus(imageState sql.ImageState, processingStartedAt *timestamppb.Timestamp) *vulnerabilities.SbomStatusInfo {
