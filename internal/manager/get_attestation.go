@@ -114,16 +114,19 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	}
 
 	if decision.ImageState != nil {
-		n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
-			State: *decision.ImageState,
-			Name:  imageName,
-			Tag:   imageTag,
-		})
-		if dbErr != nil {
-			return fmt.Errorf("failed to set image state: %w", dbErr)
-		}
-		if n == 0 {
-			g.log.WithFields(logFields).Warn("UpdateImageState matched no rows, image may already be gone")
+		isFinalAttempt := job.Attempt >= job.MaxAttempts
+		if *decision.ImageState != sql.ImageStateFailed || isFinalAttempt {
+			n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
+				State: *decision.ImageState,
+				Name:  imageName,
+				Tag:   imageTag,
+			})
+			if dbErr != nil {
+				return fmt.Errorf("failed to set image state: %w", dbErr)
+			}
+			if n == 0 {
+				g.log.WithFields(logFields).Warn("UpdateImageState matched no rows, image may already be gone")
+			}
 		}
 	}
 

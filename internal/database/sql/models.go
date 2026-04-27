@@ -312,13 +312,14 @@ type Cve struct {
 }
 
 type Image struct {
-	Name             string
-	Tag              string
-	Metadata         typeext.MapStringString
-	State            ImageState
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	ReadyForResyncAt pgtype.Timestamptz
+	Name                    string
+	Tag                     string
+	Metadata                typeext.MapStringString
+	State                   ImageState
+	CreatedAt               pgtype.Timestamptz
+	UpdatedAt               pgtype.Timestamptz
+	ReadyForResyncAt        pgtype.Timestamptz
+	SbomProcessingStartedAt pgtype.Timestamptz
 }
 
 type RiverJob struct {

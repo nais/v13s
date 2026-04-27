@@ -203,7 +203,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag")
 			headers = append(headers, "Last Updated")
@@ -212,6 +212,8 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
+			summary := n.GetVulnerabilitySummary()
+			hasSbom := summary != nil
 			vals := []any{
 				// kills the layout
 				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
@@ -219,17 +221,17 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
-				n.GetVulnerabilitySummary().GetHasSbom(),
-				n.GetVulnerabilitySummary().GetCritical(),
-				n.GetVulnerabilitySummary().GetHigh(),
-				n.GetVulnerabilitySummary().GetMedium(),
-				n.GetVulnerabilitySummary().GetLow(),
-				n.GetVulnerabilitySummary().GetUnassigned(),
-				n.GetVulnerabilitySummary().GetRiskScore(),
+				n.GetSbomStatus().GetStatus().String(),
+				intOrDash(hasSbom, summary.GetCritical()),
+				intOrDash(hasSbom, summary.GetHigh()),
+				intOrDash(hasSbom, summary.GetMedium()),
+				intOrDash(hasSbom, summary.GetLow()),
+				intOrDash(hasSbom, summary.GetUnassigned()),
+				intOrDash(hasSbom, summary.GetRiskScore()),
 			}
 			if o.Since != "" {
 				vals = append(vals, n.Workload.GetImageTag())
-				vals = append(vals, n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339))
+				vals = append(vals, formatLastUpdated(summary.GetLastUpdated()))
 			}
 			tbl.AddRow(
 				vals...,
@@ -454,4 +456,11 @@ func timeSinceCreation(created, lastUpdated time.Time) string {
 	default:
 		return fmt.Sprintf("%dm", minutes)
 	}
+}
+
+func intOrDash(hasSbom bool, val int32) any {
+	if !hasSbom {
+		return "-"
+	}
+	return val
 }
