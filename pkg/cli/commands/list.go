@@ -212,6 +212,8 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
+			summary := n.GetVulnerabilitySummary()
+			hasSbom := summary.GetHasSbom()
 			vals := []any{
 				// kills the layout
 				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
@@ -219,17 +221,17 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
-				n.GetSbomStatus(),
-				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetCritical()),
-				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetHigh()),
-				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetMedium()),
-				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetLow()),
-				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetUnassigned()),
-				intOrDash(n.GetVulnerabilitySummary().GetHasSbom(), n.GetVulnerabilitySummary().GetRiskScore()),
+				n.GetSbomStatus().GetStatus().String(),
+				intOrDash(hasSbom, summary.GetCritical()),
+				intOrDash(hasSbom, summary.GetHigh()),
+				intOrDash(hasSbom, summary.GetMedium()),
+				intOrDash(hasSbom, summary.GetLow()),
+				intOrDash(hasSbom, summary.GetUnassigned()),
+				intOrDash(hasSbom, summary.GetRiskScore()),
 			}
 			if o.Since != "" {
 				vals = append(vals, n.Workload.GetImageTag())
-				vals = append(vals, n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339))
+				vals = append(vals, summary.GetLastUpdated().AsTime().Format(time.RFC3339))
 			}
 			tbl.AddRow(
 				vals...,

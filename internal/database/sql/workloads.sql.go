@@ -467,6 +467,7 @@ SET
 WHERE
     image_name = $2
     AND image_tag = $3
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation')
 `
 
 type UpdateWorkloadStateByImageParams struct {

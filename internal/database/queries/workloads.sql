@@ -180,7 +180,8 @@ SET
     updated_at = NOW()
 WHERE
     image_name = @image_name
-    AND image_tag = @image_tag;
+    AND image_tag = @image_tag
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation');
 
 -- name: ListWorkloadsByCluster :many
 SELECT

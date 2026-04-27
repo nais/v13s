@@ -52,47 +52,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		imageName := row.CurrentImageName
-		if row.ImageName != nil {
-			imageName = *row.ImageName
-		}
-		imageTag := row.CurrentImageTag
-		if row.ImageTag != nil {
-			imageTag = *row.ImageTag
-		}
-		var processingStartedAt *timestamppb.Timestamp
-		if row.SbomProcessingStartedAt.Valid {
-			processingStartedAt = timestamppb.New(row.SbomProcessingStartedAt.Time)
-		}
-		sbomStatus := deriveSbomStatus(row.ImageState, row.WorkloadState, processingStartedAt)
-		var vulnSummary *vulnerabilities.Summary
-		switch sbomStatus.GetStatus() {
-		case vulnerabilities.SbomStatus_SBOM_STATUS_READY:
-			vulnSummary = &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			}
-		}
-		return &vulnerabilities.WorkloadSummary{
-			Id: row.ID.String(),
-			Workload: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				Type:      row.WorkloadType,
-				ImageName: imageName,
-				ImageTag:  imageTag,
-			},
-			VulnerabilitySummary: vulnSummary,
-			SbomStatus:           sbomStatus,
-		}
+		return workloadSummaryFromRow(row)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)
@@ -211,8 +171,21 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		return nil, fmt.Errorf("failed to list workloads by image: %w", err)
 	}
 
+	image, err := s.querier.GetImage(ctx, sql.GetImageParams{
+		Name: request.ImageName,
+		Tag:  request.ImageTag,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get image: %w", err)
+	}
+
+	var processingStartedAt *timestamppb.Timestamp
+	if image != nil && image.SbomProcessingStartedAt.Valid {
+		processingStartedAt = timestamppb.New(image.SbomProcessingStartedAt.Time)
+	}
+
 	refs := make([]*vulnerabilities.Workload, 0)
-	var workloadState sql.WorkloadState
+	aggregatedStatus := vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 	for _, w := range workloads {
 		refs = append(refs, &vulnerabilities.Workload{
 			Cluster:   w.Cluster,
@@ -222,19 +195,10 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageName: w.ImageName,
 			ImageTag:  w.ImageTag,
 		})
-		if w.State == sql.WorkloadStateNoAttestation {
-			workloadState = sql.WorkloadStateNoAttestation
-		} else if workloadState != sql.WorkloadStateNoAttestation {
-			workloadState = w.State
+		if image != nil {
+			perWorkload := deriveSbomStatus(image.State, w.State, processingStartedAt)
+			aggregatedStatus = worstCase(aggregatedStatus, perWorkload.GetStatus())
 		}
-	}
-
-	image, err := s.querier.GetImage(ctx, sql.GetImageParams{
-		Name: request.ImageName,
-		Tag:  request.ImageTag,
-	})
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("failed to get image: %w", err)
 	}
 
 	var sbomStatus *vulnerabilities.SbomStatusInfo
@@ -242,11 +206,10 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		// No workloads reference this image in v13s — treat as no SBOM regardless of any stale image record.
 		sbomStatus = &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
 	} else if image != nil {
-		var processingStartedAt *timestamppb.Timestamp
-		if image.SbomProcessingStartedAt.Valid {
-			processingStartedAt = timestamppb.New(image.SbomProcessingStartedAt.Time)
+		sbomStatus = &vulnerabilities.SbomStatusInfo{
+			Status:              aggregatedStatus,
+			ProcessingStartedAt: processingStartedAt,
 		}
-		sbomStatus = deriveSbomStatus(image.State, workloadState, processingStartedAt)
 	} else {
 		sbomStatus = &vulnerabilities.SbomStatusInfo{Status: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM}
 	}
@@ -344,4 +307,52 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		Nodes:    vulnCveSummaries,
 		PageInfo: pageInfo,
 	}, nil
+}
+
+func workloadSummaryFromRow(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+	imageName := row.CurrentImageName
+	if row.ImageName != nil {
+		imageName = *row.ImageName
+	}
+	imageTag := row.CurrentImageTag
+	if row.ImageTag != nil {
+		imageTag = *row.ImageTag
+	}
+	var processingStartedAt *timestamppb.Timestamp
+	if row.SbomProcessingStartedAt.Valid {
+		processingStartedAt = timestamppb.New(row.SbomProcessingStartedAt.Time)
+	}
+	sbomStatus := deriveSbomStatus(row.ImageState, row.WorkloadState, processingStartedAt)
+	var vulnSummary *vulnerabilities.Summary
+	switch sbomStatus.GetStatus() {
+	case vulnerabilities.SbomStatus_SBOM_STATUS_READY:
+		var lastUpdated *timestamppb.Timestamp
+		if row.SummaryUpdatedAt.Valid {
+			lastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
+		}
+		vulnSummary = &vulnerabilities.Summary{
+			Critical:    safeInt(row.Critical),
+			High:        safeInt(row.High),
+			Medium:      safeInt(row.Medium),
+			Low:         safeInt(row.Low),
+			Unassigned:  safeInt(row.Unassigned),
+			Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
+			RiskScore:   safeInt(row.RiskScore),
+			LastUpdated: lastUpdated,
+			HasSbom:     row.HasSbom,
+		}
+	}
+	return &vulnerabilities.WorkloadSummary{
+		Id: row.ID.String(),
+		Workload: &vulnerabilities.Workload{
+			Cluster:   row.Cluster,
+			Namespace: row.Namespace,
+			Name:      row.WorkloadName,
+			Type:      row.WorkloadType,
+			ImageName: imageName,
+			ImageTag:  imageTag,
+		},
+		VulnerabilitySummary: vulnSummary,
+		SbomStatus:           sbomStatus,
+	}
 }

@@ -182,6 +182,38 @@ func TestWorstCaseRollup(t *testing.T) {
 			},
 			want: vulnerabilities.SbomStatus_SBOM_STATUS_READY,
 		},
+		{
+			name: "FAILED then READY is still FAILED (order independence)",
+			statuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+				vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+			},
+			want: vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+		},
+		{
+			name: "READY then FAILED is still FAILED (order independence)",
+			statuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+				vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+			},
+			want: vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+		},
+		{
+			name: "NO_SBOM then READY is still NO_SBOM (order independence)",
+			statuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+				vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+			},
+			want: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+		},
+		{
+			name: "READY then NO_SBOM is still NO_SBOM (order independence)",
+			statuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+				vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+			},
+			want: vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+		},
 	}
 
 	for _, tt := range tests {
