@@ -1057,8 +1057,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 		require.NoError(t, err)
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
-		assert.NotNil(t, resp.GetVulnerabilitySummary())
-		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetTotal())
+		assert.Nil(t, resp.GetVulnerabilitySummary())
 	})
 
 	t.Run("image_sbom_status is READY after image state set to updated", func(t *testing.T) {

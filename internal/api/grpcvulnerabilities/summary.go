@@ -216,10 +216,8 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	var vulnSummary *vulnerabilities.Summary
 	switch sbomStatus.GetStatus() {
-	case vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED:
+	case vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING:
 		vulnSummary = nil
-	case vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING:
-		vulnSummary = &vulnerabilities.Summary{}
 	default:
 		if summary != nil {
 			vulnSummary = &vulnerabilities.Summary{

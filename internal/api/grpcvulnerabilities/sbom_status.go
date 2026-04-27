@@ -41,10 +41,11 @@ func deriveImageSbomStatus(imageState sql.ImageState, processingStartedAt *times
 }
 
 var sbomStatusPriority = map[vulnerabilities.SbomStatus]int{
-	vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING: 0,
-	vulnerabilities.SbomStatus_SBOM_STATUS_READY:      1,
-	vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:    2,
-	vulnerabilities.SbomStatus_SBOM_STATUS_FAILED:     3,
+	vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED: -1,
+	vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING:  0,
+	vulnerabilities.SbomStatus_SBOM_STATUS_READY:       1,
+	vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:     2,
+	vulnerabilities.SbomStatus_SBOM_STATUS_FAILED:      3,
 }
 
 func worstCase(a, b vulnerabilities.SbomStatus) vulnerabilities.SbomStatus {

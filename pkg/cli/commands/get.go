@@ -159,8 +159,8 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
 
 	sbomStatus := resp.GetSbomStatus().GetStatus()
-	if sbomStatus == 0 {
-		sbomStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
+	if sbomStatus == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+		sbomStatus = vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 	}
 	fmt.Printf("SBOM Status: %s\n\n", sbomStatus)
 
