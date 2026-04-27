@@ -213,7 +213,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 
 		for _, n := range resp.GetNodes() {
 			summary := n.GetVulnerabilitySummary()
-			hasSbom := summary.GetHasSbom()
+			hasSbom := summary != nil
 			vals := []any{
 				// kills the layout
 				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
@@ -231,7 +231,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			}
 			if o.Since != "" {
 				vals = append(vals, n.Workload.GetImageTag())
-				vals = append(vals, summary.GetLastUpdated().AsTime().Format(time.RFC3339))
+				vals = append(vals, formatLastUpdated(summary.GetLastUpdated()))
 			}
 			tbl.AddRow(
 				vals...,

@@ -166,6 +166,8 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 
 	if sbomStatus == vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM || sbomStatus == vulnerabilities.SbomStatus_SBOM_STATUS_FAILED {
 		fmt.Println("No vulnerability data available for this image.")
+	} else if sbomStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING {
+		fmt.Println("SBOM is currently being processed. Vulnerability data will be available shortly.")
 	} else if s := resp.GetVulnerabilitySummary(); s != nil {
 		tbl := table.New("Critical", "High", "Medium", "Low", "Unassigned", "Risk Score", "Last Updated")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
