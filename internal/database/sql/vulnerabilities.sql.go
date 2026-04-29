@@ -160,11 +160,22 @@ func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (s
 
 const getCve = `-- name: GetCve :one
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score
+    c.cve_id,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity,
+    c.refs,
+    c.created_at,
+    c.updated_at,
+    c.cvss_score
 FROM
-    cve
+    cve c
+    LEFT JOIN cve_alias ca ON ca.canonical_cve_id = c.cve_id
 WHERE
-    cve_id = $1
+    c.cve_id = $1
+    OR ca.alias = $1
+LIMIT 1
 `
 
 func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
@@ -287,7 +298,7 @@ type GetVulnerabilityRow struct {
 	Severity      int32
 	Refs          typeext.MapStringString
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -375,7 +386,7 @@ type GetVulnerabilityByIdRow struct {
 	Severity      int32
 	Suppressed    bool
 	Refs          typeext.MapStringString
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -552,7 +563,7 @@ type ListSeverityVulnerabilitiesSinceRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -986,7 +997,7 @@ type ListVulnerabilitiesRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1219,7 +1230,7 @@ type ListVulnerabilitiesForImageRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1444,7 +1455,7 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz

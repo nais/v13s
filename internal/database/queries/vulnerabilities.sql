@@ -188,11 +188,22 @@ SELECT
 
 -- name: GetCve :one
 SELECT
-    *
+    c.cve_id,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity,
+    c.refs,
+    c.created_at,
+    c.updated_at,
+    c.cvss_score
 FROM
-    cve
+    cve c
+    LEFT JOIN cve_alias ca ON ca.canonical_cve_id = c.cve_id
 WHERE
-    cve_id = @cve_id;
+    c.cve_id = @cve_id
+    OR ca.alias = @cve_id
+LIMIT 1;
 
 -- name: GetVulnerability :one
 SELECT

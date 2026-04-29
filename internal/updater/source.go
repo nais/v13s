@@ -117,11 +117,26 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	}
 }
 
+// canonicalCveID returns the canonical CVE ID for a vulnerability.
+// DependencyTrack may emit a vulnerability under an alias ID (e.g. GHSA-xxxx)
+// with the canonical ID (e.g. CVE-xxxx) as a key in the References map.
+// Storing the canonical ID ensures (image, package, cve_id) is unique in the
+// vulnerabilities table regardless of which ID DT uses for a given finding.
+func canonicalCveID(cve *sources.Cve) string {
+	for canonical, alias := range cve.References {
+		if alias == cve.Id {
+			return canonical
+		}
+	}
+	return cve.Id
+}
+
 func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerabilityData) []sql.BatchUpsertVulnerabilitiesParams {
 	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	for _, v := range i.Vulnerabilities {
+		cveID := canonicalCveID(v.Cve)
 		severity := v.Cve.Severity.ToInt32()
-		severitySince, err := u.DetermineSeveritySince(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
+		severitySince, err := u.DetermineSeveritySince(ctx, i.ImageName, v.Package, cveID, severity)
 		if err != nil {
 			u.log.Errorf("determine severitySince: %v", err)
 		}
@@ -129,7 +144,7 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 			ImageName:     i.ImageName,
 			ImageTag:      i.ImageTag,
 			Package:       v.Package,
-			CveID:         v.Cve.Id,
+			CveID:         cveID,
 			Source:        i.Source,
 			LatestVersion: v.LatestVersion,
 			LastSeverity:  severity,

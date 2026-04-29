@@ -412,6 +412,99 @@ func TestServer_ListWorkloadsForVulnerability_WithAlias(t *testing.T) {
 	})
 }
 
+func TestServer_GetCve_WithAlias(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		canonicalCVEID = "CVE-2025-GETCVE-CANONICAL"
+		aliasCVEID     = "GHSA-getcve-alias-1"
+	)
+
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: canonicalCVEID, CveTitle: "canonical title", Refs: map[string]string{}, Severity: 3},
+		{CveID: aliasCVEID, CveTitle: "alias title", Refs: map[string]string{}, Severity: 3},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+		Alias:          aliasCVEID,
+		CanonicalCveID: canonicalCVEID,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	t.Run("lookup by canonical ID returns the CVE", func(t *testing.T) {
+		resp, err := client.GetCve(ctx, canonicalCVEID)
+		require.NoError(t, err)
+		assert.Equal(t, canonicalCVEID, resp.GetCve().GetId())
+		assert.Equal(t, "canonical title", resp.GetCve().GetTitle())
+	})
+
+	t.Run("lookup by alias ID resolves to canonical CVE", func(t *testing.T) {
+		resp, err := client.GetCve(ctx, aliasCVEID)
+		require.NoError(t, err)
+		assert.Equal(t, canonicalCVEID, resp.GetCve().GetId())
+		assert.Equal(t, "canonical title", resp.GetCve().GetTitle())
+	})
+
+	t.Run("lookup by unknown ID returns not found", func(t *testing.T) {
+		_, err := client.GetCve(ctx, "CVE-0000-DOES-NOT-EXIST")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cve not found")
+	})
+}
+
+func TestServer_ListWorkloadsForVulnerability_Deduplicated(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName      = "image-cluster-1-namespace-1-workload-1"
+		imageTag       = "v1.0"
+		canonicalCVEID = "CVE-2025-DEDUP-CANONICAL"
+		aliasCVEID     = "GHSA-dedup-alias-1"
+		pkgName        = "pkg:maven/com.example/lib@1.0.0"
+	)
+
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: canonicalCVEID, CveTitle: "dedup canonical", Refs: map[string]string{}, Severity: 3},
+		{CveID: aliasCVEID, CveTitle: "dedup alias", Refs: map[string]string{}, Severity: 3},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+		Alias:          aliasCVEID,
+		CanonicalCveID: canonicalCVEID,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// Simulate ToVulnerabilitySqlParams resolving both the alias and canonical
+	// findings to the canonical ID before upsert. The DB unique constraint on
+	// (image_name, image_tag, cve_id, package) collapses them to one row.
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: imageName, ImageTag: imageTag, Package: pkgName, CveID: canonicalCVEID, Source: "test"},
+		{ImageName: imageName, ImageTag: imageTag, Package: pkgName, CveID: canonicalCVEID, Source: "test"},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	t.Run("returns exactly one workload entry when both findings resolve to canonical ID", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{canonicalCVEID},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1, "expected DB unique constraint to collapse duplicate canonical rows into one")
+		assert.Equal(t, canonicalCVEID, resp.Nodes[0].Vulnerability.Cve.Id)
+		assert.Equal(t, pkgName, resp.Nodes[0].Vulnerability.Package)
+	})
+}
+
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
