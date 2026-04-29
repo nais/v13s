@@ -202,7 +202,7 @@ SELECT
     v.package,
     v.latest_version,
     v.source,
-    v.cve_id,
+    COALESCE(ca.canonical_cve_id, v.cve_id) AS cve_id,
     v.last_severity,
     v.severity_since,
     v.created_at,
@@ -219,10 +219,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.image_name = @image_name
     AND v.image_tag = @image_tag
@@ -237,7 +238,7 @@ SELECT
     v.package,
     v.latest_version,
     v.source,
-    v.cve_id,
+    COALESCE(ca.canonical_cve_id, v.cve_id) AS cve_id,
     v.created_at,
     v.updated_at,
     c.cve_title,
@@ -252,10 +253,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.id = @id;
 
@@ -845,7 +847,7 @@ SELECT
     w.image_tag,
     v.latest_version,
     v.package,
-    v.cve_id,
+    COALESCE(ca.canonical_cve_id, v.cve_id) AS cve_id,
     v.created_at,
     v.updated_at,
     v.severity_since,
@@ -865,14 +867,16 @@ SELECT
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON w.image_name = v.image_name
         AND w.image_tag = v.image_tag
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE (sqlc.narg('cve_ids')::TEXT[] IS NULL
-    OR v.cve_id = ANY (sqlc.narg('cve_ids')::TEXT[]))
+    OR v.cve_id = ANY (sqlc.narg('cve_ids')::TEXT[])
+    OR ca.canonical_cve_id = ANY (sqlc.narg('cve_ids')::TEXT[]))
 AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
     OR (v.cvss_score IS NOT NULL
         AND v.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
