@@ -1,7 +1,7 @@
 -- +goose Up
 ALTER TABLE images
-    ADD COLUMN sbom_processing_started_at TIMESTAMPTZ NULL;
+    ADD COLUMN IF NOT EXISTS sbom_processing_started_at TIMESTAMPTZ NULL;
 
 -- +goose Down
 ALTER TABLE images
-    DROP COLUMN sbom_processing_started_at;
+    DROP COLUMN IF EXISTS sbom_processing_started_at
