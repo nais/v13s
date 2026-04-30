@@ -894,7 +894,7 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    v.cvss_score
+    c.cvss_score
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -1337,7 +1337,7 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    v.cvss_score,
+    c.cvss_score,
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
@@ -1348,63 +1348,71 @@ FROM
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
         AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-WHERE ($1::TEXT[] IS NULL
-    OR COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[]))
-AND ($2::FLOAT8 IS NULL
-    OR (v.cvss_score IS NOT NULL
-        AND v.cvss_score >= $2::FLOAT8))
-AND (
-    CASE WHEN $3::TEXT IS NOT NULL THEN
-        w.cluster = $3::TEXT
-    ELSE
-        TRUE
-    END)
-AND (cardinality($4::TEXT[]) = 0
-    OR w.cluster <> ALL ($4::TEXT[]))
-AND (
-    CASE WHEN $5::TEXT IS NOT NULL THEN
-        w.namespace = $5::TEXT
-    ELSE
-        TRUE
-    END)
-AND (cardinality($6::TEXT[]) = 0
-    OR w.namespace <> ALL ($6::TEXT[]))
-AND ($7::TEXT[] IS NULL
-    OR w.workload_type = ANY ($7::TEXT[]))
-AND (
-    CASE WHEN $8::TEXT IS NOT NULL THEN
-        w.name = $8::TEXT
-    ELSE
-        TRUE
-    END)
-AND (
-    CASE WHEN $9::TEXT IS NOT NULL THEN
-        v.image_name = $9::TEXT
-    ELSE
-        TRUE
-    END)
-AND (
-    CASE WHEN $10::TEXT IS NOT NULL THEN
-        v.image_tag = $10::TEXT
-    ELSE
-        TRUE
-    END)
-AND ($11::BOOLEAN IS TRUE
-    OR COALESCE(sv.suppressed, FALSE) = FALSE)
+    LEFT JOIN vulnerabilities v_canonical
+        ON ca.canonical_cve_id IS NOT NULL
+        AND v_canonical.image_name = v.image_name
+        AND v_canonical.image_tag  = v.image_tag
+        AND v_canonical.package    = v.package
+        AND v_canonical.cve_id     = ca.canonical_cve_id
+WHERE
+    v_canonical.id IS NULL
+    AND ($1::TEXT[] IS NULL
+        OR COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[]))
+    AND ($2::FLOAT8 IS NULL
+        OR (c.cvss_score IS NOT NULL
+            AND c.cvss_score >= $2::FLOAT8))
+    AND (
+        CASE WHEN $3::TEXT IS NOT NULL THEN
+            w.cluster = $3::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (cardinality($4::TEXT[]) = 0
+        OR w.cluster <> ALL ($4::TEXT[]))
+    AND (
+        CASE WHEN $5::TEXT IS NOT NULL THEN
+            w.namespace = $5::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (cardinality($6::TEXT[]) = 0
+        OR w.namespace <> ALL ($6::TEXT[]))
+    AND ($7::TEXT[] IS NULL
+        OR w.workload_type = ANY ($7::TEXT[]))
+    AND (
+        CASE WHEN $8::TEXT IS NOT NULL THEN
+            w.name = $8::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $9::TEXT IS NOT NULL THEN
+            v.image_name = $9::TEXT
+        ELSE
+            TRUE
+        END)
+    AND (
+        CASE WHEN $10::TEXT IS NOT NULL THEN
+            v.image_tag = $10::TEXT
+        ELSE
+            TRUE
+        END)
+    AND ($11::BOOLEAN IS TRUE
+        OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
     CASE WHEN $12 = 'cvss_score_desc' THEN
-        CASE WHEN v.cvss_score = 0
-            OR v.cvss_score IS NULL THEN
+        CASE WHEN c.cvss_score = 0
+            OR c.cvss_score IS NULL THEN
             1
         ELSE
             0
         END
     END ASC,
     CASE WHEN $12 = 'cvss_score_desc' THEN
-        v.cvss_score
+        c.cvss_score
     END DESC,
     CASE WHEN $12 = 'cvss_score_asc' THEN
-        v.cvss_score
+        c.cvss_score
     END ASC,
     CASE WHEN $12 = 'cve_id_desc' THEN
         v.cve_id

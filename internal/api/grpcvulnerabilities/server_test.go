@@ -523,6 +523,64 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		assert.InDelta(t, canonicalScore, resolved.GetCvssScore(), 0.0001)
 		assert.NotEqual(t, aliasScore, resolved.GetCvssScore())
 	})
+
+	t.Run("ListVulnerabilities returns canonical cvss score for alias-backed vulnerability", func(t *testing.T) {
+		const (
+			canonicalCVEID2 = "CVE-CVSS-CANONICAL-2"
+			aliasCVEID2     = "GHSA-CVSS-ALIAS-2"
+			pkgName2        = "pkg-cvss-list-test"
+		)
+
+		canonicalScore2 := 9.8
+		aliasScore2 := 4.0
+
+		queries.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{
+				CveID:     canonicalCVEID2,
+				CveTitle:  "canonical",
+				Severity:  int32(vulnerabilities.Severity_CRITICAL),
+				CvssScore: &canonicalScore2,
+				Refs:      map[string]string{},
+			},
+			{
+				CveID:     aliasCVEID2,
+				CveTitle:  "alias",
+				Severity:  int32(vulnerabilities.Severity_HIGH),
+				CvssScore: &aliasScore2,
+				Refs:      map[string]string{},
+			},
+		}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+		queries.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+			Alias:          aliasCVEID2,
+			CanonicalCveID: canonicalCVEID2,
+		}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+		queries.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+			ImageName: "image-cluster-1-namespace-1-workload-1",
+			ImageTag:  "v1.0",
+			Package:   pkgName2,
+			CveID:     aliasCVEID2,
+			Source:    "test",
+			CvssScore: &aliasScore2,
+		}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+		resp, err := client.ListVulnerabilities(ctx, vulnerabilities.Limit(100))
+		require.NoError(t, err)
+
+		var found *vulnerabilities.Finding
+		for _, node := range resp.Nodes {
+			if node.GetVulnerability().GetPackage() == pkgName2 {
+				found = node
+				break
+			}
+		}
+
+		require.NotNil(t, found, "expected alias-backed vulnerability in ListVulnerabilities")
+		assert.InDelta(t, canonicalScore2, found.GetVulnerability().GetCvssScore(), 0.0001,
+			"ListVulnerabilities should return canonical cvss_score, not alias score")
+		assert.NotEqual(t, aliasScore2, found.GetVulnerability().GetCvssScore())
+	})
 }
 
 func TestServer_ListVulnerabilitySummaries(t *testing.T) {
@@ -2002,6 +2060,118 @@ func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, fu
 		grpcServer.Stop()
 		c.Close()
 	}
+}
+
+func TestServer_ListWorkloadsForVulnerability_AliasOnlyIsNotFiltered(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName      = "image-cluster-1-namespace-1-workload-1"
+		imageTag       = "v1.0"
+		canonicalCveID = "CVE-ALIAS-ONLY-1"
+		aliasCveID     = "GHSA-ALIAS-ONLY-1"
+		pkgName        = "pkg:maven/com.example/alias-only-test@1.0.0"
+	)
+
+	score := 7.5
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:     canonicalCveID,
+			CveTitle:  "canonical",
+			Severity:  int32(vulnerabilities.Severity_HIGH),
+			CvssScore: &score,
+			Refs:      map[string]string{},
+		},
+		{
+			CveID:    aliasCveID,
+			CveTitle: "alias",
+			Severity: int32(vulnerabilities.Severity_HIGH),
+			Refs:     map[string]string{},
+		},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+		Alias:          aliasCveID,
+		CanonicalCveID: canonicalCveID,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// seed ONLY the alias row — no canonical row in vulnerabilities
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: imageName, ImageTag: imageTag, Package: pkgName, CveID: aliasCveID, Source: "test"},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+		CveIds: []string{canonicalCveID},
+	}, vulnerabilities.Limit(25))
+	require.NoError(t, err)
+
+	// alias row must still be returned — the deduplication filter must not drop it
+	// when no canonical row exists for the same workload+package
+	assert.Len(t, resp.Nodes, 1,
+		"alias-only vulnerability must still appear in results when no canonical row exists")
+}
+
+func TestServer_ListWorkloadsForVulnerability_NoDuplicatesForAliasAndCanonical(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName      = "image-cluster-1-namespace-1-workload-1"
+		imageTag       = "v1.0"
+		canonicalCveID = "CVE-DEDUP-WORKLOAD-1"
+		aliasCveID     = "GHSA-DEDUP-WORKLOAD-1"
+		pkgName        = "pkg:maven/com.example/dedup-test@1.0.0"
+	)
+
+	score := 9.1
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:     canonicalCveID,
+			CveTitle:  "canonical",
+			Severity:  int32(vulnerabilities.Severity_CRITICAL),
+			CvssScore: &score,
+			Refs:      map[string]string{},
+		},
+		{
+			CveID:    aliasCveID,
+			CveTitle: "alias",
+			Severity: int32(vulnerabilities.Severity_HIGH),
+			Refs:     map[string]string{},
+		},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+		Alias:          aliasCveID,
+		CanonicalCveID: canonicalCveID,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// seed BOTH the canonical row and the alias row in vulnerabilities (mirrors real DT behaviour)
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: imageName, ImageTag: imageTag, Package: pkgName, CveID: canonicalCveID, Source: "test"},
+		{ImageName: imageName, ImageTag: imageTag, Package: pkgName, CveID: aliasCveID, Source: "test"},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+		CveIds: []string{canonicalCveID},
+	}, vulnerabilities.Limit(25))
+	require.NoError(t, err)
+
+	// must return exactly 1 node for the single workload — not 2 (one per alias/canonical row)
+	assert.Len(t, resp.Nodes, 1,
+		"ListWorkloadsForVulnerability must deduplicate alias and canonical rows for the same workload+package")
 }
 
 func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
