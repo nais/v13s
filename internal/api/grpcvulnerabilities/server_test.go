@@ -788,6 +788,130 @@ func TestServer_SuppressVulnerability_LastModified(t *testing.T) {
 		afterFirstUpdatedAt, afterSecondUpdatedAt)
 }
 
+func TestServer_SuppressVulnerability_AliasAndCanonical(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName      = "image-cluster-1-namespace-1-workload-1"
+		imageTag       = "v1.0"
+		canonicalCveID = "CVE-SUPPRESS-ALIAS-1"
+		aliasCveID     = "GHSA-SUPPRESS-ALIAS-1"
+		pkgName        = "pkg:golang/suppress-alias-test@v1.0.0"
+	)
+
+	score := 8.5
+	// seed canonical CVE and alias CVE
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:     canonicalCveID,
+			CveTitle:  "canonical",
+			Severity:  int32(vulnerabilities.Severity_HIGH),
+			CvssScore: &score,
+			Refs:      map[string]string{},
+		},
+		{
+			CveID:    aliasCveID,
+			CveTitle: "alias",
+			Severity: int32(vulnerabilities.Severity_HIGH),
+			Refs:     map[string]string{},
+		},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+		Alias:          aliasCveID,
+		CanonicalCveID: canonicalCveID,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// seed both the canonical row and the alias row in vulnerabilities
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Package:   pkgName,
+			CveID:     canonicalCveID,
+			Source:    "test",
+		},
+		{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Package:   pkgName,
+			CveID:     aliasCveID,
+			Source:    "test",
+		},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// fetch the alias vuln id
+	vulns, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag, vulnerabilities.Limit(50))
+	require.NoError(t, err)
+
+	var aliasVulnID string
+	for _, v := range vulns.Nodes {
+		// ListVulnerabilitiesForImage resolves to canonical cve_id in the CTE,
+		// so we look up by package and find the underlying row id via GetVulnerabilityById
+		if v.GetPackage() == pkgName {
+			aliasVulnID = v.GetId()
+			break
+		}
+	}
+	require.NotEmpty(t, aliasVulnID, "expected to find vulnerability for package")
+
+	t.Run("suppressing alias row also suppresses canonical row", func(t *testing.T) {
+		err = client.SuppressVulnerability(
+			ctx,
+			aliasVulnID,
+			"suppressed via alias",
+			"test-user",
+			vulnerabilities.SuppressState_NOT_AFFECTED,
+			true,
+		)
+		require.NoError(t, err)
+
+		suppressed, err := db.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+		require.NoError(t, err)
+
+		cveIDs := make([]string, 0, len(suppressed))
+		for _, s := range suppressed {
+			if s.Suppressed {
+				cveIDs = append(cveIDs, s.CveID)
+			}
+		}
+
+		assert.Contains(t, cveIDs, canonicalCveID, "canonical suppress record must exist")
+		assert.Contains(t, cveIDs, aliasCveID, "alias suppress record must exist")
+	})
+
+	t.Run("deduplicated row for package appears suppressed in listing", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag,
+			vulnerabilities.Limit(50),
+			vulnerabilities.IncludeSuppressed(),
+		)
+		require.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			if v.GetPackage() == pkgName {
+				require.NotNil(t, v.GetSuppression(), "suppression should be populated")
+				assert.True(t, v.GetSuppression().GetSuppressed(), "vulnerability should appear suppressed")
+			}
+		}
+	})
+
+	t.Run("suppressed alias+canonical are excluded by default", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag, vulnerabilities.Limit(50))
+		require.NoError(t, err)
+
+		for _, v := range resp.Nodes {
+			assert.NotEqual(t, pkgName, v.GetPackage(), "suppressed vulnerability should not appear by default")
+		}
+	})
+}
+
 func TestUpdateCveSeverityAndTimestamps(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},

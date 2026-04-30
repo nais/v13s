@@ -746,6 +746,65 @@ func (_c *MockQuerier_DeleteWorkload_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// GetAliasesByCanonicalCveId provides a mock function with given fields: ctx, canonicalCveID
+func (_m *MockQuerier) GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID string) ([]string, error) {
+	ret := _m.Called(ctx, canonicalCveID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAliasesByCanonicalCveId")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]string, error)); ok {
+		return rf(ctx, canonicalCveID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []string); ok {
+		r0 = rf(ctx, canonicalCveID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, canonicalCveID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetAliasesByCanonicalCveId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAliasesByCanonicalCveId'
+type MockQuerier_GetAliasesByCanonicalCveId_Call struct {
+	*mock.Call
+}
+
+// GetAliasesByCanonicalCveId is a helper method to define mock.On call
+//   - ctx context.Context
+//   - canonicalCveID string
+func (_e *MockQuerier_Expecter) GetAliasesByCanonicalCveId(ctx interface{}, canonicalCveID interface{}) *MockQuerier_GetAliasesByCanonicalCveId_Call {
+	return &MockQuerier_GetAliasesByCanonicalCveId_Call{Call: _e.mock.On("GetAliasesByCanonicalCveId", ctx, canonicalCveID)}
+}
+
+func (_c *MockQuerier_GetAliasesByCanonicalCveId_Call) Run(run func(ctx context.Context, canonicalCveID string)) *MockQuerier_GetAliasesByCanonicalCveId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetAliasesByCanonicalCveId_Call) Return(_a0 []string, _a1 error) *MockQuerier_GetAliasesByCanonicalCveId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetAliasesByCanonicalCveId_Call) RunAndReturn(run func(context.Context, string) ([]string, error)) *MockQuerier_GetAliasesByCanonicalCveId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCanonicalCveIdByAlias provides a mock function with given fields: ctx, alias
 func (_m *MockQuerier) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error) {
 	ret := _m.Called(ctx, alias)

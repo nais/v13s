@@ -142,6 +142,37 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	return total, err
 }
 
+const getAliasesByCanonicalCveId = `-- name: GetAliasesByCanonicalCveId :many
+SELECT
+    alias
+FROM
+    cve_alias
+WHERE
+    canonical_cve_id = $1
+ORDER BY
+    alias
+`
+
+func (q *Queries) GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getAliasesByCanonicalCveId, canonicalCveID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var alias string
+		if err := rows.Scan(&alias); err != nil {
+			return nil, err
+		}
+		items = append(items, alias)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCanonicalCveIdByAlias = `-- name: GetCanonicalCveIdByAlias :one
 SELECT
     canonical_cve_id
@@ -250,10 +281,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.image_name = $1
     AND v.image_tag = $2
@@ -349,10 +381,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.id = $1
 `
@@ -864,12 +897,13 @@ SELECT
     v.cvss_score
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON v.image_name = w.image_name
         AND v.image_tag = w.image_tag
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE (
     CASE WHEN $1::TEXT IS NOT NULL THEN
         w.cluster = $1::TEXT
@@ -991,7 +1025,6 @@ type ListVulnerabilitiesRow struct {
 	CvssScore     *float64
 }
 
-// TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
 	rows, err := q.db.Query(ctx, listVulnerabilities,
 		arg.Cluster,
@@ -1308,14 +1341,15 @@ SELECT
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
-    JOIN workloads w ON w.image_name = v.image_name
-        AND w.image_tag = v.image_tag
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+    JOIN workloads w ON v.image_name = w.image_name
+        AND v.image_tag = w.image_tag
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE ($1::TEXT[] IS NULL
-    OR v.cve_id = ANY ($1::TEXT[]))
+    OR COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[]))
 AND ($2::FLOAT8 IS NULL
     OR (v.cvss_score IS NOT NULL
         AND v.cvss_score >= $2::FLOAT8))

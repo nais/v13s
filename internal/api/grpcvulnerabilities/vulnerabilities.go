@@ -562,17 +562,40 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 		}
 	}
 
-	supErr := s.querier.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+	canonicalCveID := vuln.CveID
+	if canonicalID, err := s.querier.GetCanonicalCveIdByAlias(ctx, vuln.CveID); err == nil {
+		canonicalCveID = canonicalID
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("resolve canonical cve id for %s: %w", vuln.CveID, err)
+	}
+
+	cveIDs := []string{canonicalCveID}
+	aliases, err := s.querier.GetAliasesByCanonicalCveId(ctx, canonicalCveID)
+	if err != nil {
+		return nil, fmt.Errorf("get aliases for cve: %w", err)
+	}
+	if len(aliases) > 0 {
+		cveIDs = append(cveIDs, aliases...)
+	}
+
+	suppressParams := sql.SuppressVulnerabilityParams{
 		ImageName:    vuln.ImageName,
-		CveID:        vuln.CveID,
 		Package:      vuln.Package,
 		SuppressedBy: request.GetSuppressedBy(),
 		Suppressed:   request.GetSuppress(),
 		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
 		ReasonText:   request.GetReason(),
-	})
-	if supErr != nil {
-		return nil, fmt.Errorf("suppress vulnerability: %w", supErr)
+	}
+
+	var suppressErrs []string
+	for _, cveID := range cveIDs {
+		suppressParams.CveID = cveID
+		if supErr := s.querier.SuppressVulnerability(ctx, suppressParams); supErr != nil {
+			suppressErrs = append(suppressErrs, fmt.Sprintf("%s: %v", cveID, supErr))
+		}
+	}
+	if len(suppressErrs) > 0 {
+		return nil, fmt.Errorf("failed to suppress %d/%d CVE IDs for %s/%s: %s", len(suppressErrs), len(cveIDs), vuln.ImageName, vuln.Package, strings.Join(suppressErrs, "; "))
 	}
 
 	if err := s.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{

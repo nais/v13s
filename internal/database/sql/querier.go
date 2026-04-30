@@ -23,6 +23,7 @@ type Querier interface {
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
 	DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
+	GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID string) ([]string, error)
 	GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
 	GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error)
@@ -47,7 +48,6 @@ type Querier interface {
 	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
 	ListUnusedSourceRefs(ctx context.Context, name *string) ([]*SourceRef, error)
 	ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*ListUpdatedWorkloadsWithSummariesRow, error)
-	// TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)

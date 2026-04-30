@@ -194,6 +194,16 @@ FROM
 WHERE
     cve_id = @cve_id;
 
+-- name: GetAliasesByCanonicalCveId :many
+SELECT
+    alias
+FROM
+    cve_alias
+WHERE
+    canonical_cve_id = @canonical_cve_id
+ORDER BY
+    alias;
+
 -- name: GetVulnerability :one
 SELECT
     v.id,
@@ -219,10 +229,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.image_name = @image_name
     AND v.image_tag = @image_tag
@@ -252,10 +263,11 @@ SELECT
     sv.updated_at AS suppressed_at
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE
     v.id = @id;
 
@@ -602,7 +614,6 @@ ORDER BY
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');
 
--- TODO: use ctes like ListVulnerabilitiesForImage to handle aliases for CVE IDs
 -- name: ListVulnerabilities :many
 SELECT
     v.id,
@@ -632,12 +643,13 @@ SELECT
     v.cvss_score
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON v.image_name = w.image_name
         AND v.image_tag = w.image_tag
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE (
     CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN
         w.cluster = sqlc.narg('cluster')::TEXT
@@ -865,14 +877,15 @@ SELECT
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
-    JOIN workloads w ON w.image_name = v.image_name
-        AND w.image_tag = v.image_tag
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+    JOIN workloads w ON v.image_name = w.image_name
+        AND v.image_tag = w.image_tag
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
 WHERE (sqlc.narg('cve_ids')::TEXT[] IS NULL
-    OR v.cve_id = ANY (sqlc.narg('cve_ids')::TEXT[]))
+    OR COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.narg('cve_ids')::TEXT[]))
 AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
     OR (v.cvss_score IS NOT NULL
         AND v.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
