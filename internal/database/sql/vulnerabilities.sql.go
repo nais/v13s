@@ -1325,7 +1325,7 @@ SELECT
     v.created_at,
     v.updated_at,
     v.severity_since,
-    v.last_severity,
+    c.severity AS last_severity,
     c.cve_title,
     c.cve_desc,
     c.cve_link,
@@ -1348,12 +1348,11 @@ FROM
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
         AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-    LEFT JOIN vulnerabilities v_canonical
-        ON ca.canonical_cve_id IS NOT NULL
+    LEFT JOIN vulnerabilities v_canonical ON ca.canonical_cve_id IS NOT NULL
         AND v_canonical.image_name = v.image_name
-        AND v_canonical.image_tag  = v.image_tag
-        AND v_canonical.package    = v.package
-        AND v_canonical.cve_id     = ca.canonical_cve_id
+        AND v_canonical.image_tag = v.image_tag
+        AND v_canonical.package = v.package
+        AND v_canonical.cve_id = ca.canonical_cve_id
 WHERE
     v_canonical.id IS NULL
     AND ($1::TEXT[] IS NULL

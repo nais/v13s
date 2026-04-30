@@ -354,8 +354,7 @@ func (_c *MockManagementServer_mustEmbedUnimplementedManagementServer_Call) RunA
 func NewMockManagementServer(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockManagementServer {
+}) *MockManagementServer {
 	mock := &MockManagementServer{}
 	mock.Mock.Test(t)
 

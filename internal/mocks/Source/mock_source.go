@@ -464,8 +464,7 @@ func (_c *MockSource_UploadAttestation_Call) RunAndReturn(run func(context.Conte
 func NewMockSource(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockSource {
+}) *MockSource {
 	mock := &MockSource{}
 	mock.Mock.Test(t)
 

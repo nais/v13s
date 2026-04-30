@@ -861,7 +861,7 @@ SELECT
     v.created_at,
     v.updated_at,
     v.severity_since,
-    v.last_severity,
+    c.severity AS last_severity,
     c.cve_title,
     c.cve_desc,
     c.cve_link,
