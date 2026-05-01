@@ -139,11 +139,13 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 				Severity:    Severity(v.Cve.Severity),
 				References:  v.Cve.References,
 			},
-			CvssScore:     v.Cvss,
-			Package:       v.Package,
-			Suppressed:    v.Suppressed,
-			LatestVersion: v.LatestVersion,
-			Metadata:      m,
+			CvssScore:      v.Cvss,
+			EpssScore:      v.EpssScore,
+			EpssPercentile: v.EpssPercentile,
+			Package:        v.Package,
+			Suppressed:     v.Suppressed,
+			LatestVersion:  v.LatestVersion,
+			Metadata:       m,
 		})
 	}
 

@@ -12,7 +12,7 @@ import (
 const listCveSummaries = `-- name: ListCveSummaries :many
 WITH cve_data AS (
     SELECT
-        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score,
+        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile,
         COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
@@ -44,7 +44,7 @@ GROUP BY
     c.cve_id
 )
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, affected_workloads,
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, affected_workloads,
     COUNT(*) OVER ()::INT AS total_count
 FROM
     cve_data
@@ -116,6 +116,8 @@ type ListCveSummariesRow struct {
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
 	CvssScore         *float64
+	EpssScore         *float64
+	EpssPercentile    *float64
 	AffectedWorkloads int32
 	TotalCount        int32
 }
@@ -152,6 +154,8 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CvssScore,
+			&i.EpssScore,
+			&i.EpssPercentile,
 			&i.AffectedWorkloads,
 			&i.TotalCount,
 		); err != nil {

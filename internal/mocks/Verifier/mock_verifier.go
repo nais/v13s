@@ -87,7 +87,8 @@ func (_c *MockVerifier_GetAttestation_Call) RunAndReturn(run func(context.Contex
 func NewMockVerifier(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockVerifier {
+},
+) *MockVerifier {
 	mock := &MockVerifier{}
 	mock.Mock.Test(t)
 

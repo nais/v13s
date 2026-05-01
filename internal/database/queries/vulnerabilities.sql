@@ -86,7 +86,9 @@ INSERT INTO cve(
     cve_link,
     severity,
     refs,
-    cvss_score)
+    cvss_score,
+    epss_score,
+    epss_percentile)
 VALUES (
     @cve_id,
     @cve_title,
@@ -94,7 +96,9 @@ VALUES (
     @cve_link,
     @severity,
     @refs,
-    @cvss_score)
+    @cvss_score,
+    @epss_score,
+    @epss_percentile)
 ON CONFLICT (
     cve_id)
     DO UPDATE SET
@@ -104,6 +108,8 @@ ON CONFLICT (
         severity = EXCLUDED.severity,
         refs = EXCLUDED.refs,
         cvss_score = EXCLUDED.cvss_score,
+        epss_score = EXCLUDED.epss_score,
+        epss_percentile = EXCLUDED.epss_percentile,
         updated_at = NOW()
     WHERE
         cve.cve_title IS DISTINCT FROM EXCLUDED.cve_title
@@ -111,7 +117,9 @@ ON CONFLICT (
         OR cve.cve_link IS DISTINCT FROM EXCLUDED.cve_link
         OR cve.severity IS DISTINCT FROM EXCLUDED.severity
         OR cve.refs IS DISTINCT FROM EXCLUDED.refs
-        OR cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score;
+        OR cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
+        OR cve.epss_score IS DISTINCT FROM EXCLUDED.epss_score
+        OR cve.epss_percentile IS DISTINCT FROM EXCLUDED.epss_percentile;
 
 -- name: BatchUpsertCveAlias :batchexec
 INSERT INTO cve_alias(

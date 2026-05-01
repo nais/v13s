@@ -300,15 +300,17 @@ func AllWorkloadStateValues() []WorkloadState {
 }
 
 type Cve struct {
-	CveID     string
-	CveTitle  string
-	CveDesc   string
-	CveLink   string
-	Severity  int32
-	Refs      typeext.MapStringString
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	CvssScore *float64
+	CveID          string
+	CveTitle       string
+	CveDesc        string
+	CveLink        string
+	Severity       int32
+	Refs           typeext.MapStringString
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	CvssScore      *float64
+	EpssScore      *float64
+	EpssPercentile *float64
 }
 
 type Image struct {

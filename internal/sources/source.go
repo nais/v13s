@@ -118,12 +118,14 @@ type Cve struct {
 }
 
 type Vulnerability struct {
-	Package       string
-	Suppressed    bool
-	Cve           *Cve
-	LatestVersion string
-	Metadata      VulnerabilityMetadata
-	CvssScore     *float64
+	Package        string
+	Suppressed     bool
+	Cve            *Cve
+	LatestVersion  string
+	Metadata       VulnerabilityMetadata
+	CvssScore      *float64
+	EpssScore      *float64
+	EpssPercentile *float64
 }
 
 type VulnerabilityMetadata any

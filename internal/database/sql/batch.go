@@ -83,7 +83,9 @@ INSERT INTO cve(
     cve_link,
     severity,
     refs,
-    cvss_score)
+    cvss_score,
+    epss_score,
+    epss_percentile)
 VALUES (
     $1,
     $2,
@@ -91,7 +93,9 @@ VALUES (
     $4,
     $5,
     $6,
-    $7)
+    $7,
+    $8,
+    $9)
 ON CONFLICT (
     cve_id)
     DO UPDATE SET
@@ -101,6 +105,8 @@ ON CONFLICT (
         severity = EXCLUDED.severity,
         refs = EXCLUDED.refs,
         cvss_score = EXCLUDED.cvss_score,
+        epss_score = EXCLUDED.epss_score,
+        epss_percentile = EXCLUDED.epss_percentile,
         updated_at = NOW()
     WHERE
         cve.cve_title IS DISTINCT FROM EXCLUDED.cve_title
@@ -109,6 +115,8 @@ ON CONFLICT (
         OR cve.severity IS DISTINCT FROM EXCLUDED.severity
         OR cve.refs IS DISTINCT FROM EXCLUDED.refs
         OR cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
+        OR cve.epss_score IS DISTINCT FROM EXCLUDED.epss_score
+        OR cve.epss_percentile IS DISTINCT FROM EXCLUDED.epss_percentile
 `
 
 type BatchUpsertCveBatchResults struct {
@@ -118,13 +126,15 @@ type BatchUpsertCveBatchResults struct {
 }
 
 type BatchUpsertCveParams struct {
-	CveID     string
-	CveTitle  string
-	CveDesc   string
-	CveLink   string
-	Severity  int32
-	Refs      typeext.MapStringString
-	CvssScore *float64
+	CveID          string
+	CveTitle       string
+	CveDesc        string
+	CveLink        string
+	Severity       int32
+	Refs           typeext.MapStringString
+	CvssScore      *float64
+	EpssScore      *float64
+	EpssPercentile *float64
 }
 
 func (q *Queries) BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults {
@@ -138,6 +148,8 @@ func (q *Queries) BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams
 			a.Severity,
 			a.Refs,
 			a.CvssScore,
+			a.EpssScore,
+			a.EpssPercentile,
 		}
 		batch.Queue(batchUpsertCve, vals...)
 	}
