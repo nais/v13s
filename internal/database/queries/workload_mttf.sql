@@ -106,6 +106,7 @@ WITH filtered AS (
         v.workload_id,
         v.introduced_at,
         v.fixed_at,
+        v.fix_duration,
         v.snapshot_date,
         v.is_fixed
     FROM
@@ -135,7 +136,7 @@ SELECT
     MIN(f.introduced_at)::DATE AS introduced_date,
     MAX(f.fixed_at)::DATE AS fixed_at,
     COUNT(*) FILTER (WHERE f.is_fixed)::INT AS fixed_count,
-    COALESCE(AVG(f.fixed_at::DATE - f.introduced_at::DATE), 0)::INT AS mean_time_to_fix_days,
+    COALESCE(AVG(f.fix_duration) FILTER (WHERE f.is_fixed), 0)::INT AS mean_time_to_fix_days,
     MAX(f.snapshot_date)::TIMESTAMPTZ AS snapshot_date
 FROM
     filtered f

@@ -1,3 +1,9 @@
+-- +goose Up
 ALTER TABLE cve
     ADD COLUMN IF NOT EXISTS epss_score FLOAT8 NULL DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS epss_percentile FLOAT8 NULL DEFAULT NULL;
+
+-- +goose Down
+ALTER TABLE cve
+    DROP COLUMN IF EXISTS epss_score,
+    DROP COLUMN IF EXISTS epss_percentile;
