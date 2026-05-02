@@ -191,7 +191,7 @@ func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (s
 
 const getCve = `-- name: GetCve :one
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use
 FROM
     cve
 WHERE
@@ -213,6 +213,8 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.CvssScore,
 		&i.EpssScore,
 		&i.EpssPercentile,
+		&i.HasKevEntry,
+		&i.KnownRansomwareUse,
 	)
 	return &i, err
 }
@@ -655,7 +657,7 @@ const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :m
 SELECT
     sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by,
     v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score,
-    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile,
+    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use,
     w.cluster,
     w.namespace
 FROM
@@ -731,41 +733,43 @@ type ListSuppressedVulnerabilitiesParams struct {
 }
 
 type ListSuppressedVulnerabilitiesRow struct {
-	ID             pgtype.UUID
-	ImageName      string
-	Package        string
-	CveID          string
-	Suppressed     bool
-	Reason         VulnerabilitySuppressReason
-	ReasonText     string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	SuppressedBy   string
-	ID_2           pgtype.UUID
-	ImageName_2    string
-	ImageTag       string
-	Package_2      string
-	CveID_2        string
-	Source         string
-	LatestVersion  string
-	CreatedAt_2    pgtype.Timestamptz
-	UpdatedAt_2    pgtype.Timestamptz
-	LastSeverity   int32
-	SeveritySince  pgtype.Timestamptz
-	CvssScore      *float64
-	CveID_3        string
-	CveTitle       string
-	CveDesc        string
-	CveLink        string
-	Severity       int32
-	Refs           typeext.MapStringString
-	CreatedAt_3    pgtype.Timestamptz
-	UpdatedAt_3    pgtype.Timestamptz
-	CvssScore_2    *float64
-	EpssScore      *float64
-	EpssPercentile *float64
-	Cluster        string
-	Namespace      string
+	ID                 pgtype.UUID
+	ImageName          string
+	Package            string
+	CveID              string
+	Suppressed         bool
+	Reason             VulnerabilitySuppressReason
+	ReasonText         string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	SuppressedBy       string
+	ID_2               pgtype.UUID
+	ImageName_2        string
+	ImageTag           string
+	Package_2          string
+	CveID_2            string
+	Source             string
+	LatestVersion      string
+	CreatedAt_2        pgtype.Timestamptz
+	UpdatedAt_2        pgtype.Timestamptz
+	LastSeverity       int32
+	SeveritySince      pgtype.Timestamptz
+	CvssScore          *float64
+	CveID_3            string
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	Refs               typeext.MapStringString
+	CreatedAt_3        pgtype.Timestamptz
+	UpdatedAt_3        pgtype.Timestamptz
+	CvssScore_2        *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	Cluster            string
+	Namespace          string
 }
 
 func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error) {
@@ -819,6 +823,8 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.CvssScore_2,
 			&i.EpssScore,
 			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
 			&i.Cluster,
 			&i.Namespace,
 		); err != nil {

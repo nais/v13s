@@ -316,6 +316,53 @@ func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) RunAndReturn(run fun
 	return _c
 }
 
+// BulkUpdateKevData provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BulkUpdateKevData(ctx context.Context, arg sql.BulkUpdateKevDataParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkUpdateKevData")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkUpdateKevDataParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_BulkUpdateKevData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkUpdateKevData'
+type MockQuerier_BulkUpdateKevData_Call struct {
+	*mock.Call
+}
+
+// BulkUpdateKevData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.BulkUpdateKevDataParams
+func (_e *MockQuerier_Expecter) BulkUpdateKevData(ctx interface{}, arg interface{}) *MockQuerier_BulkUpdateKevData_Call {
+	return &MockQuerier_BulkUpdateKevData_Call{Call: _e.mock.On("BulkUpdateKevData", ctx, arg)}
+}
+
+func (_c *MockQuerier_BulkUpdateKevData_Call) Run(run func(ctx context.Context, arg sql.BulkUpdateKevDataParams)) *MockQuerier_BulkUpdateKevData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.BulkUpdateKevDataParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BulkUpdateKevData_Call) Return(_a0 error) *MockQuerier_BulkUpdateKevData_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_BulkUpdateKevData_Call) RunAndReturn(run func(context.Context, sql.BulkUpdateKevDataParams) error) *MockQuerier_BulkUpdateKevData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountSuppressedVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) CountSuppressedVulnerabilities(ctx context.Context, arg sql.CountSuppressedVulnerabilitiesParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
@@ -1091,6 +1138,64 @@ func (_c *MockQuerier_GetImagesScheduledForSync_Call) Return(_a0 []*sql.Image, _
 }
 
 func (_c *MockQuerier_GetImagesScheduledForSync_Call) RunAndReturn(run func(context.Context) ([]*sql.Image, error)) *MockQuerier_GetImagesScheduledForSync_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetKevSyncState provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetKevSyncState(ctx context.Context) (*sql.GetKevSyncStateRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetKevSyncState")
+	}
+
+	var r0 *sql.GetKevSyncStateRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*sql.GetKevSyncStateRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *sql.GetKevSyncStateRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.GetKevSyncStateRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetKevSyncState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetKevSyncState'
+type MockQuerier_GetKevSyncState_Call struct {
+	*mock.Call
+}
+
+// GetKevSyncState is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetKevSyncState(ctx interface{}) *MockQuerier_GetKevSyncState_Call {
+	return &MockQuerier_GetKevSyncState_Call{Call: _e.mock.On("GetKevSyncState", ctx)}
+}
+
+func (_c *MockQuerier_GetKevSyncState_Call) Run(run func(ctx context.Context)) *MockQuerier_GetKevSyncState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetKevSyncState_Call) Return(_a0 *sql.GetKevSyncStateRow, _a1 error) *MockQuerier_GetKevSyncState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetKevSyncState_Call) RunAndReturn(run func(context.Context) (*sql.GetKevSyncStateRow, error)) *MockQuerier_GetKevSyncState_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3503,6 +3608,53 @@ func (_c *MockQuerier_UpdateWorkloadState_Call) Return(_a0 error) *MockQuerier_U
 }
 
 func (_c *MockQuerier_UpdateWorkloadState_Call) RunAndReturn(run func(context.Context, sql.UpdateWorkloadStateParams) error) *MockQuerier_UpdateWorkloadState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertKevSyncState provides a mock function with given fields: ctx, etag
+func (_m *MockQuerier) UpsertKevSyncState(ctx context.Context, etag string) error {
+	ret := _m.Called(ctx, etag)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertKevSyncState")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, etag)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpsertKevSyncState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertKevSyncState'
+type MockQuerier_UpsertKevSyncState_Call struct {
+	*mock.Call
+}
+
+// UpsertKevSyncState is a helper method to define mock.On call
+//   - ctx context.Context
+//   - etag string
+func (_e *MockQuerier_Expecter) UpsertKevSyncState(ctx interface{}, etag interface{}) *MockQuerier_UpsertKevSyncState_Call {
+	return &MockQuerier_UpsertKevSyncState_Call{Call: _e.mock.On("UpsertKevSyncState", ctx, etag)}
+}
+
+func (_c *MockQuerier_UpsertKevSyncState_Call) Run(run func(ctx context.Context, etag string)) *MockQuerier_UpsertKevSyncState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpsertKevSyncState_Call) Return(_a0 error) *MockQuerier_UpsertKevSyncState_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpsertKevSyncState_Call) RunAndReturn(run func(context.Context, string) error) *MockQuerier_UpsertKevSyncState_Call {
 	_c.Call.Return(run)
 	return _c
 }
