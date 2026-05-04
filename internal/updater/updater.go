@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/sources"
@@ -43,7 +44,7 @@ type Updater struct {
 	kevFetcher                   *kev.Fetcher
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry, kevCfg config.KevConfig) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -62,7 +63,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.Workload
 		updateSchedule:               schedule,
 		doneChan:                     doneChan,
 		log:                          log,
-		kevFetcher:                   kev.NewFetcher(querier, log),
+		kevFetcher:                   kev.NewFetcherWithClient(kev.NewClientWithURL(kevCfg.CatalogURL), querier, log),
 	}
 }
 

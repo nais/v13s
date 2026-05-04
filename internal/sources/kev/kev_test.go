@@ -8,8 +8,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	sqldatabase "github.com/nais/v13s/internal/database/sql"
 	mockquerier "github.com/nais/v13s/internal/mocks/Querier"
 	"github.com/nais/v13s/internal/sources/kev"
@@ -19,12 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestServer(t *testing.T, catalog kev.Catalog, etag string) *httptest.Server {
+func newTestServer(t *testing.T, catalog kev.Catalog) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if etag != "" {
-			w.Header().Set("ETag", etag)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		require.NoError(t, json.NewEncoder(w).Encode(catalog))
 	}))
@@ -49,7 +44,7 @@ func sampleCatalog() kev.Catalog {
 }
 
 func TestFetchCatalog_ParsesResponse(t *testing.T) {
-	srv := newTestServer(t, sampleCatalog(), "\"abc123\"")
+	srv := newTestServer(t, sampleCatalog())
 	defer srv.Close()
 
 	client := kev.NewClientWithURL(srv.URL)
@@ -59,17 +54,6 @@ func TestFetchCatalog_ParsesResponse(t *testing.T) {
 	assert.Equal(t, "CISA KEV", result.Catalog.Title)
 	assert.Equal(t, "2024.01.01", result.Catalog.CatalogVersion)
 	assert.Len(t, result.Catalog.Vulnerabilities, 2)
-	assert.Equal(t, "\"abc123\"", result.ETag)
-}
-
-func TestFetchCatalog_NoETag(t *testing.T) {
-	srv := newTestServer(t, sampleCatalog(), "")
-	defer srv.Close()
-
-	client := kev.NewClientWithURL(srv.URL)
-	result, err := client.FetchCatalog(context.Background())
-	require.NoError(t, err)
-	assert.Empty(t, result.ETag)
 }
 
 func TestEntry_KnownRansomware(t *testing.T) {
@@ -116,69 +100,27 @@ func TestFetchCatalog_InvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "decoding KEV catalog")
 }
 
-func TestFetcher_Sync_SkipsOnMatchingETag(t *testing.T) {
-	const etag = "\"same-etag\""
-	srv := newTestServer(t, sampleCatalog(), etag)
+func TestFetcher_Sync_AppliesAllCatalogEntries(t *testing.T) {
+	srv := newTestServer(t, sampleCatalog())
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().GetKevSyncState(mock.Anything).Return(&sqldatabase.GetKevSyncStateRow{
-		Etag:     etag,
-		SyncedAt: pgtype.Timestamptz{Valid: true},
-	}, nil)
-
-	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
-}
-
-func TestFetcher_Sync_UpdatesOnNewETag(t *testing.T) {
-	const oldETag = "\"old\""
-	const newETag = "\"new\""
-	srv := newTestServer(t, sampleCatalog(), newETag)
-	defer srv.Close()
-
-	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().GetKevSyncState(mock.Anything).Return(&sqldatabase.GetKevSyncStateRow{
-		Etag:     oldETag,
-		SyncedAt: pgtype.Timestamptz{Valid: true},
-	}, nil)
 	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
 		CveIds:             []string{"CVE-2021-44228", "CVE-2023-1234"},
 		KnownRansomwareUse: []bool{true, false},
-	}).Return(nil)
-	q.EXPECT().UpsertKevSyncState(mock.Anything, newETag).Return(nil)
+	}).Return(int64(2), nil)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
 	require.NoError(t, err)
 }
 
-func TestFetcher_Sync_FirstRunNoState(t *testing.T) {
-	const etag = "\"first\""
-	srv := newTestServer(t, sampleCatalog(), etag)
+func TestFetcher_Sync_NoETag_StillApplies(t *testing.T) {
+	srv := newTestServer(t, sampleCatalog())
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().GetKevSyncState(mock.Anything).Return(nil, pgx.ErrNoRows)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, mock.Anything).Return(nil)
-	q.EXPECT().UpsertKevSyncState(mock.Anything, etag).Return(nil)
-
-	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
-}
-
-func TestFetcher_Sync_ServerNoETag_AlwaysUpdates(t *testing.T) {
-	srv := newTestServer(t, sampleCatalog(), "")
-	defer srv.Close()
-
-	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().GetKevSyncState(mock.Anything).Return(&sqldatabase.GetKevSyncStateRow{
-		Etag: "",
-	}, nil)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, mock.Anything).Return(nil)
-	q.EXPECT().UpsertKevSyncState(mock.Anything, "").Return(nil)
+	q.EXPECT().BulkUpdateKevData(mock.Anything, mock.Anything).Return(int64(0), nil)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
@@ -192,20 +134,17 @@ func loadFixture(t *testing.T) []byte {
 	return b
 }
 
-func newFixtureServer(t *testing.T, etag string) *httptest.Server {
+func newFixtureServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	raw := loadFixture(t)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if etag != "" {
-			w.Header().Set("ETag", etag)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(raw)
 	}))
 }
 
 func TestFetchCatalog_RealFixture_ParsesCorrectly(t *testing.T) {
-	srv := newFixtureServer(t, "\"fixture-etag\"")
+	srv := newFixtureServer(t)
 	defer srv.Close()
 
 	client := kev.NewClientWithURL(srv.URL)
@@ -234,8 +173,7 @@ func TestFetchCatalog_RealFixture_ParsesCorrectly(t *testing.T) {
 }
 
 func TestFetcher_Sync_RealFixture(t *testing.T) {
-	const etag = "\"fixture-etag\""
-	srv := newFixtureServer(t, etag)
+	srv := newFixtureServer(t)
 	defer srv.Close()
 
 	raw := loadFixture(t)
@@ -250,28 +188,10 @@ func TestFetcher_Sync_RealFixture(t *testing.T) {
 	}
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().GetKevSyncState(mock.Anything).Return(nil, pgx.ErrNoRows)
 	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
 		CveIds:             expectedIDs,
 		KnownRansomwareUse: expectedRansomware,
-	}).Return(nil)
-	q.EXPECT().UpsertKevSyncState(mock.Anything, etag).Return(nil)
-
-	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
-}
-
-func TestFetcher_Sync_RealFixture_SkipsOnSameETag(t *testing.T) {
-	const etag = "\"fixture-etag\""
-	srv := newFixtureServer(t, etag)
-	defer srv.Close()
-
-	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().GetKevSyncState(mock.Anything).Return(&sqldatabase.GetKevSyncStateRow{
-		Etag:     etag,
-		SyncedAt: pgtype.Timestamptz{Valid: true},
-	}, nil)
+	}).Return(int64(1587), nil)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())

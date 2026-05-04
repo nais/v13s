@@ -26,6 +26,7 @@ type Config struct {
 	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
 	DependencyTrack           sources.DependencyTrackConfig
+	Kev                       KevConfig
 	K8s                       K8sConfig
 	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
@@ -36,6 +37,13 @@ type DependencyTrackConfig struct {
 	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
 	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
 	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
+}
+
+// KevConfig holds configuration for the CISA KEV (Known Exploited Vulnerabilities) catalog sync.
+// The catalog URL defaults to the official CISA JSON feed and can be overridden via the
+// KEV_CATALOG_URL environment variable (e.g. for testing with a local fixture server).
+type KevConfig struct {
+	CatalogURL string `envconfig:"KEV_CATALOG_URL" default:"https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"`
 }
 
 type K8sConfig struct {

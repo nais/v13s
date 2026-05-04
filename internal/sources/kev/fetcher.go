@@ -2,10 +2,8 @@ package kev
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
 )
@@ -14,14 +12,6 @@ type Fetcher struct {
 	client  *Client
 	querier sql.Querier
 	log     *logrus.Entry
-}
-
-func NewFetcher(querier sql.Querier, log *logrus.Entry) *Fetcher {
-	return &Fetcher{
-		client:  NewClient(),
-		querier: querier,
-		log:     log,
-	}
 }
 
 func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
@@ -33,27 +23,15 @@ func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
-	lastETag := ""
-	state, err := f.querier.GetKevSyncState(ctx)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("reading KEV sync state: %w", err)
-	}
-	if state != nil {
-		lastETag = state.Etag
-	}
-
+	f.log.Info("fetching KEV catalog from CISA")
 	result, err := f.client.FetchCatalog(ctx)
 	if err != nil {
 		return fmt.Errorf("fetching KEV catalog: %w", err)
 	}
 
-	if result.ETag != "" && result.ETag == lastETag {
-		f.log.Infof("KEV catalog unchanged (ETag %s), skipping sync", result.ETag)
-		return nil
-	}
-
 	catalog := result.Catalog
-	f.log.Infof("KEV catalog downloaded: %d entries (version %s)", catalog.Count, catalog.CatalogVersion)
+	f.log.Infof("KEV catalog: %d entries, version %s, released %s",
+		catalog.Count, catalog.CatalogVersion, catalog.DateReleased)
 
 	if len(catalog.Vulnerabilities) == 0 {
 		f.log.Warn("KEV catalog is empty, nothing to update")
@@ -62,23 +40,27 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 
 	cveIDs := make([]string, 0, len(catalog.Vulnerabilities))
 	ransomware := make([]bool, 0, len(catalog.Vulnerabilities))
+	ransomwareCount := 0
 
 	for _, v := range catalog.Vulnerabilities {
 		cveIDs = append(cveIDs, v.CveID)
-		ransomware = append(ransomware, v.KnownRansomware())
+		kr := v.KnownRansomware()
+		ransomware = append(ransomware, kr)
+		if kr {
+			ransomwareCount++
+		}
 	}
 
-	if err := f.querier.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+	f.log.Infof("updating DB: %d CVEs in catalog (%d with known ransomware use)", len(cveIDs), ransomwareCount)
+
+	updated, err := f.querier.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
 		CveIds:             cveIDs,
 		KnownRansomwareUse: ransomware,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("bulk updating KEV data: %w", err)
 	}
 
-	if err := f.querier.UpsertKevSyncState(ctx, result.ETag); err != nil {
-		return fmt.Errorf("persisting KEV sync state: %w", err)
-	}
-
-	f.log.Infof("KEV data synced: %d CVEs processed", len(cveIDs))
+	f.log.Infof("KEV sync complete: %d CVEs in catalog, %d rows updated in DB", len(cveIDs), updated)
 	return nil
 }

@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const DefaultCatalogURL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-
 type Catalog struct {
 	Title           string  `json:"title"`
 	CatalogVersion  string  `json:"catalogVersion"`
@@ -37,16 +35,11 @@ func (e Entry) KnownRansomware() bool {
 
 type FetchResult struct {
 	Catalog *Catalog
-	ETag    string
 }
 
 type Client struct {
 	httpClient *http.Client
 	catalogURL string
-}
-
-func NewClient() *Client {
-	return NewClientWithURL(DefaultCatalogURL)
 }
 
 func NewClientWithURL(url string) *Client {
@@ -79,6 +72,5 @@ func (c *Client) FetchCatalog(ctx context.Context) (*FetchResult, error) {
 
 	return &FetchResult{
 		Catalog: &catalog,
-		ETag:    resp.Header.Get("ETag"),
 	}, nil
 }
