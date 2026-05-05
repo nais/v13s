@@ -6,9 +6,11 @@ ALTER TABLE cve_alias
     DROP CONSTRAINT IF EXISTS cve_alias_alias_fkey;
 
 -- +goose Down
--- Remove any alias rows whose alias value has no corresponding cve row —
--- these rows were allowed by the Up migration but would violate the FK
--- being re-added here, causing the rollback to fail.
+-- Intentionally delete alias rows whose alias value has no corresponding
+-- cve row. These rows are valid after the Up migration (GHSA aliases without
+-- a cve row) but would violate cve_alias_alias_fkey being re-added below.
+-- This data loss is acceptable on rollback — the rows will be re-created on
+-- the next resync once the Up migration is re-applied.
 DELETE FROM cve_alias
 WHERE alias NOT IN (SELECT cve_id FROM cve);
 

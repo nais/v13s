@@ -973,6 +973,119 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	})
 }
 
+// - cve row is upserted for the CVE canonical (not the GHSA)
+// - cve_alias row is inserted with canonical=CVE, alias=GHSA — no FK error
+// - vulnerabilities row references the CVE canonical
+// - GetCanonicalCveIdByAlias returns the CVE canonical for the GHSA alias
+func TestBatchUpdateVulnerabilityData_GithubFindingPromotion(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{})
+
+	const (
+		imageName    = "test-image"
+		imageTag     = "v1.0"
+		cveCanonical = "CVE-2024-12797"
+		ghsaAlias    = "GHSA-79v4-65xg-pq4g"
+		pkg          = "pkg:pypi/cryptography@43.0.1"
+	)
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "workload-test",
+		WorkloadType: "app",
+		Namespace:    "test-ns",
+		Cluster:      "test-cluster",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	if !errors.Is(err, pgx.ErrNoRows) {
+		require.NoError(t, err)
+	}
+
+	// Simulate a GITHUB finding after ParseFinding promotion:
+	// Cve.Id is the CVE canonical, References maps canonical→GHSA alias.
+	imgVulnData := &updater.ImageVulnerabilityData{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		Source:    "DependencyTrack",
+		Vulnerabilities: []*sources.Vulnerability{
+			{
+				Package: pkg,
+				Cve: &sources.Cve{
+					Id:          cveCanonical,
+					Title:       "Vulnerable OpenSSL in cryptography wheels",
+					Description: "Test description",
+					Link:        fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", cveCanonical),
+					Severity:    sources.SeverityHigh,
+					References:  map[string]string{cveCanonical: ghsaAlias},
+				},
+			},
+		},
+	}
+
+	u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{imgVulnData})
+
+	// 1. cve row must exist for the CVE canonical — not the GHSA
+	cve, err := db.GetCve(ctx, cveCanonical)
+	require.NoError(t, err, "expected cve row for canonical %s", cveCanonical)
+	assert.Equal(t, cveCanonical, cve.CveID)
+
+	// GHSA must NOT have its own cve row (it's an alias, not a canonical)
+	_, err = db.GetCve(ctx, ghsaAlias)
+	assert.ErrorIs(t, err, pgx.ErrNoRows, "GHSA alias %s should not have a cve row", ghsaAlias)
+
+	// 2. cve_alias row must exist with canonical=CVE, alias=GHSA — no FK error
+	canonical, err := db.GetCanonicalCveIdByAlias(ctx, ghsaAlias)
+	require.NoError(t, err, "expected cve_alias row for alias %s", ghsaAlias)
+	assert.Equal(t, cveCanonical, canonical)
+
+	// 3. vulnerabilities row must reference the CVE canonical
+	imgNameStr := imageName
+	imgTagStr := imageTag
+	vulns, err := db.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
+		ImageName: &imgNameStr,
+		ImageTag:  &imgTagStr,
+		Limit:     10,
+	})
+	require.NoError(t, err)
+	require.Len(t, vulns, 1)
+	assert.Equal(t, cveCanonical, vulns[0].CveID)
+	assert.Equal(t, pkg, vulns[0].Package)
+}
+
+func TestCveAliasCanonicalFkeyStillEnforced(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	var fkErr error
+	db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{
+		{
+			CanonicalCveID: "CVE-9999-NONEXISTENT",
+			Alias:          "GHSA-xxxx-yyyy-zzzz",
+		},
+	}).Exec(func(_ int, err error) {
+		fkErr = err
+	})
+
+	require.Error(t, fkErr, "expected FK violation for non-existent canonical")
+	assert.Contains(t, fkErr.Error(), "cve_alias_canonical_fkey",
+		"error should reference cve_alias_canonical_fkey constraint")
+}
+
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {
 	for _, p := range projectNames {
 		err := db.CreateImage(ctx, sql.CreateImageParams{
