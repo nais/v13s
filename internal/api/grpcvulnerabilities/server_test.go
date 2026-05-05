@@ -1,4 +1,4 @@
-// /go:build integration_test
+//go:build integration_test
 package grpcvulnerabilities_test
 
 import (
