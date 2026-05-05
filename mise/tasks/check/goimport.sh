@@ -4,7 +4,7 @@ set -euo pipefail
 
 echo "Running goimports..."
 unformatted=$(find . -type f -name '*.go' \
-  ! -path './pkg/api/*' \
+  ! -name '*.pb.go' \
   -exec go tool golang.org/x/tools/cmd/goimports -l {} +)
 
 if [[ -n "$unformatted" ]]; then
