@@ -3,6 +3,7 @@ package updater
 import (
 	"testing"
 
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,6 +68,62 @@ func TestToCveSqlParams_EpssFields(t *testing.T) {
 			assert.Equal(t, tt.wantCvss, p.CvssScore)
 			assert.Equal(t, tt.wantEpssScore, p.EpssScore)
 			assert.Equal(t, tt.wantEpssPercent, p.EpssPercentile)
+		})
+	}
+}
+
+func TestToCveAliasSqlParams(t *testing.T) {
+	tests := []struct {
+		name       string
+		references map[string]string
+		want       []sql.BatchUpsertCveAliasParams
+	}{
+		{
+			name:       "single reference",
+			references: map[string]string{"CVE-2024-12797": "GHSA-79v4-65xg-pq4g"},
+			want: []sql.BatchUpsertCveAliasParams{
+				{CanonicalCveID: "CVE-2024-12797", Alias: "GHSA-79v4-65xg-pq4g"},
+			},
+		},
+		{
+			name:       "empty references",
+			references: map[string]string{},
+			want:       []sql.BatchUpsertCveAliasParams{},
+		},
+		{
+			name: "multiple references",
+			references: map[string]string{
+				"CVE-2024-00001": "GHSA-aaaa-bbbb-cccc",
+				"CVE-2024-00002": "GHSA-dddd-eeee-ffff",
+			},
+			want: []sql.BatchUpsertCveAliasParams{
+				{CanonicalCveID: "CVE-2024-00001", Alias: "GHSA-aaaa-bbbb-cccc"},
+				{CanonicalCveID: "CVE-2024-00002", Alias: "GHSA-dddd-eeee-ffff"},
+			},
+		},
+		{
+			name:       "nil references",
+			references: nil,
+			want:       []sql.BatchUpsertCveAliasParams{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := &ImageVulnerabilityData{
+				ImageName: "my-image",
+				ImageTag:  "1.0.0",
+				Source:    "DependencyTrack",
+				Vulnerabilities: []*sources.Vulnerability{
+					{
+						Cve:     &sources.Cve{Id: "CVE-2024-12797", References: tt.references},
+						Package: "pkg:test",
+					},
+				},
+			}
+
+			params := data.ToCveAliasSqlParams()
+			assert.ElementsMatch(t, tt.want, params)
 		})
 	}
 }
