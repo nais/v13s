@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/collections"
@@ -1082,8 +1084,10 @@ func TestCveAliasCanonicalFkeyStillEnforced(t *testing.T) {
 	})
 
 	require.Error(t, fkErr, "expected FK violation for non-existent canonical")
-	assert.Contains(t, fkErr.Error(), "cve_alias_canonical_fkey",
-		"error should reference cve_alias_canonical_fkey constraint")
+	var pgErr *pgconn.PgError
+	require.True(t, errors.As(fkErr, &pgErr), "expected a *pgconn.PgError, got: %v", fkErr)
+	assert.Equal(t, pgerrcode.ForeignKeyViolation, pgErr.Code, "expected foreign_key_violation (23503)")
+	assert.Equal(t, "cve_alias_canonical_fkey", pgErr.ConstraintName)
 }
 
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {
