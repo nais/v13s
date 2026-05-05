@@ -4,13 +4,20 @@ set -euo pipefail
 
 echo "Running go fix..."
 
-# Snapshot checksums of all .go files before running go fix
-before=$(find . -name '*.go' -exec md5 -q {} + 2>/dev/null || find . -name '*.go' -exec md5sum {} + 2>/dev/null)
+# Produce a sorted, filename-associated checksum list for all .go files.
+# md5sum (Linux) already emits "<hash>  <file>"; md5 -r (macOS) emits the same
+# format. Sort by filename so traversal order doesn't affect the comparison.
+checksums() {
+  find . -name '*.go' -exec md5sum {} + 2>/dev/null \
+    || find . -name '*.go' -exec md5 -r {} + 2>/dev/null \
+    | sort -k2
+}
+
+before=$(checksums)
 
 find . -name go.mod -execdir go fix ./... \;
 
-# Snapshot checksums after
-after=$(find . -name '*.go' -exec md5 -q {} + 2>/dev/null || find . -name '*.go' -exec md5sum {} + 2>/dev/null)
+after=$(checksums)
 
 if [[ "$before" != "$after" ]]; then
   echo "go fix modified files — please run 'go fix ./...' locally and commit the changes" >&2
