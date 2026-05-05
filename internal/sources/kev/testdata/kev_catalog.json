@@ -1,0 +1,83 @@
+{
+    "title": "CISA Catalog of Known Exploited Vulnerabilities",
+    "catalogVersion": "2026.05.01",
+    "dateReleased": "2026-05-01T18:00:49.4551Z",
+    "count": 5,
+    "vulnerabilities": [
+        {
+            "cveID": "CVE-2023-27351",
+            "vendorProject": "PaperCut",
+            "product": "NG/MF",
+            "vulnerabilityName": "PaperCut NG/MF Improper Authentication Vulnerability",
+            "dateAdded": "2026-04-20",
+            "shortDescription": "PaperCut NG/MF contains an improper authentication vulnerability that could allow remote attackers to bypass authentication on affected installations via the SecurityRequestFilter class.",
+            "requiredAction": "Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+            "dueDate": "2026-05-04",
+            "knownRansomwareCampaignUse": "Known",
+            "notes": "https://www.papercut.com/kb/Main/PO-1216-and-PO-1219 ; https://nvd.nist.gov/vuln/detail/CVE-2023-27351",
+            "cwes": [
+                "CWE-287"
+            ]
+        },
+        {
+            "cveID": "CVE-2024-27199",
+            "vendorProject": "JetBrains",
+            "product": "TeamCity",
+            "vulnerabilityName": "JetBrains TeamCity Relative Path Traversal Vulnerability",
+            "dateAdded": "2026-04-20",
+            "shortDescription": "JetBrains TeamCity contains a relative path traversal vulnerability that could allow limited admin actions to be performed.",
+            "requiredAction": "Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+            "dueDate": "2026-05-04",
+            "knownRansomwareCampaignUse": "Known",
+            "notes": "https://www.jetbrains.com/privacy-security/issues-fixed/ ; https://blog.jetbrains.com/teamcity/2024/03/additional-critical-security-issues-affecting-teamcity-on-premises-cve-2024-27198-and-cve-2024-27199-update-to-2023-11-4-now/ ; https://nvd.nist.gov/vuln/detail/CVE-2024-27199",
+            "cwes": [
+                "CWE-23"
+            ]
+        },
+        {
+            "cveID": "CVE-2023-21529",
+            "vendorProject": "Microsoft",
+            "product": "Exchange Server",
+            "vulnerabilityName": "Microsoft Exchange Server Deserialization of Untrusted Data Vulnerability",
+            "dateAdded": "2026-04-13",
+            "shortDescription": "Microsoft Exchange Server contains a deserialization of untrusted data that allows an authenticated attacker to achieve remote code execution.",
+            "requiredAction": "Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+            "dueDate": "2026-04-27",
+            "knownRansomwareCampaignUse": "Known",
+            "notes": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-21529 ; https://nvd.nist.gov/vuln/detail/CVE-2023-21529",
+            "cwes": [
+                "CWE-502"
+            ]
+        },
+        {
+            "cveID": "CVE-2026-31431",
+            "vendorProject": "Linux",
+            "product": "Kernel",
+            "vulnerabilityName": "Linux Kernel Incorrect Resource Transfer Between Spheres Vulnerability",
+            "dateAdded": "2026-05-01",
+            "shortDescription": "Linux Kernel contains an incorrect resource transfer between spheres vulnerability that could allow for privilege escalation.",
+            "requiredAction": "\"Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+            "dueDate": "2026-05-15",
+            "knownRansomwareCampaignUse": "Unknown",
+            "notes": "https://lore.kernel.org/linux-cve-announce/2026042214-CVE-2026-31431-3d65@gregkh/; https://xint.io/blog/copy-fail-linux-distributions#the-fix-6 ; https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/about/ ; https://nvd.nist.gov/vuln/detail/CVE-2026-31431",
+            "cwes": [
+                "CWE-699"
+            ]
+        },
+        {
+            "cveID": "CVE-2026-41940",
+            "vendorProject": "WebPros",
+            "product": "cPanel & WHM and WP2 (WordPress Squared)",
+            "vulnerabilityName": "WebPros cPanel & WHM and WP2 (WordPress Squared) Missing Authentication for Critical Function Vulnerability",
+            "dateAdded": "2026-04-30",
+            "shortDescription": "WebPros cPanel & WHM (WebHost Manager) and WP2 (WordPress Squared) contain an authentication bypass vulnerability in the login flow that allows unauthenticated remote attackers to gain unauthorized access to the control panel.",
+            "requiredAction": "Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable.",
+            "dueDate": "2026-05-03",
+            "knownRansomwareCampaignUse": "Unknown",
+            "notes": "https://support.cpanel.net/hc/en-us/articles/40073787579671-cPanel-WHM-Security-Update-04-28-2026 ; https://docs.cpanel.net/release-notes/release-notes/ ; https://docs.wpsquared.com/changelogs/versions/changelog/#13617 ; https://nvd.nist.gov/vuln/detail/CVE-2026-41940\"",
+            "cwes": [
+                "CWE-306"
+            ]
+        }
+    ]
+}

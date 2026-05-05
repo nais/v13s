@@ -15,6 +15,7 @@ type Querier interface {
 	BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
+	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error

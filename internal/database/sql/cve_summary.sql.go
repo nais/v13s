@@ -12,7 +12,7 @@ import (
 const listCveSummaries = `-- name: ListCveSummaries :many
 WITH cve_data AS (
     SELECT
-        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile,
+        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use,
         COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
@@ -44,7 +44,7 @@ GROUP BY
     c.cve_id
 )
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, affected_workloads,
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, affected_workloads,
     COUNT(*) OVER ()::INT AS total_count
 FROM
     cve_data
@@ -107,19 +107,21 @@ type ListCveSummariesParams struct {
 }
 
 type ListCveSummariesRow struct {
-	CveID             string
-	CveTitle          string
-	CveDesc           string
-	CveLink           string
-	Severity          int32
-	Refs              []byte
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-	CvssScore         *float64
-	EpssScore         *float64
-	EpssPercentile    *float64
-	AffectedWorkloads int32
-	TotalCount        int32
+	CveID              string
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	Refs               []byte
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	AffectedWorkloads  int32
+	TotalCount         int32
 }
 
 func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesParams) ([]*ListCveSummariesRow, error) {
@@ -156,6 +158,8 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 			&i.CvssScore,
 			&i.EpssScore,
 			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
 			&i.AffectedWorkloads,
 			&i.TotalCount,
 		); err != nil {
