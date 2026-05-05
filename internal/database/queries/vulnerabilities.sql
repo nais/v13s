@@ -231,7 +231,7 @@ SELECT
     c.severity AS severity,
     c.refs,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
@@ -265,7 +265,7 @@ SELECT
     c.severity AS severity,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
     c.refs,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at
@@ -527,7 +527,7 @@ distinct_image_vulnerabilities AS (
         v.cve_id)
         v.*,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
-        sv.reason,
+        COALESCE(sv.reason, 'not_set') AS reason,
         sv.reason_text,
         sv.suppressed_by,
         sv.updated_at AS suppressed_at
@@ -644,7 +644,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
@@ -747,113 +747,6 @@ WHERE
 ORDER BY
     updated_at DESC;
 
--- name: ListSeverityVulnerabilitiesSince :many
-SELECT
-    v.id,
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    v.image_name,
-    v.image_tag,
-    v.latest_version,
-    v.package,
-    v.cve_id,
-    v.created_at,
-    v.updated_at,
-    v.severity_since,
-    v.last_severity,
-    c.cve_title,
-    c.cve_desc,
-    c.cve_link,
-    c.severity AS severity,
-    c.created_at AS cve_created_at,
-    c.updated_at AS cve_updated_at,
-    COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
-    sv.reason_text,
-    sv.suppressed_by,
-    sv.updated_at AS suppressed_at,
-    v.cvss_score
-FROM
-    vulnerabilities v
-    JOIN cve c ON v.cve_id = c.cve_id
-    JOIN workloads w ON v.image_name = w.image_name
-        AND v.image_tag = w.image_tag
-    LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
-        AND v.package = sv.package
-        AND v.cve_id = sv.cve_id
-WHERE
-    v.severity_since IS NOT NULL
-    AND (
-        CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN
-            w.cluster = sqlc.narg('cluster')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN
-            w.namespace = sqlc.narg('namespace')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
-            w.workload_type = sqlc.narg('workload_type')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN
-            w.name = sqlc.narg('workload_name')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
-            v.image_name = sqlc.narg('image_name')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN
-            v.image_tag = sqlc.narg('image_tag')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
-        OR COALESCE(sv.suppressed, FALSE) = FALSE)
-    AND (sqlc.narg('since')::TIMESTAMPTZ IS NULL
-        OR v.severity_since > sqlc.narg('since')::TIMESTAMPTZ)
-ORDER BY
-    CASE WHEN sqlc.narg('order_by') = 'severity_since_desc' THEN
-        v.severity_since
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'severity_since_asc' THEN
-        v.severity_since
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN
-        w.name
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN
-        w.name
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN
-        w.namespace
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN
-        w.namespace
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN
-        w.cluster
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN
-        w.cluster
-    END DESC,
-    v.id ASC
-LIMIT sqlc.arg('limit')
-OFFSET sqlc.arg('offset');
-
 -- name: ListWorkloadsForVulnerabilities :many
 SELECT
     v.id,
@@ -877,7 +770,7 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
+    COALESCE(sv.reason, 'not_set') AS reason,
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,

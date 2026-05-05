@@ -42,6 +42,14 @@ enum SinceType {
   FIXED = 1;
 }
 
+enum SbomStatus {
+  SBOM_STATUS_UNSPECIFIED    = 0; // Proto3 zero sentinel — never returned to callers
+  SBOM_STATUS_PROCESSING     = 2; // pipeline running: fetching attestation, uploading or waiting for analysis (workload: processing)
+  SBOM_STATUS_READY          = 3; // fully processed, not stale (image: updated)
+  SBOM_STATUS_NO_SBOM = 4; // cosign attestation not found (workload: no_sbom, untracked, unused)
+  SBOM_STATUS_FAILED         = 5; // stuck, needs intervention (image: failed, workload: failed/unrecoverable)
+}
+
 // -------------------- Core Messages --------------------
 
 message Filter {
@@ -138,6 +146,18 @@ message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
+  SbomStatusInfo sbom_status = 4;
+}
+
+message WorkloadSbomStatus {
+  Workload   workload         = 1;
+  SbomStatus sbom_status      = 2;
+  google.protobuf.Timestamp sbom_processing_started_at = 3;
+}
+
+message SbomStatusInfo {
+  SbomStatus status                                         = 1;
+  optional google.protobuf.Timestamp processing_started_at = 2;
 }
 
 message WorkloadFix {
@@ -234,21 +254,6 @@ message ListSuppressedVulnerabilitiesResponse {
   PageInfo page_info = 2;
 }
 
-message ListSeverityVulnerabilitiesSinceRequest {
-  Filter filter = 1;
-  optional bool include_suppressed = 3;
-  int32 limit = 4;
-  int32 offset = 5;
-  optional OrderBy order_by = 6;
-  optional google.protobuf.Timestamp since = 7;
-}
-
-message ListSeverityVulnerabilitiesSinceResponse {
-  Filter filter = 1;
-  repeated Finding nodes = 2;
-  PageInfo page_info = 3;
-}
-
 message ListWorkloadsForVulnerabilityByIdRequest {
   string id = 1;
 }
@@ -328,8 +333,9 @@ message GetVulnerabilitySummaryForImageRequest {
 }
 
 message GetVulnerabilitySummaryForImageResponse {
-  Summary vulnerability_summary = 1;
-  repeated Workload workloadRef = 2;
+  Summary           vulnerability_summary = 1;
+  repeated Workload workload_ref          = 2;
+  SbomStatusInfo    sbom_status           = 3;
 }
 
 message GetVulnerabilitySummaryRequest {
@@ -418,7 +424,6 @@ service Vulnerabilities {
 
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
 
-  rpc ListSeverityVulnerabilitiesSince(ListSeverityVulnerabilitiesSinceRequest) returns (ListSeverityVulnerabilitiesSinceResponse);
 
   rpc ListWorkloadsForVulnerabilityById(ListWorkloadsForVulnerabilityByIdRequest) returns (ListWorkloadsForVulnerabilityByIdResponse);
 

@@ -591,10 +591,28 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
+
+	t.Run("vulnerability summary is nil when image is PROCESSING", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitySummaries(ctx)
+		assert.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+		assert.Nil(t, resp.Nodes[0].GetVulnerabilitySummary())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.Nodes[0].GetSbomStatus().GetStatus())
+	})
+
 	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
 		resp, err := client.ListVulnerabilitySummaries(ctx)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.Nodes)
@@ -1186,18 +1204,112 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	imageName := "image-cluster-1-namespace-1-workload-1"
+	imageTag := "v1.0"
+
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
 		resp, err := client.GetVulnerabilitySummaryForImage(
-			ctx, "image-cluster-1-namespace-1-workload-1", "v1.0")
+			ctx, imageName, imageTag)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Critical)
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
+
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateInitialized,
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("image_sbom_status is PROCESSING for freshly seeded image", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
+		assert.Nil(t, resp.GetVulnerabilitySummary())
+	})
+
+	t.Run("image_sbom_status is READY after image state set to updated", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
+	})
+}
+
+func TestServer_GetVulnerabilitySummaryForImage_MultiWorkload(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-a", "cluster-b"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	sharedImage := "image-cluster-a-namespace-1-workload-1"
+	sharedTag := "v1.0"
+
+	_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "workload-1",
+		WorkloadType: "app",
+		Namespace:    "namespace-1",
+		Cluster:      "cluster-b",
+		ImageName:    sharedImage,
+		ImageTag:     sharedTag,
+	})
+	require.NoError(t, err)
+
+	t.Run("both workloads PROCESSING → image_sbom_status PROCESSING", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("image updated → image_sbom_status READY", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  sharedImage,
+			Tag:   sharedTag,
+			State: sql.ImageStateUpdated,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("image failed → image_sbom_status FAILED", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  sharedImage,
+			Tag:   sharedTag,
+			State: sql.ImageStateFailed,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, sharedImage, sharedTag)
+		require.NoError(t, err)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, resp.GetSbomStatus().GetStatus())
 	})
 }
 
@@ -1224,95 +1336,6 @@ func TestServer_GetVulnerabilityById(t *testing.T) {
 		resp, err := client.GetVulnerabilityById(ctx, vuln.ID.String())
 		assert.NoError(t, err)
 		assert.Equal(t, "CWE-1-1", resp.GetVulnerability().GetCve().GetId())
-	})
-}
-
-func TestServer_ListSeverityVulnerabilitiesSince(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1"},
-		namespaces:            []string{"namespace-1"},
-		workloadsPerNamespace: 1,
-		vulnsPerWorkload:      2,
-	}
-
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	err := db.CreateImage(ctx, sql.CreateImageParams{
-		Name:     "image-1",
-		Tag:      "v1.0",
-		Metadata: map[string]string{},
-	})
-	assert.NoError(t, err)
-
-	now := time.Now()
-	r, err := client.ListVulnerabilities(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Nodes))
-
-	rows, err := pool.Query(ctx, "SELECT image_name, package FROM vulnerabilities")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var image, pkg string
-		if err := rows.Scan(&image, &pkg); err != nil {
-			t.Fatal(err)
-		}
-
-		var newTime time.Time
-		switch pkg {
-		case "package-CWE-1-1":
-			newTime = time.Now().Add(-12 * time.Hour) // 12 hours ago
-		case "package-CWE-1-2":
-			newTime = time.Now().Add(-48 * time.Hour) // 48 hours ago
-		default:
-			continue
-		}
-
-		_, err := pool.Exec(ctx, `
-            UPDATE vulnerabilities
-            SET severity_since = $1,
-                last_severity = 0
-            WHERE image_name = $2 AND package = $3
-        `, newTime, image, pkg)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		fmt.Println("Updated:", image, pkg, "to", newTime)
-	}
-
-	t.Run("last 7 days", func(t *testing.T) {
-		resp, err := client.ListSeverityVulnerabilitiesSince(ctx,
-			vulnerabilities.Since(now.Add(-7*24*time.Hour)),
-			vulnerabilities.Order(vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC),
-		)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resp.Nodes))
-
-		t0 := resp.Nodes[0].Vulnerability.SeveritySince.AsTime().UTC()
-		t1 := resp.Nodes[1].Vulnerability.SeveritySince.AsTime().UTC()
-		assert.True(t, t0.After(t1))
-		assert.True(t, t1.Before(t0))
-	})
-
-	t.Run("last 1 day", func(t *testing.T) {
-		resp, err := client.ListSeverityVulnerabilitiesSince(ctx,
-			vulnerabilities.Since(now.Add(-24*time.Hour)),
-		)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(resp.Nodes)) // only the 12h-old vuln
-
-		for _, n := range resp.Nodes {
-			fmt.Printf("Resp Node: pkg=%s severity_since=%v severity=%d\n",
-				n.Vulnerability.Package,
-				n.Vulnerability.SeveritySince.AsTime(),
-				*n.Vulnerability.LastSeverity,
-			)
-		}
 	})
 }
 

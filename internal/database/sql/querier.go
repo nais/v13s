@@ -43,7 +43,6 @@ type Querier interface {
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
-	ListSeverityVulnerabilitiesSince(ctx context.Context, arg ListSeverityVulnerabilitiesSinceParams) ([]*ListSeverityVulnerabilitiesSinceRow, error)
 	ListSuppressedVulnerabilities(ctx context.Context, arg ListSuppressedVulnerabilitiesParams) ([]*ListSuppressedVulnerabilitiesRow, error)
 	ListSuppressedVulnerabilitiesForImage(ctx context.Context, imageName string) ([]*SuppressedVulnerability, error)
 	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
@@ -73,6 +72,7 @@ type Querier interface {
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) (int64, error)
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error
+	UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error
 	UpsertVulnerabilityLifetimes(ctx context.Context) error
 	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error)
 }

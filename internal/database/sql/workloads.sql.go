@@ -201,8 +201,7 @@ ON CONFLICT ON CONSTRAINT workload_id
         image_name = $5,
         image_tag = $6
     WHERE
-        workloads.state = 'failed'
-        OR workloads.state = 'resync'
+        workloads.state = 'resync'
         OR (
             workloads.image_name != $5
             OR workloads.image_tag != $6)
@@ -287,6 +286,7 @@ SELECT
     CLUSTER,
     image_name,
     image_tag,
+    state,
     created_at,
     updated_at
 FROM
@@ -313,6 +313,7 @@ type ListWorkloadsByImageRow struct {
 	Cluster      string
 	ImageName    string
 	ImageTag     string
+	State        WorkloadState
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }
@@ -334,6 +335,7 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 			&i.Cluster,
 			&i.ImageName,
 			&i.ImageTag,
+			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -453,6 +455,29 @@ type UpdateWorkloadStateParams struct {
 
 func (q *Queries) UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error {
 	_, err := q.db.Exec(ctx, updateWorkloadState, arg.State, arg.ID)
+	return err
+}
+
+const updateWorkloadStateByImage = `-- name: UpdateWorkloadStateByImage :exec
+UPDATE
+    workloads
+SET
+    state = $1,
+    updated_at = NOW()
+WHERE
+    image_name = $2
+    AND image_tag = $3
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation')
+`
+
+type UpdateWorkloadStateByImageParams struct {
+	State     WorkloadState
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error {
+	_, err := q.db.Exec(ctx, updateWorkloadStateByImage, arg.State, arg.ImageName, arg.ImageTag)
 	return err
 }
 
