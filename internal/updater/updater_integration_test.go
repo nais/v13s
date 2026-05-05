@@ -979,7 +979,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 // - cve_alias row is inserted with canonical=CVE, alias=GHSA — no FK error
 // - vulnerabilities row references the CVE canonical
 // - GetCanonicalCveIdByAlias returns the CVE canonical for the GHSA alias
-func TestBatchUpdateVulnerabilityData_GithubFindingPromotion(t *testing.T) {
+func TestBatchUpdateVulnerabilityData_GitHubFindingPromotion(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
