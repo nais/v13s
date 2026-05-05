@@ -322,7 +322,7 @@ type GetVulnerabilityRow struct {
 	Severity      int32
 	Refs          typeext.MapStringString
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -410,7 +410,7 @@ type GetVulnerabilityByIdRow struct {
 	Severity      int32
 	Suppressed    bool
 	Refs          typeext.MapStringString
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -587,7 +587,7 @@ type ListSeverityVulnerabilitiesSinceRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1030,7 +1030,7 @@ type ListVulnerabilitiesRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1262,7 +1262,7 @@ type ListVulnerabilitiesForImageRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
@@ -1493,7 +1493,7 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	CveCreatedAt  pgtype.Timestamptz
 	CveUpdatedAt  pgtype.Timestamptz
 	Suppressed    bool
-	Reason        NullVulnerabilitySuppressReason
+	Reason        *VulnerabilitySuppressReason
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz

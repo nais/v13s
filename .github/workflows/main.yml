@@ -22,10 +22,12 @@ jobs:
     permissions:
       contents: "read"
     strategy:
+      fail-fast: false
       matrix:
         mise-task:
           - check:deadcode
           - check:gofix
+          - check:goimport
           - check:govet
           - check:gosec
           - check:govulncheck
@@ -38,12 +40,22 @@ jobs:
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # ratchet:jdx/mise-action@v4
       - run: mise run ${{ matrix.mise-task }}
 
+  integration_test:
+    permissions:
+      contents: "read"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # ratchet:jdx/mise-action@v4
+      - run: mise run test-integration
+
   build_and_push:
     if: github.ref == 'refs/heads/main'
     outputs:
       version: ${{ steps.build-push-sign.outputs.version }}
     needs:
       - checks
+      - integration_test
     permissions:
       contents: "read"
       id-token: "write"
