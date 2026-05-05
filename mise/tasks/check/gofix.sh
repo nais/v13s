@@ -5,12 +5,13 @@ set -euo pipefail
 echo "Running go fix..."
 
 # Produce a sorted, filename-associated checksum list for all .go files.
-# md5sum (Linux) already emits "<hash>  <file>"; md5 -r (macOS) emits the same
-# format. Sort by filename so traversal order doesn't affect the comparison.
+# md5sum (Linux) emits "<hash>  <file>"; md5 -r (macOS) emits the same format.
+# Both branches are piped through sort -k2 so traversal order never affects the
+# comparison.
 checksums() {
-  find . -name '*.go' -exec md5sum {} + 2>/dev/null \
-    || find . -name '*.go' -exec md5 -r {} + 2>/dev/null \
-    | sort -k2
+  { find . -name '*.go' -exec md5sum {} + 2>/dev/null \
+      || find . -name '*.go' -exec md5 -r {} + 2>/dev/null; \
+  } | sort -k2
 }
 
 before=$(checksums)
