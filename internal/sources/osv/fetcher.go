@@ -3,6 +3,7 @@ package osv
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,7 +12,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const workerCount = 20
+const (
+	workerCount = 20
+	BatchSize   = 1000
+)
 
 type Fetcher struct {
 	client  *Client
@@ -140,6 +144,15 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 }
 
 func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
+	// Sort by (cveID, pkg) to match the ORDER BY in the SQL CTEs and
+	// guarantee consistent lock acquisition order across concurrent callers.
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].cveID != results[j].cveID {
+			return results[i].cveID < results[j].cveID
+		}
+		return results[i].pkg < results[j].pkg
+	})
+
 	var (
 		updateCveIDs, updatePkgs, updateFixes []string
 		clearCveIDs, clearPkgs                []string
@@ -155,32 +168,34 @@ func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 		}
 	}
 
-	if len(updateCveIDs) > 0 {
-		updated, err := f.querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
-			CveIds:      updateCveIDs,
-			Packages:    updatePkgs,
-			FixVersions: updateFixes,
+	var totalUpdated, totalCleared int64
+
+	for i := 0; i < len(updateCveIDs); i += BatchSize {
+		end := min(i+BatchSize, len(updateCveIDs))
+		n, err := f.querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
+			CveIds:      updateCveIDs[i:end],
+			Packages:    updatePkgs[i:end],
+			FixVersions: updateFixes[i:end],
 		})
 		if err != nil {
 			return fmt.Errorf("bulk updating fix versions: %w", err)
 		}
-		f.log.Infof("OSV sync complete: %d rows updated in DB", updated)
-	} else {
-		f.log.Info("OSV sync: no fix versions to write")
+		totalUpdated += n
 	}
 
-	if len(clearCveIDs) > 0 {
-		cleared, err := f.querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
-			CveIds:   clearCveIDs,
-			Packages: clearPkgs,
+	for i := 0; i < len(clearCveIDs); i += BatchSize {
+		end := min(i+BatchSize, len(clearCveIDs))
+		n, err := f.querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
+			CveIds:   clearCveIDs[i:end],
+			Packages: clearPkgs[i:end],
 		})
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
 		}
-		if cleared > 0 {
-			f.log.Infof("OSV sync: cleared %d stale fix versions", cleared)
-		}
+		totalCleared += n
 	}
+
+	f.log.Infof("OSV sync complete: %d rows updated, %d stale rows cleared", totalUpdated, totalCleared)
 
 	return nil
 }

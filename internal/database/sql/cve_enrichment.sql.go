@@ -8,19 +8,34 @@ import (
 )
 
 const bulkClearFixVersions = `-- name: BulkClearFixVersions :execrows
+WITH input AS (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::TEXT[]) AS package
+),
+LOCKED AS (
+    SELECT
+        v.id
+    FROM
+        vulnerabilities v
+        JOIN input i ON v.cve_id = i.cve_id
+            AND v.package = i.package
+    WHERE
+        v.fix_version IS NOT NULL
+    ORDER BY
+        v.cve_id,
+        v.package,
+        v.id
+    FOR UPDATE)
 UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
     updated_at = NOW()
-FROM (
-    SELECT
-        unnest($1::TEXT[]) AS cve_id,
-        unnest($2::TEXT[]) AS package) AS data
+FROM
+    LOCKED
 WHERE
-    vulnerabilities.cve_id = data.cve_id
-    AND vulnerabilities.package = data.package
-    AND vulnerabilities.fix_version IS NOT NULL
+    vulnerabilities.id = locked.id
 `
 
 type BulkClearFixVersionsParams struct {
@@ -37,21 +52,36 @@ func (q *Queries) BulkClearFixVersions(ctx context.Context, arg BulkClearFixVers
 }
 
 const bulkUpdateFixVersions = `-- name: BulkUpdateFixVersions :execrows
-UPDATE
-    vulnerabilities
-SET
-    fix_version = data.fix_version,
-    updated_at = NOW()
-FROM (
+WITH input AS (
     SELECT
         unnest($1::TEXT[]) AS cve_id,
         unnest($2::TEXT[]) AS package,
-        unnest($3::TEXT[]) AS fix_version) AS data
+        unnest($3::TEXT[]) AS fix_version
+),
+LOCKED AS (
+    SELECT
+        v.id,
+        i.fix_version
+    FROM
+        vulnerabilities v
+        JOIN input i ON v.cve_id = i.cve_id
+            AND v.package = i.package
+    WHERE
+        v.fix_version IS DISTINCT FROM i.fix_version
+    ORDER BY
+        v.cve_id,
+        v.package,
+        v.id
+    FOR UPDATE)
+UPDATE
+    vulnerabilities
+SET
+    fix_version = locked.fix_version,
+    updated_at = NOW()
+FROM
+    LOCKED
 WHERE
-    vulnerabilities.cve_id = data.cve_id
-    AND vulnerabilities.package = data.package
-    AND (vulnerabilities.fix_version IS NULL
-        OR vulnerabilities.fix_version != data.fix_version)
+    vulnerabilities.id = locked.id
 `
 
 type BulkUpdateFixVersionsParams struct {
