@@ -24,7 +24,8 @@ LOCKED AS (
         v.fix_version IS NOT NULL
     ORDER BY
         v.cve_id,
-        v.package
+        v.package,
+        v.id
     FOR UPDATE)
 UPDATE
     vulnerabilities
@@ -69,7 +70,8 @@ LOCKED AS (
         v.fix_version IS DISTINCT FROM i.fix_version
     ORDER BY
         v.cve_id,
-        v.package
+        v.package,
+        v.id
     FOR UPDATE)
 UPDATE
     vulnerabilities
