@@ -3,6 +3,7 @@ package osv
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,7 +12,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const workerCount = 20
+const (
+	workerCount = 20
+	batchSize   = 1000
+)
+
+type updateRow struct {
+	cveID, pkg, fix string
+}
+
+type clearRow struct {
+	cveID, pkg string
+}
 
 type Fetcher struct {
 	client  *Client
@@ -140,46 +152,72 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 }
 
 func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
-	var (
-		updateCveIDs, updatePkgs, updateFixes []string
-		clearCveIDs, clearPkgs                []string
-	)
+	var updates []updateRow
+	var clears []clearRow
+
 	for _, r := range results {
 		if r.fixVersion == "" {
-			clearCveIDs = append(clearCveIDs, r.cveID)
-			clearPkgs = append(clearPkgs, r.pkg)
+			clears = append(clears, clearRow{r.cveID, r.pkg})
 		} else {
-			updateCveIDs = append(updateCveIDs, r.cveID)
-			updatePkgs = append(updatePkgs, r.pkg)
-			updateFixes = append(updateFixes, r.fixVersion)
+			updates = append(updates, updateRow{r.cveID, r.pkg, r.fixVersion})
 		}
 	}
 
-	if len(updateCveIDs) > 0 {
-		updated, err := f.querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
-			CveIds:      updateCveIDs,
-			Packages:    updatePkgs,
-			FixVersions: updateFixes,
+	slices.SortFunc(updates, func(a, b updateRow) int {
+		return comparePair(a.cveID, a.pkg, b.cveID, b.pkg)
+	})
+	slices.SortFunc(clears, func(a, b clearRow) int {
+		return comparePair(a.cveID, a.pkg, b.cveID, b.pkg)
+	})
+
+	var totalUpdated, totalCleared int64
+
+	for i := 0; i < len(updates); i += batchSize {
+		batch := updates[i:min(i+batchSize, len(updates))]
+		cveIDs := make([]string, len(batch))
+		pkgs := make([]string, len(batch))
+		fixes := make([]string, len(batch))
+		for j, r := range batch {
+			cveIDs[j] = r.cveID
+			pkgs[j] = r.pkg
+			fixes[j] = r.fix
+		}
+		n, err := f.querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
+			CveIds:      cveIDs,
+			Packages:    pkgs,
+			FixVersions: fixes,
 		})
 		if err != nil {
 			return fmt.Errorf("bulk updating fix versions: %w", err)
 		}
-		f.log.Infof("OSV sync complete: %d rows updated in DB", updated)
-	} else {
-		f.log.Info("OSV sync: no fix versions to write")
+		totalUpdated += n
 	}
 
-	if len(clearCveIDs) > 0 {
-		cleared, err := f.querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
-			CveIds:   clearCveIDs,
-			Packages: clearPkgs,
+	for i := 0; i < len(clears); i += batchSize {
+		batch := clears[i:min(i+batchSize, len(clears))]
+		cveIDs := make([]string, len(batch))
+		pkgs := make([]string, len(batch))
+		for j, r := range batch {
+			cveIDs[j] = r.cveID
+			pkgs[j] = r.pkg
+		}
+		n, err := f.querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
+			CveIds:   cveIDs,
+			Packages: pkgs,
 		})
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
 		}
-		if cleared > 0 {
-			f.log.Infof("OSV sync: cleared %d stale fix versions", cleared)
-		}
+		totalCleared += n
+	}
+
+	if totalUpdated > 0 {
+		f.log.Infof("OSV sync complete: %d rows updated in DB", totalUpdated)
+	} else {
+		f.log.Info("OSV sync: no fix versions to write")
+	}
+	if totalCleared > 0 {
+		f.log.Infof("OSV sync: cleared %d stale fix versions", totalCleared)
 	}
 
 	return nil
@@ -191,4 +229,20 @@ func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]
 		byCve[r.CveID] = append(byCve[r.CveID], r.Package)
 	}
 	return byCve
+}
+
+func comparePair(aCveID, aPkg, bCveID, bPkg string) int {
+	if aCveID != bCveID {
+		if aCveID < bCveID {
+			return -1
+		}
+		return 1
+	}
+	if aPkg < bPkg {
+		return -1
+	}
+	if aPkg > bPkg {
+		return 1
+	}
+	return 0
 }
