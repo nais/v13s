@@ -25,3 +25,30 @@ spec:
                 name: {{ include "v13s.fullname" . }}
                 port:
                   name: grpc
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "v13s.name" . }}-grpc-haproxy
+  labels:
+    {{- include "v13s.labels" . | nindent 4 }}
+  annotations:
+    haproxy.org/backend-config-snippet: |
+      retries 2
+      default-server proto h2
+    haproxy.org/timeout-client: "86400s"
+    haproxy.org/timeout-server: "86400s"
+    haproxy.org/timeout-tunnel: "86400s"
+spec:
+  ingressClassName: internal-haproxy
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "v13s.fullname" . }}
+                port:
+                  name: grpc
