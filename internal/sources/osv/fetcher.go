@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
@@ -34,6 +35,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return nil
 	}
 	f.log.Info("starting OSV fix-version sync")
+	start := time.Now()
 
 	rows, err := f.querier.GetVulnerabilitiesForOsvEnrichment(ctx)
 	if err != nil {
@@ -47,10 +49,17 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	byCve := groupByCve(rows)
 	f.log.Infof("OSV sync: %d distinct CVE IDs to query (%d cve/package pairs)", len(byCve), len(rows))
 
+	fetchStart := time.Now()
 	results, errors, misses := f.fetchAll(ctx, byCve)
-	f.log.Infof("OSV sync: %d fix versions found, %d misses, %d fetch errors", len(results)-countEmpty(results), misses, errors)
+	hits := int64(len(results)) - misses
+	f.log.Infof("OSV sync: fetched %d CVEs in %s (%d hits, %d misses, %d fetch errors)",
+		len(byCve), time.Since(fetchStart).Round(time.Millisecond), hits, misses, errors)
 
-	return f.persist(ctx, results)
+	if err := f.persist(ctx, results); err != nil {
+		return err
+	}
+	f.log.Infof("OSV sync complete in %s", time.Since(start).Round(time.Millisecond))
+	return nil
 }
 
 func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64, int64) {
@@ -61,11 +70,13 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fi
 	var wg sync.WaitGroup
 
 	for range workerCount {
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			for cveID := range jobs {
 				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors, &fetchMisses)
 			}
-		})
+		}()
 	}
 
 	for id := range byCve {
@@ -182,14 +193,4 @@ func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]
 		byCve[r.CveID] = append(byCve[r.CveID], r.Package)
 	}
 	return byCve
-}
-
-func countEmpty(results []fixResult) int {
-	n := 0
-	for _, r := range results {
-		if r.fixVersion == "" {
-			n++
-		}
-	}
-	return n
 }

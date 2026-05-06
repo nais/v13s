@@ -22,6 +22,8 @@ FROM
     vulnerabilities
 WHERE
     package != ''
+    AND (cve_id LIKE 'CVE-%'
+        OR cve_id LIKE 'GHSA-%')
 ORDER BY
     cve_id,
     package;
