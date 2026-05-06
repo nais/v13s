@@ -27,6 +27,7 @@ type Config struct {
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
 	DependencyTrack           sources.DependencyTrackConfig
 	Kev                       KevConfig
+	Osv                       OsvConfig
 	K8s                       K8sConfig
 	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
@@ -41,6 +42,10 @@ type DependencyTrackConfig struct {
 
 type KevConfig struct {
 	CatalogURL string `envconfig:"KEV_CATALOG_URL" default:"https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"`
+}
+
+type OsvConfig struct {
+	BaseURL string `envconfig:"OSV_BASE_URL" default:"https://api.osv.dev/v1"`
 }
 
 type K8sConfig struct {

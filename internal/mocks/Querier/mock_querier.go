@@ -316,6 +316,120 @@ func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) RunAndReturn(run fun
 	return _c
 }
 
+// BulkClearFixVersions provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, arg sql.BulkClearFixVersionsParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkClearFixVersions")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkClearFixVersionsParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkClearFixVersionsParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.BulkClearFixVersionsParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_BulkClearFixVersions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkClearFixVersions'
+type MockQuerier_BulkClearFixVersions_Call struct {
+	*mock.Call
+}
+
+// BulkClearFixVersions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.BulkClearFixVersionsParams
+func (_e *MockQuerier_Expecter) BulkClearFixVersions(ctx interface{}, arg interface{}) *MockQuerier_BulkClearFixVersions_Call {
+	return &MockQuerier_BulkClearFixVersions_Call{Call: _e.mock.On("BulkClearFixVersions", ctx, arg)}
+}
+
+func (_c *MockQuerier_BulkClearFixVersions_Call) Run(run func(ctx context.Context, arg sql.BulkClearFixVersionsParams)) *MockQuerier_BulkClearFixVersions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.BulkClearFixVersionsParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BulkClearFixVersions_Call) Return(_a0 int64, _a1 error) *MockQuerier_BulkClearFixVersions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_BulkClearFixVersions_Call) RunAndReturn(run func(context.Context, sql.BulkClearFixVersionsParams) (int64, error)) *MockQuerier_BulkClearFixVersions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// BulkUpdateFixVersions provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BulkUpdateFixVersions(ctx context.Context, arg sql.BulkUpdateFixVersionsParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkUpdateFixVersions")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkUpdateFixVersionsParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkUpdateFixVersionsParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.BulkUpdateFixVersionsParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_BulkUpdateFixVersions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkUpdateFixVersions'
+type MockQuerier_BulkUpdateFixVersions_Call struct {
+	*mock.Call
+}
+
+// BulkUpdateFixVersions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.BulkUpdateFixVersionsParams
+func (_e *MockQuerier_Expecter) BulkUpdateFixVersions(ctx interface{}, arg interface{}) *MockQuerier_BulkUpdateFixVersions_Call {
+	return &MockQuerier_BulkUpdateFixVersions_Call{Call: _e.mock.On("BulkUpdateFixVersions", ctx, arg)}
+}
+
+func (_c *MockQuerier_BulkUpdateFixVersions_Call) Run(run func(ctx context.Context, arg sql.BulkUpdateFixVersionsParams)) *MockQuerier_BulkUpdateFixVersions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.BulkUpdateFixVersionsParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BulkUpdateFixVersions_Call) Return(_a0 int64, _a1 error) *MockQuerier_BulkUpdateFixVersions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_BulkUpdateFixVersions_Call) RunAndReturn(run func(context.Context, sql.BulkUpdateFixVersionsParams) (int64, error)) *MockQuerier_BulkUpdateFixVersions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BulkUpdateKevData provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) BulkUpdateKevData(ctx context.Context, arg sql.BulkUpdateKevDataParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
@@ -1263,6 +1377,64 @@ func (_c *MockQuerier_GetSourceRef_Call) Return(_a0 *sql.SourceRef, _a1 error) *
 }
 
 func (_c *MockQuerier_GetSourceRef_Call) RunAndReturn(run func(context.Context, sql.GetSourceRefParams) (*sql.SourceRef, error)) *MockQuerier_GetSourceRef_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetVulnerabilitiesForOsvEnrichment provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*sql.GetVulnerabilitiesForOsvEnrichmentRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerabilitiesForOsvEnrichment")
+	}
+
+	var r0 []*sql.GetVulnerabilitiesForOsvEnrichmentRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*sql.GetVulnerabilitiesForOsvEnrichmentRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*sql.GetVulnerabilitiesForOsvEnrichmentRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.GetVulnerabilitiesForOsvEnrichmentRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerabilitiesForOsvEnrichment'
+type MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call struct {
+	*mock.Call
+}
+
+// GetVulnerabilitiesForOsvEnrichment is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetVulnerabilitiesForOsvEnrichment(ctx interface{}) *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call {
+	return &MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call{Call: _e.mock.On("GetVulnerabilitiesForOsvEnrichment", ctx)}
+}
+
+func (_c *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call) Run(run func(ctx context.Context)) *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call) Return(_a0 []*sql.GetVulnerabilitiesForOsvEnrichmentRow, _a1 error) *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call) RunAndReturn(run func(context.Context) ([]*sql.GetVulnerabilitiesForOsvEnrichmentRow, error)) *MockQuerier_GetVulnerabilitiesForOsvEnrichment_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3613,8 +3785,7 @@ func (_c *MockQuerier_UpsertWorkload_Call) RunAndReturn(run func(context.Context
 func NewMockQuerier(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockQuerier {
+}) *MockQuerier {
 	mock := &MockQuerier{}
 	mock.Mock.Test(t)
 

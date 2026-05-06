@@ -19,6 +19,7 @@ spec:
     - fqdns:
       - private.googleapis.com
       - cisa.gov
+      - api.osv.dev
       - ttl.sh
       - sigstore-tuf-root.storage.googleapis.com
       - tuf-repo-cdn.sigstore.dev
