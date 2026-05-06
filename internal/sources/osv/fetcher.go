@@ -89,7 +89,10 @@ func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, o
 		return
 	}
 	if record == nil {
-		misses.Add(int64(len(pkgs)))
+		for _, pkg := range pkgs {
+			out <- fixResult{cveID: cveID, pkg: pkg}
+			misses.Add(1)
+		}
 		return
 	}
 

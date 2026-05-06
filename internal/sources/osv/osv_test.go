@@ -574,7 +574,13 @@ func TestFetcher_Sync_NoFixVersionsFound(t *testing.T) {
 			{CveID: "CVE-9999-9999", Package: "pkg:npm/foo@1.0.0"},
 		}, nil)
 
-	// BulkUpdateFixVersions should NOT be called.
+	// BulkUpdateFixVersions should NOT be called — all results are misses.
+	q.EXPECT().
+		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
+			CveIds:   []string{"CVE-9999-9999"},
+			Packages: []string{"pkg:npm/foo@1.0.0"},
+		}).
+		Return(int64(0), nil)
 	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
 	require.NoError(t, err)
