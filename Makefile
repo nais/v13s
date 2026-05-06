@@ -33,12 +33,10 @@ vet:
 	mise run check:govet
 
 goimport:
-	@echo "Running goimport..."
-	find . -type f -name '*.go' ! -path './internal/sources/dependencytrack/client/*'  ! -path './internal/database/sql/*' ! -name '*.pb.go' -exec go run golang.org/x/tools/cmd/goimports@latest -l -w  {} +
+	mise run check:goimport
 
 fmt:
-	@echo "Running go fmt..."
-	go fmt ./...
+	mise run fmt
 
 staticcheck:
 	mise run check:staticcheck
