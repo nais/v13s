@@ -3,6 +3,7 @@ package osv
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -143,6 +144,15 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 }
 
 func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
+	// Sort by (cveID, pkg) to match the ORDER BY in the SQL CTEs and
+	// guarantee consistent lock acquisition order across concurrent callers.
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].cveID != results[j].cveID {
+			return results[i].cveID < results[j].cveID
+		}
+		return results[i].pkg < results[j].pkg
+	})
+
 	var (
 		updateCveIDs, updatePkgs, updateFixes []string
 		clearCveIDs, clearPkgs                []string
