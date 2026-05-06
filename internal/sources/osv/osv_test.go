@@ -23,12 +23,9 @@ func testLogger() *logrus.Entry {
 	return logrus.NewEntry(l)
 }
 
-// newVulnServer returns an httptest.Server that serves OSV vuln records by ID.
-// records maps CVE ID → VulnRecord to return; unknown IDs get {"code":5}.
 func newVulnServer(t *testing.T, records map[string]*osv.VulnRecord) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Path is /vulns/<ID>
 		id := r.URL.Path[len("/vulns/"):]
 		rec, ok := records[id]
 		w.Header().Set("Content-Type", "application/json")
@@ -40,21 +37,13 @@ func newVulnServer(t *testing.T, records map[string]*osv.VulnRecord) *httptest.S
 	}))
 }
 
-// sampleRecords returns CVE records that mirror real OSV behaviour:
-//   - CVE-2021-44228 has a GHSA alias; the CVE record itself has no affected
-//     purl data, but the GHSA alias does.
-//   - CVE-2012-6153 similarly delegates to its GHSA alias.
-//   - GHSA records carry the actual ecosystem purl + fix version.
-//   - GHSA-tomcat mirrors CVE-2025-24813: multiple fix versions across branches
-//     (9.0.99, 10.1.35, 11.0.3) for the same purl.
+// sampleRecords returns CVE/GHSA records mirroring real OSV behaviour for use in tests.
 func sampleRecords() map[string]*osv.VulnRecord {
 	return map[string]*osv.VulnRecord{
-		// CVE record: only carries the GHSA alias, no ecosystem purl.
 		"CVE-2021-44228": {
 			ID:      "CVE-2021-44228",
 			Aliases: []string{"GHSA-jfh8-c2jp-5v3q"},
 		},
-		// GHSA record: has the actual ecosystem purl and fix version.
 		"GHSA-jfh8-c2jp-5v3q": {
 			ID:      "GHSA-jfh8-c2jp-5v3q",
 			Aliases: []string{"CVE-2021-44228"},
@@ -75,9 +64,7 @@ func sampleRecords() map[string]*osv.VulnRecord {
 		"CVE-9999-9999": {
 			ID: "CVE-9999-9999",
 		},
-		// Multi-branch record: mirrors CVE-2025-24813 (tomcat).
-		// Three separate Affected entries (one per branch), each with its own
-		// introduced/fixed range — exactly as OSV returns it.
+		// Multi-branch record mirrors CVE-2025-24813 (tomcat): three Affected entries, one per branch.
 		"GHSA-tomcat-multibranch": {
 			ID: "GHSA-tomcat-multibranch",
 			Affected: []osv.Affected{
@@ -241,28 +228,24 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "def",
 		},
 		{
-			// tomcat 10.1.x branch: installed=10.1.24, should pick 10.1.35, not 11.0.3
 			name:     "multi-branch: picks minimum fix > installed (10.1.x branch)",
 			record:   sampleRecords()["GHSA-tomcat-multibranch"],
 			purl:     "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.24",
 			expected: "10.1.35",
 		},
 		{
-			// tomcat 11.0.x branch: installed=11.0.1, should pick 11.0.3
 			name:     "multi-branch: picks minimum fix > installed (11.0.x branch)",
 			record:   sampleRecords()["GHSA-tomcat-multibranch"],
 			purl:     "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@11.0.1",
 			expected: "11.0.3",
 		},
 		{
-			// tomcat 9.0.x branch: installed=9.0.50, should pick 9.0.99
 			name:     "multi-branch: picks minimum fix > installed (9.0.x branch)",
 			record:   sampleRecords()["GHSA-tomcat-multibranch"],
 			purl:     "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50",
 			expected: "9.0.99",
 		},
 		{
-			// already fixed: installed=10.1.36 > 10.1.35; next fix is 11.0.3
 			name:     "multi-branch: installed already past branch fix — picks next branch fix",
 			record:   sampleRecords()["GHSA-tomcat-multibranch"],
 			purl:     "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.36",
@@ -270,8 +253,7 @@ func TestFixVersionForPurl(t *testing.T) {
 		},
 		{
 			// vite 5.x: installed=5.2.12, OSV fixes: 4.5.10, 5.4.15, 6.0.12, 6.1.2, 6.2.3
-			name: "vite 5.x branch: picks 5.4.15 not 6.x",
-			record: &osv.VulnRecord{
+			name: "vite 5.x branch: picks 5.4.15 not 6.x", record: &osv.VulnRecord{
 				ID: "GHSA-vite",
 				Affected: []osv.Affected{
 					{

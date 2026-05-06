@@ -49,7 +49,6 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	return f.persist(ctx, results)
 }
 
-// fetchAll queries OSV for every CVE in parallel and returns all results.
 func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64, int64) {
 	jobs := make(chan string, len(byCve))
 	out := make(chan fixResult, len(byCve)*2)
@@ -82,8 +81,6 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fi
 	return results, fetchErrors.Load(), fetchMisses.Load()
 }
 
-// processCve fetches the OSV record for a CVE (including GHSA aliases) and
-// emits one fixResult per (cve, package) pair into out.
 func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, out chan<- fixResult, errors, misses *atomic.Int64) {
 	record, err := f.client.FetchVuln(ctx, cveID)
 	if err != nil {
@@ -107,8 +104,8 @@ func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, o
 	}
 }
 
-// mergeAliases fetches all GHSA aliases and merges their Affected entries into
-// the record. CVE records often lack ecosystem purl data; GHSA records carry it.
+// mergeAliases fetches GHSA aliases and merges their Affected entries into the record.
+// CVE records often lack purl data; GHSA records carry it.
 func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRecord) *VulnRecord {
 	for _, alias := range record.Aliases {
 		if !isGHSA(alias) {
@@ -126,7 +123,6 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 	return record
 }
 
-// persist writes fix versions to the DB and clears any stale ones.
 func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 	var (
 		updateCveIDs, updatePkgs, updateFixes []string

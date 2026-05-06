@@ -53,8 +53,7 @@ func NewClientWithURL(baseURL string) *Client {
 }
 
 // FetchVuln fetches an OSV record by ID. Returns nil when the ID is unknown.
-// On 404, OSV may hint at GHSA aliases in the response body — these are
-// returned as a stub record so the caller can follow them.
+// On 404, the response body may hint at GHSA aliases — returned as a stub so the caller can follow them.
 func (c *Client) FetchVuln(ctx context.Context, id string) (*VulnRecord, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/vulns/"+url.PathEscape(id), nil)
 	if err != nil {
@@ -77,8 +76,6 @@ func (c *Client) FetchVuln(ctx context.Context, id string) (*VulnRecord, error) 
 	return decodeVulnRecord(id, resp)
 }
 
-// decodeAliasHints parses a 404 response body for GHSA alias hints and returns
-// a stub VulnRecord containing only those aliases, or nil if none are found.
 func decodeAliasHints(id string, resp *http.Response) (*VulnRecord, error) {
 	var body struct {
 		Message string `json:"message"`
@@ -93,8 +90,7 @@ func decodeAliasHints(id string, resp *http.Response) (*VulnRecord, error) {
 	return &VulnRecord{ID: id, Aliases: aliases}, nil
 }
 
-// decodeVulnRecord decodes a successful OSV response into a VulnRecord.
-// OSV may return HTTP 200 with {"code":5} for unknown IDs — treated as nil.
+// decodeVulnRecord decodes a successful OSV response. HTTP 200 with {"code":5} means unknown — treated as nil.
 func decodeVulnRecord(id string, resp *http.Response) (*VulnRecord, error) {
 	var raw json.RawMessage
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
@@ -113,10 +109,8 @@ func decodeVulnRecord(id string, resp *http.Response) (*VulnRecord, error) {
 	return &record, nil
 }
 
-// FixVersionForPurl returns the minimum fix version from the OSV record that is
-// strictly greater than the installed version in the purl. OSV may have multiple
-// Affected entries for the same package (one per release branch), so all entries
-// are scanned and the smallest qualifying fix is chosen.
+// FixVersionForPurl returns the minimum fix version strictly greater than the installed version.
+// OSV may have multiple Affected entries per release branch; all are scanned and the smallest qualifying fix is chosen.
 func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	if record == nil {
 		return ""
@@ -153,9 +147,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	return best
 }
 
-// minFixFromRanges returns the smallest fix version across all ranges that is
-// strictly greater than installed. SEMVER ranges are preferred over ECOSYSTEM,
-// which is preferred over GIT.
+// minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM > GIT.
 func minFixFromRanges(ranges []Range, installed semver.Version, installedOk bool) (string, semver.Version, bool) {
 	for _, rangeType := range []string{"SEMVER", "ECOSYSTEM", "GIT"} {
 		best, bestSemver, found := minFixFromRangeType(ranges, rangeType, installed, installedOk)
@@ -195,8 +187,7 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed semver.Vers
 	return best, bestSemver, best != ""
 }
 
-// matchClassifier ensures the fix version uses the same classifier as the
-// installed version (e.g. installed="30.0-jre", fix="32.0.0-android" → "32.0.0-jre").
+// matchClassifier replaces the fix version's classifier with the installed version's (e.g. -android → -jre).
 func matchClassifier(fix, installedRaw string) string {
 	if fix == "" {
 		return fix
@@ -244,9 +235,7 @@ func parseSemver(v string) (semver.Version, bool) {
 	return sv, err == nil
 }
 
-// normalizeVersion strips suffixes that blang/semver cannot parse:
-// - trailing word qualifiers like .Final, .jre11, .Alpha1
-// - a 4th numeric segment like 2.12.7.1 → 2.12.7
+// normalizeVersion strips suffixes blang/semver cannot parse (.Final, .jre11, .Alpha1) and drops a 4th numeric segment.
 func normalizeVersion(v string) string {
 	for {
 		s := nonSemverSuffix.ReplaceAllString(v, "")
