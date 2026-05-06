@@ -15,6 +15,8 @@ type Querier interface {
 	BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
+	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
+	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
 	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
@@ -32,6 +34,7 @@ type Querier interface {
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
+	GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)

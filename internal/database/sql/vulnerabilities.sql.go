@@ -447,7 +447,7 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :many
 SELECT
     sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by,
-    v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score,
+    v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, v.fix_version,
     c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use,
     w.cluster,
     w.namespace
@@ -546,6 +546,7 @@ type ListSuppressedVulnerabilitiesRow struct {
 	LastSeverity       int32
 	SeveritySince      pgtype.Timestamptz
 	CvssScore          *float64
+	FixVersion         *string
 	CveID_3            string
 	CveTitle           string
 	CveDesc            string
@@ -603,6 +604,7 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.LastSeverity,
 			&i.SeveritySince,
 			&i.CvssScore,
+			&i.FixVersion,
 			&i.CveID_3,
 			&i.CveTitle,
 			&i.CveDesc,
@@ -889,7 +891,7 @@ const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
 WITH image_all_vulns AS (
     -- Only the vulnerabilities for this image/tag
     SELECT
-        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score
+        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version
     FROM
         vulnerabilities v
     WHERE

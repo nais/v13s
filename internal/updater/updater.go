@@ -16,6 +16,7 @@ import (
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/kev"
+	"github.com/nais/v13s/internal/sources/osv"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,6 +27,7 @@ const (
 	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
 	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
+	SyncOsvCronInterval                                = "0 7 * * *"    // every day at 9:00 AM CEST
 	ImageMarkAge                                       = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
@@ -42,9 +44,10 @@ type Updater struct {
 	once                         sync.Once
 	log                          *logrus.Entry
 	kevFetcher                   *kev.Fetcher
+	osvFetcher                   *osv.Fetcher
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry, kevCfg config.KevConfig) *Updater {
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry, kevCfg config.KevConfig, osvCfg config.OsvConfig) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -64,6 +67,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.Workload
 		doneChan:                     doneChan,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcherWithClient(kev.NewClientWithURL(kevCfg.CatalogURL), querier, log),
+		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), querier, log),
 	}
 }
 
@@ -135,6 +139,12 @@ func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, "sync CISA KEV catalog", u.log, func() {
 		if err := u.kevFetcher.Sync(ctx); err != nil {
 			u.log.WithError(err).Error("failed to sync KEV catalog")
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, "sync OSV fix versions", u.log, func() {
+		if err := u.osvFetcher.Sync(ctx); err != nil {
+			u.log.WithError(err).Error("failed to sync OSV fix versions")
 		}
 	})
 }

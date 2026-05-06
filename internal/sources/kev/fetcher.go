@@ -23,6 +23,10 @@ func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
+	if f.client.catalogURL == "" {
+		f.log.Warn("KEV_CATALOG_URL is not set, skipping KEV sync")
+		return nil
+	}
 	f.log.Info("fetching KEV catalog from CISA")
 	result, err := f.client.FetchCatalog(ctx)
 	if err != nil {

@@ -7,6 +7,67 @@ import (
 	"context"
 )
 
+const bulkClearFixVersions = `-- name: BulkClearFixVersions :execrows
+UPDATE
+    vulnerabilities
+SET
+    fix_version = NULL,
+    updated_at = NOW()
+FROM (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::TEXT[]) AS package) AS data
+WHERE
+    vulnerabilities.cve_id = data.cve_id
+    AND vulnerabilities.package = data.package
+    AND vulnerabilities.fix_version IS NOT NULL
+`
+
+type BulkClearFixVersionsParams struct {
+	CveIds   []string
+	Packages []string
+}
+
+func (q *Queries) BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkClearFixVersions, arg.CveIds, arg.Packages)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const bulkUpdateFixVersions = `-- name: BulkUpdateFixVersions :execrows
+UPDATE
+    vulnerabilities
+SET
+    fix_version = data.fix_version,
+    updated_at = NOW()
+FROM (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::TEXT[]) AS package,
+        unnest($3::TEXT[]) AS fix_version) AS data
+WHERE
+    vulnerabilities.cve_id = data.cve_id
+    AND vulnerabilities.package = data.package
+    AND (vulnerabilities.fix_version IS NULL
+        OR vulnerabilities.fix_version != data.fix_version)
+`
+
+type BulkUpdateFixVersionsParams struct {
+	CveIds      []string
+	Packages    []string
+	FixVersions []string
+}
+
+func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkUpdateFixVersions, arg.CveIds, arg.Packages, arg.FixVersions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const bulkUpdateKevData = `-- name: BulkUpdateKevData :execrows
 UPDATE
     cve
@@ -35,4 +96,44 @@ func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getVulnerabilitiesForOsvEnrichment = `-- name: GetVulnerabilitiesForOsvEnrichment :many
+SELECT DISTINCT
+    cve_id,
+    package
+FROM
+    vulnerabilities
+WHERE
+    package != ''
+    AND (cve_id LIKE 'CVE-%'
+        OR cve_id LIKE 'GHSA-%')
+ORDER BY
+    cve_id,
+    package
+`
+
+type GetVulnerabilitiesForOsvEnrichmentRow struct {
+	CveID   string
+	Package string
+}
+
+func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilitiesForOsvEnrichment)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetVulnerabilitiesForOsvEnrichmentRow{}
+	for rows.Next() {
+		var i GetVulnerabilitiesForOsvEnrichmentRow
+		if err := rows.Scan(&i.CveID, &i.Package); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
