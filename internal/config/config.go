@@ -41,11 +41,11 @@ type DependencyTrackConfig struct {
 }
 
 type KevConfig struct {
-	CatalogURL string `envconfig:"KEV_CATALOG_URL" default:"https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"`
+	CatalogURL string `envconfig:"KEV_CATALOG_URL"`
 }
 
 type OsvConfig struct {
-	BaseURL string `envconfig:"OSV_BASE_URL" default:"https://api.osv.dev/v1"`
+	BaseURL string `envconfig:"OSV_BASE_URL"`
 }
 
 type K8sConfig struct {

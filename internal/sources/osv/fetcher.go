@@ -29,6 +29,10 @@ type fixResult struct {
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
+	if f.client.baseURL == "" {
+		f.log.Warn("OSV_BASE_URL is not set, skipping OSV sync")
+		return nil
+	}
 	f.log.Info("starting OSV fix-version sync")
 
 	rows, err := f.querier.GetVulnerabilitiesForOsvEnrichment(ctx)

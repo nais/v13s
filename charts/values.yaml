@@ -37,6 +37,10 @@ resources:
   requests:
     cpu: 100m
     memory: 1Gi
+kev:
+  catalogURL: "https://cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+osv:
+  baseURL: "https://api.osv.dev/v1"
 logLevel: info
 logFormat: json
 prometheus:
