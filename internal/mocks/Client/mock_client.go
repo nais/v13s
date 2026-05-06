@@ -660,7 +660,8 @@ func (_c *MockClient_UpdateFinding_Call) RunAndReturn(run func(context.Context, 
 func NewMockClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockClient {
+},
+) *MockClient {
 	mock := &MockClient{}
 	mock.Mock.Test(t)
 

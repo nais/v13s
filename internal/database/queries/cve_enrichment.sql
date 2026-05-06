@@ -31,7 +31,7 @@ UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
-    updated_at  = NOW()
+    updated_at = NOW()
 FROM (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
