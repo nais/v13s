@@ -3,6 +3,7 @@ package osv_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -645,4 +646,87 @@ func TestFetcher_Sync_WorkerPoolConcurrency(t *testing.T) {
 
 	// CVE-2021-44228 + its GHSA alias + CVE-9999-9999 = 3 fetches.
 	assert.EqualValues(t, 3, fetchCount.Load())
+}
+
+// newFixServer returns a test server that returns a fixed OSV record for every CVE ID.
+func newFixServer(t *testing.T, fixVersion string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Path[len("/vulns/"):]
+		w.Header().Set("Content-Type", "application/json")
+		rec := &osv.VulnRecord{
+			ID: id,
+			Affected: []osv.Affected{
+				{
+					Package: osv.AffectedPackage{Purl: fmt.Sprintf("pkg:npm/%s", id)},
+					Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: fixVersion}}}},
+				},
+			},
+		}
+		require.NoError(t, json.NewEncoder(w).Encode(rec))
+	}))
+}
+
+func TestFetcher_Persist_BatchesUpdates(t *testing.T) {
+	n := osv.BatchSize + 1
+	rows := make([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow, n)
+	for i := range n {
+		cveID := fmt.Sprintf("CVE-2024-%04d", i)
+		rows[i] = &sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
+			CveID:   cveID,
+			Package: fmt.Sprintf("pkg:npm/%s@0.9.0", cveID),
+		}
+	}
+
+	srv := newFixServer(t, "1.0.0")
+	defer srv.Close()
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(rows, nil)
+
+	var batchSizes []int
+	q.EXPECT().
+		BulkUpdateFixVersions(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, p sqldatabase.BulkUpdateFixVersionsParams) (int64, error) {
+			batchSizes = append(batchSizes, len(p.CveIds))
+			return int64(len(p.CveIds)), nil
+		}).
+		Times(2)
+
+	require.NoError(t, osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
+	require.Len(t, batchSizes, 2)
+	assert.Equal(t, osv.BatchSize, batchSizes[0])
+	assert.Equal(t, 1, batchSizes[1])
+}
+
+func TestFetcher_Persist_BatchesClears(t *testing.T) {
+	n := osv.BatchSize + 1
+	rows := make([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow, n)
+	for i := range n {
+		cveID := fmt.Sprintf("CVE-9999-%04d", i)
+		rows[i] = &sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
+			CveID:   cveID,
+			Package: fmt.Sprintf("pkg:npm/unknown-%d@1.0.0", i),
+		}
+	}
+
+	srv := newVulnServer(t, map[string]*osv.VulnRecord{})
+	defer srv.Close()
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(rows, nil)
+
+	var batchSizes []int
+	q.EXPECT().
+		BulkClearFixVersions(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, p sqldatabase.BulkClearFixVersionsParams) (int64, error) {
+			batchSizes = append(batchSizes, len(p.CveIds))
+			return int64(0), nil
+		}).
+		Times(2)
+
+	require.NoError(t, osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
+	require.Len(t, batchSizes, 2)
+	assert.Equal(t, osv.BatchSize, batchSizes[0])
+	assert.Equal(t, 1, batchSizes[1])
 }

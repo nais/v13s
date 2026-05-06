@@ -29,33 +29,61 @@ ORDER BY
     package;
 
 -- name: BulkClearFixVersions :execrows
+WITH input AS (
+    SELECT
+        unnest(@cve_ids::TEXT[]) AS cve_id,
+        unnest(@packages::TEXT[]) AS package
+),
+LOCKED AS (
+    SELECT
+        v.id
+    FROM
+        vulnerabilities v
+        JOIN input i ON v.cve_id = i.cve_id
+            AND v.package = i.package
+    WHERE
+        v.fix_version IS NOT NULL
+    ORDER BY
+        v.cve_id,
+        v.package
+    FOR UPDATE)
 UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
     updated_at = NOW()
-FROM (
-    SELECT
-        unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@packages::TEXT[]) AS package) AS data
+FROM
+    LOCKED
 WHERE
-    vulnerabilities.cve_id = data.cve_id
-    AND vulnerabilities.package = data.package
-    AND vulnerabilities.fix_version IS NOT NULL;
+    vulnerabilities.id = locked.id;
 
 -- name: BulkUpdateFixVersions :execrows
-UPDATE
-    vulnerabilities
-SET
-    fix_version = data.fix_version,
-    updated_at = NOW()
-FROM (
+WITH input AS (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
         unnest(@packages::TEXT[]) AS package,
-        unnest(@fix_versions::TEXT[]) AS fix_version) AS data
+        unnest(@fix_versions::TEXT[]) AS fix_version
+),
+LOCKED AS (
+    SELECT
+        v.id,
+        i.fix_version
+    FROM
+        vulnerabilities v
+        JOIN input i ON v.cve_id = i.cve_id
+            AND v.package = i.package
+    WHERE
+        v.fix_version IS DISTINCT FROM i.fix_version
+    ORDER BY
+        v.cve_id,
+        v.package
+    FOR UPDATE)
+UPDATE
+    vulnerabilities
+SET
+    fix_version = locked.fix_version,
+    updated_at = NOW()
+FROM
+    LOCKED
 WHERE
-    vulnerabilities.cve_id = data.cve_id
-    AND vulnerabilities.package = data.package
-    AND (vulnerabilities.fix_version IS NULL
-        OR vulnerabilities.fix_version != data.fix_version);
+    vulnerabilities.id = locked.id;
