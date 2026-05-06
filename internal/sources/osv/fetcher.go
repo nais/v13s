@@ -130,7 +130,7 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 	var (
 		updateCveIDs, updatePkgs, updateFixes []string
-		clearCveIDs, clearPkgs               []string
+		clearCveIDs, clearPkgs                []string
 	)
 	for _, r := range results {
 		if r.fixVersion == "" {

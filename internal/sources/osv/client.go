@@ -262,8 +262,8 @@ func normalizeVersion(v string) string {
 }
 
 var (
-	classifierSuffix    = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
-	ghsaPattern         = regexp.MustCompile(`GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}`)
-	nonSemverSuffix     = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
+	classifierSuffix     = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
+	ghsaPattern          = regexp.MustCompile(`GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}`)
+	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
 	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.\d+$`)
 )
