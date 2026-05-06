@@ -70,13 +70,11 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fi
 	var wg sync.WaitGroup
 
 	for range workerCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for cveID := range jobs {
 				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors, &fetchMisses)
 			}
-		}()
+		})
 	}
 
 	for id := range byCve {
