@@ -443,12 +443,12 @@ func TestFixVersionForPurl(t *testing.T) {
 					{
 						Package: osv.AffectedPackage{Purl: "pkg:maven/org.apache.commons/commons-fileupload2-core"},
 						Ranges: []osv.Range{
-							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "2.0.0"}, {Fixed: "2.0.0.M2"}}},
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.M2"}}},
 						},
 					},
 				},
 			},
-			purl:     "pkg:maven/org.apache.commons/commons-fileupload2-core@2.0.0.M1",
+			purl:     "pkg:maven/org.apache.commons/commons-fileupload2-core@1.5.0",
 			expected: "",
 		},
 		{
@@ -458,12 +458,27 @@ func TestFixVersionForPurl(t *testing.T) {
 					{
 						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
 						Ranges: []osv.Range{
-							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "3.0.0"}, {Fixed: "3.0.0.RC2"}}},
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "2.0.0"}, {Fixed: "3.0.0.RC2"}}},
 						},
 					},
 				},
 			},
-			purl:     "pkg:maven/org.example/lib@3.0.0.RC1",
+			purl:     "pkg:maven/org.example/lib@2.9.0",
+			expected: "",
+		},
+		{
+			name: "maven hyphen RC pre-release fix not smuggled through classifier rewrite",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "10.0.0"}, {Fixed: "11.0.0-RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@10.1.0-jre",
 			expected: "",
 		},
 		{
@@ -479,6 +494,34 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "golang v-prefix: fix version gets v prefix to match installed",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:golang/github.com/jackc/pgx/v5"},
+						Ranges: []osv.Range{
+							{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "5.9.2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:golang/github.com/jackc/pgx/v5@v5.5.4",
+			expected: "v5.9.2",
+		},
+		{
+			name: "golang no fix — empty string not prefixed with v",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:golang/stdlib"},
+						Ranges:  []osv.Range{},
+					},
+				},
+			},
+			purl:     "pkg:golang/stdlib@v1.23.12",
 			expected: "",
 		},
 		{
@@ -555,6 +598,21 @@ func TestFixVersionForPurl(t *testing.T) {
 			},
 			purl:     "pkg:npm/foo@1.5.0",
 			expected: "2.0.0-RC1",
+		},
+		{
+			name: "maven hyphen RC pre-release fix not smuggled through classifier rewrite",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "10.0.0"}, {Fixed: "11.0.0-RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@10.1.0-jre",
+			expected: "",
 		},
 	}
 
