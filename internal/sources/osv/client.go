@@ -144,7 +144,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	if best != "" && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
-	if mavenPreRelease.MatchString(best) {
+	if strings.HasPrefix(storedPurl, "pkg:maven/") && mavenPreRelease.MatchString(best) {
 		return ""
 	}
 	return best
