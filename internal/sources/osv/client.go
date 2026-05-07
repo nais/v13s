@@ -122,12 +122,18 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	var best string
 	var bestSemver semver.Version
 
+	typ := purlType(storedPurl)
+	isMaven := typ == purlTypeMaven
+
 	for _, a := range record.Affected {
 		if a.Package.Purl == "" || !strings.EqualFold(purlBase(a.Package.Purl), base) {
 			continue
 		}
 		candidate, candidateSemver, ok := minFixFromRanges(a.Ranges, installed, installedOk)
 		if !ok {
+			continue
+		}
+		if isMaven && isMavenPreRelease(candidate) {
 			continue
 		}
 		if installedOk {
@@ -141,7 +147,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	}
 
 	best = matchClassifier(best, installedRaw)
-	if best != "" && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+	if best != "" && typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
 	return best
@@ -202,32 +208,6 @@ func matchClassifier(fix, installedRaw string) string {
 
 func isGHSA(id string) bool {
 	return strings.HasPrefix(id, "GHSA-")
-}
-
-func purlBase(purl string) string {
-	if i := strings.IndexByte(purl, '?'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '#'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '@'); i >= 0 {
-		purl = purl[:i]
-	}
-	return purl
-}
-
-func purlVersion(purl string) string {
-	if i := strings.IndexByte(purl, '?'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '#'); i >= 0 {
-		purl = purl[:i]
-	}
-	if _, after, ok := strings.Cut(purl, "@"); ok {
-		return after
-	}
-	return ""
 }
 
 func parseSemver(v string) (semver.Version, bool) {

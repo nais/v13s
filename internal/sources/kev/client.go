@@ -44,7 +44,7 @@ type Client struct {
 
 func NewClientWithURL(url string) *Client {
 	return &Client{
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 60 * time.Second},
 		catalogURL: url,
 	}
 }

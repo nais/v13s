@@ -436,6 +436,205 @@ func TestFixVersionForPurl(t *testing.T) {
 			purl:     "pkg:nuget/Microsoft.NETCore.App.Runtime.linux-musl-x64@8.0.24",
 			expected: "8.0.26",
 		},
+		{
+			name: "maven M1 pre-release fix ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.apache.commons/commons-fileupload2-core"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.M2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.apache.commons/commons-fileupload2-core@1.5.0",
+			expected: "",
+		},
+		{
+			name: "maven RC pre-release fix ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "2.0.0"}, {Fixed: "3.0.0.RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@2.9.0",
+			expected: "",
+		},
+		{
+			name: "maven hyphen RC pre-release fix not smuggled through classifier rewrite",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "10.0.0"}, {Fixed: "11.0.0-RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@10.1.0-jre",
+			expected: "",
+		},
+		{
+			name: "maven SNAPSHOT fix ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.SNAPSHOT"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "golang v-prefix: mixed-case purl type still gets v prefix",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:golang/github.com/jackc/pgx/v5"},
+						Ranges: []osv.Range{
+							{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "5.9.2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:Golang/github.com/jackc/pgx/v5@v5.5.4",
+			expected: "v5.9.2",
+		},
+		{
+			name: "golang no fix — empty string not prefixed with v",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:golang/stdlib"},
+						Ranges:  []osv.Range{},
+					},
+				},
+			},
+			purl:     "pkg:golang/stdlib@v1.23.12",
+			expected: "",
+		},
+		{
+			name: "maven stable fix not filtered",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "2.0.1",
+		},
+		{
+			name: "maven pre-release and stable fix in same range: stable fix returned",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.M2"}}},
+						},
+					},
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "2.0.0",
+		},
+		{
+			name: "maven M1 hyphen separator ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "11.0.0-M1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "maven RC hyphen separator ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "3.0.0-RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "maven SNAPSHOT hyphen separator ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0-SNAPSHOT"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "non-maven RC not filtered",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+						Ranges: []osv.Range{
+							{Type: "SEMVER", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0-RC1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: "2.0.0-RC1",
+		},
+		{
+			name: "maven pre-release filter applies with mixed-case purl type",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.M1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:Maven/org.example/lib@1.5.0",
+			expected: "",
+		},
 	}
 
 	for _, tc := range tests {
