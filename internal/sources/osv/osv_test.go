@@ -479,7 +479,7 @@ func TestFetcher_Sync_WritesFixVersions(t *testing.T) {
 		BulkClearFixVersions(mock.Anything, []pgtype.UUID{testUUID2}).
 		Return(int64(0), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -501,7 +501,7 @@ func TestFetcher_Sync_FetchesGHSAAlias(t *testing.T) {
 		}).
 		Return(int64(1), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -555,7 +555,7 @@ func TestFetcher_Sync_404WithAliasHint(t *testing.T) {
 		}).
 		Return(int64(1), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -566,7 +566,7 @@ func TestFetcher_Sync_EmptyDB(t *testing.T) {
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{}, nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL("http://unused"), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL("http://unused"), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -574,7 +574,7 @@ func TestFetcher_Sync_AlreadyLocked_Skips(t *testing.T) {
 	q := mockquerier.NewMockQuerier(t)
 	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(false, nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL("http://unused"), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL("http://unused"), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 	// No GetVulnerabilitiesForOsvEnrichment call expected — mock will fail if it is called.
 }
@@ -594,7 +594,7 @@ func TestFetcher_Sync_NoFixVersionsFound(t *testing.T) {
 		BulkClearFixVersions(mock.Anything, []pgtype.UUID{testUUID1}).
 		Return(int64(0), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -612,7 +612,7 @@ func TestFetcher_Sync_ClientError_Warns_Continues(t *testing.T) {
 			{ID: testUUID1, CveID: "CVE-2021-44228", Package: "pkg:maven/log4j/log4j@2.14.0"},
 		}, nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -644,7 +644,7 @@ func TestFetcher_Sync_WorkerPoolConcurrency(t *testing.T) {
 	q.EXPECT().BulkUpdateFixVersions(mock.Anything, mock.Anything).Return(int64(1), nil)
 	q.EXPECT().BulkClearFixVersions(mock.Anything, mock.Anything).Return(int64(0), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
 	require.NoError(t, f.Sync(context.Background()))
 
 	// CVE-2021-44228 + its GHSA alias + CVE-9999-9999 = 3 fetches.
@@ -699,7 +699,7 @@ func TestFetcher_Persist_BatchesUpdates(t *testing.T) {
 		}).
 		Times(2)
 
-	require.NoError(t, osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
+	require.NoError(t, osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])
@@ -733,7 +733,7 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 		}).
 		Times(2)
 
-	require.NoError(t, osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
+	require.NoError(t, osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])

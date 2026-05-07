@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
 )
@@ -20,8 +21,17 @@ const (
 
 type Fetcher struct {
 	client  *Client
+	pool    *pgxpool.Pool
 	querier sql.Querier
 	log     *logrus.Entry
+}
+
+func NewFetcherWithClient(client *Client, pool *pgxpool.Pool, log *logrus.Entry) *Fetcher {
+	return &Fetcher{client: client, pool: pool, log: log}
+}
+
+func NewFetcherWithQuerier(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
+	return &Fetcher{client: client, querier: querier, log: log}
 }
 
 type fixTarget struct {
@@ -36,10 +46,6 @@ type fixResult struct {
 	fixVersion string
 }
 
-func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
-	return &Fetcher{client: client, querier: querier, log: log}
-}
-
 func (f *Fetcher) Sync(ctx context.Context) error {
 	if f.client.baseURL == "" {
 		f.log.Warn("OSV_BASE_URL is not set, skipping OSV sync")
@@ -48,7 +54,19 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	f.log.Info("starting OSV fix-version sync")
 	start := time.Now()
 
-	locked, err := f.querier.TryAdvisoryLock(ctx, OsvSyncLockKey)
+	var querier sql.Querier
+	if f.pool != nil {
+		conn, err := f.pool.Acquire(ctx)
+		if err != nil {
+			return fmt.Errorf("acquiring DB connection for OSV sync: %w", err)
+		}
+		defer conn.Release()
+		querier = sql.New(conn)
+	} else {
+		querier = f.querier
+	}
+
+	locked, err := querier.TryAdvisoryLock(ctx, OsvSyncLockKey)
 	if err != nil {
 		return fmt.Errorf("acquiring OSV sync advisory lock: %w", err)
 	}
@@ -57,15 +75,15 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return nil
 	}
 	defer func() {
-		released, err := f.querier.AdvisoryUnlock(ctx, OsvSyncLockKey)
+		released, err := querier.AdvisoryUnlock(ctx, OsvSyncLockKey)
 		if err != nil {
 			f.log.WithError(err).Warn("failed to release OSV sync advisory lock")
 		} else if !released {
-			f.log.Warn("OSV sync advisory lock was not held at unlock time — possible connection pool reuse")
+			f.log.Warn("OSV sync advisory lock was not held at unlock time")
 		}
 	}()
 
-	rows, err := f.querier.GetVulnerabilitiesForOsvEnrichment(ctx)
+	rows, err := querier.GetVulnerabilitiesForOsvEnrichment(ctx)
 	if err != nil {
 		return fmt.Errorf("loading vulnerabilities for OSV enrichment: %w", err)
 	}
@@ -83,7 +101,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	f.log.Infof("OSV sync: fetched %d CVEs in %s (%d hits, %d misses, %d fetch errors)",
 		len(byCve), time.Since(fetchStart).Round(time.Millisecond), hits, misses, errors)
 
-	if err := f.persist(ctx, results); err != nil {
+	if err := f.persist(ctx, querier, results); err != nil {
 		return err
 	}
 	f.log.Infof("OSV sync complete in %s", time.Since(start).Round(time.Millisecond))
@@ -98,11 +116,13 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]fixTarget) ([
 	var wg sync.WaitGroup
 
 	for range workerCount {
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			for cveID := range jobs {
 				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors, &fetchMisses)
 			}
-		})
+		}()
 	}
 
 	for id := range byCve {
@@ -153,8 +173,6 @@ func (f *Fetcher) processCve(ctx context.Context, cveID string, targets []fixTar
 	}
 }
 
-// mergeAliases fetches GHSA aliases and merges their Affected entries into the record.
-// CVE records often lack purl data; GHSA records carry it.
 func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRecord) *VulnRecord {
 	for _, alias := range record.Aliases {
 		if !isGHSA(alias) {
@@ -172,7 +190,7 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 	return record
 }
 
-func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
+func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fixResult) error {
 	var (
 		updateIDs   []pgtype.UUID
 		updateFixes []string
@@ -191,7 +209,7 @@ func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 
 	for i := 0; i < len(updateIDs); i += BatchSize {
 		end := min(i+BatchSize, len(updateIDs))
-		n, err := f.querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
+		n, err := querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
 			VulnerabilityIds: updateIDs[i:end],
 			FixVersions:      updateFixes[i:end],
 		})
@@ -203,7 +221,7 @@ func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 
 	for i := 0; i < len(clearIDs); i += BatchSize {
 		end := min(i+BatchSize, len(clearIDs))
-		n, err := f.querier.BulkClearFixVersions(ctx, clearIDs[i:end])
+		n, err := querier.BulkClearFixVersions(ctx, clearIDs[i:end])
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
 		}

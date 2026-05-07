@@ -67,7 +67,7 @@ func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.Workload
 		doneChan:                     doneChan,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcherWithClient(kev.NewClientWithURL(kevCfg.CatalogURL), querier, log),
-		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), querier, log),
+		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
 	}
 }
 
