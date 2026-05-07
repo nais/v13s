@@ -1,6 +1,25 @@
 package osv
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
+
+const (
+	purlTypeMaven  = "maven"
+	purlTypeGolang = "golang"
+	purlTypeNpm    = "npm"
+	purlTypePypi   = "pypi"
+	purlTypeCargo  = "cargo"
+	purlTypeNuget  = "nuget"
+	purlTypeGem    = "gem"
+)
+
+var mavenPreReleasePattern = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
+
+func isMavenPreRelease(version string) bool {
+	return mavenPreReleasePattern.MatchString(version)
+}
 
 func purlType(purl string) string {
 	s := strings.ToLower(purl)
