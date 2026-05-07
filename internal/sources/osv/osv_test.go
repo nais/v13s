@@ -497,7 +497,7 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "",
 		},
 		{
-			name: "golang v-prefix: fix version gets v prefix to match installed",
+			name: "golang v-prefix: mixed-case purl type still gets v prefix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -508,7 +508,7 @@ func TestFixVersionForPurl(t *testing.T) {
 					},
 				},
 			},
-			purl:     "pkg:golang/github.com/jackc/pgx/v5@v5.5.4",
+			purl:     "pkg:Golang/github.com/jackc/pgx/v5@v5.5.4",
 			expected: "v5.9.2",
 		},
 		{
@@ -600,18 +600,18 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "2.0.0-RC1",
 		},
 		{
-			name: "maven hyphen RC pre-release fix not smuggled through classifier rewrite",
+			name: "maven pre-release filter applies with mixed-case purl type",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
 						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
 						Ranges: []osv.Range{
-							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "10.0.0"}, {Fixed: "11.0.0-RC2"}}},
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.M1"}}},
 						},
 					},
 				},
 			},
-			purl:     "pkg:maven/org.example/lib@10.1.0-jre",
+			purl:     "pkg:Maven/org.example/lib@1.5.0",
 			expected: "",
 		},
 	}
