@@ -436,6 +436,66 @@ func TestFixVersionForPurl(t *testing.T) {
 			purl:     "pkg:nuget/Microsoft.NETCore.App.Runtime.linux-musl-x64@8.0.24",
 			expected: "8.0.26",
 		},
+		{
+			name: "maven M1 pre-release fix ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.apache.commons/commons-fileupload2-core"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "2.0.0"}, {Fixed: "2.0.0.M2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.apache.commons/commons-fileupload2-core@2.0.0.M1",
+			expected: "",
+		},
+		{
+			name: "maven RC pre-release fix ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "3.0.0"}, {Fixed: "3.0.0.RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@3.0.0.RC1",
+			expected: "",
+		},
+		{
+			name: "maven SNAPSHOT fix ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0.SNAPSHOT"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "maven stable fix not filtered",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "2.0.1",
+		},
 	}
 
 	for _, tc := range tests {
