@@ -141,7 +141,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	}
 
 	best = matchClassifier(best, installedRaw)
-	if best != "" && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+	if strings.HasPrefix(storedPurl, "pkg:golang/") && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
 	if strings.HasPrefix(storedPurl, "pkg:maven/") && mavenPreRelease.MatchString(best) {
