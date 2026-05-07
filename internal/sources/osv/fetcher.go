@@ -55,25 +55,13 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	start := time.Now()
 
 	var querier sql.Querier
+	var conn *pgxpool.Conn
 	if f.pool != nil {
-		conn, err := f.pool.Acquire(ctx)
+		var err error
+		conn, err = f.pool.Acquire(ctx)
 		if err != nil {
 			return fmt.Errorf("acquiring DB connection for OSV sync: %w", err)
 		}
-		defer func() {
-			unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			released, err := querier.AdvisoryUnlock(unlockCtx, OsvSyncLockKey)
-			if err != nil {
-				f.log.WithError(err).Warn("failed to release OSV sync advisory lock, discarding connection")
-				conn.Hijack().Close(context.Background())
-				return
-			}
-			if !released {
-				f.log.Warn("OSV sync advisory lock was not held at unlock time")
-			}
-			conn.Release()
-		}()
 		querier = sql.New(conn)
 	} else {
 		querier = f.querier
@@ -81,12 +69,39 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 
 	locked, err := querier.TryAdvisoryLock(ctx, OsvSyncLockKey)
 	if err != nil {
+		if conn != nil {
+			conn.Release()
+		}
 		return fmt.Errorf("acquiring OSV sync advisory lock: %w", err)
 	}
 	if !locked {
+		if conn != nil {
+			conn.Release()
+		}
 		f.log.Info("OSV sync already running on another pod, skipping")
 		return nil
 	}
+
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		released, unlockErr := querier.AdvisoryUnlock(unlockCtx, OsvSyncLockKey)
+		if unlockErr != nil {
+			f.log.WithError(unlockErr).Warn("failed to release OSV sync advisory lock, discarding connection")
+			if conn != nil {
+				if closeErr := conn.Hijack().Close(context.Background()); closeErr != nil {
+					f.log.WithError(closeErr).Warn("failed to close connection after advisory unlock failure")
+				}
+			}
+			return
+		}
+		if !released {
+			f.log.Warn("OSV sync advisory lock was not held at unlock time")
+		}
+		if conn != nil {
+			conn.Release()
+		}
+	}()
 
 	rows, err := querier.GetVulnerabilitiesForOsvEnrichment(ctx)
 	if err != nil {
@@ -121,13 +136,11 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]fixTarget) ([
 	var wg sync.WaitGroup
 
 	for range workerCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for cveID := range jobs {
 				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors, &fetchMisses)
 			}
-		}()
+		})
 	}
 
 	for id := range byCve {
