@@ -258,5 +258,5 @@ var (
 	ghsaPattern          = regexp.MustCompile(`GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}`)
 	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
 	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.\d+$`)
-	mavenPreRelease      = regexp.MustCompile(`(?i)\.(M[0-9]+|RC[0-9]+|alpha|beta|SNAPSHOT)$`)
+	mavenPreRelease      = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
 )

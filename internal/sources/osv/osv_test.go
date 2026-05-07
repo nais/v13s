@@ -496,6 +496,66 @@ func TestFixVersionForPurl(t *testing.T) {
 			purl:     "pkg:maven/org.example/lib@1.5.0",
 			expected: "2.0.1",
 		},
+		{
+			name: "maven M1 hyphen separator ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "11.0.0-M1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "maven RC hyphen separator ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "3.0.0-RC2"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "maven SNAPSHOT hyphen separator ignored",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0-SNAPSHOT"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: "",
+		},
+		{
+			name: "non-maven RC not filtered",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+						Ranges: []osv.Range{
+							{Type: "SEMVER", Events: []osv.Event{{Introduced: "1.0.0"}, {Fixed: "2.0.0-RC1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: "2.0.0-RC1",
+		},
 	}
 
 	for _, tc := range tests {
