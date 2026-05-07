@@ -2,6 +2,6 @@
 SELECT
     pg_try_advisory_lock(@key::BIGINT);
 
--- name: AdvisoryUnlock :exec
+-- name: AdvisoryUnlock :one
 SELECT
     pg_advisory_unlock(@key::BIGINT);

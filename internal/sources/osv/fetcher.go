@@ -57,8 +57,11 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return nil
 	}
 	defer func() {
-		if err := f.querier.AdvisoryUnlock(ctx, OsvSyncLockKey); err != nil {
+		released, err := f.querier.AdvisoryUnlock(ctx, OsvSyncLockKey)
+		if err != nil {
 			f.log.WithError(err).Warn("failed to release OSV sync advisory lock")
+		} else if !released {
+			f.log.Warn("OSV sync advisory lock was not held at unlock time — possible connection pool reuse")
 		}
 	}()
 

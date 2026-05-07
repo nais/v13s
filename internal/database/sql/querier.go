@@ -10,7 +10,7 @@ import (
 
 type Querier interface {
 	AddWorkloadEvent(ctx context.Context, arg AddWorkloadEventParams) error
-	AdvisoryUnlock(ctx context.Context, key int64) error
+	AdvisoryUnlock(ctx context.Context, key int64) (bool, error)
 	BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults
 	BatchUpsertCve(ctx context.Context, arg []BatchUpsertCveParams) *BatchUpsertCveBatchResults
 	BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults

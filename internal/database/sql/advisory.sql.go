@@ -7,14 +7,16 @@ import (
 	"context"
 )
 
-const advisoryUnlock = `-- name: AdvisoryUnlock :exec
+const advisoryUnlock = `-- name: AdvisoryUnlock :one
 SELECT
     pg_advisory_unlock($1::BIGINT)
 `
 
-func (q *Queries) AdvisoryUnlock(ctx context.Context, key int64) error {
-	_, err := q.db.Exec(ctx, advisoryUnlock, key)
-	return err
+func (q *Queries) AdvisoryUnlock(ctx context.Context, key int64) (bool, error) {
+	row := q.db.QueryRow(ctx, advisoryUnlock, key)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
 }
 
 const tryAdvisoryLock = `-- name: TryAdvisoryLock :one

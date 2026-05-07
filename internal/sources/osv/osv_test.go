@@ -454,7 +454,7 @@ var (
 // expectLock sets up the advisory lock/unlock expectations that every successful sync needs.
 func expectLock(q *mockquerier.MockQuerier) {
 	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
-	q.EXPECT().AdvisoryUnlock(mock.Anything, osv.OsvSyncLockKey).Return(nil)
+	q.EXPECT().AdvisoryUnlock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
 }
 
 func TestFetcher_Sync_WritesFixVersions(t *testing.T) {

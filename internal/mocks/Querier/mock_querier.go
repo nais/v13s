@@ -72,21 +72,31 @@ func (_c *MockQuerier_AddWorkloadEvent_Call) RunAndReturn(run func(context.Conte
 }
 
 // AdvisoryUnlock provides a mock function with given fields: ctx, key
-func (_m *MockQuerier) AdvisoryUnlock(ctx context.Context, key int64) error {
+func (_m *MockQuerier) AdvisoryUnlock(ctx context.Context, key int64) (bool, error) {
 	ret := _m.Called(ctx, key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AdvisoryUnlock")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (bool, error)); ok {
+		return rf(ctx, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) bool); ok {
 		r0 = rf(ctx, key)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockQuerier_AdvisoryUnlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdvisoryUnlock'
@@ -108,12 +118,12 @@ func (_c *MockQuerier_AdvisoryUnlock_Call) Run(run func(ctx context.Context, key
 	return _c
 }
 
-func (_c *MockQuerier_AdvisoryUnlock_Call) Return(_a0 error) *MockQuerier_AdvisoryUnlock_Call {
-	_c.Call.Return(_a0)
+func (_c *MockQuerier_AdvisoryUnlock_Call) Return(_a0 bool, _a1 error) *MockQuerier_AdvisoryUnlock_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_AdvisoryUnlock_Call) RunAndReturn(run func(context.Context, int64) error) *MockQuerier_AdvisoryUnlock_Call {
+func (_c *MockQuerier_AdvisoryUnlock_Call) RunAndReturn(run func(context.Context, int64) (bool, error)) *MockQuerier_AdvisoryUnlock_Call {
 	_c.Call.Return(run)
 	return _c
 }
