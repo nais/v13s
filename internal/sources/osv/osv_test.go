@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	sqldatabase "github.com/nais/v13s/internal/database/sql"
 	mockquerier "github.com/nais/v13s/internal/mocks/Querier"
 	"github.com/nais/v13s/internal/sources/osv"
@@ -99,6 +100,14 @@ func sampleRecords() map[string]*osv.VulnRecord {
 			},
 		},
 	}
+}
+
+func mustUUID(s string) pgtype.UUID {
+	var u pgtype.UUID
+	if err := u.Scan(s); err != nil {
+		panic(err)
+	}
+	return u
 }
 
 func TestFetchVuln_ReturnsRecord(t *testing.T) {
@@ -437,67 +446,66 @@ func TestFixVersionForPurl(t *testing.T) {
 	}
 }
 
+var (
+	testUUID1 = mustUUID("00000000-0000-0000-0000-000000000001")
+	testUUID2 = mustUUID("00000000-0000-0000-0000-000000000002")
+)
+
+// expectLock sets up the advisory lock/unlock expectations that every successful sync needs.
+func expectLock(q *mockquerier.MockQuerier) {
+	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+	q.EXPECT().AdvisoryUnlock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+}
+
 func TestFetcher_Sync_WritesFixVersions(t *testing.T) {
 	srv := newVulnServer(t, sampleRecords())
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			// CVE-2021-44228: CVE record has no purl, but GHSA alias does.
-			{CveID: "CVE-2021-44228", Package: "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
-			// CVE-9999-9999: no OSV record at all.
-			{CveID: "CVE-9999-9999", Package: "pkg:npm/unknown@1.0.0"},
+			{ID: testUUID1, CveID: "CVE-2021-44228", Package: "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
+			{ID: testUUID2, CveID: "CVE-9999-9999", Package: "pkg:npm/unknown@1.0.0"},
 		}, nil)
 	q.EXPECT().
 		BulkUpdateFixVersions(mock.Anything, sqldatabase.BulkUpdateFixVersionsParams{
-			CveIds:      []string{"CVE-2021-44228"},
-			Packages:    []string{"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
-			FixVersions: []string{"2.15.0"},
+			VulnerabilityIds: []pgtype.UUID{testUUID1},
+			FixVersions:      []string{"2.15.0"},
 		}).
 		Return(int64(1), nil)
 	q.EXPECT().
-		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
-			CveIds:   []string{"CVE-9999-9999"},
-			Packages: []string{"pkg:npm/unknown@1.0.0"},
-		}).
+		BulkClearFixVersions(mock.Anything, []pgtype.UUID{testUUID2}).
 		Return(int64(0), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
 
 func TestFetcher_Sync_FetchesGHSAAlias(t *testing.T) {
-	// Verifies that when a CVE record has no affected purl data, the fetcher
-	// falls through to the GHSA alias record to find the fix version.
 	srv := newVulnServer(t, sampleRecords())
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			{CveID: "CVE-2021-44228", Package: "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
+			{ID: testUUID1, CveID: "CVE-2021-44228", Package: "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
 		}, nil)
 	q.EXPECT().
 		BulkUpdateFixVersions(mock.Anything, sqldatabase.BulkUpdateFixVersionsParams{
-			CveIds:      []string{"CVE-2021-44228"},
-			Packages:    []string{"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
-			FixVersions: []string{"2.15.0"},
+			VulnerabilityIds: []pgtype.UUID{testUUID1},
+			FixVersions:      []string{"2.15.0"},
 		}).
 		Return(int64(1), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
 
 func TestFetcher_Sync_404WithAliasHint(t *testing.T) {
-	// Verifies that when OSV returns HTTP 404 for a CVE but includes a GHSA alias
-	// hint in the response body, the fetcher follows the alias to find fix data.
-	// This covers NuGet CVEs like CVE-2026-26130 where only the GHSA record exists.
 	ghsaRecord := &osv.VulnRecord{
 		ID:      "GHSA-4vgm-c2wm-63mw",
 		Aliases: []string{"CVE-2026-26130"},
@@ -534,82 +542,81 @@ func TestFetcher_Sync_404WithAliasHint(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			{CveID: "CVE-2026-26130", Package: "pkg:nuget/Microsoft.AspNetCore.App.Runtime.linux-musl-x64@8.0.24"},
+			{ID: testUUID1, CveID: "CVE-2026-26130", Package: "pkg:nuget/Microsoft.AspNetCore.App.Runtime.linux-musl-x64@8.0.24"},
 		}, nil)
 	q.EXPECT().
 		BulkUpdateFixVersions(mock.Anything, sqldatabase.BulkUpdateFixVersionsParams{
-			CveIds:      []string{"CVE-2026-26130"},
-			Packages:    []string{"pkg:nuget/Microsoft.AspNetCore.App.Runtime.linux-musl-x64@8.0.24"},
-			FixVersions: []string{"8.0.25"},
+			VulnerabilityIds: []pgtype.UUID{testUUID1},
+			FixVersions:      []string{"8.0.25"},
 		}).
 		Return(int64(1), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
 
 func TestFetcher_Sync_EmptyDB(t *testing.T) {
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{}, nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL("http://unused"), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL("http://unused"), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
+}
+
+func TestFetcher_Sync_AlreadyLocked_Skips(t *testing.T) {
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(false, nil)
+
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL("http://unused"), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
+	// No GetVulnerabilitiesForOsvEnrichment call expected — mock will fail if it is called.
 }
 
 func TestFetcher_Sync_NoFixVersionsFound(t *testing.T) {
-	// Server returns "not found" for everything.
 	srv := newVulnServer(t, map[string]*osv.VulnRecord{})
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			{CveID: "CVE-9999-9999", Package: "pkg:npm/foo@1.0.0"},
+			{ID: testUUID1, CveID: "CVE-9999-9999", Package: "pkg:npm/foo@1.0.0"},
 		}, nil)
-
-	// BulkUpdateFixVersions should NOT be called — all results are misses.
 	q.EXPECT().
-		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
-			CveIds:   []string{"CVE-9999-9999"},
-			Packages: []string{"pkg:npm/foo@1.0.0"},
-		}).
+		BulkClearFixVersions(mock.Anything, []pgtype.UUID{testUUID1}).
 		Return(int64(0), nil)
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
+
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
 
 func TestFetcher_Sync_ClientError_Warns_Continues(t *testing.T) {
-	// Server returns 500 for everything — fetcher should warn but not fail,
-	// since individual errors are logged and skipped.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			{CveID: "CVE-2021-44228", Package: "pkg:maven/log4j/log4j@2.14.0"},
+			{ID: testUUID1, CveID: "CVE-2021-44228", Package: "pkg:maven/log4j/log4j@2.14.0"},
 		}, nil)
 
-	// No BulkUpdateFixVersions expected — all fetches failed.
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err) // errors are warnings, not fatal
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
 
 func TestFetcher_Sync_WorkerPoolConcurrency(t *testing.T) {
-	// Verify all CVEs (and their GHSA aliases) are fetched.
 	var fetchCount atomic.Int32
 	records := sampleRecords()
 
@@ -627,22 +634,18 @@ func TestFetcher_Sync_WorkerPoolConcurrency(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			{CveID: "CVE-2021-44228", Package: "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
-			{CveID: "CVE-9999-9999", Package: "pkg:npm/unknown@1.0.0"},
+			{ID: testUUID1, CveID: "CVE-2021-44228", Package: "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
+			{ID: testUUID2, CveID: "CVE-9999-9999", Package: "pkg:npm/unknown@1.0.0"},
 		}, nil)
-	q.EXPECT().
-		BulkUpdateFixVersions(mock.Anything, mock.Anything).
-		Return(int64(1), nil)
-	q.EXPECT().
-		BulkClearFixVersions(mock.Anything, mock.Anything).
-		Return(int64(0), nil)
+	q.EXPECT().BulkUpdateFixVersions(mock.Anything, mock.Anything).Return(int64(1), nil)
+	q.EXPECT().BulkClearFixVersions(mock.Anything, mock.Anything).Return(int64(0), nil)
 
-	f := osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger())
-	err := f.Sync(context.Background())
-	require.NoError(t, err)
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 
 	// CVE-2021-44228 + its GHSA alias + CVE-9999-9999 = 3 fetches.
 	assert.EqualValues(t, 3, fetchCount.Load())
@@ -672,7 +675,9 @@ func TestFetcher_Persist_BatchesUpdates(t *testing.T) {
 	rows := make([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow, n)
 	for i := range n {
 		cveID := fmt.Sprintf("CVE-2024-%04d", i)
+		u := mustUUID(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
 		rows[i] = &sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
+			ID:      u,
 			CveID:   cveID,
 			Package: fmt.Sprintf("pkg:npm/%s@0.9.0", cveID),
 		}
@@ -682,18 +687,19 @@ func TestFetcher_Persist_BatchesUpdates(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(rows, nil)
 
 	var batchSizes []int
 	q.EXPECT().
 		BulkUpdateFixVersions(mock.Anything, mock.Anything).
 		RunAndReturn(func(_ context.Context, p sqldatabase.BulkUpdateFixVersionsParams) (int64, error) {
-			batchSizes = append(batchSizes, len(p.CveIds))
-			return int64(len(p.CveIds)), nil
+			batchSizes = append(batchSizes, len(p.VulnerabilityIds))
+			return int64(len(p.VulnerabilityIds)), nil
 		}).
 		Times(2)
 
-	require.NoError(t, osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
+	require.NoError(t, osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])
@@ -703,9 +709,10 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 	n := osv.BatchSize + 1
 	rows := make([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow, n)
 	for i := range n {
-		cveID := fmt.Sprintf("CVE-9999-%04d", i)
+		u := mustUUID(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
 		rows[i] = &sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
-			CveID:   cveID,
+			ID:      u,
+			CveID:   fmt.Sprintf("CVE-9999-%04d", i),
 			Package: fmt.Sprintf("pkg:npm/unknown-%d@1.0.0", i),
 		}
 	}
@@ -714,18 +721,19 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(rows, nil)
 
 	var batchSizes []int
 	q.EXPECT().
 		BulkClearFixVersions(mock.Anything, mock.Anything).
-		RunAndReturn(func(_ context.Context, p sqldatabase.BulkClearFixVersionsParams) (int64, error) {
-			batchSizes = append(batchSizes, len(p.CveIds))
+		RunAndReturn(func(_ context.Context, ids []pgtype.UUID) (int64, error) {
+			batchSizes = append(batchSizes, len(ids))
 			return int64(0), nil
 		}).
 		Times(2)
 
-	require.NoError(t, osv.NewFetcherWithClient(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
+	require.NoError(t, osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger()).Sync(context.Background()))
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])

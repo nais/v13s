@@ -10,7 +10,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
-	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources/osv"
 	"github.com/sirupsen/logrus"
 )
@@ -41,10 +40,9 @@ func main() {
 	}
 	defer pool.Close()
 
-	querier := sql.New(pool)
 	fetcher := osv.NewFetcherWithClient(
 		osv.NewClientWithURL(cfg.Osv.BaseURL),
-		querier,
+		pool,
 		logrus.NewEntry(log),
 	)
 

@@ -234,7 +234,8 @@ SELECT
     sv.reason,
     sv.reason_text,
     sv.suppressed_by,
-    sv.updated_at AS suppressed_at
+    sv.updated_at AS suppressed_at,
+    v.fix_version
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -268,7 +269,8 @@ SELECT
     sv.reason,
     sv.reason_text,
     sv.suppressed_by,
-    sv.updated_at AS suppressed_at
+    sv.updated_at AS suppressed_at,
+    v.fix_version
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -515,7 +517,8 @@ resolved_vulnerabilities AS (
         v.created_at,
         v.updated_at,
         v.severity_since,
-        c.cvss_score
+        c.cvss_score,
+        v.fix_version
     FROM
         image_all_vulns v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -566,6 +569,7 @@ SELECT
     reason_text,
     suppressed_by,
     suppressed_at,
+    fix_version,
     COUNT(id) OVER () AS total_count
 FROM
     distinct_image_vulnerabilities
@@ -649,7 +653,8 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    c.cvss_score
+    c.cvss_score,
+    v.fix_version
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -776,6 +781,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     c.cvss_score,
+    v.fix_version,
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
