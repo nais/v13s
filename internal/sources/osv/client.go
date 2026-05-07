@@ -122,12 +122,18 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 	var best string
 	var bestSemver semver.Version
 
+	typ := purlType(storedPurl)
+	isMaven := typ == purlTypeMaven
+
 	for _, a := range record.Affected {
 		if a.Package.Purl == "" || !strings.EqualFold(purlBase(a.Package.Purl), base) {
 			continue
 		}
 		candidate, candidateSemver, ok := minFixFromRanges(a.Ranges, installed, installedOk)
 		if !ok {
+			continue
+		}
+		if isMaven && isMavenPreRelease(candidate) {
 			continue
 		}
 		if installedOk {
@@ -140,12 +146,8 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 		}
 	}
 
-	typ := purlType(storedPurl)
-	if typ == "maven" && mavenPreRelease.MatchString(best) {
-		return ""
-	}
 	best = matchClassifier(best, installedRaw)
-	if best != "" && typ == "golang" && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+	if best != "" && typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
 	return best
@@ -233,5 +235,4 @@ var (
 	ghsaPattern          = regexp.MustCompile(`GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}`)
 	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
 	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.\d+$`)
-	mavenPreRelease      = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
 )
