@@ -283,7 +283,8 @@ SELECT
     sv.reason,
     sv.reason_text,
     sv.suppressed_by,
-    sv.updated_at AS suppressed_at
+    sv.updated_at AS suppressed_at,
+    v.fix_version
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -327,6 +328,7 @@ type GetVulnerabilityRow struct {
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	FixVersion    *string
 }
 
 func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error) {
@@ -359,6 +361,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.ReasonText,
 		&i.SuppressedBy,
 		&i.SuppressedAt,
+		&i.FixVersion,
 	)
 	return &i, err
 }
@@ -383,7 +386,8 @@ SELECT
     sv.reason,
     sv.reason_text,
     sv.suppressed_by,
-    sv.updated_at AS suppressed_at
+    sv.updated_at AS suppressed_at,
+    v.fix_version
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -415,6 +419,7 @@ type GetVulnerabilityByIdRow struct {
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	FixVersion    *string
 }
 
 func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
@@ -440,6 +445,7 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.ReasonText,
 		&i.SuppressedBy,
 		&i.SuppressedAt,
+		&i.FixVersion,
 	)
 	return &i, err
 }
@@ -699,7 +705,8 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    c.cvss_score
+    c.cvss_score,
+    v.fix_version
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -828,6 +835,7 @@ type ListVulnerabilitiesRow struct {
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
 	CvssScore     *float64
+	FixVersion    *string
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -876,6 +884,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.CvssScore,
+			&i.FixVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -916,7 +925,8 @@ resolved_vulnerabilities AS (
         v.created_at,
         v.updated_at,
         v.severity_since,
-        c.cvss_score
+        c.cvss_score,
+        v.fix_version
     FROM
         image_all_vulns v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -927,7 +937,7 @@ distinct_image_vulnerabilities AS (
         v.image_tag,
         v.package,
         v.cve_id)
-        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score,
+        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.fix_version,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
         sv.reason,
         sv.reason_text,
@@ -967,6 +977,7 @@ SELECT
     reason_text,
     suppressed_by,
     suppressed_at,
+    fix_version,
     COUNT(id) OVER () AS total_count
 FROM
     distinct_image_vulnerabilities
@@ -1059,6 +1070,7 @@ type ListVulnerabilitiesForImageRow struct {
 	ReasonText    *string
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
+	FixVersion    *string
 	TotalCount    int64
 }
 
@@ -1103,6 +1115,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.ReasonText,
 			&i.SuppressedBy,
 			&i.SuppressedAt,
+			&i.FixVersion,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -1143,6 +1156,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     c.cvss_score,
+    v.fix_version,
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
@@ -1291,6 +1305,7 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	SuppressedBy  *string
 	SuppressedAt  pgtype.Timestamptz
 	CvssScore     *float64
+	FixVersion    *string
 	TotalCount    int64
 }
 
@@ -1345,6 +1360,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.CvssScore,
+			&i.FixVersion,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

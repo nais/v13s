@@ -3,18 +3,19 @@ package osv
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	workerCount = 20
-	BatchSize   = 1000
+	workerCount    = 20
+	BatchSize      = 1000
+	OsvSyncLockKey = int64(7705370000)
 )
 
 type Fetcher struct {
@@ -23,14 +24,20 @@ type Fetcher struct {
 	log     *logrus.Entry
 }
 
-func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
-	return &Fetcher{client: client, querier: querier, log: log}
+type fixTarget struct {
+	id  pgtype.UUID
+	pkg string
 }
 
 type fixResult struct {
+	id         pgtype.UUID
 	cveID      string
 	pkg        string
 	fixVersion string
+}
+
+func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
+	return &Fetcher{client: client, querier: querier, log: log}
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
@@ -40,6 +47,20 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	}
 	f.log.Info("starting OSV fix-version sync")
 	start := time.Now()
+
+	locked, err := f.querier.TryAdvisoryLock(ctx, OsvSyncLockKey)
+	if err != nil {
+		return fmt.Errorf("acquiring OSV sync advisory lock: %w", err)
+	}
+	if !locked {
+		f.log.Info("OSV sync already running on another pod, skipping")
+		return nil
+	}
+	defer func() {
+		if err := f.querier.AdvisoryUnlock(ctx, OsvSyncLockKey); err != nil {
+			f.log.WithError(err).Warn("failed to release OSV sync advisory lock")
+		}
+	}()
 
 	rows, err := f.querier.GetVulnerabilitiesForOsvEnrichment(ctx)
 	if err != nil {
@@ -66,7 +87,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64, int64) {
+func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]fixTarget) ([]fixResult, int64, int64) {
 	jobs := make(chan string, len(byCve))
 	out := make(chan fixResult, len(byCve)*2)
 
@@ -98,16 +119,16 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fi
 	return results, fetchErrors.Load(), fetchMisses.Load()
 }
 
-func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, out chan<- fixResult, errors, misses *atomic.Int64) {
+func (f *Fetcher) processCve(ctx context.Context, cveID string, targets []fixTarget, out chan<- fixResult, errors, misses *atomic.Int64) {
 	record, err := f.client.FetchVuln(ctx, cveID)
 	if err != nil {
 		f.log.WithError(err).Warnf("OSV fetch failed for %s", cveID)
-		errors.Add(int64(len(pkgs)))
+		errors.Add(int64(len(targets)))
 		return
 	}
 	if record == nil {
-		for _, pkg := range pkgs {
-			out <- fixResult{cveID: cveID, pkg: pkg}
+		for _, t := range targets {
+			out <- fixResult{id: t.id, cveID: cveID, pkg: t.pkg}
 			misses.Add(1)
 		}
 		return
@@ -115,9 +136,14 @@ func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, o
 
 	record = f.mergeAliases(ctx, cveID, record)
 
-	for _, pkg := range pkgs {
-		fv := FixVersionForPurl(record, pkg)
-		out <- fixResult{cveID: cveID, pkg: pkg, fixVersion: fv}
+	fvByPkg := make(map[string]string)
+	for _, t := range targets {
+		fv, seen := fvByPkg[t.pkg]
+		if !seen {
+			fv = FixVersionForPurl(record, t.pkg)
+			fvByPkg[t.pkg] = fv
+		}
+		out <- fixResult{id: t.id, cveID: cveID, pkg: t.pkg, fixVersion: fv}
 		if fv == "" {
 			misses.Add(1)
 		}
@@ -144,38 +170,27 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 }
 
 func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
-	// Sort by (cveID, pkg) to match the ORDER BY in the SQL CTEs and
-	// guarantee consistent lock acquisition order across concurrent callers.
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].cveID != results[j].cveID {
-			return results[i].cveID < results[j].cveID
-		}
-		return results[i].pkg < results[j].pkg
-	})
-
 	var (
-		updateCveIDs, updatePkgs, updateFixes []string
-		clearCveIDs, clearPkgs                []string
+		updateIDs   []pgtype.UUID
+		updateFixes []string
+		clearIDs    []pgtype.UUID
 	)
 	for _, r := range results {
 		if r.fixVersion == "" {
-			clearCveIDs = append(clearCveIDs, r.cveID)
-			clearPkgs = append(clearPkgs, r.pkg)
+			clearIDs = append(clearIDs, r.id)
 		} else {
-			updateCveIDs = append(updateCveIDs, r.cveID)
-			updatePkgs = append(updatePkgs, r.pkg)
+			updateIDs = append(updateIDs, r.id)
 			updateFixes = append(updateFixes, r.fixVersion)
 		}
 	}
 
 	var totalUpdated, totalCleared int64
 
-	for i := 0; i < len(updateCveIDs); i += BatchSize {
-		end := min(i+BatchSize, len(updateCveIDs))
+	for i := 0; i < len(updateIDs); i += BatchSize {
+		end := min(i+BatchSize, len(updateIDs))
 		n, err := f.querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
-			CveIds:      updateCveIDs[i:end],
-			Packages:    updatePkgs[i:end],
-			FixVersions: updateFixes[i:end],
+			VulnerabilityIds: updateIDs[i:end],
+			FixVersions:      updateFixes[i:end],
 		})
 		if err != nil {
 			return fmt.Errorf("bulk updating fix versions: %w", err)
@@ -183,12 +198,9 @@ func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 		totalUpdated += n
 	}
 
-	for i := 0; i < len(clearCveIDs); i += BatchSize {
-		end := min(i+BatchSize, len(clearCveIDs))
-		n, err := f.querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
-			CveIds:   clearCveIDs[i:end],
-			Packages: clearPkgs[i:end],
-		})
+	for i := 0; i < len(clearIDs); i += BatchSize {
+		end := min(i+BatchSize, len(clearIDs))
+		n, err := f.querier.BulkClearFixVersions(ctx, clearIDs[i:end])
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
 		}
@@ -196,14 +208,13 @@ func (f *Fetcher) persist(ctx context.Context, results []fixResult) error {
 	}
 
 	f.log.Infof("OSV sync complete: %d rows updated, %d stale rows cleared", totalUpdated, totalCleared)
-
 	return nil
 }
 
-func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]string {
-	byCve := make(map[string][]string, len(rows))
+func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]fixTarget {
+	byCve := make(map[string][]fixTarget, len(rows))
 	for _, r := range rows {
-		byCve[r.CveID] = append(byCve[r.CveID], r.Package)
+		byCve[r.CveID] = append(byCve[r.CveID], fixTarget{id: r.ID, pkg: r.Package})
 	}
 	return byCve
 }

@@ -15,7 +15,8 @@ WHERE
         OR cve.known_ransomware_use != data.known_ransomware_use);
 
 -- name: GetVulnerabilitiesForOsvEnrichment :many
-SELECT DISTINCT
+SELECT
+    id,
     cve_id,
     package
 FROM
@@ -25,67 +26,28 @@ WHERE
     AND (cve_id LIKE 'CVE-%'
         OR cve_id LIKE 'GHSA-%')
 ORDER BY
-    cve_id,
-    package;
+    id;
+
+-- name: BulkUpdateFixVersions :execrows
+UPDATE
+    vulnerabilities
+SET
+    fix_version = data.fix_version,
+    updated_at = NOW()
+FROM (
+    SELECT
+        unnest(@vulnerability_ids::UUID[]) AS id,
+        unnest(@fix_versions::TEXT[]) AS fix_version) AS data
+WHERE
+    vulnerabilities.id = data.id
+    AND vulnerabilities.fix_version IS DISTINCT FROM data.fix_version;
 
 -- name: BulkClearFixVersions :execrows
-WITH input AS (
-    SELECT
-        unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@packages::TEXT[]) AS package
-),
-LOCKED AS (
-    SELECT
-        v.id
-    FROM
-        vulnerabilities v
-        JOIN input i ON v.cve_id = i.cve_id
-            AND v.package = i.package
-    WHERE
-        v.fix_version IS NOT NULL
-    ORDER BY
-        v.cve_id,
-        v.package,
-        v.id
-    FOR UPDATE)
 UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
     updated_at = NOW()
-FROM
-    LOCKED
 WHERE
-    vulnerabilities.id = locked.id;
-
--- name: BulkUpdateFixVersions :execrows
-WITH input AS (
-    SELECT
-        unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@packages::TEXT[]) AS package,
-        unnest(@fix_versions::TEXT[]) AS fix_version
-),
-LOCKED AS (
-    SELECT
-        v.id,
-        i.fix_version
-    FROM
-        vulnerabilities v
-        JOIN input i ON v.cve_id = i.cve_id
-            AND v.package = i.package
-    WHERE
-        v.fix_version IS DISTINCT FROM i.fix_version
-    ORDER BY
-        v.cve_id,
-        v.package,
-        v.id
-    FOR UPDATE)
-UPDATE
-    vulnerabilities
-SET
-    fix_version = locked.fix_version,
-    updated_at = NOW()
-FROM
-    LOCKED
-WHERE
-    vulnerabilities.id = locked.id;
+    id = ANY (@vulnerability_ids::UUID[])
+    AND fix_version IS NOT NULL;

@@ -71,6 +71,53 @@ func (_c *MockQuerier_AddWorkloadEvent_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// AdvisoryUnlock provides a mock function with given fields: ctx, key
+func (_m *MockQuerier) AdvisoryUnlock(ctx context.Context, key int64) error {
+	ret := _m.Called(ctx, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdvisoryUnlock")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_AdvisoryUnlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdvisoryUnlock'
+type MockQuerier_AdvisoryUnlock_Call struct {
+	*mock.Call
+}
+
+// AdvisoryUnlock is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key int64
+func (_e *MockQuerier_Expecter) AdvisoryUnlock(ctx interface{}, key interface{}) *MockQuerier_AdvisoryUnlock_Call {
+	return &MockQuerier_AdvisoryUnlock_Call{Call: _e.mock.On("AdvisoryUnlock", ctx, key)}
+}
+
+func (_c *MockQuerier_AdvisoryUnlock_Call) Run(run func(ctx context.Context, key int64)) *MockQuerier_AdvisoryUnlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_AdvisoryUnlock_Call) Return(_a0 error) *MockQuerier_AdvisoryUnlock_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_AdvisoryUnlock_Call) RunAndReturn(run func(context.Context, int64) error) *MockQuerier_AdvisoryUnlock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BatchUpdateImageState provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) BatchUpdateImageState(ctx context.Context, arg []sql.BatchUpdateImageStateParams) *sql.BatchUpdateImageStateBatchResults {
 	ret := _m.Called(ctx, arg)
@@ -316,9 +363,9 @@ func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) RunAndReturn(run fun
 	return _c
 }
 
-// BulkClearFixVersions provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, arg sql.BulkClearFixVersionsParams) (int64, error) {
-	ret := _m.Called(ctx, arg)
+// BulkClearFixVersions provides a mock function with given fields: ctx, vulnerabilityIds
+func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, vulnerabilityIds []pgtype.UUID) (int64, error) {
+	ret := _m.Called(ctx, vulnerabilityIds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BulkClearFixVersions")
@@ -326,17 +373,17 @@ func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, arg sql.BulkCle
 
 	var r0 int64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkClearFixVersionsParams) (int64, error)); ok {
-		return rf(ctx, arg)
+	if rf, ok := ret.Get(0).(func(context.Context, []pgtype.UUID) (int64, error)); ok {
+		return rf(ctx, vulnerabilityIds)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkClearFixVersionsParams) int64); ok {
-		r0 = rf(ctx, arg)
+	if rf, ok := ret.Get(0).(func(context.Context, []pgtype.UUID) int64); ok {
+		r0 = rf(ctx, vulnerabilityIds)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, sql.BulkClearFixVersionsParams) error); ok {
-		r1 = rf(ctx, arg)
+	if rf, ok := ret.Get(1).(func(context.Context, []pgtype.UUID) error); ok {
+		r1 = rf(ctx, vulnerabilityIds)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -351,14 +398,14 @@ type MockQuerier_BulkClearFixVersions_Call struct {
 
 // BulkClearFixVersions is a helper method to define mock.On call
 //   - ctx context.Context
-//   - arg sql.BulkClearFixVersionsParams
-func (_e *MockQuerier_Expecter) BulkClearFixVersions(ctx interface{}, arg interface{}) *MockQuerier_BulkClearFixVersions_Call {
-	return &MockQuerier_BulkClearFixVersions_Call{Call: _e.mock.On("BulkClearFixVersions", ctx, arg)}
+//   - vulnerabilityIds []pgtype.UUID
+func (_e *MockQuerier_Expecter) BulkClearFixVersions(ctx interface{}, vulnerabilityIds interface{}) *MockQuerier_BulkClearFixVersions_Call {
+	return &MockQuerier_BulkClearFixVersions_Call{Call: _e.mock.On("BulkClearFixVersions", ctx, vulnerabilityIds)}
 }
 
-func (_c *MockQuerier_BulkClearFixVersions_Call) Run(run func(ctx context.Context, arg sql.BulkClearFixVersionsParams)) *MockQuerier_BulkClearFixVersions_Call {
+func (_c *MockQuerier_BulkClearFixVersions_Call) Run(run func(ctx context.Context, vulnerabilityIds []pgtype.UUID)) *MockQuerier_BulkClearFixVersions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(sql.BulkClearFixVersionsParams))
+		run(args[0].(context.Context), args[1].([]pgtype.UUID))
 	})
 	return _c
 }
@@ -368,7 +415,7 @@ func (_c *MockQuerier_BulkClearFixVersions_Call) Return(_a0 int64, _a1 error) *M
 	return _c
 }
 
-func (_c *MockQuerier_BulkClearFixVersions_Call) RunAndReturn(run func(context.Context, sql.BulkClearFixVersionsParams) (int64, error)) *MockQuerier_BulkClearFixVersions_Call {
+func (_c *MockQuerier_BulkClearFixVersions_Call) RunAndReturn(run func(context.Context, []pgtype.UUID) (int64, error)) *MockQuerier_BulkClearFixVersions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3475,6 +3522,63 @@ func (_c *MockQuerier_SuppressVulnerability_Call) Return(_a0 error) *MockQuerier
 }
 
 func (_c *MockQuerier_SuppressVulnerability_Call) RunAndReturn(run func(context.Context, sql.SuppressVulnerabilityParams) error) *MockQuerier_SuppressVulnerability_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TryAdvisoryLock provides a mock function with given fields: ctx, key
+func (_m *MockQuerier) TryAdvisoryLock(ctx context.Context, key int64) (bool, error) {
+	ret := _m.Called(ctx, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TryAdvisoryLock")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (bool, error)); ok {
+		return rf(ctx, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) bool); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_TryAdvisoryLock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TryAdvisoryLock'
+type MockQuerier_TryAdvisoryLock_Call struct {
+	*mock.Call
+}
+
+// TryAdvisoryLock is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key int64
+func (_e *MockQuerier_Expecter) TryAdvisoryLock(ctx interface{}, key interface{}) *MockQuerier_TryAdvisoryLock_Call {
+	return &MockQuerier_TryAdvisoryLock_Call{Call: _e.mock.On("TryAdvisoryLock", ctx, key)}
+}
+
+func (_c *MockQuerier_TryAdvisoryLock_Call) Run(run func(ctx context.Context, key int64)) *MockQuerier_TryAdvisoryLock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_TryAdvisoryLock_Call) Return(_a0 bool, _a1 error) *MockQuerier_TryAdvisoryLock_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_TryAdvisoryLock_Call) RunAndReturn(run func(context.Context, int64) (bool, error)) *MockQuerier_TryAdvisoryLock_Call {
 	_c.Call.Return(run)
 	return _c
 }
