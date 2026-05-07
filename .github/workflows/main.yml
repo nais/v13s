@@ -91,7 +91,7 @@ jobs:
         run: |-
           helm push ${{ env.NAME }}*.tgz ${{ env.FEATURE_REPOSITORY }}
 
-  rollout:
+  deploy:
     if: github.ref == 'refs/heads/main'
     needs:
       - build_and_push
