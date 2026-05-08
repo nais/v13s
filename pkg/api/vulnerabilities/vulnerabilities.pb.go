@@ -3883,6 +3883,7 @@ type SuppressVulnerabilitiesResponse struct {
 	Suppressed    bool                   `protobuf:"varint,2,opt,name=suppressed,proto3" json:"suppressed,omitempty"`
 	WorkloadCount int32                  `protobuf:"varint,3,opt,name=workload_count,json=workloadCount,proto3" json:"workload_count,omitempty"`
 	ImageCount    int32                  `protobuf:"varint,4,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
+	Errors        []string               `protobuf:"bytes,5,rep,name=errors,proto3" json:"errors,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3943,6 +3944,13 @@ func (x *SuppressVulnerabilitiesResponse) GetImageCount() int32 {
 		return x.ImageCount
 	}
 	return 0
+}
+
+func (x *SuppressVulnerabilitiesResponse) GetErrors() []string {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
 }
 
 var File_vulnerabilities_proto protoreflect.FileDescriptor
@@ -4311,7 +4319,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\bsuppress\x18\x06 \x01(\bH\x02R\bsuppress\x88\x01\x01B\t\n" +
 	"\a_reasonB\x10\n" +
 	"\x0e_suppressed_byB\v\n" +
-	"\t_suppress\"\xa0\x01\n" +
+	"\t_suppress\"\xb8\x01\n" +
 	"\x1fSuppressVulnerabilitiesResponse\x12\x15\n" +
 	"\x06cve_id\x18\x01 \x01(\tR\x05cveId\x12\x1e\n" +
 	"\n" +
@@ -4319,7 +4327,8 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"suppressed\x12%\n" +
 	"\x0eworkload_count\x18\x03 \x01(\x05R\rworkloadCount\x12\x1f\n" +
 	"\vimage_count\x18\x04 \x01(\x05R\n" +
-	"imageCount*_\n" +
+	"imageCount\x12\x16\n" +
+	"\x06errors\x18\x05 \x03(\tR\x06errors*_\n" +
 	"\rSuppressState\x12\x12\n" +
 	"\x0eFALSE_POSITIVE\x10\x00\x12\r\n" +
 	"\tIN_TRIAGE\x10\x01\x12\f\n" +

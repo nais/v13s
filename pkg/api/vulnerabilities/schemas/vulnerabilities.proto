@@ -422,10 +422,11 @@ message SuppressVulnerabilitiesRequest {
 }
 
 message SuppressVulnerabilitiesResponse {
-  string cve_id         = 1;
-  bool   suppressed     = 2;
-  int32  workload_count = 3;
-  int32  image_count    = 4;
+  string          cve_id         = 1;
+  bool            suppressed     = 2;
+  int32           workload_count = 3;
+  int32           image_count    = 4;
+  repeated string errors         = 5;
 }
 
 service Vulnerabilities {

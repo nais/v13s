@@ -751,11 +751,6 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 		}
 	}
 
-	var retErr error
-	if len(suppressErrs) > 0 {
-		retErr = fmt.Errorf("partial failures (%d): %s", len(suppressErrs), strings.Join(suppressErrs, "; "))
-	}
-
 	workloadCount := len(seenWorkloads)
 	imageCount := len(seenImages)
 	if workloadCount > math.MaxInt32 || imageCount > math.MaxInt32 {
@@ -767,5 +762,6 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 		Suppressed:    request.GetSuppress(),
 		WorkloadCount: int32(workloadCount), //#nosec G115
 		ImageCount:    int32(imageCount),    //#nosec G115
-	}, retErr
+		Errors:        suppressErrs,
+	}, nil
 }
