@@ -333,6 +333,37 @@ ON CONFLICT ON CONSTRAINT image_name_package_cve_id
 
 ;
 
+-- name: GetImagesForCveAndWorkloads :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag,
+    v.package,
+    w.name AS workload_name,
+    w.cluster AS workload_cluster,
+    w.namespace AS workload_namespace,
+    w.workload_type
+FROM
+    vulnerabilities v
+    JOIN workloads w ON v.image_name = w.image_name
+        AND v.image_tag = w.image_tag
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN (
+        SELECT
+            unnest(@clusters::TEXT[]) AS c,
+            unnest(@namespaces::TEXT[]) AS ns,
+            unnest(@names::TEXT[]) AS n,
+            unnest(@workload_types::TEXT[]) AS wt,
+            generate_series(1, array_length(@clusters::TEXT[], 1)) AS ord) AS wl ON w.cluster = wl.c
+        AND w.namespace = wl.ns
+        AND w.name = wl.n
+        AND w.workload_type = wl.wt
+WHERE
+    COALESCE(ca.canonical_cve_id, v.cve_id) = @cve_id
+ORDER BY
+    v.image_name,
+    v.image_tag,
+    v.package;
+
 -- name: ListSuppressedVulnerabilities :many
 SELECT
     sv.*,

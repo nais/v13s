@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -321,12 +322,31 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		excludeClusters = []string{}
 	}
 
+	cveIDs := request.CveIds
+	if len(cveIDs) > 0 {
+		seen := make(map[string]struct{}, len(cveIDs))
+		resolved := make([]string, 0, len(cveIDs))
+		for _, id := range cveIDs {
+			canonical := id
+			if canonicalID, err := s.querier.GetCanonicalCveIdByAlias(ctx, id); err == nil {
+				canonical = canonicalID
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return nil, fmt.Errorf("resolve canonical cve id for %s: %w", id, err)
+			}
+			if _, ok := seen[canonical]; !ok {
+				seen[canonical] = struct{}{}
+				resolved = append(resolved, canonical)
+			}
+		}
+		cveIDs = resolved
+	}
+
 	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
 		Cluster:           filter.Cluster,
 		Namespace:         filter.Namespace,
 		WorkloadTypes:     filter.GetWorkloadTypes(),
 		WorkloadName:      filter.Workload,
-		CveIds:            request.CveIds,
+		CveIds:            cveIDs,
 		CvssScore:         request.CvssScore,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
@@ -608,6 +628,17 @@ func str(s *string, def string) string {
 	return *s
 }
 
+func validateSingleNamespace(workloads []*vulnerabilities.SuppressVulnerabilitiesWorkload) error {
+	cluster := workloads[0].GetCluster()
+	namespace := workloads[0].GetNamespace()
+	for _, w := range workloads[1:] {
+		if w.GetCluster() != cluster || w.GetNamespace() != namespace {
+			return fmt.Errorf("all workloads must belong to the same cluster and namespace")
+		}
+	}
+	return nil
+}
+
 func timestamptzFromProto(ts *timestamppb.Timestamp) pgtype.Timestamptz {
 	if ts == nil {
 		return pgtype.Timestamptz{}
@@ -623,4 +654,118 @@ func toInt32Ptr(s *vulnerabilities.Severity) *int32 {
 		return nil
 	}
 	return new(int32(*s))
+}
+
+func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabilities.SuppressVulnerabilitiesRequest) (*vulnerabilities.SuppressVulnerabilitiesResponse, error) {
+	if request.GetCveId() == "" {
+		return nil, fmt.Errorf("cve_id is required")
+	}
+	if len(request.GetWorkloads()) == 0 {
+		return nil, fmt.Errorf("at least one workload must be provided")
+	}
+
+	if err := validateSingleNamespace(request.GetWorkloads()); err != nil {
+		return nil, err
+	}
+
+	canonicalCveID := request.GetCveId()
+	if canonicalID, err := s.querier.GetCanonicalCveIdByAlias(ctx, request.GetCveId()); err == nil {
+		canonicalCveID = canonicalID
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("resolve canonical cve id for %s: %w", request.GetCveId(), err)
+	}
+
+	cveIDs := []string{canonicalCveID}
+	aliases, err := s.querier.GetAliasesByCanonicalCveId(ctx, canonicalCveID)
+	if err != nil {
+		return nil, fmt.Errorf("get aliases for cve: %w", err)
+	}
+	if len(aliases) > 0 {
+		cveIDs = append(cveIDs, aliases...)
+	}
+
+	clusters := make([]string, 0, len(request.GetWorkloads()))
+	namespaces := make([]string, 0, len(request.GetWorkloads()))
+	names := make([]string, 0, len(request.GetWorkloads()))
+	workloadTypes := make([]string, 0, len(request.GetWorkloads()))
+	for _, w := range request.GetWorkloads() {
+		clusters = append(clusters, w.GetCluster())
+		namespaces = append(namespaces, w.GetNamespace())
+		names = append(names, w.GetName())
+		workloadTypes = append(workloadTypes, w.GetWorkloadType())
+	}
+
+	images, err := s.querier.GetImagesForCveAndWorkloads(ctx, sql.GetImagesForCveAndWorkloadsParams{
+		CveID:         canonicalCveID,
+		Clusters:      clusters,
+		Namespaces:    namespaces,
+		Names:         names,
+		WorkloadTypes: workloadTypes,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get images for cve and workloads: %w", err)
+	}
+
+	type imageKey struct{ name, tag string }
+	seenImages := make(map[imageKey]struct{})
+	seenWorkloads := make(map[string]struct{})
+	var suppressErrs []string
+
+	suppressParams := sql.SuppressVulnerabilityParams{
+		SuppressedBy: request.GetSuppressedBy(),
+		Suppressed:   request.GetSuppress(),
+		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
+		ReasonText:   request.GetReason(),
+	}
+
+	for _, img := range images {
+		suppressParams.ImageName = img.ImageName
+		suppressParams.Package = img.Package
+		for _, cveID := range cveIDs {
+			suppressParams.CveID = cveID
+			if supErr := s.querier.SuppressVulnerability(ctx, suppressParams); supErr != nil {
+				suppressErrs = append(suppressErrs, fmt.Sprintf("%s/%s/%s: %v", img.ImageName, img.Package, cveID, supErr))
+			}
+		}
+		seenImages[imageKey{img.ImageName, img.ImageTag}] = struct{}{}
+		seenWorkloads[img.WorkloadCluster+"/"+img.WorkloadNamespace+"/"+img.WorkloadName+"/"+img.WorkloadType] = struct{}{}
+	}
+
+	for key := range seenImages {
+		if recErr := s.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: key.name,
+			ImageTag:  key.tag,
+		}); recErr != nil {
+			suppressErrs = append(suppressErrs, fmt.Sprintf("recalculate summary %s:%s: %v", key.name, key.tag, recErr))
+		}
+		if _, updateErr := s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State: sql.ImageStateResync,
+			Name:  key.name,
+			Tag:   key.tag,
+			ReadyForResyncAt: pgtype.Timestamptz{
+				Time:  time.Now(),
+				Valid: true,
+			},
+		}); updateErr != nil {
+			suppressErrs = append(suppressErrs, fmt.Sprintf("update image state %s:%s: %v", key.name, key.tag, updateErr))
+		}
+	}
+
+	var retErr error
+	if len(suppressErrs) > 0 {
+		retErr = fmt.Errorf("partial failures (%d): %s", len(suppressErrs), strings.Join(suppressErrs, "; "))
+	}
+
+	workloadCount := len(seenWorkloads)
+	imageCount := len(seenImages)
+	if workloadCount > math.MaxInt32 || imageCount > math.MaxInt32 {
+		return nil, fmt.Errorf("result count exceeds int32 range")
+	}
+
+	return &vulnerabilities.SuppressVulnerabilitiesResponse{
+		CveId:         request.GetCveId(),
+		Suppressed:    request.GetSuppress(),
+		WorkloadCount: int32(workloadCount), //#nosec G115
+		ImageCount:    int32(imageCount),    //#nosec G115
+	}, retErr
 }

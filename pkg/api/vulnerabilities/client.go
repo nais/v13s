@@ -26,6 +26,7 @@ type Client interface {
 	GetVulnerabilityById(ctx context.Context, id string) (*GetVulnerabilityByIdResponse, error)
 	GetCve(ctx context.Context, id string) (*GetCveResponse, error)
 	SuppressVulnerability(ctx context.Context, id, reason, suppressedBy string, state SuppressState, suppress bool) error
+	SuppressVulnerabilities(ctx context.Context, cveID string, workloads []*SuppressVulnerabilitiesWorkload, state SuppressState, reason, suppressedBy string, suppress bool) (*SuppressVulnerabilitiesResponse, error)
 	management.ManagementClient
 }
 
@@ -209,6 +210,17 @@ func (c *client) SuppressVulnerability(ctx context.Context, id, reason, suppress
 		Suppress:     &suppress,
 	})
 	return err
+}
+
+func (c *client) SuppressVulnerabilities(ctx context.Context, cveID string, workloads []*SuppressVulnerabilitiesWorkload, state SuppressState, reason, suppressedBy string, suppress bool) (*SuppressVulnerabilitiesResponse, error) {
+	return c.v.SuppressVulnerabilities(ctx, &SuppressVulnerabilitiesRequest{
+		CveId:        cveID,
+		Workloads:    workloads,
+		State:        state,
+		Reason:       &reason,
+		SuppressedBy: &suppressedBy,
+		Suppress:     &suppress,
+	})
 }
 
 func (c *client) RegisterWorkload(ctx context.Context, in *management.RegisterWorkloadRequest, opts ...grpc.CallOption) (*management.RegisterWorkloadResponse, error) {
