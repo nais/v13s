@@ -324,21 +324,10 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 
 	cveIDs := request.CveIds
 	if len(cveIDs) > 0 {
-		seen := make(map[string]struct{}, len(cveIDs))
-		resolved := make([]string, 0, len(cveIDs))
-		for _, id := range cveIDs {
-			canonical := id
-			if canonicalID, err := s.querier.GetCanonicalCveIdByAlias(ctx, id); err == nil {
-				canonical = canonicalID
-			} else if !errors.Is(err, pgx.ErrNoRows) {
-				return nil, fmt.Errorf("resolve canonical cve id for %s: %w", id, err)
-			}
-			if _, ok := seen[canonical]; !ok {
-				seen[canonical] = struct{}{}
-				resolved = append(resolved, canonical)
-			}
+		cveIDs, err = s.resolveCanonicalCveIDs(ctx, cveIDs)
+		if err != nil {
+			return nil, err
 		}
-		cveIDs = resolved
 	}
 
 	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
@@ -497,12 +486,11 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 		}
 	}
 
-	canonicalCveID := vuln.CveID
-	if canonicalID, err := s.querier.GetCanonicalCveIdByAlias(ctx, vuln.CveID); err == nil {
-		canonicalCveID = canonicalID
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("resolve canonical cve id for %s: %w", vuln.CveID, err)
+	canonicalCveIDs, err := s.resolveCanonicalCveIDs(ctx, []string{vuln.CveID})
+	if err != nil {
+		return nil, err
 	}
+	canonicalCveID := canonicalCveIDs[0]
 
 	cveIDs := []string{canonicalCveID}
 	aliases, err := s.querier.GetAliasesByCanonicalCveId(ctx, canonicalCveID)
@@ -668,12 +656,11 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 		return nil, err
 	}
 
-	canonicalCveID := request.GetCveId()
-	if canonicalID, err := s.querier.GetCanonicalCveIdByAlias(ctx, request.GetCveId()); err == nil {
-		canonicalCveID = canonicalID
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("resolve canonical cve id for %s: %w", request.GetCveId(), err)
+	canonicalCveIDs, err := s.resolveCanonicalCveIDs(ctx, []string{request.GetCveId()})
+	if err != nil {
+		return nil, err
 	}
+	canonicalCveID := canonicalCveIDs[0]
 
 	cveIDs := []string{canonicalCveID}
 	aliases, err := s.querier.GetAliasesByCanonicalCveId(ctx, canonicalCveID)
