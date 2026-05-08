@@ -3793,6 +3793,9 @@ func (x *SuppressVulnerabilitiesWorkload) GetWorkloadType() string {
 	return ""
 }
 
+// SuppressVulnerabilitiesRequest suppresses a CVE across one or more workloads.
+// All workloads in a single request must belong to the same cluster and namespace;
+// the server returns an error if this constraint is violated.
 type SuppressVulnerabilitiesRequest struct {
 	state         protoimpl.MessageState             `protogen:"open.v1"`
 	CveId         string                             `protobuf:"bytes,1,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
