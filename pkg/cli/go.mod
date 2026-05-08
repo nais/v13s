@@ -1,6 +1,6 @@
 module github.com/nais/v13s/pkg/cli
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/charmbracelet/huh v1.0.0
