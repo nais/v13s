@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestSuppressVulnerabilities_CrossNamespaceRejected(t *testing.T) {
@@ -32,6 +34,7 @@ func TestSuppressVulnerabilities_CrossNamespaceRejected(t *testing.T) {
 		},
 	})
 	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	assert.Contains(t, err.Error(), "same cluster and namespace")
 }
 
@@ -50,6 +53,7 @@ func TestSuppressVulnerabilities_CrossClusterRejected(t *testing.T) {
 		},
 	})
 	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	assert.Contains(t, err.Error(), "same cluster and namespace")
 }
 
@@ -81,6 +85,24 @@ func TestSuppressVulnerabilities_MissingWorkloads(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "at least one workload")
+}
+
+func TestSuppressVulnerabilities_EmptyWorkloadFields(t *testing.T) {
+	ctx := context.Background()
+	q := mockquerier.NewMockQuerier(t)
+	srv := &Server{querier: q, log: logrus.NewEntry(logrus.New())}
+
+	suppress := true
+	_, err := srv.SuppressVulnerabilities(ctx, &vulnerabilities.SuppressVulnerabilitiesRequest{
+		CveId:    "CVE-2025-9999",
+		Suppress: &suppress,
+		Workloads: []*vulnerabilities.SuppressVulnerabilitiesWorkload{
+			{Cluster: "c", Namespace: "ns", Name: "", WorkloadType: "Deployment"},
+		},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	assert.Contains(t, err.Error(), "workload[0]")
 }
 
 func TestSuppressVulnerabilities_AliasLookupError(t *testing.T) {

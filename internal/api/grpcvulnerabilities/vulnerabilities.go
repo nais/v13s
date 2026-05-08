@@ -617,11 +617,16 @@ func str(s *string, def string) string {
 }
 
 func validateSingleNamespace(workloads []*vulnerabilities.SuppressVulnerabilitiesWorkload) error {
+	for i, w := range workloads {
+		if w.GetCluster() == "" || w.GetNamespace() == "" || w.GetName() == "" || w.GetWorkloadType() == "" {
+			return status.Errorf(codes.InvalidArgument, "workload[%d]: cluster, namespace, name, and workload_type are required", i)
+		}
+	}
 	cluster := workloads[0].GetCluster()
 	namespace := workloads[0].GetNamespace()
 	for _, w := range workloads[1:] {
 		if w.GetCluster() != cluster || w.GetNamespace() != namespace {
-			return fmt.Errorf("all workloads must belong to the same cluster and namespace")
+			return status.Errorf(codes.InvalidArgument, "all workloads must belong to the same cluster and namespace")
 		}
 	}
 	return nil
