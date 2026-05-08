@@ -105,6 +105,34 @@ func TestSuppressVulnerabilities_EmptyWorkloadFields(t *testing.T) {
 	assert.Contains(t, err.Error(), "workload[0]")
 }
 
+func TestSuppressVulnerabilities_NoMatchingImages(t *testing.T) {
+	ctx := context.Background()
+	q := mockquerier.NewMockQuerier(t)
+	srv := &Server{querier: q, log: logrus.NewEntry(logrus.New())}
+
+	suppress := true
+	q.EXPECT().GetCanonicalCveIdByAlias(ctx, "CVE-2025-9999").Return("", pgx.ErrNoRows)
+	q.EXPECT().GetAliasesByCanonicalCveId(ctx, "CVE-2025-9999").Return(nil, nil)
+	q.EXPECT().GetImagesForCveAndWorkloads(ctx, sql.GetImagesForCveAndWorkloadsParams{
+		CveID:         "CVE-2025-9999",
+		Clusters:      []string{"c"},
+		Namespaces:    []string{"ns"},
+		Names:         []string{"app"},
+		WorkloadTypes: []string{"Deployment"},
+	}).Return([]*sql.GetImagesForCveAndWorkloadsRow{}, nil)
+
+	_, err := srv.SuppressVulnerabilities(ctx, &vulnerabilities.SuppressVulnerabilitiesRequest{
+		CveId:    "CVE-2025-9999",
+		Suppress: &suppress,
+		Workloads: []*vulnerabilities.SuppressVulnerabilitiesWorkload{
+			{Cluster: "c", Namespace: "ns", Name: "app", WorkloadType: "Deployment"},
+		},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+	assert.Contains(t, err.Error(), "CVE-2025-9999")
+}
+
 func TestSuppressVulnerabilities_AliasLookupError(t *testing.T) {
 	ctx := context.Background()
 	q := mockquerier.NewMockQuerier(t)

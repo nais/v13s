@@ -697,6 +697,9 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 	if err != nil {
 		return nil, fmt.Errorf("get images for cve and workloads: %w", err)
 	}
+	if len(images) == 0 {
+		return nil, status.Errorf(codes.NotFound, "no matching images found for cve %s and provided workloads", request.GetCveId())
+	}
 
 	type imageKey struct{ name, tag string }
 	seenImages := make(map[imageKey]struct{})
