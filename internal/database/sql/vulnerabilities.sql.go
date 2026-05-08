@@ -261,6 +261,91 @@ func (q *Queries) GetEarliestSeveritySinceForVulnerability(ctx context.Context, 
 	return earliest_severity_since, err
 }
 
+const getImagesForCveAndWorkloads = `-- name: GetImagesForCveAndWorkloads :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag,
+    v.package,
+    w.name AS workload_name,
+    w.cluster AS workload_cluster,
+    w.namespace AS workload_namespace,
+    w.workload_type
+FROM
+    vulnerabilities v
+    JOIN workloads w ON v.image_name = w.image_name
+        AND v.image_tag = w.image_tag
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+    JOIN (
+        SELECT
+            unnest($1::TEXT[]) AS c,
+            unnest($2::TEXT[]) AS ns,
+            unnest($3::TEXT[]) AS n,
+            unnest($4::TEXT[]) AS wt,
+            generate_series(1, array_length($1::TEXT[], 1)) AS ord
+    ) AS wl ON w.cluster = wl.c
+        AND w.namespace = wl.ns
+        AND w.name = wl.n
+        AND w.workload_type = wl.wt
+WHERE
+    COALESCE(ca.canonical_cve_id, v.cve_id) = $5
+ORDER BY
+    v.image_name,
+    v.image_tag,
+    v.package
+`
+
+type GetImagesForCveAndWorkloadsParams struct {
+	Clusters      []string
+	Namespaces    []string
+	Names         []string
+	WorkloadTypes []string
+	CveID         string
+}
+
+type GetImagesForCveAndWorkloadsRow struct {
+	ImageName         string
+	ImageTag          string
+	Package           string
+	WorkloadName      string
+	WorkloadCluster   string
+	WorkloadNamespace string
+	WorkloadType      string
+}
+
+func (q *Queries) GetImagesForCveAndWorkloads(ctx context.Context, arg GetImagesForCveAndWorkloadsParams) ([]*GetImagesForCveAndWorkloadsRow, error) {
+	rows, err := q.db.Query(ctx, getImagesForCveAndWorkloads,
+		arg.Clusters,
+		arg.Namespaces,
+		arg.Names,
+		arg.WorkloadTypes,
+		arg.CveID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetImagesForCveAndWorkloadsRow{}
+	for rows.Next() {
+		var i GetImagesForCveAndWorkloadsRow
+		if err := rows.Scan(
+			&i.ImageName,
+			&i.ImageTag,
+			&i.Package,
+			&i.WorkloadName,
+			&i.WorkloadCluster,
+			&i.WorkloadNamespace,
+			&i.WorkloadType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVulnerability = `-- name: GetVulnerability :one
 SELECT
     v.id,

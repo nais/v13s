@@ -405,6 +405,33 @@ message SuppressVulnerabilityResponse {
   bool suppressed = 2;
 }
 
+message SuppressVulnerabilitiesWorkload {
+  string cluster       = 1;
+  string namespace     = 2;
+  string name          = 3;
+  string workload_type = 4;
+}
+
+// SuppressVulnerabilitiesRequest suppresses a CVE across one or more workloads.
+// All workloads in a single request must belong to the same cluster and namespace;
+// the server returns an error if this constraint is violated.
+message SuppressVulnerabilitiesRequest {
+  string cve_id                                      = 1;
+  repeated SuppressVulnerabilitiesWorkload workloads = 2;
+  SuppressState state                                = 3;
+  optional string reason                             = 4;
+  optional string suppressed_by                      = 5;
+  optional bool suppress                             = 6;
+}
+
+message SuppressVulnerabilitiesResponse {
+  string          cve_id         = 1;
+  bool            suppressed     = 2;
+  int32           workload_count = 3;
+  int32           image_count    = 4;
+  repeated string errors         = 5;
+}
+
 service Vulnerabilities {
   // List all vulnerabilities for the given filters: cluster, namespace, workload, workload_type
   // Example: only supplying a namespace will return all vulnerabilities for all workloads in that namespace across all clusters
@@ -453,4 +480,5 @@ service Vulnerabilities {
 
   // -------------------- Suppress RPCs --------------------
   rpc SuppressVulnerability(SuppressVulnerabilityRequest) returns (SuppressVulnerabilityResponse);
+  rpc SuppressVulnerabilities(SuppressVulnerabilitiesRequest) returns (SuppressVulnerabilitiesResponse);
 }

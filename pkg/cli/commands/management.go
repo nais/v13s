@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -112,6 +113,23 @@ func ManagementCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Com
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				return suppressVulnerability(ctx, cmd, opts, c)
+			},
+		},
+		{
+			Name:    "suppress-all",
+			Aliases: []string{"spa"},
+			Usage:   "suppress a CVE across multiple workloads",
+			Flags: append(flag.CommonFlags(opts, "limit", "order", "since", "since-type", "suppressed", "severity", "cve_ids", "cvss_score", "exclude-clusters", "exclude-namespaces"),
+				&cli.StringFlag{
+					Name:        "cve-id",
+					Aliases:     []string{"cve"},
+					Value:       "",
+					Usage:       "CVE ID to suppress (required)",
+					Destination: &opts.CveId,
+				},
+			),
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return suppressVulnerabilities(ctx, opts, c)
 			},
 		},
 		{
@@ -378,4 +396,135 @@ func extractFilters(opts *flag.Options) (cluster, namespace, workload, workloadT
 		workloadType = &opts.WorkloadType
 	}
 	return
+}
+
+func suppressVulnerabilities(ctx context.Context, opts *flag.Options, c vulnerabilities.Client) error {
+	if opts.CveId == "" {
+		return fmt.Errorf("--cve-id is required")
+	}
+	if opts.Cluster == "" {
+		return fmt.Errorf("--cluster is required")
+	}
+	if opts.Namespace == "" {
+		return fmt.Errorf("--namespace is required")
+	}
+
+	baseOpts := []vulnerabilities.Option{
+		vulnerabilities.ClusterFilter(opts.Cluster),
+		vulnerabilities.NamespaceFilter(opts.Namespace),
+	}
+	if opts.Workload != "" {
+		baseOpts = append(baseOpts, vulnerabilities.WorkloadFilter(opts.Workload))
+	}
+	if opts.WorkloadType != "" {
+		baseOpts = append(baseOpts, vulnerabilities.WorkloadTypeFilter(opts.WorkloadType))
+	}
+
+	const pageSize = int32(100)
+	filter := vulnerabilities.VulnerabilityFilter{CveIds: []string{opts.CveId}}
+	var workloads []*vulnerabilities.SuppressVulnerabilitiesWorkload
+	seenWorkload := make(map[string]struct{})
+	imageToWorkloads := make(map[string][]string)
+	workloadToImage := make(map[string]string)
+	workloadLabelToKey := make(map[string]string)
+	var offset int32
+
+	for {
+		pageOpts := append(baseOpts, vulnerabilities.Limit(pageSize), vulnerabilities.Offset(offset))
+		resp, err := c.ListWorkloadsForVulnerability(ctx, filter, pageOpts...)
+		if err != nil {
+			return fmt.Errorf("list workloads for vulnerability: %w", err)
+		}
+		for _, w := range resp.GetNodes() {
+			ref := w.GetWorkloadRef()
+			workloadKey := fmt.Sprintf("%s/%s/%s/%s", ref.GetCluster(), ref.GetNamespace(), ref.GetName(), ref.GetType())
+			imageKey := fmt.Sprintf("%s:%s", ref.GetImageName(), ref.GetImageTag())
+			workloadLabel := fmt.Sprintf("%s/%s/%s (%s)", ref.GetCluster(), ref.GetNamespace(), ref.GetName(), ref.GetType())
+			if _, seen := seenWorkload[workloadKey]; !seen {
+				imageToWorkloads[imageKey] = append(imageToWorkloads[imageKey], workloadLabel)
+				workloadToImage[workloadKey] = imageKey
+				workloadLabelToKey[workloadLabel] = workloadKey
+				seenWorkload[workloadKey] = struct{}{}
+				workloads = append(workloads, &vulnerabilities.SuppressVulnerabilitiesWorkload{
+					Cluster:      ref.GetCluster(),
+					Namespace:    ref.GetNamespace(),
+					Name:         ref.GetName(),
+					WorkloadType: ref.GetType(),
+				})
+			}
+		}
+		if !resp.GetPageInfo().GetHasNextPage() {
+			break
+		}
+		offset += pageSize
+	}
+
+	if len(workloads) == 0 {
+		fmt.Printf("no unsuppressed workloads found for %s — already suppressed or CVE not present in this namespace\n", opts.CveId)
+		return nil
+	}
+
+	selected := workloads
+	if len(workloads) > 1 {
+		options := make([]huh.Option[*vulnerabilities.SuppressVulnerabilitiesWorkload], 0, len(workloads))
+		for _, w := range workloads {
+			label := fmt.Sprintf("%s/%s/%s (%s)", w.GetCluster(), w.GetNamespace(), w.GetName(), w.GetWorkloadType())
+			options = append(options, huh.NewOption(label, w))
+		}
+		selected = nil
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewMultiSelect[*vulnerabilities.SuppressVulnerabilitiesWorkload]().
+					Title(fmt.Sprintf("Select workloads to suppress %s", opts.CveId)).
+					Description("Space to toggle, enter to confirm").
+					Options(options...).
+					Value(&selected),
+			),
+		)
+		if err := form.Run(); err != nil {
+			return fmt.Errorf("selection cancelled: %w", err)
+		}
+		if len(selected) == 0 {
+			fmt.Println("no workloads selected, nothing suppressed")
+			return nil
+		}
+	}
+
+	sharedWarning := color.New(color.FgYellow).SprintfFunc()
+	selectedKeys := make(map[string]struct{}, len(selected))
+	for _, w := range selected {
+		selectedKeys[fmt.Sprintf("%s/%s/%s/%s", w.GetCluster(), w.GetNamespace(), w.GetName(), w.GetWorkloadType())] = struct{}{}
+	}
+	warnedSiblings := make(map[string]struct{})
+	for _, w := range selected {
+		wKey := fmt.Sprintf("%s/%s/%s/%s", w.GetCluster(), w.GetNamespace(), w.GetName(), w.GetWorkloadType())
+		img := workloadToImage[wKey]
+		for _, siblingLabel := range imageToWorkloads[img] {
+			siblingKey := workloadLabelToKey[siblingLabel]
+			warnKey := siblingKey + "|" + img
+			if _, ok := selectedKeys[siblingKey]; !ok {
+				if _, warned := warnedSiblings[warnKey]; !warned {
+					warnedSiblings[warnKey] = struct{}{}
+					fmt.Println(sharedWarning("! suppressing %s will also affect %s (shared image %s)", w.GetName(), siblingLabel, img))
+				}
+			}
+		}
+	}
+
+	result, err := c.SuppressVulnerabilities(
+		ctx,
+		opts.CveId,
+		selected,
+		vulnerabilities.SuppressState_FALSE_POSITIVE,
+		"Suppressing via CLI",
+		"cli-user",
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("suppress vulnerabilities (partial failures may have occurred): %w", err)
+	}
+
+	fmt.Printf("%s suppressed for %d workload(s) (%d unique image(s))\n",
+		result.GetCveId(), result.GetWorkloadCount(), result.GetImageCount())
+	return nil
 }
