@@ -495,13 +495,18 @@ func suppressVulnerabilities(ctx context.Context, opts *flag.Options, c vulnerab
 	for _, w := range selected {
 		selectedKeys[fmt.Sprintf("%s/%s/%s/%s", w.GetCluster(), w.GetNamespace(), w.GetName(), w.GetWorkloadType())] = struct{}{}
 	}
+	warnedSiblings := make(map[string]struct{})
 	for _, w := range selected {
 		wKey := fmt.Sprintf("%s/%s/%s/%s", w.GetCluster(), w.GetNamespace(), w.GetName(), w.GetWorkloadType())
 		img := workloadToImage[wKey]
 		for _, siblingLabel := range imageToWorkloads[img] {
 			siblingKey := workloadLabelToKey[siblingLabel]
+			warnKey := siblingKey + "|" + img
 			if _, ok := selectedKeys[siblingKey]; !ok {
-				fmt.Println(sharedWarning("! suppressing %s will also affect %s (shared image %s)", w.GetName(), siblingLabel, img))
+				if _, warned := warnedSiblings[warnKey]; !warned {
+					warnedSiblings[warnKey] = struct{}{}
+					fmt.Println(sharedWarning("! suppressing %s will also affect %s (shared image %s)", w.GetName(), siblingLabel, img))
+				}
 			}
 		}
 	}
