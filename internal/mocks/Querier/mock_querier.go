@@ -3850,6 +3850,53 @@ func (_c *MockQuerier_UpdateWorkloadState_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// UpdateWorkloadStateByImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) UpdateWorkloadStateByImage(ctx context.Context, arg sql.UpdateWorkloadStateByImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateWorkloadStateByImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateWorkloadStateByImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpdateWorkloadStateByImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWorkloadStateByImage'
+type MockQuerier_UpdateWorkloadStateByImage_Call struct {
+	*mock.Call
+}
+
+// UpdateWorkloadStateByImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.UpdateWorkloadStateByImageParams
+func (_e *MockQuerier_Expecter) UpdateWorkloadStateByImage(ctx interface{}, arg interface{}) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	return &MockQuerier_UpdateWorkloadStateByImage_Call{Call: _e.mock.On("UpdateWorkloadStateByImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) Run(run func(ctx context.Context, arg sql.UpdateWorkloadStateByImageParams)) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.UpdateWorkloadStateByImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) Return(_a0 error) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) RunAndReturn(run func(context.Context, sql.UpdateWorkloadStateByImageParams) error) *MockQuerier_UpdateWorkloadStateByImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertVulnerabilityLifetimes provides a mock function with given fields: ctx
 func (_m *MockQuerier) UpsertVulnerabilityLifetimes(ctx context.Context) error {
 	ret := _m.Called(ctx)
