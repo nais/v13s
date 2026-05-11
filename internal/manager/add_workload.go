@@ -2,11 +2,9 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
@@ -63,16 +61,13 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		ImageTag:     workload.ImageTag,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			recordStatusOutput(ctx, JobStatusInitializeWorkloadSkipped)
-			// a.log.WithField("workload", workload).Debug("workload already initialized, skipping")
-			return nil
-		}
+		a.log.WithError(err).Error("failed to initialize workload")
+		return err
+	}
 
-		if !errors.Is(err, pgx.ErrNoRows) {
-			a.log.WithError(err).Error("failed to get workload")
-			return err
-		}
+	if !id.Valid {
+		recordStatusOutput(ctx, JobStatusInitializeWorkloadSkipped)
+		return nil
 	}
 
 	err = a.jobClient.AddJob(ctx, &GetAttestationJob{

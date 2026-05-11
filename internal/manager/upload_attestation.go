@@ -108,6 +108,13 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		if n == 0 {
 			u.log.WithFields(logrus.Fields{"image": imageName, "tag": imageTag}).Warn("UpdateImageState matched no rows, image may already be gone")
 		}
+		if err := u.db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			State:     sql.WorkloadStateProcessing,
+		}); err != nil {
+			return fmt.Errorf("failed to update workload state by image: %w", err)
+		}
 		recordStructuredOutput(ctx, JobOutput{
 			Status:   sourceRefDecision.JobStatus,
 			Event:    string(sourceRefEvent),

@@ -108,6 +108,13 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		if n == 0 {
 			f.log.WithFields(logrus.Fields{"image": imageName, "tag": imageTag}).Warn("UpdateImageState matched no rows, image may already be gone")
 		}
+		if err := f.db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			State:     sql.WorkloadStateProcessing,
+		}); err != nil {
+			return fmt.Errorf("failed to update workload state by image: %w", err)
+		}
 	}
 
 	// 5. Enqueue cleanup for unused source refs.
