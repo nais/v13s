@@ -8,6 +8,7 @@ import (
 
 const (
 	Namespace = "nais"
+	Subsystem = "v13s"
 )
 
 var labels = []string{"workload_cluster", "workload_namespace", "workload_name", "workload_type"}
