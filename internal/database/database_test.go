@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMarkImagesAsUnused(t *testing.T) {
@@ -216,4 +217,145 @@ func createTestdata(t *testing.T, db sql.Querier, image_name, image_tag string, 
 		ImageTag:     image_tag,
 	})
 	assert.NoError(t, err)
+}
+
+func TestInitializeWorkload_Failed_Skipped(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	createTestdata(t, db, "img-fail", "v1", false)
+
+	_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "wl-fail",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+		ImageName:    "img-fail",
+		ImageTag:     "v1",
+	})
+	require.NoError(t, err)
+
+	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "wl-fail",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+	})
+	require.NoError(t, err)
+	err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateFailed,
+		ID:    wl.ID,
+	})
+	require.NoError(t, err)
+
+	result, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+		Name:         "wl-fail",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+		ImageName:    "img-fail",
+		ImageTag:     "v1",
+	})
+	assert.NoError(t, err)
+	assert.False(t, result.Valid, "InitializeWorkload should not update a failed workload")
+
+	wl2, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "wl-fail",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, sql.WorkloadStateFailed, wl2.State, "workload state should remain failed")
+}
+
+func TestInitializeWorkload_Updated_Skipped(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	createTestdata(t, db, "img-updated", "v1", false)
+
+	_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "wl-updated",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+		ImageName:    "img-updated",
+		ImageTag:     "v1",
+	})
+	require.NoError(t, err)
+
+	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "wl-updated",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+	})
+	require.NoError(t, err)
+	err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateUpdated,
+		ID:    wl.ID,
+	})
+	require.NoError(t, err)
+
+	result, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+		Name:         "wl-updated",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+		ImageName:    "img-updated",
+		ImageTag:     "v1",
+	})
+	assert.NoError(t, err)
+	assert.False(t, result.Valid, "InitializeWorkload should not update an already-updated workload with the same image")
+}
+
+func TestInitializeWorkload_NoAttestation_Skipped(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	createTestdata(t, db, "img-noatt", "v1", false)
+
+	_, err := db.CreateWorkload(ctx, sql.CreateWorkloadParams{
+		Name:         "wl-noatt",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+		ImageName:    "img-noatt",
+		ImageTag:     "v1",
+	})
+	require.NoError(t, err)
+
+	wl, err := db.GetWorkload(ctx, sql.GetWorkloadParams{
+		Name:         "wl-noatt",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+	})
+	require.NoError(t, err)
+	err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateNoAttestation,
+		ID:    wl.ID,
+	})
+	require.NoError(t, err)
+
+	result, err := db.InitializeWorkload(ctx, sql.InitializeWorkloadParams{
+		Name:         "wl-noatt",
+		WorkloadType: "application",
+		Namespace:    "ns",
+		Cluster:      "cl",
+		ImageName:    "img-noatt",
+		ImageTag:     "v1",
+	})
+	assert.NoError(t, err)
+	assert.False(t, result.Valid, "InitializeWorkload should not update a no_attestation workload with the same image")
 }
