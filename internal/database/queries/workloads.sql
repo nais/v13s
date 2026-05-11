@@ -25,36 +25,41 @@ ON CONFLICT ON CONSTRAINT workload_id
         id;
 
 -- name: InitializeWorkload :one
-INSERT INTO workloads(
-    name,
-    workload_type,
-    namespace,
-    cluster,
-    image_name,
-    image_tag,
-    state)
-VALUES (
-    @name,
-    @workload_type,
-    @namespace,
-    @cluster,
-    @image_name,
-    @image_tag,
-    'processing')
-ON CONFLICT ON CONSTRAINT workload_id
-    DO UPDATE SET
-        state = 'processing',
-        updated_at = NOW(),
-        image_name = @image_name,
-        image_tag = @image_tag
-    WHERE
-        workloads.state = 'failed'
-        OR workloads.state = 'resync'
-        OR (
-            workloads.image_name != @image_name
-            OR workloads.image_tag != @image_tag)
-    RETURNING
-        id;
+WITH upserted AS (
+    INSERT INTO workloads(
+        name,
+        workload_type,
+        namespace,
+        cluster,
+        image_name,
+        image_tag,
+        state)
+    VALUES (
+        @name,
+        @workload_type,
+        @namespace,
+        @cluster,
+        @image_name,
+        @image_tag,
+        'processing')
+    ON CONFLICT ON CONSTRAINT workload_id
+        DO UPDATE SET
+            state = 'processing',
+            updated_at = NOW(),
+            image_name = @image_name,
+            image_tag = @image_tag
+        WHERE
+            workloads.state = 'resync'
+            OR (
+                workloads.image_name != @image_name
+                OR workloads.image_tag != @image_tag)
+        RETURNING
+            id
+)
+SELECT id FROM upserted
+UNION ALL
+SELECT NULL::uuid WHERE NOT EXISTS(SELECT 1 FROM upserted)
+LIMIT 1;
 
 -- name: SetWorkloadState :many
 WITH updated AS (
@@ -153,24 +158,40 @@ ON CONFLICT
 
 -- name: ListWorkloadsByImage :many
 SELECT
-    id,
-    name,
-    workload_type,
-    namespace,
-    CLUSTER,
-    image_name,
-    image_tag,
-    created_at,
-    updated_at
+    w.id,
+    w.name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    w.state,
+    w.created_at,
+    w.updated_at,
+    i.state AS image_state,
+    i.sbom_processing_started_at
 FROM
+    workloads w
+    LEFT JOIN images i ON i.name = w.image_name
+        AND i.tag = w.image_tag
+WHERE
+    w.image_name = @image_name
+    AND w.image_tag = @image_tag
+ORDER BY
+    w.name DESC,
+    w.cluster DESC,
+    w.updated_at DESC;
+
+-- name: UpdateWorkloadStateByImage :exec
+UPDATE
     workloads
+SET
+    state = @state,
+    updated_at = NOW()
 WHERE
     image_name = @image_name
     AND image_tag = @image_tag
-ORDER BY
-    name DESC,
-    CLUSTER DESC,
-    updated_at DESC;
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation');
 
 -- name: ListWorkloadsByCluster :many
 SELECT

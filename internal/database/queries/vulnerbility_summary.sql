@@ -89,7 +89,10 @@ vulnerability_data AS (
             TRUE
         ELSE
             FALSE
-        END AS has_sbom
+        END AS has_sbom,
+        w.state AS workload_state,
+        i.state AS image_state,
+        i.sbom_processing_started_at
     FROM
         filtered_workloads w
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
@@ -100,6 +103,8 @@ vulnerability_data AS (
                 ELSE
                     TRUE
                 END)
+        LEFT JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
     WHERE (sqlc.narg('image_name')::TEXT IS NULL
         OR v.image_name = sqlc.narg('image_name')::TEXT)
     AND (sqlc.narg('image_tag')::TEXT IS NULL

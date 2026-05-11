@@ -281,8 +281,7 @@ FROM
             unnest($2::TEXT[]) AS ns,
             unnest($3::TEXT[]) AS n,
             unnest($4::TEXT[]) AS wt,
-            generate_series(1, array_length($1::TEXT[], 1)) AS ord
-    ) AS wl ON w.cluster = wl.c
+            generate_series(1, array_length($1::TEXT[], 1)) AS ord) AS wl ON w.cluster = wl.c
         AND w.namespace = wl.ns
         AND w.name = wl.n
         AND w.workload_type = wl.wt

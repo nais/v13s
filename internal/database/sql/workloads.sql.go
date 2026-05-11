@@ -178,36 +178,41 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 }
 
 const initializeWorkload = `-- name: InitializeWorkload :one
-INSERT INTO workloads(
-    name,
-    workload_type,
-    namespace,
-    cluster,
-    image_name,
-    image_tag,
-    state)
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    'processing')
-ON CONFLICT ON CONSTRAINT workload_id
-    DO UPDATE SET
-        state = 'processing',
-        updated_at = NOW(),
-        image_name = $5,
-        image_tag = $6
-    WHERE
-        workloads.state = 'failed'
-        OR workloads.state = 'resync'
-        OR (
-            workloads.image_name != $5
-            OR workloads.image_tag != $6)
-    RETURNING
-        id
+WITH upserted AS (
+    INSERT INTO workloads(
+        name,
+        workload_type,
+        namespace,
+        cluster,
+        image_name,
+        image_tag,
+        state)
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        'processing')
+    ON CONFLICT ON CONSTRAINT workload_id
+        DO UPDATE SET
+            state = 'processing',
+            updated_at = NOW(),
+            image_name = $5,
+            image_tag = $6
+        WHERE
+            workloads.state = 'resync'
+            OR (
+                workloads.image_name != $5
+                OR workloads.image_tag != $6)
+        RETURNING
+            id
+)
+SELECT id FROM upserted
+UNION ALL
+SELECT NULL::uuid WHERE NOT EXISTS(SELECT 1 FROM upserted)
+LIMIT 1
 `
 
 type InitializeWorkloadParams struct {
@@ -280,24 +285,29 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 
 const listWorkloadsByImage = `-- name: ListWorkloadsByImage :many
 SELECT
-    id,
-    name,
-    workload_type,
-    namespace,
-    CLUSTER,
-    image_name,
-    image_tag,
-    created_at,
-    updated_at
+    w.id,
+    w.name,
+    w.workload_type,
+    w.namespace,
+    w.cluster,
+    w.image_name,
+    w.image_tag,
+    w.state,
+    w.created_at,
+    w.updated_at,
+    i.state AS image_state,
+    i.sbom_processing_started_at
 FROM
-    workloads
+    workloads w
+    LEFT JOIN images i ON i.name = w.image_name
+        AND i.tag = w.image_tag
 WHERE
-    image_name = $1
-    AND image_tag = $2
+    w.image_name = $1
+    AND w.image_tag = $2
 ORDER BY
-    name DESC,
-    CLUSTER DESC,
-    updated_at DESC
+    w.name DESC,
+    w.cluster DESC,
+    w.updated_at DESC
 `
 
 type ListWorkloadsByImageParams struct {
@@ -306,15 +316,18 @@ type ListWorkloadsByImageParams struct {
 }
 
 type ListWorkloadsByImageRow struct {
-	ID           pgtype.UUID
-	Name         string
-	WorkloadType string
-	Namespace    string
-	Cluster      string
-	ImageName    string
-	ImageTag     string
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID                      pgtype.UUID
+	Name                    string
+	WorkloadType            string
+	Namespace               string
+	Cluster                 string
+	ImageName               string
+	ImageTag                string
+	State                   WorkloadState
+	CreatedAt               pgtype.Timestamptz
+	UpdatedAt               pgtype.Timestamptz
+	ImageState              *ImageState
+	SbomProcessingStartedAt pgtype.Timestamptz
 }
 
 func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error) {
@@ -334,8 +347,11 @@ func (q *Queries) ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByI
 			&i.Cluster,
 			&i.ImageName,
 			&i.ImageTag,
+			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ImageState,
+			&i.SbomProcessingStartedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -453,6 +469,29 @@ type UpdateWorkloadStateParams struct {
 
 func (q *Queries) UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error {
 	_, err := q.db.Exec(ctx, updateWorkloadState, arg.State, arg.ID)
+	return err
+}
+
+const updateWorkloadStateByImage = `-- name: UpdateWorkloadStateByImage :exec
+UPDATE
+    workloads
+SET
+    state = $1,
+    updated_at = NOW()
+WHERE
+    image_name = $2
+    AND image_tag = $3
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation')
+`
+
+type UpdateWorkloadStateByImageParams struct {
+	State     WorkloadState
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error {
+	_, err := q.db.Exec(ctx, updateWorkloadStateByImage, arg.State, arg.ImageName, arg.ImageTag)
 	return err
 }
 

@@ -2,12 +2,14 @@
 INSERT INTO images(
     name,
     tag,
-    metadata)
+    metadata,
+    sbom_processing_started_at)
 VALUES (
     @name,
     @tag,
     COALESCE(
-        @metadata, '{}' ::JSONB))
+        @metadata, '{}' ::JSONB),
+    NOW())
 ON CONFLICT
     DO NOTHING;
 
