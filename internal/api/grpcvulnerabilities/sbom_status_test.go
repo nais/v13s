@@ -38,10 +38,22 @@ func TestDeriveSbomStatus(t *testing.T) {
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 		},
 		{
-			name:          "workload updated => READY",
+			name:          "workload updated, image updated => READY",
 			workloadState: sql.WorkloadStateUpdated,
 			imageState:    &updatedImage,
 			want:          vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+		},
+		{
+			name:          "workload updated, image still processing => PROCESSING",
+			workloadState: sql.WorkloadStateUpdated,
+			imageState:    &initImage,
+			want:          vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+		},
+		{
+			name:          "workload updated, no image yet => NO_SBOM",
+			workloadState: sql.WorkloadStateUpdated,
+			imageState:    nil,
+			want:          vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 		},
 		{
 			name:          "workload processing, image updated => READY",

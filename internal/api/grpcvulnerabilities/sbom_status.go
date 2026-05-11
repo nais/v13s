@@ -42,8 +42,6 @@ func deriveSbomStatus(workloadState sql.WorkloadState, imageState *sql.ImageStat
 		return vulnerabilities.SbomStatus_SBOM_STATUS_FAILED
 	case sql.WorkloadStateNoAttestation:
 		return vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
-	case sql.WorkloadStateUpdated:
-		return vulnerabilities.SbomStatus_SBOM_STATUS_READY
 	default:
 		return deriveImageSbomStatus(imageState)
 	}
