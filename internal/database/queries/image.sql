@@ -136,7 +136,8 @@ WHERE
     AND images.tag = w.image_tag
     AND images.updated_at < @threshold_time
     AND images.state != 'resync'
-    AND images.state != ANY (@excluded_states::image_state[]);
+    AND images.state != ANY (@excluded_states::image_state[])
+    AND w.state != 'unrecoverable';
 
 -- name: MarkUntrackedImagesForResync :execrows
 UPDATE

@@ -573,6 +573,80 @@ func TestUpdater(t *testing.T) {
 			"ready_for_resync_at of an already-resync image must not be overwritten by MarkForResync")
 	})
 
+	t.Run("MarkForResync skips images where all workloads are unrecoverable", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-unrecoverable"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		// Set the workload state to unrecoverable
+		_, err = pool.Exec(ctx,
+			"UPDATE workloads SET state = 'unrecoverable' WHERE image_name = $1 AND image_tag = $2",
+			imageName, imageVersion)
+		assert.NoError(t, err)
+
+		// Set image to 'updated' (resync-eligible) old enough to be picked up by MarkForResync.
+		// Using 'updated' rather than 'failed' because MarkForResync excludes 'failed' via
+		// ExcludedStates — we need a state that would normally trigger a resync so we can confirm
+		// the unrecoverable-workload filter is what prevents it.
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = 'updated', updated_at = $1 WHERE name = $2 AND tag = $3",
+			time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault-time.Hour),
+			imageName, imageVersion)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+
+		err = u.MarkForResync(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateUpdated, image.State,
+			"image with only unrecoverable workloads must not be reset to resync by MarkForResync")
+	})
+
+	t.Run("MarkForResync resets image when at least one workload is not unrecoverable", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		assert.NoError(t, err)
+
+		imageName := "project-mixed"
+		imageVersion := "v1"
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		// Add a second workload for the same image
+		_, err = pool.Exec(ctx,
+			"INSERT INTO workloads (name, workload_type, namespace, cluster, image_name, image_tag, state) VALUES ($1, 'app', 'namespace-1', 'cluster-1', $2, $3, 'processing')",
+			"workload-extra", imageName, imageVersion)
+		assert.NoError(t, err)
+
+		// Set first workload to unrecoverable, second stays processing
+		_, err = pool.Exec(ctx,
+			"UPDATE workloads SET state = 'unrecoverable' WHERE name = $1 AND workload_type = 'app' AND namespace = 'namespace-1' AND cluster = 'cluster-1' AND image_name = $2 AND image_tag = $3",
+			fmt.Sprintf("workload-%s", imageName), imageName, imageVersion)
+		assert.NoError(t, err)
+
+		// Set image state to 'updated' (resync-eligible), old enough to be picked up by MarkForResync.
+		// Using 'updated' rather than 'failed' because MarkForResync excludes 'failed' via ExcludedStates.
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = 'updated', updated_at = $1 WHERE name = $2 AND tag = $3",
+			time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault-time.Hour),
+			imageName, imageVersion)
+		assert.NoError(t, err)
+
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+
+		err = u.MarkForResync(ctx)
+		assert.NoError(t, err)
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
+		assert.NoError(t, err)
+		assert.Equal(t, sql.ImageStateResync, image.State,
+			"image with at least one non-unrecoverable workload must be reset to resync by MarkForResync")
+	})
+
 	t.Run("images ready for resync after SBOM upload", func(t *testing.T) {
 		ctx = context.Background()
 
