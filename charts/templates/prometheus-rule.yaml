@@ -18,7 +18,7 @@ spec:
             nais_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
-            }
+            }[1h]
             )
             )
 
