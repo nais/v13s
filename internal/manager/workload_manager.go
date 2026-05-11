@@ -45,8 +45,8 @@ const (
 )
 
 func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
-	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
-	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
+	meter := otel.GetMeterProvider().Meter("nais_manager")
+	udCounter, err := meter.Int64UpDownCounter("nais_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
 		panic(err)
 	}

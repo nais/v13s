@@ -53,7 +53,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 
 	gFunc := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "v13s_workload_update_queue_length",
+		Name: "nais_workload_update_queue_length",
 	}, func() float64 {
 		return float64(len(workloadEventQueue.Updated))
 	})
