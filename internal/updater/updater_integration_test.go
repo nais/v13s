@@ -624,8 +624,8 @@ func TestUpdater(t *testing.T) {
 
 		// Set first workload to unrecoverable, second stays processing
 		_, err = pool.Exec(ctx,
-			"UPDATE workloads SET state = 'unrecoverable' WHERE name = $1 AND image_name = $2",
-			fmt.Sprintf("workload-%s", imageName), imageName)
+			"UPDATE workloads SET state = 'unrecoverable' WHERE name = $1 AND workload_type = 'app' AND namespace = 'namespace-1' AND cluster = 'cluster-1' AND image_name = $2 AND image_tag = $3",
+			fmt.Sprintf("workload-%s", imageName), imageName, imageVersion)
 		assert.NoError(t, err)
 
 		// Set image state to 'updated' (resync-eligible), old enough to be picked up by MarkForResync.
