@@ -200,12 +200,7 @@ WHERE
     AND images.updated_at < $1
     AND images.state != 'resync'
     AND images.state != ANY ($2::image_state[])
-    AND EXISTS (
-        SELECT 1 FROM workloads w2
-        WHERE w2.image_name = images.name
-          AND w2.image_tag  = images.tag
-          AND w2.state != 'unrecoverable'
-    )
+    AND w.state != 'unrecoverable'
 `
 
 type MarkImagesForResyncParams struct {

@@ -587,9 +587,12 @@ func TestUpdater(t *testing.T) {
 			imageName, imageVersion)
 		assert.NoError(t, err)
 
-		// Set image state to failed, old enough to be picked up by MarkForResync
+		// Set image to 'updated' (resync-eligible) old enough to be picked up by MarkForResync.
+		// Using 'updated' rather than 'failed' because MarkForResync excludes 'failed' via
+		// ExcludedStates — we need a state that would normally trigger a resync so we can confirm
+		// the unrecoverable-workload filter is what prevents it.
 		_, err = pool.Exec(ctx,
-			"UPDATE images SET state = 'failed', updated_at = $1 WHERE name = $2 AND tag = $3",
+			"UPDATE images SET state = 'updated', updated_at = $1 WHERE name = $2 AND tag = $3",
 			time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault-time.Hour),
 			imageName, imageVersion)
 		assert.NoError(t, err)
@@ -601,7 +604,7 @@ func TestUpdater(t *testing.T) {
 
 		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageVersion})
 		assert.NoError(t, err)
-		assert.Equal(t, sql.ImageStateFailed, image.State,
+		assert.Equal(t, sql.ImageStateUpdated, image.State,
 			"image with only unrecoverable workloads must not be reset to resync by MarkForResync")
 	})
 
@@ -625,9 +628,10 @@ func TestUpdater(t *testing.T) {
 			fmt.Sprintf("workload-%s", imageName), imageName)
 		assert.NoError(t, err)
 
-		// Set image state to failed, old enough to be picked up by MarkForResync
+		// Set image state to 'updated' (resync-eligible), old enough to be picked up by MarkForResync.
+		// Using 'updated' rather than 'failed' because MarkForResync excludes 'failed' via ExcludedStates.
 		_, err = pool.Exec(ctx,
-			"UPDATE images SET state = 'failed', updated_at = $1 WHERE name = $2 AND tag = $3",
+			"UPDATE images SET state = 'updated', updated_at = $1 WHERE name = $2 AND tag = $3",
 			time.Now().Add(-updater.ResyncImagesOlderThanMinutesDefault-time.Hour),
 			imageName, imageVersion)
 		assert.NoError(t, err)
