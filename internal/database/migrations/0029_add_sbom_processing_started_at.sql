@@ -5,4 +5,3 @@ ALTER TABLE images
 -- +goose Down
 ALTER TABLE images
     DROP COLUMN IF EXISTS sbom_processing_started_at;
-

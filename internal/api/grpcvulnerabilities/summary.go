@@ -207,18 +207,22 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	workloadStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(workloads))
+	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
 	for _, w := range workloads {
+		wl := &vulnerabilities.Workload{
+			Cluster:   w.Cluster,
+			Namespace: w.Namespace,
+			Name:      w.Name,
+			Type:      w.WorkloadType,
+			ImageName: w.ImageName,
+			ImageTag:  w.ImageTag,
+		}
+		sbomStatus := sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt)
 		workloadStatuses = append(workloadStatuses, &vulnerabilities.WorkloadSbomStatus{
-			Workload: &vulnerabilities.Workload{
-				Cluster:   w.Cluster,
-				Namespace: w.Namespace,
-				Name:      w.Name,
-				Type:      w.WorkloadType,
-				ImageName: w.ImageName,
-				ImageTag:  w.ImageTag,
-			},
-			SbomStatus: sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt),
+			Workload:   wl,
+			SbomStatus: sbomStatus,
 		})
+		workloadRefs = append(workloadRefs, wl)
 	}
 
 	var vulnSummary *vulnerabilities.Summary
@@ -238,6 +242,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
+		WorkloadRef:          workloadRefs,
 		Workloads:            workloadStatuses,
 	}, nil
 }

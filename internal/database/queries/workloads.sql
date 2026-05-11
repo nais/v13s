@@ -42,24 +42,33 @@ WITH upserted AS (
         @image_name,
         @image_tag,
         'processing')
-    ON CONFLICT ON CONSTRAINT workload_id
-        DO UPDATE SET
-            state = 'processing',
-            updated_at = NOW(),
-            image_name = @image_name,
-            image_tag = @image_tag
-        WHERE
-            workloads.state = 'resync'
-            OR (
-                workloads.image_name != @image_name
-                OR workloads.image_tag != @image_tag)
-        RETURNING
-            id
-)
-SELECT id FROM upserted
-UNION ALL
-SELECT NULL::uuid WHERE NOT EXISTS(SELECT 1 FROM upserted)
-LIMIT 1;
+ON CONFLICT ON CONSTRAINT workload_id
+    DO UPDATE SET
+        state = 'processing',
+        updated_at = NOW(),
+        image_name = @image_name,
+        image_tag = @image_tag
+    WHERE
+        workloads.state = 'resync'
+        OR (
+            workloads.image_name != @image_name
+            OR workloads.image_tag != @image_tag)
+    RETURNING
+        id)
+    SELECT
+        id
+    FROM
+        upserted
+    UNION ALL
+    SELECT
+        NULL::UUID
+    WHERE
+        NOT EXISTS (
+            SELECT
+                1
+            FROM
+                upserted)
+    LIMIT 1;
 
 -- name: SetWorkloadState :many
 WITH updated AS (

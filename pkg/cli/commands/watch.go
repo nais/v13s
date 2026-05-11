@@ -300,4 +300,3 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 		}
 	}
 }
-
