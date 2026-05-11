@@ -15,7 +15,7 @@ spec:
         - record: namespace:workload:vulnerabilities:critical:max1h
           expr: max by (workload_namespace, workload_name) (
             max_over_time(
-            v13s_workload_vulnerabilities{
+            nais_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
             }[1h]
@@ -24,14 +24,14 @@ spec:
 
         - record: namespace:workload:vulnerabilities:critical:current
           expr: max by (workload_namespace, workload_name) (
-            v13s_workload_vulnerabilities{
+            nais_workload_vulnerabilities{
             severity="CRITICAL",
             workload_namespace="nais-system"
             }
             )
             or
             max by (workload_namespace, workload_name) (
-            0 * v13s_workload_vulnerabilities{workload_namespace="nais-system"}
+            0 * nais_workload_vulnerabilities{workload_namespace="nais-system"}
             )
 
     - name: namespace-workload-vulnerability-alerts
