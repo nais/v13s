@@ -191,11 +191,24 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
+	var staleTag string
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, status.Error(codes.NotFound, "no SBOM found for image")
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 		}
-		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
+		// No exact match — try latest summary for same image name from any other tag.
+		staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
+			ImageName:  request.ImageName,
+			ExcludeTag: request.ImageTag,
+		})
+		if fallbackErr != nil {
+			if errors.Is(fallbackErr, pgx.ErrNoRows) {
+				return nil, status.Error(codes.NotFound, "no SBOM found for image")
+			}
+			return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
+		}
+		summary = staleSummary
+		staleTag = staleSummary.ImageTag
 	}
 
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
@@ -237,6 +250,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			RiskScore:   summary.RiskScore,
 			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
 			HasSbom:     true,
+		}
+		if staleTag != "" {
+			vulnSummary.StaleImageTag = &staleTag
 		}
 	}
 

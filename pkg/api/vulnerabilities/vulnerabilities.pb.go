@@ -515,6 +515,7 @@ type Summary struct {
 	RiskScore     int32                  `protobuf:"varint,7,opt,name=riskScore,proto3" json:"riskScore,omitempty"`
 	HasSbom       bool                   `protobuf:"varint,8,opt,name=hasSbom,proto3" json:"hasSbom,omitempty"`
 	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
+	StaleImageTag *string                `protobuf:"bytes,10,opt,name=stale_image_tag,json=staleImageTag,proto3,oneof" json:"stale_image_tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -610,6 +611,13 @@ func (x *Summary) GetLastUpdated() *timestamppb.Timestamp {
 		return x.LastUpdated
 	}
 	return nil
+}
+
+func (x *Summary) GetStaleImageTag() string {
+	if x != nil && x.StaleImageTag != nil {
+		return *x.StaleImageTag
+	}
+	return ""
 }
 
 type Cve struct {
@@ -4167,7 +4175,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xa6\x02\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xe7\x02\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4179,8 +4187,11 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x05total\x18\x06 \x01(\x05R\x05total\x12\x1c\n" +
 	"\triskScore\x18\a \x01(\x05R\triskScore\x12\x18\n" +
 	"\ahasSbom\x18\b \x01(\bR\ahasSbom\x12B\n" +
-	"\flast_updated\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vlastUpdated\x88\x01\x01B\x0f\n" +
-	"\r_last_updated\"\xf0\x03\n" +
+	"\flast_updated\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vlastUpdated\x88\x01\x01\x12+\n" +
+	"\x0fstale_image_tag\x18\n" +
+	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01B\x0f\n" +
+	"\r_last_updatedB\x12\n" +
+	"\x10_stale_image_tag\"\xf0\x03\n" +
 	"\x03Cve\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +

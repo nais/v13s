@@ -35,6 +35,7 @@ type Querier interface {
 	GetImagesForCveAndWorkloads(ctx context.Context, arg GetImagesForCveAndWorkloadsParams) ([]*GetImagesForCveAndWorkloadsRow, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
+	GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)

@@ -254,6 +254,18 @@ WHERE
     image_name = @image_name
     AND image_tag = @image_tag;
 
+-- name: GetLatestSummaryForImageName :one
+SELECT
+    *
+FROM
+    vulnerability_summary
+WHERE
+    image_name = @image_name
+    AND image_tag != @exclude_tag
+ORDER BY
+    updated_at DESC
+LIMIT 1;
+
 -- name: GetLastSnapshotDateForVulnerabilitySummary :one
 SELECT
     COALESCE(MAX(snapshot_date), '2025-01-01')::DATE AS last_snapshot

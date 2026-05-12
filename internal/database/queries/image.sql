@@ -50,9 +50,10 @@ UPDATE
 SET
     state = @state,
     ready_for_resync_at = @ready_for_resync_at,
-    sbom_processing_started_at = CASE
-        WHEN @state::image_state IN ('resync', 'initialized') THEN COALESCE(sbom_processing_started_at, NOW())
-        ELSE sbom_processing_started_at
+    sbom_processing_started_at = CASE WHEN @state::image_state IN ('resync', 'initialized') THEN
+        COALESCE(sbom_processing_started_at, NOW())
+    ELSE
+        sbom_processing_started_at
     END,
     updated_at = NOW()
 WHERE

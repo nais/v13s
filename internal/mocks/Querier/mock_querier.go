@@ -1438,6 +1438,65 @@ func (_c *MockQuerier_GetLastSnapshotDateForVulnerabilitySummary_Call) RunAndRet
 	return _c
 }
 
+// GetLatestSummaryForImageName provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetLatestSummaryForImageName(ctx context.Context, arg sql.GetLatestSummaryForImageNameParams) (*sql.VulnerabilitySummary, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLatestSummaryForImageName")
+	}
+
+	var r0 *sql.VulnerabilitySummary
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetLatestSummaryForImageNameParams) (*sql.VulnerabilitySummary, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetLatestSummaryForImageNameParams) *sql.VulnerabilitySummary); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.VulnerabilitySummary)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetLatestSummaryForImageNameParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetLatestSummaryForImageName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestSummaryForImageName'
+type MockQuerier_GetLatestSummaryForImageName_Call struct {
+	*mock.Call
+}
+
+// GetLatestSummaryForImageName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetLatestSummaryForImageNameParams
+func (_e *MockQuerier_Expecter) GetLatestSummaryForImageName(ctx interface{}, arg interface{}) *MockQuerier_GetLatestSummaryForImageName_Call {
+	return &MockQuerier_GetLatestSummaryForImageName_Call{Call: _e.mock.On("GetLatestSummaryForImageName", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetLatestSummaryForImageName_Call) Run(run func(ctx context.Context, arg sql.GetLatestSummaryForImageNameParams)) *MockQuerier_GetLatestSummaryForImageName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetLatestSummaryForImageNameParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetLatestSummaryForImageName_Call) Return(_a0 *sql.VulnerabilitySummary, _a1 error) *MockQuerier_GetLatestSummaryForImageName_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetLatestSummaryForImageName_Call) RunAndReturn(run func(context.Context, sql.GetLatestSummaryForImageNameParams) (*sql.VulnerabilitySummary, error)) *MockQuerier_GetLatestSummaryForImageName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSourceRef provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetSourceRef(ctx context.Context, arg sql.GetSourceRefParams) (*sql.SourceRef, error) {
 	ret := _m.Called(ctx, arg)

@@ -307,9 +307,10 @@ UPDATE
 SET
     state = $1,
     ready_for_resync_at = $2,
-    sbom_processing_started_at = CASE
-        WHEN $1::image_state IN ('resync', 'initialized') THEN COALESCE(sbom_processing_started_at, NOW())
-        ELSE sbom_processing_started_at
+    sbom_processing_started_at = CASE WHEN $1::image_state IN ('resync', 'initialized') THEN
+        COALESCE(sbom_processing_started_at, NOW())
+    ELSE
+        sbom_processing_started_at
     END,
     updated_at = NOW()
 WHERE

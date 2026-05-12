@@ -16,9 +16,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const defaultWatchInterval = 5 * time.Second
+const defaultWatchInterval = 10 * time.Second
 
-// watchWorkload identifies a workload to watch.
 type watchWorkload struct {
 	cluster   string
 	namespace string
@@ -46,7 +45,7 @@ func WatchCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command 
 						&cli.IntFlag{
 							Name:        "interval",
 							Aliases:     []string{"i"},
-							Value:       5,
+							Value:       10,
 							Usage:       "poll interval in seconds",
 							Destination: &intervalSec,
 						},
@@ -60,14 +59,11 @@ func WatchCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command 
 	}
 }
 
-// watchSbomStatus fetches workloads with pending SBOM, lets the user pick one,
-// then polls and clears the screen until cancelled.
 func watchSbomStatus(ctx context.Context, c vulnerabilities.Client, o *flag.Options, interval time.Duration) error {
 	if interval <= 0 {
 		interval = defaultWatchInterval
 	}
 
-	// --- 1. Collect all workloads with a pending SBOM status ---
 	pending, err := collectPendingWorkloads(ctx, c, o)
 	if err != nil {
 		return err
@@ -77,19 +73,14 @@ func watchSbomStatus(ctx context.Context, c vulnerabilities.Client, o *flag.Opti
 		return nil
 	}
 
-	// --- 2. Interactive picker ---
 	selected, err := pickWorkload(pending)
 	if err != nil {
 		return err
 	}
 
-	// --- 3. Watch loop ---
 	return runWatchLoop(ctx, c, selected, interval)
 }
 
-// collectPendingWorkloads pages through ListVulnerabilitySummaries and returns
-// only workloads whose SBOM status is UNSPECIFIED (maps to PROCESSING) or
-// SBOM_STATUS_PROCESSING.
 func collectPendingWorkloads(ctx context.Context, c vulnerabilities.Client, o *flag.Options) ([]watchWorkload, error) {
 	const pageSize = 100
 	var out []watchWorkload
@@ -150,7 +141,6 @@ func isPending(s vulnerabilities.SbomStatus) bool {
 		s == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 }
 
-// pickWorkload shows a fuzzy-searchable huh.Select and returns the chosen workload.
 func pickWorkload(pending []watchWorkload) (watchWorkload, error) {
 	options := make([]huh.Option[watchWorkload], 0, len(pending))
 	for _, w := range pending {
@@ -174,9 +164,6 @@ func pickWorkload(pending []watchWorkload) (watchWorkload, error) {
 	return chosen, nil
 }
 
-// runWatchLoop polls GetVulnerabilitySummaryForImage for the workload's image
-// (derived from ListVulnerabilitySummaries with exact workload filters) and
-// prints a refreshed status screen every interval.
 func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkload, interval time.Duration) error {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	labelFmt := color.New(color.FgYellow).SprintfFunc()
@@ -193,7 +180,6 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 		fmt.Printf("Workload : %s\n", wl.label())
 		fmt.Printf("Refreshed: %s  (every %s)\n\n", time.Now().Format(time.RFC3339), interval)
 
-		// Fetch the workload's current summary (gives us image + sbom status)
 		summaries, err := c.ListVulnerabilitySummaries(ctx,
 			vulnerabilities.ClusterFilter(wl.cluster),
 			vulnerabilities.NamespaceFilter(wl.namespace),
@@ -211,68 +197,70 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 		} else {
 			node := summaries.GetNodes()[0]
 			sbomStatus := node.GetSbomStatus()
-			workloadSbomStatus := sbomStatusLabel(sbomStatus)
 			imageName := node.GetWorkload().GetImageName()
 			imageTag := node.GetWorkload().GetImageTag()
 			imageRef := imageName + ":" + imageTag
 
-			// Compute elapsed time from ProcessingStartedAt if available.
 			var elapsedStr string
 			if ts := sbomStatus.GetProcessingStartedAt(); ts != nil {
-				started := ts.AsTime()
-				elapsed := time.Since(started).Round(time.Second)
-				elapsedStr = elapsed.String()
+				elapsedStr = time.Since(ts.AsTime()).Round(time.Second).String()
 			}
 
-			// Print workload-level status
+			isProcessing := sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+				sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
+
 			tbl := table.New("Field", "Value")
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
 			tbl.AddRow("Image", imageRef)
-			tbl.AddRow("SBOM Status", workloadSbomStatus)
+			tbl.AddRow("SBOM Status", sbomStatusLabel(sbomStatus))
 			if elapsedStr != "" {
 				tbl.AddRow("Processing for", elapsedStr)
 			}
-			tbl.AddRow("Has SBOM", fmt.Sprintf("%v", node.GetVulnerabilitySummary().GetHasSbom()))
-			tbl.Print()
 
-			// If we have an image ref, also fetch per-image summary for richer detail
+			var vulnLine string
+			var imgWorkloads []*vulnerabilities.WorkloadSbomStatus
 			if imageName != "" && imageTag != "" {
-				fmt.Println()
-				imgResp, err := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
-				if err != nil {
-					if status.Code(err) == codes.NotFound {
-						fmt.Printf("\nImage summary: no SBOM ingested yet for %s\n", imageRef)
-					} else if ctx.Err() == nil {
-						fmt.Printf("\nImage summary error: %v\n", err)
-					}
-				} else {
+				imgResp, imgErr := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+				if imgErr != nil && ctx.Err() == nil && status.Code(imgErr) != codes.NotFound {
+					fmt.Printf("Image summary error: %v\n", imgErr)
+				} else if imgErr == nil {
 					s := imgResp.GetVulnerabilitySummary()
 					if s != nil && s.GetHasSbom() {
-						fmt.Printf("Vulnerabilities — Critical: %d  High: %d  Medium: %d  Low: %d  Unassigned: %d  RiskScore: %d\n",
-							s.GetCritical(), s.GetHigh(), s.GetMedium(), s.GetLow(), s.GetUnassigned(), s.GetRiskScore())
-					}
-
-					// Print per-workload statuses for this image
-					workloads := imgResp.GetWorkloads()
-					if len(workloads) > 0 {
-						fmt.Println()
-						wtbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
-						wtbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
-						for _, w := range workloads {
-							wref := w.GetWorkload()
-							highlight := wref.GetName() == wl.name && wref.GetNamespace() == wl.namespace && wref.GetCluster() == wl.cluster
-							name := wref.GetName()
-							if highlight {
-								name = "► " + name
-							}
-							wtbl.AddRow(name, wref.GetType(), wref.GetNamespace(), wref.GetCluster(), sbomStatusLabel(w.GetSbomStatus()))
+						staleNote := ""
+						if s.GetStaleImageTag() != "" {
+							staleNote = fmt.Sprintf(" (previous tag %s)", s.GetStaleImageTag())
+						} else if isProcessing {
+							staleNote = " (previous scan)"
 						}
-						wtbl.Print()
+						vulnLine = fmt.Sprintf("Critical: %d  High: %d  Medium: %d  Low: %d  Unassigned: %d  RiskScore: %d%s",
+							s.GetCritical(), s.GetHigh(), s.GetMedium(), s.GetLow(), s.GetUnassigned(), s.GetRiskScore(), staleNote)
 					}
+					imgWorkloads = imgResp.GetWorkloads()
 				}
 			}
 
-			// Exit on any terminal state, printing total duration.
+			if vulnLine != "" {
+				tbl.AddRow("Vulnerabilities", vulnLine)
+			} else if isProcessing {
+				tbl.AddRow("Vulnerabilities", "waiting for first SBOM scan")
+			}
+			tbl.Print()
+
+			if len(imgWorkloads) > 0 {
+				fmt.Println()
+				wtbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
+				wtbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
+				for _, w := range imgWorkloads {
+					wref := w.GetWorkload()
+					name := wref.GetName()
+					if wref.GetName() == wl.name && wref.GetNamespace() == wl.namespace && wref.GetCluster() == wl.cluster {
+						name = "► " + name
+					}
+					wtbl.AddRow(name, wref.GetType(), wref.GetNamespace(), wref.GetCluster(), sbomStatusLabel(w.GetSbomStatus()))
+				}
+				wtbl.Print()
+			}
+
 			currentStatus := sbomStatus.GetStatus()
 			if currentStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY {
 				fmt.Printf("\n%s SBOM ready!", color.GreenString("✓"))

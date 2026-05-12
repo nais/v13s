@@ -85,6 +85,43 @@ func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context
 	return last_snapshot, err
 }
 
+const getLatestSummaryForImageName = `-- name: GetLatestSummaryForImageName :one
+SELECT
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+FROM
+    vulnerability_summary
+WHERE
+    image_name = $1
+    AND image_tag != $2
+ORDER BY
+    updated_at DESC
+LIMIT 1
+`
+
+type GetLatestSummaryForImageNameParams struct {
+	ImageName  string
+	ExcludeTag string
+}
+
+func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error) {
+	row := q.db.QueryRow(ctx, getLatestSummaryForImageName, arg.ImageName, arg.ExcludeTag)
+	var i VulnerabilitySummary
+	err := row.Scan(
+		&i.ID,
+		&i.ImageName,
+		&i.ImageTag,
+		&i.Critical,
+		&i.High,
+		&i.Medium,
+		&i.Low,
+		&i.Unassigned,
+		&i.RiskScore,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT

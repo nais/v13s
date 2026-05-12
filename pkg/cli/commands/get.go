@@ -165,19 +165,40 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	s := resp.GetVulnerabilitySummary()
-	if s != nil {
-		fmt.Printf("Image: %s:%s\n", imageName, imageTag)
-		fmt.Printf("Critical: %d  High: %d  Medium: %d  Low: %d  Unassigned: %d  RiskScore: %d\n",
-			s.GetCritical(), s.GetHigh(), s.GetMedium(), s.GetLow(), s.GetUnassigned(), s.GetRiskScore())
-		fmt.Printf("Last Updated: %s\n\n", formatLastUpdated(s.GetLastUpdated()))
-	} else {
-		fmt.Printf("Image: %s:%s — no SBOM\n\n", imageName, imageTag)
+	workloads := resp.GetWorkloads()
+
+	isProcessing := false
+	for _, w := range workloads {
+		st := w.GetSbomStatus().GetStatus()
+		if st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+			st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+			isProcessing = true
+			break
+		}
 	}
 
-	if len(resp.GetWorkloads()) > 0 {
+	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
+	if s != nil && s.GetHasSbom() {
+		staleNote := ""
+		if s.GetStaleImageTag() != "" {
+			staleNote = fmt.Sprintf(" (from previous tag %s — updating)", s.GetStaleImageTag())
+		} else if isProcessing {
+			staleNote = " (previous scan — updating)"
+		}
+		fmt.Printf("Critical: %d  High: %d  Medium: %d  Low: %d  Unassigned: %d  RiskScore: %d%s\n",
+			s.GetCritical(), s.GetHigh(), s.GetMedium(), s.GetLow(), s.GetUnassigned(), s.GetRiskScore(), staleNote)
+		fmt.Printf("Last Updated: %s\n\n", formatLastUpdated(s.GetLastUpdated()))
+	} else if isProcessing {
+		fmt.Println("No vulnerability data yet — waiting for first SBOM scan to complete.")
+		fmt.Println()
+	} else {
+		fmt.Printf("No SBOM\n\n")
+	}
+
+	if len(workloads) > 0 {
 		tbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-		for _, w := range resp.GetWorkloads() {
+		for _, w := range workloads {
 			wl := w.GetWorkload()
 			tbl.AddRow(wl.GetName(), wl.GetType(), wl.GetNamespace(), wl.GetCluster(), formatSbomStatus(w.GetSbomStatus()))
 		}
