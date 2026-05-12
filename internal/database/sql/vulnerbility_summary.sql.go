@@ -85,6 +85,43 @@ func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context
 	return last_snapshot, err
 }
 
+const getLatestSummaryForImageName = `-- name: GetLatestSummaryForImageName :one
+SELECT
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+FROM
+    vulnerability_summary
+WHERE
+    image_name = $1
+    AND image_tag != $2
+ORDER BY
+    updated_at DESC
+LIMIT 1
+`
+
+type GetLatestSummaryForImageNameParams struct {
+	ImageName  string
+	ExcludeTag string
+}
+
+func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error) {
+	row := q.db.QueryRow(ctx, getLatestSummaryForImageName, arg.ImageName, arg.ExcludeTag)
+	var i VulnerabilitySummary
+	err := row.Scan(
+		&i.ID,
+		&i.ImageName,
+		&i.ImageTag,
+		&i.Critical,
+		&i.High,
+		&i.Medium,
+		&i.Low,
+		&i.Unassigned,
+		&i.RiskScore,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT
@@ -400,7 +437,10 @@ vulnerability_data AS (
             TRUE
         ELSE
             FALSE
-        END AS has_sbom
+        END AS has_sbom,
+        w.state AS workload_state,
+        i.state AS image_state,
+        i.sbom_processing_started_at
     FROM
         filtered_workloads w
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
@@ -411,6 +451,8 @@ vulnerability_data AS (
                 ELSE
                     TRUE
                 END)
+        LEFT JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
     WHERE ($9::TEXT IS NULL
         OR v.image_name = $9::TEXT)
     AND ($10::TEXT IS NULL
@@ -418,7 +460,7 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom,
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at,
 (
         SELECT
             COUNT(*)
@@ -501,27 +543,30 @@ type ListVulnerabilitySummariesParams struct {
 }
 
 type ListVulnerabilitySummariesRow struct {
-	ID                pgtype.UUID
-	WorkloadName      string
-	WorkloadType      string
-	Namespace         string
-	Cluster           string
-	CurrentImageName  string
-	CurrentImageTag   string
-	ImageName         *string
-	ImageTag          *string
-	Critical          *int32
-	High              *int32
-	Medium            *int32
-	Low               *int32
-	Unassigned        *int32
-	RiskScore         *int32
-	WorkloadCreatedAt pgtype.Timestamptz
-	WorkloadUpdatedAt pgtype.Timestamptz
-	SummaryCreatedAt  pgtype.Timestamptz
-	SummaryUpdatedAt  pgtype.Timestamptz
-	HasSbom           bool
-	TotalCount        int64
+	ID                      pgtype.UUID
+	WorkloadName            string
+	WorkloadType            string
+	Namespace               string
+	Cluster                 string
+	CurrentImageName        string
+	CurrentImageTag         string
+	ImageName               *string
+	ImageTag                *string
+	Critical                *int32
+	High                    *int32
+	Medium                  *int32
+	Low                     *int32
+	Unassigned              *int32
+	RiskScore               *int32
+	WorkloadCreatedAt       pgtype.Timestamptz
+	WorkloadUpdatedAt       pgtype.Timestamptz
+	SummaryCreatedAt        pgtype.Timestamptz
+	SummaryUpdatedAt        pgtype.Timestamptz
+	HasSbom                 bool
+	WorkloadState           WorkloadState
+	ImageState              *ImageState
+	SbomProcessingStartedAt pgtype.Timestamptz
+	TotalCount              int64
 }
 
 func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error) {
@@ -565,6 +610,9 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.SummaryCreatedAt,
 			&i.SummaryUpdatedAt,
 			&i.HasSbom,
+			&i.WorkloadState,
+			&i.ImageState,
+			&i.SbomProcessingStartedAt,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

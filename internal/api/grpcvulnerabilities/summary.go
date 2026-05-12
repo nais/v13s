@@ -83,6 +83,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			},
+			SbomStatus: sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt),
 		}
 	})
 
@@ -190,16 +191,36 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
+	var staleTag string
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
-				VulnerabilitySummary: &vulnerabilities.Summary{},
-				WorkloadRef:          make([]*vulnerabilities.Workload, 0),
-			}, nil
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 		}
-
-		return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
+		// No vulnerability summary for this exact tag yet (e.g. first-time scan in progress).
+		// Fall through so we still populate workload_ref + workloads with SBOM state.
+		// VulnerabilitySummary will be empty (&Summary{}) to preserve backward-compatible
+		// semantics — nais/api cannot yet distinguish stale data from a real empty summary.
+		//
+		// TODO: activate stale-tag fallback once nais/api is updated. Before enabling,
+		// these three call sites in nais/api/internal/vulnerability/queries.go must be updated:
+		//   - GetImageHasSBOM (queries.go:156):        check StaleImageTag; return false when set
+		//   - GetImageVulnerabilitySummary (queries.go:354): surface StaleImageTag to callers
+		//   - ListWorkloadReferences (queries.go:25):  handle codes.NotFound explicitly
+		//
+		// staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
+		// 	ImageName:  request.ImageName,
+		// 	ExcludeTag: request.ImageTag,
+		// })
+		// if fallbackErr != nil && !errors.Is(fallbackErr, pgx.ErrNoRows) {
+		// 	return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
+		// }
+		// if fallbackErr == nil {
+		// 	summary = staleSummary
+		// 	staleTag = staleSummary.ImageTag
+		// }
+		summary = nil
 	}
+
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
@@ -208,18 +229,27 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		return nil, fmt.Errorf("failed to list workloads by image: %w", err)
 	}
 
-	refs := make([]*vulnerabilities.Workload, 0)
+	workloadStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(workloads))
+	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
 	for _, w := range workloads {
-		refs = append(refs, &vulnerabilities.Workload{
+		wl := &vulnerabilities.Workload{
 			Cluster:   w.Cluster,
 			Namespace: w.Namespace,
 			Name:      w.Name,
 			Type:      w.WorkloadType,
 			ImageName: w.ImageName,
 			ImageTag:  w.ImageTag,
+		}
+		sbomStatus := sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt)
+		workloadStatuses = append(workloadStatuses, &vulnerabilities.WorkloadSbomStatus{
+			Workload:   wl,
+			SbomStatus: sbomStatus,
 		})
+		workloadRefs = append(workloadRefs, wl)
 	}
 
+	// Default to empty summary to preserve backward-compatible semantics for existing
+	// consumers (e.g. nais/api) that do not handle a nil VulnerabilitySummary.
 	vulnSummary := &vulnerabilities.Summary{}
 	if summary != nil {
 		vulnSummary = &vulnerabilities.Summary{
@@ -233,11 +263,15 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
 			HasSbom:     true,
 		}
+		if staleTag != "" {
+			vulnSummary.StaleImageTag = &staleTag
+		}
 	}
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
-		WorkloadRef:          refs,
+		WorkloadRef:          workloadRefs,
+		Workloads:            workloadStatuses,
 	}, nil
 }
 

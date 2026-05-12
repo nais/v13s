@@ -92,12 +92,12 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image name")
 	}
-	parts := strings.Split(cmd.Args().First(), ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	imageName, imageTag, err := helpers.SplitImageRef(cmd.Args().First())
+	if err != nil {
+		return err
 	}
 	start := time.Now()
-	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
+	resp, err := c.ListVulnerabilitiesForImage(ctx, imageName, imageTag, opts...)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 		columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "Has SBOM", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag")
 			headers = append(headers, "Last Updated")
@@ -219,13 +219,13 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
-				n.GetVulnerabilitySummary().GetHasSbom(),
-				n.GetVulnerabilitySummary().GetCritical(),
-				n.GetVulnerabilitySummary().GetHigh(),
-				n.GetVulnerabilitySummary().GetMedium(),
-				n.GetVulnerabilitySummary().GetLow(),
-				n.GetVulnerabilitySummary().GetUnassigned(),
-				n.GetVulnerabilitySummary().GetRiskScore(),
+				formatSbomStatus(n.GetSbomStatus()),
+				intOrDash(n.GetVulnerabilitySummary().Critical, n.GetVulnerabilitySummary().GetHasSbom()),
+				intOrDash(n.GetVulnerabilitySummary().High, n.GetVulnerabilitySummary().GetHasSbom()),
+				intOrDash(n.GetVulnerabilitySummary().Medium, n.GetVulnerabilitySummary().GetHasSbom()),
+				intOrDash(n.GetVulnerabilitySummary().Low, n.GetVulnerabilitySummary().GetHasSbom()),
+				intOrDash(n.GetVulnerabilitySummary().Unassigned, n.GetVulnerabilitySummary().GetHasSbom()),
+				intOrDash(n.GetVulnerabilitySummary().RiskScore, n.GetVulnerabilitySummary().GetHasSbom()),
 			}
 			if o.Since != "" {
 				vals = append(vals, n.Workload.GetImageTag())
@@ -454,4 +454,37 @@ func timeSinceCreation(created, lastUpdated time.Time) string {
 	default:
 		return fmt.Sprintf("%dm", minutes)
 	}
+}
+
+func intOrDash(v int32, hasSbom bool) string {
+	if !hasSbom {
+		return "-"
+	}
+	return fmt.Sprint(v)
+}
+
+func sbomStatusLabel(s *vulnerabilities.SbomStatusInfo) string {
+	if s == nil {
+		return "PROCESSING"
+	}
+	status := s.GetStatus()
+	if status == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+		return "PROCESSING"
+	}
+	return strings.TrimPrefix(status.String(), "SBOM_STATUS_")
+}
+
+func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
+	label := sbomStatusLabel(s)
+	if s == nil {
+		return label
+	}
+	status := s.GetStatus()
+	if status == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING || status == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+		if ts := s.GetProcessingStartedAt(); ts != nil {
+			elapsed := time.Since(ts.AsTime()).Round(time.Second)
+			return fmt.Sprintf("%s (%s)", label, elapsed)
+		}
+	}
+	return label
 }

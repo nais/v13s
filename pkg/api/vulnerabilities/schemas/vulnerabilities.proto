@@ -42,6 +42,14 @@ enum SinceType {
   FIXED = 1;
 }
 
+enum SbomStatus {
+  SBOM_STATUS_UNSPECIFIED = 0;
+  SBOM_STATUS_PROCESSING = 2;
+  SBOM_STATUS_READY = 3;
+  SBOM_STATUS_NO_SBOM = 4;
+  SBOM_STATUS_FAILED = 5;
+}
+
 // -------------------- Core Messages --------------------
 
 message Filter {
@@ -77,6 +85,7 @@ message Summary {
   int32 riskScore = 7;
   bool hasSbom = 8;
   optional google.protobuf.Timestamp last_updated = 9;
+  optional string stale_image_tag = 10;
 }
 
 message Cve {
@@ -138,6 +147,17 @@ message WorkloadSummary {
   string id = 1;
   Workload workload = 2;
   Summary vulnerability_summary = 3;
+  SbomStatusInfo sbom_status = 4;
+}
+
+message SbomStatusInfo {
+  SbomStatus status = 1;
+  optional google.protobuf.Timestamp processing_started_at = 2;
+}
+
+message WorkloadSbomStatus {
+  Workload workload = 1;
+  SbomStatusInfo sbom_status = 2;
 }
 
 message WorkloadFix {
@@ -329,7 +349,9 @@ message GetVulnerabilitySummaryForImageRequest {
 
 message GetVulnerabilitySummaryForImageResponse {
   Summary vulnerability_summary = 1;
-  repeated Workload workloadRef = 2;
+  // Deprecated: use workloads instead, which includes sbom_status per workload.
+  repeated Workload workload_ref = 2 [deprecated = true];
+  repeated WorkloadSbomStatus workloads = 3;
 }
 
 message GetVulnerabilitySummaryRequest {

@@ -58,6 +58,7 @@ func main() {
 	cmds = append(cmds, commands.GetCommands(c, opts)...)
 	cmds = append(cmds, commands.ManagementCommands(c, opts)...)
 	cmds = append(cmds, commands.FindCommands(c, opts)...)
+	cmds = append(cmds, commands.WatchCommands(c, opts)...)
 
 	cmd := &cli.Command{
 		Name:  "v13s",

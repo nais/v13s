@@ -14,12 +14,14 @@ const createImage = `-- name: CreateImage :exec
 INSERT INTO images(
     name,
     tag,
-    metadata)
+    metadata,
+    sbom_processing_started_at)
 VALUES (
     $1,
     $2,
     COALESCE(
-        $3, '{}' ::JSONB))
+        $3, '{}' ::JSONB),
+    NOW())
 ON CONFLICT
     DO NOTHING
 `
@@ -37,7 +39,7 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 
 const getImage = `-- name: GetImage :one
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom_processing_started_at
 FROM
     images
 WHERE
@@ -61,13 +63,14 @@ func (q *Queries) GetImage(ctx context.Context, arg GetImageParams) (*Image, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReadyForResyncAt,
+		&i.SbomProcessingStartedAt,
 	)
 	return &i, err
 }
 
 const getImagesScheduledForSync = `-- name: GetImagesScheduledForSync :many
 SELECT
-    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at
+    name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom_processing_started_at
 FROM
     images
 WHERE
@@ -95,6 +98,7 @@ func (q *Queries) GetImagesScheduledForSync(ctx context.Context) ([]*Image, erro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ReadyForResyncAt,
+			&i.SbomProcessingStartedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -191,6 +195,7 @@ UPDATE
 SET
     state = 'resync',
     ready_for_resync_at = NOW(),
+    sbom_processing_started_at = NOW(),
     updated_at = NOW()
 FROM
     workloads w
@@ -219,6 +224,7 @@ UPDATE
 SET
     state = 'resync',
     ready_for_resync_at = NOW(),
+    sbom_processing_started_at = NOW(),
     updated_at = NOW()
 WHERE
     state = 'untracked'
@@ -301,6 +307,11 @@ UPDATE
 SET
     state = $1,
     ready_for_resync_at = $2,
+    sbom_processing_started_at = CASE WHEN $1::image_state IN ('resync', 'initialized') THEN
+        NOW()
+    ELSE
+        NULL
+    END,
     updated_at = NOW()
 WHERE
     name = $3
