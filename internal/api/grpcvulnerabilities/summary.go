@@ -197,24 +197,28 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 		}
 		// No vulnerability summary for this exact tag yet (e.g. first-time scan in progress).
-		// Try to find a stale summary from a previous tag of the same image so callers can
-		// show stale vulnerability data while the new scan is running.
-		// We never return codes.NotFound here — nais/api does not handle that yet.
-		// TODO: once nais/api handles codes.NotFound on GetVulnerabilitySummaryForImage
-		// (ListWorkloadReferences, GetImageHasSBOM, GetImageVulnerabilitySummary in queries.go),
-		// return codes.NotFound when both this lookup and the stale lookup return ErrNoRows.
-		staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
-			ImageName:  request.ImageName,
-			ExcludeTag: request.ImageTag,
-		})
-		if fallbackErr != nil && !errors.Is(fallbackErr, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
-		}
-		if fallbackErr == nil {
-			summary = staleSummary
-			staleTag = staleSummary.ImageTag
-		}
-		// If fallbackErr is ErrNoRows, summary stays nil — empty response, backward-compatible.
+		// Fall through so we still populate workload_ref + workloads with SBOM state.
+		// VulnerabilitySummary will be empty (&Summary{}) to preserve backward-compatible
+		// semantics — nais/api cannot yet distinguish stale data from a real empty summary.
+		//
+		// TODO: activate stale-tag fallback once nais/api is updated. Before enabling,
+		// these three call sites in nais/api/internal/vulnerability/queries.go must be updated:
+		//   - GetImageHasSBOM (queries.go:156):        check StaleImageTag; return false when set
+		//   - GetImageVulnerabilitySummary (queries.go:354): surface StaleImageTag to callers
+		//   - ListWorkloadReferences (queries.go:25):  handle codes.NotFound explicitly
+		//
+		// staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
+		// 	ImageName:  request.ImageName,
+		// 	ExcludeTag: request.ImageTag,
+		// })
+		// if fallbackErr != nil && !errors.Is(fallbackErr, pgx.ErrNoRows) {
+		// 	return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
+		// }
+		// if fallbackErr == nil {
+		// 	summary = staleSummary
+		// 	staleTag = staleSummary.ImageTag
+		// }
+		summary = nil
 	}
 
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
