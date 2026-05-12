@@ -316,15 +316,19 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 
 		return &vulnerabilities.CveSummary{
 			Cve: &vulnerabilities.Cve{
-				Id:          row.CveID,
-				Title:       row.CveTitle,
-				Description: row.CveDesc,
-				Link:        row.CveLink,
-				Severity:    vulnerabilities.Severity(row.Severity),
-				References:  refs,
-				Created:     timestamppb.New(row.CreatedAt.Time),
-				LastUpdated: timestamppb.New(row.UpdatedAt.Time),
-				CvssScore:   row.CvssScore,
+				Id:                 row.CveID,
+				Title:              row.CveTitle,
+				Description:        row.CveDesc,
+				Link:               row.CveLink,
+				Severity:           vulnerabilities.Severity(row.Severity),
+				References:         refs,
+				Created:            timestamppb.New(row.CreatedAt.Time),
+				LastUpdated:        timestamppb.New(row.UpdatedAt.Time),
+				CvssScore:          row.CvssScore,
+				EpssScore:          row.EpssScore,
+				EpssPercentile:     row.EpssPercentile,
+				HasKevEntry:        row.HasKevEntry,
+				KnownRansomwareUse: row.KnownRansomwareUse,
 			},
 			AffectedWorkloads: row.AffectedWorkloads,
 		}

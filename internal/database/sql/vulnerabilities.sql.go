@@ -368,7 +368,12 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    v.fix_version
+    v.fix_version,
+    c.cvss_score,
+    c.epss_score,
+    c.epss_percentile,
+    c.has_kev_entry,
+    c.known_ransomware_use
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -391,28 +396,33 @@ type GetVulnerabilityParams struct {
 }
 
 type GetVulnerabilityRow struct {
-	ID            pgtype.UUID
-	ImageName     string
-	ImageTag      string
-	Package       string
-	LatestVersion string
-	Source        string
-	CveID         string
-	LastSeverity  int32
-	SeveritySince pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	CveTitle      string
-	CveDesc       string
-	CveLink       string
-	Severity      int32
-	Refs          typeext.MapStringString
-	Suppressed    bool
-	Reason        *VulnerabilitySuppressReason
-	ReasonText    *string
-	SuppressedBy  *string
-	SuppressedAt  pgtype.Timestamptz
-	FixVersion    *string
+	ID                 pgtype.UUID
+	ImageName          string
+	ImageTag           string
+	Package            string
+	LatestVersion      string
+	Source             string
+	CveID              string
+	LastSeverity       int32
+	SeveritySince      pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	Refs               typeext.MapStringString
+	Suppressed         bool
+	Reason             *VulnerabilitySuppressReason
+	ReasonText         *string
+	SuppressedBy       *string
+	SuppressedAt       pgtype.Timestamptz
+	FixVersion         *string
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
 }
 
 func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error) {
@@ -446,6 +456,11 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.SuppressedBy,
 		&i.SuppressedAt,
 		&i.FixVersion,
+		&i.CvssScore,
+		&i.EpssScore,
+		&i.EpssPercentile,
+		&i.HasKevEntry,
+		&i.KnownRansomwareUse,
 	)
 	return &i, err
 }
@@ -471,7 +486,12 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    v.fix_version
+    v.fix_version,
+    c.cvss_score,
+    c.epss_score,
+    c.epss_percentile,
+    c.has_kev_entry,
+    c.known_ransomware_use
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -484,26 +504,31 @@ WHERE
 `
 
 type GetVulnerabilityByIdRow struct {
-	ID            pgtype.UUID
-	ImageName     string
-	ImageTag      string
-	Package       string
-	LatestVersion string
-	Source        string
-	CveID         string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	CveTitle      string
-	CveDesc       string
-	CveLink       string
-	Severity      int32
-	Suppressed    bool
-	Refs          typeext.MapStringString
-	Reason        *VulnerabilitySuppressReason
-	ReasonText    *string
-	SuppressedBy  *string
-	SuppressedAt  pgtype.Timestamptz
-	FixVersion    *string
+	ID                 pgtype.UUID
+	ImageName          string
+	ImageTag           string
+	Package            string
+	LatestVersion      string
+	Source             string
+	CveID              string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	Suppressed         bool
+	Refs               typeext.MapStringString
+	Reason             *VulnerabilitySuppressReason
+	ReasonText         *string
+	SuppressedBy       *string
+	SuppressedAt       pgtype.Timestamptz
+	FixVersion         *string
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
 }
 
 func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error) {
@@ -530,6 +555,11 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.SuppressedBy,
 		&i.SuppressedAt,
 		&i.FixVersion,
+		&i.CvssScore,
+		&i.EpssScore,
+		&i.EpssPercentile,
+		&i.HasKevEntry,
+		&i.KnownRansomwareUse,
 	)
 	return &i, err
 }
@@ -790,6 +820,10 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     c.cvss_score,
+    c.epss_score,
+    c.epss_percentile,
+    c.has_kev_entry,
+    c.known_ransomware_use,
     v.fix_version
 FROM
     vulnerabilities v
@@ -894,32 +928,36 @@ type ListVulnerabilitiesParams struct {
 }
 
 type ListVulnerabilitiesRow struct {
-	ID            pgtype.UUID
-	WorkloadName  string
-	WorkloadType  string
-	Namespace     string
-	Cluster       string
-	ImageName     string
-	ImageTag      string
-	LatestVersion string
-	SeveritySince pgtype.Timestamptz
-	Package       string
-	CveID         string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	CveTitle      string
-	CveDesc       string
-	CveLink       string
-	Severity      int32
-	CveCreatedAt  pgtype.Timestamptz
-	CveUpdatedAt  pgtype.Timestamptz
-	Suppressed    bool
-	Reason        *VulnerabilitySuppressReason
-	ReasonText    *string
-	SuppressedBy  *string
-	SuppressedAt  pgtype.Timestamptz
-	CvssScore     *float64
-	FixVersion    *string
+	ID                 pgtype.UUID
+	WorkloadName       string
+	WorkloadType       string
+	Namespace          string
+	Cluster            string
+	ImageName          string
+	ImageTag           string
+	LatestVersion      string
+	SeveritySince      pgtype.Timestamptz
+	Package            string
+	CveID              string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	CveCreatedAt       pgtype.Timestamptz
+	CveUpdatedAt       pgtype.Timestamptz
+	Suppressed         bool
+	Reason             *VulnerabilitySuppressReason
+	ReasonText         *string
+	SuppressedBy       *string
+	SuppressedAt       pgtype.Timestamptz
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	FixVersion         *string
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -968,6 +1006,10 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.CvssScore,
+			&i.EpssScore,
+			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
 			&i.FixVersion,
 		); err != nil {
 			return nil, err
@@ -1010,6 +1052,10 @@ resolved_vulnerabilities AS (
         v.updated_at,
         v.severity_since,
         c.cvss_score,
+        c.epss_score,
+        c.epss_percentile,
+        c.has_kev_entry,
+        c.known_ransomware_use,
         v.fix_version
     FROM
         image_all_vulns v
@@ -1021,7 +1067,7 @@ distinct_image_vulnerabilities AS (
         v.image_tag,
         v.package,
         v.cve_id)
-        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.fix_version,
+        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.epss_score, v.epss_percentile, v.has_kev_entry, v.known_ransomware_use, v.fix_version,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
         sv.reason,
         sv.reason_text,
@@ -1049,6 +1095,10 @@ SELECT
     updated_at,
     severity_since,
     cvss_score,
+    epss_score,
+    epss_percentile,
+    has_kev_entry,
+    known_ransomware_use,
     cve_title,
     cve_desc,
     cve_link,
@@ -1132,30 +1182,34 @@ type ListVulnerabilitiesForImageParams struct {
 }
 
 type ListVulnerabilitiesForImageRow struct {
-	ID            pgtype.UUID
-	ImageName     string
-	ImageTag      string
-	Package       string
-	CveID         string
-	LatestVersion string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	SeveritySince pgtype.Timestamptz
-	CvssScore     *float64
-	CveTitle      string
-	CveDesc       string
-	CveLink       string
-	Severity      int32
-	CveRefs       []byte
-	CveCreatedAt  pgtype.Timestamptz
-	CveUpdatedAt  pgtype.Timestamptz
-	Suppressed    bool
-	Reason        *VulnerabilitySuppressReason
-	ReasonText    *string
-	SuppressedBy  *string
-	SuppressedAt  pgtype.Timestamptz
-	FixVersion    *string
-	TotalCount    int64
+	ID                 pgtype.UUID
+	ImageName          string
+	ImageTag           string
+	Package            string
+	CveID              string
+	LatestVersion      string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	SeveritySince      pgtype.Timestamptz
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	CveRefs            []byte
+	CveCreatedAt       pgtype.Timestamptz
+	CveUpdatedAt       pgtype.Timestamptz
+	Suppressed         bool
+	Reason             *VulnerabilitySuppressReason
+	ReasonText         *string
+	SuppressedBy       *string
+	SuppressedAt       pgtype.Timestamptz
+	FixVersion         *string
+	TotalCount         int64
 }
 
 func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error) {
@@ -1187,6 +1241,10 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.UpdatedAt,
 			&i.SeveritySince,
 			&i.CvssScore,
+			&i.EpssScore,
+			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
 			&i.CveTitle,
 			&i.CveDesc,
 			&i.CveLink,
@@ -1240,6 +1298,10 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     c.cvss_score,
+    c.epss_score,
+    c.epss_percentile,
+    c.has_kev_entry,
+    c.known_ransomware_use,
     v.fix_version,
     COUNT(v.id) OVER () AS total_count
 FROM
@@ -1363,34 +1425,38 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 }
 
 type ListWorkloadsForVulnerabilitiesRow struct {
-	ID            pgtype.UUID
-	WorkloadName  string
-	WorkloadType  string
-	Namespace     string
-	Cluster       string
-	ImageName     string
-	ImageTag      string
-	LatestVersion string
-	Package       string
-	CveID         string
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	SeveritySince pgtype.Timestamptz
-	LastSeverity  int32
-	CveTitle      string
-	CveDesc       string
-	CveLink       string
-	Severity      int32
-	CveCreatedAt  pgtype.Timestamptz
-	CveUpdatedAt  pgtype.Timestamptz
-	Suppressed    bool
-	Reason        *VulnerabilitySuppressReason
-	ReasonText    *string
-	SuppressedBy  *string
-	SuppressedAt  pgtype.Timestamptz
-	CvssScore     *float64
-	FixVersion    *string
-	TotalCount    int64
+	ID                 pgtype.UUID
+	WorkloadName       string
+	WorkloadType       string
+	Namespace          string
+	Cluster            string
+	ImageName          string
+	ImageTag           string
+	LatestVersion      string
+	Package            string
+	CveID              string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	SeveritySince      pgtype.Timestamptz
+	LastSeverity       int32
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	CveCreatedAt       pgtype.Timestamptz
+	CveUpdatedAt       pgtype.Timestamptz
+	Suppressed         bool
+	Reason             *VulnerabilitySuppressReason
+	ReasonText         *string
+	SuppressedBy       *string
+	SuppressedAt       pgtype.Timestamptz
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	FixVersion         *string
+	TotalCount         int64
 }
 
 func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListWorkloadsForVulnerabilitiesParams) ([]*ListWorkloadsForVulnerabilitiesRow, error) {
@@ -1444,6 +1510,10 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.CvssScore,
+			&i.EpssScore,
+			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
 			&i.FixVersion,
 			&i.TotalCount,
 		); err != nil {
