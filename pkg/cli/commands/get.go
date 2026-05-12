@@ -179,7 +179,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		for _, w := range resp.GetWorkloads() {
 			wl := w.GetWorkload()
-			tbl.AddRow(wl.GetName(), wl.GetType(), wl.GetNamespace(), wl.GetCluster(), formatSbomStatus(w.GetSbomStatus().GetStatus()))
+			tbl.AddRow(wl.GetName(), wl.GetType(), wl.GetNamespace(), wl.GetCluster(), formatSbomStatus(w.GetSbomStatus()))
 		}
 		tbl.Print()
 	} else {

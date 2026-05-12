@@ -219,7 +219,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
-				formatSbomStatus(n.GetSbomStatus().GetStatus()),
+				formatSbomStatus(n.GetSbomStatus()),
 				intOrDash(n.GetVulnerabilitySummary().Critical, n.GetVulnerabilitySummary().GetHasSbom()),
 				intOrDash(n.GetVulnerabilitySummary().High, n.GetVulnerabilitySummary().GetHasSbom()),
 				intOrDash(n.GetVulnerabilitySummary().Medium, n.GetVulnerabilitySummary().GetHasSbom()),
@@ -463,9 +463,28 @@ func intOrDash(v int32, hasSbom bool) string {
 	return fmt.Sprint(v)
 }
 
-func formatSbomStatus(s vulnerabilities.SbomStatus) string {
-	if s == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+func sbomStatusLabel(s *vulnerabilities.SbomStatusInfo) string {
+	if s == nil {
 		return "PROCESSING"
 	}
-	return strings.TrimPrefix(s.String(), "SBOM_STATUS_")
+	status := s.GetStatus()
+	if status == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+		return "PROCESSING"
+	}
+	return strings.TrimPrefix(status.String(), "SBOM_STATUS_")
+}
+
+func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
+	label := sbomStatusLabel(s)
+	if s == nil {
+		return label
+	}
+	status := s.GetStatus()
+	if status == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING || status == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+		if ts := s.GetProcessingStartedAt(); ts != nil {
+			elapsed := time.Since(ts.AsTime()).Round(time.Second)
+			return fmt.Sprintf("%s (%s)", label, elapsed)
+		}
+	}
+	return label
 }

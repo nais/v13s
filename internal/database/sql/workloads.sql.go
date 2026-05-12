@@ -195,24 +195,33 @@ WITH upserted AS (
         $5,
         $6,
         'processing')
-    ON CONFLICT ON CONSTRAINT workload_id
-        DO UPDATE SET
-            state = 'processing',
-            updated_at = NOW(),
-            image_name = $5,
-            image_tag = $6
-        WHERE
-            workloads.state = 'resync'
-            OR (
-                workloads.image_name != $5
-                OR workloads.image_tag != $6)
-        RETURNING
-            id
-)
-SELECT id FROM upserted
-UNION ALL
-SELECT NULL::uuid WHERE NOT EXISTS(SELECT 1 FROM upserted)
-LIMIT 1
+ON CONFLICT ON CONSTRAINT workload_id
+    DO UPDATE SET
+        state = 'processing',
+        updated_at = NOW(),
+        image_name = $5,
+        image_tag = $6
+    WHERE
+        workloads.state = 'resync'
+        OR (
+            workloads.image_name != $5
+            OR workloads.image_tag != $6)
+    RETURNING
+        id)
+    SELECT
+        id
+    FROM
+        upserted
+    UNION ALL
+    SELECT
+        NULL::UUID
+    WHERE
+        NOT EXISTS (
+            SELECT
+                1
+            FROM
+                upserted)
+    LIMIT 1
 `
 
 type InitializeWorkloadParams struct {

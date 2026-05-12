@@ -50,6 +50,10 @@ UPDATE
 SET
     state = @state,
     ready_for_resync_at = @ready_for_resync_at,
+    sbom_processing_started_at = CASE
+        WHEN @state::image_state IN ('resync', 'initialized') THEN COALESCE(sbom_processing_started_at, NOW())
+        ELSE sbom_processing_started_at
+    END,
     updated_at = NOW()
 WHERE
     name = @name
@@ -130,6 +134,7 @@ UPDATE
 SET
     state = 'resync',
     ready_for_resync_at = NOW(),
+    sbom_processing_started_at = COALESCE(sbom_processing_started_at, NOW()),
     updated_at = NOW()
 FROM
     workloads w
@@ -147,6 +152,7 @@ UPDATE
 SET
     state = 'resync',
     ready_for_resync_at = NOW(),
+    sbom_processing_started_at = COALESCE(sbom_processing_started_at, NOW()),
     updated_at = NOW()
 WHERE
     state = 'untracked'

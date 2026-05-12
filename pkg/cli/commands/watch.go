@@ -211,7 +211,7 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 		} else {
 			node := summaries.GetNodes()[0]
 			sbomStatus := node.GetSbomStatus()
-			workloadSbomStatus := formatSbomStatus(sbomStatus.GetStatus())
+			workloadSbomStatus := sbomStatusLabel(sbomStatus)
 			imageName := node.GetWorkload().GetImageName()
 			imageTag := node.GetWorkload().GetImageTag()
 			imageRef := imageName + ":" + imageTag
@@ -265,7 +265,7 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 							if highlight {
 								name = "► " + name
 							}
-							wtbl.AddRow(name, wref.GetType(), wref.GetNamespace(), wref.GetCluster(), formatSbomStatus(w.GetSbomStatus().GetStatus()))
+							wtbl.AddRow(name, wref.GetType(), wref.GetNamespace(), wref.GetCluster(), sbomStatusLabel(w.GetSbomStatus()))
 						}
 						wtbl.Print()
 					}
@@ -284,7 +284,7 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 			}
 			if !isPending(currentStatus) {
 				fmt.Printf("\n%s SBOM processing ended — status: %s",
-					color.YellowString("!"), strings.ToUpper(formatSbomStatus(currentStatus)))
+					color.YellowString("!"), strings.ToUpper(sbomStatusLabel(sbomStatus)))
 				if elapsedStr != "" {
 					fmt.Printf("  Took %s", elapsedStr)
 				}
