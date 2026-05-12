@@ -224,6 +224,11 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 				if imgErr != nil && ctx.Err() == nil && status.Code(imgErr) != codes.NotFound {
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
+					// Workloads are now populated even when there is no vulnerability
+					// summary yet (first-time scan in progress), so always capture them.
+					// TODO: revert to imgErr == nil guard once nais/api handles the case
+					// where GetVulnerabilitySummaryForImage returns workloads without a summary.
+					imgWorkloads = imgResp.GetWorkloads()
 					s := imgResp.GetVulnerabilitySummary()
 					if s != nil && s.GetHasSbom() {
 						staleNote := ""
@@ -235,7 +240,6 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 						vulnLine = fmt.Sprintf("Critical: %d  High: %d  Medium: %d  Low: %d  Unassigned: %d  RiskScore: %d%s",
 							s.GetCritical(), s.GetHigh(), s.GetMedium(), s.GetLow(), s.GetUnassigned(), s.GetRiskScore(), staleNote)
 					}
-					imgWorkloads = imgResp.GetWorkloads()
 				}
 			}
 
