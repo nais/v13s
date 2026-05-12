@@ -16,6 +16,7 @@ tool (
 
 require (
 	cloud.google.com/go/auth v0.20.0
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/containerd/log v0.1.0
 	github.com/emicklei/pgtalk v1.14.2
@@ -33,9 +34,9 @@ require (
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
-	github.com/riverqueue/river v0.35.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
-	github.com/riverqueue/river/rivertype v0.35.1
+	github.com/riverqueue/river v0.37.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.37.0
+	github.com/riverqueue/river/rivertype v0.37.0
 	github.com/riverqueue/rivercontrib/otelriver v0.7.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0
@@ -78,7 +79,6 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/ccojocar/zxcvbn-go v1.0.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -220,8 +220,8 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/riverqueue/apiframe v0.0.0-20260406191122-4e2e69ffa499 // indirect
-	github.com/riverqueue/river/riverdriver v0.35.1 // indirect
-	github.com/riverqueue/river/rivershared v0.35.1 // indirect
+	github.com/riverqueue/river/riverdriver v0.37.0 // indirect
+	github.com/riverqueue/river/rivershared v0.37.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/rs/zerolog v1.35.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
@@ -250,7 +250,7 @@ require (
 	github.com/tetratelabs/wazero v1.11.0 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/theupdateframework/go-tuf/v2 v2.4.1 // indirect
-	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
@@ -280,12 +280,12 @@ require (
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
-	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260409153401-be6f6cb8b1fa // indirect
 	golang.org/x/term v0.42.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	golang.org/x/vuln v1.1.4 // indirect
