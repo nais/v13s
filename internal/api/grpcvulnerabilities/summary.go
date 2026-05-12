@@ -196,19 +196,30 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 		}
-		// No exact match — try latest summary for same image name from any other tag.
-		staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
-			ImageName:  request.ImageName,
-			ExcludeTag: request.ImageTag,
-		})
-		if fallbackErr != nil {
-			if errors.Is(fallbackErr, pgx.ErrNoRows) {
-				return nil, status.Error(codes.NotFound, "no SBOM found for image")
-			}
-			return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
-		}
-		summary = staleSummary
-		staleTag = staleSummary.ImageTag
+		// TODO: when updating nais/api to handle codes.NotFound on GetVulnerabilitySummaryForImage,
+		// replace the fallback below with the stale-tag lookup. The three call sites in
+		// nais/api/internal/vulnerability/queries.go (ListWorkloadReferences, GetImageHasSBOM,
+		// GetImageVulnerabilitySummary) must each handle codes.NotFound explicitly before enabling this.
+		//
+		// staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
+		// 	ImageName:  request.ImageName,
+		// 	ExcludeTag: request.ImageTag,
+		// })
+		// if fallbackErr != nil {
+		// 	if errors.Is(fallbackErr, pgx.ErrNoRows) {
+		// 		return nil, status.Error(codes.NotFound, "no SBOM found for image")
+		// 	}
+		// 	return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
+		// }
+		// summary = staleSummary
+		// staleTag = staleSummary.ImageTag
+
+		// Preserve previous behavior: return empty summary so existing consumers don't break.
+		return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
+			VulnerabilitySummary: &vulnerabilities.Summary{},
+			WorkloadRef:          make([]*vulnerabilities.Workload, 0),
+			Workloads:            make([]*vulnerabilities.WorkloadSbomStatus, 0),
+		}, nil
 	}
 
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
