@@ -92,12 +92,12 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image name")
 	}
-	parts := strings.Split(cmd.Args().First(), ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	imageName, imageTag, err := helpers.SplitImageRef(cmd.Args().First())
+	if err != nil {
+		return err
 	}
 	start := time.Now()
-	resp, err := c.ListVulnerabilitiesForImage(ctx, parts[0], parts[1], opts...)
+	resp, err := c.ListVulnerabilitiesForImage(ctx, imageName, imageTag, opts...)
 	if err != nil {
 		return err
 	}

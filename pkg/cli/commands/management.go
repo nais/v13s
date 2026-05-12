@@ -170,19 +170,14 @@ func deleteWorkload(ctx context.Context, opts *flag.Options, c vulnerabilities.C
 }
 
 func suppressVulnerability(ctx context.Context, cmd *cli.Command, opts *flag.Options, c vulnerabilities.Client) error {
-	imageName := ""
-	imageTag := ""
 	if cmd.Args().Len() <= 0 {
 		return fmt.Errorf("image must be provided as the first argument in the format 'name:tag'")
 	}
 
 	arg := cmd.Args().First()
-	if strings.Contains(arg, ":") && strings.Contains(arg, "/") {
-		parts := strings.Split(arg, ":")
-		imageName = parts[0]
-		imageTag = parts[1]
-	} else {
-		return fmt.Errorf("invalid image format, expected 'name:tag'")
+	imageName, imageTag, err := helpers.SplitImageRef(arg)
+	if err != nil {
+		return err
 	}
 
 	if opts.Package == "" || opts.CveId == "" {

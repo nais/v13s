@@ -3,12 +3,12 @@ package commands
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
+	"github.com/nais/v13s/pkg/cli/helpers"
 	"github.com/rodaine/table"
 	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc/codes"
@@ -146,11 +146,10 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	if cmd.Args().Len() == 0 {
 		return fmt.Errorf("missing image argument, expected format: <image>:<tag>")
 	}
-	parts := strings.SplitN(cmd.Args().First(), ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid image format: %s, expected format: <image>:<tag>", cmd.Args().First())
+	imageName, imageTag, err := helpers.SplitImageRef(cmd.Args().First())
+	if err != nil {
+		return err
 	}
-	imageName, imageTag := parts[0], parts[1]
 
 	resp, err := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 	if err != nil {
