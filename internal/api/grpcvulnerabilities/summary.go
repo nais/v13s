@@ -196,8 +196,13 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 		}
+		// No vulnerability summary yet (e.g. first-time scan still in progress).
+		// Fall through so we still populate workload_ref + workloads with SBOM state.
+		// VulnerabilitySummary will be nil, preserving backward-compatible semantics for
+		// consumers that only check HasSbom / counts.
+		//
 		// TODO: when updating nais/api to handle codes.NotFound on GetVulnerabilitySummaryForImage,
-		// replace the fallback below with the stale-tag lookup. The three call sites in
+		// replace the nil-summary path below with the stale-tag lookup. The three call sites in
 		// nais/api/internal/vulnerability/queries.go (ListWorkloadReferences, GetImageHasSBOM,
 		// GetImageVulnerabilitySummary) must each handle codes.NotFound explicitly before enabling this.
 		//
@@ -213,13 +218,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		// }
 		// summary = staleSummary
 		// staleTag = staleSummary.ImageTag
-
-		// Preserve previous behavior: return empty summary so existing consumers don't break.
-		return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
-			VulnerabilitySummary: &vulnerabilities.Summary{},
-			WorkloadRef:          make([]*vulnerabilities.Workload, 0),
-			Workloads:            make([]*vulnerabilities.WorkloadSbomStatus, 0),
-		}, nil
+		summary = nil
 	}
 
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
@@ -249,7 +248,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		workloadRefs = append(workloadRefs, wl)
 	}
 
-	var vulnSummary *vulnerabilities.Summary
+	// Default to empty summary to preserve backward-compatible semantics for existing
+	// consumers (e.g. nais/api) that do not handle a nil VulnerabilitySummary.
+	vulnSummary := &vulnerabilities.Summary{}
 	if summary != nil {
 		vulnSummary = &vulnerabilities.Summary{
 			Critical:    summary.Critical,
