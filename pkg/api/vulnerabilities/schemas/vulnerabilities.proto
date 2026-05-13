@@ -98,6 +98,10 @@ message Cve {
   optional google.protobuf.Timestamp created = 7;
   optional google.protobuf.Timestamp last_updated = 8;
   optional double cvss_score = 9;
+  optional double epss_score = 10;
+  optional double epss_percentile = 11;
+  bool has_kev_entry = 12;
+  bool known_ransomware_use = 13;
 }
 
 message Suppression {
@@ -120,6 +124,7 @@ message Vulnerability {
   optional google.protobuf.Timestamp severity_since = 9;
   string image_name = 10;
   optional double cvss_score = 11;
+  optional string fix_version = 12;
 }
 
 message Finding {

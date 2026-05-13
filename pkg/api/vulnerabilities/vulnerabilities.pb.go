@@ -621,18 +621,22 @@ func (x *Summary) GetStaleImageTag() string {
 }
 
 type Cve struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Link          string                 `protobuf:"bytes,4,opt,name=link,proto3" json:"link,omitempty"`
-	Severity      Severity               `protobuf:"varint,5,opt,name=severity,proto3,enum=v13s.api.protobuf.Severity" json:"severity,omitempty"`
-	References    map[string]string      `protobuf:"bytes,6,rep,name=references,proto3" json:"references,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Created       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created,proto3,oneof" json:"created,omitempty"`
-	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
-	CvssScore     *float64               `protobuf:"fixed64,9,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title              string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description        string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Link               string                 `protobuf:"bytes,4,opt,name=link,proto3" json:"link,omitempty"`
+	Severity           Severity               `protobuf:"varint,5,opt,name=severity,proto3,enum=v13s.api.protobuf.Severity" json:"severity,omitempty"`
+	References         map[string]string      `protobuf:"bytes,6,rep,name=references,proto3" json:"references,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Created            *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created,proto3,oneof" json:"created,omitempty"`
+	LastUpdated        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
+	CvssScore          *float64               `protobuf:"fixed64,9,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
+	EpssScore          *float64               `protobuf:"fixed64,10,opt,name=epss_score,json=epssScore,proto3,oneof" json:"epss_score,omitempty"`
+	EpssPercentile     *float64               `protobuf:"fixed64,11,opt,name=epss_percentile,json=epssPercentile,proto3,oneof" json:"epss_percentile,omitempty"`
+	HasKevEntry        bool                   `protobuf:"varint,12,opt,name=has_kev_entry,json=hasKevEntry,proto3" json:"has_kev_entry,omitempty"`
+	KnownRansomwareUse bool                   `protobuf:"varint,13,opt,name=known_ransomware_use,json=knownRansomwareUse,proto3" json:"known_ransomware_use,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Cve) Reset() {
@@ -728,6 +732,34 @@ func (x *Cve) GetCvssScore() float64 {
 	return 0
 }
 
+func (x *Cve) GetEpssScore() float64 {
+	if x != nil && x.EpssScore != nil {
+		return *x.EpssScore
+	}
+	return 0
+}
+
+func (x *Cve) GetEpssPercentile() float64 {
+	if x != nil && x.EpssPercentile != nil {
+		return *x.EpssPercentile
+	}
+	return 0
+}
+
+func (x *Cve) GetHasKevEntry() bool {
+	if x != nil {
+		return x.HasKevEntry
+	}
+	return false
+}
+
+func (x *Cve) GetKnownRansomwareUse() bool {
+	if x != nil {
+		return x.KnownRansomwareUse
+	}
+	return false
+}
+
 type Suppression struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Suppressed        bool                   `protobuf:"varint,1,opt,name=suppressed,proto3" json:"suppressed,omitempty"`
@@ -817,6 +849,7 @@ type Vulnerability struct {
 	SeveritySince *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=severity_since,json=severitySince,proto3,oneof" json:"severity_since,omitempty"`
 	ImageName     string                 `protobuf:"bytes,10,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
 	CvssScore     *float64               `protobuf:"fixed64,11,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
+	FixVersion    *string                `protobuf:"bytes,12,opt,name=fix_version,json=fixVersion,proto3,oneof" json:"fix_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -926,6 +959,13 @@ func (x *Vulnerability) GetCvssScore() float64 {
 		return *x.CvssScore
 	}
 	return 0
+}
+
+func (x *Vulnerability) GetFixVersion() string {
+	if x != nil && x.FixVersion != nil {
+		return *x.FixVersion
+	}
+	return ""
 }
 
 type Finding struct {
@@ -4191,7 +4231,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x0fstale_image_tag\x18\n" +
 	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01B\x0f\n" +
 	"\r_last_updatedB\x12\n" +
-	"\x10_stale_image_tag\"\xf0\x03\n" +
+	"\x10_stale_image_tag\"\xbb\x05\n" +
 	"\x03Cve\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -4204,14 +4244,22 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\acreated\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x00R\acreated\x88\x01\x01\x12B\n" +
 	"\flast_updated\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x01R\vlastUpdated\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"cvss_score\x18\t \x01(\x01H\x02R\tcvssScore\x88\x01\x01\x1a=\n" +
+	"cvss_score\x18\t \x01(\x01H\x02R\tcvssScore\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"epss_score\x18\n" +
+	" \x01(\x01H\x03R\tepssScore\x88\x01\x01\x12,\n" +
+	"\x0fepss_percentile\x18\v \x01(\x01H\x04R\x0eepssPercentile\x88\x01\x01\x12\"\n" +
+	"\rhas_kev_entry\x18\f \x01(\bR\vhasKevEntry\x120\n" +
+	"\x14known_ransomware_use\x18\r \x01(\bR\x12knownRansomwareUse\x1a=\n" +
 	"\x0fReferencesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\n" +
 	"\n" +
 	"\b_createdB\x0f\n" +
 	"\r_last_updatedB\r\n" +
-	"\v_cvss_score\"\x8f\x02\n" +
+	"\v_cvss_scoreB\r\n" +
+	"\v_epss_scoreB\x12\n" +
+	"\x10_epss_percentile\"\x8f\x02\n" +
 	"\vSuppression\x12\x1e\n" +
 	"\n" +
 	"suppressed\x18\x01 \x01(\bR\n" +
@@ -4219,7 +4267,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x11suppressed_reason\x18\x02 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x10suppressedReason\x12#\n" +
 	"\rsuppressed_by\x18\x03 \x01(\tR\fsuppressedBy\x12-\n" +
 	"\x12suppressed_details\x18\x04 \x01(\tR\x11suppressedDetails\x12=\n" +
-	"\flast_updated\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\"\xe6\x04\n" +
+	"\flast_updated\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastUpdated\"\x9c\x05\n" +
 	"\rVulnerability\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\apackage\x18\x02 \x01(\tR\apackage\x12(\n" +
@@ -4234,14 +4282,17 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"image_name\x18\n" +
 	" \x01(\tR\timageName\x12\"\n" +
 	"\n" +
-	"cvss_score\x18\v \x01(\x01H\x05R\tcvssScore\x88\x01\x01B\x10\n" +
+	"cvss_score\x18\v \x01(\x01H\x05R\tcvssScore\x88\x01\x01\x12$\n" +
+	"\vfix_version\x18\f \x01(\tH\x06R\n" +
+	"fixVersion\x88\x01\x01B\x10\n" +
 	"\x0e_last_severityB\x0e\n" +
 	"\f_suppressionB\n" +
 	"\n" +
 	"\b_createdB\x0f\n" +
 	"\r_last_updatedB\x11\n" +
 	"\x0f_severity_sinceB\r\n" +
-	"\v_cvss_score\"\xe6\x01\n" +
+	"\v_cvss_scoreB\x0e\n" +
+	"\f_fix_version\"\xe6\x01\n" +
 	"\aFinding\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12F\n" +
 	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\x12B\n" +
