@@ -2200,7 +2200,6 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		pkgName   = "pkg-enriched"
 	)
 
-	// Seed CVE with EPSS fields
 	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
 		{
 			CveID:          cveID,
@@ -2216,14 +2215,12 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	// Set KEV + ransomware data
 	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
 		CveIds:             []string{cveID},
 		KnownRansomwareUse: []bool{true},
 	})
 	require.NoError(t, err)
 
-	// Seed vulnerability
 	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
 			ImageName:    imageName,
@@ -2241,7 +2238,6 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	// Fetch vulnerability ID to set fix_version
 	vuln, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
 		ImageName: imageName,
 		ImageTag:  imageTag,
