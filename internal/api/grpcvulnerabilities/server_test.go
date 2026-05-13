@@ -2176,8 +2176,8 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 	return nil
 }
 
-// TestServer_EnrichedCveFields verifies that EPSS, KEV, ransomware and fix_version fields
-// are correctly wired through the gRPC API for all relevant endpoints.
+// TestServer_EnrichedCveFields verifies that EPSS, KEV, ransomware, fix_version and cvss_score
+// fields are correctly wired through the gRPC API for all relevant endpoints.
 func TestServer_EnrichedCveFields(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
@@ -2206,6 +2206,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 			Refs:           map[string]string{},
 			EpssScore:      new(0.75),
 			EpssPercentile: new(0.92),
+			CvssScore:      new(8.5),
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
@@ -2266,6 +2267,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.True(t, enriched.GetCve().GetHasKevEntry())
 		assert.True(t, enriched.GetCve().GetKnownRansomwareUse())
 		assert.Equal(t, "1.2.3", enriched.GetFixVersion())
+		assert.InDelta(t, 8.5, enriched.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
 	})
 
 	t.Run("GetVulnerabilityById returns enriched fields", func(t *testing.T) {
@@ -2280,6 +2283,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.True(t, v.GetCve().GetHasKevEntry())
 		assert.True(t, v.GetCve().GetKnownRansomwareUse())
 		assert.Equal(t, "1.2.3", v.GetFixVersion())
+		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
 	})
 
 	t.Run("ListVulnerabilities returns enriched Cve fields", func(t *testing.T) {
@@ -2303,6 +2308,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.True(t, enriched.GetCve().GetHasKevEntry())
 		assert.True(t, enriched.GetCve().GetKnownRansomwareUse())
 		assert.Equal(t, "1.2.3", enriched.GetFixVersion())
+		assert.InDelta(t, 8.5, enriched.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
 	})
 
 	t.Run("GetCve returns enriched fields", func(t *testing.T) {
@@ -2316,5 +2323,36 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.InDelta(t, 0.92, cve.GetEpssPercentile(), 0.0001)
 		assert.True(t, cve.GetHasKevEntry())
 		assert.True(t, cve.GetKnownRansomwareUse())
+		assert.InDelta(t, 8.5, cve.GetCvssScore(), 0.0001)
+	})
+
+	t.Run("GetVulnerability returns Cve.CvssScore", func(t *testing.T) {
+		resp, err := client.GetVulnerability(ctx, imageName, imageTag, pkgName, cveID)
+		require.NoError(t, err)
+
+		v := resp.GetVulnerability()
+		require.NotNil(t, v)
+		assert.Equal(t, cveID, v.GetCve().GetId())
+		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
+	})
+
+	t.Run("ListWorkloadsForVulnerability returns Cve.CvssScore", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+			vulnerabilities.Limit(100),
+		)
+		require.NoError(t, err)
+
+		var enriched *vulnerabilities.Vulnerability
+		for _, node := range resp.Nodes {
+			if node.GetVulnerability().GetCve().GetId() == cveID {
+				enriched = node.GetVulnerability()
+				break
+			}
+		}
+		require.NotNil(t, enriched, "enriched CVE not found in ListWorkloadsForVulnerability response")
+		assert.InDelta(t, 8.5, enriched.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
 	})
 }
