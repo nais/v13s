@@ -2176,10 +2176,6 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 	return nil
 }
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 // TestServer_EnrichedCveFields verifies that EPSS, KEV, ransomware and fix_version fields
 // are correctly wired through the gRPC API for all relevant endpoints.
 func TestServer_EnrichedCveFields(t *testing.T) {
@@ -2208,8 +2204,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 			CveLink:        "https://example.com/CVE-ENRICHED-1",
 			Severity:       1, // HIGH
 			Refs:           map[string]string{},
-			EpssScore:      ptr(0.75),
-			EpssPercentile: ptr(0.92),
+			EpssScore:      new(0.75),
+			EpssPercentile: new(0.92),
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
