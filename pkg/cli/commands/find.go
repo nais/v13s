@@ -98,7 +98,7 @@ func listWorkloads(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				v.GetPackage(),
 				v.GetCve().GetId(),
 				v.GetCve().GetSeverity(),
-				v.GetCvssScore(),
+				v.GetCve().GetCvssScore(),
 				timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),
 			)
 		}
