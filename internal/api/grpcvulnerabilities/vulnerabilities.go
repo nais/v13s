@@ -75,12 +75,14 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
 				LatestVersion: row.LatestVersion,
 				SeveritySince: timestamppb.New(row.SeveritySince.Time),
-				CvssScore:     row.CvssScore,
-				FixVersion:    row.FixVersion,
-				Cve: &vulnerabilities.Cve{
-					Id:                 row.CveID,
-					Title:              row.CveTitle,
-					Description:        row.CveDesc,
+			// TODO: CvssScore is set on Vulnerability wrapper here for backwards compatibility with nais/api (transform.go:28).
+			// When nais/api is bumped, move CvssScore into the Cve sub-message to align with all other endpoints.
+			CvssScore:     row.CvssScore,
+			FixVersion:    row.FixVersion,
+			Cve: &vulnerabilities.Cve{
+				Id:                 row.CveID,
+				Title:              row.CveTitle,
+				Description:        row.CveDesc,
 					Link:               row.CveLink,
 					Severity:           vulnerabilities.Severity(row.Severity),
 					Created:            timestamppb.New(row.CveCreatedAt.Time),
