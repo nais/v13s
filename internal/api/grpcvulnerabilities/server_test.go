@@ -2175,3 +2175,154 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 
 	return nil
 }
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
+// TestServer_EnrichedCveFields verifies that EPSS, KEV, ransomware and fix_version fields
+// are correctly wired through the gRPC API for all relevant endpoints.
+func TestServer_EnrichedCveFields(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		imageTag  = "v1.0"
+		cveID     = "CVE-ENRICHED-1"
+		pkgName   = "pkg-enriched"
+	)
+
+	// Seed CVE with EPSS fields
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{
+			CveID:          cveID,
+			CveTitle:       "Enriched CVE Title",
+			CveDesc:        "Enriched CVE Description",
+			CveLink:        "https://example.com/CVE-ENRICHED-1",
+			Severity:       1, // HIGH
+			Refs:           map[string]string{},
+			EpssScore:      ptr(0.75),
+			EpssPercentile: ptr(0.92),
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	// Set KEV + ransomware data
+	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+		CveIds:             []string{cveID},
+		KnownRansomwareUse: []bool{true},
+	})
+	require.NoError(t, err)
+
+	// Seed vulnerability
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+			Package:      pkgName,
+			CveID:        cveID,
+			Source:       "test",
+			LastSeverity: 1,
+			SeveritySince: pgtype.Timestamptz{
+				Time:  time.Now(),
+				Valid: true,
+			},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	// Fetch vulnerability ID to set fix_version
+	vuln, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		CveID:     cveID,
+		Package:   pkgName,
+	})
+	require.NoError(t, err)
+
+	_, err = db.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
+		VulnerabilityIds: []pgtype.UUID{vuln.ID},
+		FixVersions:      []string{"1.2.3"},
+	})
+	require.NoError(t, err)
+
+	t.Run("ListVulnerabilitiesForImage returns enriched fields", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+
+		var enriched *vulnerabilities.Vulnerability
+		for _, v := range resp.Nodes {
+			if v.GetCve().GetId() == cveID {
+				enriched = v
+				break
+			}
+		}
+		require.NotNil(t, enriched, "enriched CVE not found in response")
+
+		assert.InDelta(t, 0.75, enriched.GetCve().GetEpssScore(), 0.0001)
+		assert.InDelta(t, 0.92, enriched.GetCve().GetEpssPercentile(), 0.0001)
+		assert.True(t, enriched.GetCve().GetHasKevEntry())
+		assert.True(t, enriched.GetCve().GetKnownRansomwareUse())
+		assert.Equal(t, "1.2.3", enriched.GetFixVersion())
+	})
+
+	t.Run("GetVulnerabilityById returns enriched fields", func(t *testing.T) {
+		resp, err := client.GetVulnerabilityById(ctx, vuln.ID.String())
+		require.NoError(t, err)
+
+		v := resp.GetVulnerability()
+		require.NotNil(t, v)
+		assert.Equal(t, cveID, v.GetCve().GetId())
+		assert.InDelta(t, 0.75, v.GetCve().GetEpssScore(), 0.0001)
+		assert.InDelta(t, 0.92, v.GetCve().GetEpssPercentile(), 0.0001)
+		assert.True(t, v.GetCve().GetHasKevEntry())
+		assert.True(t, v.GetCve().GetKnownRansomwareUse())
+		assert.Equal(t, "1.2.3", v.GetFixVersion())
+	})
+
+	t.Run("ListVulnerabilities returns enriched Cve fields", func(t *testing.T) {
+		resp, err := client.ListVulnerabilities(ctx,
+			vulnerabilities.ImageFilter(imageName, imageTag),
+			vulnerabilities.Limit(100),
+		)
+		require.NoError(t, err)
+
+		var enriched *vulnerabilities.Vulnerability
+		for _, f := range resp.Nodes {
+			if f.GetVulnerability().GetCve().GetId() == cveID {
+				enriched = f.GetVulnerability()
+				break
+			}
+		}
+		require.NotNil(t, enriched, "enriched CVE not found in ListVulnerabilities response")
+
+		assert.InDelta(t, 0.75, enriched.GetCve().GetEpssScore(), 0.0001)
+		assert.InDelta(t, 0.92, enriched.GetCve().GetEpssPercentile(), 0.0001)
+		assert.True(t, enriched.GetCve().GetHasKevEntry())
+		assert.True(t, enriched.GetCve().GetKnownRansomwareUse())
+		assert.Equal(t, "1.2.3", enriched.GetFixVersion())
+	})
+
+	t.Run("GetCve returns enriched fields", func(t *testing.T) {
+		resp, err := client.GetCve(ctx, cveID)
+		require.NoError(t, err)
+
+		cve := resp.GetCve()
+		require.NotNil(t, cve)
+		assert.Equal(t, cveID, cve.GetId())
+		assert.InDelta(t, 0.75, cve.GetEpssScore(), 0.0001)
+		assert.InDelta(t, 0.92, cve.GetEpssPercentile(), 0.0001)
+		assert.True(t, cve.GetHasKevEntry())
+		assert.True(t, cve.GetKnownRansomwareUse())
+	})
+}
