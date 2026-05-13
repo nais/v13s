@@ -2325,4 +2325,34 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.True(t, cve.GetKnownRansomwareUse())
 		assert.InDelta(t, 8.5, cve.GetCvssScore(), 0.0001)
 	})
+
+	t.Run("GetVulnerability returns Cve.CvssScore", func(t *testing.T) {
+		resp, err := client.GetVulnerability(ctx, imageName, imageTag, pkgName, cveID)
+		require.NoError(t, err)
+
+		v := resp.GetVulnerability()
+		require.NotNil(t, v)
+		assert.Equal(t, cveID, v.GetCve().GetId())
+		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
+	})
+
+	t.Run("ListWorkloadsForVulnerability returns Cve.CvssScore", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+			vulnerabilities.Limit(100),
+		)
+		require.NoError(t, err)
+
+		var enriched *vulnerabilities.Vulnerability
+		for _, node := range resp.Nodes {
+			if node.GetVulnerability().GetCve().GetId() == cveID {
+				enriched = node.GetVulnerability()
+				break
+			}
+		}
+		require.NotNil(t, enriched, "enriched CVE not found in ListWorkloadsForVulnerability response")
+		assert.InDelta(t, 8.5, enriched.GetCve().GetCvssScore(), 0.0001)
+		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
+	})
 }
