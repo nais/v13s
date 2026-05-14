@@ -230,7 +230,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
-	var worstSbomStatus *vulnerabilities.SbomStatusInfo
+	workloadStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(workloads))
+	var worstStatus vulnerabilities.SbomStatus
+	var worstProcessingStartedAt *timestamppb.Timestamp
 	for _, w := range workloads {
 		wl := &vulnerabilities.Workload{
 			Cluster:   w.Cluster,
@@ -241,10 +243,31 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageTag:  w.ImageTag,
 		}
 		sbomStatus := sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt)
-		if worstSbomStatus == nil || sbomStatusPriority[sbomStatus.GetStatus()] > sbomStatusPriority[worstSbomStatus.GetStatus()] {
-			worstSbomStatus = sbomStatus
+		s := sbomStatus.GetStatus()
+		p := sbomStatusPriority[s]
+		wp := sbomStatusPriority[worstStatus]
+		if p > wp {
+			// New worst status: reset timestamp to this workload's
+			worstStatus = s
+			worstProcessingStartedAt = sbomStatus.GetProcessingStartedAt()
+		} else if p == wp {
+			// Same worst status: pick earliest non-nil processing_started_at
+			ts := sbomStatus.GetProcessingStartedAt()
+			if ts != nil {
+				if worstProcessingStartedAt == nil || ts.AsTime().Before(worstProcessingStartedAt.AsTime()) {
+					worstProcessingStartedAt = ts
+				}
+			}
 		}
+		workloadStatuses = append(workloadStatuses, &vulnerabilities.WorkloadSbomStatus{
+			Workload:   wl,
+			SbomStatus: sbomStatus,
+		})
 		workloadRefs = append(workloadRefs, wl)
+	}
+	worstSbomStatus := &vulnerabilities.SbomStatusInfo{
+		Status:              worstStatus,
+		ProcessingStartedAt: worstProcessingStartedAt,
 	}
 
 	// Default to empty summary to preserve backward-compatible semantics for existing
@@ -270,6 +293,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          workloadRefs,
+		Workloads:            workloadStatuses,
 		SbomStatus:           worstSbomStatus,
 	}, nil
 }

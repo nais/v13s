@@ -224,11 +224,13 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 				if imgErr != nil && ctx.Err() == nil && status.Code(imgErr) != codes.NotFound {
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
-					// Workloads are now populated even when there is no vulnerability
-					// summary yet (first-time scan in progress), so always capture them.
-					// TODO: revert to imgErr == nil guard once nais/api handles the case
-					// where GetVulnerabilitySummaryForImage returns workloads without a summary.
 					imgWorkloads = imgResp.GetWorkloads()
+					// Use aggregated sbom_status for isProcessing check
+					imgStatus := imgResp.GetSbomStatus().GetStatus()
+					if imgStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+						imgStatus == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+						isProcessing = true
+					}
 					s := imgResp.GetVulnerabilitySummary()
 					if s != nil && s.GetHasSbom() {
 						staleNote := ""

@@ -164,17 +164,11 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	s := resp.GetVulnerabilitySummary()
+	aggregatedStatus := resp.GetSbomStatus()
 	workloads := resp.GetWorkloads()
 
-	isProcessing := false
-	for _, w := range workloads {
-		st := w.GetSbomStatus().GetStatus()
-		if st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-			st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
-			isProcessing = true
-			break
-		}
-	}
+	isProcessing := aggregatedStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+		aggregatedStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
 
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
 	if s != nil && s.GetHasSbom() {
