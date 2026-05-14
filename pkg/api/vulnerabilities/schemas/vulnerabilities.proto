@@ -160,10 +160,6 @@ message SbomStatusInfo {
   optional google.protobuf.Timestamp processing_started_at = 2;
 }
 
-message WorkloadSbomStatus {
-  Workload workload = 1;
-  SbomStatusInfo sbom_status = 2;
-}
 
 message WorkloadFix {
   Severity severity = 1;
@@ -354,9 +350,9 @@ message GetVulnerabilitySummaryForImageRequest {
 
 message GetVulnerabilitySummaryForImageResponse {
   Summary vulnerability_summary = 1;
-  // Deprecated: use workloads instead, which includes sbom_status per workload.
+  // Deprecated: use sbom_status instead.
   repeated Workload workload_ref = 2 [deprecated = true];
-  repeated WorkloadSbomStatus workloads = 3;
+  SbomStatusInfo sbom_status = 3;
 }
 
 message GetVulnerabilitySummaryRequest {
