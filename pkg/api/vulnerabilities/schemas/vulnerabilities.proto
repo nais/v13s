@@ -350,8 +350,7 @@ message GetVulnerabilitySummaryForImageRequest {
 
 message GetVulnerabilitySummaryForImageResponse {
   Summary vulnerability_summary = 1;
-  // Deprecated: use sbom_status instead.
-  repeated Workload workload_ref = 2 [deprecated = true];
+  repeated Workload workload_ref = 2;
   SbomStatusInfo sbom_status = 3;
 }
 
