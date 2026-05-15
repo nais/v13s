@@ -244,12 +244,12 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageTag:  w.ImageTag,
 		}
 		sbomStatus := sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt)
-		s := sbomStatus.GetStatus()
-		p := sbomStatusPriority[s]
+		status := sbomStatus.GetStatus()
+		p := sbomStatusPriority[status]
 		wp := sbomStatusPriority[worstStatus]
 		if p > wp {
 			// New worst status: reset timestamp to this workload's
-			worstStatus = s
+			worstStatus = status
 			worstProcessingStartedAt = sbomStatus.GetProcessingStartedAt()
 		} else if p == wp {
 			// Same worst status: pick earliest non-nil processing_started_at
