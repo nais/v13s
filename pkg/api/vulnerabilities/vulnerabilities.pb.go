@@ -3153,11 +3153,12 @@ func (x *GetVulnerabilitySummaryForImageRequest) GetImageTag() string {
 type GetVulnerabilitySummaryForImageResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,1,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
-	WorkloadRef          []*Workload            `protobuf:"bytes,2,rep,name=workload_ref,json=workloadRef,proto3" json:"workload_ref,omitempty"`
-	Workloads            []*WorkloadSbomStatus  `protobuf:"bytes,3,rep,name=workloads,proto3" json:"workloads,omitempty"`
-	SbomStatus           *SbomStatusInfo        `protobuf:"bytes,4,opt,name=sbom_status,json=sbomStatus,proto3" json:"sbom_status,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Deprecated: Marked as deprecated in vulnerabilities.proto.
+	WorkloadRef   []*Workload           `protobuf:"bytes,2,rep,name=workload_ref,json=workloadRef,proto3" json:"workload_ref,omitempty"`
+	Workloads     []*WorkloadSbomStatus `protobuf:"bytes,3,rep,name=workloads,proto3" json:"workloads,omitempty"`
+	SbomStatus    *SbomStatusInfo       `protobuf:"bytes,4,opt,name=sbom_status,json=sbomStatus,proto3" json:"sbom_status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetVulnerabilitySummaryForImageResponse) Reset() {
@@ -3197,6 +3198,7 @@ func (x *GetVulnerabilitySummaryForImageResponse) GetVulnerabilitySummary() *Sum
 	return nil
 }
 
+// Deprecated: Marked as deprecated in vulnerabilities.proto.
 func (x *GetVulnerabilitySummaryForImageResponse) GetWorkloadRef() []*Workload {
 	if x != nil {
 		return x.WorkloadRef
@@ -4502,10 +4504,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"&GetVulnerabilitySummaryForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\xc3\x02\n" +
+	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\xc7\x02\n" +
 	"'GetVulnerabilitySummaryForImageResponse\x12O\n" +
-	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12>\n" +
-	"\fworkload_ref\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12C\n" +
+	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12B\n" +
+	"\fworkload_ref\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadB\x02\x18\x01R\vworkloadRef\x12C\n" +
 	"\tworkloads\x18\x03 \x03(\v2%.v13s.api.protobuf.WorkloadSbomStatusR\tworkloads\x12B\n" +
 	"\vsbom_status\x18\x04 \x01(\v2!.v13s.api.protobuf.SbomStatusInfoR\n" +
 	"sbomStatus\"S\n" +
