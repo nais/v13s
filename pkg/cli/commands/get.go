@@ -164,17 +164,8 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	s := resp.GetVulnerabilitySummary()
-	workloads := resp.GetWorkloads()
-
-	isProcessing := false
-	for _, w := range workloads {
-		st := w.GetSbomStatus().GetStatus()
-		if st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-			st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
-			isProcessing = true
-			break
-		}
-	}
+	workloads := resp.GetWorkloadRef()
+	isProcessing := imageIsProcessing(resp)
 
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
 	if s != nil && s.GetHasSbom() {
@@ -195,11 +186,11 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	}
 
 	if len(workloads) > 0 {
-		tbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
+		fmt.Printf("SBOM Status: %s\n\n", formatSbomStatus(resp.GetSbomStatus()))
+		tbl := table.New("Workload", "Type", "Namespace", "Cluster")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		for _, w := range workloads {
-			wl := w.GetWorkload()
-			tbl.AddRow(wl.GetName(), wl.GetType(), wl.GetNamespace(), wl.GetCluster(), formatSbomStatus(w.GetSbomStatus()))
+			tbl.AddRow(w.GetName(), w.GetType(), w.GetNamespace(), w.GetCluster())
 		}
 		tbl.Print()
 	} else {

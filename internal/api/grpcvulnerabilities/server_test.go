@@ -1200,13 +1200,152 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 
-		// workload_ref (deprecated) and workloads must both be populated and consistent
-		assert.Len(t, resp.GetWorkloadRef(), 1, "deprecated workload_ref must still be populated")
-		assert.Len(t, resp.GetWorkloads(), 1, "workloads must be populated")
-		assert.Equal(t, resp.GetWorkloadRef()[0].GetName(), resp.GetWorkloads()[0].GetWorkload().GetName(),
-			"workload_ref and workloads must reference the same workload")
-		assert.NotNil(t, resp.GetWorkloads()[0].GetSbomStatus(), "workloads must carry sbom_status")
+		assert.Len(t, resp.GetWorkloadRef(), 1, "workload_ref must be populated")
 	})
+}
+
+func TestServer_GetVulnerabilitySummaryForImage_SbomStatus(t *testing.T) {
+	ctx, db, pool, client, cleanup := setupTest(t, testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}, true)
+	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		imageTag  = "v1.0"
+	)
+
+	t.Run("single workload ready returns READY", func(t *testing.T) {
+		err := db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+			State:     sql.WorkloadStateUpdated,
+			ImageName: imageName,
+			ImageTag:  imageTag,
+		})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State:            sql.ImageStateUpdated,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+			Name:             imageName,
+			Tag:              imageTag,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		require.NotNil(t, resp.GetSbomStatus(), "sbom_status must be non-nil")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("worst-case: ready + failed workloads returns FAILED", func(t *testing.T) {
+		const (
+			image2Name = "image-worst-case"
+			image2Tag  = "v1.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: image2Name, Tag: image2Tag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-ready",
+			WorkloadType: "Deployment",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    image2Name,
+			ImageTag:     image2Tag,
+		})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-failed",
+			WorkloadType: "Deployment",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    image2Name,
+			ImageTag:     image2Tag,
+		})
+		require.NoError(t, err)
+
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			State: sql.WorkloadStateUpdated,
+			ID:    getWorkloadID(ctx, t, db, "workload-ready", image2Name, image2Tag),
+		})
+		require.NoError(t, err)
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			State: sql.WorkloadStateFailed,
+			ID:    getWorkloadID(ctx, t, db, "workload-failed", image2Name, image2Tag),
+		})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State:            sql.ImageStateUpdated,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+			Name:             image2Name,
+			Tag:              image2Tag,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, image2Name, image2Tag)
+		require.NoError(t, err)
+		require.NotNil(t, resp.GetSbomStatus(), "sbom_status must be non-nil")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, resp.GetSbomStatus().GetStatus(),
+			"worst-case of READY and FAILED must be FAILED")
+	})
+
+	t.Run("processing workload returns processing_started_at", func(t *testing.T) {
+		const (
+			image3Name = "image-processing"
+			image3Tag  = "v1.0"
+		)
+		expectedTs := time.Now().Add(-5 * time.Minute).UTC().Truncate(time.Millisecond)
+
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: image3Name, Tag: image3Tag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-processing",
+			WorkloadType: "Deployment",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    image3Name,
+			ImageTag:     image3Tag,
+		})
+		require.NoError(t, err)
+
+		setSbomProcessingStartedAt(ctx, t, pool, image3Name, image3Tag, expectedTs)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, image3Name, image3Tag)
+		require.NoError(t, err)
+		require.NotNil(t, resp.GetSbomStatus(), "sbom_status must be non-nil")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
+		require.NotNil(t, resp.GetSbomStatus().GetProcessingStartedAt(), "processing_started_at must be set")
+		got := resp.GetSbomStatus().GetProcessingStartedAt().AsTime().UTC().Truncate(time.Millisecond)
+		assert.Equal(t, expectedTs, got, "processing_started_at must match the value from the image row")
+	})
+}
+
+// getWorkloadID fetches the UUID of a workload by name and image.
+func getWorkloadID(ctx context.Context, t *testing.T, db *sql.Queries, name, imageName, imageTag string) pgtype.UUID {
+	t.Helper()
+	workloads, err := db.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+	for _, w := range workloads {
+		if w.Name == name {
+			return w.ID
+		}
+	}
+	t.Fatalf("workload %q not found for image %s:%s", name, imageName, imageTag)
+	return pgtype.UUID{}
+}
+
+func setSbomProcessingStartedAt(ctx context.Context, t *testing.T, pool *pgxpool.Pool, imageName, imageTag string, ts time.Time) {
+	t.Helper()
+	_, err := pool.Exec(ctx,
+		`UPDATE images SET sbom_processing_started_at = $1 WHERE name = $2 AND tag = $3`,
+		ts, imageName, imageTag,
+	)
+	require.NoError(t, err)
 }
 
 func TestServer_GetVulnerabilityById(t *testing.T) {

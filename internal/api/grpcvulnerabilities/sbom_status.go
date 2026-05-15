@@ -47,6 +47,11 @@ func deriveSbomStatus(workloadState sql.WorkloadState, imageState *sql.ImageStat
 	}
 }
 
+func isPendingSbomStatus(s vulnerabilities.SbomStatus) bool {
+	return s == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+		s == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
+}
+
 func sbomStatusInfo(workloadState sql.WorkloadState, imageState *sql.ImageState, processingStartedAt pgtype.Timestamptz) *vulnerabilities.SbomStatusInfo {
 	status := deriveSbomStatus(workloadState, imageState)
 	info := &vulnerabilities.SbomStatusInfo{

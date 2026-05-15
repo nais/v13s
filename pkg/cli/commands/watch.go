@@ -141,6 +141,10 @@ func isPending(s vulnerabilities.SbomStatus) bool {
 		s == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 }
 
+func imageIsProcessing(resp *vulnerabilities.GetVulnerabilitySummaryForImageResponse) bool {
+	return isPending(resp.GetSbomStatus().GetStatus())
+}
+
 func pickWorkload(pending []watchWorkload) (watchWorkload, error) {
 	options := make([]huh.Option[watchWorkload], 0, len(pending))
 	for _, w := range pending {
@@ -218,17 +222,18 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 			}
 
 			var vulnLine string
-			var imgWorkloads []*vulnerabilities.WorkloadSbomStatus
+			var imgWorkloads []*vulnerabilities.Workload
+			var imgSbomStatus *vulnerabilities.SbomStatusInfo
 			if imageName != "" && imageTag != "" {
 				imgResp, imgErr := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 				if imgErr != nil && ctx.Err() == nil && status.Code(imgErr) != codes.NotFound {
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
-					// Workloads are now populated even when there is no vulnerability
-					// summary yet (first-time scan in progress), so always capture them.
-					// TODO: revert to imgErr == nil guard once nais/api handles the case
-					// where GetVulnerabilitySummaryForImage returns workloads without a summary.
-					imgWorkloads = imgResp.GetWorkloads()
+					imgWorkloads = imgResp.GetWorkloadRef()
+					imgSbomStatus = imgResp.GetSbomStatus()
+					if imageIsProcessing(imgResp) {
+						isProcessing = true
+					}
 					s := imgResp.GetVulnerabilitySummary()
 					if s != nil && s.GetHasSbom() {
 						staleNote := ""
@@ -255,12 +260,11 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 				wtbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
 				wtbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
 				for _, w := range imgWorkloads {
-					wref := w.GetWorkload()
-					name := wref.GetName()
-					if wref.GetName() == wl.name && wref.GetNamespace() == wl.namespace && wref.GetCluster() == wl.cluster {
+					name := w.GetName()
+					if w.GetName() == wl.name && w.GetNamespace() == wl.namespace && w.GetCluster() == wl.cluster {
 						name = "► " + name
 					}
-					wtbl.AddRow(name, wref.GetType(), wref.GetNamespace(), wref.GetCluster(), sbomStatusLabel(w.GetSbomStatus()))
+					wtbl.AddRow(name, w.GetType(), w.GetNamespace(), w.GetCluster(), sbomStatusLabel(imgSbomStatus))
 				}
 				wtbl.Print()
 			}
