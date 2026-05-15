@@ -229,7 +229,7 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 				if imgErr != nil && ctx.Err() == nil && status.Code(imgErr) != codes.NotFound {
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
-					imgWorkloads = imgResp.GetWorkloads()
+					imgWorkloads = imgResp.GetWorkloadRefs()
 					imgSbomStatus = imgResp.GetSbomStatus()
 					if imageIsProcessing(imgResp) {
 						isProcessing = true

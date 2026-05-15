@@ -164,7 +164,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
 	s := resp.GetVulnerabilitySummary()
-	workloads := resp.GetWorkloads()
+	workloads := resp.GetWorkloadRefs()
 	isProcessing := imageIsProcessing(resp)
 
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)

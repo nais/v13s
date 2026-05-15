@@ -350,8 +350,7 @@ message GetVulnerabilitySummaryForImageRequest {
 message GetVulnerabilitySummaryForImageResponse {
   Summary vulnerability_summary = 1;
   repeated Workload workload_refs = 2;
-  reserved 3; // was: repeated WorkloadSbomStatus workloads
-  SbomStatusInfo sbom_status = 4;
+  SbomStatusInfo sbom_status = 3;
 }
 
 message GetVulnerabilitySummaryRequest {

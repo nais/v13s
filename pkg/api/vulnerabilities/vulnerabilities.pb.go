@@ -3102,7 +3102,7 @@ type GetVulnerabilitySummaryForImageResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,1,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
 	WorkloadRefs         []*Workload            `protobuf:"bytes,2,rep,name=workload_refs,json=workloadRefs,proto3" json:"workload_refs,omitempty"`
-	SbomStatus           *SbomStatusInfo        `protobuf:"bytes,4,opt,name=sbom_status,json=sbomStatus,proto3" json:"sbom_status,omitempty"`
+	SbomStatus           *SbomStatusInfo        `protobuf:"bytes,3,opt,name=sbom_status,json=sbomStatus,proto3" json:"sbom_status,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -4438,12 +4438,12 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"&GetVulnerabilitySummaryForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\x86\x02\n" +
+	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\x80\x02\n" +
 	"'GetVulnerabilitySummaryForImageResponse\x12O\n" +
 	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12@\n" +
 	"\rworkload_refs\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\fworkloadRefs\x12B\n" +
-	"\vsbom_status\x18\x04 \x01(\v2!.v13s.api.protobuf.SbomStatusInfoR\n" +
-	"sbomStatusJ\x04\b\x03\x10\x04\"S\n" +
+	"\vsbom_status\x18\x03 \x01(\v2!.v13s.api.protobuf.SbomStatusInfoR\n" +
+	"sbomStatus\"S\n" +
 	"\x1eGetVulnerabilitySummaryRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\"\xa6\x02\n" +
 	"\x1fGetVulnerabilitySummaryResponse\x121\n" +
