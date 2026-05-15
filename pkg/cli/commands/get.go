@@ -186,11 +186,11 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 	}
 
 	if len(workloads) > 0 {
+		sbomStatus := resp.GetSbomStatus()
 		tbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		for _, w := range workloads {
-			wl := w.GetWorkload()
-			tbl.AddRow(wl.GetName(), wl.GetType(), wl.GetNamespace(), wl.GetCluster(), formatSbomStatus(w.GetSbomStatus()))
+			tbl.AddRow(w.GetName(), w.GetType(), w.GetNamespace(), w.GetCluster(), formatSbomStatus(sbomStatus))
 		}
 		tbl.Print()
 	} else {

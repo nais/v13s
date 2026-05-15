@@ -142,15 +142,7 @@ func isPending(s vulnerabilities.SbomStatus) bool {
 }
 
 func imageIsProcessing(resp *vulnerabilities.GetVulnerabilitySummaryForImageResponse) bool {
-	if agg := resp.GetSbomStatus(); agg != nil {
-		return isPending(agg.GetStatus())
-	}
-	for _, w := range resp.GetWorkloads() {
-		if isPending(w.GetSbomStatus().GetStatus()) {
-			return true
-		}
-	}
-	return false
+	return isPending(resp.GetSbomStatus().GetStatus())
 }
 
 func pickWorkload(pending []watchWorkload) (watchWorkload, error) {
@@ -230,13 +222,15 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 			}
 
 			var vulnLine string
-			var imgWorkloads []*vulnerabilities.WorkloadSbomStatus
+			var imgWorkloads []*vulnerabilities.Workload
+			var imgSbomStatus *vulnerabilities.SbomStatusInfo
 			if imageName != "" && imageTag != "" {
 				imgResp, imgErr := c.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 				if imgErr != nil && ctx.Err() == nil && status.Code(imgErr) != codes.NotFound {
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
 					imgWorkloads = imgResp.GetWorkloads()
+					imgSbomStatus = imgResp.GetSbomStatus()
 					if imageIsProcessing(imgResp) {
 						isProcessing = true
 					}
@@ -266,12 +260,11 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 				wtbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
 				wtbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
 				for _, w := range imgWorkloads {
-					wref := w.GetWorkload()
-					name := wref.GetName()
-					if wref.GetName() == wl.name && wref.GetNamespace() == wl.namespace && wref.GetCluster() == wl.cluster {
+					name := w.GetName()
+					if w.GetName() == wl.name && w.GetNamespace() == wl.namespace && w.GetCluster() == wl.cluster {
 						name = "► " + name
 					}
-					wtbl.AddRow(name, wref.GetType(), wref.GetNamespace(), wref.GetCluster(), sbomStatusLabel(w.GetSbomStatus()))
+					wtbl.AddRow(name, w.GetType(), w.GetNamespace(), w.GetCluster(), sbomStatusLabel(imgSbomStatus))
 				}
 				wtbl.Print()
 			}

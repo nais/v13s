@@ -230,7 +230,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
-	workloadStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(workloads))
 	worstStatus := vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
 	var processingStartedAt *timestamppb.Timestamp
 	if len(workloads) > 0 {
@@ -245,14 +244,10 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageName: w.ImageName,
 			ImageTag:  w.ImageTag,
 		}
-		sbomStatus := sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt)
-		if sbomStatusPriority[sbomStatus.GetStatus()] > sbomStatusPriority[worstStatus] {
-			worstStatus = sbomStatus.GetStatus()
+		status := deriveSbomStatus(w.State, w.ImageState)
+		if sbomStatusPriority[status] > sbomStatusPriority[worstStatus] {
+			worstStatus = status
 		}
-		workloadStatuses = append(workloadStatuses, &vulnerabilities.WorkloadSbomStatus{
-			Workload:   wl,
-			SbomStatus: sbomStatus,
-		})
 		workloadRefs = append(workloadRefs, wl)
 	}
 	worstSbomStatus := &vulnerabilities.SbomStatusInfo{
@@ -283,7 +278,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
 		WorkloadRef:          workloadRefs,
-		Workloads:            workloadStatuses,
+		Workloads:            workloadRefs,
 		SbomStatus:           worstSbomStatus,
 	}, nil
 }
