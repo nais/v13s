@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -111,11 +112,28 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer informerMgr.Stop()
 
+	ready := &atomic.Bool{}
+
+	wg, ctx := errgroup.WithContext(ctx)
+
+	wg.Go(func() error {
+		return runInternalHTTPServer(
+			ctx,
+			cfg.InternalListenAddr,
+			promReg,
+			pool,
+			ready,
+			log,
+			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+		)
+	})
+
 	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
 	if !informerMgr.WaitForReady(syncCtx) {
 		log.Fatalf("timed out waiting for watchers to be ready")
 	}
+	ready.Store(true)
 
 	u := updater.NewUpdater(
 		pool,
@@ -132,25 +150,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	)
 	u.Run(ctx)
 
-	wg, ctx := errgroup.WithContext(ctx)
-
 	wg.Go(func() error {
 		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
 		return nil
-	})
-
-	wg.Go(func() error {
-		return runInternalHTTPServer(
-			ctx,
-			cfg.InternalListenAddr,
-			promReg,
-			pool,
-			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
-		)
 	})
 
 	<-ctx.Done()
