@@ -62,7 +62,9 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 		return nil, err
 	}
 
-	if err := migrate(ctx, pool); err != nil {
+	migrateCtx, cancelMigrate := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancelMigrate()
+	if err := migrate(migrateCtx, pool); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
