@@ -165,24 +165,7 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 
 	s := resp.GetVulnerabilitySummary()
 	workloads := resp.GetWorkloads()
-
-	// Fall back to per-workload iteration when talking to an older server that
-	// does not populate the aggregated sbom_status field (field 4).
-	var isProcessing bool
-	if aggregatedStatus := resp.GetSbomStatus(); aggregatedStatus != nil {
-		st := aggregatedStatus.GetStatus()
-		isProcessing = st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-			st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
-	} else {
-		for _, w := range workloads {
-			st := w.GetSbomStatus().GetStatus()
-			if st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-				st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
-				isProcessing = true
-				break
-			}
-		}
-	}
+	isProcessing := imageIsProcessing(resp)
 
 	fmt.Printf("Image: %s:%s\n", imageName, imageTag)
 	if s != nil && s.GetHasSbom() {

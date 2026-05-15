@@ -141,6 +141,22 @@ func isPending(s vulnerabilities.SbomStatus) bool {
 		s == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 }
 
+// imageIsProcessing returns true if the image is still being scanned.
+// It uses the aggregated sbom_status when available (new servers) and
+// falls back to iterating per-workload statuses for older servers that
+// do not populate field 4.
+func imageIsProcessing(resp *vulnerabilities.GetVulnerabilitySummaryForImageResponse) bool {
+	if agg := resp.GetSbomStatus(); agg != nil {
+		return isPending(agg.GetStatus())
+	}
+	for _, w := range resp.GetWorkloads() {
+		if isPending(w.GetSbomStatus().GetStatus()) {
+			return true
+		}
+	}
+	return false
+}
+
 func pickWorkload(pending []watchWorkload) (watchWorkload, error) {
 	options := make([]huh.Option[watchWorkload], 0, len(pending))
 	for _, w := range pending {
@@ -225,23 +241,8 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
 					imgWorkloads = imgResp.GetWorkloads()
-					// Fall back to per-workload iteration when talking to an older server
-					// that does not populate the aggregated sbom_status field (field 4).
-					if aggStatus := imgResp.GetSbomStatus(); aggStatus != nil {
-						imgSt := aggStatus.GetStatus()
-						if imgSt == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-							imgSt == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
-							isProcessing = true
-						}
-					} else {
-						for _, w := range imgWorkloads {
-							st := w.GetSbomStatus().GetStatus()
-							if st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-								st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
-								isProcessing = true
-								break
-							}
-						}
+					if imageIsProcessing(imgResp) {
+						isProcessing = true
 					}
 					s := imgResp.GetVulnerabilitySummary()
 					if s != nil && s.GetHasSbom() {
