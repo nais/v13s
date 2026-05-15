@@ -133,7 +133,23 @@ func (m *InformerManager) Stop() {
 }
 
 func (m *InformerManager) WaitForReady(ctx context.Context) bool {
-	return cache.WaitForCacheSync(ctx.Done(), m.cacheSyncs...)
+	select {
+	case <-ctx.Done():
+		m.log.WithError(ctx.Err()).Error("WaitForReady: context already cancelled before WaitForCacheSync")
+		return false
+	default:
+	}
+	m.log.Infof("WaitForReady: waiting for %d cache syncs", len(m.cacheSyncs))
+	result := cache.WaitForCacheSync(ctx.Done(), m.cacheSyncs...)
+	if !result {
+		select {
+		case <-ctx.Done():
+			m.log.WithError(ctx.Err()).Error("WaitForReady: context cancelled during WaitForCacheSync")
+		default:
+			m.log.Error("WaitForReady: timed out before all caches synced")
+		}
+	}
+	return result
 }
 
 func (m *InformerManager) start(ctx context.Context) {
