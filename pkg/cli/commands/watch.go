@@ -141,10 +141,6 @@ func isPending(s vulnerabilities.SbomStatus) bool {
 		s == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 }
 
-// imageIsProcessing returns true if the image is still being scanned.
-// It uses the aggregated sbom_status when available (new servers) and
-// falls back to iterating per-workload statuses for older servers that
-// do not populate field 4.
 func imageIsProcessing(resp *vulnerabilities.GetVulnerabilitySummaryForImageResponse) bool {
 	if agg := resp.GetSbomStatus(); agg != nil {
 		return isPending(agg.GetStatus())
