@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -25,10 +26,15 @@ type Handler struct {
 	Handler http.Handler
 }
 
-func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, pool *pgxpool.Pool, log logrus.FieldLogger, extraHandlers ...Handler) error {
+func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, pool *pgxpool.Pool, ready *atomic.Bool, log logrus.FieldLogger, extraHandlers ...Handler) error {
 	router := chi.NewRouter()
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		if !ready.Load() {
+			http.Error(w, "starting up", http.StatusServiceUnavailable)
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
 
