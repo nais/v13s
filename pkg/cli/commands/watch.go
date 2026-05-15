@@ -225,11 +225,23 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 					fmt.Printf("Image summary error: %v\n", imgErr)
 				} else if imgErr == nil {
 					imgWorkloads = imgResp.GetWorkloads()
-					// Use aggregated sbom_status for isProcessing check
-					imgStatus := imgResp.GetSbomStatus().GetStatus()
-					if imgStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
-						imgStatus == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
-						isProcessing = true
+					// Fall back to per-workload iteration when talking to an older server
+					// that does not populate the aggregated sbom_status field (field 4).
+					if aggStatus := imgResp.GetSbomStatus(); aggStatus != nil {
+						imgSt := aggStatus.GetStatus()
+						if imgSt == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+							imgSt == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+							isProcessing = true
+						}
+					} else {
+						for _, w := range imgWorkloads {
+							st := w.GetSbomStatus().GetStatus()
+							if st == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
+								st == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED {
+								isProcessing = true
+								break
+							}
+						}
 					}
 					s := imgResp.GetVulnerabilitySummary()
 					if s != nil && s.GetHasSbom() {
