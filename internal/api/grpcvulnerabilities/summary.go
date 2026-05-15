@@ -231,7 +231,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
 	workloadStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(workloads))
-	// Initialize to UNSPECIFIED (lowest priority) so the first workload always wins the comparison.
 	worstStatus := vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
 	var worstProcessingStartedAt *timestamppb.Timestamp
 	for _, w := range workloads {
