@@ -1344,8 +1344,6 @@ func getWorkloadID(ctx context.Context, t *testing.T, db *sql.Queries, name, ima
 	return pgtype.UUID{}
 }
 
-// setSbomProcessingStartedAt directly updates the sbom_processing_started_at column on the image
-// to a specific timestamp for testing timestamp tiebreaker logic.
 func setSbomProcessingStartedAt(ctx context.Context, t *testing.T, pool *pgxpool.Pool, imageName, imageTag string, ts time.Time) {
 	t.Helper()
 	_, err := pool.Exec(ctx,

@@ -232,7 +232,10 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
 	workloadStatuses := make([]*vulnerabilities.WorkloadSbomStatus, 0, len(workloads))
 	worstStatus := vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
-	var worstProcessingStartedAt *timestamppb.Timestamp
+	var processingStartedAt *timestamppb.Timestamp
+	if len(workloads) > 0 {
+		processingStartedAt = sbomStatusInfo(workloads[0].State, workloads[0].ImageState, workloads[0].SbomProcessingStartedAt).GetProcessingStartedAt()
+	}
 	for _, w := range workloads {
 		wl := &vulnerabilities.Workload{
 			Cluster:   w.Cluster,
@@ -243,21 +246,8 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			ImageTag:  w.ImageTag,
 		}
 		sbomStatus := sbomStatusInfo(w.State, w.ImageState, w.SbomProcessingStartedAt)
-		status := sbomStatus.GetStatus()
-		p := sbomStatusPriority[status]
-		wp := sbomStatusPriority[worstStatus]
-		if p > wp {
-			// New worst status: reset timestamp to this workload's
-			worstStatus = status
-			worstProcessingStartedAt = sbomStatus.GetProcessingStartedAt()
-		} else if p == wp {
-			// Same worst status: pick earliest non-nil processing_started_at
-			ts := sbomStatus.GetProcessingStartedAt()
-			if ts != nil {
-				if worstProcessingStartedAt == nil || ts.AsTime().Before(worstProcessingStartedAt.AsTime()) {
-					worstProcessingStartedAt = ts
-				}
-			}
+		if sbomStatusPriority[sbomStatus.GetStatus()] > sbomStatusPriority[worstStatus] {
+			worstStatus = sbomStatus.GetStatus()
 		}
 		workloadStatuses = append(workloadStatuses, &vulnerabilities.WorkloadSbomStatus{
 			Workload:   wl,
@@ -267,7 +257,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 	worstSbomStatus := &vulnerabilities.SbomStatusInfo{
 		Status:              worstStatus,
-		ProcessingStartedAt: worstProcessingStartedAt,
+		ProcessingStartedAt: processingStartedAt,
 	}
 
 	// Default to empty summary to preserve backward-compatible semantics for existing
