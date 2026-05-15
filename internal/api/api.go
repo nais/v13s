@@ -133,7 +133,6 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	if !informerMgr.WaitForReady(syncCtx) {
 		log.Fatalf("timed out waiting for watchers to be ready")
 	}
-	ready.Store(true)
 
 	u := updater.NewUpdater(
 		pool,
@@ -151,7 +150,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	u.Run(ctx)
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log); err != nil {
+		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log, func() { ready.Store(true) }); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
@@ -177,12 +176,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger, onReady func()) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
+	onReady()
 
 	opts := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
