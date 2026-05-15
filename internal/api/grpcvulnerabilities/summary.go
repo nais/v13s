@@ -231,9 +231,8 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	workloadRefs := make([]*vulnerabilities.Workload, 0, len(workloads))
 	worstStatus := vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
-	var processingStartedAt *timestamppb.Timestamp
+	var earliestProcessingStartedAt *timestamppb.Timestamp
 	if len(workloads) > 0 {
-		processingStartedAt = sbomStatusInfo(workloads[0].State, workloads[0].ImageState, workloads[0].SbomProcessingStartedAt).GetProcessingStartedAt()
 		for _, w := range workloads {
 			wl := &vulnerabilities.Workload{
 				Cluster:   w.Cluster,
@@ -247,6 +246,12 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			if sbomStatusPriority[status] > sbomStatusPriority[worstStatus] {
 				worstStatus = status
 			}
+			if isPendingSbomStatus(status) && w.SbomProcessingStartedAt.Valid {
+				t := timestamppb.New(w.SbomProcessingStartedAt.Time)
+				if earliestProcessingStartedAt == nil || t.AsTime().Before(earliestProcessingStartedAt.AsTime()) {
+					earliestProcessingStartedAt = t
+				}
+			}
 			workloadRefs = append(workloadRefs, wl)
 		}
 	} else {
@@ -259,12 +264,16 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 		if imgErr == nil {
 			worstStatus = deriveImageSbomStatus(&img.State)
-			if img.SbomProcessingStartedAt.Valid {
-				processingStartedAt = timestamppb.New(img.SbomProcessingStartedAt.Time)
+			if isPendingSbomStatus(worstStatus) && img.SbomProcessingStartedAt.Valid {
+				earliestProcessingStartedAt = timestamppb.New(img.SbomProcessingStartedAt.Time)
 			}
 		} else {
 			worstStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
 		}
+	}
+	var processingStartedAt *timestamppb.Timestamp
+	if isPendingSbomStatus(worstStatus) {
+		processingStartedAt = earliestProcessingStartedAt
 	}
 	worstSbomStatus := &vulnerabilities.SbomStatusInfo{
 		Status:              worstStatus,

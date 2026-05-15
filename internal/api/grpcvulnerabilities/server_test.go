@@ -1200,7 +1200,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 
-		assert.Len(t, resp.GetWorkloadRefs(), 1, "workload_refs must be populated")
+		assert.Len(t, resp.GetWorkloadRef(), 1, "workload_ref must be populated")
 	})
 }
 
