@@ -3101,7 +3101,7 @@ func (x *GetVulnerabilitySummaryForImageRequest) GetImageTag() string {
 type GetVulnerabilitySummaryForImageResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	VulnerabilitySummary *Summary               `protobuf:"bytes,1,opt,name=vulnerability_summary,json=vulnerabilitySummary,proto3" json:"vulnerability_summary,omitempty"`
-	WorkloadRefs         []*Workload            `protobuf:"bytes,2,rep,name=workload_refs,json=workloadRefs,proto3" json:"workload_refs,omitempty"`
+	WorkloadRef          []*Workload            `protobuf:"bytes,2,rep,name=workload_ref,json=workloadRef,proto3" json:"workload_ref,omitempty"`
 	SbomStatus           *SbomStatusInfo        `protobuf:"bytes,3,opt,name=sbom_status,json=sbomStatus,proto3" json:"sbom_status,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
@@ -3144,9 +3144,9 @@ func (x *GetVulnerabilitySummaryForImageResponse) GetVulnerabilitySummary() *Sum
 	return nil
 }
 
-func (x *GetVulnerabilitySummaryForImageResponse) GetWorkloadRefs() []*Workload {
+func (x *GetVulnerabilitySummaryForImageResponse) GetWorkloadRef() []*Workload {
 	if x != nil {
-		return x.WorkloadRefs
+		return x.WorkloadRef
 	}
 	return nil
 }
@@ -4438,10 +4438,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"&GetVulnerabilitySummaryForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\x80\x02\n" +
+	"\timage_tag\x18\x02 \x01(\tR\bimageTag\"\xfe\x01\n" +
 	"'GetVulnerabilitySummaryForImageResponse\x12O\n" +
-	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12@\n" +
-	"\rworkload_refs\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\fworkloadRefs\x12B\n" +
+	"\x15vulnerability_summary\x18\x01 \x01(\v2\x1a.v13s.api.protobuf.SummaryR\x14vulnerabilitySummary\x12>\n" +
+	"\fworkload_ref\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12B\n" +
 	"\vsbom_status\x18\x03 \x01(\v2!.v13s.api.protobuf.SbomStatusInfoR\n" +
 	"sbomStatus\"S\n" +
 	"\x1eGetVulnerabilitySummaryRequest\x121\n" +
@@ -4741,7 +4741,7 @@ var file_vulnerabilities_proto_depIdxs = []int32{
 	5,   // 83: v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
 	18,  // 84: v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse.workloads:type_name -> v13s.api.protobuf.WorkloadWithFixes
 	8,   // 85: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	7,   // 86: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.workload_refs:type_name -> v13s.api.protobuf.Workload
+	7,   // 86: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.workload_ref:type_name -> v13s.api.protobuf.Workload
 	16,  // 87: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
 	5,   // 88: v13s.api.protobuf.GetVulnerabilitySummaryRequest.filter:type_name -> v13s.api.protobuf.Filter
 	5,   // 89: v13s.api.protobuf.GetVulnerabilitySummaryResponse.filter:type_name -> v13s.api.protobuf.Filter

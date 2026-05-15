@@ -293,7 +293,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
-		WorkloadRefs:         workloadRefs,
+		WorkloadRef:          workloadRefs,
 		SbomStatus:           worstSbomStatus,
 	}, nil
 }
