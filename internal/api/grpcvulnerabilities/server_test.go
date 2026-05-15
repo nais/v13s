@@ -1200,11 +1200,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 
-		// workload_ref (deprecated) and workloads must both be populated and consistent
-		assert.Len(t, resp.GetWorkloadRef(), 1, "deprecated workload_ref must still be populated")
-		assert.Len(t, resp.GetWorkloads(), 1, "workloads must be populated")
-		assert.Equal(t, resp.GetWorkloadRef()[0].GetName(), resp.GetWorkloads()[0].GetName(),
-			"workload_ref and workloads must reference the same workload")
+		assert.Len(t, resp.GetWorkloadRefs(), 1, "workload_refs must be populated")
 	})
 }
 

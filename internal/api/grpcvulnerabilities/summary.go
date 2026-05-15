@@ -234,21 +234,37 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	var processingStartedAt *timestamppb.Timestamp
 	if len(workloads) > 0 {
 		processingStartedAt = sbomStatusInfo(workloads[0].State, workloads[0].ImageState, workloads[0].SbomProcessingStartedAt).GetProcessingStartedAt()
-	}
-	for _, w := range workloads {
-		wl := &vulnerabilities.Workload{
-			Cluster:   w.Cluster,
-			Namespace: w.Namespace,
-			Name:      w.Name,
-			Type:      w.WorkloadType,
-			ImageName: w.ImageName,
-			ImageTag:  w.ImageTag,
+		for _, w := range workloads {
+			wl := &vulnerabilities.Workload{
+				Cluster:   w.Cluster,
+				Namespace: w.Namespace,
+				Name:      w.Name,
+				Type:      w.WorkloadType,
+				ImageName: w.ImageName,
+				ImageTag:  w.ImageTag,
+			}
+			status := deriveSbomStatus(w.State, w.ImageState)
+			if sbomStatusPriority[status] > sbomStatusPriority[worstStatus] {
+				worstStatus = status
+			}
+			workloadRefs = append(workloadRefs, wl)
 		}
-		status := deriveSbomStatus(w.State, w.ImageState)
-		if sbomStatusPriority[status] > sbomStatusPriority[worstStatus] {
-			worstStatus = status
+	} else {
+		img, imgErr := s.querier.GetImage(ctx, sql.GetImageParams{
+			Name: request.ImageName,
+			Tag:  request.ImageTag,
+		})
+		if imgErr != nil && !errors.Is(imgErr, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("failed to get image: %w", imgErr)
 		}
-		workloadRefs = append(workloadRefs, wl)
+		if imgErr == nil {
+			worstStatus = deriveImageSbomStatus(&img.State)
+			if img.SbomProcessingStartedAt.Valid {
+				processingStartedAt = timestamppb.New(img.SbomProcessingStartedAt.Time)
+			}
+		} else {
+			worstStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
+		}
 	}
 	worstSbomStatus := &vulnerabilities.SbomStatusInfo{
 		Status:              worstStatus,
@@ -277,8 +293,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	return &vulnerabilities.GetVulnerabilitySummaryForImageResponse{
 		VulnerabilitySummary: vulnSummary,
-		WorkloadRef:          workloadRefs,
-		Workloads:            workloadRefs,
+		WorkloadRefs:         workloadRefs,
 		SbomStatus:           worstSbomStatus,
 	}, nil
 }
