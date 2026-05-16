@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -101,6 +102,21 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		DbUrl: cfg.DatabaseUrl,
 	}
 
+	ready := &atomic.Bool{}
+
+	httpErrCh := make(chan error, 1)
+	go func() {
+		httpErrCh <- runInternalHTTPServer(
+			ctx,
+			cfg.InternalListenAddr,
+			promReg,
+			pool,
+			ready,
+			log,
+			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+		)
+	}()
+
 	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
@@ -113,8 +129,22 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
-	if !informerMgr.WaitForReady(syncCtx) {
-		log.Fatalf("timed out waiting for watchers to be ready")
+
+	syncDone := make(chan bool, 1)
+	go func() {
+		syncDone <- informerMgr.WaitForReady(syncCtx)
+	}()
+
+	select {
+	case err := <-httpErrCh:
+		return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
+	case ready := <-syncDone:
+		if !ready {
+			if ctx.Err() != nil {
+				return fmt.Errorf("context cancelled before watchers became ready: %w", ctx.Err())
+			}
+			log.Fatalf("timed out waiting for watchers to be ready")
+		}
 	}
 
 	u := updater.NewUpdater(
@@ -135,22 +165,20 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	wg, ctx := errgroup.WithContext(ctx)
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log); err != nil {
+		select {
+		case err := <-httpErrCh:
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	})
+
+	wg.Go(func() error {
+		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log, func() { ready.Store(true) }); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
 		return nil
-	})
-
-	wg.Go(func() error {
-		return runInternalHTTPServer(
-			ctx,
-			cfg.InternalListenAddr,
-			promReg,
-			pool,
-			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
-		)
 	})
 
 	<-ctx.Done()
@@ -172,7 +200,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger, onReady func()) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
@@ -191,7 +219,10 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, mgr, u, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return s.Serve(lis) })
+	g.Go(func() error {
+		onReady()
+		return s.Serve(lis)
+	})
 	g.Go(func() error {
 		<-ctx.Done()
 

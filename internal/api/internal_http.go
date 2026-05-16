@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -25,9 +26,10 @@ type Handler struct {
 	Handler http.Handler
 }
 
-func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, pool *pgxpool.Pool, log logrus.FieldLogger, extraHandlers ...Handler) error {
+func runInternalHTTPServer(ctx context.Context, listenAddress string, reg prometheus.Gatherer, pool *pgxpool.Pool, ready *atomic.Bool, log logrus.FieldLogger, extraHandlers ...Handler) error {
 	router := chi.NewRouter()
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
@@ -40,6 +42,26 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("ok")); err != nil {
 			log.WithError(err).Error("failed to write healthz response")
+		}
+	})
+
+	router.Get("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+		if !ready.Load() {
+			http.Error(w, "starting up", http.StatusServiceUnavailable)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+
+		if err := pool.Ping(ctx); err != nil {
+			http.Error(w, "db unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte("ok")); err != nil {
+			log.WithError(err).Error("failed to write readyz response")
 		}
 	})
 
