@@ -129,16 +129,22 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
-	if !informerMgr.WaitForReady(syncCtx) {
-		select {
-		case err := <-httpErrCh:
-			return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
-		default:
+
+	syncDone := make(chan bool, 1)
+	go func() {
+		syncDone <- informerMgr.WaitForReady(syncCtx)
+	}()
+
+	select {
+	case err := <-httpErrCh:
+		return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
+	case ready := <-syncDone:
+		if !ready {
+			if ctx.Err() != nil {
+				return fmt.Errorf("context cancelled before watchers became ready: %w", ctx.Err())
+			}
+			log.Fatalf("timed out waiting for watchers to be ready")
 		}
-		if ctx.Err() != nil {
-			return fmt.Errorf("context cancelled before watchers became ready: %w", ctx.Err())
-		}
-		log.Fatalf("timed out waiting for watchers to be ready")
 	}
 
 	u := updater.NewUpdater(
