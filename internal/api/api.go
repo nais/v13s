@@ -182,7 +182,6 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
-	onReady()
 
 	opts := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
@@ -196,7 +195,10 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, mgr, u, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return s.Serve(lis) })
+	g.Go(func() error {
+		onReady()
+		return s.Serve(lis)
+	})
 	g.Go(func() error {
 		<-ctx.Done()
 
