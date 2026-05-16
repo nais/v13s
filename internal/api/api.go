@@ -102,6 +102,21 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		DbUrl: cfg.DatabaseUrl,
 	}
 
+	ready := &atomic.Bool{}
+
+	httpErrCh := make(chan error, 1)
+	go func() {
+		httpErrCh <- runInternalHTTPServer(
+			ctx,
+			cfg.InternalListenAddr,
+			promReg,
+			pool,
+			ready,
+			log,
+			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+		)
+	}()
+
 	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
@@ -112,25 +127,14 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer informerMgr.Stop()
 
-	ready := &atomic.Bool{}
-
-	wg, ctx := errgroup.WithContext(ctx)
-
-	wg.Go(func() error {
-		return runInternalHTTPServer(
-			ctx,
-			cfg.InternalListenAddr,
-			promReg,
-			pool,
-			ready,
-			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
-		)
-	})
-
 	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
 	if !informerMgr.WaitForReady(syncCtx) {
+		select {
+		case err := <-httpErrCh:
+			return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
+		default:
+		}
 		if ctx.Err() != nil {
 			return fmt.Errorf("context cancelled before watchers became ready: %w", ctx.Err())
 		}
@@ -151,6 +155,17 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		cfg.Osv,
 	)
 	u.Run(ctx)
+
+	wg, ctx := errgroup.WithContext(ctx)
+
+	wg.Go(func() error {
+		select {
+		case err := <-httpErrCh:
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	})
 
 	wg.Go(func() error {
 		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log, func() { ready.Store(true) }); err != nil {
