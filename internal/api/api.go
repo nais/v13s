@@ -131,6 +131,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
 	defer cancelSync()
 	if !informerMgr.WaitForReady(syncCtx) {
+		if ctx.Err() != nil {
+			return fmt.Errorf("context cancelled before watchers became ready: %w", ctx.Err())
+		}
 		log.Fatalf("timed out waiting for watchers to be ready")
 	}
 
