@@ -735,7 +735,7 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 
 	type imageKey struct{ name, tag string }
 	seenImages := make(map[imageKey]struct{})
-	seenWorkloads := make(map[string]struct{})
+	seenWorkloads := make(map[string]*vulnerabilities.SuppressVulnerabilitiesWorkload)
 	var suppressErrs []string
 
 	suppressParams := sql.SuppressVulnerabilityParams{
@@ -755,7 +755,15 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 			}
 		}
 		seenImages[imageKey{img.ImageName, img.ImageTag}] = struct{}{}
-		seenWorkloads[img.WorkloadCluster+"/"+img.WorkloadNamespace+"/"+img.WorkloadName+"/"+img.WorkloadType] = struct{}{}
+		key := img.WorkloadCluster + "/" + img.WorkloadNamespace + "/" + img.WorkloadName + "/" + img.WorkloadType
+		seenWorkloads[key] = &vulnerabilities.SuppressVulnerabilitiesWorkload{
+			Cluster:      img.WorkloadCluster,
+			Namespace:    img.WorkloadNamespace,
+			Name:         img.WorkloadName,
+			WorkloadType: img.WorkloadType,
+			ImageName:    img.ImageName,
+			ImageTag:     img.ImageTag,
+		}
 	}
 
 	for key := range seenImages {
@@ -784,11 +792,16 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 		return nil, fmt.Errorf("result count exceeds int32 range")
 	}
 
+	suppressedWorkloads := make([]*vulnerabilities.SuppressVulnerabilitiesWorkload, 0, workloadCount)
+	for _, w := range seenWorkloads {
+		suppressedWorkloads = append(suppressedWorkloads, w)
+	}
+
 	return &vulnerabilities.SuppressVulnerabilitiesResponse{
 		CveId:         request.GetCveId(),
-		Suppressed:    request.GetSuppress(),
 		WorkloadCount: int32(workloadCount), //#nosec G115
 		ImageCount:    int32(imageCount),    //#nosec G115
 		Errors:        suppressErrs,
+		Workloads:     suppressedWorkloads,
 	}, nil
 }

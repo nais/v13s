@@ -431,6 +431,8 @@ message SuppressVulnerabilitiesWorkload {
   string namespace     = 2;
   string name          = 3;
   string workload_type = 4;
+  string image_name    = 5;
+  string image_tag     = 6;
 }
 
 // SuppressVulnerabilitiesRequest suppresses a CVE across one or more workloads.
@@ -447,10 +449,10 @@ message SuppressVulnerabilitiesRequest {
 
 message SuppressVulnerabilitiesResponse {
   string          cve_id         = 1;
-  bool            suppressed     = 2;
   int32           workload_count = 3;
   int32           image_count    = 4;
   repeated string errors         = 5;
+  repeated SuppressVulnerabilitiesWorkload workloads = 6;
 }
 
 service Vulnerabilities {
