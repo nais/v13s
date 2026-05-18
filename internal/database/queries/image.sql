@@ -51,10 +51,13 @@ SET
     state = @state,
     ready_for_resync_at = @ready_for_resync_at,
     sbom_processing_started_at = CASE WHEN @state::image_state IN ('resync', 'initialized')
-        AND state NOT IN ('resync', 'initialized') THEN
+        AND state IN ('resync', 'initialized')
+        AND sbom_processing_started_at IS NOT NULL THEN
+        sbom_processing_started_at
+    WHEN @state::image_state IN ('resync', 'initialized') THEN
         NOW()
     ELSE
-        sbom_processing_started_at
+        NULL
     END,
     updated_at = NOW()
 WHERE
