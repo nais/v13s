@@ -208,10 +208,15 @@ func TestSuppressVulnerabilities_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "CVE-2025-9999", resp.GetCveId())
-	assert.True(t, resp.GetSuppressed())
 	assert.Equal(t, int32(1), resp.GetWorkloadCount())
 	assert.Equal(t, int32(1), resp.GetImageCount())
 	assert.Empty(t, resp.GetErrors())
+	require.Len(t, resp.GetWorkloads(), 1)
+	assert.Equal(t, "c", resp.GetWorkloads()[0].GetCluster())
+	assert.Equal(t, "ns", resp.GetWorkloads()[0].GetNamespace())
+	assert.Equal(t, "app", resp.GetWorkloads()[0].GetName())
+	assert.Equal(t, "img", resp.GetWorkloads()[0].GetImageName())
+	assert.Equal(t, "v1", resp.GetWorkloads()[0].GetImageTag())
 }
 
 func TestSuppressVulnerabilities_PartialFailure(t *testing.T) {
