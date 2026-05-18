@@ -36,7 +36,11 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 					return err
 				}
 
-				ch <- imageData
+				select {
+				case ch <- imageData:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 				return nil
 			})
 		})

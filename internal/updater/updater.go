@@ -2,6 +2,7 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -160,34 +161,32 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	ctx = NewDbContext(ctx, u.querier, u.log)
 
-	done := make(chan bool)
+	done := make(chan error, 1)
 	batchCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 
 	ch := make(chan *ImageVulnerabilityData, 100)
 
 	go func() {
-		defer close(done)
-		if err := u.Update(batchCtx, ch); err != nil {
-			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
-			done <- false
-		} else {
-			done <- true
-		}
+		done <- u.Update(batchCtx, cancel, ch)
 	}()
 
-	// TODO: riverjob worker to fetch vulnerability data for images
-	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
+	fetchErr := u.FetchVulnerabilityDataForImages(batchCtx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
 	close(ch)
 
-	updateSuccess := <-done
+	updateErr := <-done
 
-	if err != nil {
-		u.log.WithError(err).Error("Failed to fetch vulnerability data for images")
-		return err
+	if updateErr != nil {
+		u.log.WithError(updateErr).Error("failed to batch insert image vulnerability data")
+		return updateErr
 	}
 
-	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
+	if fetchErr != nil && !errors.Is(fetchErr, context.Canceled) {
+		u.log.WithError(fetchErr).Error("failed to fetch vulnerability data for images")
+		return fetchErr
+	}
+
+	u.log.Infof("images resynced successfully in %fs", time.Since(start).Seconds())
 
 	if u.doneChan != nil {
 		u.once.Do(func() {
@@ -272,12 +271,16 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 	return nil
 }
 
-func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) error {
+func (u *Updater) Update(ctx context.Context, cancel context.CancelFunc, ch chan *ImageVulnerabilityData) error {
 	start := time.Now()
+	var firstErr error
 
 	for {
 		batch, err := collections.ReadChannel(ctx, ch, 100)
 		if err != nil {
+			if firstErr != nil {
+				return firstErr
+			}
 			return err
 		}
 
@@ -286,8 +289,14 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		}
 
 		if err := u.BatchUpdateVulnerabilityData(ctx, batch); err != nil {
-			return err
+			firstErr = err
+			cancel()
+			continue
 		}
+	}
+
+	if firstErr != nil {
+		return firstErr
 	}
 
 	u.log.WithFields(logrus.Fields{
@@ -330,9 +339,13 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
 	)
 
-	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
-	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
-	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
+	upsertErrs := u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
+	upsertErrs += u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
+	upsertErrs += u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
+
+	if upsertErrs > 0 {
+		return fmt.Errorf("vulnerability data upsert had %d failure(s), skipping state updates", upsertErrs)
+	}
 
 	for _, i := range images {
 		if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
@@ -360,7 +373,9 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		return fmt.Errorf("batch workload state update had %d failure(s), image state update skipped", errCount)
 	}
 
-	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
+	if errCount := u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec); errCount > 0 {
+		return fmt.Errorf("batch image state update had %d failure(s)", errCount)
+	}
 	return nil
 }
 
