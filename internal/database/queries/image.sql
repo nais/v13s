@@ -50,8 +50,14 @@ UPDATE
 SET
     state = @state,
     ready_for_resync_at = @ready_for_resync_at,
-    sbom_processing_started_at = CASE WHEN @state::image_state IN ('resync', 'initialized') THEN
+    sbom_processing_started_at = CASE WHEN @state::image_state IN ('resync', 'initialized')
+        AND state IN ('resync', 'initialized')
+        AND sbom_processing_started_at IS NOT NULL THEN
+        sbom_processing_started_at
+    WHEN @state::image_state IN ('resync', 'initialized') THEN
         NOW()
+    WHEN @state::image_state = 'updated' THEN
+        sbom_processing_started_at
     ELSE
         NULL
     END,
