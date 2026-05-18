@@ -56,6 +56,8 @@ SET
         sbom_processing_started_at
     WHEN @state::image_state IN ('resync', 'initialized') THEN
         NOW()
+    WHEN @state::image_state = 'updated' THEN
+        sbom_processing_started_at
     ELSE
         NULL
     END,

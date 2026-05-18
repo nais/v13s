@@ -307,13 +307,16 @@ UPDATE
 SET
     state = $1,
     ready_for_resync_at = $2,
-    sbom_processing_started_at = CASE
-        WHEN $1::image_state IN ('resync', 'initialized')
-            AND state IN ('resync', 'initialized')
-            AND sbom_processing_started_at IS NOT NULL
-            THEN sbom_processing_started_at
-        WHEN $1::image_state IN ('resync', 'initialized') THEN NOW()
-        ELSE NULL
+    sbom_processing_started_at = CASE WHEN $1::image_state IN ('resync', 'initialized')
+        AND state IN ('resync', 'initialized')
+        AND sbom_processing_started_at IS NOT NULL THEN
+        sbom_processing_started_at
+    WHEN $1::image_state IN ('resync', 'initialized') THEN
+        NOW()
+    WHEN $1::image_state = 'updated' THEN
+        sbom_processing_started_at
+    ELSE
+        NULL
     END,
     updated_at = NOW()
 WHERE
