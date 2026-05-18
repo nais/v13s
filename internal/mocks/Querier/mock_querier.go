@@ -177,6 +177,55 @@ func (_c *MockQuerier_BatchUpdateImageState_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// BatchUpdateWorkloadStateByImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BatchUpdateWorkloadStateByImage(ctx context.Context, arg []sql.BatchUpdateWorkloadStateByImageParams) *sql.BatchUpdateWorkloadStateByImageBatchResults {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BatchUpdateWorkloadStateByImage")
+	}
+
+	var r0 *sql.BatchUpdateWorkloadStateByImageBatchResults
+	if rf, ok := ret.Get(0).(func(context.Context, []sql.BatchUpdateWorkloadStateByImageParams) *sql.BatchUpdateWorkloadStateByImageBatchResults); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.BatchUpdateWorkloadStateByImageBatchResults)
+		}
+	}
+
+	return r0
+}
+
+// MockQuerier_BatchUpdateWorkloadStateByImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BatchUpdateWorkloadStateByImage'
+type MockQuerier_BatchUpdateWorkloadStateByImage_Call struct {
+	*mock.Call
+}
+
+// BatchUpdateWorkloadStateByImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg []sql.BatchUpdateWorkloadStateByImageParams
+func (_e *MockQuerier_Expecter) BatchUpdateWorkloadStateByImage(ctx interface{}, arg interface{}) *MockQuerier_BatchUpdateWorkloadStateByImage_Call {
+	return &MockQuerier_BatchUpdateWorkloadStateByImage_Call{Call: _e.mock.On("BatchUpdateWorkloadStateByImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_BatchUpdateWorkloadStateByImage_Call) Run(run func(ctx context.Context, arg []sql.BatchUpdateWorkloadStateByImageParams)) *MockQuerier_BatchUpdateWorkloadStateByImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]sql.BatchUpdateWorkloadStateByImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BatchUpdateWorkloadStateByImage_Call) Return(_a0 *sql.BatchUpdateWorkloadStateByImageBatchResults) *MockQuerier_BatchUpdateWorkloadStateByImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_BatchUpdateWorkloadStateByImage_Call) RunAndReturn(run func(context.Context, []sql.BatchUpdateWorkloadStateByImageParams) *sql.BatchUpdateWorkloadStateByImageBatchResults) *MockQuerier_BatchUpdateWorkloadStateByImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BatchUpsertCve provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) BatchUpsertCve(ctx context.Context, arg []sql.BatchUpsertCveParams) *sql.BatchUpsertCveBatchResults {
 	ret := _m.Called(ctx, arg)

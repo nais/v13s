@@ -692,6 +692,197 @@ func TestUpdater(t *testing.T) {
 		assert.Equal(t, imageName, images[0].Name)
 		assert.Equal(t, imageTag, images[0].Tag)
 	})
+
+	t.Run("workloads in processing state should be set to updated after resync", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		require.NoError(t, err)
+
+		imageName := projectNames[0]
+		imageTag := "v1"
+
+		insertWorkloads(ctx, t, db, []string{imageName})
+
+		_, err = pool.Exec(ctx,
+			"UPDATE workloads SET state = 'processing' WHERE image_name = $1 AND image_tag = $2",
+			imageName, imageTag)
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET metadata = '{}', state = 'resync', ready_for_resync_at = NOW() WHERE name = $1 AND tag = $2",
+			imageName, imageTag)
+		require.NoError(t, err)
+
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		defer cancel()
+
+		done = make(chan struct{})
+		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+
+		err = u.ResyncImageVulnerabilities(updaterCtx)
+		require.NoError(t, err)
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timeout waiting for updater to complete")
+		}
+
+		workloads, err := pool.Query(ctx,
+			"SELECT state FROM workloads WHERE image_name = $1 AND image_tag = $2",
+			imageName, imageTag)
+		require.NoError(t, err)
+		defer workloads.Close()
+		checkedAny := false
+		for workloads.Next() {
+			checkedAny = true
+			var state string
+			require.NoError(t, workloads.Scan(&state))
+			assert.Equal(t, string(sql.WorkloadStateUpdated), state,
+				"workload in processing should be set to updated after resync")
+		}
+		require.NoError(t, workloads.Err())
+		require.True(t, checkedAny, "expected at least one workload row to be checked")
+	})
+
+	t.Run("SyncImage with ErrNoProject sets image to failed and workload to no_attestation and returns nil", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		require.NoError(t, err)
+
+		imageName := "no-project-image"
+		imageTag := "v1"
+
+		err = db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      imageTag,
+			Metadata: map[string]string{},
+		})
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx,
+			"UPDATE images SET state = 'resync', ready_for_resync_at = NOW() WHERE name = $1 AND tag = $2",
+			imageName, imageTag)
+		require.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-no-project",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		if !errors.Is(err, pgx.ErrNoRows) {
+			require.NoError(t, err)
+		}
+
+		_, err = pool.Exec(ctx,
+			"UPDATE workloads SET state = 'processing' WHERE image_name = $1 AND image_tag = $2",
+			imageName, imageTag)
+		require.NoError(t, err)
+
+		dbCtx := updater.NewDbContext(ctx, db, logrus.NewEntry(logrus.StandardLogger()))
+
+		syncErr := updater.SyncImage(dbCtx, imageName, imageTag, "dependencytrack", func(ctx context.Context) error {
+			return sources.ErrNoProject
+		})
+		assert.NoError(t, syncErr, "SyncImage should return nil for ErrNoProject")
+
+		image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+		require.NoError(t, err)
+		assert.Equal(t, sql.ImageStateFailed, image.State, "image should be set to failed")
+
+		rows, err := pool.Query(ctx,
+			"SELECT state FROM workloads WHERE image_name = $1 AND image_tag = $2",
+			imageName, imageTag)
+		require.NoError(t, err)
+		defer rows.Close()
+		checkedAny := false
+		for rows.Next() {
+			checkedAny = true
+			var state string
+			require.NoError(t, rows.Scan(&state))
+			assert.Equal(t, string(sql.WorkloadStateNoAttestation), state,
+				"workload should be set to no_attestation")
+		}
+		require.NoError(t, rows.Err())
+		require.True(t, checkedAny, "expected at least one workload row to be checked")
+	})
+}
+
+func TestBatchUpdateWorkloadStateByImage_TerminalStatesNotOverwritten(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	imageName := "batch-update-test-image"
+	imageTag := "v1"
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	}))
+
+	type workloadCase struct {
+		name          string
+		initialState  sql.WorkloadState
+		expectUpdated bool
+	}
+
+	cases := []workloadCase{
+		{"wl-processing", sql.WorkloadStateProcessing, true},
+		{"wl-updated", sql.WorkloadStateUpdated, true},
+		{"wl-failed", sql.WorkloadStateFailed, false},
+		{"wl-unrecoverable", sql.WorkloadStateUnrecoverable, false},
+		{"wl-no-attestation", sql.WorkloadStateNoAttestation, false},
+	}
+
+	for _, c := range cases {
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         c.name,
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		if !errors.Is(err, pgx.ErrNoRows) {
+			require.NoError(t, err)
+		}
+		_, err = pool.Exec(ctx,
+			"UPDATE workloads SET state = $1 WHERE name = $2 AND image_name = $3 AND image_tag = $4",
+			string(c.initialState), c.name, imageName, imageTag)
+		require.NoError(t, err)
+	}
+
+	db.BatchUpdateWorkloadStateByImage(ctx, []sql.BatchUpdateWorkloadStateByImageParams{
+		{
+			State:     sql.WorkloadStateUpdated,
+			ImageName: imageName,
+			ImageTag:  imageTag,
+		},
+	}).Exec(func(_ int, err error) {
+		require.NoError(t, err)
+	})
+
+	for _, c := range cases {
+		var state string
+		err := pool.QueryRow(ctx,
+			"SELECT state FROM workloads WHERE name = $1 AND image_name = $2 AND image_tag = $3",
+			c.name, imageName, imageTag,
+		).Scan(&state)
+		require.NoError(t, err)
+
+		if c.expectUpdated {
+			assert.Equal(t, string(sql.WorkloadStateUpdated), state,
+				"workload %s with initial state %s should be updated", c.name, c.initialState)
+		} else {
+			assert.Equal(t, string(c.initialState), state,
+				"workload %s with terminal state %s should not be overwritten", c.name, c.initialState)
+		}
+	}
 }
 
 func TestUpdater_DetermineSeveritySince(t *testing.T) {

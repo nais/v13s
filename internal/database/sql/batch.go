@@ -75,6 +75,65 @@ func (b *BatchUpdateImageStateBatchResults) Close() error {
 	return b.br.Close()
 }
 
+const batchUpdateWorkloadStateByImage = `-- name: BatchUpdateWorkloadStateByImage :batchexec
+UPDATE
+    workloads
+SET
+    state = $1,
+    updated_at = NOW()
+WHERE
+    image_name = $2
+    AND image_tag = $3
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation')
+`
+
+type BatchUpdateWorkloadStateByImageBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BatchUpdateWorkloadStateByImageParams struct {
+	State     WorkloadState
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) BatchUpdateWorkloadStateByImage(ctx context.Context, arg []BatchUpdateWorkloadStateByImageParams) *BatchUpdateWorkloadStateByImageBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.State,
+			a.ImageName,
+			a.ImageTag,
+		}
+		batch.Queue(batchUpdateWorkloadStateByImage, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BatchUpdateWorkloadStateByImageBatchResults{br, len(arg), false}
+}
+
+func (b *BatchUpdateWorkloadStateByImageBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BatchUpdateWorkloadStateByImageBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const batchUpsertCve = `-- name: BatchUpsertCve :batchexec
 INSERT INTO cve(
     cve_id,
