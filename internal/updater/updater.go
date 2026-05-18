@@ -355,13 +355,35 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageName },
 		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageTag },
 	)
-	if errCount := u.runExec("update workload states", len(workloadStates), u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec); errCount > 0 {
-		u.log.Errorf("skipping image state update: %d workload state update(s) failed", errCount)
-		return fmt.Errorf("batch workload state update had %d failure(s), image state update skipped", errCount)
+
+	failedWorkloadIdx := make(map[int]bool)
+	u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec(func(i int, err error) {
+		if err != nil {
+			failedWorkloadIdx[i] = true
+			u.log.WithError(err).WithFields(logrus.Fields{
+				"batch": "update workload states",
+				"row":   i,
+			}).Error("batch row failed")
+		}
+	})
+
+	if n := len(failedWorkloadIdx); n > 0 {
+		u.log.Errorf("batch workload state update had %d failure(s); skipping image state update for affected images", n)
 	}
 
-	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
-	return nil
+	succeeded := imageStates[:0]
+	for i, s := range imageStates {
+		if !failedWorkloadIdx[i] {
+			succeeded = append(succeeded, s)
+		}
+	}
+
+	var batchErr error
+	if len(succeeded) < len(imageStates) {
+		batchErr = fmt.Errorf("batch workload state update had %d failure(s)", len(failedWorkloadIdx))
+	}
+	u.runExec("update image states", len(succeeded), u.querier.BatchUpdateImageState(ctx, succeeded).Exec)
+	return batchErr
 }
 
 func (u *Updater) runExec(
