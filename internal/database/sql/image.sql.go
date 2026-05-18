@@ -195,7 +195,7 @@ UPDATE
 SET
     state = 'resync',
     ready_for_resync_at = NOW(),
-    sbom_processing_started_at = NOW(),
+    sbom_processing_started_at = COALESCE(sbom_processing_started_at, NOW()),
     updated_at = NOW()
 FROM
     workloads w
@@ -224,7 +224,7 @@ UPDATE
 SET
     state = 'resync',
     ready_for_resync_at = NOW(),
-    sbom_processing_started_at = NOW(),
+    sbom_processing_started_at = COALESCE(sbom_processing_started_at, NOW()),
     updated_at = NOW()
 WHERE
     state = 'untracked'
@@ -307,10 +307,10 @@ UPDATE
 SET
     state = $1,
     ready_for_resync_at = $2,
-    sbom_processing_started_at = CASE WHEN $1::image_state IN ('resync', 'initialized') THEN
-        NOW()
-    ELSE
-        NULL
+    sbom_processing_started_at = CASE
+        WHEN $1::image_state IN ('resync', 'initialized') AND sbom_processing_started_at IS NULL THEN NOW()
+        WHEN $1::image_state NOT IN ('resync', 'initialized') THEN NULL
+        ELSE sbom_processing_started_at
     END,
     updated_at = NOW()
 WHERE
