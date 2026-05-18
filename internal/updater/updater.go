@@ -285,7 +285,9 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 			break
 		}
 
-		u.BatchUpdateVulnerabilityData(ctx, batch)
+		if err := u.BatchUpdateVulnerabilityData(ctx, batch); err != nil {
+			return err
+		}
 	}
 
 	u.log.WithFields(logrus.Fields{
@@ -295,7 +297,7 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 	return nil
 }
 
-func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) {
+func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) error {
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
@@ -341,7 +343,25 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		}
 	}
 
+	workloadStates := make([]sql.BatchUpdateWorkloadStateByImageParams, 0, len(images))
+	for _, i := range images {
+		workloadStates = append(workloadStates, sql.BatchUpdateWorkloadStateByImageParams{
+			State:     sql.WorkloadStateUpdated,
+			ImageName: i.ImageName,
+			ImageTag:  i.ImageTag,
+		})
+	}
+	sortByFields(workloadStates,
+		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageName },
+		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageTag },
+	)
+	if errCount := u.runExec("update workload states", len(workloadStates), u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec); errCount > 0 {
+		u.log.Errorf("skipping image state update: %d workload state update(s) failed", errCount)
+		return fmt.Errorf("batch workload state update had %d failure(s), image state update skipped", errCount)
+	}
+
 	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
+	return nil
 }
 
 func (u *Updater) runExec(

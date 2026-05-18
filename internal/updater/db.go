@@ -34,18 +34,21 @@ func NewDbContext(ctx context.Context, querier sql.Querier, log *logrus.Entry) c
 // SyncImage runs the provided function and updates the image state in the database based on the result, it should only return an error if the image state update failed.
 func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(ctx context.Context) error) error {
 	d := db(ctx)
-	err := f(ctx)
-	if err != nil {
-		err = handleError(ctx, imageName, imageTag, source, err)
+	srcErr := f(ctx)
+	if srcErr != nil {
+		err := handleError(ctx, imageName, imageTag, source, srcErr)
 		if err != nil {
-			n, err := d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			if errors.Is(srcErr, sources.ErrNoProject) {
+				return err
+			}
+			n, updateErr := d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				Name:  imageName,
 				Tag:   imageTag,
 				State: sql.ImageStateFailed,
 			})
-			if err != nil {
-				d.log.Errorf("failed to update image state: %v", err)
-				return fmt.Errorf("updating image state: %w", err)
+			if updateErr != nil {
+				d.log.Errorf("failed to update image state: %v", updateErr)
+				return fmt.Errorf("updating image state: %w", updateErr)
 			}
 			if n == 0 {
 				d.log.Warnf("UpdateImageState matched no rows for image %s:%s, image may already be gone", imageName, imageTag)
@@ -61,7 +64,7 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 		State: sql.ImageStateUpdated,
 	})*/
 
-	return err
+	return nil
 }
 
 func db(ctx context.Context) *database {
@@ -76,7 +79,31 @@ func handleError(ctx context.Context, imageName, imageTag string, source string,
 		Source:    source,
 	}
 
-	if err == nil || errors.Is(err, sources.ErrNoProject) || errors.Is(err, sources.ErrNoMetrics) {
+	if err == nil || errors.Is(err, sources.ErrNoMetrics) {
+		return nil
+	}
+
+	if errors.Is(err, sources.ErrNoProject) {
+		if dbErr := d.querier.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			State:     sql.WorkloadStateNoAttestation,
+		}); dbErr != nil {
+			d.log.Errorf("failed to update workload state to no_attestation: %v", dbErr)
+			return fmt.Errorf("updating workload state: %w", dbErr)
+		}
+		n, dbErr := d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   imageTag,
+			State: sql.ImageStateFailed,
+		})
+		if dbErr != nil {
+			d.log.Errorf("failed to update image state to failed: %v", dbErr)
+			return fmt.Errorf("updating image state: %w", dbErr)
+		}
+		if n == 0 {
+			d.log.Warnf("UpdateImageState matched no rows for image %s:%s, image may already be gone", imageName, imageTag)
+		}
 		return nil
 	}
 

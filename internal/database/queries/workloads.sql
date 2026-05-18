@@ -214,3 +214,14 @@ ORDER BY
         namespace,
         CLUSTER,
         updated_at) DESC;
+
+-- name: BatchUpdateWorkloadStateByImage :batchexec
+UPDATE
+    workloads
+SET
+    state = @state,
+    updated_at = NOW()
+WHERE
+    image_name = @image_name
+    AND image_tag = @image_tag
+    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation');
