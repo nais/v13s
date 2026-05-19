@@ -39,6 +39,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
+		Namespaces:        nonNilStrings(request.GetFilter().GetNamespaces()),
 		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		ImageName:         request.GetFilter().ImageName,
@@ -99,6 +100,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
+		Namespaces:        nonNilStrings(request.GetFilter().GetNamespaces()),
 		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
@@ -198,13 +200,14 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 
 	filter := request.GetFilter()
 	suppressed, err := s.querier.ListSuppressedVulnerabilities(ctx, sql.ListSuppressedVulnerabilitiesParams{
-		Cluster:   filter.Cluster,
-		Namespace: filter.Namespace,
-		ImageName: filter.ImageName,
-		ImageTag:  filter.ImageTag,
-		Offset:    offset,
-		Limit:     limit,
-		OrderBy:   SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
+		Cluster:    filter.Cluster,
+		Namespace:  filter.Namespace,
+		Namespaces: nonNilStrings(filter.GetNamespaces()),
+		ImageName:  filter.ImageName,
+		ImageTag:   filter.ImageTag,
+		Offset:     offset,
+		Limit:      limit,
+		OrderBy:    SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list suppressed vulnerabilities: %w", err)
@@ -213,6 +216,7 @@ func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vul
 	total, err := s.querier.CountSuppressedVulnerabilities(ctx, sql.CountSuppressedVulnerabilitiesParams{
 		Cluster:      filter.Cluster,
 		Namespace:    filter.Namespace,
+		Namespaces:   nonNilStrings(filter.GetNamespaces()),
 		WorkloadType: filter.FuzzyWorkloadType(),
 		WorkloadName: filter.Workload,
 		ImageName:    filter.ImageName,
@@ -352,7 +356,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		CvssScore:         request.CvssScore,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
-		Namespaces:        filter.GetNamespaces(),
+		Namespaces:        nonNilStrings(filter.GetNamespaces()),
 		IncludeSuppressed: request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
@@ -586,6 +590,13 @@ func mergeStringSlices(a, b []string) []string {
 		}
 	}
 	return result
+}
+
+func nonNilStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }
 
 // Users expect "asc" = weakest → strongest, so we flip direction here

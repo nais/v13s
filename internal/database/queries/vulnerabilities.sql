@@ -401,6 +401,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
         v.image_name = sqlc.narg('image_name')::TEXT
@@ -465,6 +467,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
         w.workload_type = sqlc.narg('workload_type')::TEXT
@@ -514,6 +518,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
         w.workload_type = sqlc.narg('workload_type')::TEXT
@@ -729,6 +735,8 @@ AND (
     ELSE
         TRUE
     END)
+AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
         w.workload_type = sqlc.narg('workload_type')::TEXT

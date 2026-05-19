@@ -33,27 +33,29 @@ AND (
     ELSE
         TRUE
     END)
-AND (
-    CASE WHEN $3::TEXT IS NOT NULL THEN
-        w.workload_type = $3::TEXT
-    ELSE
-        TRUE
-    END)
+AND (cardinality($3::TEXT[]) = 0
+    OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
-        w.name = $4::TEXT
+        w.workload_type = $4::TEXT
     ELSE
         TRUE
     END)
 AND (
     CASE WHEN $5::TEXT IS NOT NULL THEN
-        v.image_name = $5::TEXT
+        w.name = $5::TEXT
     ELSE
         TRUE
     END)
 AND (
     CASE WHEN $6::TEXT IS NOT NULL THEN
-        v.image_tag = $6::TEXT
+        v.image_name = $6::TEXT
+    ELSE
+        TRUE
+    END)
+AND (
+    CASE WHEN $7::TEXT IS NOT NULL THEN
+        v.image_tag = $7::TEXT
     ELSE
         TRUE
     END)
@@ -62,6 +64,7 @@ AND (
 type CountSuppressedVulnerabilitiesParams struct {
 	Cluster      *string
 	Namespace    *string
+	Namespaces   []string
 	WorkloadType *string
 	WorkloadName *string
 	ImageName    *string
@@ -72,6 +75,7 @@ func (q *Queries) CountSuppressedVulnerabilities(ctx context.Context, arg CountS
 	row := q.db.QueryRow(ctx, countSuppressedVulnerabilities,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.ImageName,
@@ -106,25 +110,28 @@ AND (
     ELSE
         TRUE
     END)
-AND (
-    CASE WHEN $3::TEXT IS NOT NULL THEN
-        w.workload_type = $3::TEXT
-    ELSE
-        TRUE
-    END)
+AND (cardinality($3::TEXT[]) = 0
+    OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
-        w.name = $4::TEXT
+        w.workload_type = $4::TEXT
     ELSE
         TRUE
     END)
-AND ($5::BOOLEAN IS TRUE
+AND (
+    CASE WHEN $5::TEXT IS NOT NULL THEN
+        w.name = $5::TEXT
+    ELSE
+        TRUE
+    END)
+AND ($6::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 `
 
 type CountVulnerabilitiesParams struct {
 	Cluster           *string
 	Namespace         *string
+	Namespaces        []string
 	WorkloadType      *string
 	WorkloadName      *string
 	IncludeSuppressed *bool
@@ -134,6 +141,7 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 	row := q.db.QueryRow(ctx, countVulnerabilities,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.IncludeSuppressed,
@@ -591,56 +599,59 @@ AND (
     ELSE
         TRUE
     END)
+AND (cardinality($3::TEXT[]) = 0
+    OR w.namespace = ANY ($3::TEXT[]))
 AND (
-    CASE WHEN $3::TEXT IS NOT NULL THEN
-        v.image_name = $3::TEXT
+    CASE WHEN $4::TEXT IS NOT NULL THEN
+        v.image_name = $4::TEXT
     ELSE
         TRUE
     END)
 AND (
-    CASE WHEN $4::TEXT IS NOT NULL THEN
-        v.image_tag = $4::TEXT
+    CASE WHEN $5::TEXT IS NOT NULL THEN
+        v.image_tag = $5::TEXT
     ELSE
         TRUE
     END)
 ORDER BY
-    CASE WHEN $5 = 'severity_asc' THEN
+    CASE WHEN $6 = 'severity_asc' THEN
         c.severity
     END ASC,
-    CASE WHEN $5 = 'severity_desc' THEN
+    CASE WHEN $6 = 'severity_desc' THEN
         c.severity
     END DESC,
-    CASE WHEN $5 = 'workload_asc' THEN
+    CASE WHEN $6 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $5 = 'workload_desc' THEN
+    CASE WHEN $6 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $5 = 'namespace_asc' THEN
+    CASE WHEN $6 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $5 = 'namespace_desc' THEN
+    CASE WHEN $6 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $5 = 'cluster_asc' THEN
+    CASE WHEN $6 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $5 = 'cluster_desc' THEN
+    CASE WHEN $6 = 'cluster_desc' THEN
         w.cluster
     END DESC,
     v.id ASC
-LIMIT $7
-OFFSET $6
+LIMIT $8
+OFFSET $7
 `
 
 type ListSuppressedVulnerabilitiesParams struct {
-	Cluster   *string
-	Namespace *string
-	ImageName *string
-	ImageTag  *string
-	OrderBy   interface{}
-	Offset    int32
-	Limit     int32
+	Cluster    *string
+	Namespace  *string
+	Namespaces []string
+	ImageName  *string
+	ImageTag   *string
+	OrderBy    interface{}
+	Offset     int32
+	Limit      int32
 }
 
 type ListSuppressedVulnerabilitiesRow struct {
@@ -688,6 +699,7 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 	rows, err := q.db.Query(ctx, listSuppressedVulnerabilities,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.ImageName,
 		arg.ImageTag,
 		arg.OrderBy,
@@ -846,77 +858,80 @@ AND (
     ELSE
         TRUE
     END)
-AND (
-    CASE WHEN $3::TEXT IS NOT NULL THEN
-        w.workload_type = $3::TEXT
-    ELSE
-        TRUE
-    END)
+AND (cardinality($3::TEXT[]) = 0
+    OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
-        w.name = $4::TEXT
+        w.workload_type = $4::TEXT
     ELSE
         TRUE
     END)
 AND (
     CASE WHEN $5::TEXT IS NOT NULL THEN
-        v.image_name = $5::TEXT
+        w.name = $5::TEXT
     ELSE
         TRUE
     END)
 AND (
     CASE WHEN $6::TEXT IS NOT NULL THEN
-        v.image_tag = $6::TEXT
+        v.image_name = $6::TEXT
     ELSE
         TRUE
     END)
-AND ($7::BOOLEAN IS TRUE
+AND (
+    CASE WHEN $7::TEXT IS NOT NULL THEN
+        v.image_tag = $7::TEXT
+    ELSE
+        TRUE
+    END)
+AND ($8::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
-    CASE WHEN $8 = 'severity_asc' THEN
+    CASE WHEN $9 = 'severity_asc' THEN
         c.severity
     END ASC,
-    CASE WHEN $8 = 'severity_desc' THEN
+    CASE WHEN $9 = 'severity_desc' THEN
         c.severity
     END DESC,
-    CASE WHEN $8 = 'workload_asc' THEN
+    CASE WHEN $9 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $8 = 'workload_desc' THEN
+    CASE WHEN $9 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $8 = 'namespace_asc' THEN
+    CASE WHEN $9 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $8 = 'namespace_desc' THEN
+    CASE WHEN $9 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $8 = 'cluster_asc' THEN
+    CASE WHEN $9 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $8 = 'cluster_desc' THEN
+    CASE WHEN $9 = 'cluster_desc' THEN
         w.cluster
     END DESC,
-    CASE WHEN $8 = 'created_at_asc' THEN
+    CASE WHEN $9 = 'created_at_asc' THEN
         v.created_at
     END ASC,
-    CASE WHEN $8 = 'created_at_desc' THEN
+    CASE WHEN $9 = 'created_at_desc' THEN
         v.created_at
     END DESC,
-    CASE WHEN $8 = 'updated_at_asc' THEN
+    CASE WHEN $9 = 'updated_at_asc' THEN
         v.updated_at
     END ASC,
-    CASE WHEN $8 = 'updated_at_desc' THEN
+    CASE WHEN $9 = 'updated_at_desc' THEN
         v.updated_at
     END DESC,
     v.id ASC
-LIMIT $10
-OFFSET $9
+LIMIT $11
+OFFSET $10
 `
 
 type ListVulnerabilitiesParams struct {
 	Cluster           *string
 	Namespace         *string
+	Namespaces        []string
 	WorkloadType      *string
 	WorkloadName      *string
 	ImageName         *string
@@ -964,6 +979,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 	rows, err := q.db.Query(ctx, listVulnerabilities,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.ImageName,

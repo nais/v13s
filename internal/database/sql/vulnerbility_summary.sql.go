@@ -134,10 +134,12 @@ WITH filtered_workloads AS (
         OR w.cluster = $1::TEXT)
     AND ($2::TEXT IS NULL
         OR w.namespace = $2::TEXT)
-    AND ($3::TEXT[] IS NULL
-        OR w.workload_type = ANY ($3::TEXT[]))
-    AND ($4::TEXT IS NULL
-        OR w.name = $4::TEXT))
+    AND (cardinality($3::TEXT[]) = 0
+        OR w.namespace = ANY ($3::TEXT[]))
+    AND ($4::TEXT[] IS NULL
+        OR w.workload_type = ANY ($4::TEXT[]))
+    AND ($5::TEXT IS NULL
+        OR w.name = $5::TEXT))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
     CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN
@@ -159,6 +161,7 @@ FROM
 type GetVulnerabilitySummaryParams struct {
 	Cluster       *string
 	Namespace     *string
+	Namespaces    []string
 	WorkloadTypes []string
 	WorkloadName  *string
 }
@@ -179,6 +182,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 	row := q.db.QueryRow(ctx, getVulnerabilitySummary,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 	)
@@ -251,10 +255,12 @@ WHERE
         OR CLUSTER = $2::TEXT)
     AND ($3::TEXT IS NULL
         OR namespace = $3::TEXT)
-    AND ($4::TEXT[] IS NULL
-        OR workload_type = ANY ($4::TEXT[]))
-    AND ($5::TEXT IS NULL
-        OR workload_name = $5::TEXT)
+    AND (cardinality($4::TEXT[]) = 0
+        OR namespace = ANY ($4::TEXT[]))
+    AND ($5::TEXT[] IS NULL
+        OR workload_type = ANY ($5::TEXT[]))
+    AND ($6::TEXT IS NULL
+        OR workload_name = $6::TEXT)
 GROUP BY
     snapshot_date
 ORDER BY
@@ -265,6 +271,7 @@ type GetVulnerabilitySummaryTimeSeriesParams struct {
 	Since         pgtype.Timestamptz
 	Cluster       *string
 	Namespace     *string
+	Namespaces    []string
 	WorkloadTypes []string
 	WorkloadName  *string
 }
@@ -286,6 +293,7 @@ func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg Get
 		arg.Since,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 	)
@@ -407,10 +415,12 @@ WITH filtered_workloads AS (
         OR w.cluster = $4::TEXT)
     AND ($5::TEXT IS NULL
         OR w.namespace = $5::TEXT)
-    AND ($6::TEXT[] IS NULL
-        OR w.workload_type = ANY ($6::TEXT[]))
-    AND ($7::TEXT IS NULL
-        OR w.name = $7::TEXT)
+    AND (cardinality($6::TEXT[]) = 0
+        OR w.namespace = ANY ($6::TEXT[]))
+    AND ($7::TEXT[] IS NULL
+        OR w.workload_type = ANY ($7::TEXT[]))
+    AND ($8::TEXT IS NULL
+        OR w.name = $8::TEXT)
 ),
 vulnerability_data AS (
     SELECT
@@ -446,19 +456,19 @@ vulnerability_data AS (
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
                 -- If no since join on image_tag, if since is set ignore image_tag
-                CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN
+                CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
                     w.image_tag = v.image_tag
                 ELSE
                     TRUE
                 END)
         LEFT JOIN images i ON i.name = w.image_name
             AND i.tag = w.image_tag
-    WHERE ($9::TEXT IS NULL
-        OR v.image_name = $9::TEXT)
-    AND ($10::TEXT IS NULL
-        OR v.image_tag = $10::TEXT)
-    AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
-        OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
+    WHERE ($10::TEXT IS NULL
+        OR v.image_name = $10::TEXT)
+    AND ($11::TEXT IS NULL
+        OR v.image_tag = $11::TEXT)
+    AND ($9::TIMESTAMP WITH TIME ZONE IS NULL
+        OR v.updated_at > $9::TIMESTAMP WITH TIME ZONE))
 SELECT
     id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at,
 (
@@ -535,6 +545,7 @@ type ListVulnerabilitySummariesParams struct {
 	Limit         int32
 	Cluster       *string
 	Namespace     *string
+	Namespaces    []string
 	WorkloadTypes []string
 	WorkloadName  *string
 	Since         pgtype.Timestamptz
@@ -576,6 +587,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.Limit,
 		arg.Cluster,
 		arg.Namespace,
+		arg.Namespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.Since,

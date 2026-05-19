@@ -59,6 +59,8 @@ WITH filtered_workloads AS (
         OR w.cluster = sqlc.narg('cluster')::TEXT)
     AND (sqlc.narg('namespace')::TEXT IS NULL
         OR w.namespace = sqlc.narg('namespace')::TEXT)
+    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+        OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
@@ -192,6 +194,8 @@ WITH filtered_workloads AS (
         OR w.cluster = sqlc.narg('cluster')::TEXT)
     AND (sqlc.narg('namespace')::TEXT IS NULL
         OR w.namespace = sqlc.narg('namespace')::TEXT)
+    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+        OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
@@ -233,6 +237,8 @@ WHERE
         OR CLUSTER = sqlc.narg('cluster')::TEXT)
     AND (sqlc.narg('namespace')::TEXT IS NULL
         OR namespace = sqlc.narg('namespace')::TEXT)
+    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+        OR namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
