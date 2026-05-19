@@ -2067,7 +2067,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		}
 	})
 
-	t.Run("empty namespaces filter returns all results", func(t *testing.T) {
+	t.Run("no namespaces filter returns all results", func(t *testing.T) {
 		filtered, err := client.ListCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.NamespacesFilter("namespace-1"),
@@ -2078,6 +2078,19 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.GreaterOrEqual(t, len(all.Nodes), len(filtered.Nodes))
+	})
+
+	t.Run("empty namespaces filter returns all results", func(t *testing.T) {
+		withEmpty, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(10),
+			vulnerabilities.NamespacesFilter(),
+		)
+		assert.NoError(t, err)
+
+		all, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(all.Nodes), len(withEmpty.Nodes))
 	})
 
 	t.Run("exclude namespaces reduces affected workloads", func(t *testing.T) {
