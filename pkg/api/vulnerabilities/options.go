@@ -307,7 +307,10 @@ func applyOptions(opts ...Option) *Options {
 		o.Filter.ExcludeClusters = nil
 	}
 
-	// Keep deprecated fields in sync so existing consumers (e.g. nais/api) still see them
+	// Keep deprecated fields in sync so client.go can still populate the request-level
+	// ExcludeNamespaces/ExcludeClusters proto fields on the wire.
+	// TODO: once the deprecated request-level fields are removed from the proto and client.go
+	// stops setting them, delete these two lines and the Options.ExcludeNamespaces/ExcludeClusters fields.
 	o.ExcludeNamespaces = o.Filter.ExcludeNamespaces
 	o.ExcludeClusters = o.Filter.ExcludeClusters
 
