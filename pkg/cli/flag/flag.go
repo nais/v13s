@@ -35,6 +35,7 @@ type Options struct {
 	CvssScore         float64
 	ExcludeClusters   []string
 	ExcludeNamespaces []string
+	Namespaces        []string
 }
 
 func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
@@ -132,6 +133,12 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Aliases:     []string{"exns"},
 			Usage:       "namespaces to exclude (can be specified multiple times)",
 			Destination: &opts.ExcludeNamespaces,
+		},
+		&cli.StringSliceFlag{
+			Name:        "namespaces",
+			Aliases:     []string{"ns"},
+			Usage:       "namespaces to include (can be specified multiple times); omit to include all",
+			Destination: &opts.Namespaces,
 		},
 	}
 	for _, f := range cFlags {
@@ -244,6 +251,10 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 
 	if len(o.ExcludeNamespaces) > 0 {
 		opts = append(opts, vulnerabilities.ExcludeNamespacesFilter(o.ExcludeNamespaces...))
+	}
+
+	if len(o.Namespaces) > 0 {
+		opts = append(opts, vulnerabilities.NamespacesFilter(o.Namespaces...))
 	}
 
 	if len(o.ExcludeClusters) > 0 {
