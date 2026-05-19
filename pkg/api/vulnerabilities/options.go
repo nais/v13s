@@ -91,8 +91,8 @@ type Options struct {
 	Since             *timestamppb.Timestamp
 	SinceType         *SinceType
 	Severity          *Severity
-	ExcludeNamespaces []string
-	ExcludeClusters   []string
+	ExcludeNamespaces []string // Deprecated: use Filter.ExcludeNamespaces via ExcludeNamespacesFilter
+	ExcludeClusters   []string // Deprecated: use Filter.ExcludeClusters via ExcludeClustersFilter
 }
 
 type VulnerabilityFilter struct {
@@ -172,6 +172,15 @@ func NamespaceFilter(name string) Option {
 			o.Filter = &Filter{}
 		}
 		o.Filter.Namespace = &name
+	})
+}
+
+func NamespacesFilter(names ...string) Option {
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.Namespaces = append(o.Filter.Namespaces, names...)
 	})
 }
 
@@ -257,13 +266,19 @@ func SeverityFilter(sev Severity) Option {
 
 func ExcludeNamespacesFilter(namespace ...string) Option {
 	return newFuncOption(func(o *Options) {
-		o.ExcludeNamespaces = append(o.ExcludeNamespaces, namespace...)
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.ExcludeNamespaces = append(o.Filter.ExcludeNamespaces, namespace...)
 	})
 }
 
 func ExcludeClustersFilter(cluster ...string) Option {
 	return newFuncOption(func(o *Options) {
-		o.ExcludeClusters = append(o.ExcludeClusters, cluster...)
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.ExcludeClusters = append(o.Filter.ExcludeClusters, cluster...)
 	})
 }
 
@@ -279,14 +294,22 @@ func applyOptions(opts ...Option) *Options {
 		o.Limit = DefaultLimit
 	}
 
-	// If single-namespace include is set, exclude list is irrelevant
+	// Merge deprecated Options-level fields into Filter for backwards compat
+	o.Filter.ExcludeNamespaces = append(o.Filter.ExcludeNamespaces, o.ExcludeNamespaces...)
+	o.Filter.ExcludeClusters = append(o.Filter.ExcludeClusters, o.ExcludeClusters...)
+
+	// If single-namespace/cluster include is set, exclude lists are irrelevant
 	if o.Filter.Namespace != nil {
-		o.ExcludeNamespaces = nil
+		o.Filter.ExcludeNamespaces = nil
 	}
 
 	if o.Filter.Cluster != nil {
-		o.ExcludeClusters = nil
+		o.Filter.ExcludeClusters = nil
 	}
+
+	// Keep deprecated fields in sync so existing consumers (e.g. nais/api) still see them
+	o.ExcludeNamespaces = o.Filter.ExcludeNamespaces
+	o.ExcludeClusters = o.Filter.ExcludeClusters
 
 	return o
 }
