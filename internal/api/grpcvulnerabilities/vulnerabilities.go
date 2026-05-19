@@ -349,9 +349,17 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		}
 	}
 
+	namespaces := filter.GetNamespaces()
+	if ns := filter.GetNamespace(); ns != "" {
+		namespaces = append(namespaces, ns)
+	}
+	if namespaces == nil {
+		namespaces = []string{}
+	}
+
 	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
 		Cluster:           filter.Cluster,
-		Namespace:         filter.Namespace,
+		Namespaces:        namespaces,
 		WorkloadTypes:     filter.GetWorkloadTypes(),
 		WorkloadName:      filter.Workload,
 		CveIds:            cveIDs,

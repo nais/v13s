@@ -175,6 +175,15 @@ func NamespaceFilter(name string) Option {
 	})
 }
 
+func NamespacesFilter(namespaces ...string) Option {
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.Namespaces = append(o.Filter.Namespaces, namespaces...)
+	})
+}
+
 // TODO: document the Options
 func WorkloadTypeFilter(name string) Option {
 	return newFuncOption(func(o *Options) {
@@ -280,7 +289,7 @@ func applyOptions(opts ...Option) *Options {
 	}
 
 	// If single-namespace include is set, exclude list is irrelevant
-	if o.Filter.Namespace != nil {
+	if o.Filter.Namespace != nil || len(o.Filter.Namespaces) > 0 {
 		o.ExcludeNamespaces = nil
 	}
 

@@ -869,12 +869,8 @@ WHERE
         END)
     AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
         OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
-    AND (
-        CASE WHEN sqlc.narg('namespace')::TEXT IS NOT NULL THEN
-            w.namespace = sqlc.narg('namespace')::TEXT
-        ELSE
-            TRUE
-        END)
+    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+        OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
     AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
         OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL

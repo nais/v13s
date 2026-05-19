@@ -357,6 +357,84 @@ func TestServer_ListWorkloadsForVulnerability_ExcludeNamespaces(t *testing.T) {
 	})
 }
 
+func TestServer_ListWorkloadsForVulnerability_NamespacesFilter(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1", "namespace-2", "namespace-3"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	// Resolve the canonical CVE ID — call GetVulnerability for all three namespaces
+	// so the CVE is linked to every workload in the DB.
+	vulnResp, err := client.GetVulnerability(ctx,
+		"image-cluster-1-namespace-1-workload-1",
+		"v1.0",
+		"package-CWE-1-1",
+		"CWE-1-1",
+	)
+	require.NoError(t, err)
+	cveID := vulnResp.Vulnerability.Cve.Id
+	require.NotEmpty(t, cveID)
+
+	for _, ns := range []string{"namespace-2", "namespace-3"} {
+		_, err = client.GetVulnerability(ctx,
+			fmt.Sprintf("image-cluster-1-%s-workload-1", ns),
+			"v1.0",
+			"package-CWE-1-1",
+			"CWE-1-1",
+		)
+		require.NoError(t, err)
+	}
+
+	t.Run("NamespacesFilter returns only matching namespaces", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+			vulnerabilities.NamespacesFilter("namespace-1", "namespace-2"),
+		)
+		require.NoError(t, err)
+
+		require.Len(t, resp.Nodes, 2)
+		namespaces := []string{resp.Nodes[0].WorkloadRef.Namespace, resp.Nodes[1].WorkloadRef.Namespace}
+		assert.ElementsMatch(t, []string{"namespace-1", "namespace-2"}, namespaces)
+	})
+
+	t.Run("NamespacesFilter with a single namespace behaves like NamespaceFilter", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+			vulnerabilities.NamespacesFilter("namespace-3"),
+		)
+		require.NoError(t, err)
+
+		require.Len(t, resp.Nodes, 1)
+		assert.Equal(t, "namespace-3", resp.Nodes[0].WorkloadRef.Namespace)
+	})
+
+	t.Run("NamespaceFilter and NamespacesFilter combined return union", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.NamespacesFilter("namespace-2"),
+		)
+		require.NoError(t, err)
+
+		require.Len(t, resp.Nodes, 2)
+		namespaces := []string{resp.Nodes[0].WorkloadRef.Namespace, resp.Nodes[1].WorkloadRef.Namespace}
+		assert.ElementsMatch(t, []string{"namespace-1", "namespace-2"}, namespaces)
+	})
+
+	t.Run("no namespace filter returns all namespaces", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+		)
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 3)
+	})
+}
+
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
