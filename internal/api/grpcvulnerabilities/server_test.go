@@ -2068,16 +2068,17 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 
 	t.Run("no namespaces filter returns all results", func(t *testing.T) {
-		filtered, err := client.ListCveSummaries(ctx,
+		withoutFilter, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, withoutFilter.Nodes)
+
+		withFilter, err := client.ListCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.NamespacesFilter("namespace-1"),
 		)
 		assert.NoError(t, err)
 
-		all, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
-		assert.NoError(t, err)
-
-		assert.GreaterOrEqual(t, len(all.Nodes), len(filtered.Nodes))
+		assert.GreaterOrEqual(t, len(withoutFilter.Nodes), len(withFilter.Nodes))
 	})
 
 	t.Run("empty namespaces filter returns all results", func(t *testing.T) {
