@@ -54,11 +54,14 @@ enum SbomStatus {
 
 message Filter {
   optional string cluster = 1;
-  optional string namespace = 2;
+  optional string namespace = 2 [deprecated = true]; // use namespaces instead
   optional string workload = 3;
   optional string workload_type = 4;
   optional string image_name = 5;
   optional string image_tag = 6;
+  repeated string namespaces = 7;
+  repeated string exclude_namespaces = 8;
+  repeated string exclude_clusters = 9;
 }
 
 message OrderBy {
@@ -285,8 +288,8 @@ message ListWorkloadsForVulnerabilityRequest {
   int32 limit = 4;
   int32 offset = 5;
   optional OrderBy order_by = 6;
-  repeated string exclude_namespaces = 7;
-  repeated string  exclude_clusters = 8;
+  repeated string exclude_namespaces = 7 [deprecated = true]; // use filter.exclude_namespaces instead
+  repeated string exclude_clusters = 8 [deprecated = true];   // use filter.exclude_clusters instead
   optional bool include_suppressed = 9;
 }
 
@@ -305,8 +308,8 @@ message ListCveSummariesRequest {
   int32 limit = 2;
   int32 offset = 3;
   optional OrderBy order_by = 4;
-  repeated string exclude_namespaces = 5;
-  repeated string  exclude_clusters = 6;
+  repeated string exclude_namespaces = 5 [deprecated = true]; // use filter.exclude_namespaces instead
+  repeated string exclude_clusters = 6 [deprecated = true];   // use filter.exclude_clusters instead
   optional bool include_suppressed = 7;
 }
 

@@ -285,15 +285,19 @@ func (SbomStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 type Filter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cluster       *string                `protobuf:"bytes,1,opt,name=cluster,proto3,oneof" json:"cluster,omitempty"`
-	Namespace     *string                `protobuf:"bytes,2,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
-	Workload      *string                `protobuf:"bytes,3,opt,name=workload,proto3,oneof" json:"workload,omitempty"`
-	WorkloadType  *string                `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3,oneof" json:"workload_type,omitempty"`
-	ImageName     *string                `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3,oneof" json:"image_name,omitempty"`
-	ImageTag      *string                `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3,oneof" json:"image_tag,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Cluster *string                `protobuf:"bytes,1,opt,name=cluster,proto3,oneof" json:"cluster,omitempty"`
+	// Deprecated: Marked as deprecated in vulnerabilities.proto.
+	Namespace         *string  `protobuf:"bytes,2,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"` // use namespaces instead
+	Workload          *string  `protobuf:"bytes,3,opt,name=workload,proto3,oneof" json:"workload,omitempty"`
+	WorkloadType      *string  `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3,oneof" json:"workload_type,omitempty"`
+	ImageName         *string  `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3,oneof" json:"image_name,omitempty"`
+	ImageTag          *string  `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3,oneof" json:"image_tag,omitempty"`
+	Namespaces        []string `protobuf:"bytes,7,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
+	ExcludeNamespaces []string `protobuf:"bytes,8,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"`
+	ExcludeClusters   []string `protobuf:"bytes,9,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Filter) Reset() {
@@ -333,6 +337,7 @@ func (x *Filter) GetCluster() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in vulnerabilities.proto.
 func (x *Filter) GetNamespace() string {
 	if x != nil && x.Namespace != nil {
 		return *x.Namespace
@@ -366,6 +371,27 @@ func (x *Filter) GetImageTag() string {
 		return *x.ImageTag
 	}
 	return ""
+}
+
+func (x *Filter) GetNamespaces() []string {
+	if x != nil {
+		return x.Namespaces
+	}
+	return nil
+}
+
+func (x *Filter) GetExcludeNamespaces() []string {
+	if x != nil {
+		return x.ExcludeNamespaces
+	}
+	return nil
+}
+
+func (x *Filter) GetExcludeClusters() []string {
+	if x != nil {
+		return x.ExcludeClusters
+	}
+	return nil
 }
 
 type OrderBy struct {
@@ -2415,16 +2441,18 @@ func (x *ListWorkloadsForVulnerabilityByIdResponse) GetWorkloadRef() []*Workload
 }
 
 type ListWorkloadsForVulnerabilityRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Filter            *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	CveIds            []string               `protobuf:"bytes,2,rep,name=cve_ids,json=cveIds,proto3" json:"cve_ids,omitempty"`
-	CvssScore         *float64               `protobuf:"fixed64,3,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
-	Limit             int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset            int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy           *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	ExcludeNamespaces []string               `protobuf:"bytes,7,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"`
-	ExcludeClusters   []string               `protobuf:"bytes,8,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"`
-	IncludeSuppressed *bool                  `protobuf:"varint,9,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Filter    *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	CveIds    []string               `protobuf:"bytes,2,rep,name=cve_ids,json=cveIds,proto3" json:"cve_ids,omitempty"`
+	CvssScore *float64               `protobuf:"fixed64,3,opt,name=cvss_score,json=cvssScore,proto3,oneof" json:"cvss_score,omitempty"`
+	Limit     int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset    int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	OrderBy   *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
+	// Deprecated: Marked as deprecated in vulnerabilities.proto.
+	ExcludeNamespaces []string `protobuf:"bytes,7,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"` // use filter.exclude_namespaces instead
+	// Deprecated: Marked as deprecated in vulnerabilities.proto.
+	ExcludeClusters   []string `protobuf:"bytes,8,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"` // use filter.exclude_clusters instead
+	IncludeSuppressed *bool    `protobuf:"varint,9,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2501,6 +2529,7 @@ func (x *ListWorkloadsForVulnerabilityRequest) GetOrderBy() *OrderBy {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in vulnerabilities.proto.
 func (x *ListWorkloadsForVulnerabilityRequest) GetExcludeNamespaces() []string {
 	if x != nil {
 		return x.ExcludeNamespaces
@@ -2508,6 +2537,7 @@ func (x *ListWorkloadsForVulnerabilityRequest) GetExcludeNamespaces() []string {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in vulnerabilities.proto.
 func (x *ListWorkloadsForVulnerabilityRequest) GetExcludeClusters() []string {
 	if x != nil {
 		return x.ExcludeClusters
@@ -2627,14 +2657,16 @@ func (x *WorkloadForVulnerability) GetVulnerability() *Vulnerability {
 }
 
 type ListCveSummariesRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Filter            *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Limit             int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset            int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy           *OrderBy               `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	ExcludeNamespaces []string               `protobuf:"bytes,5,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"`
-	ExcludeClusters   []string               `protobuf:"bytes,6,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"`
-	IncludeSuppressed *bool                  `protobuf:"varint,7,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Filter  *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	Limit   int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset  int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	OrderBy *OrderBy               `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
+	// Deprecated: Marked as deprecated in vulnerabilities.proto.
+	ExcludeNamespaces []string `protobuf:"bytes,5,rep,name=exclude_namespaces,json=excludeNamespaces,proto3" json:"exclude_namespaces,omitempty"` // use filter.exclude_namespaces instead
+	// Deprecated: Marked as deprecated in vulnerabilities.proto.
+	ExcludeClusters   []string `protobuf:"bytes,6,rep,name=exclude_clusters,json=excludeClusters,proto3" json:"exclude_clusters,omitempty"` // use filter.exclude_clusters instead
+	IncludeSuppressed *bool    `protobuf:"varint,7,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2697,6 +2729,7 @@ func (x *ListCveSummariesRequest) GetOrderBy() *OrderBy {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in vulnerabilities.proto.
 func (x *ListCveSummariesRequest) GetExcludeNamespaces() []string {
 	if x != nil {
 		return x.ExcludeNamespaces
@@ -2704,6 +2737,7 @@ func (x *ListCveSummariesRequest) GetExcludeNamespaces() []string {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in vulnerabilities.proto.
 func (x *ListCveSummariesRequest) GetExcludeClusters() []string {
 	if x != nil {
 		return x.ExcludeClusters
@@ -4149,15 +4183,20 @@ var File_vulnerabilities_proto protoreflect.FileDescriptor
 
 const file_vulnerabilities_proto_rawDesc = "" +
 	"\n" +
-	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\xb1\x02\n" +
+	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\xaf\x03\n" +
 	"\x06Filter\x12\x1d\n" +
-	"\acluster\x18\x01 \x01(\tH\x00R\acluster\x88\x01\x01\x12!\n" +
-	"\tnamespace\x18\x02 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1f\n" +
+	"\acluster\x18\x01 \x01(\tH\x00R\acluster\x88\x01\x01\x12%\n" +
+	"\tnamespace\x18\x02 \x01(\tB\x02\x18\x01H\x01R\tnamespace\x88\x01\x01\x12\x1f\n" +
 	"\bworkload\x18\x03 \x01(\tH\x02R\bworkload\x88\x01\x01\x12(\n" +
 	"\rworkload_type\x18\x04 \x01(\tH\x03R\fworkloadType\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tH\x04R\timageName\x88\x01\x01\x12 \n" +
-	"\timage_tag\x18\x06 \x01(\tH\x05R\bimageTag\x88\x01\x01B\n" +
+	"\timage_tag\x18\x06 \x01(\tH\x05R\bimageTag\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"namespaces\x18\a \x03(\tR\n" +
+	"namespaces\x12-\n" +
+	"\x12exclude_namespaces\x18\b \x03(\tR\x11excludeNamespaces\x12)\n" +
+	"\x10exclude_clusters\x18\t \x03(\tR\x0fexcludeClustersB\n" +
 	"\n" +
 	"\b_clusterB\f\n" +
 	"\n" +
@@ -4393,7 +4432,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"z\n" +
 	")ListWorkloadsForVulnerabilityByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12=\n" +
-	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xc1\x03\n" +
+	"\vworkloadRef\x18\x02 \x03(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\"\xc9\x03\n" +
 	"$ListWorkloadsForVulnerabilityRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x17\n" +
 	"\acve_ids\x18\x02 \x03(\tR\x06cveIds\x12\"\n" +
@@ -4401,9 +4440,9 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"cvss_score\x18\x03 \x01(\x01H\x00R\tcvssScore\x88\x01\x01\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\x12:\n" +
-	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01\x12-\n" +
-	"\x12exclude_namespaces\x18\a \x03(\tR\x11excludeNamespaces\x12)\n" +
-	"\x10exclude_clusters\x18\b \x03(\tR\x0fexcludeClusters\x122\n" +
+	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01\x121\n" +
+	"\x12exclude_namespaces\x18\a \x03(\tB\x02\x18\x01R\x11excludeNamespaces\x12-\n" +
+	"\x10exclude_clusters\x18\b \x03(\tB\x02\x18\x01R\x0fexcludeClusters\x122\n" +
 	"\x12include_suppressed\x18\t \x01(\bH\x02R\x11includeSuppressed\x88\x01\x01B\r\n" +
 	"\v_cvss_scoreB\v\n" +
 	"\t_order_byB\x15\n" +
@@ -4413,14 +4452,14 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xa2\x01\n" +
 	"\x18WorkloadForVulnerability\x12>\n" +
 	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12F\n" +
-	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\"\xe8\x02\n" +
+	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\"\xf0\x02\n" +
 	"\x17ListCveSummariesRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12:\n" +
-	"\border_by\x18\x04 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x00R\aorderBy\x88\x01\x01\x12-\n" +
-	"\x12exclude_namespaces\x18\x05 \x03(\tR\x11excludeNamespaces\x12)\n" +
-	"\x10exclude_clusters\x18\x06 \x03(\tR\x0fexcludeClusters\x122\n" +
+	"\border_by\x18\x04 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x00R\aorderBy\x88\x01\x01\x121\n" +
+	"\x12exclude_namespaces\x18\x05 \x03(\tB\x02\x18\x01R\x11excludeNamespaces\x12-\n" +
+	"\x10exclude_clusters\x18\x06 \x03(\tB\x02\x18\x01R\x0fexcludeClusters\x122\n" +
 	"\x12include_suppressed\x18\a \x01(\bH\x01R\x11includeSuppressed\x88\x01\x01B\v\n" +
 	"\t_order_byB\x15\n" +
 	"\x13_include_suppressed\"\x89\x01\n" +
