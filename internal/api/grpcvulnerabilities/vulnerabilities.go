@@ -578,8 +578,6 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 	}, nil
 }
 
-// SanitizeOrderBy
-// Special case: Severity is inverted (0 = Critical, 2 = Medium).
 func mergeStringSlices(a, b []string) []string {
 	seen := make(map[string]struct{}, len(a)+len(b))
 	result := make([]string, 0, len(a)+len(b))
