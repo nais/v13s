@@ -357,6 +357,67 @@ func TestServer_ListWorkloadsForVulnerability_ExcludeNamespaces(t *testing.T) {
 	})
 }
 
+func TestServer_ListWorkloadsForVulnerability_NamespacesFilter(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1", "namespace-2", "namespace-3"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "image-1",
+		Tag:      "v1.0",
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	vulnResp, err := client.GetVulnerability(ctx,
+		"image-cluster-1-namespace-1-workload-1",
+		"v1.0",
+		"package-CWE-1-1",
+		"CWE-1-1",
+	)
+	require.NoError(t, err)
+	cveID := vulnResp.Vulnerability.Cve.Id
+	require.NotEmpty(t, cveID)
+
+	for _, ns := range []string{"namespace-2", "namespace-3"} {
+		_, err = client.GetVulnerability(ctx,
+			"image-cluster-1-"+ns+"-workload-1",
+			"v1.0",
+			"package-CWE-1-1",
+			"CWE-1-1",
+		)
+		require.NoError(t, err)
+	}
+
+	t.Run("only returns workloads in the specified namespaces", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{cveID},
+		}, vulnerabilities.NamespacesFilter("namespace-1", "namespace-2"))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		require.Len(t, resp.Nodes, 2)
+		namespaces := []string{resp.Nodes[0].WorkloadRef.Namespace, resp.Nodes[1].WorkloadRef.Namespace}
+		assert.ElementsMatch(t, []string{"namespace-1", "namespace-2"}, namespaces)
+	})
+
+	t.Run("returns all workloads when namespaces filter is empty", func(t *testing.T) {
+		resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{
+			CveIds: []string{cveID},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		require.Len(t, resp.Nodes, 3)
+	})
+}
+
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},

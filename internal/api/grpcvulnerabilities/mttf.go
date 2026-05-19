@@ -1,3 +1,4 @@
+//lint:file-ignore SA1019 deprecated proto fields read intentionally for backwards compatibility
 package grpcvulnerabilities
 
 import (

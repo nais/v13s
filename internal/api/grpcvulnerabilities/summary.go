@@ -1,3 +1,4 @@
+//lint:file-ignore SA1019 deprecated proto fields read intentionally for backwards compatibility
 package grpcvulnerabilities
 
 import (
@@ -312,15 +313,8 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	excludeNamespaces := request.GetExcludeNamespaces()
-	if excludeNamespaces == nil {
-		excludeNamespaces = []string{}
-	}
-
-	excludeClusters := request.GetExcludeClusters()
-	if excludeClusters == nil {
-		excludeClusters = []string{}
-	}
+	excludeNamespaces := mergeStringSlices(request.GetFilter().GetExcludeNamespaces(), request.GetExcludeNamespaces())
+	excludeClusters := mergeStringSlices(request.GetFilter().GetExcludeClusters(), request.GetExcludeClusters())
 
 	cveSummaries, err := s.querier.ListCveSummaries(ctx, sql.ListCveSummariesParams{
 		Cluster:           request.GetFilter().Cluster,
@@ -331,6 +325,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		ImageTag:          request.GetFilter().ImageTag,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
+		Namespaces:        request.GetFilter().GetNamespaces(),
 		IncludeSuppressed: request.IncludeSuppressed,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
 		Limit:             request.Limit,

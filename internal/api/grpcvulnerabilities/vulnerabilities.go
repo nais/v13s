@@ -1,3 +1,4 @@
+//lint:file-ignore SA1019 deprecated proto fields read intentionally for backwards compatibility
 package grpcvulnerabilities
 
 import (
@@ -331,15 +332,8 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		filter = &vulnerabilities.Filter{}
 	}
 
-	excludeNamespaces := request.GetExcludeNamespaces()
-	if excludeNamespaces == nil {
-		excludeNamespaces = []string{}
-	}
-
-	excludeClusters := request.GetExcludeClusters()
-	if excludeClusters == nil {
-		excludeClusters = []string{}
-	}
+	excludeNamespaces := mergeStringSlices(filter.GetExcludeNamespaces(), request.GetExcludeNamespaces())
+	excludeClusters := mergeStringSlices(filter.GetExcludeClusters(), request.GetExcludeClusters())
 
 	cveIDs := request.CveIds
 	if len(cveIDs) > 0 {
@@ -358,6 +352,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		CvssScore:         request.CvssScore,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
+		Namespaces:        filter.GetNamespaces(),
 		IncludeSuppressed: request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
@@ -581,6 +576,18 @@ func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabili
 
 // SanitizeOrderBy
 // Special case: Severity is inverted (0 = Critical, 2 = Medium).
+func mergeStringSlices(a, b []string) []string {
+	seen := make(map[string]struct{}, len(a)+len(b))
+	result := make([]string, 0, len(a)+len(b))
+	for _, s := range append(a, b...) {
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
 // Users expect "asc" = weakest → strongest, so we flip direction here
 // to make SQL ordering intuitive.
 func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilities.OrderByField) string {
