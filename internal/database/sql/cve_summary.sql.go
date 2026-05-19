@@ -28,17 +28,19 @@ WITH cve_data AS (
         OR w.namespace = $5::TEXT)
     AND (cardinality($6::TEXT[]) = 0
         OR w.namespace <> ALL ($6::TEXT[]))
-    AND ($7::TEXT[] IS NULL
-        OR w.workload_type = ANY ($7::TEXT[]))
-    AND ($8::TEXT IS NULL
-        OR w.name = $8::TEXT)
+    AND (cardinality($7::TEXT[]) = 0
+        OR w.namespace = ANY ($7::TEXT[]))
+    AND ($8::TEXT[] IS NULL
+        OR w.workload_type = ANY ($8::TEXT[]))
     AND ($9::TEXT IS NULL
-        OR v.image_name = $9::TEXT)
+        OR w.name = $9::TEXT)
     AND ($10::TEXT IS NULL
-        OR v.image_tag = $10::TEXT)
-    AND (cardinality($11::TEXT[]) = 0
-        OR w.cluster <> ALL ($11::TEXT[]))
-    AND ($12::BOOLEAN IS TRUE
+        OR v.image_name = $10::TEXT)
+    AND ($11::TEXT IS NULL
+        OR v.image_tag = $11::TEXT)
+    AND (cardinality($12::TEXT[]) = 0
+        OR w.cluster <> ALL ($12::TEXT[]))
+    AND ($13::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
 GROUP BY
     c.cve_id
@@ -98,6 +100,7 @@ type ListCveSummariesParams struct {
 	Cluster           *string
 	Namespace         *string
 	ExcludeNamespaces []string
+	Namespaces        []string
 	WorkloadTypes     []string
 	WorkloadName      *string
 	ImageName         *string
@@ -132,6 +135,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.Cluster,
 		arg.Namespace,
 		arg.ExcludeNamespaces,
+		arg.Namespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.ImageName,

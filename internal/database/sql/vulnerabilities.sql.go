@@ -1341,30 +1341,32 @@ WHERE
         END)
     AND (cardinality($6::TEXT[]) = 0
         OR w.namespace <> ALL ($6::TEXT[]))
-    AND ($7::TEXT[] IS NULL
-        OR w.workload_type = ANY ($7::TEXT[]))
-    AND (
-        CASE WHEN $8::TEXT IS NOT NULL THEN
-            w.name = $8::TEXT
-        ELSE
-            TRUE
-        END)
+    AND (cardinality($7::TEXT[]) = 0
+        OR w.namespace = ANY ($7::TEXT[]))
+    AND ($8::TEXT[] IS NULL
+        OR w.workload_type = ANY ($8::TEXT[]))
     AND (
         CASE WHEN $9::TEXT IS NOT NULL THEN
-            v.image_name = $9::TEXT
+            w.name = $9::TEXT
         ELSE
             TRUE
         END)
     AND (
         CASE WHEN $10::TEXT IS NOT NULL THEN
-            v.image_tag = $10::TEXT
+            v.image_name = $10::TEXT
         ELSE
             TRUE
         END)
-    AND ($11::BOOLEAN IS TRUE
+    AND (
+        CASE WHEN $11::TEXT IS NOT NULL THEN
+            v.image_tag = $11::TEXT
+        ELSE
+            TRUE
+        END)
+    AND ($12::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
-    CASE WHEN $12 = 'cvss_score_desc' THEN
+    CASE WHEN $13 = 'cvss_score_desc' THEN
         CASE WHEN c.cvss_score = 0
             OR c.cvss_score IS NULL THEN
             1
@@ -1372,39 +1374,39 @@ ORDER BY
             0
         END
     END ASC,
-    CASE WHEN $12 = 'cvss_score_desc' THEN
+    CASE WHEN $13 = 'cvss_score_desc' THEN
         c.cvss_score
     END DESC,
-    CASE WHEN $12 = 'cvss_score_asc' THEN
+    CASE WHEN $13 = 'cvss_score_asc' THEN
         c.cvss_score
     END ASC,
-    CASE WHEN $12 = 'cve_id_desc' THEN
+    CASE WHEN $13 = 'cve_id_desc' THEN
         v.cve_id
     END DESC,
-    CASE WHEN $12 = 'cve_id_asc' THEN
+    CASE WHEN $13 = 'cve_id_asc' THEN
         v.cve_id
     END ASC,
-    CASE WHEN $12 = 'workload_asc' THEN
+    CASE WHEN $13 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $12 = 'workload_desc' THEN
+    CASE WHEN $13 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $12 = 'namespace_asc' THEN
+    CASE WHEN $13 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $12 = 'namespace_desc' THEN
+    CASE WHEN $13 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $12 = 'cluster_asc' THEN
+    CASE WHEN $13 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $12 = 'cluster_desc' THEN
+    CASE WHEN $13 = 'cluster_desc' THEN
         w.cluster
     END DESC,
     v.id ASC
-LIMIT $14
-OFFSET $13
+LIMIT $15
+OFFSET $14
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
@@ -1414,6 +1416,7 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	ExcludeClusters   []string
 	Namespace         *string
 	ExcludeNamespaces []string
+	Namespaces        []string
 	WorkloadTypes     []string
 	WorkloadName      *string
 	ImageName         *string
@@ -1467,6 +1470,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.ExcludeClusters,
 		arg.Namespace,
 		arg.ExcludeNamespaces,
+		arg.Namespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.ImageName,
