@@ -1333,12 +1333,8 @@ WHERE
         END)
     AND (cardinality($4::TEXT[]) = 0
         OR w.cluster <> ALL ($4::TEXT[]))
-    AND (
-        CASE WHEN $5::TEXT IS NOT NULL THEN
-            w.namespace = $5::TEXT
-        ELSE
-            TRUE
-        END)
+    AND (cardinality($5::TEXT[]) = 0
+        OR w.namespace = ANY ($5::TEXT[]))
     AND (cardinality($6::TEXT[]) = 0
         OR w.namespace <> ALL ($6::TEXT[]))
     AND ($7::TEXT[] IS NULL
@@ -1412,7 +1408,7 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	CvssScore         *float64
 	Cluster           *string
 	ExcludeClusters   []string
-	Namespace         *string
+	Namespaces        []string
 	ExcludeNamespaces []string
 	WorkloadTypes     []string
 	WorkloadName      *string
@@ -1465,7 +1461,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.CvssScore,
 		arg.Cluster,
 		arg.ExcludeClusters,
-		arg.Namespace,
+		arg.Namespaces,
 		arg.ExcludeNamespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,

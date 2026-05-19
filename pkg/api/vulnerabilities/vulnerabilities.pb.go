@@ -292,6 +292,7 @@ type Filter struct {
 	WorkloadType  *string                `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3,oneof" json:"workload_type,omitempty"`
 	ImageName     *string                `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3,oneof" json:"image_name,omitempty"`
 	ImageTag      *string                `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3,oneof" json:"image_tag,omitempty"`
+	Namespaces    []string               `protobuf:"bytes,7,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -366,6 +367,13 @@ func (x *Filter) GetImageTag() string {
 		return *x.ImageTag
 	}
 	return ""
+}
+
+func (x *Filter) GetNamespaces() []string {
+	if x != nil {
+		return x.Namespaces
+	}
+	return nil
 }
 
 type OrderBy struct {
@@ -4149,7 +4157,7 @@ var File_vulnerabilities_proto protoreflect.FileDescriptor
 
 const file_vulnerabilities_proto_rawDesc = "" +
 	"\n" +
-	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\xb1\x02\n" +
+	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\xd1\x02\n" +
 	"\x06Filter\x12\x1d\n" +
 	"\acluster\x18\x01 \x01(\tH\x00R\acluster\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x02 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1f\n" +
@@ -4157,7 +4165,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\rworkload_type\x18\x04 \x01(\tH\x03R\fworkloadType\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tH\x04R\timageName\x88\x01\x01\x12 \n" +
-	"\timage_tag\x18\x06 \x01(\tH\x05R\bimageTag\x88\x01\x01B\n" +
+	"\timage_tag\x18\x06 \x01(\tH\x05R\bimageTag\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"namespaces\x18\a \x03(\tR\n" +
+	"namespacesB\n" +
 	"\n" +
 	"\b_clusterB\f\n" +
 	"\n" +

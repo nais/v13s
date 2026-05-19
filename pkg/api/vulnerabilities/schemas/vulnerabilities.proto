@@ -59,6 +59,7 @@ message Filter {
   optional string workload_type = 4;
   optional string image_name = 5;
   optional string image_tag = 6;
+  repeated string namespaces = 7;
 }
 
 message OrderBy {

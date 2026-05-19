@@ -341,3 +341,50 @@ func TestListWorkloadsForVulnerability_AliasLookupError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "resolve canonical cve id")
 }
+
+func TestListWorkloadsForVulnerability_NamespacesMerge(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name               string
+		filter             *vulnerabilities.Filter
+		expectedNamespaces []string
+	}{
+		{
+			name:               "single namespace via Namespace field",
+			filter:             &vulnerabilities.Filter{Namespace: new("team-a")},
+			expectedNamespaces: []string{"team-a"},
+		},
+		{
+			name:               "multiple namespaces via Namespaces field",
+			filter:             &vulnerabilities.Filter{Namespaces: []string{"team-a", "team-b"}},
+			expectedNamespaces: []string{"team-a", "team-b"},
+		},
+		{
+			name:               "both fields merged",
+			filter:             &vulnerabilities.Filter{Namespace: new("team-a"), Namespaces: []string{"team-b"}},
+			expectedNamespaces: []string{"team-b", "team-a"},
+		},
+		{
+			name:               "neither set results in empty slice",
+			filter:             &vulnerabilities.Filter{},
+			expectedNamespaces: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			q := mockquerier.NewMockQuerier(t)
+			srv := &Server{querier: q, log: logrus.NewEntry(logrus.New())}
+
+			q.On("ListWorkloadsForVulnerabilities", mock.Anything, mock.MatchedBy(func(p sql.ListWorkloadsForVulnerabilitiesParams) bool {
+				return assert.ElementsMatch(t, tt.expectedNamespaces, p.Namespaces)
+			})).Return([]*sql.ListWorkloadsForVulnerabilitiesRow{}, nil)
+
+			_, err := srv.ListWorkloadsForVulnerability(ctx, &vulnerabilities.ListWorkloadsForVulnerabilityRequest{
+				Filter: tt.filter,
+			})
+			require.NoError(t, err)
+		})
+	}
+}
