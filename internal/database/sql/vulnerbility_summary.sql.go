@@ -134,7 +134,7 @@ WITH filtered_workloads AS (
         OR w.cluster = $1::TEXT)
     AND ($2::TEXT IS NULL
         OR w.namespace = $2::TEXT)
-    AND (cardinality($3::TEXT[]) = 0
+    AND (COALESCE(cardinality($3::TEXT[]), 0) = 0
         OR w.namespace = ANY ($3::TEXT[]))
     AND ($4::TEXT[] IS NULL
         OR w.workload_type = ANY ($4::TEXT[]))
@@ -255,7 +255,7 @@ WHERE
         OR CLUSTER = $2::TEXT)
     AND ($3::TEXT IS NULL
         OR namespace = $3::TEXT)
-    AND (cardinality($4::TEXT[]) = 0
+    AND (COALESCE(cardinality($4::TEXT[]), 0) = 0
         OR namespace = ANY ($4::TEXT[]))
     AND ($5::TEXT[] IS NULL
         OR workload_type = ANY ($5::TEXT[]))
@@ -415,7 +415,7 @@ WITH filtered_workloads AS (
         OR w.cluster = $4::TEXT)
     AND ($5::TEXT IS NULL
         OR w.namespace = $5::TEXT)
-    AND (cardinality($6::TEXT[]) = 0
+    AND (COALESCE(cardinality($6::TEXT[]), 0) = 0
         OR w.namespace = ANY ($6::TEXT[]))
     AND ($7::TEXT[] IS NULL
         OR w.workload_type = ANY ($7::TEXT[]))

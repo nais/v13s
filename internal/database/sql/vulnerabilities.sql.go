@@ -33,7 +33,7 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality($3::TEXT[]) = 0
+AND (COALESCE(cardinality($3::TEXT[]), 0) = 0
     OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
@@ -110,7 +110,7 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality($3::TEXT[]) = 0
+AND (COALESCE(cardinality($3::TEXT[]), 0) = 0
     OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
@@ -599,7 +599,7 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality($3::TEXT[]) = 0
+AND (COALESCE(cardinality($3::TEXT[]), 0) = 0
     OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
@@ -858,7 +858,7 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality($3::TEXT[]) = 0
+AND (COALESCE(cardinality($3::TEXT[]), 0) = 0
     OR w.namespace = ANY ($3::TEXT[]))
 AND (
     CASE WHEN $4::TEXT IS NOT NULL THEN
@@ -1357,7 +1357,7 @@ WHERE
         END)
     AND (cardinality($6::TEXT[]) = 0
         OR w.namespace <> ALL ($6::TEXT[]))
-    AND (cardinality($7::TEXT[]) = 0
+    AND (COALESCE(cardinality($7::TEXT[]), 0) = 0
         OR w.namespace = ANY ($7::TEXT[]))
     AND ($8::TEXT[] IS NULL
         OR w.workload_type = ANY ($8::TEXT[]))

@@ -28,7 +28,7 @@ WITH cve_data AS (
         OR w.namespace = $5::TEXT)
     AND (cardinality($6::TEXT[]) = 0
         OR w.namespace <> ALL ($6::TEXT[]))
-    AND (cardinality($7::TEXT[]) = 0
+    AND (COALESCE(cardinality($7::TEXT[]), 0) = 0
         OR w.namespace = ANY ($7::TEXT[]))
     AND ($8::TEXT[] IS NULL
         OR w.workload_type = ANY ($8::TEXT[]))

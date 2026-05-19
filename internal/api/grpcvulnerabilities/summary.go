@@ -37,7 +37,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		Namespaces:    nonNilStrings(request.GetFilter().GetNamespaces()),
+		Namespaces:    request.GetFilter().GetNamespaces(),
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		ImageName:     request.GetFilter().ImageName,
@@ -110,7 +110,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		Namespaces:    nonNilStrings(request.GetFilter().GetNamespaces()),
+		Namespaces:    request.GetFilter().GetNamespaces(),
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 	})
@@ -163,7 +163,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 	timeSeries, err := s.querier.GetVulnerabilitySummaryTimeSeries(ctx, sql.GetVulnerabilitySummaryTimeSeriesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
-		Namespaces:    nonNilStrings(request.GetFilter().GetNamespaces()),
+		Namespaces:    request.GetFilter().GetNamespaces(),
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		Since:         since,
@@ -328,7 +328,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		ImageTag:          request.GetFilter().ImageTag,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
-		Namespaces:        nonNilStrings(request.GetFilter().GetNamespaces()),
+		Namespaces:        request.GetFilter().GetNamespaces(),
 		IncludeSuppressed: request.IncludeSuppressed,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
 		Limit:             request.Limit,

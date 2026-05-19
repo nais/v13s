@@ -401,8 +401,8 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+AND (COALESCE(cardinality(sqlc.narg('namespaces')::TEXT[]), 0) = 0
+    OR w.namespace = ANY (sqlc.narg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
         v.image_name = sqlc.narg('image_name')::TEXT
@@ -467,8 +467,8 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+AND (COALESCE(cardinality(sqlc.narg('namespaces')::TEXT[]), 0) = 0
+    OR w.namespace = ANY (sqlc.narg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
         w.workload_type = sqlc.narg('workload_type')::TEXT
@@ -518,8 +518,8 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+AND (COALESCE(cardinality(sqlc.narg('namespaces')::TEXT[]), 0) = 0
+    OR w.namespace = ANY (sqlc.narg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
         w.workload_type = sqlc.narg('workload_type')::TEXT
@@ -735,8 +735,8 @@ AND (
     ELSE
         TRUE
     END)
-AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-    OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+AND (COALESCE(cardinality(sqlc.narg('namespaces')::TEXT[]), 0) = 0
+    OR w.namespace = ANY (sqlc.narg('namespaces')::TEXT[]))
 AND (
     CASE WHEN sqlc.narg('workload_type')::TEXT IS NOT NULL THEN
         w.workload_type = sqlc.narg('workload_type')::TEXT
@@ -885,8 +885,8 @@ WHERE
         END)
     AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
         OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
-    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-        OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+    AND (COALESCE(cardinality(sqlc.narg('namespaces')::TEXT[]), 0) = 0
+        OR w.namespace = ANY (sqlc.narg('namespaces')::TEXT[]))
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (

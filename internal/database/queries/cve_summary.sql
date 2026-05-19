@@ -17,8 +17,8 @@ WITH cve_data AS (
         OR w.namespace = sqlc.narg('namespace')::TEXT)
     AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
         OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
-    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-        OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+    AND (COALESCE(cardinality(sqlc.narg('namespaces')::TEXT[]), 0) = 0
+        OR w.namespace = ANY (sqlc.narg('namespaces')::TEXT[]))
     AND (sqlc.narg('workload_types')::TEXT[] IS NULL
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
