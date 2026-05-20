@@ -294,10 +294,6 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		"duration": fmt.Sprintf("%fs", time.Since(start).Seconds()),
 	}).Infof("vulnerability data has been updated")
 
-	if err := u.querier.UpdateCvePriority(ctx); err != nil {
-		u.log.WithError(err).Error("failed to recalculate CVE priority after batch update")
-	}
-
 	return nil
 }
 
