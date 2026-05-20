@@ -2727,7 +2727,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 			Refs:           map[string]string{},
 			EpssScore:      ptrFloat64(0.75),
 			EpssPercentile: ptrFloat64(0.92),
-			CvssScore:      new(8.5),
+			CvssScore:      ptrFloat64(8.5),
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
