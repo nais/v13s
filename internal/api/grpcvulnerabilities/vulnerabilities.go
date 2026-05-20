@@ -601,7 +601,22 @@ func toCve(
 		EpssPercentile:     epssPercentile,
 		HasKevEntry:        hasKevEntry,
 		KnownRansomwareUse: knownRansomwareUse,
-		Priority:           vulnerabilities.Priority(priority),
+		Priority:           safePriority(priority),
+	}
+}
+
+func safePriority(p int16) vulnerabilities.Priority {
+	switch p {
+	case 1:
+		return vulnerabilities.Priority_PRIORITY_ACT_NOW
+	case 2:
+		return vulnerabilities.Priority_PRIORITY_HIGH
+	case 3:
+		return vulnerabilities.Priority_PRIORITY_ELEVATED
+	case 4:
+		return vulnerabilities.Priority_PRIORITY_MONITOR
+	default:
+		return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
 	}
 }
 func toSuppression(suppressed bool, suppressReason *sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {
