@@ -2807,7 +2807,9 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 
 	t.Run("workload_ref and sbom_status are still populated when using stale summary", func(t *testing.T) {
 		// Register v2.0 as the current image for the workload so workload_ref is non-empty.
-		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name:         "workload-1",
 			WorkloadType: "Deployment",
 			Namespace:    "namespace-1",
@@ -2815,8 +2817,6 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 			ImageName:    imageName,
 			ImageTag:     newTag,
 		})
-		require.NoError(t, err)
-		err = db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
 		require.NoError(t, err)
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
