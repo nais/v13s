@@ -2414,8 +2414,6 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
-func ptrFloat64(v float64) *float64 { return &v }
-
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
@@ -2725,9 +2723,9 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 			CveLink:        "https://example.com/CVE-ENRICHED-1",
 			Severity:       1, // HIGH
 			Refs:           map[string]string{},
-			EpssScore:      ptrFloat64(0.75),
-			EpssPercentile: ptrFloat64(0.92),
-			CvssScore:      ptrFloat64(8.5),
+			EpssScore:      new(0.75),
+			EpssPercentile: new(0.92),
+			CvssScore:      new(8.5),
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
@@ -3198,22 +3196,22 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		// ACT_NOW: has_kev_entry = true (set via BulkUpdateKevData below)
 		{
 			CveID: cveActNow, CveTitle: "Act Now", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
-			EpssScore: ptrFloat64(0.10), EpssPercentile: ptrFloat64(0.80),
+			EpssScore: new(0.10), EpssPercentile: new(0.80),
 		},
 		// HIGH: epss_percentile >= 0.90, no KEV
 		{
 			CveID: cveHigh, CveTitle: "High", CveDesc: "d", CveLink: "l", Severity: 1, Refs: map[string]string{},
-			EpssScore: ptrFloat64(0.95), EpssPercentile: ptrFloat64(0.95),
+			EpssScore: new(0.95), EpssPercentile: new(0.95),
 		},
 		// ELEVATED: severity CRITICAL (0), epss_percentile >= 0.50 but < 0.90, no KEV
 		{
 			CveID: cveElevated, CveTitle: "Elevated", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
-			EpssScore: ptrFloat64(0.40), EpssPercentile: ptrFloat64(0.65),
+			EpssScore: new(0.40), EpssPercentile: new(0.65),
 		},
 		// MONITOR: severity MEDIUM (2), low EPSS — nothing matches
 		{
 			CveID: cveMonitor, CveTitle: "Monitor", CveDesc: "d", CveLink: "l", Severity: 2, Refs: map[string]string{},
-			EpssScore: ptrFloat64(0.01), EpssPercentile: ptrFloat64(0.05),
+			EpssScore: new(0.01), EpssPercentile: new(0.05),
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
