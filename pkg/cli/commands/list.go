@@ -86,7 +86,7 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		return err
 	}
 
-	tbl := output.New("Package", "CVE", "Title", "Severity", "Severity Since", "Created", "Last Updated", "Suppressed")
+	tbl := output.New("Package", "CVE", "Title", "Severity", "Priority", "Fix Version", "Severity Since", "Created", "Last Updated", "Suppressed")
 
 	var suppressions [][]string
 
@@ -95,11 +95,17 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
 			suppressed = "Yes"
 		}
+		fixVersion := n.GetFixVersion()
+		if fixVersion == "" {
+			fixVersion = "-"
+		}
 		tbl.AddRow(
 			n.GetPackage(),
 			n.Cve.Id,
 			n.Cve.Title,
 			n.Cve.Severity.String(),
+			strings.TrimPrefix(n.Cve.GetPriority().String(), "PRIORITY_"),
+			fixVersion,
 			n.SeveritySince.AsTime().Format(time.RFC3339),
 			n.GetCreated().AsTime().Format(time.RFC3339),
 			n.GetLastUpdated().AsTime().Format(time.RFC3339),
@@ -284,16 +290,17 @@ func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.C
 			return 0, false, fmt.Errorf("failed to list CVE summaries: %w", err)
 		}
 
-		tbl := output.New("CVE", "Title", "Severity", "CVSS Score", "Affected Workloads")
+		tbl := output.New("CVE", "Title", "Severity", "CVSS Score", "Priority", "Affected Workloads")
 
 		for _, n := range resp.GetNodes() {
 			cve := n.GetCve()
 			tbl.AddRow(
 				cve.GetId(),
 				cve.GetTitle(),
-				cve.GetSeverity().String(),
-				formatCvssScore(cve.GetCvssScore()),
-				fmt.Sprint(n.GetAffectedWorkloads()),
+			cve.GetSeverity().String(),
+			formatCvssScore(cve.GetCvssScore()),
+			strings.TrimPrefix(cve.GetPriority().String(), "PRIORITY_"),
+			fmt.Sprint(n.GetAffectedWorkloads()),
 			)
 		}
 
