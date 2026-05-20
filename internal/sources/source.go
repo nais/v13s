@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
@@ -47,7 +48,10 @@ func New(config SourceConfig, log logrus.FieldLogger) (Source, error) {
 			cfg.Password,
 			log.WithField("subsystem", "dp-client"),
 			// wrap the default transport with OpenTelemetry instrumentation
-			dependencytrack.WithHTTPClient(&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}),
+			dependencytrack.WithHTTPClient(&http.Client{
+				Timeout:   30 * time.Second,
+				Transport: otelhttp.NewTransport(http.DefaultTransport),
+			}),
 		)
 		if err != nil {
 			log.Fatalf("failed to create DependencyTrack client: %v", err)
