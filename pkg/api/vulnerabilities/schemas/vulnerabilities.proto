@@ -42,6 +42,13 @@ enum SinceType {
   FIXED = 1;
 }
 
+enum Priority {
+  PRIORITY_ACT_NOW  = 0;
+  PRIORITY_HIGH     = 1;
+  PRIORITY_ELEVATED = 2;
+  PRIORITY_MONITOR  = 3;
+}
+
 enum SbomStatus {
   SBOM_STATUS_UNSPECIFIED = 0;
   SBOM_STATUS_PROCESSING = 2;
@@ -103,6 +110,7 @@ message Cve {
   optional double epss_percentile = 11;
   bool has_kev_entry = 12;
   bool known_ransomware_use = 13;
+  Priority priority = 14;
 }
 
 message Suppression {
