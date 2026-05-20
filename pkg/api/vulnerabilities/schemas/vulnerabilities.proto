@@ -43,10 +43,11 @@ enum SinceType {
 }
 
 enum Priority {
-  PRIORITY_ACT_NOW  = 0;
-  PRIORITY_HIGH     = 1;
-  PRIORITY_ELEVATED = 2;
-  PRIORITY_MONITOR  = 3;
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_ACT_NOW     = 1;
+  PRIORITY_HIGH        = 2;
+  PRIORITY_ELEVATED    = 3;
+  PRIORITY_MONITOR     = 4;
 }
 
 enum SbomStatus {

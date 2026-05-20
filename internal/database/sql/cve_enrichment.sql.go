@@ -132,27 +132,27 @@ UPDATE
     cve
 SET
     priority = CASE WHEN has_kev_entry = TRUE THEN
-        0
+        1
     WHEN known_ransomware_use = TRUE
         OR epss_percentile >= 0.90 THEN
-        1
+        2
     WHEN severity IN (0, 1)
         AND epss_percentile >= 0.50 THEN
-        2
-    ELSE
         3
+    ELSE
+        4
     END
 WHERE
     priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
-        0
+        1
     WHEN known_ransomware_use = TRUE
         OR epss_percentile >= 0.90 THEN
-        1
+        2
     WHEN severity IN (0, 1)
         AND epss_percentile >= 0.50 THEN
-        2
-    ELSE
         3
+    ELSE
+        4
     END
 `
 

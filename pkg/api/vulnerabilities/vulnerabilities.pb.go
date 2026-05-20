@@ -232,25 +232,28 @@ func (SinceType) EnumDescriptor() ([]byte, []int) {
 type Priority int32
 
 const (
-	Priority_PRIORITY_ACT_NOW  Priority = 0
-	Priority_PRIORITY_HIGH     Priority = 1
-	Priority_PRIORITY_ELEVATED Priority = 2
-	Priority_PRIORITY_MONITOR  Priority = 3
+	Priority_PRIORITY_UNSPECIFIED Priority = 0
+	Priority_PRIORITY_ACT_NOW     Priority = 1
+	Priority_PRIORITY_HIGH        Priority = 2
+	Priority_PRIORITY_ELEVATED    Priority = 3
+	Priority_PRIORITY_MONITOR     Priority = 4
 )
 
 // Enum value maps for Priority.
 var (
 	Priority_name = map[int32]string{
-		0: "PRIORITY_ACT_NOW",
-		1: "PRIORITY_HIGH",
-		2: "PRIORITY_ELEVATED",
-		3: "PRIORITY_MONITOR",
+		0: "PRIORITY_UNSPECIFIED",
+		1: "PRIORITY_ACT_NOW",
+		2: "PRIORITY_HIGH",
+		3: "PRIORITY_ELEVATED",
+		4: "PRIORITY_MONITOR",
 	}
 	Priority_value = map[string]int32{
-		"PRIORITY_ACT_NOW":  0,
-		"PRIORITY_HIGH":     1,
-		"PRIORITY_ELEVATED": 2,
-		"PRIORITY_MONITOR":  3,
+		"PRIORITY_UNSPECIFIED": 0,
+		"PRIORITY_ACT_NOW":     1,
+		"PRIORITY_HIGH":        2,
+		"PRIORITY_ELEVATED":    3,
+		"PRIORITY_MONITOR":     4,
 	}
 )
 
@@ -825,7 +828,7 @@ func (x *Cve) GetPriority() Priority {
 	if x != nil {
 		return x.Priority
 	}
-	return Priority_PRIORITY_ACT_NOW
+	return Priority_PRIORITY_UNSPECIFIED
 }
 
 type Suppression struct {
@@ -4635,12 +4638,13 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"UNASSIGNED\x10\x04*$\n" +
 	"\tSinceType\x12\f\n" +
 	"\bSNAPSHOT\x10\x00\x12\t\n" +
-	"\x05FIXED\x10\x01*`\n" +
-	"\bPriority\x12\x14\n" +
-	"\x10PRIORITY_ACT_NOW\x10\x00\x12\x11\n" +
-	"\rPRIORITY_HIGH\x10\x01\x12\x15\n" +
-	"\x11PRIORITY_ELEVATED\x10\x02\x12\x14\n" +
-	"\x10PRIORITY_MONITOR\x10\x03*\x8d\x01\n" +
+	"\x05FIXED\x10\x01*z\n" +
+	"\bPriority\x12\x18\n" +
+	"\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10PRIORITY_ACT_NOW\x10\x01\x12\x11\n" +
+	"\rPRIORITY_HIGH\x10\x02\x12\x15\n" +
+	"\x11PRIORITY_ELEVATED\x10\x03\x12\x14\n" +
+	"\x10PRIORITY_MONITOR\x10\x04*\x8d\x01\n" +
 	"\n" +
 	"SbomStatus\x12\x1b\n" +
 	"\x17SBOM_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
