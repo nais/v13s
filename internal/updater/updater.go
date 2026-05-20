@@ -294,6 +294,10 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		"duration": fmt.Sprintf("%fs", time.Since(start).Seconds()),
 	}).Infof("vulnerability data has been updated")
 
+	if err := u.querier.UpdateCvePriority(ctx); err != nil {
+		u.log.WithError(err).Error("failed to recalculate CVE priority after batch update")
+	}
+
 	return nil
 }
 
@@ -333,10 +337,6 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
 	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
 	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
-
-	if err := u.querier.UpdateCvePriority(ctx); err != nil {
-		u.log.WithError(err).Error("failed to recalculate CVE priority after batch update")
-	}
 
 	for _, i := range images {
 		if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
