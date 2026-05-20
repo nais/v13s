@@ -42,6 +42,34 @@ WHERE
     vulnerabilities.id = data.id
     AND vulnerabilities.fix_version IS DISTINCT FROM data.fix_version;
 
+-- name: UpdateCvePriority :exec
+UPDATE
+    cve
+SET
+    priority = CASE WHEN has_kev_entry = TRUE THEN
+        0
+    WHEN known_ransomware_use = TRUE
+        OR epss_percentile >= 0.90 THEN
+        1
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.50 THEN
+        2
+    ELSE
+        3
+    END
+WHERE
+    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
+        0
+    WHEN known_ransomware_use = TRUE
+        OR epss_percentile >= 0.90 THEN
+        1
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.50 THEN
+        2
+    ELSE
+        3
+    END;
+
 -- name: BulkClearFixVersions :execrows
 UPDATE
     vulnerabilities

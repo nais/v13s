@@ -1,0 +1,7 @@
+-- +goose Up
+ALTER TABLE cve
+    ADD COLUMN IF NOT EXISTS priority SMALLINT NOT NULL DEFAULT 3;
+
+-- +goose Down
+ALTER TABLE cve
+    DROP COLUMN IF EXISTS priority;

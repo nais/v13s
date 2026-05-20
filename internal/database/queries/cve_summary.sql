@@ -38,6 +38,12 @@ SELECT
 FROM
     cve_data
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        priority
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        priority
+    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
         CASE WHEN cvss_score = 0
             OR cvss_score IS NULL THEN

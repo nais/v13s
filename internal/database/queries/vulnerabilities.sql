@@ -240,7 +240,8 @@ SELECT
     c.epss_score,
     c.epss_percentile,
     c.has_kev_entry,
-    c.known_ransomware_use
+    c.known_ransomware_use,
+    c.priority
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -280,7 +281,8 @@ SELECT
     c.epss_score,
     c.epss_percentile,
     c.has_kev_entry,
-    c.known_ransomware_use
+    c.known_ransomware_use,
+    c.priority
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -563,6 +565,7 @@ resolved_vulnerabilities AS (
         c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
+        c.priority,
         v.fix_version
     FROM
         image_all_vulns v
@@ -606,6 +609,7 @@ SELECT
     epss_percentile,
     has_kev_entry,
     known_ransomware_use,
+    priority,
     cve_title,
     cve_desc,
     cve_link,
@@ -623,6 +627,12 @@ SELECT
 FROM
     distinct_image_vulnerabilities
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        priority
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        priority
+    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
         severity
     END ASC,
@@ -707,6 +717,7 @@ SELECT
     c.epss_percentile,
     c.has_kev_entry,
     c.known_ransomware_use,
+    c.priority,
     v.fix_version
 FROM
     vulnerabilities v
@@ -756,6 +767,12 @@ AND (
 AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        c.priority
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        c.priority
+    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
         c.severity
     END ASC,
@@ -838,6 +855,7 @@ SELECT
     c.epss_percentile,
     c.has_kev_entry,
     c.known_ransomware_use,
+    c.priority,
     v.fix_version,
     COUNT(v.id) OVER () AS total_count
 FROM
@@ -896,6 +914,12 @@ WHERE
     AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        c.priority
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        c.priority
+    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
         CASE WHEN c.cvss_score = 0
             OR c.cvss_score IS NULL THEN

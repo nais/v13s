@@ -313,6 +313,7 @@ type Cve struct {
 	EpssPercentile     *float64
 	HasKevEntry        bool
 	KnownRansomwareUse bool
+	Priority           int16
 }
 
 type Image struct {

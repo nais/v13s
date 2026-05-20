@@ -12,7 +12,7 @@ import (
 const listCveSummaries = `-- name: ListCveSummaries :many
 WITH cve_data AS (
     SELECT
-        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use,
+        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
         COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
@@ -44,11 +44,17 @@ GROUP BY
     c.cve_id
 )
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, affected_workloads,
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority, affected_workloads,
     COUNT(*) OVER ()::INT AS total_count
 FROM
     cve_data
 ORDER BY
+    CASE WHEN $1 = 'priority_asc' THEN
+        priority
+    END ASC,
+    CASE WHEN $1 = 'priority_desc' THEN
+        priority
+    END DESC,
     CASE WHEN $1 = 'cvss_score_desc' THEN
         CASE WHEN cvss_score = 0
             OR cvss_score IS NULL THEN
@@ -145,6 +151,7 @@ type ListCveSummariesRow struct {
 	EpssPercentile     *float64
 	HasKevEntry        bool
 	KnownRansomwareUse bool
+	Priority           int16
 	AffectedWorkloads  int32
 	TotalCount         int32
 }
@@ -185,6 +192,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 			&i.EpssPercentile,
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
+			&i.Priority,
 			&i.AffectedWorkloads,
 			&i.TotalCount,
 		); err != nil {
