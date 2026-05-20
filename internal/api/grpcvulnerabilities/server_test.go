@@ -1249,7 +1249,7 @@ func TestServer_GetVulnerabilitySummaryForImage_SbomStatus(t *testing.T) {
 
 		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name:         "workload-ready",
-			WorkloadType: "Deployment",
+			WorkloadType: "app",
 			Namespace:    "namespace-1",
 			Cluster:      "cluster-1",
 			ImageName:    image2Name,
@@ -1258,7 +1258,7 @@ func TestServer_GetVulnerabilitySummaryForImage_SbomStatus(t *testing.T) {
 		require.NoError(t, err)
 		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name:         "workload-failed",
-			WorkloadType: "Deployment",
+			WorkloadType: "app",
 			Namespace:    "namespace-1",
 			Cluster:      "cluster-1",
 			ImageName:    image2Name,
@@ -1302,7 +1302,7 @@ func TestServer_GetVulnerabilitySummaryForImage_SbomStatus(t *testing.T) {
 		require.NoError(t, err)
 		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name:         "workload-processing",
-			WorkloadType: "Deployment",
+			WorkloadType: "app",
 			Namespace:    "namespace-1",
 			Cluster:      "cluster-1",
 			ImageName:    image3Name,
