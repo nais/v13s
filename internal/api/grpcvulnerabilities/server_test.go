@@ -2414,6 +2414,8 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
+func ptrFloat64(v float64) *float64 { return &v }
+
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
@@ -2723,8 +2725,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 			CveLink:        "https://example.com/CVE-ENRICHED-1",
 			Severity:       1, // HIGH
 			Refs:           map[string]string{},
-			EpssScore:      new(0.75),
-			EpssPercentile: new(0.92),
+			EpssScore:      ptrFloat64(0.75),
+			EpssPercentile: ptrFloat64(0.92),
 			CvssScore:      new(8.5),
 		},
 	}).Exec(func(i int, err error) {
@@ -2885,6 +2887,8 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 	}, true)
 	defer cleanup()
 
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
 	const (
 		imageName = "image-cluster-1-namespace-1-workload-1"
 		knownTag  = "v1.0"
@@ -3163,6 +3167,152 @@ func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
 					assert.Equal(t, int32(10), resp.GetVulnerabilitySummary().GetCritical())
 				}
 			})
+	})
+}
+
+// TestServer_EnrichedCveFields_Priority verifies that the priority field is correctly computed
+// by UpdateCvePriority and returned on all relevant gRPC endpoints.
+// Four CVEs are seeded — one per priority level — to cover every branch of the priority model.
+func TestServer_EnrichedCveFields_Priority(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		imageTag  = "v1.0"
+	)
+
+	cveActNow := "CVE-PRIORITY-ACT-NOW"
+	cveHigh := "CVE-PRIORITY-HIGH"
+	cveElevated := "CVE-PRIORITY-ELEVATED"
+	cveMonitor := "CVE-PRIORITY-MONITOR"
+
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		// ACT_NOW: has_kev_entry = true (set via BulkUpdateKevData below)
+		{
+			CveID: cveActNow, CveTitle: "Act Now", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
+			EpssScore: ptrFloat64(0.10), EpssPercentile: ptrFloat64(0.80),
+		},
+		// HIGH: epss_percentile >= 0.90, no KEV
+		{
+			CveID: cveHigh, CveTitle: "High", CveDesc: "d", CveLink: "l", Severity: 1, Refs: map[string]string{},
+			EpssScore: ptrFloat64(0.95), EpssPercentile: ptrFloat64(0.95),
+		},
+		// ELEVATED: severity CRITICAL (0), epss_percentile >= 0.50 but < 0.90, no KEV
+		{
+			CveID: cveElevated, CveTitle: "Elevated", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
+			EpssScore: ptrFloat64(0.40), EpssPercentile: ptrFloat64(0.65),
+		},
+		// MONITOR: severity MEDIUM (2), low EPSS — nothing matches
+		{
+			CveID: cveMonitor, CveTitle: "Monitor", CveDesc: "d", CveLink: "l", Severity: 2, Refs: map[string]string{},
+			EpssScore: ptrFloat64(0.01), EpssPercentile: ptrFloat64(0.05),
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+		CveIds:             []string{cveActNow},
+		KnownRansomwareUse: []bool{false},
+	})
+	require.NoError(t, err)
+
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-act-now", CveID: cveActNow, Source: "test", LastSeverity: 0,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-high", CveID: cveHigh, Source: "test", LastSeverity: 1,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-elevated", CveID: cveElevated, Source: "test", LastSeverity: 0,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-monitor", CveID: cveMonitor, Source: "test", LastSeverity: 2,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	expectedPriority := map[string]vulnerabilities.Priority{
+		cveActNow:   vulnerabilities.Priority_PRIORITY_ACT_NOW,
+		cveHigh:     vulnerabilities.Priority_PRIORITY_HIGH,
+		cveElevated: vulnerabilities.Priority_PRIORITY_ELEVATED,
+		cveMonitor:  vulnerabilities.Priority_PRIORITY_MONITOR,
+	}
+
+	t.Run("ListVulnerabilitiesForImage returns correct priority", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+
+		found := map[string]vulnerabilities.Priority{}
+		for _, v := range resp.Nodes {
+			id := v.GetCve().GetId()
+			if _, ok := expectedPriority[id]; ok {
+				found[id] = v.GetCve().GetPriority()
+			}
+		}
+		for id, want := range expectedPriority {
+			assert.Equal(t, want, found[id], "priority mismatch for %s", id)
+		}
+	})
+
+	t.Run("GetCve returns correct priority", func(t *testing.T) {
+		for id, want := range expectedPriority {
+			resp, err := client.GetCve(ctx, id)
+			require.NoError(t, err)
+			assert.Equal(t, want, resp.GetCve().GetPriority(), "priority mismatch for %s", id)
+		}
+	})
+
+	t.Run("ListWorkloadsForVulnerability returns correct priority", func(t *testing.T) {
+		allCveIDs := []string{cveActNow, cveHigh, cveElevated, cveMonitor}
+		resp, err := client.ListWorkloadsForVulnerability(ctx,
+			vulnerabilities.VulnerabilityFilter{CveIds: allCveIDs},
+			vulnerabilities.Limit(100),
+		)
+		require.NoError(t, err)
+
+		found := map[string]vulnerabilities.Priority{}
+		for _, node := range resp.Nodes {
+			id := node.GetVulnerability().GetCve().GetId()
+			if _, ok := expectedPriority[id]; ok {
+				found[id] = node.GetVulnerability().GetCve().GetPriority()
+			}
+		}
+		for id, want := range expectedPriority {
+			assert.Equal(t, want, found[id], "priority mismatch for %s", id)
+		}
+	})
+
+	t.Run("ListCveSummaries returns correct priority", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(100))
+		require.NoError(t, err)
+
+		found := map[string]vulnerabilities.Priority{}
+		for _, s := range resp.Nodes {
+			id := s.GetCve().GetId()
+			if _, ok := expectedPriority[id]; ok {
+				found[id] = s.GetCve().GetPriority()
+			}
+		}
+		for id, want := range expectedPriority {
+			assert.Equal(t, want, found[id], "priority mismatch for %s", id)
 		}
 	})
 }

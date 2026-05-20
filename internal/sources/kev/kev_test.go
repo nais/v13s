@@ -109,6 +109,7 @@ func TestFetcher_Sync_AppliesAllCatalogEntries(t *testing.T) {
 		CveIds:             []string{"CVE-2021-44228", "CVE-2023-1234"},
 		KnownRansomwareUse: []bool{true, false},
 	}).Return(int64(2), nil)
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(nil)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
@@ -121,6 +122,7 @@ func TestFetcher_Sync_NoETag_StillApplies(t *testing.T) {
 
 	q := mockquerier.NewMockQuerier(t)
 	q.EXPECT().BulkUpdateKevData(mock.Anything, mock.Anything).Return(int64(0), nil)
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(nil)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
@@ -192,6 +194,7 @@ func TestFetcher_Sync_RealFixture(t *testing.T) {
 		CveIds:             expectedIDs,
 		KnownRansomwareUse: expectedRansomware,
 	}).Return(int64(1587), nil)
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(nil)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
