@@ -357,21 +357,13 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		_ = json.Unmarshal(row.Refs, &refs)
 
 		return &vulnerabilities.CveSummary{
-			Cve: &vulnerabilities.Cve{
-				Id:                 row.CveID,
-				Title:              row.CveTitle,
-				Description:        row.CveDesc,
-				Link:               row.CveLink,
-				Severity:           vulnerabilities.Severity(row.Severity),
-				References:         refs,
-				Created:            timestamppb.New(row.CreatedAt.Time),
-				LastUpdated:        timestamppb.New(row.UpdatedAt.Time),
-				CvssScore:          row.CvssScore,
-				EpssScore:          row.EpssScore,
-				EpssPercentile:     row.EpssPercentile,
-				HasKevEntry:        row.HasKevEntry,
-				KnownRansomwareUse: row.KnownRansomwareUse,
-			},
+			Cve: toCve(
+				row.CveID, row.CveTitle, row.CveDesc, row.CveLink,
+				row.Severity, refs,
+				timestamppb.New(row.CreatedAt.Time), timestamppb.New(row.UpdatedAt.Time),
+				row.CvssScore, row.EpssScore, row.EpssPercentile,
+				row.HasKevEntry, row.KnownRansomwareUse, row.Priority,
+			),
 			AffectedWorkloads: row.AffectedWorkloads,
 		}
 	})
