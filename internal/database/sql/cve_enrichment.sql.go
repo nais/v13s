@@ -128,32 +128,31 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 }
 
 const updateCvePriority = `-- name: UpdateCvePriority :exec
+WITH computed AS (
+    SELECT
+        cve_id,
+        CASE WHEN has_kev_entry = TRUE THEN
+            1
+        WHEN known_ransomware_use = TRUE
+            OR epss_percentile >= 0.90 THEN
+            2
+        WHEN severity IN (0, 1)
+            AND epss_percentile >= 0.50 THEN
+            3
+        ELSE
+            4
+        END AS new_priority
+    FROM
+        cve)
 UPDATE
     cve
 SET
-    priority = CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR epss_percentile >= 0.90 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.50 THEN
-        3
-    ELSE
-        4
-    END
+    priority = computed.new_priority
+FROM
+    computed
 WHERE
-    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR epss_percentile >= 0.90 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.50 THEN
-        3
-    ELSE
-        4
-    END
+    cve.cve_id = computed.cve_id
+    AND cve.priority IS DISTINCT FROM computed.new_priority
 `
 
 func (q *Queries) UpdateCvePriority(ctx context.Context) error {
