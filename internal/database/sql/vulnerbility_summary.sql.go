@@ -29,7 +29,7 @@ VALUES (
     $7,
     $8)
 RETURNING
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_priority
 `
 
 type CreateVulnerabilitySummaryParams struct {
@@ -67,6 +67,8 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ActNow,
+		&i.HighPriority,
 	)
 	return &i, err
 }
@@ -87,7 +89,7 @@ func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context
 
 const getLatestSummaryForImageName = `-- name: GetLatestSummaryForImageName :one
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_priority
 FROM
     vulnerability_summary
 WHERE
@@ -118,6 +120,8 @@ func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLates
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ActNow,
+		&i.HighPriority,
 	)
 	return &i, err
 }
@@ -147,35 +151,45 @@ SELECT
                 fw.id
             END) AS INT4) AS workload_with_sbom,
     CAST(COALESCE(SUM(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.critical
-            END), 0) AS INT4) AS critical,
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.critical
+                END), 0) AS INT4) AS critical,
     CAST(COALESCE(SUM(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.high
-            END), 0) AS INT4) AS high,
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.high
+                END), 0) AS INT4) AS high,
     CAST(COALESCE(SUM(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.medium
-            END), 0) AS INT4) AS medium,
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.medium
+                END), 0) AS INT4) AS medium,
     CAST(COALESCE(SUM(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.low
-            END), 0) AS INT4) AS low,
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.low
+                END), 0) AS INT4) AS low,
     CAST(COALESCE(SUM(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.unassigned
-            END), 0) AS INT4) AS unassigned,
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.unassigned
+                END), 0) AS INT4) AS unassigned,
     CAST(COALESCE(SUM(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.risk_score
-            END), 0) AS INT4) AS risk_score,
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.act_now
+                END), 0) AS INT4) AS act_now,
+    CAST(COALESCE(SUM(
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.high_priority
+                END), 0) AS INT4) AS high_priority,
+    CAST(COALESCE(SUM(
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.risk_score
+                END), 0) AS INT4) AS risk_score,
     MAX(
         CASE WHEN fw.workload_ready
             AND i.state = 'updated'
@@ -205,6 +219,8 @@ type GetVulnerabilitySummaryRow struct {
 	Medium           int32
 	Low              int32
 	Unassigned       int32
+	ActNow           int32
+	HighPriority     int32
 	RiskScore        int32
 	UpdatedAt        pgtype.Timestamptz
 }
@@ -225,6 +241,8 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		&i.Medium,
 		&i.Low,
 		&i.Unassigned,
+		&i.ActNow,
+		&i.HighPriority,
 		&i.RiskScore,
 		&i.UpdatedAt,
 	)
@@ -233,7 +251,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 
 const getVulnerabilitySummaryForImage = `-- name: GetVulnerabilitySummaryForImage :one
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_priority
 FROM
     vulnerability_summary
 WHERE
@@ -261,6 +279,8 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ActNow,
+		&i.HighPriority,
 	)
 	return &i, err
 }
@@ -457,30 +477,46 @@ vulnerability_data AS (
         w.image_tag AS current_image_tag,
         v.image_name,
         v.image_tag,
-        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.critical
-        END, 0)::INT4 AS critical,
-        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.high
-        END, 0)::INT4 AS high,
-        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.medium
-        END, 0)::INT4 AS medium,
-        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.low
-        END, 0)::INT4 AS low,
-        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.unassigned
-        END, 0)::INT4 AS unassigned,
-        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.risk_score
-        END, 0)::INT4 AS risk_score,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.critical
+            END, 0)::INT4 AS critical,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.high
+            END, 0)::INT4 AS high,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.medium
+            END, 0)::INT4 AS medium,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.low
+            END, 0)::INT4 AS low,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.unassigned
+            END, 0)::INT4 AS unassigned,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.act_now
+            END, 0)::INT4 AS act_now,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.high_priority
+            END, 0)::INT4 AS high_priority,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.risk_score
+            END, 0)::INT4 AS risk_score,
         w.created_at AS workload_created_at,
         w.updated_at AS workload_updated_at,
         v.created_at AS summary_created_at,
@@ -513,7 +549,7 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at,
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, act_now, high_priority, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at,
 (
         SELECT
             COUNT(*)
@@ -610,6 +646,8 @@ type ListVulnerabilitySummariesRow struct {
 	Medium                  int32
 	Low                     int32
 	Unassigned              int32
+	ActNow                  int32
+	HighPriority            int32
 	RiskScore               int32
 	WorkloadCreatedAt       pgtype.Timestamptz
 	WorkloadUpdatedAt       pgtype.Timestamptz
@@ -657,6 +695,8 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.Medium,
 			&i.Low,
 			&i.Unassigned,
+			&i.ActNow,
+			&i.HighPriority,
 			&i.RiskScore,
 			&i.WorkloadCreatedAt,
 			&i.WorkloadUpdatedAt,

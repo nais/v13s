@@ -151,7 +151,7 @@ type ListCveSummariesRow struct {
 	EpssPercentile     *float64
 	HasKevEntry        bool
 	KnownRansomwareUse bool
-	Priority           int16
+	Priority           int32
 	AffectedWorkloads  int32
 	TotalCount         int32
 }

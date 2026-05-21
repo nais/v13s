@@ -103,6 +103,16 @@ vulnerability_data AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
+                v.act_now
+            END, 0)::INT4 AS act_now,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
+                v.high_priority
+            END, 0)::INT4 AS high_priority,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND i.state = 'updated' THEN
                 v.risk_score
             END, 0)::INT4 AS risk_score,
         w.created_at AS workload_created_at,
@@ -254,6 +264,16 @@ SELECT
                     AND i.state = 'updated' THEN
                     v.unassigned
                 END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.act_now
+                END), 0) AS INT4) AS act_now,
+    CAST(COALESCE(SUM(
+                CASE WHEN fw.workload_ready
+                    AND i.state = 'updated' THEN
+                    v.high_priority
+                END), 0) AS INT4) AS high_priority,
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN

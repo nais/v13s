@@ -585,7 +585,7 @@ func toCve(
 	created, lastUpdated *timestamppb.Timestamp,
 	cvssScore, epssScore, epssPercentile *float64,
 	hasKevEntry, knownRansomwareUse bool,
-	priority int16,
+	priority int32,
 ) *vulnerabilities.Cve {
 	return &vulnerabilities.Cve{
 		Id:                 id,
@@ -605,7 +605,7 @@ func toCve(
 	}
 }
 
-func safePriority(p int16) vulnerabilities.Priority {
+func safePriority(p int32) vulnerabilities.Priority {
 	switch p {
 	case 1:
 		return vulnerabilities.Priority_PRIORITY_ACT_NOW
