@@ -2212,7 +2212,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	}
 
 	t.Run("suppressed CVE is excluded by default", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(100))
 		assert.NoError(t, err)
 
 		cveIDs := make([]string, 0, len(resp.Nodes))
