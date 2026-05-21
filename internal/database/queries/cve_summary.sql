@@ -50,6 +50,14 @@ ORDER BY
         cvss_score
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_asc' THEN
+        CASE WHEN cvss_score = 0
+            OR cvss_score IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cvss_score_asc' THEN
         cvss_score
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
@@ -69,11 +77,28 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
         affected_workloads
     END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
+        CASE WHEN cvss_score IS NULL
+            OR cvss_score = 0 THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
+        cvss_score
+    END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
         cve_id
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
         cve_id
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
+        severity
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN
+        severity
     END DESC,
     cve_id ASC
 LIMIT sqlc.arg('limit')

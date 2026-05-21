@@ -2014,6 +2014,60 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.NotNil(t, cve.LastUpdated)
 	})
 
+	t.Run("affected_workloads ascending, fewest first, cvss tiebreaker null+zero last", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-a", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		err = db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-b", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		err = db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-c", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+
+		for _, w := range []struct{ name, ns, image string }{
+			{"w-aff-asc-a1", "namespace-aff-asc", "image-aff-asc-a"},
+			{"w-aff-asc-a2", "namespace-aff-asc", "image-aff-asc-a"},
+			{"w-aff-asc-b1", "namespace-aff-asc", "image-aff-asc-b"},
+			{"w-aff-asc-c1", "namespace-aff-asc", "image-aff-asc-c"},
+		} {
+			_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+				Name: w.name, WorkloadType: "app", Namespace: w.ns,
+				Cluster: "cluster-1", ImageName: w.image, ImageTag: "v1.0",
+			})
+			require.NoError(t, err)
+		}
+
+		cvssHigh := 9.8
+		cvssZero := 0.0
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-AFF-ASC-MANY", CveTitle: "Many", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-HIGH", CveTitle: "FewHigh", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-ZERO", CveTitle: "FewZero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssZero, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-NULL", CveTitle: "FewNull", CveDesc: "desc", CveLink: "link", CvssScore: nil, Severity: 1, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-aff-asc-a", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-AFF-ASC-MANY", Source: "test"},
+			{ImageName: "image-aff-asc-b", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-AFF-ASC-MANY", Source: "test"},
+			{ImageName: "image-aff-asc-b", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-AFF-ASC-FEW-HIGH", Source: "test"},
+			{ImageName: "image-aff-asc-c", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-AFF-ASC-FEW-ZERO", Source: "test"},
+			{ImageName: "image-aff-asc-c", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-AFF-ASC-FEW-NULL", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderByAffectedWorkloads, vulnerabilities.Direction_ASC),
+			vulnerabilities.NamespaceFilter("namespace-aff-asc"),
+			vulnerabilities.Limit(10),
+		)
+		require.NoError(t, err)
+
+		var gotIDs []string
+		for _, node := range resp.Nodes {
+			gotIDs = append(gotIDs, node.Cve.Id)
+		}
+		// count=1: FEW-HIGH (9.8) < FEW-ZERO (0, null guard) < FEW-NULL (nil, null guard, cve_id after ZERO)
+		// count=2: MANY
+		assert.Equal(t, []string{"CVE-AFF-ASC-FEW-HIGH", "CVE-AFF-ASC-FEW-ZERO", "CVE-AFF-ASC-FEW-NULL", "CVE-AFF-ASC-MANY"}, gotIDs)
+	})
+
 	t.Run("cvss_score descending, zero scores last", func(t *testing.T) {
 		err := db.CreateImage(ctx, sql.CreateImageParams{
 			Name:     "image-1",
@@ -2047,7 +2101,11 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-1", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-ZERO", Source: "test"},
 		}).Exec(func(i int, err error) { assert.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_DESC), vulnerabilities.Limit(10))
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_DESC),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.Limit(10),
+		)
 		assert.NoError(t, err)
 
 		var gotIDs []string
@@ -2057,6 +2115,115 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			}
 		}
 		assert.Equal(t, []string{"CVE-HIGH", "CVE-LOW", "CVE-ZERO"}, gotIDs)
+	})
+
+	t.Run("cvss_score ascending, zero scores last", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-cvss-asc", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: "workload-cvss-asc", WorkloadType: "app", Namespace: "namespace-cvss-asc",
+			Cluster: "cluster-1", ImageName: "image-cvss-asc", ImageTag: "v1.0",
+		})
+		require.NoError(t, err)
+
+		cvssScoreZero := 0.0
+		cvssScoreLow := 2.5
+		cvssScoreHigh := 9.8
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-ASC-LOW", CveTitle: "Low", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreLow, Severity: 2, Refs: map[string]string{}},
+			{CveID: "CVE-ASC-HIGH", CveTitle: "High", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreHigh, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-ASC-NULL", CveTitle: "Null", CveDesc: "desc", CveLink: "link", CvssScore: nil, Severity: 0, Refs: map[string]string{}},
+			{CveID: "CVE-ASC-ZERO", CveTitle: "Zero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreZero, Severity: 0, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-cvss-asc", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-ASC-LOW", Source: "test"},
+			{ImageName: "image-cvss-asc", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-ASC-HIGH", Source: "test"},
+			{ImageName: "image-cvss-asc", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-ASC-NULL", Source: "test"},
+			{ImageName: "image-cvss-asc", ImageTag: "v1.0", Package: "pkg4", CveID: "CVE-ASC-ZERO", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_ASC),
+			vulnerabilities.NamespaceFilter("namespace-cvss-asc"),
+			vulnerabilities.Limit(10),
+		)
+		assert.NoError(t, err)
+
+		var gotIDs []string
+		for _, node := range resp.Nodes {
+			gotIDs = append(gotIDs, node.Cve.Id)
+		}
+		assert.Equal(t, []string{"CVE-ASC-LOW", "CVE-ASC-HIGH", "CVE-ASC-ZERO", "CVE-ASC-NULL"}, gotIDs)
+	})
+
+	t.Run("severity ascending sorts mildest first", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-sev-asc", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: "workload-sev-asc", WorkloadType: "app", Namespace: "namespace-sev-asc",
+			Cluster: "cluster-1", ImageName: "image-sev-asc", ImageTag: "v1.0",
+		})
+		require.NoError(t, err)
+
+		cvssScore := 5.0
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-SEV-MEDIUM", CveTitle: "Medium", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 2, Refs: map[string]string{}},
+			{CveID: "CVE-SEV-HIGH", CveTitle: "High", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-SEV-CRITICAL", CveTitle: "Critical", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 0, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-sev-asc", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-SEV-MEDIUM", Source: "test"},
+			{ImageName: "image-sev-asc", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-SEV-HIGH", Source: "test"},
+			{ImageName: "image-sev-asc", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-SEV-CRITICAL", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_ASC),
+			vulnerabilities.NamespaceFilter("namespace-sev-asc"),
+			vulnerabilities.Limit(10),
+		)
+		assert.NoError(t, err)
+
+		var gotIDs []string
+		for _, node := range resp.Nodes {
+			gotIDs = append(gotIDs, node.Cve.Id)
+		}
+		assert.Equal(t, []string{"CVE-SEV-MEDIUM", "CVE-SEV-HIGH", "CVE-SEV-CRITICAL"}, gotIDs)
+	})
+
+	t.Run("severity descending sorts most severe first", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-sev-desc", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: "workload-sev-desc", WorkloadType: "app", Namespace: "namespace-sev-desc",
+			Cluster: "cluster-1", ImageName: "image-sev-desc", ImageTag: "v1.0",
+		})
+		require.NoError(t, err)
+
+		cvssScore := 5.0
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-SEVD-MEDIUM", CveTitle: "Medium", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 2, Refs: map[string]string{}},
+			{CveID: "CVE-SEVD-HIGH", CveTitle: "High", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-SEVD-CRITICAL", CveTitle: "Critical", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 0, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-sev-desc", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-SEVD-MEDIUM", Source: "test"},
+			{ImageName: "image-sev-desc", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-SEVD-HIGH", Source: "test"},
+			{ImageName: "image-sev-desc", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-SEVD-CRITICAL", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
+			vulnerabilities.NamespaceFilter("namespace-sev-desc"),
+			vulnerabilities.Limit(10),
+		)
+		assert.NoError(t, err)
+
+		var gotIDs []string
+		for _, node := range resp.Nodes {
+			gotIDs = append(gotIDs, node.Cve.Id)
+		}
+		assert.Equal(t, []string{"CVE-SEVD-CRITICAL", "CVE-SEVD-HIGH", "CVE-SEVD-MEDIUM"}, gotIDs)
 	})
 
 	t.Run("exclude namespaces reduces affected workloads", func(t *testing.T) {
@@ -2074,47 +2241,84 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		}
 	})
 
-	t.Run("exclude all namespaces returns no results", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx,
-			vulnerabilities.Limit(10),
-			vulnerabilities.ExcludeNamespacesFilter("namespace-1", "namespace-2"),
-		)
-		assert.NoError(t, err)
-		assert.Empty(t, resp.Nodes)
-	})
-
-	for _, imageName := range []string{
-		"image-cluster-1-namespace-1-workload-1",
-		"image-cluster-1-namespace-2-workload-1",
-		"image-cluster-2-namespace-1-workload-1",
-		"image-cluster-2-namespace-2-workload-1",
-	} {
-		err := db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
-			ImageName:    imageName,
-			Package:      "package-CWE-1-1",
-			CveID:        "CWE-1-1",
-			Suppressed:   true,
-			SuppressedBy: "test-user",
-			Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
-			ReasonText:   "test suppression",
+	t.Run("CVE from excluded namespace does not appear in results", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-excl", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: "workload-excl", WorkloadType: "app", Namespace: "namespace-excl",
+			Cluster: "cluster-1", ImageName: "image-excl", ImageTag: "v1.0",
 		})
 		require.NoError(t, err)
-	}
+		cvssScore := 5.0
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-EXCL-1", CveTitle: "Excl", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScore, Severity: 1, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-excl", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-EXCL-1", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		present, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(10),
+			vulnerabilities.NamespaceFilter("namespace-excl"),
+		)
+		require.NoError(t, err)
+		require.NotEmpty(t, present.Nodes, "CVE-EXCL-1 should appear before exclusion")
+
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(10),
+			vulnerabilities.ExcludeNamespacesFilter("namespace-excl"),
+		)
+		assert.NoError(t, err)
+		cveIDs := make([]string, 0, len(resp.Nodes))
+		for _, node := range resp.Nodes {
+			cveIDs = append(cveIDs, node.Cve.Id)
+		}
+		assert.NotContains(t, cveIDs, "CVE-EXCL-1", "CVE from excluded namespace should not appear")
+	})
+
+	err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-suppressed", Tag: "v1.0", Metadata: map[string]string{}})
+	require.NoError(t, err)
+	_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name: "workload-suppressed", WorkloadType: "app", Namespace: "namespace-suppressed",
+		Cluster: "cluster-1", ImageName: "image-suppressed", ImageTag: "v1.0",
+	})
+	require.NoError(t, err)
+	cvssScoreSuppressed := 5.0
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: "CVE-SUPPRESSED-1", CveTitle: "Suppressed", CveDesc: "desc", CveLink: "link", CvssScore: &cvssScoreSuppressed, Severity: 1, Refs: map[string]string{}},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: "image-suppressed", ImageTag: "v1.0", Package: "pkg-suppressed", CveID: "CVE-SUPPRESSED-1", Source: "test"},
+	}).Exec(func(i int, err error) { require.NoError(t, err) })
+	err = db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+		ImageName:    "image-suppressed",
+		Package:      "pkg-suppressed",
+		CveID:        "CVE-SUPPRESSED-1",
+		Suppressed:   true,
+		SuppressedBy: "test-user",
+		Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
+		ReasonText:   "test suppression",
+	})
+	require.NoError(t, err)
 
 	t.Run("suppressed CVE is excluded by default", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(10),
+			vulnerabilities.NamespaceFilter("namespace-suppressed"),
+		)
 		assert.NoError(t, err)
 
 		cveIDs := make([]string, 0, len(resp.Nodes))
 		for _, node := range resp.Nodes {
 			cveIDs = append(cveIDs, node.Cve.Id)
 		}
-		assert.NotContains(t, cveIDs, "CWE-1-1", "suppressed CVE should not appear by default")
+		assert.NotContains(t, cveIDs, "CVE-SUPPRESSED-1", "suppressed CVE should not appear by default")
 	})
 
 	t.Run("suppressed CVE is included when IncludeSuppressed is set", func(t *testing.T) {
 		resp, err := client.ListCveSummaries(ctx,
 			vulnerabilities.Limit(10),
+			vulnerabilities.NamespaceFilter("namespace-suppressed"),
 			vulnerabilities.IncludeSuppressed(),
 		)
 		assert.NoError(t, err)
@@ -2123,7 +2327,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		for _, node := range resp.Nodes {
 			cveIDs = append(cveIDs, node.Cve.Id)
 		}
-		assert.Contains(t, cveIDs, "CWE-1-1", "suppressed CVE should appear when IncludeSuppressed is set")
+		assert.Contains(t, cveIDs, "CVE-SUPPRESSED-1", "suppressed CVE should appear when IncludeSuppressed is set")
 	})
 }
 
