@@ -2811,7 +2811,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		require.NoError(t, err)
 		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name:         "workload-1",
-			WorkloadType: "Deployment",
+			WorkloadType: "app",
 			Namespace:    "namespace-1",
 			Cluster:      "cluster-1",
 			ImageName:    imageName,
