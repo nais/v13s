@@ -254,6 +254,13 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		}
 		if imgErr == nil {
 			worstStatus = deriveImageSbomStatus(&img.State)
+			if img.State == sql.ImageStateUnused {
+				if summary != nil {
+					worstStatus = vulnerabilities.SbomStatus_SBOM_STATUS_READY
+				} else {
+					worstStatus = vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
+				}
+			}
 			if isPendingSbomStatus(worstStatus) && img.SbomProcessingStartedAt.Valid {
 				earliestProcessingStartedAt = timestamppb.New(img.SbomProcessingStartedAt.Time)
 			}

@@ -2834,4 +2834,76 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		assert.Nil(t, sum.StaleImageTag, "stale_image_tag must be nil when no prior tag exists")
 		assert.Equal(t, int32(0), sum.GetTotal())
 	})
+
+	t.Run("image in PROCESSING with existing summary but no workload record returns summary and PROCESSING status", func(t *testing.T) {
+		const (
+			processingImage = "image-processing-no-workload"
+			processingTag   = "v3.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: processingImage, Tag: processingTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: processingImage,
+			ImageTag:  processingTag,
+			High:      5,
+			RiskScore: 25,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, processingImage, processingTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Equal(t, int32(5), sum.GetHigh(), "existing summary counts must be returned")
+		assert.Nil(t, sum.StaleImageTag, "stale_image_tag must be nil when summary is for the requested tag")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("unused image with existing summary returns READY status", func(t *testing.T) {
+		const (
+			unusedImage = "image-unused-with-summary"
+			unusedTag   = "v4.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: unusedImage, Tag: unusedTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{Name: unusedImage, Tag: unusedTag, State: sql.ImageStateUnused})
+		require.NoError(t, err)
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: unusedImage,
+			ImageTag:  unusedTag,
+			High:      3,
+			RiskScore: 15,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unusedImage, unusedTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Equal(t, int32(3), sum.GetHigh())
+		assert.Nil(t, sum.StaleImageTag)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("unused image without summary returns NO_SBOM status", func(t *testing.T) {
+		const (
+			unusedImage = "image-unused-no-summary"
+			unusedTag   = "v5.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: unusedImage, Tag: unusedTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{Name: unusedImage, Tag: unusedTag, State: sql.ImageStateUnused})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unusedImage, unusedTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Nil(t, sum.StaleImageTag)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
 }
