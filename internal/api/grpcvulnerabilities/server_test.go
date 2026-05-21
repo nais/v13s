@@ -2861,7 +2861,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
-	t.Run("unused image with existing summary returns READY status", func(t *testing.T) {
+	t.Run("unused image with existing summary returns NO_SBOM status", func(t *testing.T) {
 		const (
 			unusedImage = "image-unused-with-summary"
 			unusedTag   = "v4.0"
@@ -2885,7 +2885,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		require.NotNil(t, sum)
 		assert.Equal(t, int32(3), sum.GetHigh())
 		assert.Nil(t, sum.StaleImageTag)
-		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
 	})
 
 	t.Run("unused image without summary returns NO_SBOM status", func(t *testing.T) {

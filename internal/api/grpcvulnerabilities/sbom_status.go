@@ -31,6 +31,8 @@ func deriveImageSbomStatus(imageState *sql.ImageState) vulnerabilities.SbomStatu
 		return vulnerabilities.SbomStatus_SBOM_STATUS_READY
 	case sql.ImageStateFailed:
 		return vulnerabilities.SbomStatus_SBOM_STATUS_FAILED
+	case sql.ImageStateUnused:
+		return vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM
 	default:
 		return vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 	}
