@@ -2014,6 +2014,60 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.NotNil(t, cve.LastUpdated)
 	})
 
+	t.Run("affected_workloads ascending, fewest first, cvss tiebreaker null+zero last", func(t *testing.T) {
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-a", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		err = db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-b", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+		err = db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-c", Tag: "v1.0", Metadata: map[string]string{}})
+		require.NoError(t, err)
+
+		for _, w := range []struct{ name, ns, image string }{
+			{"w-aff-asc-a1", "namespace-aff-asc", "image-aff-asc-a"},
+			{"w-aff-asc-a2", "namespace-aff-asc", "image-aff-asc-a"},
+			{"w-aff-asc-b1", "namespace-aff-asc", "image-aff-asc-b"},
+			{"w-aff-asc-c1", "namespace-aff-asc", "image-aff-asc-c"},
+		} {
+			_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+				Name: w.name, WorkloadType: "app", Namespace: w.ns,
+				Cluster: "cluster-1", ImageName: w.image, ImageTag: "v1.0",
+			})
+			require.NoError(t, err)
+		}
+
+		cvssHigh := 9.8
+		cvssZero := 0.0
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-AFF-ASC-MANY", CveTitle: "Many", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-HIGH", CveTitle: "FewHigh", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-ZERO", CveTitle: "FewZero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssZero, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-NULL", CveTitle: "FewNull", CveDesc: "desc", CveLink: "link", CvssScore: nil, Severity: 1, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-aff-asc-a", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-AFF-ASC-MANY", Source: "test"},
+			{ImageName: "image-aff-asc-b", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-AFF-ASC-MANY", Source: "test"},
+			{ImageName: "image-aff-asc-b", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-AFF-ASC-FEW-HIGH", Source: "test"},
+			{ImageName: "image-aff-asc-c", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-AFF-ASC-FEW-ZERO", Source: "test"},
+			{ImageName: "image-aff-asc-c", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-AFF-ASC-FEW-NULL", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderByAffectedWorkloads, vulnerabilities.Direction_ASC),
+			vulnerabilities.NamespaceFilter("namespace-aff-asc"),
+			vulnerabilities.Limit(10),
+		)
+		require.NoError(t, err)
+
+		var gotIDs []string
+		for _, node := range resp.Nodes {
+			gotIDs = append(gotIDs, node.Cve.Id)
+		}
+		// count=1: FEW-HIGH (9.8) < FEW-ZERO (0, null guard) < FEW-NULL (nil, null guard, cve_id after ZERO)
+		// count=2: MANY
+		assert.Equal(t, []string{"CVE-AFF-ASC-FEW-HIGH", "CVE-AFF-ASC-FEW-ZERO", "CVE-AFF-ASC-FEW-NULL", "CVE-AFF-ASC-MANY"}, gotIDs)
+	})
+
 	t.Run("cvss_score descending, zero scores last", func(t *testing.T) {
 		err := db.CreateImage(ctx, sql.CreateImageParams{
 			Name:     "image-1",
@@ -2047,7 +2101,11 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-1", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-ZERO", Source: "test"},
 		}).Exec(func(i int, err error) { assert.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_DESC), vulnerabilities.Limit(10))
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_DESC),
+			vulnerabilities.NamespaceFilter("namespace-1"),
+			vulnerabilities.Limit(10),
+		)
 		assert.NoError(t, err)
 
 		var gotIDs []string
