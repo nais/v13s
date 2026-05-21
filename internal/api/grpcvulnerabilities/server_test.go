@@ -2241,7 +2241,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		}
 	})
 
-	t.Run("exclude all namespaces returns no results", func(t *testing.T) {
+	t.Run("CVE from excluded namespace does not appear in results", func(t *testing.T) {
 		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-excl", Tag: "v1.0", Metadata: map[string]string{}})
 		require.NoError(t, err)
 		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
@@ -2304,7 +2304,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	t.Run("suppressed CVE is excluded by default", func(t *testing.T) {
 		resp, err := client.ListCveSummaries(ctx,
 			vulnerabilities.Limit(10),
-			vulnerabilities.NamespacesFilter("namespace-suppressed"),
+			vulnerabilities.NamespaceFilter("namespace-suppressed"),
 		)
 		assert.NoError(t, err)
 
@@ -2318,7 +2318,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	t.Run("suppressed CVE is included when IncludeSuppressed is set", func(t *testing.T) {
 		resp, err := client.ListCveSummaries(ctx,
 			vulnerabilities.Limit(10),
-			vulnerabilities.NamespacesFilter("namespace-suppressed"),
+			vulnerabilities.NamespaceFilter("namespace-suppressed"),
 			vulnerabilities.IncludeSuppressed(),
 		)
 		assert.NoError(t, err)
