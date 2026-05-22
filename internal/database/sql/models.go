@@ -372,19 +372,19 @@ type SuppressedVulnerability struct {
 }
 
 type VulnerabilitySummary struct {
-	ID           pgtype.UUID
-	ImageName    string
-	ImageTag     string
-	Critical     int32
-	High         int32
-	Medium       int32
-	Low          int32
-	Unassigned   int32
-	RiskScore    int32
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-	ActNow       int32
-	HighPriority int32
+	ID             pgtype.UUID
+	ImageName      string
+	ImageTag       string
+	Critical       int32
+	High           int32
+	Medium         int32
+	Low            int32
+	Unassigned     int32
+	RiskScore      int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	PriorityActNow int32
+	PriorityHigh   int32
 }
 
 type Workload struct {

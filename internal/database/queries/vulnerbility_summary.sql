@@ -103,13 +103,13 @@ vulnerability_data AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
-                v.act_now
-            END, 0)::INT4 AS act_now,
+                v.priority_act_now
+            END, 0)::INT4 AS priority_act_now,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
-                v.high_priority
-            END, 0)::INT4 AS high_priority,
+                v.priority_high
+            END, 0)::INT4 AS priority_high,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
@@ -210,6 +210,18 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'risk_score_desc' THEN
         COALESCE(risk_score, -1)
     END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_act_now_asc' THEN
+        COALESCE(priority_act_now, 999999)
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_act_now_desc' THEN
+        COALESCE(priority_act_now, -1)
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_high_asc' THEN
+        COALESCE(priority_high, 999999)
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_high_desc' THEN
+        COALESCE(priority_high, -1)
+    END DESC,
     summary_updated_at ASC,
     id DESC
 LIMIT sqlc.arg('limit')
@@ -267,13 +279,13 @@ SELECT
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN
-                    v.act_now
-                END), 0) AS INT4) AS act_now,
+                    v.priority_act_now
+                END), 0) AS INT4) AS priority_act_now,
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN
-                    v.high_priority
-                END), 0) AS INT4) AS high_priority,
+                    v.priority_high
+                END), 0) AS INT4) AS priority_high,
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN

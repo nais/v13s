@@ -73,17 +73,17 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			riskScore := row.RiskScore
 
 			vulnSummary = &vulnerabilities.Summary{
-				Critical:     critical,
-				High:         high,
-				Medium:       medium,
-				Low:          low,
-				Unassigned:   unassigned,
-				Total:        critical + high + medium + low + unassigned,
-				RiskScore:    riskScore,
-				LastUpdated:  timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:      row.HasSbom,
-				ActNow:       row.ActNow,
-				HighPriority: row.HighPriority,
+				Critical:       critical,
+				High:           high,
+				Medium:         medium,
+				Low:            low,
+				Unassigned:     unassigned,
+				Total:          critical + high + medium + low + unassigned,
+				RiskScore:      riskScore,
+				LastUpdated:    timestamppb.New(row.SummaryUpdatedAt.Time),
+				HasSbom:        row.HasSbom,
+				PriorityActNow: row.PriorityActNow,
+				PriorityHigh:   row.PriorityHigh,
 			}
 		}
 
@@ -134,17 +134,17 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	summary := &vulnerabilities.Summary{
-		Critical:     row.Critical,
-		High:         row.High,
-		Medium:       row.Medium,
-		Low:          row.Low,
-		Unassigned:   row.Unassigned,
-		Total:        row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-		RiskScore:    row.RiskScore,
-		LastUpdated:  timestamppb.New(row.UpdatedAt.Time),
-		HasSbom:      true,
-		ActNow:       row.ActNow,
-		HighPriority: row.HighPriority,
+		Critical:       row.Critical,
+		High:           row.High,
+		Medium:         row.Medium,
+		Low:            row.Low,
+		Unassigned:     row.Unassigned,
+		Total:          row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+		RiskScore:      row.RiskScore,
+		LastUpdated:    timestamppb.New(row.UpdatedAt.Time),
+		HasSbom:        true,
+		PriorityActNow: row.PriorityActNow,
+		PriorityHigh:   row.PriorityHigh,
 	}
 
 	var coverage float32
@@ -298,17 +298,17 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		riskScore := summary.RiskScore
 
 		vulnSummary = &vulnerabilities.Summary{
-			Critical:     critical,
-			High:         high,
-			Medium:       medium,
-			Low:          low,
-			Unassigned:   unassigned,
-			Total:        critical + high + medium + low + unassigned,
-			RiskScore:    riskScore,
-			LastUpdated:  timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:      true,
-			ActNow:       int32(summary.ActNow),
-			HighPriority: int32(summary.HighPriority),
+			Critical:       critical,
+			High:           high,
+			Medium:         medium,
+			Low:            low,
+			Unassigned:     unassigned,
+			Total:          critical + high + medium + low + unassigned,
+			RiskScore:      riskScore,
+			LastUpdated:    timestamppb.New(summary.UpdatedAt.Time),
+			HasSbom:        true,
+			PriorityActNow: int32(summary.PriorityActNow),
+			PriorityHigh:   int32(summary.PriorityHigh),
 		}
 		if staleTag != "" {
 			vulnSummary.StaleImageTag = &staleTag

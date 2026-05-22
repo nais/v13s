@@ -35,6 +35,8 @@ const (
 	OrderByNamespace         OrderByField = "namespace"
 	OrderByPackage           OrderByField = "package"
 	OrderByPriority          OrderByField = "priority"
+	OrderByPriorityActNow    OrderByField = "priority_act_now"
+	OrderByPriorityHigh      OrderByField = "priority_high"
 	OrderByReason            OrderByField = "reason"
 	OrderByRiskScore         OrderByField = "risk_score"
 	OrderBySeverity          OrderByField = "severity"
@@ -59,6 +61,8 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderByNamespace:         {},
 	OrderByPackage:           {},
 	OrderByPriority:          {},
+	OrderByPriorityActNow:    {},
+	OrderByPriorityHigh:      {},
 	OrderByReason:            {},
 	OrderByRiskScore:         {},
 	OrderBySeverity:          {},

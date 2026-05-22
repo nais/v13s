@@ -95,8 +95,8 @@ message Summary {
   bool hasSbom = 8;
   optional google.protobuf.Timestamp last_updated = 9;
   optional string stale_image_tag = 10;
-  int32 act_now = 11;
-  int32 high_priority = 12;
+  int32 priority_act_now = 11;
+  int32 priority_high = 12;
 }
 
 message Cve {

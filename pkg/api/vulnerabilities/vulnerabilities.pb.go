@@ -568,21 +568,21 @@ func (x *Workload) GetImageTag() string {
 }
 
 type Summary struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Critical      int32                  `protobuf:"varint,1,opt,name=critical,proto3" json:"critical,omitempty"`
-	High          int32                  `protobuf:"varint,2,opt,name=high,proto3" json:"high,omitempty"`
-	Medium        int32                  `protobuf:"varint,3,opt,name=medium,proto3" json:"medium,omitempty"`
-	Low           int32                  `protobuf:"varint,4,opt,name=low,proto3" json:"low,omitempty"`
-	Unassigned    int32                  `protobuf:"varint,5,opt,name=unassigned,proto3" json:"unassigned,omitempty"`
-	Total         int32                  `protobuf:"varint,6,opt,name=total,proto3" json:"total,omitempty"`
-	RiskScore     int32                  `protobuf:"varint,7,opt,name=riskScore,proto3" json:"riskScore,omitempty"`
-	HasSbom       bool                   `protobuf:"varint,8,opt,name=hasSbom,proto3" json:"hasSbom,omitempty"`
-	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
-	StaleImageTag *string                `protobuf:"bytes,10,opt,name=stale_image_tag,json=staleImageTag,proto3,oneof" json:"stale_image_tag,omitempty"`
-	ActNow        int32                  `protobuf:"varint,11,opt,name=act_now,json=actNow,proto3" json:"act_now,omitempty"`
-	HighPriority  int32                  `protobuf:"varint,12,opt,name=high_priority,json=highPriority,proto3" json:"high_priority,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Critical       int32                  `protobuf:"varint,1,opt,name=critical,proto3" json:"critical,omitempty"`
+	High           int32                  `protobuf:"varint,2,opt,name=high,proto3" json:"high,omitempty"`
+	Medium         int32                  `protobuf:"varint,3,opt,name=medium,proto3" json:"medium,omitempty"`
+	Low            int32                  `protobuf:"varint,4,opt,name=low,proto3" json:"low,omitempty"`
+	Unassigned     int32                  `protobuf:"varint,5,opt,name=unassigned,proto3" json:"unassigned,omitempty"`
+	Total          int32                  `protobuf:"varint,6,opt,name=total,proto3" json:"total,omitempty"`
+	RiskScore      int32                  `protobuf:"varint,7,opt,name=riskScore,proto3" json:"riskScore,omitempty"`
+	HasSbom        bool                   `protobuf:"varint,8,opt,name=hasSbom,proto3" json:"hasSbom,omitempty"`
+	LastUpdated    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
+	StaleImageTag  *string                `protobuf:"bytes,10,opt,name=stale_image_tag,json=staleImageTag,proto3,oneof" json:"stale_image_tag,omitempty"`
+	PriorityActNow int32                  `protobuf:"varint,11,opt,name=priority_act_now,json=priorityActNow,proto3" json:"priority_act_now,omitempty"`
+	PriorityHigh   int32                  `protobuf:"varint,12,opt,name=priority_high,json=priorityHigh,proto3" json:"priority_high,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Summary) Reset() {
@@ -685,16 +685,16 @@ func (x *Summary) GetStaleImageTag() string {
 	return ""
 }
 
-func (x *Summary) GetActNow() int32 {
+func (x *Summary) GetPriorityActNow() int32 {
 	if x != nil {
-		return x.ActNow
+		return x.PriorityActNow
 	}
 	return 0
 }
 
-func (x *Summary) GetHighPriority() int32 {
+func (x *Summary) GetPriorityHigh() int32 {
 	if x != nil {
-		return x.HighPriority
+		return x.PriorityHigh
 	}
 	return 0
 }
@@ -4267,7 +4267,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xa5\x03\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xb6\x03\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4281,9 +4281,9 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\ahasSbom\x18\b \x01(\bR\ahasSbom\x12B\n" +
 	"\flast_updated\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vlastUpdated\x88\x01\x01\x12+\n" +
 	"\x0fstale_image_tag\x18\n" +
-	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01\x12\x17\n" +
-	"\aact_now\x18\v \x01(\x05R\x06actNow\x12#\n" +
-	"\rhigh_priority\x18\f \x01(\x05R\fhighPriorityB\x0f\n" +
+	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01\x12(\n" +
+	"\x10priority_act_now\x18\v \x01(\x05R\x0epriorityActNow\x12#\n" +
+	"\rpriority_high\x18\f \x01(\x05R\fpriorityHighB\x0f\n" +
 	"\r_last_updatedB\x12\n" +
 	"\x10_stale_image_tag\"\xf4\x05\n" +
 	"\x03Cve\x12\x0e\n" +
