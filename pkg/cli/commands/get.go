@@ -232,6 +232,8 @@ func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Cl
 		}
 		tbl.AddRow("Priority Act Now", fmt.Sprint(s.GetPriorityActNow()))
 		tbl.AddRow("Priority High", fmt.Sprint(s.GetPriorityHigh()))
+		tbl.AddRow("Priority Elevated", fmt.Sprint(s.GetPriorityElevated()))
+		tbl.AddRow("Priority Monitor", fmt.Sprint(s.GetPriorityMonitor()))
 		tbl.AddRow("Critical", fmt.Sprint(s.GetCritical()))
 		tbl.AddRow("High", fmt.Sprint(s.GetHigh()))
 		tbl.AddRow("Medium", fmt.Sprint(s.GetMedium()))

@@ -1645,7 +1645,9 @@ severity_counts AS (
         COUNT(*) FILTER (WHERE severity = 3) AS low,
         COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
         COUNT(*) FILTER (WHERE priority = 1) AS priority_act_now,
-        COUNT(*) FILTER (WHERE priority = 2) AS priority_high
+        COUNT(*) FILTER (WHERE priority = 2) AS priority_high,
+        COUNT(*) FILTER (WHERE priority = 3) AS priority_elevated,
+        COUNT(*) FILTER (WHERE priority = 4) AS priority_monitor
     FROM
         resolved_vulnerabilities rv
         LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
@@ -1666,6 +1668,8 @@ summary AS (
         unassigned,
         priority_act_now,
         priority_high,
+        priority_elevated,
+        priority_monitor,
         10 * critical + 5 * high + 3 * medium + 1 * low + 5 * unassigned AS risk_score
     FROM
         severity_counts)
@@ -1679,6 +1683,8 @@ INSERT INTO vulnerability_summary(
     unassigned,
     priority_act_now,
     priority_high,
+    priority_elevated,
+    priority_monitor,
     risk_score,
     created_at,
     updated_at)
@@ -1692,6 +1698,8 @@ SELECT
     unassigned,
     priority_act_now,
     priority_high,
+    priority_elevated,
+    priority_monitor,
     risk_score,
     NOW(),
     NOW()
@@ -1707,6 +1715,8 @@ ON CONFLICT (image_name,
         unassigned = EXCLUDED.unassigned,
         priority_act_now = EXCLUDED.priority_act_now,
         priority_high = EXCLUDED.priority_high,
+        priority_elevated = EXCLUDED.priority_elevated,
+        priority_monitor = EXCLUDED.priority_monitor,
         risk_score = EXCLUDED.risk_score,
         updated_at = NOW()
 `

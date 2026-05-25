@@ -2887,8 +2887,6 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 
 	const (
 		imageName = "image-cluster-1-namespace-1-workload-1"
-	const (
-		imageName = "image-cluster-1-namespace-1-workload-1"
 		knownTag  = "v1.0"
 		newTag    = "v2.0"
 	)
@@ -3165,6 +3163,7 @@ func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
 					assert.Equal(t, int32(10), resp.GetVulnerabilitySummary().GetCritical())
 				}
 			})
+		}
 	})
 }
 

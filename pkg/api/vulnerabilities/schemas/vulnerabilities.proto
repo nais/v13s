@@ -97,6 +97,8 @@ message Summary {
   optional string stale_image_tag = 10;
   int32 priority_act_now = 11;
   int32 priority_high = 12;
+  int32 priority_elevated = 13;
+  int32 priority_monitor = 14;
 }
 
 message Cve {
