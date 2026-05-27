@@ -24,6 +24,7 @@ const (
 	FetchVulnerabilityDataForImagesDefaultLimit        = 10
 	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
+	CleanupStaleSourceRefsCronInterval                 = "0 */4 * * *"  // every 4 hours
 	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
 	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
@@ -145,6 +146,12 @@ func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, "sync OSV fix versions", u.log, func() {
 		if err := u.osvFetcher.Sync(ctx); err != nil {
 			u.log.WithError(err).Error("failed to sync OSV fix versions")
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: CleanupStaleSourceRefsCronInterval}, "cleanup stale source refs", u.log, func() {
+		if err := u.CleanupStaleSourceRefs(ctx); err != nil {
+			u.log.WithError(err).Error("failed to cleanup stale source refs")
 		}
 	})
 }
@@ -410,4 +417,32 @@ func sortByFields[T any](items []T, getters ...func(T) string) {
 		}
 		return false
 	})
+}
+
+func (u *Updater) CleanupStaleSourceRefs(ctx context.Context) error {
+	rows, err := u.querier.ListUnusedSourceRefs(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("listing unused source refs: %w", err)
+	}
+
+	if len(rows) == 0 {
+		u.log.Debug("no stale source refs found")
+		return nil
+	}
+
+	u.log.Infof("found %d stale source ref(s), enqueuing removal", len(rows))
+
+	for _, row := range rows {
+		if err := u.manager.AddJob(ctx, &manager.RemoveFromSourceJob{
+			ImageName: row.ImageName,
+			ImageTag:  row.ImageTag,
+		}); err != nil {
+			u.log.WithError(err).WithFields(logrus.Fields{
+				"image": row.ImageName,
+				"tag":   row.ImageTag,
+			}).Error("failed to enqueue RemoveFromSourceJob")
+		}
+	}
+
+	return nil
 }
