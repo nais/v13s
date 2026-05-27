@@ -11,8 +11,9 @@ require (
 	github.com/nais/v13s/pkg/api v0.0.0-20260505063146-d07688668b48
 	github.com/rodaine/table v1.3.1
 	github.com/sirupsen/logrus v1.9.4
-	github.com/urfave/cli/v3 v3.8.0
-	google.golang.org/grpc v1.81.0
+	github.com/urfave/cli/v3 v3.9.0
+	google.golang.org/grpc v1.81.1
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -146,7 +147,6 @@ require (
 	google.golang.org/api v0.277.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260504160031-60b97b32f348 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260504160031-60b97b32f348 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 )
