@@ -2777,3 +2777,133 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
 	})
 }
+
+func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
+	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}, true)
+	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		knownTag  = "v1.0"
+		newTag    = "v2.0"
+	)
+
+	t.Run("unknown tag falls back to most recent known tag", func(t *testing.T) {
+		// v1.0 was seeded by setupTest with 1 high vuln; v2.0 has no summary yet.
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Equal(t, int32(1), sum.GetHigh(), "stale counts from v1.0 must be returned")
+		require.NotNil(t, sum.StaleImageTag, "stale_image_tag must be set")
+		assert.Equal(t, knownTag, *sum.StaleImageTag, "stale_image_tag must point to v1.0")
+	})
+
+	t.Run("workload_ref and sbom_status are still populated when using stale summary", func(t *testing.T) {
+		// Register v2.0 as the current image for the workload so workload_ref is non-empty.
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-1",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     newTag,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+		assert.NotEmpty(t, resp.GetWorkloadRef(), "workload_ref must be populated even with stale summary")
+		assert.NotNil(t, resp.GetSbomStatus(), "sbom_status must be populated")
+	})
+
+	t.Run("completely unknown image returns empty summary without error", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, "never-seen-image", "v1.0")
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Nil(t, sum.StaleImageTag, "stale_image_tag must be nil when no prior tag exists")
+		assert.Equal(t, int32(0), sum.GetTotal())
+	})
+
+	t.Run("image in PROCESSING with existing summary but no workload record returns summary and PROCESSING status", func(t *testing.T) {
+		const (
+			processingImage = "image-processing-no-workload"
+			processingTag   = "v3.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: processingImage, Tag: processingTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: processingImage,
+			ImageTag:  processingTag,
+			High:      5,
+			RiskScore: 25,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, processingImage, processingTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Equal(t, int32(5), sum.GetHigh(), "existing summary counts must be returned")
+		assert.Nil(t, sum.StaleImageTag, "stale_image_tag must be nil when summary is for the requested tag")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("unused image with existing summary returns NO_SBOM status", func(t *testing.T) {
+		const (
+			unusedImage = "image-unused-with-summary"
+			unusedTag   = "v4.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: unusedImage, Tag: unusedTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{Name: unusedImage, Tag: unusedTag, State: sql.ImageStateUnused})
+		require.NoError(t, err)
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: unusedImage,
+			ImageTag:  unusedTag,
+			High:      3,
+			RiskScore: 15,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unusedImage, unusedTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Equal(t, int32(3), sum.GetHigh())
+		assert.Nil(t, sum.StaleImageTag)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("unused image without summary returns NO_SBOM status", func(t *testing.T) {
+		const (
+			unusedImage = "image-unused-no-summary"
+			unusedTag   = "v5.0"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: unusedImage, Tag: unusedTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{Name: unusedImage, Tag: unusedTag, State: sql.ImageStateUnused})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unusedImage, unusedTag)
+		require.NoError(t, err)
+
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		assert.Nil(t, sum.StaleImageTag)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
+}
