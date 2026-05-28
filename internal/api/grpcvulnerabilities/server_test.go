@@ -2525,6 +2525,14 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 		})
 		assert.NoError(t, err)
 
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:             workload.ImageName,
+			Tag:              workload.ImageTag,
+			State:            sql.ImageStateUpdated,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		})
+		assert.NoError(t, err)
+
 		w := sql.UpsertWorkloadParams{
 			Name:         workload.Workload,
 			WorkloadType: workload.WorkloadType,
@@ -2534,7 +2542,13 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 			ImageTag:     workload.ImageTag,
 		}
 
-		_, err = db.UpsertWorkload(ctx, w)
+		workloadID, err := db.UpsertWorkload(ctx, w)
+		assert.NoError(t, err)
+
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			State: sql.WorkloadStateUpdated,
+			ID:    workloadID,
+		})
 		assert.NoError(t, err)
 
 		cweParams := make([]sql.BatchUpsertCveParams, 0)
@@ -2883,7 +2897,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 
 		sum := resp.GetVulnerabilitySummary()
 		require.NotNil(t, sum)
-		assert.Equal(t, int32(3), sum.GetHigh())
+		assert.Equal(t, int32(0), sum.GetHigh(), "counts must be zeroed for unused/NO_SBOM image")
 		assert.Nil(t, sum.StaleImageTag)
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
 	})
@@ -2905,5 +2919,307 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		require.NotNil(t, sum)
 		assert.Nil(t, sum.StaleImageTag)
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("workload in terminal state zeroes counts in GetVulnerabilitySummaryForImage", func(t *testing.T) {
+		const (
+			termImage = "image-terminal-workload"
+			termTag   = "v6.0"
+		)
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: termImage, Tag: termTag, Metadata: map[string]string{}}))
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:             termImage,
+			Tag:              termTag,
+			State:            sql.ImageStateUpdated,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		})
+		require.NoError(t, err)
+
+		workloadID, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "terminal-workload",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    termImage,
+			ImageTag:     termTag,
+		})
+		require.NoError(t, err)
+
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: termImage,
+			ImageTag:  termTag,
+			High:      7,
+			RiskScore: 35,
+		})
+		require.NoError(t, err)
+
+		for _, state := range []sql.WorkloadState{
+			sql.WorkloadStateNoAttestation,
+			sql.WorkloadStateFailed,
+			sql.WorkloadStateUnrecoverable,
+		} {
+			t.Run(string(state), func(t *testing.T) {
+				require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+					State: state,
+					ID:    workloadID,
+				}))
+				resp, err := client.GetVulnerabilitySummaryForImage(ctx, termImage, termTag)
+				require.NoError(t, err)
+				sum := resp.GetVulnerabilitySummary()
+				require.NotNil(t, sum)
+				assert.Equal(t, int32(0), sum.GetHigh(),
+					"counts must be zeroed for image whose workload is in terminal state %s", state)
+				assert.NotEqual(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, resp.GetSbomStatus().GetStatus())
+			})
+		}
+	})
+}
+
+// TestServer_GetVulnerabilitySummary_ExcludesTerminalStateWorkloads verifies that the
+// aggregate GetVulnerabilitySummary only sums counts for images in updated or initialized
+// state. Images in failed or unused state have stale/invalid data and must not inflate
+// team/cluster totals. The filter is on image state, not workload state, so shared images
+// used by multiple workloads are handled correctly.
+func TestServer_GetVulnerabilitySummary_ExcludesTerminalStateWorkloads(t *testing.T) {
+	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 0,
+		vulnsPerWorkload:      0,
+	}, true)
+	defer cleanup()
+
+	const (
+		healthyImage = "agg-healthy-image"
+		healthyTag   = "v1.0"
+		staleImage   = "agg-stale-image"
+		staleTag     = "v1.0"
+	)
+
+	// Seed both images and workloads starting in updated state.
+	for _, img := range []struct{ name, tag string }{{healthyImage, healthyTag}, {staleImage, staleTag}} {
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: img.name, Tag: img.tag, Metadata: map[string]string{}}))
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:             img.name,
+			Tag:              img.tag,
+			State:            sql.ImageStateUpdated,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		})
+		require.NoError(t, err)
+	}
+
+	healthyID, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name: "agg-healthy-workload", WorkloadType: "app",
+		Namespace: "namespace-1", Cluster: "cluster-1",
+		ImageName: healthyImage, ImageTag: healthyTag,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{State: sql.WorkloadStateUpdated, ID: healthyID}))
+
+	staleID, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name: "agg-stale-workload", WorkloadType: "app",
+		Namespace: "namespace-1", Cluster: "cluster-1",
+		ImageName: staleImage, ImageTag: staleTag,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{State: sql.WorkloadStateUpdated, ID: staleID}))
+
+	db.BatchUpsertVulnerabilitySummary(ctx, []sql.BatchUpsertVulnerabilitySummaryParams{
+		{ImageName: healthyImage, ImageTag: healthyTag, High: 2},
+		{ImageName: staleImage, ImageTag: staleTag, High: 10},
+	}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	// Both images updated: total should be 12.
+	t.Run("both_images_updated_returns_full_sum", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummary(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, int32(12), resp.GetVulnerabilitySummary().GetHigh())
+	})
+
+	// Stale image transitions to failed/unused: only healthy counts returned.
+	for _, imgState := range []sql.ImageState{sql.ImageStateFailed, sql.ImageStateUnused} {
+		t.Run("stale_image_"+string(imgState)+"_excluded_from_sum", func(t *testing.T) {
+			_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				Name:             staleImage,
+				Tag:              staleTag,
+				State:            imgState,
+				ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+			})
+			require.NoError(t, err)
+
+			resp, err := client.GetVulnerabilitySummary(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, int32(2), resp.GetVulnerabilitySummary().GetHigh(),
+				"only healthy image counts must appear when stale image is in state %s", imgState)
+
+			// Restore for next iteration.
+			_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+				Name:             staleImage,
+				Tag:              staleTag,
+				State:            sql.ImageStateUpdated,
+				ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+			})
+			require.NoError(t, err)
+		})
+	}
+
+	// Processing image: counts still included as useful context.
+	t.Run("processing_image_counts_included", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:             staleImage,
+			Tag:              staleTag,
+			State:            sql.ImageStateInitialized,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummary(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, int32(12), resp.GetVulnerabilitySummary().GetHigh(),
+			"counts must be included while image is processing")
+	})
+}
+
+// TestServer_VulnerabilitySummary_CountsByWorkloadState verifies the count visibility rules
+// in ListVulnerabilitySummaries based on workload and image state:
+//
+//   - terminal states (no_attestation, failed, unrecoverable): workload appears with zero counts
+//   - processing state (initialized image): workload appears with stale counts as useful context
+//   - ready state (updated workload + updated image): workload appears with full counts
+func TestServer_VulnerabilitySummary_CountsByWorkloadState(t *testing.T) {
+	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 0,
+		vulnsPerWorkload:      0,
+	}, true)
+	defer cleanup()
+
+	const (
+		imageName = "state-image"
+		imageTag  = "v1.0"
+		cveID     = "CVE-STATE-1"
+		pkg       = "pkg-state"
+	)
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	}))
+	_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		Name:             imageName,
+		Tag:              imageTag,
+		State:            sql.ImageStateUpdated,
+		ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+	})
+	require.NoError(t, err)
+
+	workloadID, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "state-workload",
+		WorkloadType: "app",
+		Namespace:    "namespace-1",
+		Cluster:      "cluster-1",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateUpdated,
+		ID:    workloadID,
+	}))
+
+	score := 8.5
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+		CveID:     cveID,
+		CveTitle:  "State CVE",
+		Severity:  int32(vulnerabilities.Severity_HIGH),
+		CvssScore: &score,
+		Refs:      map[string]string{},
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		Package:   pkg,
+		CveID:     cveID,
+		Source:    "test",
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	db.BatchUpsertVulnerabilitySummary(ctx, []sql.BatchUpsertVulnerabilitySummaryParams{{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		High:      5,
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	findWorkload := func(t *testing.T) *vulnerabilities.WorkloadSummary {
+		t.Helper()
+		resp, err := client.ListVulnerabilitySummaries(ctx)
+		require.NoError(t, err)
+		for _, node := range resp.Nodes {
+			if node.GetWorkload().Name == "state-workload" {
+				return node
+			}
+		}
+		t.Fatal("state-workload not found in ListVulnerabilitySummaries")
+		return nil
+	}
+
+	// Terminal states: workload appears with zero counts.
+	for _, state := range []sql.WorkloadState{
+		sql.WorkloadStateNoAttestation,
+		sql.WorkloadStateFailed,
+		sql.WorkloadStateUnrecoverable,
+	} {
+		t.Run(string(state)+"_excluded", func(t *testing.T) {
+			require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+				State: state,
+				ID:    workloadID,
+			}))
+			node := findWorkload(t)
+			assert.NotNil(t, node)
+			assert.Equal(t, int32(0), node.GetVulnerabilitySummary().GetHigh(),
+				"counts must be zero for workload in terminal state %s", state)
+			assert.Equal(t, int32(0), node.GetVulnerabilitySummary().GetTotal(),
+				"counts must be zero for workload in terminal state %s", state)
+		})
+	}
+
+	// Restore to updated state for remaining sub-tests.
+	require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+		State: sql.WorkloadStateUpdated,
+		ID:    workloadID,
+	}))
+
+	// Processing state (image initialized): workload appears with stale counts.
+	t.Run("processing_returns_counts", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:             imageName,
+			Tag:              imageTag,
+			State:            sql.ImageStateInitialized,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		})
+		require.NoError(t, err)
+		node := findWorkload(t)
+		require.NotNil(t, node)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, node.GetSbomStatus().GetStatus())
+		assert.Equal(t, int32(5), node.GetVulnerabilitySummary().GetHigh(),
+			"counts must be returned while scan is in progress")
+	})
+
+	// Ready state: full counts returned.
+	t.Run("ready_returns_counts", func(t *testing.T) {
+		_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:             imageName,
+			Tag:              imageTag,
+			State:            sql.ImageStateUpdated,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		})
+		require.NoError(t, err)
+		node := findWorkload(t)
+		require.NotNil(t, node)
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_READY, node.GetSbomStatus().GetStatus())
+		assert.Equal(t, int32(5), node.GetVulnerabilitySummary().GetHigh(),
+			"counts must be returned for ready workload")
 	})
 }

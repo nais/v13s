@@ -61,6 +61,21 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		if row.ImageTag != nil {
 			imageTag = *row.ImageTag
 		}
+		sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
+		sum := &vulnerabilities.Summary{
+			HasSbom: row.HasSbom,
+		}
+		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY ||
+			sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING {
+			sum.Critical = safeInt(row.Critical)
+			sum.High = safeInt(row.High)
+			sum.Medium = safeInt(row.Medium)
+			sum.Low = safeInt(row.Low)
+			sum.Unassigned = safeInt(row.Unassigned)
+			sum.Total = safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned)
+			sum.RiskScore = safeInt(row.RiskScore)
+			sum.LastUpdated = timestamppb.New(row.SummaryUpdatedAt.Time)
+		}
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
@@ -71,19 +86,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				ImageName: imageName,
 				ImageTag:  imageTag,
 			},
-			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
-			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			},
-			SbomStatus: sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt),
+			VulnerabilitySummary: sum,
+			SbomStatus:           sbomStatus,
 		}
 	})
 
@@ -275,15 +279,23 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	vulnSummary := &vulnerabilities.Summary{}
 	if summary != nil {
 		vulnSummary = &vulnerabilities.Summary{
-			Critical:    summary.Critical,
-			High:        summary.High,
-			Medium:      summary.Medium,
-			Low:         summary.Low,
-			Unassigned:  summary.Unassigned,
-			Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
-			RiskScore:   summary.RiskScore,
-			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:     true,
+			HasSbom: summary != nil,
+		}
+		// Always return counts for stale-tag fallback responses — the caller explicitly
+		// requested data for an unknown tag and the stale summary is the best available.
+		// For current-tag responses, zero counts when the workload is in a terminal state.
+		showCounts := staleTag != "" ||
+			worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY ||
+			worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
+		if showCounts {
+			vulnSummary.Critical = summary.Critical
+			vulnSummary.High = summary.High
+			vulnSummary.Medium = summary.Medium
+			vulnSummary.Low = summary.Low
+			vulnSummary.Unassigned = summary.Unassigned
+			vulnSummary.Total = summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned
+			vulnSummary.RiskScore = summary.RiskScore
+			vulnSummary.LastUpdated = timestamppb.New(summary.UpdatedAt.Time)
 		}
 		if staleTag != "" {
 			vulnSummary.StaleImageTag = &staleTag

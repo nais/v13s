@@ -143,17 +143,39 @@ SELECT
     CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN
                 fw.id
             END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS risk_score,
+    -- Only sum counts for images that are updated or processing (not failed/unused/terminal).
+    -- This prevents stale summary rows from inflating team/cluster totals.
+    CAST(COALESCE(SUM(
+                CASE WHEN i.state IN ('updated', 'initialized') THEN
+                    v.critical
+                END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(
+                CASE WHEN i.state IN ('updated', 'initialized') THEN
+                    v.high
+                END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(
+                CASE WHEN i.state IN ('updated', 'initialized') THEN
+                    v.medium
+                END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(
+                CASE WHEN i.state IN ('updated', 'initialized') THEN
+                    v.low
+                END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(
+                CASE WHEN i.state IN ('updated', 'initialized') THEN
+                    v.unassigned
+                END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(
+                CASE WHEN i.state IN ('updated', 'initialized') THEN
+                    v.risk_score
+                END), 0) AS INT4) AS risk_score,
     MAX(v.updated_at)::TIMESTAMPTZ AS updated_at
 FROM
     filtered_workloads fw
     LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
         AND fw.image_tag = v.image_tag
+    LEFT JOIN images i ON i.name = fw.image_name
+        AND i.tag = fw.image_tag
 `
 
 type GetVulnerabilitySummaryParams struct {
