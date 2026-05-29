@@ -56,9 +56,9 @@ func main() {
 	cmds := make([]*cli.Command, 0)
 	cmds = append(cmds, commands.ListCommands(c, opts)...)
 	cmds = append(cmds, commands.GetCommands(c, opts)...)
-	cmds = append(cmds, commands.ManagementCommands(c, opts)...)
-	cmds = append(cmds, commands.FindCommands(c, opts)...)
+	cmds = append(cmds, commands.SuppressCommands(c, opts)...)
 	cmds = append(cmds, commands.WatchCommands(c, opts)...)
+	cmds = append(cmds, commands.ManagementCommands(c, opts)...)
 
 	cmd := &cli.Command{
 		Name:  "v13s",
