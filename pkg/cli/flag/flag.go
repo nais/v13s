@@ -111,13 +111,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Destination: &opts.Severity,
 		},
 		&cli.StringFlag{
-			Name:        "cve_ids",
+			Name:        "cve-ids",
 			Value:       "",
 			Usage:       "comma-separated list of CVE IDs to filter by",
 			Destination: &opts.CveIds,
 		},
 		&cli.Float64Flag{
-			Name:        "cvss_score",
+			Name:        "cvss-score",
 			Usage:       "CVSS score",
 			Destination: &opts.CvssScore,
 		},
