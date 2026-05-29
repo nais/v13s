@@ -25,7 +25,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "vulns",
 					Aliases: []string{"v"},
 					Usage:   "list vulnerabilities for an image",
-					Flags:   flag.CommonFlags(opts, "limit", "order", "since", "since-type", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
+					Flags:   flag.CommonFlags(opts, "cluster", "namespace", "workload", "type", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listVulnerabilitiesForImage(ctx, cmd, c, opts)
 					},
@@ -34,7 +34,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "all",
 					Aliases: []string{"a"},
 					Usage:   "list all vulnerabilities across workloads",
-					Flags:   flag.CommonFlags(opts),
+					Flags:   flag.CommonFlags(opts, "since", "since-type", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listVulnz(ctx, cmd, c, opts)
 					},
@@ -43,7 +43,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "suppressed",
 					Aliases: []string{"sp"},
 					Usage:   "list suppressed vulnerabilities",
-					Flags:   flag.CommonFlags(opts),
+					Flags:   flag.CommonFlags(opts, "since", "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listSuppressedVulnerabilities(ctx, cmd, c, opts)
 					},
@@ -52,7 +52,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "summary",
 					Aliases: []string{"s"},
 					Usage:   "list vulnerability summary per workload",
-					Flags:   flag.CommonFlags(opts),
+					Flags:   flag.CommonFlags(opts, "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listSummaries(ctx, cmd, c, opts)
 					},
@@ -61,7 +61,7 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "cves",
 					Aliases: []string{"c"},
 					Usage:   "list CVE summaries across workloads",
-					Flags:   flag.CommonFlags(opts),
+					Flags:   flag.CommonFlags(opts, "since", "since-type", "severity", "cve-ids", "cvss-score"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listCveSummaries(ctx, cmd, c, opts)
 					},

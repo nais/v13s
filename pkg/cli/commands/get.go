@@ -29,7 +29,7 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "summary",
 					Aliases: []string{"s"},
 					Usage:   "get aggregated vulnerability summary",
-					Flags:   flag.CommonFlags(opts),
+					Flags:   flag.CommonFlags(opts, "limit", "order", "since", "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return getSummary(ctx, cmd, c, opts)
 					},
@@ -54,7 +54,7 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Name:    "timeseries",
 					Aliases: []string{"t"},
 					Usage:   "get vulnerability count time series",
-					Flags:   flag.CommonFlags(opts),
+					Flags:   flag.CommonFlags(opts, "limit", "order", "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return getTimeSeries(ctx, cmd, c, opts)
 					},
@@ -92,7 +92,7 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 							Name:    "workloads",
 							Aliases: []string{"w"},
 							Usage:   "MTTF per workload and severity",
-							Flags:   flag.CommonFlags(opts, "limit", "order", "suppressed", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
+							Flags:   flag.CommonFlags(opts, "limit", "order", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 							Action: func(ctx context.Context, cmd *cli.Command) error {
 								return listWorkloadMTTFBySeverity(ctx, cmd, c, opts)
 							},
@@ -101,7 +101,7 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 							Name:    "trend",
 							Aliases: []string{"t"},
 							Usage:   "MTTF per severity trend over time",
-							Flags:   flag.CommonFlags(opts, "limit", "order", "suppressed", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
+							Flags:   flag.CommonFlags(opts, "limit", "order", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 							Action: func(ctx context.Context, cmd *cli.Command) error {
 								return listMeanTimeToFixTrendBySeverity(ctx, cmd, c, opts)
 							},

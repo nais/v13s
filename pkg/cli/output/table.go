@@ -31,12 +31,3 @@ func (t *Table) Print() {
 	tbl.SetRows(t.rows)
 	tbl.Print()
 }
-
-// Inline builds and prints a rodaine table directly from []any rows
-// (for callers that mix types and build rows with tbl.AddRow(...any)).
-func Inline(headers []any, addRows func(tbl table.Table)) {
-	tbl := table.New(headers...)
-	tbl.WithHeaderFormatter(HeaderFmt).WithFirstColumnFormatter(ColumnFmt)
-	addRows(tbl)
-	tbl.Print()
-}
