@@ -212,6 +212,11 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
+			// VulnerabilitySummary is nil for NO_SBOM, FAILED, and PROCESSING
+			// workloads; use the generated nil-safe getters for counts and guard
+			// the timestamp explicitly since AsTime() panics on a nil receiver.
+			sum := n.GetVulnerabilitySummary()
+			hasSummary := sum != nil
 			vals := []any{
 				// kills the layout
 				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
@@ -220,16 +225,20 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
 				formatSbomStatus(n.GetSbomStatus()),
-				intOrDash(n.GetVulnerabilitySummary().Critical, n.GetVulnerabilitySummary().GetHasSbom()),
-				intOrDash(n.GetVulnerabilitySummary().High, n.GetVulnerabilitySummary().GetHasSbom()),
-				intOrDash(n.GetVulnerabilitySummary().Medium, n.GetVulnerabilitySummary().GetHasSbom()),
-				intOrDash(n.GetVulnerabilitySummary().Low, n.GetVulnerabilitySummary().GetHasSbom()),
-				intOrDash(n.GetVulnerabilitySummary().Unassigned, n.GetVulnerabilitySummary().GetHasSbom()),
-				intOrDash(n.GetVulnerabilitySummary().RiskScore, n.GetVulnerabilitySummary().GetHasSbom()),
+				intOrDash(sum.GetCritical(), hasSummary),
+				intOrDash(sum.GetHigh(), hasSummary),
+				intOrDash(sum.GetMedium(), hasSummary),
+				intOrDash(sum.GetLow(), hasSummary),
+				intOrDash(sum.GetUnassigned(), hasSummary),
+				intOrDash(sum.GetRiskScore(), hasSummary),
 			}
 			if o.Since != "" {
 				vals = append(vals, n.Workload.GetImageTag())
-				vals = append(vals, n.GetVulnerabilitySummary().GetLastUpdated().AsTime().Format(time.RFC3339))
+				lastUpdated := "-"
+				if ts := sum.GetLastUpdated(); ts != nil {
+					lastUpdated = ts.AsTime().Format(time.RFC3339)
+				}
+				vals = append(vals, lastUpdated)
 			}
 			tbl.AddRow(
 				vals...,
