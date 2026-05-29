@@ -10,7 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
-	"github.com/rodaine/table"
+	"github.com/nais/v13s/pkg/cli/output"
 	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,25 +35,19 @@ func WatchCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command 
 		{
 			Name:    "watch",
 			Aliases: []string{"w"},
-			Usage:   "watch SBOM processing status",
-			Commands: []*cli.Command{
-				{
-					Name:  "sbom-status",
-					Usage: "interactively pick a workload with pending SBOM and watch its status",
-					Flags: append(
-						flag.CommonFlags(opts, "l", "o", "s", "st", "su", "se", "cve_ids", "cvss_score", "excs", "exns"),
-						&cli.IntFlag{
-							Name:        "interval",
-							Aliases:     []string{"i"},
-							Value:       10,
-							Usage:       "poll interval in seconds",
-							Destination: &intervalSec,
-						},
-					),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return watchSbomStatus(ctx, c, opts, time.Duration(intervalSec)*time.Second)
-					},
+			Usage:   "watch SBOM processing status interactively",
+			Flags: append(
+				flag.CommonFlags(opts, "limit", "order", "since", "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
+				&cli.IntFlag{
+					Name:        "interval",
+					Aliases:     []string{"i"},
+					Value:       10,
+					Usage:       "poll interval in seconds",
+					Destination: &intervalSec,
 				},
+			),
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return watchSbomStatus(ctx, c, opts, time.Duration(intervalSec)*time.Second)
 			},
 		},
 	}
@@ -168,14 +162,12 @@ func pickWorkload(pending []watchWorkload) (watchWorkload, error) {
 	return chosen, nil
 }
 
-func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkload, interval time.Duration) error {
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	labelFmt := color.New(color.FgYellow).SprintfFunc()
-	boldFmt := color.New(color.Bold).SprintfFunc()
+func clearScreen() {
+	fmt.Print("\033[2J\033[H")
+}
 
-	clearScreen := func() {
-		fmt.Print("\033[H\033[2J")
-	}
+func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkload, interval time.Duration) error {
+	boldFmt := color.New(color.Bold).SprintfFunc()
 
 	for {
 		clearScreen()
@@ -213,8 +205,7 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 			isProcessing := sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING ||
 				sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED
 
-			tbl := table.New("Field", "Value")
-			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
+			tbl := output.New("Field", "Value")
 			tbl.AddRow("Image", imageRef)
 			tbl.AddRow("SBOM Status", sbomStatusLabel(sbomStatus))
 			if elapsedStr != "" {
@@ -257,8 +248,7 @@ func runWatchLoop(ctx context.Context, c vulnerabilities.Client, wl watchWorkloa
 
 			if len(imgWorkloads) > 0 {
 				fmt.Println()
-				wtbl := table.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
-				wtbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(labelFmt)
+				wtbl := output.New("Workload", "Type", "Namespace", "Cluster", "SBOM Status")
 				for _, w := range imgWorkloads {
 					name := w.GetName()
 					if w.GetName() == wl.name && w.GetNamespace() == wl.namespace && w.GetCluster() == wl.cluster {
