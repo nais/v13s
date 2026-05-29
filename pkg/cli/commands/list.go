@@ -258,7 +258,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetPackage(),
 					v.GetCve().GetId(),
 					v.GetCve().GetSeverity().String(),
-					fmt.Sprintf("%v", v.GetCve().GetCvssScore()),
+					formatCvssScore(v.GetCve().GetCvssScore()),
 					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
 					fmt.Sprintf("%v", v.GetLastSeverity()),
 					timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),
@@ -292,7 +292,7 @@ func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.C
 				cve.GetId(),
 				cve.GetTitle(),
 				cve.GetSeverity().String(),
-				fmt.Sprintf("%v", cve.GetCvssScore()),
+				formatCvssScore(cve.GetCvssScore()),
 				fmt.Sprint(n.GetAffectedWorkloads()),
 			)
 		}
@@ -301,6 +301,13 @@ func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.C
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 	})
+}
+
+func formatCvssScore(score float64) string {
+	if score == 0 {
+		return "N/A"
+	}
+	return fmt.Sprintf("%g", score)
 }
 
 func timeSinceCreation(created, lastUpdated time.Time) string {

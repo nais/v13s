@@ -180,10 +180,15 @@ func getCve(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client) err
 		return err
 	}
 
+	cvssScore := "N/A"
+	if score := resp.Cve.GetCvssScore(); score != 0 {
+		cvssScore = fmt.Sprintf("%g", score)
+	}
+
 	tbl := output.New("Field", "Value")
 	tbl.AddRow("CVE ID", resp.Cve.GetId())
 	tbl.AddRow("Severity", resp.Cve.GetSeverity().String())
-	tbl.AddRow("CVSS Score", fmt.Sprintf("%v", resp.Cve.GetCvssScore()))
+	tbl.AddRow("CVSS Score", cvssScore)
 	tbl.AddRow("Description", resp.Cve.GetDescription())
 	tbl.Print()
 	return nil
