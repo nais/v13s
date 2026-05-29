@@ -670,27 +670,47 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	t.Run("list all vulnerability summaries for every cluster", func(t *testing.T) {
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		imageTag  = "v1.0"
+	)
+
+	// Promote image to READY so VulnerabilitySummary is populated.
+	err := db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+		State:     sql.WorkloadStateUpdated,
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+	_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		State:            sql.ImageStateUpdated,
+		ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		Name:             imageName,
+		Tag:              imageTag,
+	})
+	require.NoError(t, err)
+
+	t.Run("READY workload includes VulnerabilitySummary with counts", func(t *testing.T) {
 		resp, err := client.ListVulnerabilitySummaries(ctx)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, resp.Nodes)
-		assert.Equal(t, 1, len(resp.Nodes))
+		require.Len(t, resp.Nodes, 1)
 
-		// Check that the summary contains the expected fields
-		assert.Equal(t, int32(0), resp.Nodes[0].GetVulnerabilitySummary().Critical)
-		assert.Equal(t, int32(1), resp.Nodes[0].GetVulnerabilitySummary().High)
-		assert.Equal(t, int32(0), resp.Nodes[0].GetVulnerabilitySummary().Medium)
-		assert.Equal(t, int32(0), resp.Nodes[0].GetVulnerabilitySummary().Low)
-		assert.Equal(t, int32(0), resp.Nodes[0].GetVulnerabilitySummary().Unassigned)
-		assert.Equal(t, "cluster-1", resp.Nodes[0].GetWorkload().Cluster, "cluster-1")
-		assert.Equal(t, "namespace-1", resp.Nodes[0].GetWorkload().Namespace, "namespace-1")
-		assert.Equal(t, "workload-1", resp.Nodes[0].GetWorkload().Name, "workload-1")
-		assert.Equal(t, "app", resp.Nodes[0].GetWorkload().Type, "app")
-		assert.Equal(t, "image-cluster-1-namespace-1-workload-1", resp.Nodes[0].GetWorkload().ImageName, "image-cluster-1-namespace-1-workload-1")
-		assert.Equal(t, "v1.0", resp.Nodes[0].GetWorkload().ImageTag, "v1.0")
+		sum := resp.Nodes[0].GetVulnerabilitySummary()
+		require.NotNil(t, sum, "READY workload must have a non-nil VulnerabilitySummary")
+		assert.Equal(t, int32(0), sum.Critical)
+		assert.Equal(t, int32(1), sum.High)
+		assert.Equal(t, int32(0), sum.Medium)
+		assert.Equal(t, int32(0), sum.Low)
+		assert.Equal(t, int32(0), sum.Unassigned)
+		assert.Equal(t, "cluster-1", resp.Nodes[0].GetWorkload().Cluster)
+		assert.Equal(t, "namespace-1", resp.Nodes[0].GetWorkload().Namespace)
+		assert.Equal(t, "workload-1", resp.Nodes[0].GetWorkload().Name)
+		assert.Equal(t, "app", resp.Nodes[0].GetWorkload().Type)
+		assert.Equal(t, imageName, resp.Nodes[0].GetWorkload().ImageName)
+		assert.Equal(t, imageTag, resp.Nodes[0].GetWorkload().ImageTag)
 	})
 }
 
@@ -1265,13 +1285,34 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		imageTag  = "v1.0"
+	)
+
+	// Promote to READY so VulnerabilitySummary is non-nil.
+	err := db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+		State:     sql.WorkloadStateUpdated,
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+	_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		State:            sql.ImageStateUpdated,
+		ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		Name:             imageName,
+		Tag:              imageTag,
+	})
+	require.NoError(t, err)
 
 	t.Run("get vulnerability summary for image cluster-1/namespace-1/workload-1", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(
-			ctx, "image-cluster-1-namespace-1-workload-1", "v1.0")
+			ctx, imageName, imageTag)
 		assert.NoError(t, err)
+		require.NotNil(t, resp.GetVulnerabilitySummary(), "READY image must have a non-nil VulnerabilitySummary")
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Critical)
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().High)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
@@ -2825,17 +2866,14 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		assert.NotNil(t, resp.GetSbomStatus(), "sbom_status must be populated")
 	})
 
-	t.Run("completely unknown image returns empty summary without error", func(t *testing.T) {
+	t.Run("completely unknown image returns nil summary without error", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, "never-seen-image", "v1.0")
 		require.NoError(t, err)
 
-		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
-		assert.Nil(t, sum.StaleImageTag, "stale_image_tag must be nil when no prior tag exists")
-		assert.Equal(t, int32(0), sum.GetTotal())
+		assert.Nil(t, resp.GetVulnerabilitySummary(), "unknown image has no SBOM so VulnerabilitySummary must be nil")
 	})
 
-	t.Run("image in PROCESSING with existing summary but no workload record returns summary and PROCESSING status", func(t *testing.T) {
+	t.Run("image in PROCESSING with existing summary but no workload record returns nil summary and PROCESSING status", func(t *testing.T) {
 		const (
 			processingImage = "image-processing-no-workload"
 			processingTag   = "v3.0"
@@ -2854,14 +2892,11 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, processingImage, processingTag)
 		require.NoError(t, err)
 
-		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
-		assert.Equal(t, int32(5), sum.GetHigh(), "existing summary counts must be returned")
-		assert.Nil(t, sum.StaleImageTag, "stale_image_tag must be nil when summary is for the requested tag")
+		assert.Nil(t, resp.GetVulnerabilitySummary(), "PROCESSING with no stale tag must return nil VulnerabilitySummary")
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
-	t.Run("unused image with existing summary returns NO_SBOM status", func(t *testing.T) {
+	t.Run("unused image with existing summary returns nil VulnerabilitySummary and NO_SBOM status", func(t *testing.T) {
 		const (
 			unusedImage = "image-unused-with-summary"
 			unusedTag   = "v4.0"
@@ -2881,14 +2916,11 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unusedImage, unusedTag)
 		require.NoError(t, err)
 
-		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
-		assert.Equal(t, int32(3), sum.GetHigh())
-		assert.Nil(t, sum.StaleImageTag)
+		assert.Nil(t, resp.GetVulnerabilitySummary(), "NO_SBOM image must return nil VulnerabilitySummary even when a stale summary row exists")
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
 	})
 
-	t.Run("unused image without summary returns NO_SBOM status", func(t *testing.T) {
+	t.Run("unused image without summary returns nil VulnerabilitySummary and NO_SBOM status", func(t *testing.T) {
 		const (
 			unusedImage = "image-unused-no-summary"
 			unusedTag   = "v5.0"
@@ -2901,9 +2933,155 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, unusedImage, unusedTag)
 		require.NoError(t, err)
 
-		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
-		assert.Nil(t, sum.StaleImageTag)
+		assert.Nil(t, resp.GetVulnerabilitySummary(), "NO_SBOM image without summary must return nil VulnerabilitySummary")
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
+}
+
+// TestServer_VulnerabilitySummary_NilForTerminalStates verifies that both
+// ListVulnerabilitySummaries and GetVulnerabilitySummaryForImage return nil
+// VulnerabilitySummary for workloads in terminal SBOM states (NO_SBOM, FAILED),
+// even when stale summary rows exist in the database from previous scans.
+func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
+	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"ns"},
+		workloadsPerNamespace: 0,
+		vulnsPerWorkload:      0,
+	}, true)
+	defer cleanup()
+
+	type workloadSetup struct {
+		name          string
+		workloadState sql.WorkloadState
+		imageState    sql.ImageState
+		wantNil       bool
+		wantStatus    vulnerabilities.SbomStatus
+	}
+
+	cases := []workloadSetup{
+		{
+			name:          "ready-workload",
+			workloadState: sql.WorkloadStateUpdated,
+			imageState:    sql.ImageStateUpdated,
+			wantNil:       false,
+			wantStatus:    vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+		},
+		{
+			name:          "no-attestation-workload",
+			workloadState: sql.WorkloadStateNoAttestation,
+			imageState:    sql.ImageStateUpdated,
+			wantNil:       true,
+			wantStatus:    vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+		},
+		{
+			name:          "failed-workload",
+			workloadState: sql.WorkloadStateFailed,
+			imageState:    sql.ImageStateUpdated,
+			wantNil:       true,
+			wantStatus:    vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+		},
+		{
+			name:          "unrecoverable-workload",
+			workloadState: sql.WorkloadStateUnrecoverable,
+			imageState:    sql.ImageStateUpdated,
+			wantNil:       true,
+			wantStatus:    vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+		},
+		{
+			name:          "processing-workload",
+			workloadState: sql.WorkloadStateUpdated,
+			imageState:    sql.ImageStateInitialized,
+			wantNil:       true,
+			wantStatus:    vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+		},
+	}
+
+	for _, tc := range cases {
+		imageName := "img-" + tc.name
+		imageTag := "v1.0"
+
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: imageTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State:            tc.imageState,
+			ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+			Name:             imageName,
+			Tag:              imageTag,
+		})
+		require.NoError(t, err)
+
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         tc.name,
+			WorkloadType: "app",
+			Namespace:    "ns",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     imageTag,
+		})
+		require.NoError(t, err)
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			State: tc.workloadState,
+			ID:    getWorkloadID(ctx, t, db, tc.name, imageName, imageTag),
+		})
+		require.NoError(t, err)
+
+		// Seed a stale summary row so we can verify it is suppressed for terminal states.
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Critical:  10,
+			High:      20,
+			RiskScore: 100,
+		})
+		require.NoError(t, err)
+	}
+
+	t.Run("ListVulnerabilitySummaries", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.ClusterFilter("cluster-1"), vulnerabilities.NamespaceFilter("ns"))
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, len(cases))
+
+		byName := make(map[string]*vulnerabilities.WorkloadSummary, len(resp.Nodes))
+		for _, n := range resp.Nodes {
+			byName[n.GetWorkload().GetName()] = n
+		}
+
+		for _, tc := range cases {
+			tc := tc
+			t.Run(tc.name, func(t *testing.T) {
+				node, ok := byName[tc.name]
+				require.True(t, ok, "workload %q must appear in response", tc.name)
+				assert.Equal(t, tc.wantStatus, node.GetSbomStatus().GetStatus())
+				if tc.wantNil {
+					assert.Nil(t, node.GetVulnerabilitySummary(),
+						"workload %q in state %s must have nil VulnerabilitySummary", tc.name, tc.workloadState)
+				} else {
+					require.NotNil(t, node.GetVulnerabilitySummary(),
+						"workload %q in READY state must have non-nil VulnerabilitySummary", tc.name)
+					assert.Equal(t, int32(10), node.GetVulnerabilitySummary().GetCritical())
+				}
+			})
+		}
+	})
+
+	t.Run("GetVulnerabilitySummaryForImage", func(t *testing.T) {
+		for _, tc := range cases {
+			tc := tc
+			t.Run(tc.name, func(t *testing.T) {
+				imageName := "img-" + tc.name
+				resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, "v1.0")
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantStatus, resp.GetSbomStatus().GetStatus())
+				if tc.wantNil {
+					assert.Nil(t, resp.GetVulnerabilitySummary(),
+						"image for workload %q in state %s must have nil VulnerabilitySummary", tc.name, tc.workloadState)
+				} else {
+					require.NotNil(t, resp.GetVulnerabilitySummary(),
+						"image for workload %q in READY state must have non-nil VulnerabilitySummary", tc.name)
+					assert.Equal(t, int32(10), resp.GetVulnerabilitySummary().GetCritical())
+				}
+			})
+		}
 	})
 }
