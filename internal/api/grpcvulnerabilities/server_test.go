@@ -2556,6 +2556,7 @@ func TestServer_ListWorkloadsForVulnerability_NoDuplicatesForAliasAndCanonical(t
 }
 
 func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
+	t.Helper()
 	ctx := context.Background()
 
 	for _, workload := range workloads {
@@ -2564,7 +2565,7 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 			Tag:      workload.ImageTag,
 			Metadata: map[string]string{},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		w := sql.UpsertWorkloadParams{
 			Name:         workload.Workload,
@@ -2575,8 +2576,22 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 			ImageTag:     workload.ImageTag,
 		}
 
-		_, err = db.UpsertWorkload(ctx, w)
-		assert.NoError(t, err)
+		workloadID, err := db.UpsertWorkload(ctx, w)
+		require.NoError(t, err)
+		require.True(t, workloadID.Valid, "UpsertWorkload returned invalid workload ID for %q", workload.Workload)
+
+		err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			State: sql.WorkloadStateUpdated,
+			ID:    workloadID,
+		})
+		require.NoError(t, err)
+
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State: sql.ImageStateUpdated,
+			Name:  workload.ImageName,
+			Tag:   workload.ImageTag,
+		})
+		require.NoError(t, err)
 
 		cweParams := make([]sql.BatchUpsertCveParams, 0)
 		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
@@ -2618,19 +2633,19 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 
 		db.BatchUpsertCve(ctx, cweParams).Exec(func(i int, err error) {
 			if err != nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 
 		db.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) {
 			if err != nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 
 		db.BatchUpsertVulnerabilitySummary(ctx, sumParams).Exec(func(i int, err error) {
 			if err != nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

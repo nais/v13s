@@ -127,7 +127,8 @@ WITH filtered_workloads AS (
     SELECT
         w.id,
         w.image_name,
-        w.image_tag
+        w.image_tag,
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
     FROM
         workloads w
     WHERE ($1::TEXT IS NULL
@@ -140,20 +141,20 @@ WITH filtered_workloads AS (
         OR w.name = $4::TEXT))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN v.image_name IS NOT NULL THEN
-                fw.id
-            END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(v.critical), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(v.high), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(v.medium), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(v.low), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(v.unassigned), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(v.risk_score), 0) AS INT4) AS risk_score,
-    MAX(v.updated_at)::TIMESTAMPTZ AS updated_at
+    CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready AND i.state = 'updated' AND v.id IS NOT NULL THEN fw.id END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.critical ELSE 0 END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.high ELSE 0 END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.medium ELSE 0 END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.low ELSE 0 END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.unassigned ELSE 0 END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.risk_score ELSE 0 END), 0) AS INT4) AS risk_score,
+    MAX(CASE WHEN fw.workload_ready AND i.state = 'updated' AND v.id IS NOT NULL THEN v.updated_at END)::TIMESTAMPTZ AS updated_at
 FROM
     filtered_workloads fw
     LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
         AND fw.image_tag = v.image_tag
+    LEFT JOIN images i ON i.name = fw.image_name
+        AND i.tag = fw.image_tag
 `
 
 type GetVulnerabilitySummaryParams struct {
@@ -643,15 +644,43 @@ WITH latest_summary_per_day AS (
         w.cluster,
         w.namespace,
         w.workload_type,
-        COALESCE(vs.critical, 0) AS critical,
-        COALESCE(vs.high, 0) AS high,
-        COALESCE(vs.medium, 0) AS medium,
-        COALESCE(vs.low, 0) AS low,
-        COALESCE(vs.unassigned, 0) AS unassigned,
-        COALESCE(vs.risk_score, 0) AS risk_score,
-(vs.id IS NOT NULL) AS has_summary
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND img.state = 'updated' THEN
+                vs.critical
+            END, 0) AS critical,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND img.state = 'updated' THEN
+                vs.high
+            END, 0) AS high,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND img.state = 'updated' THEN
+                vs.medium
+            END, 0) AS medium,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND img.state = 'updated' THEN
+                vs.low
+            END, 0) AS low,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND img.state = 'updated' THEN
+                vs.unassigned
+            END, 0) AS unassigned,
+        COALESCE(
+            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+                AND img.state = 'updated' THEN
+                vs.risk_score
+            END, 0) AS risk_score,
+(w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND img.state = 'updated'
+            AND vs.id IS NOT NULL) AS has_summary
     FROM
         workloads w
+        LEFT JOIN images img ON img.name = w.image_name
+            AND img.tag = w.image_tag
         LEFT JOIN vulnerability_summary vs ON w.image_name = vs.image_name
             AND w.image_tag = vs.image_tag
             AND vs.updated_at::DATE <= $1::DATE
