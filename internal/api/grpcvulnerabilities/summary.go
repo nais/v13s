@@ -61,6 +61,24 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		if row.ImageTag != nil {
 			imageTag = *row.ImageTag
 		}
+
+		sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
+
+		var vulnSummary *vulnerabilities.Summary
+		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY {
+			vulnSummary = &vulnerabilities.Summary{
+				Critical:    safeInt(row.Critical),
+				High:        safeInt(row.High),
+				Medium:      safeInt(row.Medium),
+				Low:         safeInt(row.Low),
+				Unassigned:  safeInt(row.Unassigned),
+				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
+				RiskScore:   safeInt(row.RiskScore),
+				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
+				HasSbom:     row.HasSbom,
+			}
+		}
+
 		return &vulnerabilities.WorkloadSummary{
 			Id: row.ID.String(),
 			Workload: &vulnerabilities.Workload{
@@ -71,19 +89,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				ImageName: imageName,
 				ImageTag:  imageTag,
 			},
-			// TODO: Summary rows in the is not guaranteed to have a value, so we need to check if it's nil
-			VulnerabilitySummary: &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
-			},
-			SbomStatus: sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt),
+			VulnerabilitySummary: vulnSummary,
+			SbomStatus:           sbomStatus,
 		}
 	})
 
@@ -270,10 +277,9 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		ProcessingStartedAt: processingStartedAt,
 	}
 
-	// Default to empty summary to preserve backward-compatible semantics for existing
-	// consumers (e.g. nais/api) that do not handle a nil VulnerabilitySummary.
-	vulnSummary := &vulnerabilities.Summary{}
-	if summary != nil {
+	var vulnSummary *vulnerabilities.Summary
+	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY || staleTag != ""
+	if showCounts && summary != nil {
 		vulnSummary = &vulnerabilities.Summary{
 			Critical:    summary.Critical,
 			High:        summary.High,
