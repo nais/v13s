@@ -2575,7 +2575,22 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 			ImageTag:     workload.ImageTag,
 		}
 
-		_, err = db.UpsertWorkload(ctx, w)
+		workloadID, err := db.UpsertWorkload(ctx, w)
+		assert.NoError(t, err)
+
+		if workloadID.Valid {
+			err = db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+				State: sql.WorkloadStateUpdated,
+				ID:    workloadID,
+			})
+			assert.NoError(t, err)
+		}
+
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State: sql.ImageStateUpdated,
+			Name:  workload.ImageName,
+			Tag:   workload.ImageTag,
+		})
 		assert.NoError(t, err)
 
 		cweParams := make([]sql.BatchUpsertCveParams, 0)
