@@ -64,9 +64,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 
 		sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
 
-		// Only populate VulnerabilitySummary when the SBOM is ready.
-		// NO_SBOM and FAILED states may have stale summary rows from previous scans;
-		// returning nil tells consumers there is nothing to display.
 		var vulnSummary *vulnerabilities.Summary
 		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY {
 			vulnSummary = &vulnerabilities.Summary{
@@ -280,14 +277,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		ProcessingStartedAt: processingStartedAt,
 	}
 
-	// Only populate VulnerabilitySummary when there is meaningful data to show:
-	// - READY: scan complete, return full counts.
-	// - stale tag present: no row for the current tag yet, return counts from the
-	//   most recent prior scan so the consumer can show something while waiting.
-	//   This applies regardless of the computed worst status because the stale
-	//   summary belongs to a different (older) tag that was previously READY.
-	// All other states (NO_SBOM, FAILED, PROCESSING without a stale tag) get nil so
-	// consumers know there is nothing to display.
 	var vulnSummary *vulnerabilities.Summary
 	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY || staleTag != ""
 	if showCounts && summary != nil {

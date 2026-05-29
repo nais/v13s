@@ -212,9 +212,6 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 		for _, n := range resp.GetNodes() {
-			// VulnerabilitySummary is nil for NO_SBOM, FAILED, and PROCESSING
-			// workloads; use the generated nil-safe getters for counts and guard
-			// the timestamp explicitly since AsTime() panics on a nil receiver.
 			sum := n.GetVulnerabilitySummary()
 			hasSummary := sum != nil
 			vals := []any{
