@@ -6,12 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
 	"github.com/nais/v13s/pkg/cli/helpers"
+	"github.com/nais/v13s/pkg/cli/output"
 	"github.com/nais/v13s/pkg/cli/pagination"
-	"github.com/rodaine/table"
 	"github.com/urfave/cli/v3"
 )
 
@@ -20,66 +19,51 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 		{
 			Name:    "list",
 			Aliases: []string{"l"},
-			Usage:   "list vulnerabilities",
+			Usage:   "list vulnerabilities or summaries",
 			Commands: []*cli.Command{
 				{
-					Name:    "image",
+					Name:    "vulns",
 					Aliases: []string{"v"},
-					Usage:   "list vulnerabilities for image",
-					Flags:   flag.CommonFlags(opts, "c", "n", "w", "t"),
+					Usage:   "list vulnerabilities for an image",
+					Flags:   flag.CommonFlags(opts, "cluster", "namespace", "workload", "type", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listVulnerabilitiesForImage(ctx, cmd, c, opts)
 					},
 				},
 				{
-					Name:  "suppressed",
-					Usage: "list suppressed vulnerabilities",
-					Flags: flag.CommonFlags(opts),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return listSuppressedVulnerabilities(ctx, cmd, c, opts)
-					},
-				},
-				{
 					Name:    "all",
 					Aliases: []string{"a"},
-					Usage:   "list all vulnerabilities with optional filters",
-					Flags:   flag.CommonFlags(opts),
+					Usage:   "list all vulnerabilities across workloads",
+					Flags:   flag.CommonFlags(opts, "since", "since-type", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listVulnz(ctx, cmd, c, opts)
 					},
 				},
 				{
+					Name:    "suppressed",
+					Aliases: []string{"sp"},
+					Usage:   "list suppressed vulnerabilities",
+					Flags:   flag.CommonFlags(opts, "since", "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
+					Action: func(ctx context.Context, cmd *cli.Command) error {
+						return listSuppressedVulnerabilities(ctx, cmd, c, opts)
+					},
+				},
+				{
 					Name:    "summary",
 					Aliases: []string{"s"},
-					Usage:   "list vulnerability summary for filter",
-					Flags:   flag.CommonFlags(opts),
+					Usage:   "list vulnerability summary per workload",
+					Flags:   flag.CommonFlags(opts, "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listSummaries(ctx, cmd, c, opts)
 					},
 				},
 				{
-					Name:    "cve-summaries",
-					Aliases: []string{"cs"},
-					Usage:   "list CVE summaries",
-					Flags:   flag.CommonFlags(opts),
+					Name:    "cves",
+					Aliases: []string{"c"},
+					Usage:   "list CVE summaries across workloads",
+					Flags:   flag.CommonFlags(opts, "since", "since-type", "severity", "cve-ids", "cvss-score"),
 					Action: func(ctx context.Context, cmd *cli.Command) error {
 						return listCveSummaries(ctx, cmd, c, opts)
-					},
-				},
-				{
-					Name:  "mttf",
-					Usage: "list mean time to fix (MTTF) for workload severities",
-					Flags: flag.CommonFlags(opts, "l", "o", "su"),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return listWorkloadMTTFBySeverity(ctx, cmd, c, opts)
-					},
-				},
-				{
-					Name:  "mttf-trend",
-					Usage: "list mean time to fix (MTTF) per severity trend",
-					Flags: flag.CommonFlags(opts, "l", "o", "su"),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return listMeanTimeToFixTrendBySeverity(ctx, cmd, c, opts)
 					},
 				},
 			},
@@ -102,11 +86,7 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		return err
 	}
 
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-	vulnTbl := table.New("Package", "CVE", "Title", "Severity", "Severity Since", "Created", "Last Updated", "Suppressed")
-	vulnTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	tbl := output.New("Package", "CVE", "Title", "Severity", "Severity Since", "Created", "Last Updated", "Suppressed")
 
 	var suppressions [][]string
 
@@ -115,18 +95,17 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
 			suppressed = "Yes"
 		}
-		vulnTbl.AddRow(
+		tbl.AddRow(
 			n.GetPackage(),
 			n.Cve.Id,
 			n.Cve.Title,
-			n.Cve.Severity,
+			n.Cve.Severity.String(),
 			n.SeveritySince.AsTime().Format(time.RFC3339),
 			n.GetCreated().AsTime().Format(time.RFC3339),
 			n.GetLastUpdated().AsTime().Format(time.RFC3339),
 			suppressed,
 		)
 
-		// Only add to suppression table if suppressed
 		if n.GetSuppression() != nil && n.GetSuppression().GetSuppressed() {
 			suppressions = append(suppressions, []string{
 				n.Cve.Id,
@@ -139,19 +118,13 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 		}
 	}
 
-	vulnTbl.Print()
+	tbl.Print()
 
 	if len(suppressions) > 0 {
 		fmt.Println("\nSuppressed vulnerabilities:")
-		suppTbl := table.New("CVE", "Package", "Latest Version", "Reason", "Suppressed By", "Suppressed At")
-		suppTbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		suppTbl := output.New("CVE", "Package", "Latest Version", "Reason", "Suppressed By", "Suppressed At")
 		for _, row := range suppressions {
-			// Convert []string to []interface{}
-			rowInterface := make([]any, len(row))
-			for i, v := range row {
-				rowInterface[i] = v
-			}
-			suppTbl.AddRow(rowInterface...)
+			suppTbl.AddRow(row...)
 		}
 		suppTbl.Print()
 	}
@@ -168,18 +141,14 @@ func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vuln
 		return err
 	}
 
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-	tbl := table.New("Package", "CVE", "Reason", "Suppressed", "Suppressed By", "Image")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	tbl := output.New("Package", "CVE", "Reason", "Suppressed", "Suppressed By", "Image")
 
 	for _, n := range resp.GetNodes() {
 		tbl.AddRow(
 			n.GetPackage(),
 			n.CveId,
 			*n.Reason,
-			*n.Suppress,
+			fmt.Sprint(*n.Suppress),
 			*n.SuppressedBy,
 			n.ImageName,
 		)
@@ -200,23 +169,17 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 		}
 
-		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-		columnFmt := color.New(color.FgYellow).SprintfFunc()
-
 		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
-			headers = append(headers, "ImageTag")
-			headers = append(headers, "Last Updated")
+			headers = append(headers, "ImageTag", "Last Updated")
 		}
-		tbl := table.New(headers...)
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+		tbl := output.New(headers...)
 
 		for _, n := range resp.GetNodes() {
 			sum := n.GetVulnerabilitySummary()
 			hasSummary := sum != nil
-			vals := []any{
-				// kills the layout
-				// n.Workload.GetImageName()+":"+n.GetWorkload().GetImageTag(),
+			row := []string{
 				n.Workload.GetName(),
 				n.Workload.GetType(),
 				n.Workload.GetCluster(),
@@ -230,26 +193,20 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				intOrDash(sum.GetRiskScore(), hasSummary),
 			}
 			if o.Since != "" {
-				vals = append(vals, n.Workload.GetImageTag())
 				lastUpdated := "-"
 				if ts := sum.GetLastUpdated(); ts != nil {
 					lastUpdated = ts.AsTime().Format(time.RFC3339)
 				}
-				vals = append(vals, lastUpdated)
+				row = append(row, n.Workload.GetImageTag(), lastUpdated)
 			}
-			tbl.AddRow(
-				vals...,
-			)
+			tbl.AddRow(row...)
 		}
 
 		tbl.Print()
 
 		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
@@ -262,10 +219,8 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			return 0, false, fmt.Errorf("failed to list vulnerabilities: %w", err)
 		}
 
-		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-		columnFmt := color.New(color.FgYellow).SprintfFunc()
-		workloadHeader := color.New(color.FgGreen, color.Bold).SprintfFunc()
-		workloadDetails := color.New(color.FgYellow).SprintfFunc()
+		workloadHeader := output.HeaderFmt
+		workloadDetails := output.ColumnFmt
 
 		// Group vulnerabilities by workload
 		workloadMap := make(map[string][]*vulnerabilities.Finding)
@@ -284,16 +239,13 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			}
 			w := findings[0].WorkloadRef
 
-			// Print workload details
 			fmt.Println(workloadHeader("\nWorkload: %s", w.Name))
 			fmt.Println(workloadDetails("Type: %s", w.Type))
 			fmt.Println(workloadDetails("Namespace: %s", w.Namespace))
 			fmt.Println(workloadDetails("Cluster: %s", w.Cluster))
 			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
 
-			// Print vulnerabilities table for this workload
-			tbl := table.New("Package", "CVE", "Severity", "CVSS Score", "CVE Age", "Last Severity", "Severity Since", "Latest Version", "Suppressed", "Vuln Age")
-			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+			tbl := output.New("Package", "CVE", "Severity", "CVSS Score", "CVE Age", "Last Severity", "Severity Since", "Latest Version", "Suppressed", "Vuln Age")
 
 			for _, n := range findings {
 				v := n.Vulnerability
@@ -305,10 +257,10 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 				tbl.AddRow(
 					v.GetPackage(),
 					v.GetCve().GetId(),
-					v.GetCve().GetSeverity(),
-					v.GetCve().GetCvssScore(),
+					v.GetCve().GetSeverity().String(),
+					formatCvssScore(v.GetCve().GetCvssScore()),
 					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
-					v.GetLastSeverity(),
+					fmt.Sprintf("%v", v.GetLastSeverity()),
 					timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),
 					v.GetLatestVersion(),
 					suppressed,
@@ -332,20 +284,16 @@ func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.C
 			return 0, false, fmt.Errorf("failed to list CVE summaries: %w", err)
 		}
 
-		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-		columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-		tbl := table.New("CVE", "Title", "Severity", "CVSS Score", "Affected Workloads")
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		tbl := output.New("CVE", "Title", "Severity", "CVSS Score", "Affected Workloads")
 
 		for _, n := range resp.GetNodes() {
 			cve := n.GetCve()
 			tbl.AddRow(
 				cve.GetId(),
 				cve.GetTitle(),
-				cve.GetSeverity(),
-				cve.GetCvssScore(),
-				n.GetAffectedWorkloads(),
+				cve.GetSeverity().String(),
+				formatCvssScore(cve.GetCvssScore()),
+				fmt.Sprint(n.GetAffectedWorkloads()),
 			)
 		}
 
@@ -355,90 +303,11 @@ func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.C
 	})
 }
 
-func listWorkloadMTTFBySeverity(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, opts *flag.Options) error {
-	resp, err := c.ListWorkloadMTTFBySeverity(ctx, flag.ParseOptions(cmd, opts)...)
-	if err != nil {
-		return fmt.Errorf("failed to list workload severities with MTTF: %w", err)
+func formatCvssScore(score float64) string {
+	if score == 0 {
+		return "N/A"
 	}
-
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-	tbl := table.New(
-		"Workload", "Namespace", "Severity", "Introduced At", "Fixed At", "Fixed", "Fix Duration (days)", "Fix Count", "Snapshot Date")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-	for _, workload := range resp.GetWorkloads() {
-		for _, fix := range workload.GetFixes() {
-			lastFixed := "N/A"
-			if fix.FixedAt != nil && !fix.FixedAt.AsTime().IsZero() {
-				lastFixed = fix.FixedAt.AsTime().Format("2006-01-02")
-			}
-
-			introduced := "N/A"
-			if fix.IntroducedAt != nil && !fix.IntroducedAt.AsTime().IsZero() {
-				introduced = fix.IntroducedAt.AsTime().Format("2006-01-02")
-			}
-
-			tbl.AddRow(
-				workload.WorkloadName,
-				workload.WorkloadNamespace,
-				fix.Severity.String(),
-				introduced,
-				lastFixed,
-				fix.FixedAt != nil && !fix.FixedAt.AsTime().IsZero(),
-				fix.MeanTimeToFixDays,
-				fix.FixedCount,
-				fix.SnapshotDate.AsTime().Format("2006-01-02"),
-			)
-		}
-	}
-
-	tbl.Print()
-	return nil
-}
-
-func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, opts *flag.Options) error {
-	resp, err := c.ListMeanTimeToFixTrendBySeverity(ctx, flag.ParseOptions(cmd, opts)...)
-	if err != nil {
-		return fmt.Errorf("failed to list mean time to fix per severity: %w", err)
-	}
-
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
-
-	tbl := table.New(
-		"Severity", "Snapshot Date", "Mean Time To Fix (days)", "Fix Count", "Fixed At (first)", "Fixed At (last)", "Workload Count")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-	for _, n := range resp.GetPoints() {
-		snapshot := "N/A"
-		firstFixedAt := "N/A"
-		lastFixedAt := "N/A"
-
-		if n.SnapshotDate != nil && !n.SnapshotDate.AsTime().IsZero() {
-			snapshot = n.SnapshotDate.AsTime().Format("2006-01-02")
-		}
-		if n.FirstFixedAt != nil && !n.FirstFixedAt.AsTime().IsZero() {
-			firstFixedAt = n.FirstFixedAt.AsTime().Format("2006-01-02")
-		}
-		if n.LastFixedAt != nil && !n.LastFixedAt.AsTime().IsZero() {
-			lastFixedAt = n.LastFixedAt.AsTime().Format("2006-01-02")
-		}
-
-		tbl.AddRow(
-			n.Severity.String(),
-			snapshot,
-			n.MeanTimeToFixDays,
-			n.FixedCount,
-			firstFixedAt,
-			lastFixedAt,
-			n.WorkloadCount,
-		)
-	}
-
-	tbl.Print()
-	return nil
+	return fmt.Sprintf("%g", score)
 }
 
 func timeSinceCreation(created, lastUpdated time.Time) string {
