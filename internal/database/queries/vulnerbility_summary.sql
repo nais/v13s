@@ -199,53 +199,14 @@ WITH filtered_workloads AS (
         OR w.name = sqlc.narg('workload_name')::TEXT))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                fw.id
-            END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.critical
-                ELSE
-                    0
-                END), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.high
-                ELSE
-                    0
-                END), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.medium
-                ELSE
-                    0
-                END), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.low
-                ELSE
-                    0
-                END), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.unassigned
-                ELSE
-                    0
-                END), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.risk_score
-                ELSE
-                    0
-                END), 0) AS INT4) AS risk_score,
-    MAX(v.updated_at)::TIMESTAMPTZ AS updated_at
+    CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready AND i.state = 'updated' AND v.id IS NOT NULL THEN fw.id END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.critical ELSE 0 END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.high ELSE 0 END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.medium ELSE 0 END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.low ELSE 0 END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.unassigned ELSE 0 END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.risk_score ELSE 0 END), 0) AS INT4) AS risk_score,
+    MAX(CASE WHEN fw.workload_ready AND i.state = 'updated' AND v.id IS NOT NULL THEN v.updated_at END)::TIMESTAMPTZ AS updated_at
 FROM
     filtered_workloads fw
     LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
