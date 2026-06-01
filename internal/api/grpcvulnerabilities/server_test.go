@@ -712,6 +712,48 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, imageName, resp.Nodes[0].GetWorkload().ImageName)
 		assert.Equal(t, imageTag, resp.Nodes[0].GetWorkload().ImageTag)
 	})
+
+	t.Run("unrecoverable workload with updated image and summary returns nil VulnerabilitySummary", func(t *testing.T) {
+		const (
+			unrecImage = "img-list-unrec"
+			unrecTag   = "v1"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: unrecImage, Tag: unrecTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "wl-list-unrec",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    unrecImage,
+			ImageTag:     unrecTag,
+		})
+		require.NoError(t, err)
+
+		wlUnrec, err := db.GetWorkload(ctx, sql.GetWorkloadParams{Name: "wl-list-unrec", WorkloadType: "app", Namespace: "namespace-1", Cluster: "cluster-1"})
+		require.NoError(t, err)
+		require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{State: sql.WorkloadStateUnrecoverable, ID: wlUnrec.ID}))
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{State: sql.ImageStateUpdated, Name: unrecImage, Tag: unrecTag})
+		require.NoError(t, err)
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: unrecImage, ImageTag: unrecTag,
+			Critical: 9, High: 7, Medium: 5, Low: 3, Unassigned: 1, RiskScore: 200,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.NamespaceFilter("namespace-1"), vulnerabilities.ClusterFilter("cluster-1"))
+		require.NoError(t, err)
+
+		byName := make(map[string]*vulnerabilities.WorkloadSummary, len(resp.Nodes))
+		for _, n := range resp.Nodes {
+			byName[n.GetWorkload().GetName()] = n
+		}
+		node, ok := byName["wl-list-unrec"]
+		require.True(t, ok, "wl-list-unrec must appear in response")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, node.GetSbomStatus().GetStatus())
+		assert.Nil(t, node.GetVulnerabilitySummary(),
+			"unrecoverable workload must have nil VulnerabilitySummary even when image is updated and summary exists")
+	})
 }
 
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
