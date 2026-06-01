@@ -65,7 +65,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
 
 		var vulnSummary *vulnerabilities.Summary
-		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY {
+		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY && row.HasSbom && row.SummaryUpdatedAt.Valid {
 			critical := row.Critical
 			high := row.High
 			medium := row.Medium
