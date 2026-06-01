@@ -141,14 +141,47 @@ WITH filtered_workloads AS (
         OR w.name = $4::TEXT))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready AND i.state = 'updated' AND v.id IS NOT NULL THEN fw.id END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.critical ELSE 0 END), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.high ELSE 0 END), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.medium ELSE 0 END), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.low ELSE 0 END), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.unassigned ELSE 0 END), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(CASE WHEN fw.workload_ready AND i.state = 'updated' THEN v.risk_score ELSE 0 END), 0) AS INT4) AS risk_score,
-    MAX(CASE WHEN fw.workload_ready AND i.state = 'updated' AND v.id IS NOT NULL THEN v.updated_at END)::TIMESTAMPTZ AS updated_at
+    CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready
+                AND i.state = 'updated'
+                AND v.id IS NOT NULL THEN
+                fw.id
+            END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(
+            CASE WHEN fw.workload_ready
+                AND i.state = 'updated' THEN
+                v.critical
+            END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(
+            CASE WHEN fw.workload_ready
+                AND i.state = 'updated' THEN
+                v.high
+            END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(
+            CASE WHEN fw.workload_ready
+                AND i.state = 'updated' THEN
+                v.medium
+            END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(
+            CASE WHEN fw.workload_ready
+                AND i.state = 'updated' THEN
+                v.low
+            END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(
+            CASE WHEN fw.workload_ready
+                AND i.state = 'updated' THEN
+                v.unassigned
+            END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(
+            CASE WHEN fw.workload_ready
+                AND i.state = 'updated' THEN
+                v.risk_score
+            END), 0) AS INT4) AS risk_score,
+    MAX(
+        CASE WHEN fw.workload_ready
+            AND i.state = 'updated'
+            AND v.id IS NOT NULL THEN
+            v.updated_at
+        END)::TIMESTAMPTZ AS updated_at
 FROM
     filtered_workloads fw
     LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
@@ -424,17 +457,37 @@ vulnerability_data AS (
         w.image_tag AS current_image_tag,
         v.image_name,
         v.image_tag,
-        v.critical,
-        v.high,
-        v.medium,
-        v.low,
-        v.unassigned,
-        v.risk_score,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.critical
+        END, 0)::INT4 AS critical,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.high
+        END, 0)::INT4 AS high,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.medium
+        END, 0)::INT4 AS medium,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.low
+        END, 0)::INT4 AS low,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.unassigned
+        END, 0)::INT4 AS unassigned,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.risk_score
+        END, 0)::INT4 AS risk_score,
         w.created_at AS workload_created_at,
         w.updated_at AS workload_updated_at,
         v.created_at AS summary_created_at,
         v.updated_at AS summary_updated_at,
-        CASE WHEN v.image_name IS NOT NULL THEN
+        CASE WHEN v.image_name IS NOT NULL
+            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
             TRUE
         ELSE
             FALSE
@@ -446,7 +499,6 @@ vulnerability_data AS (
         filtered_workloads w
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
-                -- If no since join on image_tag, if since is set ignore image_tag
                 CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN
                     w.image_tag = v.image_tag
                 ELSE
@@ -553,12 +605,12 @@ type ListVulnerabilitySummariesRow struct {
 	CurrentImageTag         string
 	ImageName               *string
 	ImageTag                *string
-	Critical                *int32
-	High                    *int32
-	Medium                  *int32
-	Low                     *int32
-	Unassigned              *int32
-	RiskScore               *int32
+	Critical                int32
+	High                    int32
+	Medium                  int32
+	Low                     int32
+	Unassigned              int32
+	RiskScore               int32
 	WorkloadCreatedAt       pgtype.Timestamptz
 	WorkloadUpdatedAt       pgtype.Timestamptz
 	SummaryCreatedAt        pgtype.Timestamptz

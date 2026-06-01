@@ -712,6 +712,48 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, imageName, resp.Nodes[0].GetWorkload().ImageName)
 		assert.Equal(t, imageTag, resp.Nodes[0].GetWorkload().ImageTag)
 	})
+
+	t.Run("unrecoverable workload with updated image and summary returns nil VulnerabilitySummary", func(t *testing.T) {
+		const (
+			unrecImage = "img-list-unrec"
+			unrecTag   = "v1"
+		)
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: unrecImage, Tag: unrecTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "wl-list-unrec",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    unrecImage,
+			ImageTag:     unrecTag,
+		})
+		require.NoError(t, err)
+
+		wlUnrec, err := db.GetWorkload(ctx, sql.GetWorkloadParams{Name: "wl-list-unrec", WorkloadType: "app", Namespace: "namespace-1", Cluster: "cluster-1"})
+		require.NoError(t, err)
+		require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{State: sql.WorkloadStateUnrecoverable, ID: wlUnrec.ID}))
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{State: sql.ImageStateUpdated, Name: unrecImage, Tag: unrecTag})
+		require.NoError(t, err)
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: unrecImage, ImageTag: unrecTag,
+			Critical: 9, High: 7, Medium: 5, Low: 3, Unassigned: 1, RiskScore: 200,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.NamespaceFilter("namespace-1"), vulnerabilities.ClusterFilter("cluster-1"))
+		require.NoError(t, err)
+
+		byName := make(map[string]*vulnerabilities.WorkloadSummary, len(resp.Nodes))
+		for _, n := range resp.Nodes {
+			byName[n.GetWorkload().GetName()] = n
+		}
+		node, ok := byName["wl-list-unrec"]
+		require.True(t, ok, "wl-list-unrec must appear in response")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, node.GetSbomStatus().GetStatus())
+		assert.Nil(t, node.GetVulnerabilitySummary(),
+			"unrecoverable workload must have nil VulnerabilitySummary even when image is updated and summary exists")
+	})
 }
 
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
@@ -2849,16 +2891,40 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		newTag    = "v2.0"
 	)
 
-	t.Run("unknown tag falls back to most recent known tag", func(t *testing.T) {
-		// v1.0 was seeded by setupTest with 1 high vuln; v2.0 has no summary yet.
+	t.Run("unknown tag with NO_SBOM status returns nil summary", func(t *testing.T) {
+		// v1.0 was seeded by setupTest with 1 high vuln; v2.0 has no image or workload record
+		// so its status is NO_SBOM. Stale fallback is only shown for PROCESSING, not NO_SBOM.
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+
+		assert.Nil(t, resp.GetVulnerabilitySummary(), "NO_SBOM status must return nil even when a stale summary exists")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("PROCESSING tag with stale summary shows stale data", func(t *testing.T) {
+		// Create image for v2.0 in initialized (PROCESSING) state, attach a workload,
+		// and verify that the stale v1.0 counts are surfaced with stale_image_tag set.
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-processing",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     newTag,
+		})
+		require.NoError(t, err)
+
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
 
 		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
+		require.NotNil(t, sum, "PROCESSING with stale tag must return stale summary")
 		assert.Equal(t, int32(1), sum.GetHigh(), "stale counts from v1.0 must be returned")
 		require.NotNil(t, sum.StaleImageTag, "stale_image_tag must be set")
 		assert.Equal(t, knownTag, *sum.StaleImageTag, "stale_image_tag must point to v1.0")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
 	t.Run("workload_ref and sbom_status are still populated when using stale summary", func(t *testing.T) {

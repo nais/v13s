@@ -65,15 +65,22 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
 
 		var vulnSummary *vulnerabilities.Summary
-		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY {
+		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY && row.HasSbom && row.SummaryUpdatedAt.Valid {
+			critical := row.Critical
+			high := row.High
+			medium := row.Medium
+			low := row.Low
+			unassigned := row.Unassigned
+			riskScore := row.RiskScore
+
 			vulnSummary = &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
+				Critical:    critical,
+				High:        high,
+				Medium:      medium,
+				Low:         low,
+				Unassigned:  unassigned,
+				Total:       critical + high + medium + low + unassigned,
+				RiskScore:   riskScore,
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			}
@@ -105,7 +112,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	return response, nil
 }
 
-// TODO: if no summaries are found, handle this case by not returning the summary? and maybe handle it in the sql query, right now we return 0 on all fields
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
 	if request.GetFilter() == nil {
@@ -278,16 +284,24 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	var vulnSummary *vulnerabilities.Summary
-	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY || staleTag != ""
+	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY ||
+		(worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING && staleTag != "")
 	if showCounts && summary != nil {
+		critical := summary.Critical
+		high := summary.High
+		medium := summary.Medium
+		low := summary.Low
+		unassigned := summary.Unassigned
+		riskScore := summary.RiskScore
+
 		vulnSummary = &vulnerabilities.Summary{
-			Critical:    summary.Critical,
-			High:        summary.High,
-			Medium:      summary.Medium,
-			Low:         summary.Low,
-			Unassigned:  summary.Unassigned,
-			Total:       summary.Critical + summary.High + summary.Medium + summary.Low + summary.Unassigned,
-			RiskScore:   summary.RiskScore,
+			Critical:    critical,
+			High:        high,
+			Medium:      medium,
+			Low:         low,
+			Unassigned:  unassigned,
+			Total:       critical + high + medium + low + unassigned,
+			RiskScore:   riskScore,
 			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
 			HasSbom:     true,
 		}
