@@ -75,17 +75,30 @@ vulnerability_data AS (
         w.image_tag AS current_image_tag,
         v.image_name,
         v.image_tag,
-        v.critical,
-        v.high,
-        v.medium,
-        v.low,
-        v.unassigned,
-        v.risk_score,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
+            v.critical
+        END, 0)::INT4 AS critical,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
+            v.high
+        END, 0)::INT4 AS high,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
+            v.medium
+        END, 0)::INT4 AS medium,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
+            v.low
+        END, 0)::INT4 AS low,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
+            v.unassigned
+        END, 0)::INT4 AS unassigned,
+        COALESCE(CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
+            v.risk_score
+        END, 0)::INT4 AS risk_score,
         w.created_at AS workload_created_at,
         w.updated_at AS workload_updated_at,
         v.created_at AS summary_created_at,
         v.updated_at AS summary_updated_at,
-        CASE WHEN v.image_name IS NOT NULL THEN
+        CASE WHEN v.image_name IS NOT NULL
+            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') THEN
             TRUE
         ELSE
             FALSE
@@ -97,7 +110,6 @@ vulnerability_data AS (
         filtered_workloads w
         LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
-                -- If no since join on image_tag, if since is set ignore image_tag
                 CASE WHEN sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL THEN
                     w.image_tag = v.image_tag
                 ELSE

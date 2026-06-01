@@ -67,13 +67,13 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		var vulnSummary *vulnerabilities.Summary
 		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY {
 			vulnSummary = &vulnerabilities.Summary{
-				Critical:    safeInt(row.Critical),
-				High:        safeInt(row.High),
-				Medium:      safeInt(row.Medium),
-				Low:         safeInt(row.Low),
-				Unassigned:  safeInt(row.Unassigned),
-				Total:       safeInt(row.Critical) + safeInt(row.High) + safeInt(row.Medium) + safeInt(row.Low) + safeInt(row.Unassigned),
-				RiskScore:   safeInt(row.RiskScore),
+				Critical:    row.Critical,
+				High:        row.High,
+				Medium:      row.Medium,
+				Low:         row.Low,
+				Unassigned:  row.Unassigned,
+				Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+				RiskScore:   row.RiskScore,
 				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
 				HasSbom:     row.HasSbom,
 			}
