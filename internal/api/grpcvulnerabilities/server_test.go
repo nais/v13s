@@ -2849,16 +2849,40 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		newTag    = "v2.0"
 	)
 
-	t.Run("unknown tag falls back to most recent known tag", func(t *testing.T) {
-		// v1.0 was seeded by setupTest with 1 high vuln; v2.0 has no summary yet.
+	t.Run("unknown tag with NO_SBOM status returns nil summary", func(t *testing.T) {
+		// v1.0 was seeded by setupTest with 1 high vuln; v2.0 has no image or workload record
+		// so its status is NO_SBOM. Stale fallback is only shown for PROCESSING, not NO_SBOM.
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
+		require.NoError(t, err)
+
+		assert.Nil(t, resp.GetVulnerabilitySummary(), "NO_SBOM status must return nil even when a stale summary exists")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
+	})
+
+	t.Run("PROCESSING tag with stale summary shows stale data", func(t *testing.T) {
+		// Create image for v2.0 in initialized (PROCESSING) state, attach a workload,
+		// and verify that the stale v1.0 counts are surfaced with stale_image_tag set.
+		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
+		require.NoError(t, err)
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         "workload-processing",
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     newTag,
+		})
+		require.NoError(t, err)
+
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
 
 		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
+		require.NotNil(t, sum, "PROCESSING with stale tag must return stale summary")
 		assert.Equal(t, int32(1), sum.GetHigh(), "stale counts from v1.0 must be returned")
 		require.NotNil(t, sum.StaleImageTag, "stale_image_tag must be set")
 		assert.Equal(t, knownTag, *sum.StaleImageTag, "stale_image_tag must point to v1.0")
+		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
 	t.Run("workload_ref and sbom_status are still populated when using stale summary", func(t *testing.T) {

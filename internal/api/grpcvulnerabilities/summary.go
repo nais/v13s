@@ -284,7 +284,8 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}
 
 	var vulnSummary *vulnerabilities.Summary
-	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY || staleTag != ""
+	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY ||
+		(worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING && staleTag != "")
 	if showCounts && summary != nil {
 		critical := summary.Critical
 		high := summary.High
