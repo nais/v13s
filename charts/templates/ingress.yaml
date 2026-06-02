@@ -5,37 +5,9 @@ metadata:
   labels:
     {{- include "v13s.labels" . | nindent 4 }}
   annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: GRPC
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/server-snippet: |
-      grpc_read_timeout 86400s;
-      grpc_send_timeout 86400s;
-      client_body_timeout 86400s;
-      grpc_next_upstream_tries 2;
-spec:
-  ingressClassName: {{ .Values.ingress.className }}
-  rules:
-    - host: {{ .Values.ingress.host | quote }}
-      http:
-        paths:
-          - path: /
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: {{ include "v13s.fullname" . }}
-                port:
-                  name: grpc
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: {{ include "v13s.name" . }}-grpc-haproxy
-  labels:
-    {{- include "v13s.labels" . | nindent 4 }}
-  annotations:
     haproxy.org/backend-config-snippet: |
       retries 2
-      default-server proto h2 inter 10s fastinter 5s downinter 15s
+      default-server proto h2 no-check
       timeout connect 86400s
       http-reuse never
     haproxy.org/timeout-server: "86400s"
