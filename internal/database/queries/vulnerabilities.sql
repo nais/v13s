@@ -3,6 +3,9 @@ WITH resolved_vulnerabilities AS (
     SELECT DISTINCT
         c.cve_id AS id,
         c.severity,
+        c.epss_percentile,
+        c.has_kev_entry,
+        c.known_ransomware_use,
         v.package,
         v.image_name,
         v.image_tag
@@ -14,6 +17,21 @@ WITH resolved_vulnerabilities AS (
         v.image_name = @image_name
         AND v.image_tag = @image_tag
 ),
+unsuppressed_vulnerabilities AS (
+    SELECT
+        rv.id,
+        rv.severity,
+        rv.epss_percentile,
+        rv.has_kev_entry,
+        rv.known_ransomware_use
+    FROM
+        resolved_vulnerabilities rv
+        LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
+            AND rv.package = sv.package
+            AND rv.id = sv.cve_id
+    WHERE
+        NOT COALESCE(sv.suppressed, FALSE)
+),
 severity_counts AS (
     SELECT
         COUNT(*) AS total,
@@ -23,26 +41,68 @@ severity_counts AS (
         COUNT(*) FILTER (WHERE severity = 3) AS low,
         COUNT(*) FILTER (WHERE severity = 4) AS unassigned
     FROM
-        resolved_vulnerabilities rv
-        LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
-            AND rv.package = sv.package
-            AND rv.id = sv.cve_id
-    WHERE
-        NOT COALESCE(sv.suppressed, FALSE)
+        unsuppressed_vulnerabilities
+),
+risk_tier_counts AS (
+    SELECT
+        COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
+        COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+            AND (known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
+    COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+        AND NOT (known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90)
+    AND severity IN (0, 1)
+    AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
+COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+    OR known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.90
+    OR (severity IN (0, 1)
+    AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
+COUNT(*) FILTER (WHERE has_kev_entry = TRUE
+    OR known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.90) AS exploitable,
+COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
+COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+COALESCE(MIN(
+        CASE WHEN has_kev_entry = TRUE THEN
+            0
+        WHEN known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+            1
+        WHEN severity IN (0, 1)
+            AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+            2
+        ELSE
+            3
+        END), 3) AS top_risk_tier
+FROM
+    unsuppressed_vulnerabilities
 ),
 summary AS (
     SELECT
         @image_name AS image_name,
         @image_tag AS image_tag,
-        total,
-        critical,
-        high,
-        medium,
-        low,
-        unassigned,
-        10 * critical + 5 * high + 3 * medium + 1 * low + 5 * unassigned AS risk_score
+        sc.total,
+        sc.critical,
+        sc.high,
+        sc.medium,
+        sc.low,
+        sc.unassigned,
+        rtc.act_now,
+        rtc.high_risk,
+        rtc.elevated_risk,
+        rtc.monitor,
+        rtc.exploitable,
+        rtc.kev_count,
+        rtc.ransomware_count,
+        rtc.high_epss_count,
+        rtc.top_risk_tier,
+        10 * sc.critical + 5 * sc.high + 3 * sc.medium + 1 * sc.low + 5 * sc.unassigned AS risk_score
     FROM
-        severity_counts)
+        severity_counts sc
+        CROSS JOIN risk_tier_counts rtc)
 INSERT INTO vulnerability_summary(
     image_name,
     image_tag,
@@ -51,6 +111,15 @@ INSERT INTO vulnerability_summary(
     medium,
     low,
     unassigned,
+    act_now,
+    high_risk,
+    elevated_risk,
+    monitor,
+    exploitable,
+    kev_count,
+    ransomware_count,
+    high_epss_count,
+    top_risk_tier,
     risk_score,
     created_at,
     updated_at)
@@ -62,6 +131,15 @@ SELECT
     medium,
     low,
     unassigned,
+    act_now,
+    high_risk,
+    elevated_risk,
+    monitor,
+    exploitable,
+    kev_count,
+    ransomware_count,
+    high_epss_count,
+    top_risk_tier,
     risk_score,
     NOW(),
     NOW()
@@ -75,6 +153,15 @@ ON CONFLICT (image_name,
         medium = EXCLUDED.medium,
         low = EXCLUDED.low,
         unassigned = EXCLUDED.unassigned,
+        act_now = EXCLUDED.act_now,
+        high_risk = EXCLUDED.high_risk,
+        elevated_risk = EXCLUDED.elevated_risk,
+        monitor = EXCLUDED.monitor,
+        exploitable = EXCLUDED.exploitable,
+        kev_count = EXCLUDED.kev_count,
+        ransomware_count = EXCLUDED.ransomware_count,
+        high_epss_count = EXCLUDED.high_epss_count,
+        top_risk_tier = EXCLUDED.top_risk_tier,
         risk_score = EXCLUDED.risk_score,
         updated_at = NOW();
 

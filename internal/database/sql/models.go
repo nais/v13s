@@ -83,6 +83,70 @@ func AllImageStateValues() []ImageState {
 	}
 }
 
+type RiskTier string
+
+const (
+	RiskTierActNow       RiskTier = "act_now"
+	RiskTierHighRisk     RiskTier = "high_risk"
+	RiskTierElevatedRisk RiskTier = "elevated_risk"
+	RiskTierMonitor      RiskTier = "monitor"
+)
+
+func (e *RiskTier) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RiskTier(s)
+	case string:
+		*e = RiskTier(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RiskTier: %T", src)
+	}
+	return nil
+}
+
+type NullRiskTier struct {
+	RiskTier RiskTier
+	Valid    bool // Valid is true if RiskTier is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRiskTier) Scan(value interface{}) error {
+	if value == nil {
+		ns.RiskTier, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RiskTier.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRiskTier) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RiskTier), nil
+}
+
+func (e RiskTier) Valid() bool {
+	switch e {
+	case RiskTierActNow,
+		RiskTierHighRisk,
+		RiskTierElevatedRisk,
+		RiskTierMonitor:
+		return true
+	}
+	return false
+}
+
+func AllRiskTierValues() []RiskTier {
+	return []RiskTier{
+		RiskTierActNow,
+		RiskTierHighRisk,
+		RiskTierElevatedRisk,
+		RiskTierMonitor,
+	}
+}
+
 type RiverJobState string
 
 const (
@@ -371,17 +435,26 @@ type SuppressedVulnerability struct {
 }
 
 type VulnerabilitySummary struct {
-	ID         pgtype.UUID
-	ImageName  string
-	ImageTag   string
-	Critical   int32
-	High       int32
-	Medium     int32
-	Low        int32
-	Unassigned int32
-	RiskScore  int32
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID              pgtype.UUID
+	ImageName       string
+	ImageTag        string
+	Critical        int32
+	High            int32
+	Medium          int32
+	Low             int32
+	Unassigned      int32
+	RiskScore       int32
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	ActNow          int32
+	HighRisk        int32
+	ElevatedRisk    int32
+	Monitor         int32
+	Exploitable     int32
+	KevCount        int32
+	RansomwareCount int32
+	HighEpssCount   int32
+	TopRiskTier     RiskTier
 }
 
 type Workload struct {
