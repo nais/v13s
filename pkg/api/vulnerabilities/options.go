@@ -24,21 +24,30 @@ const (
 
 const (
 	OrderByAffectedWorkloads OrderByField = "affected_workloads"
+	OrderByActNow            OrderByField = "act_now"
 	OrderByCluster           OrderByField = "cluster"
 	OrderByCreatedAt         OrderByField = "created_at"
 	OrderByCritical          OrderByField = "critical"
 	OrderByCveId             OrderByField = "cve_id"
 	OrderByCvssScore         OrderByField = "cvss_score"
+	OrderByElevatedRisk      OrderByField = "elevated_risk"
+	OrderByExploitable       OrderByField = "exploitable"
 	OrderByHigh              OrderByField = "high"
+	OrderByHighEpssCount     OrderByField = "high_epss_count"
+	OrderByHighRisk          OrderByField = "high_risk"
+	OrderByKevCount          OrderByField = "kev_count"
 	OrderByLow               OrderByField = "low"
 	OrderByMedium            OrderByField = "medium"
+	OrderByMonitor           OrderByField = "monitor"
 	OrderByNamespace         OrderByField = "namespace"
 	OrderByPackage           OrderByField = "package"
+	OrderByRansomwareCount   OrderByField = "ransomware_count"
 	OrderByReason            OrderByField = "reason"
 	OrderByRiskScore         OrderByField = "risk_score"
 	OrderBySeverity          OrderByField = "severity"
 	OrderBySeveritySince     OrderByField = "severity_since"
 	OrderBySuppressed        OrderByField = "suppressed"
+	OrderByTopRiskTier       OrderByField = "top_risk_tier"
 	OrderByUnassigned        OrderByField = "unassigned"
 	OrderByUpdatedAt         OrderByField = "updated_at"
 	OrderByWorkload          OrderByField = "workload"
@@ -47,21 +56,30 @@ const (
 // Map of valid fields
 var validOrderByFields = map[OrderByField]struct{}{
 	OrderByAffectedWorkloads: {},
+	OrderByActNow:            {},
 	OrderByCluster:           {},
 	OrderByCreatedAt:         {},
 	OrderByCritical:          {},
 	OrderByCveId:             {},
 	OrderByCvssScore:         {},
+	OrderByElevatedRisk:      {},
+	OrderByExploitable:       {},
 	OrderByHigh:              {},
+	OrderByHighEpssCount:     {},
+	OrderByHighRisk:          {},
+	OrderByKevCount:          {},
 	OrderByLow:               {},
 	OrderByMedium:            {},
+	OrderByMonitor:           {},
 	OrderByNamespace:         {},
 	OrderByPackage:           {},
+	OrderByRansomwareCount:   {},
 	OrderByReason:            {},
 	OrderByRiskScore:         {},
 	OrderBySeverity:          {},
 	OrderBySeveritySince:     {},
 	OrderBySuppressed:        {},
+	OrderByTopRiskTier:       {},
 	OrderByUnassigned:        {},
 	OrderByUpdatedAt:         {},
 	OrderByWorkload:          {},
@@ -210,6 +228,15 @@ func ImageFilter(name, tag string) Option {
 		}
 		o.Filter.ImageName = &name
 		o.Filter.ImageTag = &tag
+	})
+}
+
+func RiskTierFilter(riskTier RiskTier) Option {
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.RiskTier = &riskTier
 	})
 }
 
