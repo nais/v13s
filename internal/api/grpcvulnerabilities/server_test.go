@@ -3275,12 +3275,6 @@ func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
 	})
 }
 
-// TestServer_EnrichedCveFields_Priority verifies that UpdateCvePriority correctly classifies
-// CVEs into the four risk tiers and that RecalculateVulnerabilitySummary reflects those tiers
-// in the per-image vulnerability summary.
-//
-// Ported from feat/cve-priority (#308) and adapted for #320's RiskTier-based summary model
-// (no Priority proto field on Cve in this branch; tiers are expressed via summary counts).
 func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
@@ -3334,7 +3328,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Priority must be computed before RecalculateVulnerabilitySummary uses tier data.
+	// Priority must be computed before asserting priority-based ordering (order_by=priority_*).
 	err = db.UpdateCvePriority(ctx)
 	require.NoError(t, err)
 

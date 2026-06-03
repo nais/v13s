@@ -1909,6 +1909,18 @@ SET
     ELSE
         4
     END
+WHERE
+    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END
 `
 
 func (q *Queries) UpdateCvePriority(ctx context.Context) error {
