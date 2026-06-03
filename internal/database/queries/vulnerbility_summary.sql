@@ -144,7 +144,7 @@ vulnerability_data AS (
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
                 v.top_risk_tier
-            END, 'monitor'::risk_tier) AS top_risk_tier,
+            END) AS top_risk_tier,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
@@ -179,8 +179,8 @@ vulnerability_data AS (
         OR v.image_name = sqlc.narg('image_name')::TEXT)
     AND (sqlc.narg('image_tag')::TEXT IS NULL
         OR v.image_tag = sqlc.narg('image_tag')::TEXT)
-    AND (sqlc.narg('risk_tier')::risk_tier IS NULL
-        OR v.top_risk_tier = sqlc.narg('risk_tier')::risk_tier)
+    AND (sqlc.narg('risk_tier')::INT IS NULL
+        OR v.top_risk_tier = sqlc.narg('risk_tier')::INT)
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE))
 SELECT
@@ -297,10 +297,10 @@ ORDER BY
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'top_risk_tier_asc' THEN
         top_risk_tier
-    END ASC,
+    END ASC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'top_risk_tier_desc' THEN
         top_risk_tier
-    END DESC,
+    END DESC NULLS LAST,
     summary_updated_at ASC,
     id DESC
 LIMIT sqlc.arg('limit')
@@ -325,8 +325,8 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
-    AND (sqlc.narg('risk_tier')::risk_tier IS NULL
-        OR v.top_risk_tier = sqlc.narg('risk_tier')::risk_tier))
+    AND (sqlc.narg('risk_tier')::INT IS NULL
+        OR v.top_risk_tier = sqlc.narg('risk_tier')::INT))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
     CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready
@@ -399,11 +399,11 @@ SELECT
                     AND i.state = 'updated' THEN
                     v.high_epss_count
                 END), 0) AS INT4) AS high_epss_count,
-    COALESCE(MIN(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.top_risk_tier
-            END), 'monitor'::risk_tier) AS top_risk_tier,
+    MIN(
+        CASE WHEN fw.workload_ready
+            AND i.state = 'updated' THEN
+            v.top_risk_tier
+        END) AS top_risk_tier,
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN
@@ -431,15 +431,15 @@ SELECT
     SUM(medium)::INT4 AS medium,
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
-    SUM(act_now)::INT4 AS act_now,
-    SUM(high_risk)::INT4 AS high_risk,
-    SUM(elevated_risk)::INT4 AS elevated_risk,
-    SUM(monitor)::INT4 AS monitor,
-    SUM(exploitable)::INT4 AS exploitable,
-    SUM(kev_count)::INT4 AS kev_count,
-    SUM(ransomware_count)::INT4 AS ransomware_count,
-    SUM(high_epss_count)::INT4 AS high_epss_count,
-    COALESCE(MIN(top_risk_tier), 'monitor'::risk_tier) AS top_risk_tier,
+    COALESCE(SUM(act_now), 0)::INT4 AS act_now,
+    COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
+    COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
+    COALESCE(SUM(monitor), 0)::INT4 AS monitor,
+    COALESCE(SUM(exploitable), 0)::INT4 AS exploitable,
+    COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
+    COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
+    COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
+    MIN(top_risk_tier) AS top_risk_tier,
     SUM(total)::INT4 AS total,
     SUM(risk_score)::INT4 AS risk_score
 FROM
@@ -455,8 +455,8 @@ WHERE
         OR workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR workload_name = sqlc.narg('workload_name')::TEXT)
-    AND (sqlc.narg('risk_tier')::risk_tier IS NULL
-        OR top_risk_tier = sqlc.narg('risk_tier')::risk_tier)
+    AND (sqlc.narg('risk_tier')::INT IS NULL
+        OR top_risk_tier = sqlc.narg('risk_tier')::INT)
 GROUP BY
     snapshot_date
 ORDER BY
@@ -570,7 +570,7 @@ WITH latest_summary_per_day AS (
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
                 vs.top_risk_tier
-            END, 'monitor'::risk_tier) AS top_risk_tier,
+            END) AS top_risk_tier,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN

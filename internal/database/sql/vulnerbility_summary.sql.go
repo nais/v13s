@@ -159,8 +159,8 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($3::TEXT[]))
     AND ($4::TEXT IS NULL
         OR w.name = $4::TEXT)
-    AND ($5::risk_tier IS NULL
-        OR v.top_risk_tier = $5::risk_tier))
+    AND ($5::INT IS NULL
+        OR v.top_risk_tier = $5::INT))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
     CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready
@@ -233,11 +233,11 @@ SELECT
                     AND i.state = 'updated' THEN
                     v.high_epss_count
                 END), 0) AS INT4) AS high_epss_count,
-    COALESCE(MIN(
-            CASE WHEN fw.workload_ready
-                AND i.state = 'updated' THEN
-                v.top_risk_tier
-            END), 'monitor'::risk_tier) AS top_risk_tier,
+    MIN(
+        CASE WHEN fw.workload_ready
+            AND i.state = 'updated' THEN
+            v.top_risk_tier
+        END) AS top_risk_tier,
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN
@@ -262,7 +262,7 @@ type GetVulnerabilitySummaryParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
-	RiskTier      *RiskTier
+	RiskTier      *int32
 }
 
 type GetVulnerabilitySummaryRow struct {
@@ -370,15 +370,15 @@ SELECT
     SUM(medium)::INT4 AS medium,
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
-    SUM(act_now)::INT4 AS act_now,
-    SUM(high_risk)::INT4 AS high_risk,
-    SUM(elevated_risk)::INT4 AS elevated_risk,
-    SUM(monitor)::INT4 AS monitor,
-    SUM(exploitable)::INT4 AS exploitable,
-    SUM(kev_count)::INT4 AS kev_count,
-    SUM(ransomware_count)::INT4 AS ransomware_count,
-    SUM(high_epss_count)::INT4 AS high_epss_count,
-    COALESCE(MIN(top_risk_tier), 'monitor'::risk_tier) AS top_risk_tier,
+    COALESCE(SUM(act_now), 0)::INT4 AS act_now,
+    COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
+    COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
+    COALESCE(SUM(monitor), 0)::INT4 AS monitor,
+    COALESCE(SUM(exploitable), 0)::INT4 AS exploitable,
+    COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
+    COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
+    COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
+    MIN(top_risk_tier) AS top_risk_tier,
     SUM(total)::INT4 AS total,
     SUM(risk_score)::INT4 AS risk_score
 FROM
@@ -394,8 +394,8 @@ WHERE
         OR workload_type = ANY ($4::TEXT[]))
     AND ($5::TEXT IS NULL
         OR workload_name = $5::TEXT)
-    AND ($6::risk_tier IS NULL
-        OR top_risk_tier = $6::risk_tier)
+    AND ($6::INT IS NULL
+        OR top_risk_tier = $6::INT)
 GROUP BY
     snapshot_date
 ORDER BY
@@ -408,7 +408,7 @@ type GetVulnerabilitySummaryTimeSeriesParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
-	RiskTier      *RiskTier
+	RiskTier      *int32
 }
 
 type GetVulnerabilitySummaryTimeSeriesRow struct {
@@ -530,15 +530,15 @@ type ListUpdatedWorkloadsWithSummariesRow struct {
 	Medium          int32
 	Low             int32
 	Unassigned      int32
-	ActNow          int32
-	HighRisk        int32
-	ElevatedRisk    int32
-	Monitor         int32
-	Exploitable     int32
-	KevCount        int32
-	RansomwareCount int32
-	HighEpssCount   int32
-	TopRiskTier     RiskTier
+	ActNow          *int32
+	HighRisk        *int32
+	ElevatedRisk    *int32
+	Monitor         *int32
+	Exploitable     *int32
+	KevCount        *int32
+	RansomwareCount *int32
+	HighEpssCount   *int32
+	TopRiskTier     *int32
 	RiskScore       int32
 }
 
@@ -680,7 +680,7 @@ vulnerability_data AS (
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
                 v.top_risk_tier
-            END, 'monitor'::risk_tier) AS top_risk_tier,
+            END) AS top_risk_tier,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
@@ -715,8 +715,8 @@ vulnerability_data AS (
         OR v.image_name = $9::TEXT)
     AND ($10::TEXT IS NULL
         OR v.image_tag = $10::TEXT)
-    AND ($11::risk_tier IS NULL
-        OR v.top_risk_tier = $11::risk_tier)
+    AND ($11::INT IS NULL
+        OR v.top_risk_tier = $11::INT)
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
@@ -833,10 +833,10 @@ ORDER BY
     END DESC,
     CASE WHEN $1 = 'top_risk_tier_asc' THEN
         top_risk_tier
-    END ASC,
+    END ASC NULLS LAST,
     CASE WHEN $1 = 'top_risk_tier_desc' THEN
         top_risk_tier
-    END DESC,
+    END DESC NULLS LAST,
     summary_updated_at ASC,
     id DESC
 LIMIT $3
@@ -854,7 +854,7 @@ type ListVulnerabilitySummariesParams struct {
 	Since         pgtype.Timestamptz
 	ImageName     *string
 	ImageTag      *string
-	RiskTier      *RiskTier
+	RiskTier      *int32
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -1046,7 +1046,7 @@ WITH latest_summary_per_day AS (
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
                 vs.top_risk_tier
-            END, 'monitor'::risk_tier) AS top_risk_tier,
+            END) AS top_risk_tier,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN

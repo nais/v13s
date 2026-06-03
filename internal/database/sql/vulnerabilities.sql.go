@@ -192,7 +192,7 @@ func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (s
 
 const getCve = `-- name: GetCve :one
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority
 FROM
     cve
 WHERE
@@ -216,6 +216,7 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.EpssPercentile,
 		&i.HasKevEntry,
 		&i.KnownRansomwareUse,
+		&i.Priority,
 	)
 	return &i, err
 }
@@ -568,7 +569,7 @@ const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :m
 SELECT
     sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by,
     v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, v.fix_version,
-    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use,
+    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
     w.cluster,
     w.namespace
 FROM
@@ -680,6 +681,7 @@ type ListSuppressedVulnerabilitiesRow struct {
 	EpssPercentile     *float64
 	HasKevEntry        bool
 	KnownRansomwareUse bool
+	Priority           *int32
 	Cluster            string
 	Namespace          string
 }
@@ -738,6 +740,7 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.EpssPercentile,
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
+			&i.Priority,
 			&i.Cluster,
 			&i.Namespace,
 		); err != nil {
@@ -824,7 +827,8 @@ SELECT
     c.epss_percentile,
     c.has_kev_entry,
     c.known_ransomware_use,
-    v.fix_version
+    v.fix_version,
+    c.priority
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -873,6 +877,12 @@ AND (
 AND ($7::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
+    CASE WHEN $8 = 'priority_asc' THEN
+        c.priority
+    END ASC NULLS LAST,
+    CASE WHEN $8 = 'priority_desc' THEN
+        c.priority
+    END DESC NULLS LAST,
     CASE WHEN $8 = 'severity_asc' THEN
         c.severity
     END ASC,
@@ -958,6 +968,7 @@ type ListVulnerabilitiesRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	FixVersion         *string
+	Priority           *int32
 }
 
 func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error) {
@@ -1011,6 +1022,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.FixVersion,
+			&i.Priority,
 		); err != nil {
 			return nil, err
 		}
@@ -1056,6 +1068,7 @@ resolved_vulnerabilities AS (
         c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
+        c.priority,
         v.fix_version
     FROM
         image_all_vulns v
@@ -1067,7 +1080,7 @@ distinct_image_vulnerabilities AS (
         v.image_tag,
         v.package,
         v.cve_id)
-        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.epss_score, v.epss_percentile, v.has_kev_entry, v.known_ransomware_use, v.fix_version,
+        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.epss_score, v.epss_percentile, v.has_kev_entry, v.known_ransomware_use, v.priority, v.fix_version,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
         sv.reason,
         sv.reason_text,
@@ -1112,10 +1125,17 @@ SELECT
     suppressed_by,
     suppressed_at,
     fix_version,
+    priority,
     COUNT(id) OVER () AS total_count
 FROM
     distinct_image_vulnerabilities
 ORDER BY
+    CASE WHEN $1 = 'priority_asc' THEN
+        priority
+    END ASC NULLS LAST,
+    CASE WHEN $1 = 'priority_desc' THEN
+        priority
+    END DESC NULLS LAST,
     CASE WHEN $1 = 'severity_asc' THEN
         severity
     END ASC,
@@ -1209,6 +1229,7 @@ type ListVulnerabilitiesForImageRow struct {
 	SuppressedBy       *string
 	SuppressedAt       pgtype.Timestamptz
 	FixVersion         *string
+	Priority           *int32
 	TotalCount         int64
 }
 
@@ -1258,6 +1279,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.FixVersion,
+			&i.Priority,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -1303,6 +1325,7 @@ SELECT
     c.has_kev_entry,
     c.known_ransomware_use,
     v.fix_version,
+    c.priority,
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
@@ -1360,6 +1383,12 @@ WHERE
     AND ($11::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
+    CASE WHEN $12 = 'priority_asc' THEN
+        c.priority
+    END ASC NULLS LAST,
+    CASE WHEN $12 = 'priority_desc' THEN
+        c.priority
+    END DESC NULLS LAST,
     CASE WHEN $12 = 'cvss_score_desc' THEN
         CASE WHEN c.cvss_score = 0
             OR c.cvss_score IS NULL THEN
@@ -1452,6 +1481,7 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	FixVersion         *string
+	Priority           *int32
 	TotalCount         int64
 }
 
@@ -1511,6 +1541,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.FixVersion,
+			&i.Priority,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -1649,18 +1680,18 @@ COUNT(*) FILTER (WHERE has_kev_entry = TRUE
 COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
 COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
 COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-COALESCE(MIN(
-        CASE WHEN has_kev_entry = TRUE THEN
-            0
-        WHEN known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.90 THEN
-            1
-        WHEN severity IN (0, 1)
-            AND COALESCE(epss_percentile, 0) >= 0.50 THEN
-            2
-        ELSE
-            3
-        END), 3) AS top_risk_tier
+MIN(
+    CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END) AS top_risk_tier
 FROM
     unsuppressed_vulnerabilities
 ),
@@ -1860,5 +1891,27 @@ func (q *Queries) SuppressVulnerability(ctx context.Context, arg SuppressVulnera
 		arg.Reason,
 		arg.ReasonText,
 	)
+	return err
+}
+
+const updateCvePriority = `-- name: UpdateCvePriority :exec
+UPDATE
+    cve
+SET
+    priority = CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END
+`
+
+func (q *Queries) UpdateCvePriority(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, updateCvePriority)
 	return err
 }
