@@ -315,8 +315,6 @@ WITH filtered_workloads AS (
         w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
     FROM
         workloads w
-        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
-            AND w.image_tag = v.image_tag
     WHERE (sqlc.narg('cluster')::TEXT IS NULL
         OR w.cluster = sqlc.narg('cluster')::TEXT)
     AND (sqlc.narg('namespace')::TEXT IS NULL
@@ -326,7 +324,15 @@ WITH filtered_workloads AS (
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
     AND (sqlc.narg('risk_tier')::INT IS NULL
-        OR v.top_risk_tier = sqlc.narg('risk_tier')::INT))
+        OR EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerability_summary v
+            WHERE
+                v.image_name = w.image_name
+                AND v.image_tag = w.image_tag
+                AND v.top_risk_tier = sqlc.narg('risk_tier')::INT)))
 SELECT
     CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
     CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready

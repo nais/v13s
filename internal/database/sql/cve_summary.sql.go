@@ -111,6 +111,12 @@ ORDER BY
     CASE WHEN $1 = 'severity_desc' THEN
         severity
     END DESC,
+    CASE WHEN $1 = 'priority_asc' THEN
+        priority
+    END ASC NULLS LAST,
+    CASE WHEN $1 = 'priority_desc' THEN
+        priority
+    END DESC NULLS LAST,
     cve_id ASC
 LIMIT $3
     OFFSET $2
