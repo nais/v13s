@@ -393,12 +393,12 @@ func toProtoRiskTier(riskTier any) vulnerabilities.RiskTier {
 		}
 		return mapIntRiskTier(*v)
 	case int64:
-		return mapIntRiskTier(int32(v))
+		return mapIntRiskTier(int32(v)) //#nosec G115 -- risk tier values are 1-4, overflow impossible
 	case *int64:
 		if v == nil {
 			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
 		}
-		return mapIntRiskTier(int32(*v))
+		return mapIntRiskTier(int32(*v)) //#nosec G115 -- risk tier values are 1-4, overflow impossible
 	default:
 		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
 	}
