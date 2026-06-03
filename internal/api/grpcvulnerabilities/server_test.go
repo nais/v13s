@@ -670,7 +670,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	const (
@@ -678,8 +678,20 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		imageTag  = "v1.0"
 	)
 
+	// Promote the seeded CVE to HIGH_RISK tier so tier-count assertions hold.
+	// seedDb seeds CVEs with no EPSS; we set it here for this specific test.
+	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92, epss_score = 0.95`)
+	require.NoError(t, err)
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+	err = db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+
 	// Promote image to READY so VulnerabilitySummary is populated.
-	err := db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+	err = db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
 		State:     sql.WorkloadStateUpdated,
 		ImageName: imageName,
 		ImageTag:  imageTag,
@@ -1314,25 +1326,42 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		vulnsPerWorkload:      4,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	// Promote all seeded CVEs to HIGH_RISK tier (epss_percentile >= 0.90).
+	// seedDb does not set EPSS by default so without this the tier would be MONITOR.
+	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92, epss_score = 0.95`)
+	require.NoError(t, err)
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
+		imgName := fmt.Sprintf("image-cluster-1-namespace-1-workload-%d", wl)
+		imgTag := fmt.Sprintf("v%d.0", wl)
+		err = db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: imgName,
+			ImageTag:  imgTag,
+		})
+		require.NoError(t, err)
+	}
+
+	// 4 workloads × 4 vulns each = 16 total vulnerabilities, all HIGH_RISK.
 	t.Run("get vulnerability summary for every cluster", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummary(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Critical)
-		assert.Equal(t, int32(4), resp.GetVulnerabilitySummary().High)
+		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().High)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetActNow())
-		assert.Equal(t, int32(4), resp.GetVulnerabilitySummary().GetHighRisk())
+		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
-		assert.Equal(t, int32(4), resp.GetVulnerabilitySummary().GetExploitable())
+		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetExploitable())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
-		assert.Equal(t, int32(4), resp.GetVulnerabilitySummary().GetHighEpssCount())
+		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighEpssCount())
 		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, resp.GetVulnerabilitySummary().GetTopRiskTier())
 	})
 }
@@ -1345,7 +1374,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	const (
@@ -1353,8 +1382,20 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		imageTag  = "v1.0"
 	)
 
+	// Promote the seeded CVE to HIGH_RISK tier so tier-count assertions hold.
+	// seedDb seeds CVEs with no EPSS; we set it here for this specific test.
+	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92, epss_score = 0.95`)
+	require.NoError(t, err)
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+	err = db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+
 	// Promote to READY so VulnerabilitySummary is non-nil.
-	err := db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+	err = db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
 		State:     sql.WorkloadStateUpdated,
 		ImageName: imageName,
 		ImageTag:  imageTag,
@@ -1389,6 +1430,45 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, resp.GetVulnerabilitySummary().GetTopRiskTier())
 
 		assert.Len(t, resp.GetWorkloadRef(), 1, "workload_ref must be populated")
+	})
+
+	t.Run("image with no findings returns top_risk_tier UNSPECIFIED", func(t *testing.T) {
+		// Registers a fresh image+workload with no vulnerability findings.
+		// RecalculateVulnerabilitySummary on an empty image produces a summary
+		// with all-zero counts; top_risk_tier must be RISK_TIER_UNSPECIFIED (not MONITOR).
+		// This exercises the NULL→UNSPECIFIED fix from Task 001.
+		const (
+			emptyImage = "image-no-vulns"
+			emptyTag   = "v9.0"
+		)
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+			Name: emptyImage, Tag: emptyTag, Metadata: map[string]string{},
+		}))
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: "workload-no-vulns", WorkloadType: "app", Namespace: "namespace-1",
+			Cluster: "cluster-1", ImageName: emptyImage, ImageTag: emptyTag,
+		})
+		require.NoError(t, err)
+		require.NoError(t, db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+			State: sql.WorkloadStateUpdated, ImageName: emptyImage, ImageTag: emptyTag,
+		}))
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State: sql.ImageStateUpdated, Name: emptyImage, Tag: emptyTag,
+		})
+		require.NoError(t, err)
+		// Create an all-zero summary row (no vulns → top_risk_tier = NULL in DB).
+		_, err = db.CreateVulnerabilitySummary(ctx, sql.CreateVulnerabilitySummaryParams{
+			ImageName: emptyImage, ImageTag: emptyTag,
+		})
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, emptyImage, emptyTag)
+		require.NoError(t, err)
+		require.NotNil(t, resp.GetVulnerabilitySummary(),
+			"READY image with zero-count summary must have a non-nil VulnerabilitySummary")
+		assert.Equal(t, vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED,
+			resp.GetVulnerabilitySummary().GetTopRiskTier(),
+			"image with no findings must return RISK_TIER_UNSPECIFIED, not MONITOR")
 	})
 }
 
@@ -2664,7 +2744,6 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 
 		cweParams := make([]sql.BatchUpsertCveParams, 0)
 		vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
-		sumParams := make([]sql.BatchUpsertVulnerabilitySummaryParams, 0)
 		for _, f := range workload.Vulnz {
 			v := f.vuln
 			cve := f.cve
@@ -2689,15 +2768,6 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 					Valid: true,
 				},
 			})
-			sumParams = append(sumParams, sql.BatchUpsertVulnerabilitySummaryParams{
-				ImageName:  v.ImageName,
-				ImageTag:   v.ImageTag,
-				Critical:   0,
-				High:       1,
-				Medium:     0,
-				Low:        0,
-				Unassigned: 0,
-			})
 		}
 
 		db.BatchUpsertCve(ctx, cweParams).Exec(func(i int, err error) {
@@ -2711,12 +2781,23 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 				require.NoError(t, err)
 			}
 		})
+	}
 
-		db.BatchUpsertVulnerabilitySummary(ctx, sumParams).Exec(func(i int, err error) {
-			if err != nil {
-				require.NoError(t, err)
-			}
+	// Set cve.priority based on KEV/EPSS/severity so that RecalculateVulnerabilitySummary
+	// can populate tier counts correctly.
+	err := db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+
+	// Recalculate per-image summary (tier counts + severity counts) for every workload.
+	for _, workload := range workloads {
+		if len(workload.Vulnz) == 0 {
+			continue
+		}
+		err := db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: workload.ImageName,
+			ImageTag:  workload.ImageTag,
 		})
+		require.NoError(t, err)
 	}
 
 	return nil
@@ -3191,5 +3272,157 @@ func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
 				}
 			})
 		}
+	})
+}
+
+// TestServer_EnrichedCveFields_Priority verifies that UpdateCvePriority correctly classifies
+// CVEs into the four risk tiers and that RecalculateVulnerabilitySummary reflects those tiers
+// in the per-image vulnerability summary.
+//
+// Ported from feat/cve-priority (#308) and adapted for #320's RiskTier-based summary model
+// (no Priority proto field on Cve in this branch; tiers are expressed via summary counts).
+func TestServer_EnrichedCveFields_Priority(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      0,
+	}
+
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const (
+		imageName = "image-cluster-1-namespace-1-workload-1"
+		imageTag  = "v1.0"
+	)
+
+	cveActNow := "CVE-PRIORITY-ACT-NOW"
+	cveHigh := "CVE-PRIORITY-HIGH"
+	cveElevated := "CVE-PRIORITY-ELEVATED"
+	cveMonitor := "CVE-PRIORITY-MONITOR"
+
+	// Seed four CVEs — one per risk tier.
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		// ACT_NOW: has_kev_entry = true (set via BulkUpdateKevData below)
+		{
+			CveID: cveActNow, CveTitle: "Act Now", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
+			EpssScore: new(0.10), EpssPercentile: new(0.80),
+		},
+		// HIGH_RISK: epss_percentile >= 0.90, no KEV
+		{
+			CveID: cveHigh, CveTitle: "High", CveDesc: "d", CveLink: "l", Severity: 1, Refs: map[string]string{},
+			EpssScore: new(0.95), EpssPercentile: new(0.95),
+		},
+		// ELEVATED_RISK: severity CRITICAL (0), epss_percentile >= 0.50 but < 0.90, no KEV
+		{
+			CveID: cveElevated, CveTitle: "Elevated", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
+			EpssScore: new(0.40), EpssPercentile: new(0.65),
+		},
+		// MONITOR: severity MEDIUM (2), low EPSS — nothing matches higher tiers
+		{
+			CveID: cveMonitor, CveTitle: "Monitor", CveDesc: "d", CveLink: "l", Severity: 2, Refs: map[string]string{},
+			EpssScore: new(0.01), EpssPercentile: new(0.05),
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+		CveIds:             []string{cveActNow},
+		KnownRansomwareUse: []bool{false},
+	})
+	require.NoError(t, err)
+
+	// Priority must be computed before RecalculateVulnerabilitySummary uses tier data.
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+
+	// Attach all four CVEs to the existing workload image.
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-act-now", CveID: cveActNow, Source: "test", LastSeverity: 0,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-high", CveID: cveHigh, Source: "test", LastSeverity: 1,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-elevated", CveID: cveElevated, Source: "test", LastSeverity: 0,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-monitor", CveID: cveMonitor, Source: "test", LastSeverity: 2,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	err = db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+
+	// Promote image to READY so GetVulnerabilitySummaryForImage returns it.
+	err = db.UpdateWorkloadStateByImage(ctx, sql.UpdateWorkloadStateByImageParams{
+		State:     sql.WorkloadStateUpdated,
+		ImageName: imageName,
+		ImageTag:  imageTag,
+	})
+	require.NoError(t, err)
+	_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		State:            sql.ImageStateUpdated,
+		ReadyForResyncAt: pgtype.Timestamptz{Valid: false},
+		Name:             imageName,
+		Tag:              imageTag,
+	})
+	require.NoError(t, err)
+
+	t.Run("tier counts reflect all four priority classes", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+
+		assert.Equal(t, int32(1), sum.GetActNow(), "act_now must be 1 (KEV CVE)")
+		assert.Equal(t, int32(1), sum.GetHighRisk(), "high_risk must be 1 (high-EPSS CVE)")
+		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical+mid-EPSS CVE)")
+		assert.Equal(t, int32(1), sum.GetMonitor(), "monitor must be 1 (low-risk CVE)")
+		assert.Equal(t, vulnerabilities.RiskTier_ACT_NOW, sum.GetTopRiskTier(), "top tier must be ACT_NOW")
+	})
+
+	t.Run("exploitable count includes KEV and high-EPSS CVEs", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
+		require.NoError(t, err)
+		sum := resp.GetVulnerabilitySummary()
+		require.NotNil(t, sum)
+		// exploitable = has_kev OR ransomware OR epss>=0.90 => cveActNow + cveHigh = 2
+		assert.Equal(t, int32(2), sum.GetExploitable())
+		assert.Equal(t, int32(1), sum.GetKevCount())
+		assert.Equal(t, int32(1), sum.GetHighEpssCount())
+	})
+
+	t.Run("priority ordering: ListVulnerabilitiesForImage order_by=priority_asc", func(t *testing.T) {
+		// Verify that per-CVE ordering via priority_asc returns
+		// ACT_NOW → HIGH_RISK → ELEVATED_RISK → MONITOR.
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag,
+			vulnerabilities.Order(vulnerabilities.OrderByPriority, vulnerabilities.Direction_ASC),
+			vulnerabilities.Limit(10),
+		)
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 4, "expected exactly 4 CVEs for the image")
+
+		gotIDs := make([]string, len(resp.Nodes))
+		for i, v := range resp.Nodes {
+			gotIDs[i] = v.GetCve().GetId()
+		}
+		assert.Equal(t,
+			[]string{cveActNow, cveHigh, cveElevated, cveMonitor},
+			gotIDs,
+			"CVEs must be returned in priority order: ACT_NOW → HIGH_RISK → ELEVATED_RISK → MONITOR",
+		)
 	})
 }

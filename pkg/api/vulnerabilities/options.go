@@ -41,6 +41,7 @@ const (
 	OrderByMonitor           OrderByField = "monitor"
 	OrderByNamespace         OrderByField = "namespace"
 	OrderByPackage           OrderByField = "package"
+	OrderByPriority          OrderByField = "priority"
 	OrderByRansomwareCount   OrderByField = "ransomware_count"
 	OrderByReason            OrderByField = "reason"
 	OrderByRiskScore         OrderByField = "risk_score"
@@ -73,6 +74,7 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderByMonitor:           {},
 	OrderByNamespace:         {},
 	OrderByPackage:           {},
+	OrderByPriority:          {},
 	OrderByRansomwareCount:   {},
 	OrderByReason:            {},
 	OrderByRiskScore:         {},

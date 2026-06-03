@@ -340,14 +340,14 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			RiskScore:       riskScore,
 			LastUpdated:     timestamppb.New(summary.UpdatedAt.Time),
 			HasSbom:         true,
-			ActNow:          summary.ActNow,
-			HighRisk:        summary.HighRisk,
-			ElevatedRisk:    summary.ElevatedRisk,
-			Monitor:         summary.Monitor,
-			Exploitable:     summary.Exploitable,
-			KevCount:        summary.KevCount,
-			RansomwareCount: summary.RansomwareCount,
-			HighEpssCount:   summary.HighEpssCount,
+			ActNow:          derefInt32(summary.ActNow),
+			HighRisk:        derefInt32(summary.HighRisk),
+			ElevatedRisk:    derefInt32(summary.ElevatedRisk),
+			Monitor:         derefInt32(summary.Monitor),
+			Exploitable:     derefInt32(summary.Exploitable),
+			KevCount:        derefInt32(summary.KevCount),
+			RansomwareCount: derefInt32(summary.RansomwareCount),
+			HighEpssCount:   derefInt32(summary.HighEpssCount),
 			TopRiskTier:     toProtoRiskTier(summary.TopRiskTier),
 		}
 		if staleTag != "" {
@@ -362,56 +362,67 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}, nil
 }
 
-func toSQLRiskTierFilter(filter *vulnerabilities.Filter) *sql.RiskTier {
+func toSQLRiskTierFilter(filter *vulnerabilities.Filter) *int32 {
 	if filter == nil || filter.RiskTier == nil {
 		return nil
 	}
 
-	riskTier := filter.GetRiskTier()
-
-	switch riskTier {
+	var v int32
+	switch filter.GetRiskTier() {
 	case vulnerabilities.RiskTier_ACT_NOW:
-		v := sql.RiskTierActNow
-		return &v
+		v = 1
 	case vulnerabilities.RiskTier_HIGH_RISK:
-		v := sql.RiskTierHighRisk
-		return &v
+		v = 2
 	case vulnerabilities.RiskTier_ELEVATED_RISK:
-		v := sql.RiskTierElevatedRisk
-		return &v
+		v = 3
 	case vulnerabilities.RiskTier_MONITOR:
-		v := sql.RiskTierMonitor
-		return &v
+		v = 4
 	default:
 		return nil
 	}
+	return &v
 }
 
 func toProtoRiskTier(riskTier any) vulnerabilities.RiskTier {
 	switch v := riskTier.(type) {
-	case sql.RiskTier:
-		return mapSQLRiskTier(v)
-	case string:
-		return mapSQLRiskTier(sql.RiskTier(v))
-	case []byte:
-		return mapSQLRiskTier(sql.RiskTier(v))
+	case int32:
+		return mapIntRiskTier(v)
+	case *int32:
+		if v == nil {
+			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+		}
+		return mapIntRiskTier(*v)
+	case int64:
+		return mapIntRiskTier(int32(v))
+	case *int64:
+		if v == nil {
+			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+		}
+		return mapIntRiskTier(int32(*v))
 	default:
-		return vulnerabilities.RiskTier_MONITOR
+		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
 	}
 }
 
-func mapSQLRiskTier(riskTier sql.RiskTier) vulnerabilities.RiskTier {
-	switch riskTier {
-	case sql.RiskTierActNow:
+func derefInt32(p *int32) int32 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func mapIntRiskTier(v int32) vulnerabilities.RiskTier {
+	switch v {
+	case 1:
 		return vulnerabilities.RiskTier_ACT_NOW
-	case sql.RiskTierHighRisk:
+	case 2:
 		return vulnerabilities.RiskTier_HIGH_RISK
-	case sql.RiskTierElevatedRisk:
+	case 3:
 		return vulnerabilities.RiskTier_ELEVATED_RISK
-	case sql.RiskTierMonitor:
+	case 4:
 		return vulnerabilities.RiskTier_MONITOR
 	default:
-		return vulnerabilities.RiskTier_MONITOR
+		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
 	}
 }
 

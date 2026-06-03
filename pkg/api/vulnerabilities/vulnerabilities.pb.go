@@ -186,25 +186,28 @@ func (Severity) EnumDescriptor() ([]byte, []int) {
 type RiskTier int32
 
 const (
-	RiskTier_ACT_NOW       RiskTier = 0
-	RiskTier_HIGH_RISK     RiskTier = 1
-	RiskTier_ELEVATED_RISK RiskTier = 2
-	RiskTier_MONITOR       RiskTier = 3
+	RiskTier_RISK_TIER_UNSPECIFIED RiskTier = 0
+	RiskTier_ACT_NOW               RiskTier = 1
+	RiskTier_HIGH_RISK             RiskTier = 2
+	RiskTier_ELEVATED_RISK         RiskTier = 3
+	RiskTier_MONITOR               RiskTier = 4
 )
 
 // Enum value maps for RiskTier.
 var (
 	RiskTier_name = map[int32]string{
-		0: "ACT_NOW",
-		1: "HIGH_RISK",
-		2: "ELEVATED_RISK",
-		3: "MONITOR",
+		0: "RISK_TIER_UNSPECIFIED",
+		1: "ACT_NOW",
+		2: "HIGH_RISK",
+		3: "ELEVATED_RISK",
+		4: "MONITOR",
 	}
 	RiskTier_value = map[string]int32{
-		"ACT_NOW":       0,
-		"HIGH_RISK":     1,
-		"ELEVATED_RISK": 2,
-		"MONITOR":       3,
+		"RISK_TIER_UNSPECIFIED": 0,
+		"ACT_NOW":               1,
+		"HIGH_RISK":             2,
+		"ELEVATED_RISK":         3,
+		"MONITOR":               4,
 	}
 )
 
@@ -433,7 +436,7 @@ func (x *Filter) GetRiskTier() RiskTier {
 	if x != nil && x.RiskTier != nil {
 		return *x.RiskTier
 	}
-	return RiskTier_ACT_NOW
+	return RiskTier_RISK_TIER_UNSPECIFIED
 }
 
 type OrderBy struct {
@@ -757,7 +760,7 @@ func (x *Summary) GetTopRiskTier() RiskTier {
 	if x != nil {
 		return x.TopRiskTier
 	}
-	return RiskTier_ACT_NOW
+	return RiskTier_RISK_TIER_UNSPECIFIED
 }
 
 type Cve struct {
@@ -3691,7 +3694,7 @@ func (x *VulnerabilitySummaryPoint) GetTopRiskTier() RiskTier {
 	if x != nil {
 		return x.TopRiskTier
 	}
-	return RiskTier_ACT_NOW
+	return RiskTier_RISK_TIER_UNSPECIFIED
 }
 
 type GetVulnerabilityByIdRequest struct {
@@ -4797,12 +4800,13 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x06MEDIUM\x10\x02\x12\a\n" +
 	"\x03LOW\x10\x03\x12\x0e\n" +
 	"\n" +
-	"UNASSIGNED\x10\x04*F\n" +
-	"\bRiskTier\x12\v\n" +
-	"\aACT_NOW\x10\x00\x12\r\n" +
-	"\tHIGH_RISK\x10\x01\x12\x11\n" +
-	"\rELEVATED_RISK\x10\x02\x12\v\n" +
-	"\aMONITOR\x10\x03*$\n" +
+	"UNASSIGNED\x10\x04*a\n" +
+	"\bRiskTier\x12\x19\n" +
+	"\x15RISK_TIER_UNSPECIFIED\x10\x00\x12\v\n" +
+	"\aACT_NOW\x10\x01\x12\r\n" +
+	"\tHIGH_RISK\x10\x02\x12\x11\n" +
+	"\rELEVATED_RISK\x10\x03\x12\v\n" +
+	"\aMONITOR\x10\x04*$\n" +
 	"\tSinceType\x12\f\n" +
 	"\bSNAPSHOT\x10\x00\x12\t\n" +
 	"\x05FIXED\x10\x01*\x8d\x01\n" +

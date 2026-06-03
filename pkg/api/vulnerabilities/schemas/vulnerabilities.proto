@@ -38,10 +38,11 @@ enum Severity {
 }
 
 enum RiskTier {
-  ACT_NOW = 0;
-  HIGH_RISK = 1;
-  ELEVATED_RISK = 2;
-  MONITOR = 3;
+  RISK_TIER_UNSPECIFIED = 0;
+  ACT_NOW = 1;
+  HIGH_RISK = 2;
+  ELEVATED_RISK = 3;
+  MONITOR = 4;
 }
 
 enum SinceType {

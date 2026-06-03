@@ -343,6 +343,10 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
 	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
 
+	if err := u.querier.UpdateCvePriority(ctx); err != nil {
+		u.log.WithError(err).Error("update cve priority")
+	}
+
 	for _, i := range images {
 		if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 			ImageName: i.ImageName,
