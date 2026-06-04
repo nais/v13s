@@ -28,6 +28,7 @@ const (
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 7:00 AM CEST (30 min later)
 	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
 	SyncOsvCronInterval                                = "0 7 * * *"    // every day at 9:00 AM CEST
+	RekeySuppressedAliasesCronInterval                 = "0 8 * * *"    // every day at 10:00 AM CEST
 	ImageMarkAge                                       = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
@@ -145,6 +146,14 @@ func (u *Updater) Run(ctx context.Context) {
 	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, "sync OSV fix versions", u.log, func() {
 		if err := u.osvFetcher.Sync(ctx); err != nil {
 			u.log.WithError(err).Error("failed to sync OSV fix versions")
+		}
+	})
+
+	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, "rekey suppressed aliases to canonical", u.log, func() {
+		if rowsAffected, err := u.querier.RekeySuppressedAliasesToCanonical(ctx); err != nil {
+			u.log.WithError(err).Error("failed to rekey suppressed aliases to canonical")
+		} else if rowsAffected > 0 {
+			u.log.WithField("rows", rowsAffected).Info("rekeyed suppressed aliases to canonical")
 		}
 	})
 }
