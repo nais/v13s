@@ -478,25 +478,37 @@ func TestUpdater(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		_, err = pool.Exec(ctx, `
-			INSERT INTO cve (cve_id, cve_title, cve_desc, cve_link, severity, refs)
-			VALUES ($1, $2, $3, $4, $5, '{}'::jsonb)
-			ON CONFLICT (cve_id) DO NOTHING
-		`, canonicalID, "title", "description", "https://nvd.nist.gov/vuln/detail/CVE-2026-22751", int32(0))
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+			CveID:    canonicalID,
+			CveTitle: "title",
+			CveDesc:  "description",
+			CveLink:  "https://nvd.nist.gov/vuln/detail/CVE-2026-22751",
+			Severity: int32(0),
+			Refs:     typeext.MapStringString{},
+		}}).Exec(func(_ int, err error) {
+			require.NoError(t, err)
+		})
+
+		db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
+			Alias:          ghsaID,
+			CanonicalCveID: canonicalID,
+		}}).Exec(func(_ int, err error) {
+			require.NoError(t, err)
+		})
+
+		err = db.UpdateImage(ctx, sql.UpdateImageParams{
+			Metadata: map[string]string{},
+			Name:     project,
+			Tag:      "v1",
+		})
 		require.NoError(t, err)
 
-		_, err = pool.Exec(ctx, `
-			INSERT INTO cve_alias (alias, canonical_cve_id)
-			VALUES ($1, $2)
-			ON CONFLICT (alias) DO UPDATE
-			SET canonical_cve_id = EXCLUDED.canonical_cve_id
-		`, ghsaID, canonicalID)
-		require.NoError(t, err)
-
-		_, err = pool.Exec(ctx, `
-			UPDATE images
-			SET metadata = '{}', ready_for_resync_at = NOW()
-			WHERE state = 'initialized'`)
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			State:            sql.ImageStateInitialized,
+			ReadyForResyncAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+			Name:             project,
+			Tag:              "v1",
+		})
 		require.NoError(t, err)
 
 		findings[project] = []*dependencytrack.Vulnerability{{
@@ -1093,7 +1105,7 @@ func TestBatchUpdateVulnerabilityData_GitHubFindingPromotion(t *testing.T) {
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
 
-	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{})
+	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 	const (
 		imageName    = "test-image"
