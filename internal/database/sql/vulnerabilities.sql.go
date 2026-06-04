@@ -1673,6 +1673,55 @@ func (q *Queries) RecalculateVulnerabilitySummary(ctx context.Context, arg Recal
 	return err
 }
 
+const rekeySuppressedAliasesToCanonical = `-- name: RekeySuppressedAliasesToCanonical :execrows
+INSERT INTO suppressed_vulnerabilities(
+    image_name,
+    package,
+    cve_id,
+    suppressed,
+    suppressed_by,
+    reason,
+    reason_text,
+    created_at,
+    updated_at)
+SELECT
+    sv.image_name,
+    sv.package,
+    ca.canonical_cve_id AS cve_id,
+    sv.suppressed,
+    sv.suppressed_by,
+    sv.reason,
+    sv.reason_text,
+    sv.created_at,
+    NOW()
+FROM
+    suppressed_vulnerabilities sv
+    JOIN cve_alias ca ON ca.alias = sv.cve_id
+WHERE
+    sv.suppressed = TRUE
+    AND ca.alias <> ca.canonical_cve_id
+ON CONFLICT ON CONSTRAINT image_name_package_cve_id
+    DO UPDATE SET
+        suppressed = EXCLUDED.suppressed,
+        suppressed_by = EXCLUDED.suppressed_by,
+        reason = EXCLUDED.reason,
+        reason_text = EXCLUDED.reason_text,
+        updated_at = NOW()
+    WHERE
+        suppressed_vulnerabilities.suppressed IS DISTINCT FROM EXCLUDED.suppressed
+        OR suppressed_vulnerabilities.suppressed_by IS DISTINCT FROM EXCLUDED.suppressed_by
+        OR suppressed_vulnerabilities.reason IS DISTINCT FROM EXCLUDED.reason
+        OR suppressed_vulnerabilities.reason_text IS DISTINCT FROM EXCLUDED.reason_text
+`
+
+func (q *Queries) RekeySuppressedAliasesToCanonical(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, rekeySuppressedAliasesToCanonical)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const suppressVulnerability = `-- name: SuppressVulnerability :exec
 INSERT INTO suppressed_vulnerabilities(
     image_name,

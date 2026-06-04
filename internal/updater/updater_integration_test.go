@@ -451,6 +451,113 @@ func TestUpdater(t *testing.T) {
 		}
 	})
 
+	t.Run("rekeys suppressed GHSA aliases to canonical CVE after alias sync", func(t *testing.T) {
+		err = db.ResetDatabase(ctx)
+		require.NoError(t, err)
+
+		project := "project-1"
+		insertWorkloads(ctx, t, db, []string{project})
+
+		pkg := "pkg:maven/org.springframework.security/spring-security-core@7.0.4"
+		ghsaID := "GHSA-x2wq-9x2f-fhj7"
+		canonicalID := "CVE-2026-22751"
+		t.Cleanup(func() {
+			delete(findings, project)
+			err = db.ResetDatabase(ctx)
+			require.NoError(t, err)
+		})
+
+		err = db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+			ImageName:    project,
+			Package:      pkg,
+			CveID:        ghsaID,
+			Suppressed:   true,
+			SuppressedBy: "integration-test",
+			Reason:       sql.VulnerabilitySuppressReasonInTriage,
+			ReasonText:   "legacy GHSA suppression",
+		})
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx, `
+			INSERT INTO cve (cve_id, cve_title, cve_desc, cve_link, severity, refs)
+			VALUES ($1, $2, $3, $4, $5, '{}'::jsonb)
+			ON CONFLICT (cve_id) DO NOTHING
+		`, canonicalID, "title", "description", "https://nvd.nist.gov/vuln/detail/CVE-2026-22751", int32(0))
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx, `
+			INSERT INTO cve_alias (alias, canonical_cve_id)
+			VALUES ($1, $2)
+			ON CONFLICT (alias) DO UPDATE
+			SET canonical_cve_id = EXCLUDED.canonical_cve_id
+		`, ghsaID, canonicalID)
+		require.NoError(t, err)
+
+		_, err = pool.Exec(ctx, `
+			UPDATE images
+			SET metadata = '{}', ready_for_resync_at = NOW()
+			WHERE state = 'initialized'`)
+		require.NoError(t, err)
+
+		findings[project] = []*dependencytrack.Vulnerability{{
+			Suppressed:    true,
+			LatestVersion: "123",
+			Metadata: &dependencytrack.VulnMetadata{
+				ProjectId:         project,
+				ComponentId:       "component-canonical-1",
+				VulnerabilityUuid: "vuln-canonical-1",
+			},
+			Cve: &dependencytrack.Cve{
+				Id:          canonicalID,
+				Description: "description",
+				Title:       "title",
+				Link:        "https://nvd.nist.gov/vuln/detail/CVE-2026-22751",
+				Severity:    "CRITICAL",
+				References: map[string]string{
+					canonicalID: ghsaID,
+				},
+			},
+			Package: pkg,
+		}}
+
+		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		defer cancel()
+
+		err = u.ResyncImageVulnerabilities(updaterCtx)
+		require.NoError(t, err)
+
+		rekeyed, err := db.RekeySuppressedAliasesToCanonical(ctx)
+		require.NoError(t, err)
+		assert.Greater(t, rekeyed, int64(0))
+
+		suppressedRows, err := db.ListSuppressedVulnerabilitiesForImage(ctx, project)
+		require.NoError(t, err)
+
+		var canonicalRow *sql.SuppressedVulnerability
+		for _, row := range suppressedRows {
+			switch row.CveID {
+			case canonicalID:
+				canonicalRow = row
+			}
+		}
+
+		require.NotNil(t, canonicalRow, "canonical suppression row should exist after rekey")
+		assert.True(t, canonicalRow.Suppressed)
+		assert.Equal(t, "integration-test", canonicalRow.SuppressedBy)
+		assert.Equal(t, "legacy GHSA suppression", canonicalRow.ReasonText)
+
+		var canonicalCount int
+		err = pool.QueryRow(ctx, `
+			SELECT COUNT(*)
+			FROM suppressed_vulnerabilities
+			WHERE image_name = $1
+			  AND package = $2
+			  AND cve_id = $3
+		`, project, pkg, canonicalID).Scan(&canonicalCount)
+		require.NoError(t, err)
+		assert.Equal(t, 1, canonicalCount, "rekey should be idempotent and not duplicate canonical rows")
+	})
+
 	t.Run("images older than threshold should be marked for resync", func(t *testing.T) {
 		err = db.ResetDatabase(ctx)
 		assert.NoError(t, err)
