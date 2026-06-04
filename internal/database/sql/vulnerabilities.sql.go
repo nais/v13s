@@ -1674,9 +1674,6 @@ COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
     OR COALESCE(epss_percentile, 0) >= 0.90
     OR (severity IN (0, 1)
     AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
-COUNT(*) FILTER (WHERE has_kev_entry = TRUE
-    OR known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.90) AS exploitable,
 COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
 COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
 COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
@@ -1709,7 +1706,6 @@ summary AS (
         rtc.high_risk,
         rtc.elevated_risk,
         rtc.monitor,
-        rtc.exploitable,
         rtc.kev_count,
         rtc.ransomware_count,
         rtc.high_epss_count,
@@ -1730,7 +1726,6 @@ INSERT INTO vulnerability_summary(
     high_risk,
     elevated_risk,
     monitor,
-    exploitable,
     kev_count,
     ransomware_count,
     high_epss_count,
@@ -1750,7 +1745,6 @@ SELECT
     high_risk,
     elevated_risk,
     monitor,
-    exploitable,
     kev_count,
     ransomware_count,
     high_epss_count,
@@ -1772,7 +1766,6 @@ ON CONFLICT (image_name,
         high_risk = EXCLUDED.high_risk,
         elevated_risk = EXCLUDED.elevated_risk,
         monitor = EXCLUDED.monitor,
-        exploitable = EXCLUDED.exploitable,
         kev_count = EXCLUDED.kev_count,
         ransomware_count = EXCLUDED.ransomware_count,
         high_epss_count = EXCLUDED.high_epss_count,

@@ -100,7 +100,7 @@ message Summary {
   int32 high_risk = 12;
   int32 elevated_risk = 13;
   int32 monitor = 14;
-  int32 exploitable = 15;
+  reserved 15;
   int32 kev_count = 16;
   int32 ransomware_count = 17;
   int32 high_epss_count = 18;
@@ -407,7 +407,7 @@ message VulnerabilitySummaryPoint {
   int32 high_risk = 11;
   int32 elevated_risk = 12;
   int32 monitor = 13;
-  int32 exploitable = 14;
+  reserved 14;
   int32 kev_count = 15;
   int32 ransomware_count = 16;
   int32 high_epss_count = 17;

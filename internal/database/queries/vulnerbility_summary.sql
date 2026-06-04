@@ -123,11 +123,6 @@ vulnerability_data AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
-                v.exploitable
-            END, 0)::INT4 AS exploitable,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
                 v.kev_count
             END, 0)::INT4 AS kev_count,
         COALESCE(
@@ -271,12 +266,6 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'monitor_desc' THEN
         COALESCE(monitor, -1)
     END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'exploitable_asc' THEN
-        COALESCE(exploitable, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'exploitable_desc' THEN
-        COALESCE(exploitable, -1)
-    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'kev_count_asc' THEN
         COALESCE(kev_count, 999999)
     END ASC,
@@ -388,11 +377,6 @@ SELECT
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN
-                    v.exploitable
-                END), 0) AS INT4) AS exploitable,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
                     v.kev_count
                 END), 0) AS INT4) AS kev_count,
     CAST(COALESCE(SUM(
@@ -441,7 +425,6 @@ SELECT
     COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
     COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
     COALESCE(SUM(monitor), 0)::INT4 AS monitor,
-    COALESCE(SUM(exploitable), 0)::INT4 AS exploitable,
     COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
     COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
     COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
@@ -555,11 +538,6 @@ WITH latest_summary_per_day AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
-                vs.exploitable
-            END, 0) AS exploitable,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND img.state = 'updated' THEN
                 vs.kev_count
             END, 0) AS kev_count,
         COALESCE(
@@ -611,7 +589,6 @@ WITH latest_summary_per_day AS (
         high_risk,
         elevated_risk,
         monitor,
-        exploitable,
         kev_count,
         ransomware_count,
         high_epss_count,
@@ -635,7 +612,6 @@ WITH latest_summary_per_day AS (
         COALESCE(high_risk, 0)::INT4,
         COALESCE(elevated_risk, 0)::INT4,
         COALESCE(monitor, 0)::INT4,
-        COALESCE(exploitable, 0)::INT4,
         COALESCE(kev_count, 0)::INT4,
         COALESCE(ransomware_count, 0)::INT4,
         COALESCE(high_epss_count, 0)::INT4,
@@ -657,7 +633,6 @@ WITH latest_summary_per_day AS (
             high_risk = EXCLUDED.high_risk,
             elevated_risk = EXCLUDED.elevated_risk,
             monitor = EXCLUDED.monitor,
-            exploitable = EXCLUDED.exploitable,
             kev_count = EXCLUDED.kev_count,
             ransomware_count = EXCLUDED.ransomware_count,
             high_epss_count = EXCLUDED.high_epss_count,
@@ -684,7 +659,6 @@ SELECT
     s.high_risk,
     s.elevated_risk,
     s.monitor,
-    s.exploitable,
     s.kev_count,
     s.ransomware_count,
     s.high_epss_count,

@@ -721,7 +721,6 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, int32(1), sum.GetHighRisk())
 		assert.Equal(t, int32(0), sum.GetElevatedRisk())
 		assert.Equal(t, int32(0), sum.GetMonitor())
-		assert.Equal(t, int32(1), sum.GetExploitable())
 		assert.Equal(t, int32(0), sum.GetKevCount())
 		assert.Equal(t, int32(0), sum.GetRansomwareCount())
 		assert.Equal(t, int32(1), sum.GetHighEpssCount())
@@ -1358,7 +1357,6 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
-		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetExploitable())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighEpssCount())
@@ -1423,7 +1421,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
-		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetExploitable())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHighEpssCount())
@@ -2783,8 +2780,8 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 		})
 	}
 
-	// Set cve.priority based on KEV/EPSS/severity so that RecalculateVulnerabilitySummary
-	// can populate tier counts correctly.
+	// Set cve.priority based on KEV/EPSS/severity so priority-based ordering
+	// (order_by=priority_*) can be asserted reliably.
 	err := db.UpdateCvePriority(ctx)
 	require.NoError(t, err)
 
@@ -3386,17 +3383,6 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical+mid-EPSS CVE)")
 		assert.Equal(t, int32(1), sum.GetMonitor(), "monitor must be 1 (low-risk CVE)")
 		assert.Equal(t, vulnerabilities.RiskTier_ACT_NOW, sum.GetTopRiskTier(), "top tier must be ACT_NOW")
-	})
-
-	t.Run("exploitable count includes KEV and high-EPSS CVEs", func(t *testing.T) {
-		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
-		require.NoError(t, err)
-		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum)
-		// exploitable = has_kev OR ransomware OR epss>=0.90 => cveActNow + cveHigh = 2
-		assert.Equal(t, int32(2), sum.GetExploitable())
-		assert.Equal(t, int32(1), sum.GetKevCount())
-		assert.Equal(t, int32(1), sum.GetHighEpssCount())
 	})
 
 	t.Run("priority ordering: ListVulnerabilitiesForImage order_by=priority_asc", func(t *testing.T) {

@@ -29,7 +29,7 @@ VALUES (
     $7,
     $8)
 RETURNING
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, exploitable, kev_count, ransomware_count, high_epss_count, top_risk_tier
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, kev_count, ransomware_count, high_epss_count, top_risk_tier
 `
 
 type CreateVulnerabilitySummaryParams struct {
@@ -71,7 +71,6 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
-		&i.Exploitable,
 		&i.KevCount,
 		&i.RansomwareCount,
 		&i.HighEpssCount,
@@ -96,7 +95,7 @@ func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context
 
 const getLatestSummaryForImageName = `-- name: GetLatestSummaryForImageName :one
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, exploitable, kev_count, ransomware_count, high_epss_count, top_risk_tier
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, kev_count, ransomware_count, high_epss_count, top_risk_tier
 FROM
     vulnerability_summary
 WHERE
@@ -131,7 +130,6 @@ func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLates
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
-		&i.Exploitable,
 		&i.KevCount,
 		&i.RansomwareCount,
 		&i.HighEpssCount,
@@ -222,11 +220,6 @@ SELECT
     CAST(COALESCE(SUM(
                 CASE WHEN fw.workload_ready
                     AND i.state = 'updated' THEN
-                    v.exploitable
-                END), 0) AS INT4) AS exploitable,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
                     v.kev_count
                 END), 0) AS INT4) AS kev_count,
     CAST(COALESCE(SUM(
@@ -283,7 +276,6 @@ type GetVulnerabilitySummaryRow struct {
 	HighRisk         int32
 	ElevatedRisk     int32
 	Monitor          int32
-	Exploitable      int32
 	KevCount         int32
 	RansomwareCount  int32
 	HighEpssCount    int32
@@ -313,7 +305,6 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
-		&i.Exploitable,
 		&i.KevCount,
 		&i.RansomwareCount,
 		&i.HighEpssCount,
@@ -326,7 +317,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 
 const getVulnerabilitySummaryForImage = `-- name: GetVulnerabilitySummaryForImage :one
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, exploitable, kev_count, ransomware_count, high_epss_count, top_risk_tier
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, kev_count, ransomware_count, high_epss_count, top_risk_tier
 FROM
     vulnerability_summary
 WHERE
@@ -358,7 +349,6 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
-		&i.Exploitable,
 		&i.KevCount,
 		&i.RansomwareCount,
 		&i.HighEpssCount,
@@ -380,7 +370,6 @@ SELECT
     COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
     COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
     COALESCE(SUM(monitor), 0)::INT4 AS monitor,
-    COALESCE(SUM(exploitable), 0)::INT4 AS exploitable,
     COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
     COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
     COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
@@ -429,7 +418,6 @@ type GetVulnerabilitySummaryTimeSeriesRow struct {
 	HighRisk        int32
 	ElevatedRisk    int32
 	Monitor         int32
-	Exploitable     int32
 	KevCount        int32
 	RansomwareCount int32
 	HighEpssCount   int32
@@ -466,7 +454,6 @@ func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg Get
 			&i.HighRisk,
 			&i.ElevatedRisk,
 			&i.Monitor,
-			&i.Exploitable,
 			&i.KevCount,
 			&i.RansomwareCount,
 			&i.HighEpssCount,
@@ -502,7 +489,6 @@ SELECT
     s.high_risk,
     s.elevated_risk,
     s.monitor,
-    s.exploitable,
     s.kev_count,
     s.ransomware_count,
     s.high_epss_count,
@@ -540,7 +526,6 @@ type ListUpdatedWorkloadsWithSummariesRow struct {
 	HighRisk        *int32
 	ElevatedRisk    *int32
 	Monitor         *int32
-	Exploitable     *int32
 	KevCount        *int32
 	RansomwareCount *int32
 	HighEpssCount   *int32
@@ -574,7 +559,6 @@ func (q *Queries) ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*Lis
 			&i.HighRisk,
 			&i.ElevatedRisk,
 			&i.Monitor,
-			&i.Exploitable,
 			&i.KevCount,
 			&i.RansomwareCount,
 			&i.HighEpssCount,
@@ -665,11 +649,6 @@ vulnerability_data AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
-                v.exploitable
-            END, 0)::INT4 AS exploitable,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
                 v.kev_count
             END, 0)::INT4 AS kev_count,
         COALESCE(
@@ -726,7 +705,7 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, act_now, high_risk, elevated_risk, monitor, exploitable, kev_count, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at,
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, act_now, high_risk, elevated_risk, monitor, kev_count, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at,
 (
         SELECT
             COUNT(*)
@@ -813,12 +792,6 @@ ORDER BY
     CASE WHEN $1 = 'monitor_desc' THEN
         COALESCE(monitor, -1)
     END DESC,
-    CASE WHEN $1 = 'exploitable_asc' THEN
-        COALESCE(exploitable, 999999)
-    END ASC,
-    CASE WHEN $1 = 'exploitable_desc' THEN
-        COALESCE(exploitable, -1)
-    END DESC,
     CASE WHEN $1 = 'kev_count_asc' THEN
         COALESCE(kev_count, 999999)
     END ASC,
@@ -882,7 +855,6 @@ type ListVulnerabilitySummariesRow struct {
 	HighRisk                int32
 	ElevatedRisk            int32
 	Monitor                 int32
-	Exploitable             int32
 	KevCount                int32
 	RansomwareCount         int32
 	HighEpssCount           int32
@@ -939,7 +911,6 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.HighRisk,
 			&i.ElevatedRisk,
 			&i.Monitor,
-			&i.Exploitable,
 			&i.KevCount,
 			&i.RansomwareCount,
 			&i.HighEpssCount,
@@ -1031,11 +1002,6 @@ WITH latest_summary_per_day AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
-                vs.exploitable
-            END, 0) AS exploitable,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND img.state = 'updated' THEN
                 vs.kev_count
             END, 0) AS kev_count,
         COALESCE(
@@ -1087,7 +1053,6 @@ WITH latest_summary_per_day AS (
         high_risk,
         elevated_risk,
         monitor,
-        exploitable,
         kev_count,
         ransomware_count,
         high_epss_count,
@@ -1111,7 +1076,6 @@ WITH latest_summary_per_day AS (
         COALESCE(high_risk, 0)::INT4,
         COALESCE(elevated_risk, 0)::INT4,
         COALESCE(monitor, 0)::INT4,
-        COALESCE(exploitable, 0)::INT4,
         COALESCE(kev_count, 0)::INT4,
         COALESCE(ransomware_count, 0)::INT4,
         COALESCE(high_epss_count, 0)::INT4,
@@ -1133,7 +1097,6 @@ WITH latest_summary_per_day AS (
             high_risk = EXCLUDED.high_risk,
             elevated_risk = EXCLUDED.elevated_risk,
             monitor = EXCLUDED.monitor,
-            exploitable = EXCLUDED.exploitable,
             kev_count = EXCLUDED.kev_count,
             ransomware_count = EXCLUDED.ransomware_count,
             high_epss_count = EXCLUDED.high_epss_count,

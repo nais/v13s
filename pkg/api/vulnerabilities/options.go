@@ -31,7 +31,6 @@ const (
 	OrderByCveId             OrderByField = "cve_id"
 	OrderByCvssScore         OrderByField = "cvss_score"
 	OrderByElevatedRisk      OrderByField = "elevated_risk"
-	OrderByExploitable       OrderByField = "exploitable"
 	OrderByHigh              OrderByField = "high"
 	OrderByHighEpssCount     OrderByField = "high_epss_count"
 	OrderByHighRisk          OrderByField = "high_risk"
@@ -64,7 +63,6 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderByCveId:             {},
 	OrderByCvssScore:         {},
 	OrderByElevatedRisk:      {},
-	OrderByExploitable:       {},
 	OrderByHigh:              {},
 	OrderByHighEpssCount:     {},
 	OrderByHighRisk:          {},

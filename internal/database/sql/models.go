@@ -387,7 +387,6 @@ type VulnerabilitySummary struct {
 	HighRisk        *int32
 	ElevatedRisk    *int32
 	Monitor         *int32
-	Exploitable     *int32
 	KevCount        *int32
 	RansomwareCount *int32
 	HighEpssCount   *int32
