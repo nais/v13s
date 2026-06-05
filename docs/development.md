@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Go 1.26.4+**
+- **Go** (version pinned in `go.mod` / `mise/config.toml`)
 - **Docker** and **Docker Compose**
 - **mise** (for task automation)
 - **PostgreSQL 15+** (provided via docker-compose)
