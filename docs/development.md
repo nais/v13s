@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Go 1.25.5+**
+- **Go 1.26.4+**
 - **Docker** and **Docker Compose**
 - **mise** (for task automation)
 - **PostgreSQL 15+** (provided via docker-compose)
@@ -126,34 +126,51 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 
 | Variable | Description | Default           |
 |----------|-------------|-------------------|
-| `LISTEN_ADDR` | gRPC server address | `localhost:50051` |
-| `INTERNAL_LISTEN_ADDR` | Internal HTTP server address | `localhost:8000`  |
+| `LISTEN_ADDR` | gRPC server address | `0.0.0.0:50051` |
+| `INTERNAL_LISTEN_ADDR` | Internal HTTP server address | `127.0.0.1:8000`  |
 | `DATABASE_URL` | PostgreSQL connection URL | Required          |
+| `AUTHORIZED_SERVICE_ACCOUNTS` | Comma-separated list of allowed service accounts | Required |
+| `REQUIRED_AUDIENCE` | Expected JWT audience for incoming requests | `vulnz` |
+| `UPDATE_INTERVAL` | Interval between vulnerability data syncs | `1m` |
 | `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info`            |
-| `LOG_FORMAT` | Log format (text, json) | `text`            |
+| `LOG_FORMAT` | Log format (text, json) | `json`            |
 
 ### Kubernetes Settings
 
-| Variable | Description |
-|----------|-------------|
-| `TENANT` | Tenant/environment identifier |
-| `KUBERNETES_CLUSTERS` | Comma-separated list of clusters to monitor |
-| `KUBERNETES_SELF_CLUSTER` | Name of the cluster running v13s (optional) |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TENANT` | Tenant/environment identifier | `nav` |
+| `KUBERNETES_CLUSTERS` | Comma-separated list of clusters to monitor | — |
+| `KUBERNETES_SELF_CLUSTER` | Name of the cluster running v13s | `management` |
+| `KUBERNETES_CLUSTERS_STATIC` | Static cluster entries (`name\|host\|token`, comma-separated) | — |
 
-### Vulnerability Source
+### Vulnerability Sources
 
-| Variable | Description |
-|----------|-------------|
-| `DEPENDENCYTRACK_URL` | DependencyTrack API URL |
-| `DEPENDENCYTRACK_USERNAME` | DependencyTrack username |
-| `DEPENDENCYTRACK_PASSWORD` | DependencyTrack password |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEPENDENCYTRACK_URL` | DependencyTrack API URL | — |
+| `DEPENDENCYTRACK_USERNAME` | DependencyTrack username | `v13s` |
+| `DEPENDENCYTRACK_PASSWORD` | DependencyTrack password | — |
+| `KEV_CATALOG_URL` | CISA KEV catalog URL | — |
+| `OSV_BASE_URL` | OSV API base URL | — |
 
 ### Observability
 
-| Variable | Description |
-|----------|-------------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint |
-| `PROMETHEUS_METRICS_PUSHGATEWAY_ENDPOINT` | Prometheus pushgateway URL (optional) |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint | — |
+| `PROMETHEUS_METRICS_PUSHGATEWAY_ENDPOINT` | Prometheus pushgateway URL | — |
+| `PROMETHEUS_PUSHGATEWAY_DURATION` | Interval between pushgateway pushes | `2m` |
+| `WORKLOAD_METRICS_REFRESH_DURATION` | Interval between workload metrics refreshes | `5m` |
+
+### Leader Election
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LEADER_ELECTION_LEASE_NAME` | Kubernetes lease name | `v13s-lease` |
+| `LEADER_ELECTION_LEASE_NAMESPACE` | Namespace for the lease | `nais-system` |
+| `LEADER_ELECTION_FAKE_ENABLED` | Disable real leader election (local dev) | `false` |
+| `LEADER_ELECTION_LOCAL_KUBERNETES` | Use local kubeconfig for leader election | `false` |
 
 ## Contributing
 
