@@ -1647,73 +1647,41 @@ unsuppressed_vulnerabilities AS (
     WHERE
         NOT COALESCE(sv.suppressed, FALSE)
 ),
-severity_counts AS (
+counts AS (
     SELECT
-        COUNT(*) AS total,
         COUNT(*) FILTER (WHERE severity = 0) AS critical,
         COUNT(*) FILTER (WHERE severity = 1) AS high,
         COUNT(*) FILTER (WHERE severity = 2) AS medium,
         COUNT(*) FILTER (WHERE severity = 3) AS low,
-        COUNT(*) FILTER (WHERE severity = 4) AS unassigned
-    FROM
-        unsuppressed_vulnerabilities
-),
-risk_tier_counts AS (
-    SELECT
+        COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
         COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
         COUNT(*) FILTER (WHERE has_kev_entry = FALSE
             AND (known_ransomware_use = TRUE
             OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
-    COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-        AND NOT (known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90)
-    AND severity IN (0, 1)
-    AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
-COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-    OR known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.90
-    OR (severity IN (0, 1)
-    AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
-COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
-COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-MIN(
-    CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
-        3
-    ELSE
-        4
-    END) AS top_risk_tier
-FROM
-    unsuppressed_vulnerabilities
-),
-summary AS (
-    SELECT
-        $1 AS image_name,
-        $2 AS image_tag,
-        sc.total,
-        sc.critical,
-        sc.high,
-        sc.medium,
-        sc.low,
-        sc.unassigned,
-        rtc.act_now,
-        rtc.high_risk,
-        rtc.elevated_risk,
-        rtc.monitor,
-        rtc.kev_count,
-        rtc.ransomware_count,
-        rtc.high_epss_count,
-        rtc.top_risk_tier,
-        10 * sc.critical + 5 * sc.high + 3 * sc.medium + 1 * sc.low + 5 * sc.unassigned AS risk_score
+        COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+            AND NOT (known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.90)
+            AND severity IN (0, 1)
+            AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
+        COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.90
+            OR (severity IN (0, 1)
+            AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
+        COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
+        COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+        COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+        MIN(
+            CASE WHEN has_kev_entry = TRUE THEN 1
+                 WHEN known_ransomware_use = TRUE
+                     OR COALESCE(epss_percentile, 0) >= 0.90 THEN 2
+                 WHEN severity IN (0, 1)
+                     AND COALESCE(epss_percentile, 0) >= 0.50 THEN 3
+                 ELSE 4
+            END) AS top_risk_tier
     FROM
-        severity_counts sc
-        CROSS JOIN risk_tier_counts rtc)
+        unsuppressed_vulnerabilities
+)
 INSERT INTO vulnerability_summary(
     image_name,
     image_tag,
@@ -1734,8 +1702,8 @@ INSERT INTO vulnerability_summary(
     created_at,
     updated_at)
 SELECT
-    image_name,
-    image_tag,
+    $1,
+    $2,
     critical,
     high,
     medium,
@@ -1749,11 +1717,11 @@ SELECT
     ransomware_count,
     high_epss_count,
     top_risk_tier,
-    risk_score,
+    10 * critical + 5 * high + 3 * medium + 1 * low + 5 * unassigned AS risk_score,
     NOW(),
     NOW()
 FROM
-    summary
+    counts
 ON CONFLICT (image_name,
     image_tag)
     DO UPDATE SET
