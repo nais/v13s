@@ -1697,6 +1697,24 @@ func TestSanitizeOrderBy(t *testing.T) {
 			defaultF: vulnerabilities.OrderByPackage,
 			expected: "severity_asc",
 		},
+		{
+			name: "top_risk_tier asc flips to desc (ACT_NOW first)",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderByTopRiskTier),
+				Direction: vulnerabilities.Direction_ASC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "top_risk_tier_desc",
+		},
+		{
+			name: "top_risk_tier desc flips to asc (MONITOR first)",
+			orderBy: &vulnerabilities.OrderBy{
+				Field:     string(vulnerabilities.OrderByTopRiskTier),
+				Direction: vulnerabilities.Direction_DESC,
+			},
+			defaultF: vulnerabilities.OrderByPackage,
+			expected: "top_risk_tier_asc",
+		},
 	}
 
 	for _, tt := range tests {
