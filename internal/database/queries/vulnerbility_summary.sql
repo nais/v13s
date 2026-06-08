@@ -135,11 +135,10 @@ vulnerability_data AS (
                 AND i.state = 'updated' THEN
                 v.high_epss_count
             END, 0)::INT4 AS high_epss_count,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.top_risk_tier
-            END) AS top_risk_tier,
+        CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' THEN
+            v.top_risk_tier
+        END AS top_risk_tier,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND i.state = 'updated' THEN
@@ -550,11 +549,10 @@ WITH latest_summary_per_day AS (
                 AND img.state = 'updated' THEN
                 vs.high_epss_count
             END, 0) AS high_epss_count,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND img.state = 'updated' THEN
-                vs.top_risk_tier
-            END) AS top_risk_tier,
+        CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND img.state = 'updated' THEN
+            vs.top_risk_tier
+        END AS top_risk_tier,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
