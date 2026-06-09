@@ -100,10 +100,9 @@ message Summary {
   int32 high_risk = 12;
   int32 elevated_risk = 13;
   int32 monitor = 14;
-  reserved 15;
-  int32 ransomware_count = 17;
-  int32 high_epss_count = 18;
-  RiskTier top_risk_tier = 19;
+  int32 ransomware_count = 15;
+  int32 high_epss_count = 16;
+  RiskTier top_risk_tier = 17;
 }
 
 message Cve {
@@ -406,10 +405,9 @@ message VulnerabilitySummaryPoint {
   int32 high_risk = 11;
   int32 elevated_risk = 12;
   int32 monitor = 13;
-  reserved 14;
-  int32 ransomware_count = 16;
-  int32 high_epss_count = 17;
-  RiskTier top_risk_tier = 18;
+  int32 ransomware_count = 14;
+  int32 high_epss_count = 15;
+  RiskTier top_risk_tier = 16;
 }
 
 message GetVulnerabilityByIdRequest{

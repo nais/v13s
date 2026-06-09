@@ -30,6 +30,7 @@ type Options struct {
 	CveId             string
 	Unresolved        bool
 	Severity          string
+	RiskTier          string
 	Output            string
 	CveIds            string
 	CvssScore         float64
@@ -120,6 +121,13 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Name:        "cvss-score",
 			Usage:       "CVSS score",
 			Destination: &opts.CvssScore,
+		},
+		&cli.StringFlag{
+			Name:        "risk-tier",
+			Aliases:     []string{"rt"},
+			Value:       "",
+			Usage:       "filter by risk tier (act_now, high_risk, elevated_risk, monitor)",
+			Destination: &opts.RiskTier,
 		},
 		&cli.StringSliceFlag{
 			Name:        "exclude-clusters",
@@ -248,6 +256,23 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 
 	if len(o.ExcludeClusters) > 0 {
 		opts = append(opts, vulnerabilities.ExcludeClustersFilter(o.ExcludeClusters...))
+	}
+
+	if o.RiskTier != "" {
+		var tier vulnerabilities.RiskTier
+		switch strings.ToLower(o.RiskTier) {
+		case "act_now", "act-now":
+			tier = vulnerabilities.RiskTier_ACT_NOW
+		case "high_risk", "high-risk":
+			tier = vulnerabilities.RiskTier_HIGH_RISK
+		case "elevated_risk", "elevated-risk":
+			tier = vulnerabilities.RiskTier_ELEVATED_RISK
+		case "monitor":
+			tier = vulnerabilities.RiskTier_MONITOR
+		default:
+			log.Fatalf("invalid risk-tier: %s, valid values are act_now, high_risk, elevated_risk, monitor", o.RiskTier)
+		}
+		opts = append(opts, vulnerabilities.RiskTierFilter(tier))
 	}
 
 	return opts
