@@ -151,12 +151,7 @@ ON CONFLICT (
     DO UPDATE SET
         cve_title = EXCLUDED.cve_title,
         cve_desc = EXCLUDED.cve_desc,
-        cve_link = CASE
-            WHEN EXCLUDED.cve_link LIKE 'https://nvd.nist.gov/%'
-                 AND cve.cve_link LIKE 'https://github.com/advisories/%'
-            THEN cve.cve_link
-            ELSE EXCLUDED.cve_link
-        END,
+        cve_link = EXCLUDED.cve_link,
         severity = EXCLUDED.severity,
         refs = EXCLUDED.refs,
         cvss_score = EXCLUDED.cvss_score,

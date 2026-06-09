@@ -132,6 +132,9 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		}
 		// Prefer GHSA link over NVD when a GHSA alias exists — GHSA is the primary
 		// source for GitHub-sourced findings and never returns 404.
+		// NOTE: The SQL upsert trusts this value directly (no CASE guard).
+		// If GHSA preference logic moves or is removed here, the DB will
+		// start storing NVD links for CVEs that have GHSA aliases.
 		link := v.Cve.Link
 		for _, alias := range v.Cve.References {
 			if strings.HasPrefix(alias, "GHSA-") {
