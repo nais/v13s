@@ -130,12 +130,22 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		} else {
 			d.log.Warnf("missing metadata for vulnerability, CveId '%s', Package '%s'", v.Cve.Id, v.Package)
 		}
+		// Prefer GHSA link over NVD when a GHSA alias exists — GHSA is the primary
+		// source for GitHub-sourced findings and never returns 404.
+		link := v.Cve.Link
+		for _, alias := range v.Cve.References {
+			if strings.HasPrefix(alias, "GHSA-") {
+				link = "https://github.com/advisories/" + alias
+				break
+			}
+		}
+
 		vv = append(vv, &Vulnerability{
 			Cve: &Cve{
 				Id:          v.Cve.Id,
 				Description: v.Cve.Description,
 				Title:       v.Cve.Title,
-				Link:        v.Cve.Link,
+				Link:        link,
 				Severity:    Severity(v.Cve.Severity),
 				References:  v.Cve.References,
 			},
