@@ -140,7 +140,9 @@ func migrateDatabaseSchema(driver, dsn string, log logrus.FieldLogger) error {
 		log.Info("database already migrated; skipping")
 		return nil
 	}
-	return goose.Up(db, "migrations")
+	// WithAllowMissing allows goose to apply pending migrations even when there
+	// are gaps in the version history (e.g. migration 30 missing before 31).
+	return goose.Up(db, "migrations", goose.WithAllowMissing())
 }
 
 func isMigrated(db *sql.DB, migrationsDir string) (bool, error) {
