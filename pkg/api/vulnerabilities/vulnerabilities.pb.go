@@ -591,7 +591,6 @@ type Summary struct {
 	HighRisk        int32                  `protobuf:"varint,12,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
 	ElevatedRisk    int32                  `protobuf:"varint,13,opt,name=elevated_risk,json=elevatedRisk,proto3" json:"elevated_risk,omitempty"`
 	Monitor         int32                  `protobuf:"varint,14,opt,name=monitor,proto3" json:"monitor,omitempty"`
-	KevCount        int32                  `protobuf:"varint,16,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	RansomwareCount int32                  `protobuf:"varint,17,opt,name=ransomware_count,json=ransomwareCount,proto3" json:"ransomware_count,omitempty"`
 	HighEpssCount   int32                  `protobuf:"varint,18,opt,name=high_epss_count,json=highEpssCount,proto3" json:"high_epss_count,omitempty"`
 	TopRiskTier     RiskTier               `protobuf:"varint,19,opt,name=top_risk_tier,json=topRiskTier,proto3,enum=v13s.api.protobuf.RiskTier" json:"top_risk_tier,omitempty"`
@@ -723,13 +722,6 @@ func (x *Summary) GetElevatedRisk() int32 {
 func (x *Summary) GetMonitor() int32 {
 	if x != nil {
 		return x.Monitor
-	}
-	return 0
-}
-
-func (x *Summary) GetKevCount() int32 {
-	if x != nil {
-		return x.KevCount
 	}
 	return 0
 }
@@ -3524,7 +3516,6 @@ type VulnerabilitySummaryPoint struct {
 	HighRisk        int32                  `protobuf:"varint,11,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
 	ElevatedRisk    int32                  `protobuf:"varint,12,opt,name=elevated_risk,json=elevatedRisk,proto3" json:"elevated_risk,omitempty"`
 	Monitor         int32                  `protobuf:"varint,13,opt,name=monitor,proto3" json:"monitor,omitempty"`
-	KevCount        int32                  `protobuf:"varint,15,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	RansomwareCount int32                  `protobuf:"varint,16,opt,name=ransomware_count,json=ransomwareCount,proto3" json:"ransomware_count,omitempty"`
 	HighEpssCount   int32                  `protobuf:"varint,17,opt,name=high_epss_count,json=highEpssCount,proto3" json:"high_epss_count,omitempty"`
 	TopRiskTier     RiskTier               `protobuf:"varint,18,opt,name=top_risk_tier,json=topRiskTier,proto3,enum=v13s.api.protobuf.RiskTier" json:"top_risk_tier,omitempty"`
@@ -3649,13 +3640,6 @@ func (x *VulnerabilitySummaryPoint) GetElevatedRisk() int32 {
 func (x *VulnerabilitySummaryPoint) GetMonitor() int32 {
 	if x != nil {
 		return x.Monitor
-	}
-	return 0
-}
-
-func (x *VulnerabilitySummaryPoint) GetKevCount() int32 {
-	if x != nil {
-		return x.KevCount
 	}
 	return 0
 }
@@ -4382,7 +4366,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\x93\x05\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xf6\x04\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4400,8 +4384,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\aact_now\x18\v \x01(\x05R\x06actNow\x12\x1b\n" +
 	"\thigh_risk\x18\f \x01(\x05R\bhighRisk\x12#\n" +
 	"\relevated_risk\x18\r \x01(\x05R\felevatedRisk\x12\x18\n" +
-	"\amonitor\x18\x0e \x01(\x05R\amonitor\x12\x1b\n" +
-	"\tkev_count\x18\x10 \x01(\x05R\bkevCount\x12)\n" +
+	"\amonitor\x18\x0e \x01(\x05R\amonitor\x12)\n" +
 	"\x10ransomware_count\x18\x11 \x01(\x05R\x0fransomwareCount\x12&\n" +
 	"\x0fhigh_epss_count\x18\x12 \x01(\x05R\rhighEpssCount\x12?\n" +
 	"\rtop_risk_tier\x18\x13 \x01(\x0e2\x1b.v13s.api.protobuf.RiskTierR\vtopRiskTierB\x0f\n" +
@@ -4688,7 +4671,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x05since\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05since\x88\x01\x01B\b\n" +
 	"\x06_since\"q\n" +
 	")GetVulnerabilitySummaryTimeSeriesResponse\x12D\n" +
-	"\x06points\x18\x01 \x03(\v2,.v13s.api.protobuf.VulnerabilitySummaryPointR\x06points\"\xd9\x04\n" +
+	"\x06points\x18\x01 \x03(\v2,.v13s.api.protobuf.VulnerabilitySummaryPointR\x06points\"\xbc\x04\n" +
 	"\x19VulnerabilitySummaryPoint\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4706,8 +4689,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	" \x01(\x05R\x06actNow\x12\x1b\n" +
 	"\thigh_risk\x18\v \x01(\x05R\bhighRisk\x12#\n" +
 	"\relevated_risk\x18\f \x01(\x05R\felevatedRisk\x12\x18\n" +
-	"\amonitor\x18\r \x01(\x05R\amonitor\x12\x1b\n" +
-	"\tkev_count\x18\x0f \x01(\x05R\bkevCount\x12)\n" +
+	"\amonitor\x18\r \x01(\x05R\amonitor\x12)\n" +
 	"\x10ransomware_count\x18\x10 \x01(\x05R\x0fransomwareCount\x12&\n" +
 	"\x0fhigh_epss_count\x18\x11 \x01(\x05R\rhighEpssCount\x12?\n" +
 	"\rtop_risk_tier\x18\x12 \x01(\x0e2\x1b.v13s.api.protobuf.RiskTierR\vtopRiskTierJ\x04\b\x0e\x10\x0f\"-\n" +

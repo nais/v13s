@@ -721,7 +721,6 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, int32(1), sum.GetHighRisk())
 		assert.Equal(t, int32(0), sum.GetElevatedRisk())
 		assert.Equal(t, int32(0), sum.GetMonitor())
-		assert.Equal(t, int32(0), sum.GetKevCount())
 		assert.Equal(t, int32(0), sum.GetRansomwareCount())
 		assert.Equal(t, int32(1), sum.GetHighEpssCount())
 		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, sum.GetTopRiskTier())
@@ -1357,7 +1356,6 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
-		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighEpssCount())
 		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, resp.GetVulnerabilitySummary().GetTopRiskTier())
@@ -1421,7 +1419,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
-		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHighEpssCount())
 		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, resp.GetVulnerabilitySummary().GetTopRiskTier())
@@ -1433,7 +1430,6 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		// Registers a fresh image+workload with no vulnerability findings.
 		// RecalculateVulnerabilitySummary on an empty image produces a summary
 		// with all-zero counts; top_risk_tier must be RISK_TIER_UNSPECIFIED (not MONITOR).
-		// This exercises the NULL→UNSPECIFIED fix from Task 001.
 		const (
 			emptyImage = "image-no-vulns"
 			emptyTag   = "v9.0"

@@ -75,86 +75,25 @@ vulnerability_data AS (
         w.image_tag AS current_image_tag,
         v.image_name,
         v.image_tag,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.critical
-            END, 0)::INT4 AS critical,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.high
-            END, 0)::INT4 AS high,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.medium
-            END, 0)::INT4 AS medium,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.low
-            END, 0)::INT4 AS low,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.unassigned
-            END, 0)::INT4 AS unassigned,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.act_now
-            END, 0)::INT4 AS act_now,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.high_risk
-            END, 0)::INT4 AS high_risk,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.elevated_risk
-            END, 0)::INT4 AS elevated_risk,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.monitor
-            END, 0)::INT4 AS monitor,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.kev_count
-            END, 0)::INT4 AS kev_count,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.ransomware_count
-            END, 0)::INT4 AS ransomware_count,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.high_epss_count
-            END, 0)::INT4 AS high_epss_count,
-        CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            v.top_risk_tier
-        END AS top_risk_tier,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND i.state = 'updated' THEN
-                v.risk_score
-            END, 0)::INT4 AS risk_score,
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state = 'updated' AS is_active,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.act_now,
+        v.high_risk,
+        v.elevated_risk,
+        v.monitor,
+        v.ransomware_count,
+        v.high_epss_count,
+        v.top_risk_tier,
+        v.risk_score,
         w.created_at AS workload_created_at,
         w.updated_at AS workload_updated_at,
         v.created_at AS summary_created_at,
         v.updated_at AS summary_updated_at,
-        CASE WHEN v.image_name IS NOT NULL
-            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' THEN
-            TRUE
-        ELSE
-            FALSE
-        END AS has_sbom,
         w.state AS workload_state,
         i.state AS image_state,
         i.sbom_processing_started_at
@@ -176,119 +115,81 @@ vulnerability_data AS (
     AND (sqlc.narg('risk_tier')::INT IS NULL
         OR v.top_risk_tier = sqlc.narg('risk_tier')::INT)
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
-        OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE))
+        OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
+),
+summary_data AS (
+    SELECT
+        id,
+        workload_name,
+        workload_type,
+        namespace,
+        cluster,
+        current_image_name,
+        current_image_tag,
+        image_name,
+        image_tag,
+        COALESCE(CASE WHEN is_active THEN critical END, 0)::INT4 AS critical,
+        COALESCE(CASE WHEN is_active THEN high END, 0)::INT4 AS high,
+        COALESCE(CASE WHEN is_active THEN medium END, 0)::INT4 AS medium,
+        COALESCE(CASE WHEN is_active THEN low END, 0)::INT4 AS low,
+        COALESCE(CASE WHEN is_active THEN unassigned END, 0)::INT4 AS unassigned,
+        COALESCE(CASE WHEN is_active THEN act_now END, 0)::INT4 AS act_now,
+        COALESCE(CASE WHEN is_active THEN high_risk END, 0)::INT4 AS high_risk,
+        COALESCE(CASE WHEN is_active THEN elevated_risk END, 0)::INT4 AS elevated_risk,
+        COALESCE(CASE WHEN is_active THEN monitor END, 0)::INT4 AS monitor,
+        COALESCE(CASE WHEN is_active THEN ransomware_count END, 0)::INT4 AS ransomware_count,
+        COALESCE(CASE WHEN is_active THEN high_epss_count END, 0)::INT4 AS high_epss_count,
+        CASE WHEN is_active THEN top_risk_tier END AS top_risk_tier,
+        COALESCE(CASE WHEN is_active THEN risk_score END, 0)::INT4 AS risk_score,
+        workload_created_at,
+        workload_updated_at,
+        summary_created_at,
+        summary_updated_at,
+        COALESCE(is_active AND image_name IS NOT NULL, FALSE)::bool AS has_sbom,
+        workload_state,
+        image_state,
+        sbom_processing_started_at,
+        COUNT(*) OVER () AS total_count
+    FROM
+        vulnerability_data
+)
 SELECT
-    *,
-(
-        SELECT
-            COUNT(*)
-        FROM
-            vulnerability_data) AS total_count
+    *
 FROM
-    vulnerability_data
+    summary_data
 ORDER BY
-    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN
-        workload_name
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN
-        workload_name
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN
-        namespace
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN
-        namespace
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN
-        CLUSTER
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN
-        CLUSTER
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'critical_asc' THEN
-        COALESCE(critical, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'critical_desc' THEN
-        COALESCE(critical, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'high_asc' THEN
-        COALESCE(high, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'high_desc' THEN
-        COALESCE(high, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'medium_asc' THEN
-        COALESCE(medium, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'medium_desc' THEN
-        COALESCE(medium, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'low_asc' THEN
-        COALESCE(low, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'low_desc' THEN
-        COALESCE(low, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'unassigned_asc' THEN
-        COALESCE(unassigned, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'unassigned_desc' THEN
-        COALESCE(unassigned, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'risk_score_asc' THEN
-        COALESCE(risk_score, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'risk_score_desc' THEN
-        COALESCE(risk_score, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'act_now_asc' THEN
-        COALESCE(act_now, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'act_now_desc' THEN
-        COALESCE(act_now, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'high_risk_asc' THEN
-        COALESCE(high_risk, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'high_risk_desc' THEN
-        COALESCE(high_risk, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'elevated_risk_asc' THEN
-        COALESCE(elevated_risk, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'elevated_risk_desc' THEN
-        COALESCE(elevated_risk, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'monitor_asc' THEN
-        COALESCE(monitor, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'monitor_desc' THEN
-        COALESCE(monitor, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'kev_count_asc' THEN
-        COALESCE(kev_count, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'kev_count_desc' THEN
-        COALESCE(kev_count, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'ransomware_count_asc' THEN
-        COALESCE(ransomware_count, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'ransomware_count_desc' THEN
-        COALESCE(ransomware_count, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'high_epss_count_asc' THEN
-        COALESCE(high_epss_count, 999999)
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'high_epss_count_desc' THEN
-        COALESCE(high_epss_count, -1)
-    END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'top_risk_tier_asc' THEN
-        top_risk_tier
-    END ASC NULLS LAST,
-    CASE WHEN sqlc.narg('order_by') = 'top_risk_tier_desc' THEN
-        top_risk_tier
-    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN workload_name END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN workload_name END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN namespace END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN namespace END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN cluster END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN cluster END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'critical_asc' THEN COALESCE(critical, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'critical_desc' THEN COALESCE(critical, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'high_asc' THEN COALESCE(high, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'high_desc' THEN COALESCE(high, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'medium_asc' THEN COALESCE(medium, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'medium_desc' THEN COALESCE(medium, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'low_asc' THEN COALESCE(low, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'low_desc' THEN COALESCE(low, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'unassigned_asc' THEN COALESCE(unassigned, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'unassigned_desc' THEN COALESCE(unassigned, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'risk_score_asc' THEN COALESCE(risk_score, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'risk_score_desc' THEN COALESCE(risk_score, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'act_now_asc' THEN COALESCE(act_now, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'act_now_desc' THEN COALESCE(act_now, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'high_risk_asc' THEN COALESCE(high_risk, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'high_risk_desc' THEN COALESCE(high_risk, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'elevated_risk_asc' THEN COALESCE(elevated_risk, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'elevated_risk_desc' THEN COALESCE(elevated_risk, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'monitor_asc' THEN COALESCE(monitor, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'monitor_desc' THEN COALESCE(monitor, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'ransomware_count_asc' THEN COALESCE(ransomware_count, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'ransomware_count_desc' THEN COALESCE(ransomware_count, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'high_epss_count_asc' THEN COALESCE(high_epss_count, 999999) END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'high_epss_count_desc' THEN COALESCE(high_epss_count, -1) END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'top_risk_tier_asc' THEN top_risk_tier END ASC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'top_risk_tier_desc' THEN top_risk_tier END DESC NULLS LAST,
     summary_updated_at ASC,
     id DESC
 LIMIT sqlc.arg('limit')
@@ -320,96 +221,52 @@ WITH filtered_workloads AS (
             WHERE
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
-                AND v.top_risk_tier = sqlc.narg('risk_tier')::INT)))
+                AND v.top_risk_tier = sqlc.narg('risk_tier')::INT))),
+joined_data AS (
+    SELECT
+        fw.id,
+        fw.workload_ready AND i.state = 'updated' AS is_active,
+        v.id AS summary_id,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.act_now,
+        v.high_risk,
+        v.elevated_risk,
+        v.monitor,
+        v.ransomware_count,
+        v.high_epss_count,
+        v.top_risk_tier,
+        v.risk_score,
+        v.updated_at
+    FROM
+        filtered_workloads fw
+        LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
+            AND fw.image_tag = v.image_tag
+        LEFT JOIN images i ON i.name = fw.image_name
+            AND i.tag = fw.image_tag
+)
 SELECT
-    CAST(COUNT(DISTINCT fw.id) AS INT4) AS workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN fw.workload_ready
-                AND i.state = 'updated'
-                AND v.id IS NOT NULL THEN
-                fw.id
-            END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.critical
-                END), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.high
-                END), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.medium
-                END), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.low
-                END), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.unassigned
-                END), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.act_now
-                END), 0) AS INT4) AS act_now,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.high_risk
-                END), 0) AS INT4) AS high_risk,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.elevated_risk
-                END), 0) AS INT4) AS elevated_risk,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.monitor
-                END), 0) AS INT4) AS monitor,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.kev_count
-                END), 0) AS INT4) AS kev_count,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.ransomware_count
-                END), 0) AS INT4) AS ransomware_count,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.high_epss_count
-                END), 0) AS INT4) AS high_epss_count,
-    MIN(
-        CASE WHEN fw.workload_ready
-            AND i.state = 'updated' THEN
-            v.top_risk_tier
-        END) AS top_risk_tier,
-    CAST(COALESCE(SUM(
-                CASE WHEN fw.workload_ready
-                    AND i.state = 'updated' THEN
-                    v.risk_score
-                END), 0) AS INT4) AS risk_score,
-    MAX(
-        CASE WHEN fw.workload_ready
-            AND i.state = 'updated'
-            AND v.id IS NOT NULL THEN
-            v.updated_at
-        END)::TIMESTAMPTZ AS updated_at
+    CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND summary_id IS NOT NULL THEN id END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN critical END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN medium END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN low END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN unassigned END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN act_now END), 0) AS INT4) AS act_now,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_risk END), 0) AS INT4) AS high_risk,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN elevated_risk END), 0) AS INT4) AS elevated_risk,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN monitor END), 0) AS INT4) AS monitor,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN ransomware_count END), 0) AS INT4) AS ransomware_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_epss_count END), 0) AS INT4) AS high_epss_count,
+    MIN(CASE WHEN is_active THEN top_risk_tier END) AS top_risk_tier,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN risk_score END), 0) AS INT4) AS risk_score,
+    MAX(CASE WHEN is_active AND summary_id IS NOT NULL THEN updated_at END)::TIMESTAMPTZ AS updated_at
 FROM
-    filtered_workloads fw
-    LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
-        AND fw.image_tag = v.image_tag
-    LEFT JOIN images i ON i.name = fw.image_name
-        AND i.tag = fw.image_tag;
+    joined_data;
 
 -- name: GetVulnerabilitySummaryTimeSeries :many
 SELECT
@@ -424,7 +281,6 @@ SELECT
     COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
     COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
     COALESCE(SUM(monitor), 0)::INT4 AS monitor,
-    COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
     COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
     COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
     MIN(top_risk_tier) AS top_risk_tier,
@@ -537,11 +393,6 @@ WITH latest_summary_per_day AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
-                vs.kev_count
-            END, 0) AS kev_count,
-        COALESCE(
-            CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-                AND img.state = 'updated' THEN
                 vs.ransomware_count
             END, 0) AS ransomware_count,
         COALESCE(
@@ -587,7 +438,6 @@ WITH latest_summary_per_day AS (
         high_risk,
         elevated_risk,
         monitor,
-        kev_count,
         ransomware_count,
         high_epss_count,
         top_risk_tier,
@@ -610,7 +460,6 @@ WITH latest_summary_per_day AS (
         COALESCE(high_risk, 0)::INT4,
         COALESCE(elevated_risk, 0)::INT4,
         COALESCE(monitor, 0)::INT4,
-        COALESCE(kev_count, 0)::INT4,
         COALESCE(ransomware_count, 0)::INT4,
         COALESCE(high_epss_count, 0)::INT4,
         top_risk_tier,
@@ -631,7 +480,6 @@ WITH latest_summary_per_day AS (
             high_risk = EXCLUDED.high_risk,
             elevated_risk = EXCLUDED.elevated_risk,
             monitor = EXCLUDED.monitor,
-            kev_count = EXCLUDED.kev_count,
             ransomware_count = EXCLUDED.ransomware_count,
             high_epss_count = EXCLUDED.high_epss_count,
             top_risk_tier = EXCLUDED.top_risk_tier,
@@ -657,7 +505,6 @@ SELECT
     s.high_risk,
     s.elevated_risk,
     s.monitor,
-    s.kev_count,
     s.ransomware_count,
     s.high_epss_count,
     s.top_risk_tier,

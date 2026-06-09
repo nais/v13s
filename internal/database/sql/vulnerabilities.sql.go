@@ -1650,38 +1650,40 @@ unsuppressed_vulnerabilities AS (
 counts AS (
     SELECT
         COUNT(*) FILTER (WHERE severity = 0) AS critical,
-        COUNT(*) FILTER (WHERE severity = 1) AS high,
-        COUNT(*) FILTER (WHERE severity = 2) AS medium,
-        COUNT(*) FILTER (WHERE severity = 3) AS low,
-        COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
-        COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
-        COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-            AND (known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
-        COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-            AND NOT (known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.90)
-            AND severity IN (0, 1)
-            AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
-        COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-            OR known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.90
-            OR (severity IN (0, 1)
-            AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
-        COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
-        COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-        COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-        MIN(
-            CASE WHEN has_kev_entry = TRUE THEN 1
-                 WHEN known_ransomware_use = TRUE
-                     OR COALESCE(epss_percentile, 0) >= 0.90 THEN 2
-                 WHEN severity IN (0, 1)
-                     AND COALESCE(epss_percentile, 0) >= 0.50 THEN 3
-                 ELSE 4
-            END) AS top_risk_tier
-    FROM
-        unsuppressed_vulnerabilities
-)
+    COUNT(*) FILTER (WHERE severity = 1) AS high,
+    COUNT(*) FILTER (WHERE severity = 2) AS medium,
+    COUNT(*) FILTER (WHERE severity = 3) AS low,
+    COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
+    COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
+    COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+        AND (known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
+COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+    AND NOT (known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.90)
+AND severity IN (0, 1)
+AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
+COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+    OR known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.90
+    OR (severity IN (0, 1)
+    AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
+COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+MIN(
+    CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END) AS top_risk_tier
+FROM
+    unsuppressed_vulnerabilities)
 INSERT INTO vulnerability_summary(
     image_name,
     image_tag,
@@ -1694,7 +1696,6 @@ INSERT INTO vulnerability_summary(
     high_risk,
     elevated_risk,
     monitor,
-    kev_count,
     ransomware_count,
     high_epss_count,
     top_risk_tier,
@@ -1713,7 +1714,6 @@ SELECT
     high_risk,
     elevated_risk,
     monitor,
-    kev_count,
     ransomware_count,
     high_epss_count,
     top_risk_tier,
@@ -1734,7 +1734,6 @@ ON CONFLICT (image_name,
         high_risk = EXCLUDED.high_risk,
         elevated_risk = EXCLUDED.elevated_risk,
         monitor = EXCLUDED.monitor,
-        kev_count = EXCLUDED.kev_count,
         ransomware_count = EXCLUDED.ransomware_count,
         high_epss_count = EXCLUDED.high_epss_count,
         top_risk_tier = EXCLUDED.top_risk_tier,

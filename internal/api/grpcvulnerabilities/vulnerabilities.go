@@ -609,9 +609,6 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 		field = defaultOrder
 	}
 
-	// Severity is an inverted scale (0 = Critical, 4 = Unassigned).
-	// TopRiskTier is also inverted (1 = ACT_NOW is most critical; 0 = UNSPECIFIED).
-	// Flip direction so ASC means "least critical first" for API consumers.
 	if field == vulnerabilities.OrderBySeverity || field == vulnerabilities.OrderByTopRiskTier {
 		if direction == "asc" {
 			direction = "desc"

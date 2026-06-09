@@ -34,7 +34,6 @@ const (
 	OrderByHigh              OrderByField = "high"
 	OrderByHighEpssCount     OrderByField = "high_epss_count"
 	OrderByHighRisk          OrderByField = "high_risk"
-	OrderByKevCount          OrderByField = "kev_count"
 	OrderByLow               OrderByField = "low"
 	OrderByMedium            OrderByField = "medium"
 	OrderByMonitor           OrderByField = "monitor"
@@ -66,7 +65,6 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderByHigh:              {},
 	OrderByHighEpssCount:     {},
 	OrderByHighRisk:          {},
-	OrderByKevCount:          {},
 	OrderByLow:               {},
 	OrderByMedium:            {},
 	OrderByMonitor:           {},
