@@ -3,6 +3,9 @@ WITH resolved_vulnerabilities AS (
     SELECT DISTINCT
         c.cve_id AS id,
         c.severity,
+        c.epss_percentile,
+        c.has_kev_entry,
+        c.known_ransomware_use,
         v.package,
         v.image_name,
         v.image_tag
@@ -14,14 +17,13 @@ WITH resolved_vulnerabilities AS (
         v.image_name = @image_name
         AND v.image_tag = @image_tag
 ),
-severity_counts AS (
+unsuppressed_vulnerabilities AS (
     SELECT
-        COUNT(*) AS total,
-        COUNT(*) FILTER (WHERE severity = 0) AS critical,
-        COUNT(*) FILTER (WHERE severity = 1) AS high,
-        COUNT(*) FILTER (WHERE severity = 2) AS medium,
-        COUNT(*) FILTER (WHERE severity = 3) AS low,
-        COUNT(*) FILTER (WHERE severity = 4) AS unassigned
+        rv.id,
+        rv.severity,
+        rv.epss_percentile,
+        rv.has_kev_entry,
+        rv.known_ransomware_use
     FROM
         resolved_vulnerabilities rv
         LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
@@ -30,19 +32,43 @@ severity_counts AS (
     WHERE
         NOT COALESCE(sv.suppressed, FALSE)
 ),
-summary AS (
+counts AS (
     SELECT
-        @image_name AS image_name,
-        @image_tag AS image_tag,
-        total,
-        critical,
-        high,
-        medium,
-        low,
-        unassigned,
-        10 * critical + 5 * high + 3 * medium + 1 * low + 5 * unassigned AS risk_score
-    FROM
-        severity_counts)
+        COUNT(*) FILTER (WHERE severity = 0) AS critical,
+    COUNT(*) FILTER (WHERE severity = 1) AS high,
+    COUNT(*) FILTER (WHERE severity = 2) AS medium,
+    COUNT(*) FILTER (WHERE severity = 3) AS low,
+    COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
+    COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
+    COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+        AND (known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
+COUNT(*) FILTER (WHERE has_kev_entry = FALSE
+    AND NOT (known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.90)
+AND severity IN (0, 1)
+AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
+COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+    OR known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.90
+    OR (severity IN (0, 1)
+    AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
+COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+MIN(
+    CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END) AS top_risk_tier
+FROM
+    unsuppressed_vulnerabilities)
 INSERT INTO vulnerability_summary(
     image_name,
     image_tag,
@@ -51,22 +77,36 @@ INSERT INTO vulnerability_summary(
     medium,
     low,
     unassigned,
+    act_now,
+    high_risk,
+    elevated_risk,
+    monitor,
+    ransomware_count,
+    high_epss_count,
+    top_risk_tier,
     risk_score,
     created_at,
     updated_at)
 SELECT
-    image_name,
-    image_tag,
+    @image_name,
+    @image_tag,
     critical,
     high,
     medium,
     low,
     unassigned,
-    risk_score,
+    act_now,
+    high_risk,
+    elevated_risk,
+    monitor,
+    ransomware_count,
+    high_epss_count,
+    top_risk_tier,
+    10 * critical + 5 * high + 3 * medium + 1 * low + 5 * unassigned AS risk_score,
     NOW(),
     NOW()
 FROM
-    summary
+    counts
 ON CONFLICT (image_name,
     image_tag)
     DO UPDATE SET
@@ -75,6 +115,13 @@ ON CONFLICT (image_name,
         medium = EXCLUDED.medium,
         low = EXCLUDED.low,
         unassigned = EXCLUDED.unassigned,
+        act_now = EXCLUDED.act_now,
+        high_risk = EXCLUDED.high_risk,
+        elevated_risk = EXCLUDED.elevated_risk,
+        monitor = EXCLUDED.monitor,
+        ransomware_count = EXCLUDED.ransomware_count,
+        high_epss_count = EXCLUDED.high_epss_count,
+        top_risk_tier = EXCLUDED.top_risk_tier,
         risk_score = EXCLUDED.risk_score,
         updated_at = NOW();
 
@@ -601,6 +648,7 @@ resolved_vulnerabilities AS (
         c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
+        c.priority,
         v.fix_version
     FROM
         image_all_vulns v
@@ -657,10 +705,17 @@ SELECT
     suppressed_by,
     suppressed_at,
     fix_version,
+    priority,
     COUNT(id) OVER () AS total_count
 FROM
     distinct_image_vulnerabilities
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        priority
+    END ASC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        priority
+    END DESC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
         severity
     END ASC,
@@ -745,7 +800,8 @@ SELECT
     c.epss_percentile,
     c.has_kev_entry,
     c.known_ransomware_use,
-    v.fix_version
+    v.fix_version,
+    c.priority
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -794,6 +850,12 @@ AND (
 AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        c.priority
+    END ASC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        c.priority
+    END DESC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'severity_asc' THEN
         c.severity
     END ASC,
@@ -877,6 +939,7 @@ SELECT
     c.has_kev_entry,
     c.known_ransomware_use,
     v.fix_version,
+    c.priority,
     COUNT(v.id) OVER () AS total_count
 FROM
     vulnerabilities v
@@ -934,6 +997,12 @@ WHERE
     AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ORDER BY
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        c.priority
+    END ASC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        c.priority
+    END DESC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
         CASE WHEN c.cvss_score = 0
             OR c.cvss_score IS NULL THEN
@@ -983,3 +1052,31 @@ FROM
     cve_alias
 WHERE
     alias = @alias;
+
+-- name: UpdateCvePriority :exec
+UPDATE
+    cve
+SET
+    priority = CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END
+WHERE
+    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
+        1
+    WHEN known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        3
+    ELSE
+        4
+    END;

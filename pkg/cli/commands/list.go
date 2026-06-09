@@ -169,7 +169,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 		}
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Risk Tier", "Act Now", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag", "Last Updated")
 		}
@@ -185,6 +185,8 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetCluster(),
 				n.Workload.GetNamespace(),
 				formatSbomStatus(n.GetSbomStatus()),
+				formatRiskTier(sum, hasSummary),
+				intOrDash(sum.GetActNow(), hasSummary),
 				intOrDash(sum.GetCritical(), hasSummary),
 				intOrDash(sum.GetHigh(), hasSummary),
 				intOrDash(sum.GetMedium(), hasSummary),
@@ -362,4 +364,22 @@ func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
 		}
 	}
 	return label
+}
+
+func formatRiskTier(sum *vulnerabilities.Summary, hasSummary bool) string {
+	if !hasSummary || sum == nil {
+		return "-"
+	}
+	switch sum.GetTopRiskTier() {
+	case vulnerabilities.RiskTier_ACT_NOW:
+		return "ACT_NOW"
+	case vulnerabilities.RiskTier_HIGH_RISK:
+		return "HIGH_RISK"
+	case vulnerabilities.RiskTier_ELEVATED_RISK:
+		return "ELEVATED_RISK"
+	case vulnerabilities.RiskTier_MONITOR:
+		return "MONITOR"
+	default:
+		return "-"
+	}
 }

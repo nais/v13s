@@ -313,6 +313,7 @@ type Cve struct {
 	EpssPercentile     *float64
 	HasKevEntry        bool
 	KnownRansomwareUse bool
+	Priority           *int32
 }
 
 type Image struct {
@@ -371,17 +372,24 @@ type SuppressedVulnerability struct {
 }
 
 type VulnerabilitySummary struct {
-	ID         pgtype.UUID
-	ImageName  string
-	ImageTag   string
-	Critical   int32
-	High       int32
-	Medium     int32
-	Low        int32
-	Unassigned int32
-	RiskScore  int32
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID              pgtype.UUID
+	ImageName       string
+	ImageTag        string
+	Critical        int32
+	High            int32
+	Medium          int32
+	Low             int32
+	Unassigned      int32
+	RiskScore       int32
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	ActNow          *int32
+	HighRisk        *int32
+	ElevatedRisk    *int32
+	Monitor         *int32
+	RansomwareCount *int32
+	HighEpssCount   *int32
+	TopRiskTier     *int32
 }
 
 type Workload struct {

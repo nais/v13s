@@ -27,6 +27,8 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	riskTierFilter := toSQLRiskTierFilter(request.GetFilter())
+
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
 		since.Time = request.GetSince().AsTime()
@@ -40,6 +42,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		WorkloadName:  request.GetFilter().Workload,
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
+		RiskTier:      riskTierFilter,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
 		Offset:        offset,
@@ -74,15 +77,22 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 			riskScore := row.RiskScore
 
 			vulnSummary = &vulnerabilities.Summary{
-				Critical:    critical,
-				High:        high,
-				Medium:      medium,
-				Low:         low,
-				Unassigned:  unassigned,
-				Total:       critical + high + medium + low + unassigned,
-				RiskScore:   riskScore,
-				LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:     row.HasSbom,
+				Critical:        critical,
+				High:            high,
+				Medium:          medium,
+				Low:             low,
+				Unassigned:      unassigned,
+				Total:           critical + high + medium + low + unassigned,
+				RiskScore:       riskScore,
+				LastUpdated:     timestamppb.New(row.SummaryUpdatedAt.Time),
+				HasSbom:         row.HasSbom,
+				ActNow:          row.ActNow,
+				HighRisk:        row.HighRisk,
+				ElevatedRisk:    row.ElevatedRisk,
+				Monitor:         row.Monitor,
+				RansomwareCount: row.RansomwareCount,
+				HighEpssCount:   row.HighEpssCount,
+				TopRiskTier:     toProtoRiskTier(row.TopRiskTier),
 			}
 		}
 
@@ -118,11 +128,14 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	riskTierFilter := toSQLRiskTierFilter(request.GetFilter())
+
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
+		RiskTier:      riskTierFilter,
 	})
 	if err != nil {
 		return nil, err
@@ -133,15 +146,22 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	summary := &vulnerabilities.Summary{
-		Critical:    row.Critical,
-		High:        row.High,
-		Medium:      row.Medium,
-		Low:         row.Low,
-		Unassigned:  row.Unassigned,
-		Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-		RiskScore:   row.RiskScore,
-		LastUpdated: timestamppb.New(row.UpdatedAt.Time),
-		HasSbom:     true,
+		Critical:        row.Critical,
+		High:            row.High,
+		Medium:          row.Medium,
+		Low:             row.Low,
+		Unassigned:      row.Unassigned,
+		Total:           row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+		RiskScore:       row.RiskScore,
+		LastUpdated:     timestamppb.New(row.UpdatedAt.Time),
+		HasSbom:         true,
+		ActNow:          row.ActNow,
+		HighRisk:        row.HighRisk,
+		ElevatedRisk:    row.ElevatedRisk,
+		Monitor:         row.Monitor,
+		RansomwareCount: row.RansomwareCount,
+		HighEpssCount:   row.HighEpssCount,
+		TopRiskTier:     toProtoRiskTier(row.TopRiskTier),
 	}
 
 	var coverage float32
@@ -164,6 +184,8 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	riskTierFilter := toSQLRiskTierFilter(request.GetFilter())
+
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
 		since.Time = request.GetSince().AsTime()
@@ -175,6 +197,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
+		RiskTier:      riskTierFilter,
 		Since:         since,
 	})
 	if err != nil {
@@ -183,15 +206,22 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 
 	points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
 		return &vulnerabilities.VulnerabilitySummaryPoint{
-			Critical:      row.Critical,
-			High:          row.High,
-			Medium:        row.Medium,
-			Low:           row.Low,
-			Unassigned:    row.Unassigned,
-			Total:         row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-			RiskScore:     row.RiskScore,
-			WorkloadCount: row.WorkloadCount,
-			BucketTime:    timestamppb.New(row.SnapshotDate.Time),
+			Critical:        row.Critical,
+			High:            row.High,
+			Medium:          row.Medium,
+			Low:             row.Low,
+			Unassigned:      row.Unassigned,
+			Total:           row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+			RiskScore:       row.RiskScore,
+			WorkloadCount:   row.WorkloadCount,
+			BucketTime:      timestamppb.New(row.SnapshotDate.Time),
+			ActNow:          row.ActNow,
+			HighRisk:        row.HighRisk,
+			ElevatedRisk:    row.ElevatedRisk,
+			Monitor:         row.Monitor,
+			RansomwareCount: row.RansomwareCount,
+			HighEpssCount:   row.HighEpssCount,
+			TopRiskTier:     toProtoRiskTier(row.TopRiskTier),
 		}
 	})
 	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
@@ -295,15 +325,22 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		riskScore := summary.RiskScore
 
 		vulnSummary = &vulnerabilities.Summary{
-			Critical:    critical,
-			High:        high,
-			Medium:      medium,
-			Low:         low,
-			Unassigned:  unassigned,
-			Total:       critical + high + medium + low + unassigned,
-			RiskScore:   riskScore,
-			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:     true,
+			Critical:        critical,
+			High:            high,
+			Medium:          medium,
+			Low:             low,
+			Unassigned:      unassigned,
+			Total:           critical + high + medium + low + unassigned,
+			RiskScore:       riskScore,
+			LastUpdated:     timestamppb.New(summary.UpdatedAt.Time),
+			HasSbom:         true,
+			ActNow:          derefInt32(summary.ActNow),
+			HighRisk:        derefInt32(summary.HighRisk),
+			ElevatedRisk:    derefInt32(summary.ElevatedRisk),
+			Monitor:         derefInt32(summary.Monitor),
+			RansomwareCount: derefInt32(summary.RansomwareCount),
+			HighEpssCount:   derefInt32(summary.HighEpssCount),
+			TopRiskTier:     toProtoRiskTier(summary.TopRiskTier),
 		}
 		if staleTag != "" {
 			vulnSummary.StaleImageTag = &staleTag
@@ -315,6 +352,70 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		WorkloadRef:          workloadRefs,
 		SbomStatus:           worstSbomStatus,
 	}, nil
+}
+
+func toSQLRiskTierFilter(filter *vulnerabilities.Filter) *int32 {
+	if filter == nil || filter.RiskTier == nil {
+		return nil
+	}
+
+	var v int32
+	switch filter.GetRiskTier() {
+	case vulnerabilities.RiskTier_ACT_NOW:
+		v = 1
+	case vulnerabilities.RiskTier_HIGH_RISK:
+		v = 2
+	case vulnerabilities.RiskTier_ELEVATED_RISK:
+		v = 3
+	case vulnerabilities.RiskTier_MONITOR:
+		v = 4
+	default:
+		return nil
+	}
+	return &v
+}
+
+func toProtoRiskTier(riskTier any) vulnerabilities.RiskTier {
+	switch v := riskTier.(type) {
+	case int32:
+		return mapIntRiskTier(v)
+	case *int32:
+		if v == nil {
+			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+		}
+		return mapIntRiskTier(*v)
+	case int64:
+		return mapIntRiskTier(int32(v)) //#nosec G115 -- risk tier values are 1-4, overflow impossible
+	case *int64:
+		if v == nil {
+			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+		}
+		return mapIntRiskTier(int32(*v)) //#nosec G115 -- risk tier values are 1-4, overflow impossible
+	default:
+		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+	}
+}
+
+func derefInt32(p *int32) int32 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func mapIntRiskTier(v int32) vulnerabilities.RiskTier {
+	switch v {
+	case 1:
+		return vulnerabilities.RiskTier_ACT_NOW
+	case 2:
+		return vulnerabilities.RiskTier_HIGH_RISK
+	case 3:
+		return vulnerabilities.RiskTier_ELEVATED_RISK
+	case 4:
+		return vulnerabilities.RiskTier_MONITOR
+	default:
+		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+	}
 }
 
 func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error) {

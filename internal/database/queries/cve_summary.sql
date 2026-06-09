@@ -100,6 +100,12 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'severity_desc' THEN
         severity
     END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
+        priority
+    END ASC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        priority
+    END DESC NULLS LAST,
     cve_id ASC
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');

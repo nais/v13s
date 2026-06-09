@@ -65,6 +65,10 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return fmt.Errorf("bulk updating KEV data: %w", err)
 	}
 
+	if err := f.querier.UpdateCvePriority(ctx); err != nil {
+		return fmt.Errorf("updating cve priority after KEV sync: %w", err)
+	}
+
 	f.log.Infof("KEV sync complete: %d CVEs in catalog, %d rows updated in DB", len(cveIDs), updated)
 	return nil
 }

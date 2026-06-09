@@ -37,6 +37,14 @@ enum Severity {
   UNASSIGNED = 4;
 }
 
+enum RiskTier {
+  RISK_TIER_UNSPECIFIED = 0;
+  ACT_NOW = 1;
+  HIGH_RISK = 2;
+  ELEVATED_RISK = 3;
+  MONITOR = 4;
+}
+
 enum SinceType {
   SNAPSHOT = 0;
   FIXED = 1;
@@ -60,6 +68,7 @@ message Filter {
   optional string image_name = 5;
   optional string image_tag = 6;
   repeated string namespaces = 7;
+  optional RiskTier risk_tier = 8;
 }
 
 message OrderBy {
@@ -87,6 +96,13 @@ message Summary {
   bool hasSbom = 8;
   optional google.protobuf.Timestamp last_updated = 9;
   optional string stale_image_tag = 10;
+  int32 act_now = 11;
+  int32 high_risk = 12;
+  int32 elevated_risk = 13;
+  int32 monitor = 14;
+  int32 ransomware_count = 15;
+  int32 high_epss_count = 16;
+  RiskTier top_risk_tier = 17;
 }
 
 message Cve {
@@ -385,6 +401,13 @@ message VulnerabilitySummaryPoint {
   int32 riskScore = 7;
   int32 workload_count = 8;
   google.protobuf.Timestamp bucket_time = 9;
+  int32 act_now = 10;
+  int32 high_risk = 11;
+  int32 elevated_risk = 12;
+  int32 monitor = 13;
+  int32 ransomware_count = 14;
+  int32 high_epss_count = 15;
+  RiskTier top_risk_tier = 16;
 }
 
 message GetVulnerabilityByIdRequest{
