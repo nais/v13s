@@ -60,6 +60,10 @@ GROUP BY
 CREATE UNIQUE INDEX idx_mv_vuln_summary_daily_unique ON mv_vuln_summary_daily_by_workload(snapshot_date, CLUSTER, namespace, workload_type, workload_name);
 
 -- +goose Down
+-- Drop MV + index first to remove column dependencies before altering tables.
+DROP INDEX IF EXISTS idx_mv_vuln_summary_daily_unique;
+DROP MATERIALIZED VIEW IF EXISTS mv_vuln_summary_daily_by_workload;
+
 ALTER TABLE vulnerability_summary
     DROP COLUMN IF EXISTS top_risk_tier,
     DROP COLUMN IF EXISTS high_epss_count,
@@ -80,3 +84,30 @@ ALTER TABLE vuln_daily_by_workload
 
 ALTER TABLE cve
     DROP COLUMN IF EXISTS priority;
+
+-- Recreate the original MV without the risk-tier columns.
+CREATE MATERIALIZED VIEW mv_vuln_summary_daily_by_workload AS
+SELECT
+    snapshot_date,
+    CLUSTER,
+    namespace,
+    workload_type,
+    workload_name,
+    COUNT(DISTINCT workload_id)::INT AS workload_count,
+    SUM(critical)::INT AS critical,
+    SUM(high)::INT AS high,
+    SUM(medium)::INT AS medium,
+    SUM(low)::INT AS low,
+    SUM(unassigned)::INT AS unassigned,
+    SUM(critical + high + medium + low + unassigned)::INT AS total,
+    SUM(risk_score)::INT AS risk_score
+FROM
+    vuln_daily_by_workload
+GROUP BY
+    snapshot_date,
+    CLUSTER,
+    namespace,
+    workload_type,
+    workload_name;
+
+CREATE UNIQUE INDEX idx_mv_vuln_summary_daily_unique ON mv_vuln_summary_daily_by_workload(snapshot_date, CLUSTER, namespace, workload_type, workload_name);
