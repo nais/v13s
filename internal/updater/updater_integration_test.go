@@ -957,7 +957,7 @@ func TestBatchUpdateWorkloadStateByImage_TerminalStatesNotOverwritten(t *testing
 		{"wl-updated", sql.WorkloadStateUpdated, true},
 		{"wl-failed", sql.WorkloadStateFailed, false},
 		{"wl-unrecoverable", sql.WorkloadStateUnrecoverable, false},
-		{"wl-no-attestation", sql.WorkloadStateNoAttestation, false},
+		{"wl-no-attestation", sql.WorkloadStateNoAttestation, true},
 	}
 
 	for _, c := range cases {

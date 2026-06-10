@@ -200,7 +200,7 @@ SET
 WHERE
     image_name = @image_name
     AND image_tag = @image_tag
-    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation');
+    AND state NOT IN ('failed', 'unrecoverable');
 
 -- name: ListWorkloadsByCluster :many
 SELECT
@@ -224,4 +224,4 @@ SET
 WHERE
     image_name = @image_name
     AND image_tag = @image_tag
-    AND state NOT IN ('failed', 'unrecoverable', 'no_attestation');
+    AND state NOT IN ('failed', 'unrecoverable');
