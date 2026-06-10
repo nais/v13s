@@ -547,7 +547,7 @@ vulnerability_data AS (
         v.image_name,
         v.image_tag,
         w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state = 'updated' AS is_active,
+        AND i.state = 'updated' AS is_active,
         v.critical,
         v.high,
         v.medium,
