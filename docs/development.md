@@ -126,7 +126,7 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 
 | Variable | Description | Default           |
 |----------|-------------|-------------------|
-| `LISTEN_ADDR` | gRPC server address | `0.0.0.0:50051` |
+| `LISTEN_ADDR` | gRPC server listen address (default binds all interfaces) | `0.0.0.0:50051` |
 | `INTERNAL_LISTEN_ADDR` | Internal HTTP server address | `127.0.0.1:8000`  |
 | `DATABASE_URL` | PostgreSQL connection URL | Required          |
 | `AUTHORIZED_SERVICE_ACCOUNTS` | Comma-separated list of allowed service accounts | Required |
