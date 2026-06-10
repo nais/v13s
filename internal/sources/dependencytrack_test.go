@@ -81,6 +81,81 @@ func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
+func TestGetVulnerabilities_PrefersGhsaLink(t *testing.T) {
+	tests := []struct {
+		name     string
+		cve      *dependencytrack.Cve
+		wantLink string
+	}{
+		{
+			name: "prefers GHSA link over NVD when GHSA alias exists",
+			cve: &dependencytrack.Cve{
+				Id:         "CVE-2026-44249",
+				Link:       "https://nvd.nist.gov/vuln/detail/CVE-2026-44249",
+				References: map[string]string{"CVE-2026-44249": "GHSA-3qp7-7mw8-wx86"},
+			},
+			wantLink: "https://github.com/advisories/GHSA-3qp7-7mw8-wx86",
+		},
+		{
+			name: "keeps NVD link when no GHSA alias",
+			cve: &dependencytrack.Cve{
+				Id:         "CVE-2024-12797",
+				Link:       "https://nvd.nist.gov/vuln/detail/CVE-2024-12797",
+				References: map[string]string{},
+			},
+			wantLink: "https://nvd.nist.gov/vuln/detail/CVE-2024-12797",
+		},
+		{
+			name: "keeps GHSA link when source is already GHSA",
+			cve: &dependencytrack.Cve{
+				Id:         "CVE-2026-44249",
+				Link:       "https://github.com/advisories/GHSA-3qp7-7mw8-wx86",
+				References: map[string]string{"CVE-2026-44249": "GHSA-3qp7-7mw8-wx86"},
+			},
+			wantLink: "https://github.com/advisories/GHSA-3qp7-7mw8-wx86",
+		},
+		{
+			name: "keeps link when references is nil",
+			cve: &dependencytrack.Cve{
+				Id:   "CVE-2024-99999",
+				Link: "https://nvd.nist.gov/vuln/detail/CVE-2024-99999",
+			},
+			wantLink: "https://nvd.nist.gov/vuln/detail/CVE-2024-99999",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			log := logrus.NewEntry(logrus.New())
+			mockClient := new(dependencytrackMock.MockClient)
+			source := NewDependencytrackSource(mockClient, log)
+
+			mockClient.On("GetProject", ctx, "my-image", "1.0.0").
+				Return(&dependencytrack.Project{Uuid: "proj-1"}, nil)
+			mockClient.On("GetFindings", ctx, "proj-1", false).
+				Return([]*dependencytrack.Vulnerability{
+					{
+						Package: "pkg:maven/io.netty/netty-handler@4.2.12.Final",
+						Cve:     tt.cve,
+						Metadata: &dependencytrack.VulnMetadata{
+							ProjectId:         "proj-1",
+							ComponentId:       "comp-1",
+							VulnerabilityUuid: "vuln-1",
+						},
+					},
+				}, nil)
+
+			vulns, err := source.GetVulnerabilities(ctx, "my-image", "1.0.0", false)
+			assert.NoError(t, err)
+			assert.Len(t, vulns, 1)
+			assert.Equal(t, tt.wantLink, vulns[0].Cve.Link)
+
+			mockClient.AssertExpectations(t)
+		})
+	}
+}
+
 func TestMaintainSuppressedVulnerabilities(t *testing.T) {
 	ctx := context.Background()
 	log := logrus.NewEntry(logrus.New())
