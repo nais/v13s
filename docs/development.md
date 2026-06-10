@@ -142,7 +142,7 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 | `TENANT` | Tenant/environment identifier | `nav` |
 | `KUBERNETES_CLUSTERS` | Comma-separated list of clusters to monitor | — |
 | `KUBERNETES_SELF_CLUSTER` | Name of the cluster running v13s | `management` |
-| `KUBERNETES_CLUSTERS_STATIC` | Static cluster entries (`name\|host\|token`, comma-separated) | — |
+| `KUBERNETES_CLUSTERS_STATIC` | Static cluster entries (`name|host|token`, comma-separated) | — |
 
 ### Vulnerability Sources
 
