@@ -22,17 +22,17 @@ const (
 )
 
 type WorkloadManager struct {
-	db                sql.Querier
-	pool              *pgxpool.Pool
-	jobClient         job.Client
-	verifier          attestation.Verifier
-	src               sources.Source
-	queue             *kubernetes.WorkloadEventQueue
-	addDispatcher     *Dispatcher[*model.Workload]
-	deleteDispatcher  *Dispatcher[*model.Workload]
-	workloadCounter   metric.Int64UpDownCounter
-	reconcileDryRun   bool
-	log               logrus.FieldLogger
+	db               sql.Querier
+	pool             *pgxpool.Pool
+	jobClient        job.Client
+	verifier         attestation.Verifier
+	src              sources.Source
+	queue            *kubernetes.WorkloadEventQueue
+	addDispatcher    *Dispatcher[*model.Workload]
+	deleteDispatcher *Dispatcher[*model.Workload]
+	workloadCounter  metric.Int64UpDownCounter
+	reconcileDryRun  bool
+	log              logrus.FieldLogger
 }
 
 type WorkloadEvent string
