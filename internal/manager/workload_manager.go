@@ -22,16 +22,17 @@ const (
 )
 
 type WorkloadManager struct {
-	db               sql.Querier
-	pool             *pgxpool.Pool
-	jobClient        job.Client
-	verifier         attestation.Verifier
-	src              sources.Source
-	queue            *kubernetes.WorkloadEventQueue
-	addDispatcher    *Dispatcher[*model.Workload]
-	deleteDispatcher *Dispatcher[*model.Workload]
-	workloadCounter  metric.Int64UpDownCounter
-	log              logrus.FieldLogger
+	db                sql.Querier
+	pool              *pgxpool.Pool
+	jobClient         job.Client
+	verifier          attestation.Verifier
+	src               sources.Source
+	queue             *kubernetes.WorkloadEventQueue
+	addDispatcher     *Dispatcher[*model.Workload]
+	deleteDispatcher  *Dispatcher[*model.Workload]
+	workloadCounter   metric.Int64UpDownCounter
+	reconcileDryRun   bool
+	log               logrus.FieldLogger
 }
 
 type WorkloadEvent string
@@ -44,7 +45,7 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, dryRun bool, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -79,6 +80,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		src:             source,
 		queue:           queue,
 		workloadCounter: udCounter,
+		reconcileDryRun: dryRun,
 		log:             log,
 	}
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
@@ -132,6 +134,7 @@ func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
 // enqueues DeleteWorkloadJob for any workload that no longer exists in k8s.
 // Only clusters present in liveByCluster are reconciled — clusters not managed
 // by the informer are left untouched.
+// When reconcileDryRun is true (default), no deletions are enqueued — only logged.
 func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster map[string][]*model.Workload) {
 	for cluster, liveWorkloads := range liveByCluster {
 		live := make(map[string]bool, len(liveWorkloads))
@@ -150,7 +153,11 @@ func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster 
 			if live[key] {
 				continue
 			}
-			m.log.Infof("reconcile: workload %s/%s not found in k8s, enqueuing delete", cluster, key)
+			if m.reconcileDryRun {
+				m.log.Infof("[DRY RUN] reconcile: would delete workload %s/%s (not found in k8s)", cluster, key)
+				continue
+			}
+			m.log.Infof("[DELETE] reconcile: workload %s/%s not found in k8s, enqueuing delete", cluster, key)
 			if err := m.DeleteWorkload(ctx, &model.Workload{
 				Name:      dbW.Name,
 				Namespace: dbW.Namespace,

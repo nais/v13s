@@ -117,7 +117,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		)
 	}()
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, log.WithField("subsystem", "manager"))
+	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDryRun, log.WithField("subsystem", "manager"))
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
 

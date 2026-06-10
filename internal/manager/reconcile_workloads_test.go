@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,12 +15,35 @@ import (
 	"github.com/nais/v13s/internal/model"
 )
 
+type countingJobClient struct {
+	count int
+}
+
+func (c *countingJobClient) AddJob(_ context.Context, _ river.JobArgs) error {
+	c.count++
+	return nil
+}
+func (c *countingJobClient) GetWorkers() *river.Workers    { return nil }
+func (c *countingJobClient) Start(_ context.Context) error { return nil }
+func (c *countingJobClient) Stop(_ context.Context) error  { return nil }
+
 func newTestWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManager {
 	t.Helper()
 	return &WorkloadManager{
-		db:        q,
-		jobClient: &stubJobClient{},
-		log:       logrus.NewEntry(logrus.New()),
+		db:              q,
+		jobClient:       &stubJobClient{},
+		reconcileDryRun: false,
+		log:             logrus.NewEntry(logrus.New()),
+	}
+}
+
+func newDryRunWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManager {
+	t.Helper()
+	return &WorkloadManager{
+		db:              q,
+		jobClient:       &stubJobClient{},
+		reconcileDryRun: true,
+		log:             logrus.NewEntry(logrus.New()),
 	}
 }
 
@@ -68,7 +92,8 @@ func TestReconcileWorkloads_SkipsUnmanagedClusters(t *testing.T) {
 	ctx := context.Background()
 	q := sqmock.NewMockQuerier(t)
 
-	// prod is NOT in liveByCluster — should not query DB for prod
+	// prod is NOT in liveByCluster (e.g. informer had no active informers for it)
+	// — should not query DB for prod at all
 	live := map[string][]*model.Workload{
 		"dev": {},
 	}
@@ -78,6 +103,46 @@ func TestReconcileWorkloads_SkipsUnmanagedClusters(t *testing.T) {
 	mgr.ReconcileWorkloads(ctx, live)
 
 	q.AssertNotCalled(t, "ListWorkloadsByCluster", mock.Anything, "prod")
+}
+
+func TestReconcileWorkloads_DryRun_DoesNotDelete(t *testing.T) {
+	ctx := context.Background()
+	q := sqmock.NewMockQuerier(t)
+
+	q.EXPECT().ListWorkloadsByCluster(mock.Anything, "dev").Return([]*sql.Workload{
+		{Name: "zombie", Namespace: "nais-system", Cluster: "dev", WorkloadType: "deployment", ID: pgtype.UUID{}},
+	}, nil)
+
+	live := map[string][]*model.Workload{
+		"dev": {}, // zombie not present in k8s
+	}
+
+	counter := &countingJobClient{}
+	mgr := newDryRunWorkloadManager(t, q)
+	mgr.jobClient = counter
+	mgr.ReconcileWorkloads(ctx, live)
+
+	require.Zero(t, counter.count, "dry-run should not enqueue any delete jobs")
+}
+
+func TestReconcileWorkloads_LiveRun_Deletes(t *testing.T) {
+	ctx := context.Background()
+	q := sqmock.NewMockQuerier(t)
+
+	q.EXPECT().ListWorkloadsByCluster(mock.Anything, "dev").Return([]*sql.Workload{
+		{Name: "zombie", Namespace: "nais-system", Cluster: "dev", WorkloadType: "deployment", ID: pgtype.UUID{}},
+	}, nil)
+
+	live := map[string][]*model.Workload{
+		"dev": {},
+	}
+
+	counter := &countingJobClient{}
+	mgr := newTestWorkloadManager(t, q) // dryRun=false
+	mgr.jobClient = counter
+	mgr.ReconcileWorkloads(ctx, live)
+
+	require.Equal(t, 1, counter.count, "live-run should enqueue exactly one delete job")
 }
 
 func TestReconcileWorkloads_EmptyCluster_DeletesAll(t *testing.T) {
