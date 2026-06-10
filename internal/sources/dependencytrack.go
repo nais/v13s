@@ -136,11 +136,8 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		// If GHSA preference logic moves or is removed here, the DB will
 		// start storing NVD links for CVEs that have GHSA aliases.
 		link := v.Cve.Link
-		for _, alias := range v.Cve.References {
-			if strings.HasPrefix(alias, "GHSA-") {
-				link = "https://github.com/advisories/" + alias
-				break
-			}
+		if alias, ok := v.Cve.References[v.Cve.Id]; ok && strings.HasPrefix(alias, "GHSA-") {
+			link = "https://github.com/advisories/" + alias
 		}
 
 		vv = append(vv, &Vulnerability{
