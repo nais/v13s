@@ -128,6 +128,41 @@ func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
 	return m.jobClient.AddJob(ctx, job)
 }
 
+// ReconcileWorkloads compares DB workloads against the live k8s state and
+// enqueues DeleteWorkloadJob for any workload that no longer exists in k8s.
+// Only clusters present in liveByCluster are reconciled — clusters not managed
+// by the informer are left untouched.
+func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster map[string][]*model.Workload) {
+	for cluster, liveWorkloads := range liveByCluster {
+		live := make(map[string]bool, len(liveWorkloads))
+		for _, w := range liveWorkloads {
+			live[w.Name+"/"+w.Namespace+"/"+string(w.Type)] = true
+		}
+
+		dbWorkloads, err := m.db.ListWorkloadsByCluster(ctx, cluster)
+		if err != nil {
+			m.log.WithError(err).Errorf("reconcile: failed to list workloads for cluster %s", cluster)
+			continue
+		}
+
+		for _, dbW := range dbWorkloads {
+			key := dbW.Name + "/" + dbW.Namespace + "/" + dbW.WorkloadType
+			if live[key] {
+				continue
+			}
+			m.log.Infof("reconcile: workload %s/%s not found in k8s, enqueuing delete", cluster, key)
+			if err := m.DeleteWorkload(ctx, &model.Workload{
+				Name:      dbW.Name,
+				Namespace: dbW.Namespace,
+				Cluster:   dbW.Cluster,
+				Type:      model.WorkloadType(dbW.WorkloadType),
+			}); err != nil {
+				m.log.WithError(err).Warnf("reconcile: failed to enqueue delete for %s/%s", cluster, key)
+			}
+		}
+	}
+}
+
 func (m *WorkloadManager) Stop(ctx context.Context) error {
 	return m.jobClient.Stop(ctx)
 }

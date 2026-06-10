@@ -147,6 +147,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}
 
+	log.Info("reconciling workloads against k8s state")
+	mgr.ReconcileWorkloads(ctx, informerMgr.ListWorkloadsByCluster())
+
 	u := updater.NewUpdater(
 		pool,
 		source,
