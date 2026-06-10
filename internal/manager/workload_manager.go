@@ -163,6 +163,8 @@ func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster 
 				Namespace: dbW.Namespace,
 				Cluster:   dbW.Cluster,
 				Type:      model.WorkloadType(dbW.WorkloadType),
+				ImageName: dbW.ImageName,
+				ImageTag:  dbW.ImageTag,
 			}); err != nil {
 				m.log.WithError(err).Warnf("reconcile: failed to enqueue delete for %s/%s", cluster, key)
 			}

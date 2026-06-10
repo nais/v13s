@@ -64,10 +64,12 @@ func TestReconcileWorkloads_DeletesOrphan(t *testing.T) {
 		},
 	}
 
+	counter := &countingJobClient{}
 	mgr := newTestWorkloadManager(t, q)
+	mgr.jobClient = counter
 	mgr.ReconcileWorkloads(ctx, live)
 
-	// stubJobClient silently accepts the delete job — no assertion needed beyond no panic
+	require.Equal(t, 1, counter.count, "should enqueue one delete job for the orphan workload")
 }
 
 func TestReconcileWorkloads_KeepsLiveWorkloads(t *testing.T) {
@@ -158,8 +160,10 @@ func TestReconcileWorkloads_EmptyCluster_DeletesAll(t *testing.T) {
 		"dev": {},
 	}
 
+	counter := &countingJobClient{}
 	mgr := newTestWorkloadManager(t, q)
+	mgr.jobClient = counter
 	mgr.ReconcileWorkloads(ctx, live)
 
-	require.NoError(t, nil) // stubJobClient accepted the delete
+	require.Equal(t, 1, counter.count, "should enqueue one delete job when cluster has no live workloads")
 }
