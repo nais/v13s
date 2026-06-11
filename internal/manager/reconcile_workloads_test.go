@@ -32,7 +32,7 @@ func newTestWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManage
 	return &WorkloadManager{
 		db:              q,
 		jobClient:       &stubJobClient{},
-		reconcileDryRun: false,
+		reconcileWorkloadsEnabled: true,
 		log:             logrus.NewEntry(logrus.New()),
 	}
 }
@@ -40,10 +40,10 @@ func newTestWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManage
 func newDryRunWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManager {
 	t.Helper()
 	return &WorkloadManager{
-		db:              q,
-		jobClient:       &stubJobClient{},
-		reconcileDryRun: true,
-		log:             logrus.NewEntry(logrus.New()),
+		db:                        q,
+		jobClient:                 &stubJobClient{},
+		reconcileWorkloadsEnabled: false,
+		log:                       logrus.NewEntry(logrus.New()),
 	}
 }
 
@@ -140,7 +140,7 @@ func TestReconcileWorkloads_LiveRun_Deletes(t *testing.T) {
 	}
 
 	counter := &countingJobClient{}
-	mgr := newTestWorkloadManager(t, q) // dryRun=false
+	mgr := newTestWorkloadManager(t, q) // reconcileEnabled=true
 	mgr.jobClient = counter
 	mgr.ReconcileWorkloads(ctx, live)
 

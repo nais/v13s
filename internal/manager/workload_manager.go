@@ -31,7 +31,7 @@ type WorkloadManager struct {
 	addDispatcher    *Dispatcher[*model.Workload]
 	deleteDispatcher *Dispatcher[*model.Workload]
 	workloadCounter  metric.Int64UpDownCounter
-	reconcileDryRun  bool
+	reconcileWorkloadsEnabled bool
 	log              logrus.FieldLogger
 }
 
@@ -45,7 +45,7 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, dryRun bool, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, reconcileEnabled bool, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -80,7 +80,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		src:             source,
 		queue:           queue,
 		workloadCounter: udCounter,
-		reconcileDryRun: dryRun,
+		reconcileWorkloadsEnabled: reconcileEnabled,
 		log:             log,
 	}
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
@@ -150,7 +150,7 @@ func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster 
 			if live[key] {
 				continue
 			}
-			if m.reconcileDryRun {
+			if !m.reconcileWorkloadsEnabled {
 				m.log.Infof("[DRY RUN] reconcile: would delete workload %s/%s (not found in k8s)", cluster, key)
 				continue
 			}
