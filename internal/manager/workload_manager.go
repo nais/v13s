@@ -130,11 +130,8 @@ func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
 	return m.jobClient.AddJob(ctx, job)
 }
 
-// ReconcileWorkloads compares DB workloads against the live k8s state and
-// enqueues DeleteWorkloadJob for any workload that no longer exists in k8s.
 // Only clusters present in liveByCluster are reconciled — clusters not managed
 // by the informer are left untouched.
-// When reconcileDryRun is true (default), no deletions are enqueued — only logged.
 func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster map[string][]*model.Workload) {
 	for cluster, liveWorkloads := range liveByCluster {
 		live := make(map[string]bool, len(liveWorkloads))
