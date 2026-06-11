@@ -22,17 +22,17 @@ const (
 )
 
 type WorkloadManager struct {
-	db               sql.Querier
-	pool             *pgxpool.Pool
-	jobClient        job.Client
-	verifier         attestation.Verifier
-	src              sources.Source
-	queue            *kubernetes.WorkloadEventQueue
-	addDispatcher    *Dispatcher[*model.Workload]
-	deleteDispatcher *Dispatcher[*model.Workload]
-	workloadCounter  metric.Int64UpDownCounter
+	db                        sql.Querier
+	pool                      *pgxpool.Pool
+	jobClient                 job.Client
+	verifier                  attestation.Verifier
+	src                       sources.Source
+	queue                     *kubernetes.WorkloadEventQueue
+	addDispatcher             *Dispatcher[*model.Workload]
+	deleteDispatcher          *Dispatcher[*model.Workload]
+	workloadCounter           metric.Int64UpDownCounter
 	reconcileWorkloadsEnabled bool
-	log              logrus.FieldLogger
+	log                       logrus.FieldLogger
 }
 
 type WorkloadEvent string
@@ -73,15 +73,15 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
 	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
 	m := &WorkloadManager{
-		db:              db,
-		pool:            pool,
-		jobClient:       jobClient,
-		verifier:        verifier,
-		src:             source,
-		queue:           queue,
-		workloadCounter: udCounter,
+		db:                        db,
+		pool:                      pool,
+		jobClient:                 jobClient,
+		verifier:                  verifier,
+		src:                       source,
+		queue:                     queue,
+		workloadCounter:           udCounter,
 		reconcileWorkloadsEnabled: reconcileEnabled,
-		log:             log,
+		log:                       log,
 	}
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
 	// m.addDispatcher.errorHook = m.handleError
