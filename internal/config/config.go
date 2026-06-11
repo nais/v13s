@@ -32,7 +32,9 @@ type Config struct {
 	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 	Metrics                   MetricConfig
-	ReconcileDryRun           bool `envconfig:"RECONCILE_DRY_RUN" default:"true"`
+	// ReconcileDryRun controls zombie workload cleanup. Defaults to true (safe mode) —
+	// set RECONCILE_DRY_RUN=false to enable actual deletions.
+	ReconcileDryRun bool `envconfig:"RECONCILE_DRY_RUN" default:"true"`
 }
 
 type DependencyTrackConfig struct {
