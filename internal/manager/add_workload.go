@@ -70,6 +70,29 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		return nil
 	}
 
+	image, err := a.db.GetImage(ctx, sql.GetImageParams{
+		Name: workload.ImageName,
+		Tag:  workload.ImageTag,
+	})
+	if err != nil {
+		a.log.WithError(err).WithFields(logrus.Fields{
+			"image": workload.ImageName,
+			"tag":   workload.ImageTag,
+		}).Warn("failed to get image state; proceeding to enqueue GetAttestationJob")
+		image = &sql.Image{}
+	}
+
+	if image.State == sql.ImageStateUpdated {
+		if err := a.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			State: sql.WorkloadStateUpdated,
+			ID:    id,
+		}); err != nil {
+			return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateUpdated, err)
+		}
+		recordStatusOutput(ctx, JobStatusUpdated)
+		return nil
+	}
+
 	err = a.jobClient.AddJob(ctx, &GetAttestationJob{
 		ImageName:    workload.ImageName,
 		ImageTag:     workload.ImageTag,
