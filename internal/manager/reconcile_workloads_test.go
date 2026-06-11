@@ -32,7 +32,7 @@ func newTestWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManage
 	return &WorkloadManager{
 		db:                        q,
 		jobClient:                 &stubJobClient{},
-		reconcileWorkloadsEnabled: true,
+		reconcileDeletionEnabled: true,
 		log:                       logrus.NewEntry(logrus.New()),
 	}
 }
@@ -42,7 +42,7 @@ func newDryRunWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadMana
 	return &WorkloadManager{
 		db:                        q,
 		jobClient:                 &stubJobClient{},
-		reconcileWorkloadsEnabled: false,
+		reconcileDeletionEnabled: false,
 		log:                       logrus.NewEntry(logrus.New()),
 	}
 }

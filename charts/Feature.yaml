@@ -175,7 +175,7 @@ values:
     config:
       type: string
 
-  reconcileWorkloadsEnabled:
+  reconcileDeletionEnabled:
     displayName: Enable zombie workload reconciliation
     description: Set to true to enable actual deletion of workloads no longer present in k8s. Defaults to false (dry-run mode).
     config:

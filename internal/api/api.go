@@ -117,11 +117,11 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		)
 	}()
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileWorkloadsEnabled, log.WithField("subsystem", "manager"))
-	if cfg.ReconcileWorkloadsEnabled {
+	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
+	if cfg.ReconcileDeletionEnabled {
 		log.Info("workload reconciliation: enabled — orphaned workloads will be deleted")
 	} else {
-		log.Info("workload reconciliation: dry-run — orphaned workloads will be logged but not deleted (set RECONCILE_WORKLOADS_ENABLED=true to enable)")
+		log.Info("workload reconciliation: dry-run — orphaned workloads will be logged but not deleted (set RECONCILE_DELETION_ENABLED=true to enable)")
 	}
 	mgr.Start(ctx)
 	defer mgr.Stop(ctx)
