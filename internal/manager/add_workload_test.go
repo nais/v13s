@@ -79,13 +79,17 @@ func TestAddWorkloadWorker_EnqueuesGetAttestationWhenImageFailed(t *testing.T) {
 		Tag:   "v1",
 		State: sql.ImageStateFailed,
 	}, nil)
-	db.EXPECT().UpdateWorkloadState(mock.Anything, mock.Anything).Return(nil)
+	db.EXPECT().UpdateWorkloadState(mock.Anything, mock.MatchedBy(func(p sql.UpdateWorkloadStateParams) bool {
+		return p.State == sql.WorkloadStateUpdated && p.ID == workloadID
+	})).Return(nil)
 
 	worker := &AddWorkloadWorker{db: db, jobClient: jc, log: logrus.NewEntry(logrus.New())}
 	err := worker.Work(context.Background(), makeAddWorkloadJob("myimage", "v1"))
 
 	require.NoError(t, err)
 	require.Len(t, jc.addedJobs, 1, "GetAttestationJob should be enqueued when image is failed — it sets the correct terminal state")
+	_, ok := jc.addedJobs[0].(*GetAttestationJob)
+	require.True(t, ok, "enqueued job should be a GetAttestationJob")
 }
 
 func TestAddWorkloadWorker_EnqueuesGetAttestationWhenImageInitialized(t *testing.T) {
@@ -128,4 +132,6 @@ func TestAddWorkloadWorker_FallsBackToGetAttestationOnGetImageError(t *testing.T
 
 	require.NoError(t, err)
 	require.Len(t, jc.addedJobs, 1, "GetAttestationJob should be enqueued when GetImage fails")
+	_, ok := jc.addedJobs[0].(*GetAttestationJob)
+	require.True(t, ok, "enqueued job should be a GetAttestationJob")
 }
