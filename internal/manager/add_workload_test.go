@@ -68,7 +68,7 @@ func TestAddWorkloadWorker_SkipsGetAttestationWhenImageUpdated(t *testing.T) {
 	require.Empty(t, jc.addedJobs, "GetAttestationJob should not be enqueued when image is already updated")
 }
 
-func TestAddWorkloadWorker_SkipsGetAttestationWhenImageFailed(t *testing.T) {
+func TestAddWorkloadWorker_EnqueuesGetAttestationWhenImageFailed(t *testing.T) {
 	db := sqmock.NewMockQuerier(t)
 	jc := &trackingJobClient{}
 
@@ -79,15 +79,13 @@ func TestAddWorkloadWorker_SkipsGetAttestationWhenImageFailed(t *testing.T) {
 		Tag:   "v1",
 		State: sql.ImageStateFailed,
 	}, nil)
-	db.EXPECT().UpdateWorkloadState(mock.Anything, mock.MatchedBy(func(p sql.UpdateWorkloadStateParams) bool {
-		return p.State == sql.WorkloadStateNoAttestation && p.ID == workloadID
-	})).Return(nil)
+	db.EXPECT().UpdateWorkloadState(mock.Anything, mock.Anything).Return(nil)
 
 	worker := &AddWorkloadWorker{db: db, jobClient: jc, log: logrus.NewEntry(logrus.New())}
 	err := worker.Work(context.Background(), makeAddWorkloadJob("myimage", "v1"))
 
 	require.NoError(t, err)
-	require.Empty(t, jc.addedJobs, "GetAttestationJob should not be enqueued when image is already failed")
+	require.Len(t, jc.addedJobs, 1, "GetAttestationJob should be enqueued when image is failed — it sets the correct terminal state")
 }
 
 func TestAddWorkloadWorker_EnqueuesGetAttestationWhenImageInitialized(t *testing.T) {

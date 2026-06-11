@@ -93,17 +93,6 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		return nil
 	}
 
-	if image.State == sql.ImageStateFailed {
-		if err := a.db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
-			State: sql.WorkloadStateNoAttestation,
-			ID:    id,
-		}); err != nil {
-			return fmt.Errorf("failed to set workload state %s: %w", sql.WorkloadStateNoAttestation, err)
-		}
-		recordStatusOutput(ctx, JobStatusNoAttestation)
-		return nil
-	}
-
 	err = a.jobClient.AddJob(ctx, &GetAttestationJob{
 		ImageName:    workload.ImageName,
 		ImageTag:     workload.ImageTag,
