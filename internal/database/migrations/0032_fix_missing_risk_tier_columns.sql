@@ -62,6 +62,7 @@ CREATE UNIQUE INDEX idx_mv_vuln_summary_daily_unique ON mv_vuln_summary_daily_by
 -- +goose Down
 -- Drop MV + index first to remove column dependencies before altering tables.
 DROP INDEX IF EXISTS idx_mv_vuln_summary_daily_unique;
+
 DROP MATERIALIZED VIEW IF EXISTS mv_vuln_summary_daily_by_workload;
 
 ALTER TABLE vulnerability_summary

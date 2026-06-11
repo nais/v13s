@@ -32,6 +32,7 @@ type Config struct {
 	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 	Metrics                   MetricConfig
+	ReconcileDeletionEnabled bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 }
 
 type DependencyTrackConfig struct {

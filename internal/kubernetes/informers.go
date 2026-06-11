@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/discovery"
@@ -166,4 +168,30 @@ func (m *InformerManager) start(ctx context.Context) {
 
 func (m *InformerManager) addCacheSync(sync cache.InformerSynced) {
 	m.cacheSyncs = append(m.cacheSyncs, sync)
+}
+
+// ListWorkloadsByCluster returns all workloads currently in the informer cache,
+// keyed by cluster name. Every managed cluster is present in the map — clusters
+// with no live workloads have an empty slice, which lets ReconcileWorkloads
+// delete DB entries for those clusters too.
+// Clusters with no active informers are excluded to avoid false positives.
+func (m *InformerManager) ListWorkloadsByCluster() map[string][]*model.Workload {
+	result := make(map[string][]*model.Workload, len(m.clusters))
+	for cluster, clusterMgr := range m.clusters {
+		if len(clusterMgr.informers) == 0 {
+			m.log.Warnf("reconcile: skipping cluster %s — no active informers, cannot safely determine live workloads", cluster)
+			continue
+		}
+		result[cluster] = make([]*model.Workload, 0)
+		for _, informer := range clusterMgr.informers {
+			for _, obj := range informer.GetStore().List() {
+				u, ok := obj.(*unstructured.Unstructured)
+				if !ok {
+					continue
+				}
+				result[cluster] = append(result[cluster], extractWorkloads(cluster, u)...)
+			}
+		}
+	}
+	return result
 }
