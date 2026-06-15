@@ -65,6 +65,7 @@ func TestUpdater(t *testing.T) {
 		verifierMock,
 		sourceMock,
 		queue,
+		false, // reconcileDeletionEnabled=false: integration tests never delete
 		logrus.NewEntry(logrus.StandardLogger()),
 	)
 

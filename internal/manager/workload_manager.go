@@ -3,6 +3,9 @@ package manager
 
 import (
 	"context"
+	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
@@ -22,16 +25,17 @@ const (
 )
 
 type WorkloadManager struct {
-	db               sql.Querier
-	pool             *pgxpool.Pool
-	jobClient        job.Client
-	verifier         attestation.Verifier
-	src              sources.Source
-	queue            *kubernetes.WorkloadEventQueue
-	addDispatcher    *Dispatcher[*model.Workload]
-	deleteDispatcher *Dispatcher[*model.Workload]
-	workloadCounter  metric.Int64UpDownCounter
-	log              logrus.FieldLogger
+	db                       sql.Querier
+	pool                     *pgxpool.Pool
+	jobClient                job.Client
+	verifier                 attestation.Verifier
+	src                      sources.Source
+	queue                    *kubernetes.WorkloadEventQueue
+	addDispatcher            *Dispatcher[*model.Workload]
+	deleteDispatcher         *Dispatcher[*model.Workload]
+	workloadCounter          metric.Int64UpDownCounter
+	reconcileDeletionEnabled bool
+	log                      logrus.FieldLogger
 }
 
 type WorkloadEvent string
@@ -44,7 +48,7 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, reconcileDeletionEnabled bool, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -72,14 +76,15 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
 	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
 	m := &WorkloadManager{
-		db:              db,
-		pool:            pool,
-		jobClient:       jobClient,
-		verifier:        verifier,
-		src:             source,
-		queue:           queue,
-		workloadCounter: udCounter,
-		log:             log,
+		db:                       db,
+		pool:                     pool,
+		jobClient:                jobClient,
+		verifier:                 verifier,
+		src:                      source,
+		queue:                    queue,
+		workloadCounter:          udCounter,
+		reconcileDeletionEnabled: reconcileDeletionEnabled,
+		log:                      log,
 	}
 	m.addDispatcher = NewDispatcher(workloadWorker(m.AddWorkload), queue.Updated, maxWorkers)
 	// m.addDispatcher.errorHook = m.handleError
@@ -126,6 +131,83 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 
 func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
 	return m.jobClient.AddJob(ctx, job)
+}
+
+// Only clusters present in liveByCluster are reconciled — clusters not managed
+// by the informer are left untouched.
+func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster map[string][]*model.Workload) {
+	for cluster, liveWorkloads := range liveByCluster {
+		live := make(map[string]bool, len(liveWorkloads))
+		for _, w := range liveWorkloads {
+			live[w.Name+"/"+w.Namespace+"/"+string(w.Type)] = true
+		}
+
+		dbWorkloads, err := m.db.ListWorkloadsByCluster(ctx, cluster)
+		if err != nil {
+			m.log.WithError(err).Errorf("reconcile: failed to list workloads for cluster %s", cluster)
+			continue
+		}
+
+		orphanTotal := 0
+		enqueuedTotal := 0
+		orphanByType := make(map[string]int)
+
+		for _, dbW := range dbWorkloads {
+			key := dbW.Name + "/" + dbW.Namespace + "/" + dbW.WorkloadType
+			if live[key] {
+				continue
+			}
+			orphanTotal++
+			orphanByType[dbW.WorkloadType]++
+			if !m.reconcileDeletionEnabled {
+				m.log.Infof("[DRY RUN] reconcile: would delete workload %s/%s (not found in k8s)", cluster, key)
+				continue
+			}
+			m.log.Infof("[DELETE] reconcile: workload %s/%s not found in k8s, enqueuing delete", cluster, key)
+			if err := m.DeleteWorkload(ctx, &model.Workload{
+				Name:      dbW.Name,
+				Namespace: dbW.Namespace,
+				Cluster:   dbW.Cluster,
+				Type:      model.WorkloadType(dbW.WorkloadType),
+				ImageName: dbW.ImageName,
+				ImageTag:  dbW.ImageTag,
+			}); err != nil {
+				m.log.WithError(err).Warnf("reconcile: failed to enqueue delete for %s/%s", cluster, key)
+				continue
+			}
+			enqueuedTotal++
+		}
+
+		mode := "dry-run"
+		if m.reconcileDeletionEnabled {
+			mode = "delete"
+		}
+
+		m.log.WithFields(logrus.Fields{
+			"cluster":         cluster,
+			"mode":            mode,
+			"orphans_total":   orphanTotal,
+			"orphans_by_type": formatTypeCounts(orphanByType),
+			"enqueued_total":  enqueuedTotal,
+		}).Info("reconcile summary")
+	}
+}
+
+func formatTypeCounts(counts map[string]int) string {
+	if len(counts) == 0 {
+		return "none"
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%d", k, counts[k]))
+	}
+	return strings.Join(parts, ",")
 }
 
 func (m *WorkloadManager) Stop(ctx context.Context) error {
