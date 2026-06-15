@@ -3,6 +3,9 @@ package manager
 
 import (
 	"context"
+	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
@@ -145,11 +148,17 @@ func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster 
 			continue
 		}
 
+		orphanTotal := 0
+		enqueuedTotal := 0
+		orphanByType := make(map[string]int)
+
 		for _, dbW := range dbWorkloads {
 			key := dbW.Name + "/" + dbW.Namespace + "/" + dbW.WorkloadType
 			if live[key] {
 				continue
 			}
+			orphanTotal++
+			orphanByType[dbW.WorkloadType]++
 			if !m.reconcileDeletionEnabled {
 				m.log.Infof("[DRY RUN] reconcile: would delete workload %s/%s (not found in k8s)", cluster, key)
 				continue
@@ -164,9 +173,41 @@ func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster 
 				ImageTag:  dbW.ImageTag,
 			}); err != nil {
 				m.log.WithError(err).Warnf("reconcile: failed to enqueue delete for %s/%s", cluster, key)
+				continue
 			}
+			enqueuedTotal++
 		}
+
+		mode := "dry-run"
+		if m.reconcileDeletionEnabled {
+			mode = "delete"
+		}
+
+		m.log.WithFields(logrus.Fields{
+			"cluster":         cluster,
+			"mode":            mode,
+			"orphans_total":   orphanTotal,
+			"orphans_by_type": formatTypeCounts(orphanByType),
+			"enqueued_total":  enqueuedTotal,
+		}).Info("reconcile summary")
 	}
+}
+
+func formatTypeCounts(counts map[string]int) string {
+	if len(counts) == 0 {
+		return "none"
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%d", k, counts[k]))
+	}
+	return strings.Join(parts, ",")
 }
 
 func (m *WorkloadManager) Stop(ctx context.Context) error {
