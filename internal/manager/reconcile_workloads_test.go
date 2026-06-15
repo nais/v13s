@@ -30,20 +30,20 @@ func (c *countingJobClient) Stop(_ context.Context) error  { return nil }
 func newTestWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManager {
 	t.Helper()
 	return &WorkloadManager{
-		db:                        q,
-		jobClient:                 &stubJobClient{},
+		db:                       q,
+		jobClient:                &stubJobClient{},
 		reconcileDeletionEnabled: true,
-		log:                       logrus.NewEntry(logrus.New()),
+		log:                      logrus.NewEntry(logrus.New()),
 	}
 }
 
 func newDryRunWorkloadManager(t *testing.T, q *sqmock.MockQuerier) *WorkloadManager {
 	t.Helper()
 	return &WorkloadManager{
-		db:                        q,
-		jobClient:                 &stubJobClient{},
+		db:                       q,
+		jobClient:                &stubJobClient{},
 		reconcileDeletionEnabled: false,
-		log:                       logrus.NewEntry(logrus.New()),
+		log:                      logrus.NewEntry(logrus.New()),
 	}
 }
 
