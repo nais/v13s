@@ -723,7 +723,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, int32(0), sum.GetMonitor())
 		assert.Equal(t, int32(0), sum.GetRansomwareCount())
 		assert.Equal(t, int32(1), sum.GetHighEpssCount())
-		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, sum.GetTopRiskTier())
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, sum.GetTopPriority())
 		assert.Equal(t, "cluster-1", resp.Nodes[0].GetWorkload().Cluster)
 		assert.Equal(t, "namespace-1", resp.Nodes[0].GetWorkload().Namespace)
 		assert.Equal(t, "workload-1", resp.Nodes[0].GetWorkload().Name)
@@ -1358,7 +1358,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighEpssCount())
-		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, resp.GetVulnerabilitySummary().GetTopRiskTier())
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, resp.GetVulnerabilitySummary().GetTopPriority())
 	})
 }
 
@@ -1421,15 +1421,12 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetRansomwareCount())
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHighEpssCount())
-		assert.Equal(t, vulnerabilities.RiskTier_HIGH_RISK, resp.GetVulnerabilitySummary().GetTopRiskTier())
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, resp.GetVulnerabilitySummary().GetTopPriority())
 
 		assert.Len(t, resp.GetWorkloadRef(), 1, "workload_ref must be populated")
 	})
 
-	t.Run("image with no findings returns top_risk_tier UNSPECIFIED", func(t *testing.T) {
-		// Registers a fresh image+workload with no vulnerability findings.
-		// RecalculateVulnerabilitySummary on an empty image produces a summary
-		// with all-zero counts; top_risk_tier must be RISK_TIER_UNSPECIFIED (not MONITOR).
+	t.Run("image with no findings returns top_priority UNSPECIFIED", func(t *testing.T) {
 		const (
 			emptyImage = "image-no-vulns"
 			emptyTag   = "v9.0"
@@ -1459,9 +1456,9 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp.GetVulnerabilitySummary(),
 			"READY image with zero-count summary must have a non-nil VulnerabilitySummary")
-		assert.Equal(t, vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED,
-			resp.GetVulnerabilitySummary().GetTopRiskTier(),
-			"image with no findings must return RISK_TIER_UNSPECIFIED, not MONITOR")
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_UNSPECIFIED,
+			resp.GetVulnerabilitySummary().GetTopPriority(),
+			"image with no findings must return PRIORITY_UNSPECIFIED, not MONITOR")
 	})
 }
 
@@ -1694,18 +1691,18 @@ func TestSanitizeOrderBy(t *testing.T) {
 			expected: "severity_asc",
 		},
 		{
-			name: "top_risk_tier asc flips to desc (ACT_NOW first)",
+			name: "top_priority asc flips to desc (ACT_NOW first)",
 			orderBy: &vulnerabilities.OrderBy{
-				Field:     string(vulnerabilities.OrderByTopRiskTier),
+				Field:     string(vulnerabilities.OrderByTopPriority),
 				Direction: vulnerabilities.Direction_ASC,
 			},
 			defaultF: vulnerabilities.OrderByPackage,
 			expected: "top_risk_tier_desc",
 		},
 		{
-			name: "top_risk_tier desc flips to asc (MONITOR first)",
+			name: "top_priority desc flips to asc (MONITOR first)",
 			orderBy: &vulnerabilities.OrderBy{
-				Field:     string(vulnerabilities.OrderByTopRiskTier),
+				Field:     string(vulnerabilities.OrderByTopPriority),
 				Direction: vulnerabilities.Direction_DESC,
 			},
 			defaultF: vulnerabilities.OrderByPackage,
@@ -2856,6 +2853,9 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+
 	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
 			ImageName:    imageName,
@@ -2923,6 +2923,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, "1.2.3", v.GetFixVersion())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListVulnerabilities returns enriched Cve fields", func(t *testing.T) {
@@ -2973,6 +2974,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, cveID, v.GetCve().GetId())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListWorkloadsForVulnerability returns Cve.CvssScore", func(t *testing.T) {
@@ -3396,12 +3398,12 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		assert.Equal(t, int32(1), sum.GetHighRisk(), "high_risk must be 1 (high-EPSS CVE)")
 		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical+mid-EPSS CVE)")
 		assert.Equal(t, int32(1), sum.GetMonitor(), "monitor must be 1 (low-risk CVE)")
-		assert.Equal(t, vulnerabilities.RiskTier_ACT_NOW, sum.GetTopRiskTier(), "top tier must be ACT_NOW")
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, sum.GetTopPriority(), "top priority must be ACT_NOW")
 	})
 
 	t.Run("priority ordering: ListVulnerabilitiesForImage order_by=priority_asc", func(t *testing.T) {
 		// Verify that per-CVE ordering via priority_asc returns
-		// ACT_NOW → HIGH_RISK → ELEVATED_RISK → MONITOR.
+		// ACT_NOW → HIGH → ELEVATED → MONITOR.
 		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag,
 			vulnerabilities.Order(vulnerabilities.OrderByPriority, vulnerabilities.Direction_ASC),
 			vulnerabilities.Limit(10),
@@ -3410,13 +3412,25 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		require.Len(t, resp.Nodes, 4, "expected exactly 4 CVEs for the image")
 
 		gotIDs := make([]string, len(resp.Nodes))
+		gotPriorities := make([]vulnerabilities.Priority, len(resp.Nodes))
 		for i, v := range resp.Nodes {
 			gotIDs[i] = v.GetCve().GetId()
+			gotPriorities[i] = v.GetCve().GetPriority()
 		}
 		assert.Equal(t,
 			[]string{cveActNow, cveHigh, cveElevated, cveMonitor},
 			gotIDs,
-			"CVEs must be returned in priority order: ACT_NOW → HIGH_RISK → ELEVATED_RISK → MONITOR",
+			"CVEs must be returned in priority order: ACT_NOW → HIGH → ELEVATED → MONITOR",
+		)
+		assert.Equal(t,
+			[]vulnerabilities.Priority{
+				vulnerabilities.Priority_PRIORITY_ACT_NOW,
+				vulnerabilities.Priority_PRIORITY_HIGH,
+				vulnerabilities.Priority_PRIORITY_ELEVATED,
+				vulnerabilities.Priority_PRIORITY_MONITOR,
+			},
+			gotPriorities,
+			"CVE responses must expose computed priority enum",
 		)
 	})
 }

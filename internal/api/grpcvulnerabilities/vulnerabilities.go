@@ -77,20 +77,21 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				SeveritySince: timestamppb.New(row.SeveritySince.Time),
 				CvssScore:     row.CvssScore,
 				FixVersion:    row.FixVersion,
-				Cve: &vulnerabilities.Cve{
-					Id:                 row.CveID,
-					Title:              row.CveTitle,
-					Description:        row.CveDesc,
-					Link:               row.CveLink,
-					Severity:           vulnerabilities.Severity(row.Severity),
-					Created:            timestamppb.New(row.CveCreatedAt.Time),
-					LastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
-					CvssScore:          row.CvssScore,
-					EpssScore:          row.EpssScore,
-					EpssPercentile:     row.EpssPercentile,
-					HasKevEntry:        row.HasKevEntry,
-					KnownRansomwareUse: row.KnownRansomwareUse,
-				},
+				Cve: toCve(cvePayload{
+					id:                 row.CveID,
+					title:              row.CveTitle,
+					desc:               row.CveDesc,
+					link:               row.CveLink,
+					severity:           row.Severity,
+					created:            timestamppb.New(row.CveCreatedAt.Time),
+					lastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
+					cvssScore:          row.CvssScore,
+					epssScore:          row.EpssScore,
+					epssPercentile:     row.EpssPercentile,
+					hasKevEntry:        row.HasKevEntry,
+					knownRansomwareUse: row.KnownRansomwareUse,
+					priority:           row.Priority,
+				}),
 			},
 		}
 	})
@@ -160,21 +161,22 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 			SeveritySince: timestamppb.New(row.SeveritySince.Time),
 			CvssScore:     row.CvssScore,
 			FixVersion:    row.FixVersion,
-			Cve: &vulnerabilities.Cve{
-				Id:                 row.CveID,
-				Title:              row.CveTitle,
-				Description:        row.CveDesc,
-				Link:               row.CveLink,
-				Severity:           vulnerabilities.Severity(row.Severity),
-				References:         refs,
-				Created:            timestamppb.New(row.CveCreatedAt.Time),
-				LastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
-				CvssScore:          row.CvssScore,
-				EpssScore:          row.EpssScore,
-				EpssPercentile:     row.EpssPercentile,
-				HasKevEntry:        row.HasKevEntry,
-				KnownRansomwareUse: row.KnownRansomwareUse,
-			},
+			Cve: toCve(cvePayload{
+				id:                 row.CveID,
+				title:              row.CveTitle,
+				desc:               row.CveDesc,
+				link:               row.CveLink,
+				severity:           row.Severity,
+				refs:               refs,
+				created:            timestamppb.New(row.CveCreatedAt.Time),
+				lastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
+				cvssScore:          row.CvssScore,
+				epssScore:          row.EpssScore,
+				epssPercentile:     row.EpssPercentile,
+				hasKevEntry:        row.HasKevEntry,
+				knownRansomwareUse: row.KnownRansomwareUse,
+				priority:           row.Priority,
+			}),
 		}
 	})
 
@@ -275,19 +277,20 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 			ImageName:     row.ImageName,
 			CvssScore:     row.CvssScore,
 			FixVersion:    row.FixVersion,
-			Cve: &vulnerabilities.Cve{
-				Id:                 row.CveID,
-				Title:              row.CveTitle,
-				Description:        row.CveDesc,
-				Link:               row.CveLink,
-				Severity:           vulnerabilities.Severity(row.Severity),
-				References:         row.Refs,
-				CvssScore:          row.CvssScore,
-				EpssScore:          row.EpssScore,
-				EpssPercentile:     row.EpssPercentile,
-				HasKevEntry:        row.HasKevEntry,
-				KnownRansomwareUse: row.KnownRansomwareUse,
-			},
+			Cve: toCve(cvePayload{
+				id:                 row.CveID,
+				title:              row.CveTitle,
+				desc:               row.CveDesc,
+				link:               row.CveLink,
+				severity:           row.Severity,
+				refs:               row.Refs,
+				cvssScore:          row.CvssScore,
+				epssScore:          row.EpssScore,
+				epssPercentile:     row.EpssPercentile,
+				hasKevEntry:        row.HasKevEntry,
+				knownRansomwareUse: row.KnownRansomwareUse,
+				priority:           row.Priority,
+			}),
 		},
 	}, nil
 }
@@ -405,20 +408,21 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 				LatestVersion: row.LatestVersion,
 				CvssScore:     row.CvssScore,
 				FixVersion:    row.FixVersion,
-				Cve: &vulnerabilities.Cve{
-					Id:                 row.CveID,
-					Title:              row.CveTitle,
-					Description:        row.CveDesc,
-					Link:               row.CveLink,
-					CvssScore:          row.CvssScore,
-					Severity:           vulnerabilities.Severity(row.Severity),
-					Created:            timestamppb.New(row.CveCreatedAt.Time),
-					LastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
-					EpssScore:          row.EpssScore,
-					EpssPercentile:     row.EpssPercentile,
-					HasKevEntry:        row.HasKevEntry,
-					KnownRansomwareUse: row.KnownRansomwareUse,
-				},
+				Cve: toCve(cvePayload{
+					id:                 row.CveID,
+					title:              row.CveTitle,
+					desc:               row.CveDesc,
+					link:               row.CveLink,
+					severity:           row.Severity,
+					created:            timestamppb.New(row.CveCreatedAt.Time),
+					lastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
+					cvssScore:          row.CvssScore,
+					epssScore:          row.EpssScore,
+					epssPercentile:     row.EpssPercentile,
+					hasKevEntry:        row.HasKevEntry,
+					knownRansomwareUse: row.KnownRansomwareUse,
+					priority:           row.Priority,
+				}),
 			},
 		}
 	})
@@ -456,19 +460,20 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 			LatestVersion: row.LatestVersion,
 			CvssScore:     row.CvssScore,
 			FixVersion:    row.FixVersion,
-			Cve: &vulnerabilities.Cve{
-				Id:                 row.CveID,
-				Title:              row.CveTitle,
-				Description:        row.CveDesc,
-				Link:               row.CveLink,
-				Severity:           vulnerabilities.Severity(row.Severity),
-				References:         row.Refs,
-				CvssScore:          row.CvssScore,
-				EpssScore:          row.EpssScore,
-				EpssPercentile:     row.EpssPercentile,
-				HasKevEntry:        row.HasKevEntry,
-				KnownRansomwareUse: row.KnownRansomwareUse,
-			},
+			Cve: toCve(cvePayload{
+				id:                 row.CveID,
+				title:              row.CveTitle,
+				desc:               row.CveDesc,
+				link:               row.CveLink,
+				severity:           row.Severity,
+				refs:               row.Refs,
+				cvssScore:          row.CvssScore,
+				epssScore:          row.EpssScore,
+				epssPercentile:     row.EpssPercentile,
+				hasKevEntry:        row.HasKevEntry,
+				knownRansomwareUse: row.KnownRansomwareUse,
+				priority:           row.Priority,
+			}),
 		},
 	}, nil
 }
@@ -487,21 +492,22 @@ func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequ
 	}
 
 	return &vulnerabilities.GetCveResponse{
-		Cve: &vulnerabilities.Cve{
-			Id:                 cve.CveID,
-			Title:              cve.CveTitle,
-			Description:        cve.CveDesc,
-			Link:               cve.CveLink,
-			Severity:           vulnerabilities.Severity(cve.Severity),
-			References:         cve.Refs,
-			Created:            timestamppb.New(cve.CreatedAt.Time),
-			LastUpdated:        timestamppb.New(cve.UpdatedAt.Time),
-			CvssScore:          cve.CvssScore,
-			EpssScore:          cve.EpssScore,
-			EpssPercentile:     cve.EpssPercentile,
-			HasKevEntry:        cve.HasKevEntry,
-			KnownRansomwareUse: cve.KnownRansomwareUse,
-		},
+		Cve: toCve(cvePayload{
+			id:                 cve.CveID,
+			title:              cve.CveTitle,
+			desc:               cve.CveDesc,
+			link:               cve.CveLink,
+			severity:           cve.Severity,
+			refs:               cve.Refs,
+			created:            timestamppb.New(cve.CreatedAt.Time),
+			lastUpdated:        timestamppb.New(cve.UpdatedAt.Time),
+			cvssScore:          cve.CvssScore,
+			epssScore:          cve.EpssScore,
+			epssPercentile:     cve.EpssPercentile,
+			hasKevEntry:        cve.HasKevEntry,
+			knownRansomwareUse: cve.KnownRansomwareUse,
+			priority:           cve.Priority,
+		}),
 	}, nil
 }
 
@@ -609,7 +615,7 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 		field = defaultOrder
 	}
 
-	if field == vulnerabilities.OrderBySeverity || field == vulnerabilities.OrderByTopRiskTier {
+	if field == vulnerabilities.OrderBySeverity || field == vulnerabilities.OrderByTopPriority {
 		if direction == "asc" {
 			direction = "desc"
 		} else {
@@ -617,7 +623,47 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 		}
 	}
 
+	if field == vulnerabilities.OrderByTopPriority {
+		return fmt.Sprintf("%s_%s", "top_risk_tier", direction)
+	}
+
 	return fmt.Sprintf("%s_%s", field.String(), direction)
+}
+
+type cvePayload struct {
+	id                 string
+	title              string
+	desc               string
+	link               string
+	severity           int32
+	refs               map[string]string
+	created            *timestamppb.Timestamp
+	lastUpdated        *timestamppb.Timestamp
+	cvssScore          *float64
+	epssScore          *float64
+	epssPercentile     *float64
+	hasKevEntry        bool
+	knownRansomwareUse bool
+	priority           *int32
+}
+
+func toCve(data cvePayload) *vulnerabilities.Cve {
+	return &vulnerabilities.Cve{
+		Id:                 data.id,
+		Title:              data.title,
+		Description:        data.desc,
+		Link:               data.link,
+		Severity:           vulnerabilities.Severity(data.severity),
+		References:         data.refs,
+		Created:            data.created,
+		LastUpdated:        data.lastUpdated,
+		CvssScore:          data.cvssScore,
+		EpssScore:          data.epssScore,
+		EpssPercentile:     data.epssPercentile,
+		HasKevEntry:        data.hasKevEntry,
+		KnownRansomwareUse: data.knownRansomwareUse,
+		Priority:           toProtoPriority(data.priority),
+	}
 }
 
 func toSuppression(suppressed bool, suppressReason *sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {

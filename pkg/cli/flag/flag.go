@@ -30,7 +30,7 @@ type Options struct {
 	CveId             string
 	Unresolved        bool
 	Severity          string
-	RiskTier          string
+	Priority          string
 	Output            string
 	CveIds            string
 	CvssScore         float64
@@ -123,11 +123,11 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Destination: &opts.CvssScore,
 		},
 		&cli.StringFlag{
-			Name:        "risk-tier",
-			Aliases:     []string{"rt"},
+			Name:        "priority",
+			Aliases:     []string{"p"},
 			Value:       "",
-			Usage:       "filter by risk tier (act_now, high_risk, elevated_risk, monitor)",
-			Destination: &opts.RiskTier,
+			Usage:       "filter by priority (act_now, high, elevated, monitor)",
+			Destination: &opts.Priority,
 		},
 		&cli.StringSliceFlag{
 			Name:        "exclude-clusters",
@@ -258,21 +258,21 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		opts = append(opts, vulnerabilities.ExcludeClustersFilter(o.ExcludeClusters...))
 	}
 
-	if o.RiskTier != "" {
-		var tier vulnerabilities.RiskTier
-		switch strings.ToLower(o.RiskTier) {
+	if o.Priority != "" {
+		var priority vulnerabilities.Priority
+		switch strings.ToLower(o.Priority) {
 		case "act_now", "act-now":
-			tier = vulnerabilities.RiskTier_ACT_NOW
-		case "high_risk", "high-risk":
-			tier = vulnerabilities.RiskTier_HIGH_RISK
-		case "elevated_risk", "elevated-risk":
-			tier = vulnerabilities.RiskTier_ELEVATED_RISK
+			priority = vulnerabilities.Priority_PRIORITY_ACT_NOW
+		case "high", "high_risk", "high-risk":
+			priority = vulnerabilities.Priority_PRIORITY_HIGH
+		case "elevated", "elevated_risk", "elevated-risk":
+			priority = vulnerabilities.Priority_PRIORITY_ELEVATED
 		case "monitor":
-			tier = vulnerabilities.RiskTier_MONITOR
+			priority = vulnerabilities.Priority_PRIORITY_MONITOR
 		default:
-			log.Fatalf("invalid risk-tier: %s, valid values are act_now, high_risk, elevated_risk, monitor", o.RiskTier)
+			log.Fatalf("invalid priority: %s, valid values are act_now, high, elevated, monitor", o.Priority)
 		}
-		opts = append(opts, vulnerabilities.RiskTierFilter(tier))
+		opts = append(opts, vulnerabilities.PriorityFilter(priority))
 	}
 
 	return opts
