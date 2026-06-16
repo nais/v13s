@@ -289,6 +289,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 				epssPercentile:     row.EpssPercentile,
 				hasKevEntry:        row.HasKevEntry,
 				knownRansomwareUse: row.KnownRansomwareUse,
+				priority:           row.Priority,
 			}),
 		},
 	}, nil
@@ -471,6 +472,7 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 				epssPercentile:     row.EpssPercentile,
 				hasKevEntry:        row.HasKevEntry,
 				knownRansomwareUse: row.KnownRansomwareUse,
+				priority:           row.Priority,
 			}),
 		},
 	}, nil
@@ -660,26 +662,7 @@ func toCve(data cvePayload) *vulnerabilities.Cve {
 		EpssPercentile:     data.epssPercentile,
 		HasKevEntry:        data.hasKevEntry,
 		KnownRansomwareUse: data.knownRansomwareUse,
-		Priority:           safePriority(data.priority),
-	}
-}
-
-func safePriority(priority *int32) vulnerabilities.Priority {
-	if priority == nil {
-		return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
-	}
-
-	switch *priority {
-	case 1:
-		return vulnerabilities.Priority_PRIORITY_ACT_NOW
-	case 2:
-		return vulnerabilities.Priority_PRIORITY_HIGH
-	case 3:
-		return vulnerabilities.Priority_PRIORITY_ELEVATED
-	case 4:
-		return vulnerabilities.Priority_PRIORITY_MONITOR
-	default:
-		return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
+		Priority:           toProtoPriority(data.priority),
 	}
 }
 

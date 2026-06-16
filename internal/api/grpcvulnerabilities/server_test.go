@@ -2853,6 +2853,9 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+
 	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
 			ImageName:    imageName,
@@ -2920,6 +2923,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, "1.2.3", v.GetFixVersion())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListVulnerabilities returns enriched Cve fields", func(t *testing.T) {
@@ -2970,6 +2974,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, cveID, v.GetCve().GetId())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListWorkloadsForVulnerability returns Cve.CvssScore", func(t *testing.T) {
@@ -3398,7 +3403,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 
 	t.Run("priority ordering: ListVulnerabilitiesForImage order_by=priority_asc", func(t *testing.T) {
 		// Verify that per-CVE ordering via priority_asc returns
-		// ACT_NOW → HIGH_RISK → ELEVATED_RISK → MONITOR.
+		// ACT_NOW → HIGH → ELEVATED → MONITOR.
 		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag,
 			vulnerabilities.Order(vulnerabilities.OrderByPriority, vulnerabilities.Direction_ASC),
 			vulnerabilities.Limit(10),
@@ -3415,7 +3420,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		assert.Equal(t,
 			[]string{cveActNow, cveHigh, cveElevated, cveMonitor},
 			gotIDs,
-			"CVEs must be returned in priority order: ACT_NOW → HIGH_RISK → ELEVATED_RISK → MONITOR",
+			"CVEs must be returned in priority order: ACT_NOW → HIGH → ELEVATED → MONITOR",
 		)
 		assert.Equal(t,
 			[]vulnerabilities.Priority{

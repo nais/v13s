@@ -287,7 +287,8 @@ SELECT
     c.epss_score,
     c.epss_percentile,
     c.has_kev_entry,
-    c.known_ransomware_use
+    c.known_ransomware_use,
+    c.priority
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -327,7 +328,8 @@ SELECT
     c.epss_score,
     c.epss_percentile,
     c.has_kev_entry,
-    c.known_ransomware_use
+    c.known_ransomware_use,
+    c.priority
 FROM
     vulnerabilities v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
