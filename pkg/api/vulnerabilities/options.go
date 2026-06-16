@@ -46,7 +46,7 @@ const (
 	OrderBySeverity          OrderByField = "severity"
 	OrderBySeveritySince     OrderByField = "severity_since"
 	OrderBySuppressed        OrderByField = "suppressed"
-	OrderByTopRiskTier       OrderByField = "top_risk_tier"
+	OrderByTopPriority       OrderByField = "top_priority"
 	OrderByUnassigned        OrderByField = "unassigned"
 	OrderByUpdatedAt         OrderByField = "updated_at"
 	OrderByWorkload          OrderByField = "workload"
@@ -77,7 +77,7 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderBySeverity:          {},
 	OrderBySeveritySince:     {},
 	OrderBySuppressed:        {},
-	OrderByTopRiskTier:       {},
+	OrderByTopPriority:       {},
 	OrderByUnassigned:        {},
 	OrderByUpdatedAt:         {},
 	OrderByWorkload:          {},
@@ -229,12 +229,12 @@ func ImageFilter(name, tag string) Option {
 	})
 }
 
-func RiskTierFilter(riskTier RiskTier) Option {
+func PriorityFilter(priority Priority) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
 			o.Filter = &Filter{}
 		}
-		o.Filter.RiskTier = &riskTier
+		o.Filter.Priority = &priority
 	})
 }
 

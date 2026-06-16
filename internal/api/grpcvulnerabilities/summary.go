@@ -27,7 +27,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	riskTierFilter := toSQLRiskTierFilter(request.GetFilter())
+	priorityFilter := toSQLPriorityFilter(request.GetFilter())
 
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
@@ -42,7 +42,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		WorkloadName:  request.GetFilter().Workload,
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
-		RiskTier:      riskTierFilter,
+		RiskTier:      priorityFilter,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
 		Offset:        offset,
@@ -92,7 +92,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 				Monitor:         row.Monitor,
 				RansomwareCount: row.RansomwareCount,
 				HighEpssCount:   row.HighEpssCount,
-				TopRiskTier:     toProtoRiskTier(row.TopRiskTier),
+				TopPriority:     toProtoPriority(row.TopRiskTier),
 			}
 		}
 
@@ -128,14 +128,14 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	riskTierFilter := toSQLRiskTierFilter(request.GetFilter())
+	priorityFilter := toSQLPriorityFilter(request.GetFilter())
 
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
-		RiskTier:      riskTierFilter,
+		RiskTier:      priorityFilter,
 	})
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		Monitor:         row.Monitor,
 		RansomwareCount: row.RansomwareCount,
 		HighEpssCount:   row.HighEpssCount,
-		TopRiskTier:     toProtoRiskTier(row.TopRiskTier),
+		TopPriority:     toProtoPriority(row.TopRiskTier),
 	}
 
 	var coverage float32
@@ -184,7 +184,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	riskTierFilter := toSQLRiskTierFilter(request.GetFilter())
+	priorityFilter := toSQLPriorityFilter(request.GetFilter())
 
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
@@ -197,7 +197,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
-		RiskTier:      riskTierFilter,
+		RiskTier:      priorityFilter,
 		Since:         since,
 	})
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 			Monitor:         row.Monitor,
 			RansomwareCount: row.RansomwareCount,
 			HighEpssCount:   row.HighEpssCount,
-			TopRiskTier:     toProtoRiskTier(row.TopRiskTier),
+			TopPriority:     toProtoPriority(row.TopRiskTier),
 		}
 	})
 	return &vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse{
@@ -340,7 +340,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			Monitor:         derefInt32(summary.Monitor),
 			RansomwareCount: derefInt32(summary.RansomwareCount),
 			HighEpssCount:   derefInt32(summary.HighEpssCount),
-			TopRiskTier:     toProtoRiskTier(summary.TopRiskTier),
+			TopPriority:     toProtoPriority(summary.TopRiskTier),
 		}
 		if staleTag != "" {
 			vulnSummary.StaleImageTag = &staleTag
@@ -354,20 +354,20 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}, nil
 }
 
-func toSQLRiskTierFilter(filter *vulnerabilities.Filter) *int32 {
-	if filter == nil || filter.RiskTier == nil {
+func toSQLPriorityFilter(filter *vulnerabilities.Filter) *int32 {
+	if filter == nil || filter.Priority == nil {
 		return nil
 	}
 
 	var v int32
-	switch filter.GetRiskTier() {
-	case vulnerabilities.RiskTier_ACT_NOW:
+	switch filter.GetPriority() {
+	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
 		v = 1
-	case vulnerabilities.RiskTier_HIGH_RISK:
+	case vulnerabilities.Priority_PRIORITY_HIGH:
 		v = 2
-	case vulnerabilities.RiskTier_ELEVATED_RISK:
+	case vulnerabilities.Priority_PRIORITY_ELEVATED:
 		v = 3
-	case vulnerabilities.RiskTier_MONITOR:
+	case vulnerabilities.Priority_PRIORITY_MONITOR:
 		v = 4
 	default:
 		return nil
@@ -375,24 +375,24 @@ func toSQLRiskTierFilter(filter *vulnerabilities.Filter) *int32 {
 	return &v
 }
 
-func toProtoRiskTier(riskTier any) vulnerabilities.RiskTier {
+func toProtoPriority(riskTier any) vulnerabilities.Priority {
 	switch v := riskTier.(type) {
 	case int32:
-		return mapIntRiskTier(v)
+		return mapIntPriority(v)
 	case *int32:
 		if v == nil {
-			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+			return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
 		}
-		return mapIntRiskTier(*v)
+		return mapIntPriority(*v)
 	case int64:
-		return mapIntRiskTier(int32(v)) //#nosec G115 -- risk tier values are 1-4, overflow impossible
+		return mapIntPriority(int32(v)) //#nosec G115 -- priority values are 1-4, overflow impossible
 	case *int64:
 		if v == nil {
-			return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+			return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
 		}
-		return mapIntRiskTier(int32(*v)) //#nosec G115 -- risk tier values are 1-4, overflow impossible
+		return mapIntPriority(int32(*v)) //#nosec G115 -- priority values are 1-4, overflow impossible
 	default:
-		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+		return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
 	}
 }
 
@@ -403,18 +403,18 @@ func derefInt32(p *int32) int32 {
 	return *p
 }
 
-func mapIntRiskTier(v int32) vulnerabilities.RiskTier {
+func mapIntPriority(v int32) vulnerabilities.Priority {
 	switch v {
 	case 1:
-		return vulnerabilities.RiskTier_ACT_NOW
+		return vulnerabilities.Priority_PRIORITY_ACT_NOW
 	case 2:
-		return vulnerabilities.RiskTier_HIGH_RISK
+		return vulnerabilities.Priority_PRIORITY_HIGH
 	case 3:
-		return vulnerabilities.RiskTier_ELEVATED_RISK
+		return vulnerabilities.Priority_PRIORITY_ELEVATED
 	case 4:
-		return vulnerabilities.RiskTier_MONITOR
+		return vulnerabilities.Priority_PRIORITY_MONITOR
 	default:
-		return vulnerabilities.RiskTier_RISK_TIER_UNSPECIFIED
+		return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
 	}
 }
 
