@@ -472,8 +472,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260609115200-38b6b87f5417 h1:qfX/GMrpoYRpU0Zkx7ycE+5NgRP77dIqv+GEGEEI0Jo=
 github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260609115200-38b6b87f5417/go.mod h1:Z18ive8jpuOIoAcxfBFN/mxe4oxA75DqKqzr72FjIXo=
-github.com/nais/liberator v0.0.0-20260526061822-791cc0e0457c h1:IS4qWh2Of5rV7UY4YnQKg7rxP9lx5BzfFv1XNMZbCtI=
-github.com/nais/liberator v0.0.0-20260526061822-791cc0e0457c/go.mod h1:MT3N4X8eK6cJ94zoybdIY8JCaPrHCnw4Pde8piMS/v4=
+github.com/nais/liberator v0.0.0-20260615112004-d210b3565e8f h1:k0EfBifVG2ND5zNO4UrZDXHGEOTkvA25Pd0cwbkXr+k=
+github.com/nais/liberator v0.0.0-20260615112004-d210b3565e8f/go.mod h1:p3GIQUAZ4dgnoNAH5ZXQ6UpeS10n/pDcqNBlq0m4MsY=
 github.com/nais/pgrator v0.0.0-20260113113020-3944d387b42d h1:Ciq0quRhHOeeOTWy9WNmLe04uNYhe7l9qIrFTpFC5y0=
 github.com/nais/pgrator v0.0.0-20260113113020-3944d387b42d/go.mod h1:jpksYq94zmmjIIhjOBl+9GpEkTbaeLrrcINPQx9REx4=
 github.com/natefinch/atomic v1.0.1 h1:ZPYKxkqQOx3KZ+RsbnP/YsgvxWQPGxjC0oBt2AhwV0A=
@@ -857,8 +857,8 @@ gomodules.xyz/jsonpatch/v2 v2.4.0 h1:Ci3iUJyx9UeRx7CeFN8ARgGbkESwJK+KB9lLcWxY/Zw
 gomodules.xyz/jsonpatch/v2 v2.4.0/go.mod h1:AH3dM2RI6uoBZxn3LVrfvJ3E0/9dG4cSrbuBJT4moAY=
 gonum.org/v1/gonum v0.17.0 h1:VbpOemQlsSMrYmn7T2OUvQ4dqxQXU+ouZFQsZOx50z4=
 gonum.org/v1/gonum v0.17.0/go.mod h1:El3tOrEuMpv2UdMrbNlKEh9vd86bmQ6vqIcDwxEOc1E=
-google.golang.org/api v0.283.0 h1:0lkp8u0MPwJVHqRL+nJlMAoZVVzbmiXmFHXMOTmSPik=
-google.golang.org/api v0.283.0/go.mod h1:6Wssta4c5n9qHq5CBhmlai5h/PUa1djdDAIhYEHyvcM=
+google.golang.org/api v0.284.0 h1:i+cKTgeQRcRySkP7QTl5PDO7/pAm8EcMFIUMlNbk4Vc=
+google.golang.org/api v0.284.0/go.mod h1:AU44fU+XVZOCcd8uLaBIa/ZgzgPf/0qqY3+m7lQaado=
 google.golang.org/genai v1.47.0 h1:iWCS7gEdO6rctOqfCYLOrZGKu2D+N42aTnCEcBvB1jo=
 google.golang.org/genai v1.47.0/go.mod h1:A3kkl0nyBjyFlNjgxIwKq70julKbIxpSxqKO5gw/gmk=
 google.golang.org/genproto v0.0.0-20260406210006-6f92a3bedf2d h1:N1Ec54vZnIPd7MnxRiYLW+oY4fDR4BOS/LrssdD9+ek=
