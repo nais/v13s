@@ -1080,7 +1080,6 @@ WITH latest_summary_per_day AS (
         latest_summary_per_day
     ON CONFLICT ON CONSTRAINT workload_type_namespace_cluster
         DO UPDATE SET
-            workload_id = EXCLUDED.workload_id,
             critical = EXCLUDED.critical,
             high = EXCLUDED.high,
             medium = EXCLUDED.medium,
