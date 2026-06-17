@@ -941,7 +941,10 @@ func (q *Queries) RefreshVulnerabilitySummaryDailyView(ctx context.Context) erro
 
 const refreshVulnerabilitySummaryForDate = `-- name: RefreshVulnerabilitySummaryForDate :exec
 WITH latest_summary_per_day AS (
-    SELECT DISTINCT ON (w.id)
+    SELECT DISTINCT ON (w.name,
+        w.workload_type,
+        w.namespace,
+        w.cluster)
         $1::DATE AS snapshot_date,
         w.id AS workload_id,
         w.name AS workload_name,
@@ -1023,8 +1026,12 @@ WITH latest_summary_per_day AS (
             AND w.image_tag = vs.image_tag
             AND vs.updated_at::DATE <= $1::DATE
         ORDER BY
-            w.id,
-            vs.updated_at DESC)
+            w.name,
+            w.workload_type,
+            w.namespace,
+            w.cluster,
+            vs.updated_at DESC NULLS LAST,
+            w.id)
     INSERT INTO vuln_daily_by_workload(
         snapshot_date,
         workload_id,
@@ -1071,8 +1078,7 @@ WITH latest_summary_per_day AS (
         has_summary
     FROM
         latest_summary_per_day
-    ON CONFLICT (snapshot_date,
-        workload_id)
+    ON CONFLICT ON CONSTRAINT workload_type_namespace_cluster
         DO UPDATE SET
             critical = EXCLUDED.critical,
             high = EXCLUDED.high,
