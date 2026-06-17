@@ -102,7 +102,7 @@ spec:
             action: |
               1. Visit Salsa and open the affected workload from this alert (ACT_NOW = CISA KEV-backed priority)
               2. Verify affected package(s) and running image tag
-              3. Use CVSS score/severity only (e.g. CRITICAL/HIGH) when prioritizing remediation
+              3. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat ACT_NOW as the primary remediation priority
               4. Redeploy affected workloads
 
         - alert: "workload high vulnerabilities"
@@ -127,7 +127,7 @@ spec:
             action: |
               1. Visit Salsa and open the affected workload from this alert (HIGH = ransomware-known use or EPSS >= 0.90)
               2. Verify affected package(s) and exposure surface
-              3. Use CVSS score/severity only (e.g. CRITICAL/HIGH) when prioritizing remediation
+              3. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat HIGH priority as the primary remediation priority
               4. Redeploy affected workloads
 
         - alert: "workload critical vulnerabilities"
