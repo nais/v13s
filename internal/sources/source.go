@@ -137,6 +137,8 @@ type VulnerabilitySummary struct {
 	Medium     int32
 	Low        int32
 	Unassigned int32
+	ActNow     int32
+	HighRisk   int32
 	RiskScore  int32
 }
 

@@ -12,6 +12,50 @@ spec:
     - name: namespace-workload-vulnerability-recording
       rules:
 
+        - record: namespace:workload:vulnerabilities:priority:act_now:max1h
+          expr: max by (workload_namespace, workload_name) (
+            max_over_time(
+            nais_workload_vulnerabilities_priority{
+            priority="ACT_NOW",
+            workload_namespace="nais-system"
+            }[1h]
+            )
+            )
+
+        - record: namespace:workload:vulnerabilities:priority:act_now:current
+          expr: max by (workload_namespace, workload_name) (
+            nais_workload_vulnerabilities_priority{
+            priority="ACT_NOW",
+            workload_namespace="nais-system"
+            }
+            )
+            or
+            max by (workload_namespace, workload_name) (
+            0 * nais_workload_vulnerabilities_priority{workload_namespace="nais-system"}
+            )
+
+        - record: namespace:workload:vulnerabilities:priority:high:max1h
+          expr: max by (workload_namespace, workload_name) (
+            max_over_time(
+            nais_workload_vulnerabilities_priority{
+            priority="HIGH",
+            workload_namespace="nais-system"
+            }[1h]
+            )
+            )
+
+        - record: namespace:workload:vulnerabilities:priority:high:current
+          expr: max by (workload_namespace, workload_name) (
+            nais_workload_vulnerabilities_priority{
+            priority="HIGH",
+            workload_namespace="nais-system"
+            }
+            )
+            or
+            max by (workload_namespace, workload_name) (
+            0 * nais_workload_vulnerabilities_priority{workload_namespace="nais-system"}
+            )
+
         - record: namespace:workload:vulnerabilities:critical:max1h
           expr: max by (workload_namespace, workload_name) (
             max_over_time(
@@ -36,6 +80,56 @@ spec:
 
     - name: namespace-workload-vulnerability-alerts
       rules:
+        - alert: "workload act_now vulnerabilities"
+          expr: (namespace:workload:vulnerabilities:priority:act_now:current > 0)
+            and (namespace:workload:vulnerabilities:priority:act_now:max1h > 0)
+          for: 10m
+          labels:
+            namespace: nais-system
+            severity: critical
+            channel: nais-alerts
+            alert_type: custom
+            repeat_interval: 1d
+          annotations:
+            summary: |
+              {{ ":rotating_light: ACT_NOW vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
+            description: |
+              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} ACT_NOW vulnerabilities." }}
+              {{ "ACT_NOW is set by v13s priority logic when a CVE has `has_kev_entry=true` from the CISA KEV (Known Exploited Vulnerabilities) feed." }}
+              {{ "In practice this means known exploitation in the wild and should be treated as highest remediation priority." }}
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+            consequence: Immediate security risk; workload may be actively exploitable
+            action: |
+              1. Visit Salsa and open the affected workload from this alert (ACT_NOW = CISA KEV-backed priority)
+              2. Verify affected package(s) and running image tag
+              3. Use CVSS score/severity only (e.g. CRITICAL/HIGH) when prioritizing remediation
+              4. Redeploy affected workloads
+
+        - alert: "workload high vulnerabilities"
+          expr: (namespace:workload:vulnerabilities:priority:high:current > 0)
+            and (namespace:workload:vulnerabilities:priority:high:max1h > 0)
+          for: 10m
+          labels:
+            namespace: nais-system
+            severity: warning
+            channel: nais-alerts-info
+            alert_type: custom
+            repeat_interval: 1d
+          annotations:
+            summary: |
+              {{ ":warning: HIGH priority vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
+            description: |
+              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} HIGH priority vulnerabilities." }}
+              {{ "HIGH is set by v13s priority logic when a CVE has `known_ransomware_use=true` or EPSS percentile >= 0.90." }}
+              {{ "In practice this means elevated likelihood of exploitation and should be handled quickly." }}
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+            consequence: Elevated security risk; workload should be patched soon
+            action: |
+              1. Visit Salsa and open the affected workload from this alert (HIGH = ransomware-known use or EPSS >= 0.90)
+              2. Verify affected package(s) and exposure surface
+              3. Use CVSS score/severity only (e.g. CRITICAL/HIGH) when prioritizing remediation
+              4. Redeploy affected workloads
+
         - alert: "workload critical vulnerabilities"
           expr: (namespace:workload:vulnerabilities:critical:current > 0)
             and (namespace:workload:vulnerabilities:critical:max1h > 0)
@@ -48,14 +142,15 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":rotating_light: CRITICAL vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`)" }}
+              {{ ":information_source: CRITICAL severity vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} critical vulnerabilities." }}
+              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} CRITICAL severity vulnerabilities." }}
+              {{ "Severity is CVSS-based and complements priority (ACT_NOW/HIGH)." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: Potential security risk; workload may be exploitable
+            consequence: High technical severity; may not always imply active exploitation
             action: |
-              1. Visit Salsa and filter workloads by "nais.io/nais" with CRITICAL vulnerabilities
-              2. Prioritize by criticality of CVEs per workload
+              1. Visit Salsa and open the affected workload
+              2. Review vulnerabilities and prioritize any findings that are ACT_NOW or HIGH
               3. Check for available patches and update images
               4. Redeploy affected workloads
 {{- end }}
