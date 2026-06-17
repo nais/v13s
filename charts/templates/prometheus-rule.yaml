@@ -142,9 +142,9 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":information_source: CRITICAL severity vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":information_source: Informational alert: CVSS CRITICAL vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} vulnerabilities." }}
+              {{ "This is an informational rollup. Workload `{{ $labels.workload_name }}` has {{ $value }} vulnerabilities with CVSS severity CRITICAL." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Informational rollup; review and prioritize remediation based on risk
             action: |
