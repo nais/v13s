@@ -80,7 +80,7 @@ spec:
 
     - name: namespace-workload-vulnerability-alerts
       rules:
-        - alert: "workload act_now vulnerabilities"
+        - alert: "workload act_now priority vulnerabilities"
           expr: (namespace:workload:vulnerabilities:priority:act_now:current > 0)
             and (namespace:workload:vulnerabilities:priority:act_now:max1h > 0)
           for: 10m
@@ -92,20 +92,20 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":rotating_light: ACT_NOW vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":rotating_light: ACT_NOW priority vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} ACT_NOW vulnerabilities." }}
-              {{ "ACT_NOW is set by v13s priority logic when a CVE has `has_kev_entry=true` from the CISA KEV (Known Exploited Vulnerabilities) feed." }}
-              {{ "In practice this means known exploitation in the wild and should be treated as highest remediation priority." }}
+              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Immediate security risk; workload may be actively exploitable
             action: |
-              1. Visit Salsa and open the affected workload from this alert (ACT_NOW = CISA KEV-backed priority)
-              2. Verify affected package(s) and running image tag
-              3. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat ACT_NOW as the primary remediation priority
-              4. Redeploy affected workloads
+              1. ACT_NOW is set by v13s priority logic when a CVE has `has_kev_entry=true` from the CISA KEV (Known Exploited Vulnerabilities) feed
+              2. In practice this means known exploitation in the wild and should be treated as highest remediation priority
+              3. Visit Salsa and open the affected workload from this alert
+              4. Verify affected package(s) and running image tag
+              5. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat ACT_NOW as the primary remediation priority
+              6. Redeploy affected workloads
 
-        - alert: "workload high vulnerabilities"
+        - alert: "workload high priority vulnerabilities"
           expr: (namespace:workload:vulnerabilities:priority:high:current > 0)
             and (namespace:workload:vulnerabilities:priority:high:max1h > 0)
           for: 10m
@@ -119,16 +119,16 @@ spec:
             summary: |
               {{ ":warning: HIGH priority vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} HIGH priority vulnerabilities." }}
-              {{ "HIGH is set by v13s priority logic when a CVE has `known_ransomware_use=true` or EPSS percentile >= 0.90." }}
-              {{ "In practice this means elevated likelihood of exploitation and should be handled quickly." }}
+              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Elevated security risk; workload should be patched soon
             action: |
-              1. Visit Salsa and open the affected workload from this alert (HIGH = ransomware-known use or EPSS >= 0.90)
-              2. Verify affected package(s) and exposure surface
-              3. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat HIGH priority as the primary remediation priority
-              4. Redeploy affected workloads
+              1. HIGH is set by v13s priority logic when a CVE has `known_ransomware_use=true` or EPSS percentile >= 0.90
+              2. In practice this means elevated likelihood of exploitation and should be handled quickly
+              3. Visit Salsa and open the affected workload from this alert
+              4. Verify affected package(s) and exposure surface
+              5. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat HIGH priority as the primary remediation priority
+              6. Redeploy affected workloads
 
         - alert: "workload critical vulnerabilities"
           expr: (namespace:workload:vulnerabilities:critical:current > 0)
@@ -136,18 +136,17 @@ spec:
           for: 10m
           labels:
             namespace: nais-system
-            severity: warning
+            severity: info
             channel: nais-alerts-info
             alert_type: custom
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":information_source: CRITICAL severity vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":information_source: Informational alert: CVSS CRITICAL vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "Workload `{{ $labels.workload_name }}` has {{ $value }} CRITICAL severity vulnerabilities." }}
-              {{ "Severity is CVSS-based and complements priority (ACT_NOW/HIGH)." }}
+              {{ "This is an informational rollup. Workload `{{ $labels.workload_name }}` has {{ $value }} vulnerabilities with CVSS severity CRITICAL." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: High technical severity; may not always imply active exploitation
+            consequence: Informational rollup; review and prioritize remediation based on risk
             action: |
               1. Visit Salsa and open the affected workload
               2. Review vulnerabilities and prioritize any findings that are ACT_NOW or HIGH
