@@ -31,18 +31,29 @@ var (
 		},
 		append(labels, "severity"),
 	)
+
+	WorkloadVulnerabilitiesPriority = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "workload_vulnerabilities_priority",
+			Help:      "Number of vulnerabilities detected in the workload, grouped by priority.",
+		},
+		append(labels, "priority"),
+	)
 )
 
 func Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
+		WorkloadVulnerabilitiesPriority,
 	}
 }
 
 func ResetWorkloadMetrics() {
 	WorkloadRiskScore.Reset()
 	WorkloadVulnerabilities.Reset()
+	WorkloadVulnerabilitiesPriority.Reset()
 }
 
 func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.VulnerabilitySummary) {
@@ -53,4 +64,6 @@ func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.Vulnera
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "MEDIUM")...).Set(float64(summary.Medium))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "LOW")...).Set(float64(summary.Low))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "UNASSIGNED")...).Set(float64(summary.Unassigned))
+	WorkloadVulnerabilitiesPriority.WithLabelValues(append(labelValues, "ACT_NOW")...).Set(float64(summary.ActNow))
+	WorkloadVulnerabilitiesPriority.WithLabelValues(append(labelValues, "HIGH")...).Set(float64(summary.HighRisk))
 }
