@@ -118,3 +118,61 @@ func TestGetAttestationWorker_AttestationFound_EnqueuesUpload(t *testing.T) {
 	err := worker.Work(ctx, job)
 	require.NoError(t, err)
 }
+
+func TestImageReference(t *testing.T) {
+	tests := []struct {
+		name     string
+		image    string
+		tag      string
+		expected string
+	}{
+		{
+			name:     "regular tag",
+			image:    "example.com/team/app",
+			tag:      "1.2.3",
+			expected: "example.com/team/app:1.2.3",
+		},
+		{
+			name:     "digest tag",
+			image:    "example.com/team/app",
+			tag:      "sha256:abc",
+			expected: "example.com/team/app@sha256:abc",
+		},
+		{
+			name:     "digest tag with leading at",
+			image:    "example.com/team/app",
+			tag:      "@sha256:abc",
+			expected: "example.com/team/app@sha256:abc",
+		},
+		{
+			name:     "non sha256 digest tag",
+			image:    "example.com/team/app",
+			tag:      "sha512:abc",
+			expected: "example.com/team/app@sha512:abc",
+		},
+		{
+			name:     "non sha256 digest tag with leading at",
+			image:    "example.com/team/app",
+			tag:      "@sha512:abc",
+			expected: "example.com/team/app@sha512:abc",
+		},
+		{
+			name:     "tag and digest",
+			image:    "example.com/team/app",
+			tag:      "1.2.3@sha256:abc",
+			expected: "example.com/team/app:1.2.3@sha256:abc",
+		},
+		{
+			name:     "empty tag",
+			image:    "example.com/team/app",
+			tag:      "",
+			expected: "example.com/team/app",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, imageReference(tt.image, tt.tag))
+		})
+	}
+}

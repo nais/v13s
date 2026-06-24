@@ -201,10 +201,19 @@ func jobName(job *nais.Naisjob) string {
 	return job.GetName()
 }
 
-func imageNameTag(image string) (string, string) {
-	if before, after, ok := strings.Cut(image, "@"); ok {
-		return before, after
+func imageNameTag(image string) (imageName, tagName string) {
+	if before, digest, ok := strings.Cut(image, "@"); ok {
+		name, tag := splitNameTag(before)
+
+		if tag != "" {
+			return name, tag + "@" + digest
+		}
+		return name, digest
 	}
+	return splitNameTag(image)
+}
+
+func splitNameTag(image string) (imageName, tagName string) {
 	i := strings.LastIndex(image, ":")
 	if i < 0 || i == len(image)-1 {
 		return image, ""
