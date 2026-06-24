@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -76,7 +77,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	}
 
 	// 1. Call external verifier.
-	att, err := g.verifier.GetAttestation(ctx, fmt.Sprintf("%s:%s", imageName, imageTag))
+	att, err := g.verifier.GetAttestation(ctx, imageReference(imageName, imageTag))
 	g.workloadCounter.Add(ctx, 1, metric.WithAttributes(
 		attribute.String("hasAttestation", fmt.Sprint(att != nil)),
 	))
@@ -116,7 +117,7 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	if decision.ImageState != nil {
 		imageState := *decision.ImageState
 		if imageState == sql.ImageStateFailed && job.Attempt < job.MaxAttempts {
-			imageState = sql.ImageState("")
+			imageState = ""
 		}
 		if imageState != "" {
 			n, dbErr := g.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
@@ -175,6 +176,30 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 
 	span.SetStatus(codes.Ok, "attestation processing complete")
 	return err // nil on success; non-nil recoverable error triggers River retry
+}
+
+// imageReference rebuilds an OCI image reference from a stored image name and tag value.
+//
+// Accepted imageTag formats:
+//   - "1.2.3" -> "<imageName>:1.2.3"
+//   - "<algo>:<hex>" (or "@<algo>:<hex>") -> "<imageName>@<algo>:<hex>"
+//   - "1.2.3@<algo>:<hex>" -> "<imageName>:1.2.3@<algo>:<hex>"
+func imageReference(imageName, imageTag string) string {
+	if imageTag == "" {
+		return imageName
+	}
+
+	imageTag = strings.TrimPrefix(imageTag, "@")
+
+	if strings.Contains(imageTag, "@") {
+		return fmt.Sprintf("%s:%s", imageName, imageTag)
+	}
+
+	if strings.Contains(imageTag, ":") {
+		return fmt.Sprintf("%s@%s", imageName, imageTag)
+	}
+
+	return fmt.Sprintf("%s:%s", imageName, imageTag)
 }
 
 func describeGetAttestationDecision(d Decision) string {
