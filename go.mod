@@ -30,8 +30,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260609115200-38b6b87f5417
-	github.com/nais/liberator v0.0.0-20260615112004-d210b3565e8f
-	github.com/nais/v13s/pkg/api v0.0.0-20260616070346-d983f8b497ce
+	github.com/nais/liberator v0.0.0-20260618065439-c38020ba0329
+	github.com/nais/v13s/pkg/api v0.0.0-20260624213614-2f385722fc04
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.69.0
@@ -290,10 +290,10 @@ require (
 	golang.org/x/tools v0.46.0 // indirect
 	golang.org/x/vuln v1.1.4 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/api v0.284.0 // indirect
+	google.golang.org/api v0.286.0 // indirect
 	google.golang.org/genai v1.47.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
