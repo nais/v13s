@@ -17,14 +17,21 @@ func MustIntToInt32(n int) int32 {
 
 // SplitImageRef splits an image reference into name and tag/digest.
 // Handles:
-//   - name:tag          (splits on last colon)
-//   - name@sha256:...   (splits on @)
+//   - name:tag                 (splits on last colon)
+//   - name@sha256:...          (splits on @)
+//   - name:tag@sha256:...      (keeps tag@digest together)
 //
 // Returns an error if neither separator is found or the tag/digest is empty.
 func SplitImageRef(ref string) (name, tag string, err error) {
 	if before, after, ok := strings.Cut(ref, "@"); ok {
-		name = before
-		tag = after
+		i := strings.LastIndex(before, ":")
+		if i >= 0 {
+			name = before[:i]
+			tag = before[i+1:] + "@" + after
+		} else {
+			name = before
+			tag = after
+		}
 		if name == "" || tag == "" {
 			return "", "", fmt.Errorf("invalid image format %q, expected <image>@<digest>", ref)
 		}
