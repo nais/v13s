@@ -481,7 +481,7 @@ func (v *verifier) resolveImageDigest(ref name.Reference) string {
 }
 
 func (v *verifier) resolveLegacyImageDigest(sig oci.Signature, ref name.Reference) string {
-	if digest := digestFromReference(ref); digest != "" {
+	if digest := v.resolveImageDigest(ref); digest != "" {
 		return digest
 	}
 	if sig != nil {
@@ -494,7 +494,7 @@ func (v *verifier) resolveLegacyImageDigest(sig oci.Signature, ref name.Referenc
 			v.log.WithError(err).WithField("ref", ref.String()).Debug("resolveLegacyImageDigest: signature digest failed")
 		}
 	}
-	return v.resolveImageDigest(ref)
+	return ""
 }
 
 func digestFromReference(ref name.Reference) string {
