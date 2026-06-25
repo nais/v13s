@@ -16,15 +16,19 @@ import (
 // with only the methods your GetAttestation() calls behaving meaningfully.
 type fakeSig struct {
 	payload []byte
-	bundle  *bundle.RekorBundle
+	cert    *x509.Certificate
+	chain   []*x509.Certificate
+	digest  v1.Hash
 }
 
-func (f *fakeSig) Payload() ([]byte, error)             { return f.payload, nil }
-func (f *fakeSig) Bundle() (*bundle.RekorBundle, error) { return f.bundle, nil }
+func (f *fakeSig) Payload() ([]byte, error) { return f.payload, nil }
+func (f *fakeSig) Bundle() (*bundle.RekorBundle, error) {
+	return nil, nil
+}
 
 // ---- Everything below can be stubbed (no panics) ----
 
-func (f *fakeSig) Digest() (v1.Hash, error) { return v1.Hash{}, nil }
+func (f *fakeSig) Digest() (v1.Hash, error) { return f.digest, nil }
 func (f *fakeSig) DiffID() (v1.Hash, error) { return v1.Hash{}, nil }
 
 func (f *fakeSig) Compressed() (io.ReadCloser, error) {
@@ -40,7 +44,7 @@ func (f *fakeSig) Size() (int64, error)                    { return 0, nil }
 func (f *fakeSig) MediaType() (types.MediaType, error)     { return "", nil }
 
 func (f *fakeSig) Signature() ([]byte, error) {
-	return nil, errors.New("not implemented for unit test")
+	return nil, errors.New("fakeSig.Signature should not be called")
 }
 
 func (f *fakeSig) Base64Signature() (string, error) {
@@ -48,7 +52,10 @@ func (f *fakeSig) Base64Signature() (string, error) {
 	return base64.StdEncoding.EncodeToString(nil), nil
 }
 
-func (f *fakeSig) Cert() (*x509.Certificate, error)    { return nil, nil }
-func (f *fakeSig) Chain() ([]*x509.Certificate, error) { return nil, nil }
+func (f *fakeSig) Cert() (*x509.Certificate, error) {
+	return f.cert, nil
+}
+
+func (f *fakeSig) Chain() ([]*x509.Certificate, error) { return f.chain, nil }
 
 func (f *fakeSig) RFC3161Timestamp() (*bundle.RFC3161Timestamp, error) { return nil, nil }

@@ -42,7 +42,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0
 	github.com/sigstore/cosign/v3 v3.1.1
-	github.com/sigstore/rekor v1.5.2
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.43.0
@@ -232,6 +231,7 @@ require (
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.5 // indirect
 	github.com/sigstore/protobuf-specs v0.5.1 // indirect
+	github.com/sigstore/rekor v1.5.2 // indirect
 	github.com/sigstore/rekor-tiles/v2 v2.2.2-0.20260601073857-5d098a2b6443 // indirect
 	github.com/sigstore/sigstore v1.10.8 // indirect
 	github.com/sigstore/sigstore-go v1.2.0 // indirect

@@ -5,16 +5,19 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/google"
-	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
+	gcrremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/v13s/internal/attestation/github"
@@ -22,13 +25,19 @@ import (
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
 	"github.com/sigstore/cosign/v3/pkg/oci"
-	"github.com/sigstore/cosign/v3/pkg/oci/remote"
+	cosignremote "github.com/sigstore/cosign/v3/pkg/oci/remote"
+	"github.com/sigstore/sigstore-go/pkg/bundle"
+	fulciocert "github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
+	"github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
 	ErrNoAttestation = "no matching attestations"
 )
+
+var errNoCycloneDXAttestationInBundles = errors.New("no CycloneDX attestation found in verified bundles")
 
 type Verifier interface {
 	GetAttestation(ctx context.Context, image string) (*Attestation, error)
@@ -39,7 +48,11 @@ var _ Verifier = &verifier{}
 type verifier struct {
 	log        *logrus.Entry
 	optsV3     *cosign.CheckOpts
+	remoteOpts []gcrremote.Option
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
+	getBundles func(ctx context.Context, signedImgRef name.Reference, registryClientOpts []cosignremote.Option, nameOpts ...name.Option) ([]*bundle.Bundle, *v1.Hash, error)
+	verifyNew  func(ctx context.Context, co *cosign.CheckOpts, artifactPolicyOption verify.ArtifactPolicyOption, entity verify.SignedEntity) (*verify.VerificationResult, error)
+	headFunc   func(ref name.Reference, options ...gcrremote.Option) (*v1.Descriptor, error)
 }
 
 func NewVerifier(_ context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
@@ -50,8 +63,11 @@ func NewVerifier(_ context.Context, log *logrus.Entry, organizations ...string) 
 		google.Keychain,
 		gh.Keychain,
 	)
-	registryOpts := []remote.Option{
-		remote.WithRemoteOptions(ociremote.WithAuthFromKeychain(keychain)),
+	remoteOpts := []gcrremote.Option{
+		gcrremote.WithAuthFromKeychain(keychain),
+	}
+	registryOpts := []cosignremote.Option{
+		cosignremote.WithRemoteOptions(remoteOpts...),
 	}
 
 	trustedRoot, err := cosign.TrustedRoot()
@@ -70,6 +86,10 @@ func NewVerifier(_ context.Context, log *logrus.Entry, organizations ...string) 
 			TrustedMaterial:    trustedRoot,
 			Identities:         ids,
 		},
+		remoteOpts: remoteOpts,
+		getBundles: cosign.GetBundles,
+		verifyNew:  cosign.VerifyNewBundle,
+		headFunc:   gcrremote.Head,
 	}
 
 	v.verifyFunc = func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
@@ -195,6 +215,74 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 		return nil, model.ToUnrecoverableError(fmt.Errorf("parse reference: %v", err), "attestation")
 	}
 
+	att, err := v.getAttestationFromNewBundle(ctx, ref)
+	if err == nil {
+		return att, nil
+	}
+
+	if !shouldFallbackToLegacy(err) {
+		return nil, err
+	}
+
+	v.log.WithFields(logrus.Fields{
+		"ref": ref.String(),
+	}).WithError(err).Info("new-bundle attestation path had no usable CycloneDX payload, falling back to legacy verification")
+
+	return v.getAttestationFromLegacyVerify(ctx, ref)
+}
+
+func (v *verifier) getAttestationFromNewBundle(ctx context.Context, ref name.Reference) (*Attestation, error) {
+	if v.getBundles == nil || v.verifyNew == nil {
+		return nil, errNoCycloneDXAttestationInBundles
+	}
+
+	bundles, hash, err := v.getBundles(ctx, ref, v.optsV3.RegistryClientOpts)
+	if err != nil {
+		return nil, mapTransportError(err)
+	}
+	if hash == nil {
+		return nil, errNoCycloneDXAttestationInBundles
+	}
+
+	digestBytes, err := hex.DecodeString(hash.Hex)
+	if err != nil {
+		return nil, err
+	}
+
+	artifactPolicy := verify.WithArtifactDigest(hash.Algorithm, digestBytes)
+
+	for _, b := range bundles {
+		result, verifyErr := v.verifyNew(ctx, v.optsV3, artifactPolicy, b)
+		if verifyErr != nil {
+			v.log.WithError(verifyErr).Debug("new-bundle verification failed for one bundle")
+			continue
+		}
+
+		att, fromResultErr := attestationFromVerificationResult(result)
+		if fromResultErr != nil {
+			v.log.WithError(fromResultErr).Debug("verified bundle did not contain a usable CycloneDX statement")
+			continue
+		}
+
+		if result != nil && result.Signature != nil && result.Signature.Certificate != nil {
+			att.Metadata = metadataFromCertificateSummary(result.Signature.Certificate)
+			if len(att.Metadata) == 0 {
+				v.log.Debug("verified CycloneDX statement has no signer metadata in certificate summary")
+			}
+		}
+		if att.Metadata == nil {
+			att.Metadata = map[string]string{}
+		}
+		att.Metadata["imageDigest"] = formatHash(*hash)
+
+		v.log.WithField("ref", ref.String()).Debug("attestation verified and extracted through new-bundle path")
+		return att, nil
+	}
+
+	return nil, errNoCycloneDXAttestationInBundles
+}
+
+func (v *verifier) getAttestationFromLegacyVerify(ctx context.Context, ref name.Reference) (*Attestation, error) {
 	verified, err := v.verifyBundleFormat(ctx, ref)
 	if err != nil {
 		var noMatch *cosign.ErrNoMatchingAttestations
@@ -229,8 +317,35 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 	}
 
 	ret.Metadata = v.extractMetadata(chosen)
+	if digest := v.resolveLegacyImageDigest(chosen, ref); digest != "" {
+		ret.Metadata["imageDigest"] = digest
+	}
 
 	return ret, nil
+}
+
+func shouldFallbackToLegacy(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, errNoCycloneDXAttestationInBundles) {
+		return true
+	}
+	var noMatch *cosign.ErrNoMatchingAttestations
+	return errors.As(err, &noMatch)
+}
+
+func mapTransportError(err error) error {
+	if tErr, ok := errors.AsType[*transport.Error](err); ok {
+		if tErr.StatusCode >= 400 && tErr.StatusCode < 500 {
+			return model.ToUnrecoverableError(
+				fmt.Errorf("status: %d, error: %w", tErr.StatusCode, tErr),
+				"attestation",
+			)
+		}
+		return model.ToRecoverableError(tErr, "attestation")
+	}
+	return err
 }
 
 // pickCycloneDX finds the CycloneDX attestation (order-independent) and returns the signature + its payload.
@@ -270,20 +385,66 @@ func attestationFromStatement(statement *in_toto.CycloneDXStatement) (*Attestati
 	}, nil
 }
 
+func attestationFromVerificationResult(result *verify.VerificationResult) (*Attestation, error) {
+	if result == nil || result.Statement == nil {
+		return nil, fmt.Errorf("verification result has no statement")
+	}
+
+	statementJSON, err := protojson.Marshal(result.Statement)
+	if err != nil {
+		return nil, fmt.Errorf("marshal verified statement: %w", err)
+	}
+
+	statement := &in_toto.CycloneDXStatement{}
+	if err := json.Unmarshal(statementJSON, statement); err != nil {
+		return nil, fmt.Errorf("unmarshal verified statement: %w", err)
+	}
+
+	if statement.PredicateType != in_toto.PredicateCycloneDX {
+		return nil, fmt.Errorf("unsupported predicate type: %s", statement.PredicateType)
+	}
+
+	return attestationFromStatement(statement)
+}
+
 // extractMetadata is intentionally best-effort (never fails GetAttestation).
 func (v *verifier) extractMetadata(sig oci.Signature) map[string]string {
 	metadata := map[string]string{}
-	b, err := sig.Bundle()
-	if err != nil || b == nil {
-		return metadata
-	}
-
-	rekor, err := GetRekorMetadata(b)
+	cert, err := sig.Cert()
 	if err != nil {
+		v.log.WithError(err).Debug("extractMetadata: sig.Cert failed")
 		return metadata
 	}
+	if cert == nil {
+		v.log.Debug("extractMetadata: sig.Cert returned nil cert; trying sig.Chain")
+		chain, chainErr := sig.Chain()
+		if chainErr != nil {
+			v.log.WithError(chainErr).Debug("extractMetadata: sig.Chain failed")
+			return metadata
+		}
+		if len(chain) == 0 || chain[0] == nil {
+			v.log.Debug("extractMetadata: sig.Chain returned no certificates")
+			return metadata
+		}
+		cert = chain[0]
+	}
 
-	j, err := json.Marshal(rekor)
+	certMetadata := GetCertificateMetadata(cert)
+
+	return metadataFromCertificateMetadata(certMetadata)
+}
+
+func metadataFromCertificateSummary(summary *fulciocert.Summary) map[string]string {
+	if summary == nil {
+		return map[string]string{}
+	}
+	return metadataFromCertificateMetadata(GetCertificateMetadataFromSummary(summary))
+}
+
+func metadataFromCertificateMetadata(certMetadata *CertificateMetadata) map[string]string {
+	metadata := map[string]string{}
+
+	j, err := json.Marshal(certMetadata)
 	if err != nil {
 		return metadata
 	}
@@ -292,6 +453,60 @@ func (v *verifier) extractMetadata(sig oci.Signature) map[string]string {
 		return metadata
 	}
 	return metadata
+}
+
+func formatHash(hash v1.Hash) string {
+	if hash.Algorithm == "" || hash.Hex == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s:%s", hash.Algorithm, hash.Hex)
+}
+
+func (v *verifier) resolveImageDigest(ref name.Reference) string {
+	if digest := digestFromReference(ref); digest != "" {
+		return digest
+	}
+	if v.headFunc == nil {
+		return ""
+	}
+	desc, err := v.headFunc(ref, v.remoteOpts...)
+	if err != nil {
+		v.log.WithError(err).WithField("ref", ref.String()).Debug("resolveImageDigest: registry head failed")
+		return ""
+	}
+	if desc == nil {
+		return ""
+	}
+	return desc.Digest.String()
+}
+
+func (v *verifier) resolveLegacyImageDigest(sig oci.Signature, ref name.Reference) string {
+	if digest := digestFromReference(ref); digest != "" {
+		return digest
+	}
+	if sig != nil {
+		hash, err := sig.Digest()
+		if err == nil {
+			if digest := formatHash(hash); digest != "" {
+				return digest
+			}
+		} else {
+			v.log.WithError(err).WithField("ref", ref.String()).Debug("resolveLegacyImageDigest: signature digest failed")
+		}
+	}
+	return v.resolveImageDigest(ref)
+}
+
+func digestFromReference(ref name.Reference) string {
+	if ref == nil {
+		return ""
+	}
+	value := ref.String()
+	at := strings.LastIndex(value, "@")
+	if at == -1 || at == len(value)-1 {
+		return ""
+	}
+	return value[at+1:]
 }
 
 func ParseEnvelope(dsseEnvelope []byte) (*in_toto.CycloneDXStatement, error) {
