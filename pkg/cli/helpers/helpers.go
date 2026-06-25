@@ -24,16 +24,17 @@ func MustIntToInt32(n int) int32 {
 // Returns an error if neither separator is found or the tag/digest is empty.
 func SplitImageRef(ref string) (name, tag string, err error) {
 	if before, after, ok := strings.Cut(ref, "@"); ok {
-		i := strings.LastIndex(before, ":")
-		if i >= 0 {
-			name = before[:i]
-			tag = before[i+1:] + "@" + after
+		lastColon := strings.LastIndex(before, ":")
+		lastSlash := strings.LastIndex(before, "/")
+		if lastColon >= 0 && lastColon > lastSlash {
+			name = before[:lastColon]
+			tag = before[lastColon+1:] + "@" + after
 		} else {
 			name = before
 			tag = after
 		}
 		if name == "" || tag == "" {
-			return "", "", fmt.Errorf("invalid image format %q, expected <image>@<digest>", ref)
+			return "", "", fmt.Errorf("invalid image format %q, expected <image>[:<tag>]@<digest>", ref)
 		}
 		return name, tag, nil
 	}

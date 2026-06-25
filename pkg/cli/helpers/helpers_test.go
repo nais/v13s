@@ -23,6 +23,12 @@ func TestSplitImageRef(t *testing.T) {
 			wantTag:  "sha256:abc",
 		},
 		{
+			name:     "registry with port and digest only",
+			ref:      "registry.example:5000/repo/app@sha256:abc",
+			wantName: "registry.example:5000/repo/app",
+			wantTag:  "sha256:abc",
+		},
+		{
 			name:     "image with tag and digest",
 			ref:      "repo/app:v1@sha256:abc",
 			wantName: "repo/app",
