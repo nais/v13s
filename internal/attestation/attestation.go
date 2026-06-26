@@ -38,6 +38,7 @@ const (
 )
 
 var errNoCycloneDXAttestationInBundles = errors.New("no CycloneDX attestation found in verified bundles")
+var errNewBundleVerificationFailed = errors.New("new-bundle attestation verification failed")
 
 type Verifier interface {
 	GetAttestation(ctx context.Context, image string) (*Attestation, error)
@@ -250,11 +251,13 @@ func (v *verifier) getAttestationFromNewBundle(ctx context.Context, ref name.Ref
 	}
 
 	artifactPolicy := verify.WithArtifactDigest(hash.Algorithm, digestBytes)
+	verificationFailed := false
 
 	for _, b := range bundles {
 		result, verifyErr := v.verifyNew(ctx, v.optsV3, artifactPolicy, b)
 		if verifyErr != nil {
 			v.log.WithError(verifyErr).Debug("new-bundle verification failed for one bundle")
+			verificationFailed = true
 			continue
 		}
 
@@ -277,6 +280,9 @@ func (v *verifier) getAttestationFromNewBundle(ctx context.Context, ref name.Ref
 
 		v.log.WithField("ref", ref.String()).Debug("attestation verified and extracted through new-bundle path")
 		return att, nil
+	}
+	if verificationFailed {
+		return nil, errNewBundleVerificationFailed
 	}
 
 	return nil, errNoCycloneDXAttestationInBundles
@@ -483,16 +489,6 @@ func (v *verifier) resolveImageDigest(ref name.Reference) string {
 func (v *verifier) resolveLegacyImageDigest(sig oci.Signature, ref name.Reference) string {
 	if digest := v.resolveImageDigest(ref); digest != "" {
 		return digest
-	}
-	if sig != nil {
-		hash, err := sig.Digest()
-		if err == nil {
-			if digest := formatHash(hash); digest != "" {
-				return digest
-			}
-		} else {
-			v.log.WithError(err).WithField("ref", ref.String()).Debug("resolveLegacyImageDigest: signature digest failed")
-		}
 	}
 	return ""
 }

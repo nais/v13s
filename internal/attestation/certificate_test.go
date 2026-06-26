@@ -58,5 +58,5 @@ func TestGetCertificateMetadataFromSummary_Fallbacks(t *testing.T) {
 	metadata := GetCertificateMetadataFromSummary(summary)
 	require.Equal(t, "CN=sigstore-intermediate,O=sigstore.dev", metadata.CertificateIssuer)
 	require.Equal(t, "https://issuer.example", metadata.OIDCIssuer)
-	require.Equal(t, "https://github.com/navikt/workflow.yml@refs/heads/main", metadata.Subject)
+	require.Empty(t, metadata.Subject)
 }

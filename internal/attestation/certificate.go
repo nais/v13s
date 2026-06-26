@@ -163,10 +163,6 @@ func buildCertificateMetadata(input certificateMetadataInput) *CertificateMetada
 		GitHubWorkflowSHA:        removeNonGraphicChars(input.githubWorkflowSHA),
 	}
 
-	if metadata.Subject == "" && metadata.BuildConfigURI != "" {
-		metadata.Subject = metadata.BuildConfigURI
-	}
-
 	return metadata
 }
 

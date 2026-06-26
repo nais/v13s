@@ -82,7 +82,8 @@ func TestGetAttestation_Success(t *testing.T) {
 	require.Equal(t, "https://github.com/nais/slsa-verde", a.Metadata["sourceRepositoryURI"])
 	require.Equal(t, "https://github.com/nais/slsa-verde/.github/workflows/main.yml@refs/heads/main", a.Metadata["buildConfigURI"])
 	require.Equal(t, "sha256:buildconfigdigest", a.Metadata["buildConfigDigest"])
-	require.Equal(t, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", a.Metadata["imageDigest"])
+	_, ok := a.Metadata["imageDigest"]
+	require.False(t, ok, "imageDigest should stay empty when no digest is present in ref and no registry lookup is configured")
 	require.Equal(t, "github-hosted", a.Metadata["runnerEnvironment"])
 }
 
@@ -108,7 +109,8 @@ func TestGetAttestation_MetadataFromChainWhenCertMissing(t *testing.T) {
 	require.NotEmpty(t, a.Metadata)
 	require.Equal(t, "https://token.actions.githubusercontent.com", a.Metadata["oidcIssuer"])
 	require.Equal(t, "Build and deploy", a.Metadata["githubWorkflowName"])
-	require.Equal(t, "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", a.Metadata["imageDigest"])
+	_, ok := a.Metadata["imageDigest"]
+	require.False(t, ok, "imageDigest should stay empty when no digest is present in ref and no registry lookup is configured")
 }
 
 func TestGetAttestation_PrefersNewBundlePath(t *testing.T) {
@@ -164,7 +166,32 @@ func TestGetAttestation_FallsBackToLegacyWhenNewBundleHasNoCycloneDX(t *testing.
 	require.NoError(t, err)
 	require.True(t, legacyCalled, "legacy path should be used when new-bundle path has no CycloneDX statement")
 	require.Equal(t, "Build and deploy", a.Metadata["githubWorkflowName"])
-	require.Equal(t, "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", a.Metadata["imageDigest"])
+	_, ok := a.Metadata["imageDigest"]
+	require.False(t, ok, "imageDigest should stay empty when only the attestation signature digest is available")
+}
+
+func TestGetAttestation_DoesNotFallbackToLegacyWhenNewBundleVerificationFails(t *testing.T) {
+	legacyCalled := false
+	v := &verifier{
+		log:    logrus.NewEntry(logrus.New()),
+		optsV3: &cosign.CheckOpts{NewBundleFormat: true},
+		getBundles: func(ctx context.Context, signedImgRef name.Reference, registryClientOpts []cosignremote.Option, nameOpts ...name.Option) ([]*bundle.Bundle, *v1.Hash, error) {
+			h := v1.Hash{Algorithm: "sha256", Hex: "abababababababababababababababababababababababababababababababab"}
+			return []*bundle.Bundle{{}}, &h, nil
+		},
+		verifyNew: func(ctx context.Context, co *cosign.CheckOpts, artifactPolicyOption verify.ArtifactPolicyOption, entity verify.SignedEntity) (*verify.VerificationResult, error) {
+			return nil, fmt.Errorf("verification failed")
+		},
+		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			legacyCalled = true
+			return nil, nil
+		},
+	}
+
+	_, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
+	require.Error(t, err)
+	require.ErrorIs(t, err, errNewBundleVerificationFailed)
+	require.False(t, legacyCalled, "legacy path should not be used when new-bundle verification fails")
 }
 
 func TestGetAttestation_NewBundleWithoutMetadataStillSucceeds(t *testing.T) {
