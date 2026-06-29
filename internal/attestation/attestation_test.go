@@ -145,6 +145,7 @@ func TestGetAttestation_FallsBackToLegacyWhenNewBundleHasNoCycloneDX(t *testing.
 	dsse := loadDSSEFromFile(t, "testdata/cyclonedx-dsse.json")
 	cert := createTestCertificate(t)
 	legacyCalled := false
+	verifyFuncCalls := 0
 
 	v := &verifier{
 		log:    logrus.NewEntry(logrus.New()),
@@ -157,6 +158,7 @@ func TestGetAttestation_FallsBackToLegacyWhenNewBundleHasNoCycloneDX(t *testing.
 			return makeNonCycloneDXVerificationResult(), nil
 		},
 		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			verifyFuncCalls++
 			legacyCalled = true
 			return []oci.Signature{&fakeSig{payload: dsse, cert: cert, digest: v1.Hash{Algorithm: "sha256", Hex: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}}}, nil
 		},
@@ -165,6 +167,7 @@ func TestGetAttestation_FallsBackToLegacyWhenNewBundleHasNoCycloneDX(t *testing.
 	a, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
 	require.NoError(t, err)
 	require.True(t, legacyCalled, "legacy path should be used when new-bundle path has no CycloneDX statement")
+	require.Equal(t, 1, verifyFuncCalls, "fallback should call legacy verification directly without re-running v3 verification")
 	require.Equal(t, "Build and deploy", a.Metadata["githubWorkflowName"])
 	_, ok := a.Metadata["imageDigest"]
 	require.False(t, ok, "imageDigest should stay empty when only the attestation signature digest is available")

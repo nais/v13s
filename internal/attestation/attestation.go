@@ -163,30 +163,7 @@ func Decompress(data []byte) (*Attestation, error) {
 	return attestation, nil
 }
 
-func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
-	coV3 := *v.optsV3
-	coV3.NewBundleFormat = true
-
-	sigs, err := v.verifyFunc(ctx, ref, &coV3)
-	if err == nil && len(sigs) > 0 {
-		return sigs, nil
-	}
-
-	shouldFallback := len(sigs) == 0
-	var noMatch *cosign.ErrNoMatchingAttestations
-	if errors.As(err, &noMatch) {
-		shouldFallback = true
-	}
-
-	if !shouldFallback {
-		// v3 failed for a "real" reason (not just absence)
-		return nil, err
-	}
-
-	v.log.WithFields(logrus.Fields{
-		"ref": ref.String(),
-	}).Info("No v3 attestations (or v3 reported none), switching to legacy bundle format")
-
+func (v *verifier) verifyLegacyOnly(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
 	coLegacy := *v.optsV3
 	coLegacy.NewBundleFormat = false
 
@@ -195,7 +172,6 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 		return legacySigs, nil
 	}
 
-	// Prefer legacy error if we tried it; otherwise return v3 error
 	if legacyErr != nil {
 		var noMatch *cosign.ErrNoMatchingAttestations
 		if errors.As(legacyErr, &noMatch) {
@@ -206,8 +182,8 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 		v.log.WithError(legacyErr).WithField("ref", ref.String()).Warn("legacy attestation verification failed")
 		return nil, legacyErr
 	}
-	// legacyErr == nil but no sigs
-	return nil, err // err might be nil; if so, caller will treat as no attestation
+
+	return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
 }
 
 func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestation, error) {
@@ -289,7 +265,7 @@ func (v *verifier) getAttestationFromNewBundle(ctx context.Context, ref name.Ref
 }
 
 func (v *verifier) getAttestationFromLegacyVerify(ctx context.Context, ref name.Reference) (*Attestation, error) {
-	verified, err := v.verifyBundleFormat(ctx, ref)
+	verified, err := v.verifyLegacyOnly(ctx, ref)
 	if err != nil {
 		var noMatch *cosign.ErrNoMatchingAttestations
 		if errors.As(err, &noMatch) {
@@ -297,10 +273,6 @@ func (v *verifier) getAttestationFromLegacyVerify(ctx context.Context, ref name.
 		}
 		return nil, err
 	}
-	if len(verified) == 0 {
-		return nil, model.ToUnrecoverableError(errors.New(ErrNoAttestation), "attestation")
-	}
-
 	chosen, payload, err := pickCycloneDX(verified)
 	if err != nil {
 		return nil, model.ToRecoverableError(err, "attestation")
