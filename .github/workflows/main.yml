@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
 
       - name: Build push v13s image
-        uses: nais/platform-build-push-sign@main # ratchet:exclude
+        uses: nais/platform-build-push-sign@00f6753ea418c00e63f3a569e15c88f14a6bc847 # ratchet:exclude pinned to chore/test-workflow-action-validation
         id: build-push-sign
         with:
           name: ${{ env.NAME }}
