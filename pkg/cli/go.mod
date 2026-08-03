@@ -1,6 +1,6 @@
 module github.com/nais/v13s/pkg/cli
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/charmbracelet/huh v1.0.0
@@ -12,7 +12,7 @@ require (
 	github.com/rodaine/table v1.3.1
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli/v3 v3.10.1
-	google.golang.org/grpc v1.81.1
+	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 )
 
