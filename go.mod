@@ -22,7 +22,7 @@ require (
 	github.com/emicklei/pgtalk v1.14.2
 	github.com/exaring/otelpgx v0.11.1
 	github.com/go-chi/chi/v5 v5.3.1
-	github.com/google/go-containerregistry v0.21.7
+	github.com/google/go-containerregistry v0.21.8
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.11.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
@@ -35,9 +35,9 @@ require (
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
-	github.com/riverqueue/river v0.41.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.41.1
-	github.com/riverqueue/river/rivertype v0.41.1
+	github.com/riverqueue/river v0.42.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.42.0
+	github.com/riverqueue/river/rivertype v0.42.0
 	github.com/riverqueue/rivercontrib/otelriver v0.12.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/secure-systems-lab/go-securesystemslib v0.11.0
@@ -63,7 +63,7 @@ require (
 	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v0.36.3
 	k8s.io/klog/v2 v2.140.0
-	riverqueue.com/riverui v0.16.0
+	riverqueue.com/riverui v0.17.0
 )
 
 require (
@@ -98,7 +98,7 @@ require (
 	github.com/digitorus/pkcs7 v0.0.0-20230818184609-3a137a874352 // indirect
 	github.com/digitorus/timestamp v0.0.0-20231217203849-220c5c2851b7 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/cli v29.5.3+incompatible // indirect
+	github.com/docker/cli v29.6.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -190,7 +190,7 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
 	github.com/moby/moby/api v1.55.0 // indirect
-	github.com/moby/moby/client v0.5.0 // indirect
+	github.com/moby/moby/client v0.5.1 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
 	github.com/moby/sys/user v0.4.0 // indirect
@@ -220,8 +220,8 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/riverqueue/apiframe v0.0.0-20260406191122-4e2e69ffa499 // indirect
-	github.com/riverqueue/river/riverdriver v0.41.1 // indirect
-	github.com/riverqueue/river/rivershared v0.41.1 // indirect
+	github.com/riverqueue/river/riverdriver v0.42.0 // indirect
+	github.com/riverqueue/river/rivershared v0.42.0 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/rs/zerolog v1.35.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
