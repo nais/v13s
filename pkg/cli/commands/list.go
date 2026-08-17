@@ -169,7 +169,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 		}
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Top Priority", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Top Priority", "P:Urgent", "P:High", "P:Elevated", "P:Monitor", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag", "Last Updated")
 		}
@@ -186,6 +186,10 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetNamespace(),
 				formatSbomStatus(n.GetSbomStatus()),
 				formatTopPriority(sum, hasSummary),
+				intOrDash(sum.GetActNow(), hasSummary),
+				intOrDash(sum.GetHighRisk(), hasSummary),
+				intOrDash(sum.GetElevatedRisk(), hasSummary),
+				intOrDash(sum.GetMonitor(), hasSummary),
 				intOrDash(sum.GetCritical(), hasSummary),
 				intOrDash(sum.GetHigh(), hasSummary),
 				intOrDash(sum.GetMedium(), hasSummary),
@@ -246,7 +250,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 			fmt.Println(workloadDetails("Cluster: %s", w.Cluster))
 			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
 
-			tbl := output.New("Package", "CVE", "Severity", "CVSS Score", "CVE Age", "Last Severity", "Severity Since", "Fix Version", "Latest Version", "Suppressed", "Vuln Age")
+			tbl := output.New("Package", "CVE", "Severity", "Priority", "CVSS Score", "CVE Age", "Last Severity", "Severity Since", "Fix Version", "Latest Version", "Suppressed", "Vuln Age")
 
 			for _, n := range findings {
 				v := n.Vulnerability
@@ -259,6 +263,7 @@ func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, 
 					v.GetPackage(),
 					v.GetCve().GetId(),
 					v.GetCve().GetSeverity().String(),
+					formatPriority(v.GetCve().GetPriority()),
 					formatCvssScore(v.GetCve().GetCvssScore()),
 					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
 					fmt.Sprintf("%v", v.GetLastSeverity()),
@@ -364,6 +369,21 @@ func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
 		}
 	}
 	return label
+}
+
+func formatPriority(p vulnerabilities.Priority) string {
+	switch p {
+	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
+		return "URGENT"
+	case vulnerabilities.Priority_PRIORITY_HIGH:
+		return "HIGH"
+	case vulnerabilities.Priority_PRIORITY_ELEVATED:
+		return "ELEVATED"
+	case vulnerabilities.Priority_PRIORITY_MONITOR:
+		return "MONITOR"
+	default:
+		return "-"
+	}
 }
 
 func formatTopPriority(sum *vulnerabilities.Summary, hasSummary bool) string {
