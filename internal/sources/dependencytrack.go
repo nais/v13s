@@ -73,6 +73,7 @@ func NewSources(value string, log logrus.FieldLogger) (*Sources, error) {
 		warmup = append(warmup, source)
 	}
 	return NewSet(active, warmup...)
+}
 
 func parseDependencyTrackSourcesConfig(value string) (DependencyTrackSourcesConfig, error) {
 	var config DependencyTrackSourcesConfig
