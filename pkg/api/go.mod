@@ -1,6 +1,8 @@
 module github.com/nais/v13s/pkg/api
 
-go 1.26.6
+go 1.26
+
+toolchain go1.26.6
 
 require (
 	golang.org/x/oauth2 v0.36.0

@@ -1,6 +1,8 @@
 module github.com/nais/v13s
 
-go 1.26.6
+go 1.26.5
+
+toolchain go1.26.6
 
 tool (
 	github.com/securego/gosec/v2/cmd/gosec
