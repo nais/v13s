@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Go** (version pinned in `go.mod` / `mise/config.toml`)
+- **Go** (`go.mod` sets the language version; `toolchain` and `mise/config.toml` pin the patch/toolchain version)
 - **Docker** and **Docker Compose**
 - **mise** (for task automation)
 - **PostgreSQL 15+** (provided via docker-compose)
