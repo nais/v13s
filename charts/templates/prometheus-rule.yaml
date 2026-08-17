@@ -92,7 +92,7 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":rotating_light: URGENT priority vulnerabilities found in workload(s) deployed to namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":rotating_light: Priority URGENT vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
               {{ "`{{ $labels.workload_name }}` has `{{ $value }}` priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
