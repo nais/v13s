@@ -374,7 +374,7 @@ func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
 func formatPriority(p vulnerabilities.Priority) string {
 	switch p {
 	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
-		return "ACT_NOW"
+		return "URGENT"
 	case vulnerabilities.Priority_PRIORITY_HIGH:
 		return "HIGH"
 	case vulnerabilities.Priority_PRIORITY_ELEVATED:
