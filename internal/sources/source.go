@@ -37,22 +37,31 @@ func NewSet(active Source, warmup ...Source) (*Sources, error) {
 	if active == nil {
 		return nil, fmt.Errorf("active source must not be nil")
 	}
-	if active.Identity().Instance == "" {
+
+	activeID := active.Identity()
+	if activeID.Type == "" {
+		return nil, fmt.Errorf("active source type must not be empty")
+	}
+	if activeID.Instance == "" {
 		return nil, fmt.Errorf("active source instance must not be empty")
 	}
-	seen := map[string]struct{}{active.Identity().Instance: {}}
+
+	seen := map[Identity]struct{}{activeID: {}}
 	for _, source := range warmup {
 		if source == nil {
 			return nil, fmt.Errorf("warmup source must not be nil")
 		}
-		instance := source.Identity().Instance
-		if instance == "" {
+		id := source.Identity()
+		if id.Type == "" {
+			return nil, fmt.Errorf("warmup source type must not be empty")
+		}
+		if id.Instance == "" {
 			return nil, fmt.Errorf("warmup source instance must not be empty")
 		}
-		if _, exists := seen[instance]; exists {
-			return nil, fmt.Errorf("duplicate source instance %q", instance)
+		if _, exists := seen[id]; exists {
+			return nil, fmt.Errorf("duplicate source identity type=%q instance=%q", id.Type, id.Instance)
 		}
-		seen[instance] = struct{}{}
+		seen[id] = struct{}{}
 	}
 	return &Sources{active: active, warmup: warmup}, nil
 }
