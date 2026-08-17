@@ -169,7 +169,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 		}
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Top Priority", "P:ActNow", "P:High", "P:Elevated", "P:Monitor", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Top Priority", "P:Urgent", "P:High", "P:Elevated", "P:Monitor", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag", "Last Updated")
 		}
