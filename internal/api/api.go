@@ -43,9 +43,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer pool.Close()
 
-	source, err := sources.New(cfg.DependencyTrack, log)
+	sourcesValue, err := cfg.SourcesValue()
 	if err != nil {
-		log.Fatalf("Failed to create source: %v", err)
+		return fmt.Errorf("configure sources: %w", err)
+	}
+	sourceSet, err := sources.NewSources(sourcesValue, log)
+	if err != nil {
+		return fmt.Errorf("create sources: %w", err)
 	}
 
 	workloadEventQueue := &kubernetes.WorkloadEventQueue{
@@ -117,7 +121,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		)
 	}()
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
+	mgr := manager.NewWorkloadManagerWithSources(ctx, pool, jobCfg, verifier, sourceSet, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
 	if cfg.ReconcileDeletionEnabled {
 		log.Info("workload reconciliation: enabled — orphaned workloads will be deleted")
 	} else {
@@ -157,7 +161,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	u := updater.NewUpdater(
 		pool,
-		source,
+		sourceSet.Active(),
 		mgr,
 		updater.ScheduleConfig{
 			Type:     updater.SchedulerInterval,

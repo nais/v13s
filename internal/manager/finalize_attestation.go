@@ -20,9 +20,10 @@ const (
 )
 
 type FinalizeAttestationJob struct {
-	ImageName    string `river:"unique"`
-	ImageTag     string `river:"unique"`
-	ProcessToken string
+	ImageName      string `river:"unique"`
+	ImageTag       string `river:"unique"`
+	SourceInstance string `river:"unique"`
+	ProcessToken   string
 }
 
 func (FinalizeAttestationJob) Kind() string { return KindFinalizeAttestation }
@@ -41,7 +42,7 @@ func (f FinalizeAttestationJob) InsertOpts() river.InsertOpts {
 
 type FinalizeAttestationWorker struct {
 	db        sql.Querier
-	source    sources.Source
+	sources   *sources.Sources
 	jobClient job.Client
 	log       logrus.FieldLogger
 	river.WorkerDefaults[FinalizeAttestationJob]
@@ -50,6 +51,12 @@ type FinalizeAttestationWorker struct {
 func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[FinalizeAttestationJob]) error {
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
+	sourceInstance := job.Args.SourceInstance
+	isActive := f.sources.IsActive(sourceInstance)
+	source, ok := f.sources.Source(sourceInstance)
+	if !ok {
+		return fmt.Errorf("source instance %q is not configured", sourceInstance)
+	}
 
 	processToken := job.Args.ProcessToken
 
@@ -65,7 +72,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	// (e.g. dependencytrack expects UUID process tokens).
 	event := EventTaskComplete
 	if processToken != "" {
-		inProgress, err := f.source.IsTaskInProgress(ctx, processToken)
+		inProgress, err := source.IsTaskInProgress(ctx, processToken)
 		if err != nil {
 			return fmt.Errorf("failed to check task progress: %w", err)
 		}
@@ -92,7 +99,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	}
 
 	// 4. Mark image as ready for resync.
-	if decision.MarkResync {
+	if decision.MarkResync && isActive {
 		n, err := f.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
@@ -119,16 +126,20 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 
 	// 5. Enqueue cleanup for unused source refs.
 	removalCount := 0
-	if decision.EnqueueRemovals {
+	if decision.EnqueueRemovals && isActive {
 		rows, err := f.db.ListUnusedSourceRefs(ctx, &imageName)
 		if err != nil {
 			return fmt.Errorf("failed to list unused images: %w", err)
 		}
 		removalCount = len(rows)
 		for _, row := range rows {
+			if row.SourceInstance != source.Identity().Instance {
+				continue
+			}
 			if err := f.jobClient.AddJob(ctx, &RemoveFromSourceJob{
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
+				ImageName:      row.ImageName,
+				ImageTag:       row.ImageTag,
+				SourceInstance: row.SourceInstance,
 			}); err != nil {
 				return fmt.Errorf("failed to enqueue RemoveFromSourceJob for %s:%s: %w",
 					row.ImageName, row.ImageTag, err)
@@ -141,7 +152,7 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 		recordStructuredOutput(ctx, JobOutput{
 			Status:   decision.JobStatus,
 			Event:    string(event),
-			Decision: "mark_resync_and_cleanup",
+			Decision: finalizeDecision(isActive),
 			Details: map[string]string{
 				"image":             imageName,
 				"tag":               imageTag,
@@ -151,4 +162,11 @@ func (f *FinalizeAttestationWorker) Work(ctx context.Context, job *river.Job[Fin
 	}
 
 	return nil
+}
+
+func finalizeDecision(isActive bool) string {
+	if isActive {
+		return "mark_resync_and_cleanup"
+	}
+	return "warmup_analysis_complete"
 }

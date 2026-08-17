@@ -25,10 +25,11 @@ const (
 )
 
 type UploadAttestationJob struct {
-	ImageName   string `river:"unique"`
-	ImageTag    string `river:"unique"`
-	WorkloadId  pgtype.UUID
-	Attestation []byte
+	ImageName      string `river:"unique"`
+	ImageTag       string `river:"unique"`
+	SourceInstance string `river:"unique"`
+	WorkloadId     pgtype.UUID
+	Attestation    []byte
 }
 
 func (UploadAttestationJob) Kind() string { return KindUploadAttestation }
@@ -46,7 +47,7 @@ func (u UploadAttestationJob) InsertOpts() river.InsertOpts {
 
 type UploadAttestationWorker struct {
 	db        sql.Querier
-	source    sources.Source
+	sources   *sources.Sources
 	jobClient job.Client
 	log       logrus.FieldLogger
 	river.WorkerDefaults[UploadAttestationJob]
@@ -58,6 +59,12 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	imageName := job.Args.ImageName
 	imageTag := job.Args.ImageTag
+	sourceInstance := job.Args.SourceInstance
+	source, ok := u.sources.Source(sourceInstance)
+	if !ok {
+		return fmt.Errorf("source instance %q is not configured", sourceInstance)
+	}
+	isActive := u.sources.IsActive(sourceInstance)
 
 	span.SetAttributes(
 		attribute.String("image.name", imageName),
@@ -66,7 +73,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	)
 
 	// 1. Check source-ref state and classify the result.
-	sourceRefFound, projectExists, err := u.checkSourceRef(ctx, imageName, imageTag)
+	sourceRefFound, projectExists, err := u.checkSourceRef(ctx, imageName, imageTag, sourceInstance)
 	if err != nil {
 		return err // recoverable; River retries
 	}
@@ -80,9 +87,10 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	// 2. Apply source-ref decision side effects.
 	if sourceRefDecision.DeleteStale {
 		if err := u.db.DeleteSourceRef(ctx, sql.DeleteSourceRefParams{
-			ImageName:  imageName,
-			ImageTag:   imageTag,
-			SourceType: u.source.Name(),
+			ImageName:      imageName,
+			ImageTag:       imageTag,
+			SourceType:     source.Name(),
+			SourceInstance: sourceInstance,
 		}); err != nil {
 			return fmt.Errorf("failed to delete stale sourceRef: %w", err)
 		}
@@ -93,6 +101,18 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 	}
 
 	if sourceRefDecision.ResyncAndReturn {
+		if !isActive {
+			recordStructuredOutput(ctx, JobOutput{
+				Status:   sourceRefDecision.JobStatus,
+				Event:    string(sourceRefEvent),
+				Decision: "warmup_project_exists",
+				Details: map[string]string{
+					"image": imageName,
+					"tag":   imageTag,
+				},
+			})
+			return nil
+		}
 		n, err := u.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
 			Name:  imageName,
 			Tag:   imageTag,
@@ -135,7 +155,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	// 4. Upload attestation to the source.
 	// TODO: consider a table to track persistent upload failures for team alerting.
-	uploadRes, upErr := u.source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
+	uploadRes, upErr := source.UploadAttestation(ctx, imageName, imageTag, att.Predicate)
 	if upErr != nil {
 		span.RecordError(upErr)
 		span.SetStatus(codes.Error, "failed to upload attestation to source")
@@ -149,7 +169,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		dbCtx, cancel := context.WithTimeout(ctx, attestationDBTimeout)
 		defer cancel()
 
-		if decision.WorkloadState != nil {
+		if decision.WorkloadState != nil && isActive {
 			if dbErr := u.db.UpdateWorkloadState(dbCtx, sql.UpdateWorkloadStateParams{
 				State: *decision.WorkloadState,
 				ID:    job.Args.WorkloadId,
@@ -158,7 +178,7 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 			}
 		}
 
-		if decision.ImageState != nil {
+		if decision.ImageState != nil && isActive {
 			n, dbErr := u.db.UpdateImageState(dbCtx, sql.UpdateImageStateParams{
 				State: *decision.ImageState,
 				Name:  imageName,
@@ -190,9 +210,10 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 		if decision.CancelJob {
 			u.log.WithError(upErr).WithFields(logrus.Fields{
-				"image": imageName,
-				"tag":   imageTag,
-			}).Warn("upload attestation failed with unrecoverable error; marked workload/image as terminal")
+				"image":           imageName,
+				"tag":             imageTag,
+				"source_instance": sourceInstance,
+			}).Warn("upload attestation failed with unrecoverable error")
 		}
 
 		if decision.CancelJob {
@@ -203,10 +224,11 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	// 5. Persist upload results.
 	if err := u.db.CreateSourceRef(ctx, sql.CreateSourceRefParams{
-		SourceID:   pgtype.UUID{Bytes: uploadRes.AttestationId, Valid: true},
-		ImageName:  imageName,
-		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+		SourceID:       pgtype.UUID{Bytes: uploadRes.AttestationId, Valid: true},
+		ImageName:      imageName,
+		ImageTag:       imageTag,
+		SourceType:     source.Name(),
+		SourceInstance: sourceInstance,
 	}); err != nil {
 		return err
 	}
@@ -221,9 +243,10 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 
 	// 6. Enqueue the finalize job.
 	if err := u.jobClient.AddJob(ctx, &FinalizeAttestationJob{
-		ImageName:    imageName,
-		ImageTag:     imageTag,
-		ProcessToken: uploadRes.ProcessToken,
+		ImageName:      imageName,
+		ImageTag:       imageTag,
+		SourceInstance: sourceInstance,
+		ProcessToken:   uploadRes.ProcessToken,
 	}); err != nil {
 		return fmt.Errorf("failed to enqueue finalize attestation job: %w", err)
 	}
@@ -253,11 +276,16 @@ func describeUploadAttestationDecision(d Decision) string {
 
 // checkSourceRef looks up an existing source ref for the image and checks whether
 // its upstream project is still alive. Returns (found, projectExists, error).
-func (u *UploadAttestationWorker) checkSourceRef(ctx context.Context, imageName, imageTag string) (found bool, projectExists bool, err error) {
+func (u *UploadAttestationWorker) checkSourceRef(ctx context.Context, imageName, imageTag, sourceInstance string) (found bool, projectExists bool, err error) {
+	source, ok := u.sources.Source(sourceInstance)
+	if !ok {
+		return false, false, fmt.Errorf("source instance %q is not configured", sourceInstance)
+	}
 	sourceRef, err := u.db.GetSourceRef(ctx, sql.GetSourceRefParams{
-		ImageName:  imageName,
-		ImageTag:   imageTag,
-		SourceType: u.source.Name(),
+		ImageName:      imageName,
+		ImageTag:       imageTag,
+		SourceType:     source.Name(),
+		SourceInstance: sourceInstance,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, false, nil
@@ -266,7 +294,7 @@ func (u *UploadAttestationWorker) checkSourceRef(ctx context.Context, imageName,
 		return false, false, fmt.Errorf("failed to check source ref: %w", err)
 	}
 
-	exists, err := u.source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
+	exists, err := source.ProjectExists(ctx, sourceRef.ImageName, sourceRef.ImageTag)
 	if err != nil {
 		return true, false, fmt.Errorf("failed to verify project existence: %w", err)
 	}

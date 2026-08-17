@@ -2,14 +2,17 @@ package sources
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -19,23 +22,121 @@ var (
 
 const DependencytrackSourceName = "dependencytrack"
 
+type DependencyTrackConfig struct {
+	Type     string `json:"type"`
+	Url      string `json:"url"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Instance string `json:"instance"`
+}
+
+type DependencyTrackSourcesConfig struct {
+	Active DependencyTrackConfig   `json:"active"`
+	Warmup []DependencyTrackConfig `json:"warmup"`
+}
+
+func (d DependencyTrackConfig) Validate(location string) error {
+	if d.Type != DependencytrackSourceName {
+		return fmt.Errorf("%s.type must be %q", location, DependencytrackSourceName)
+	}
+	if d.Instance == "" {
+		return fmt.Errorf("%s.instance must be configured", location)
+	}
+	if d.Url == "" {
+		return fmt.Errorf("%s.url must be configured", location)
+	}
+	if d.Username == "" {
+		return fmt.Errorf("%s.username must be configured", location)
+	}
+	if d.Password == "" {
+		return fmt.Errorf("%s.password must be configured", location)
+	}
+	return nil
+}
+
+func NewSources(value string, log logrus.FieldLogger) (*Sources, error) {
+	config, err := parseDependencyTrackSourcesConfig(value)
+	if err != nil {
+		return nil, err
+	}
+	active, err := newDependencyTrackSource(config.Active, log)
+	if err != nil {
+		return nil, fmt.Errorf("create active DependencyTrack source: %w", err)
+	}
+
+	warmup := make([]Source, 0, len(config.Warmup))
+	for i, sourceConfig := range config.Warmup {
+		if err := sourceConfig.Validate(fmt.Sprintf("warmup[%d]", i)); err != nil {
+			return nil, err
+		}
+		source, err := newDependencyTrackSource(sourceConfig, log)
+		if err != nil {
+			return nil, fmt.Errorf("create warmup DependencyTrack source: %w", err)
+		}
+		warmup = append(warmup, source)
+	}
+	return NewSet(active, warmup...)
+}
+
+func parseDependencyTrackSourcesConfig(value string) (DependencyTrackSourcesConfig, error) {
+	var config DependencyTrackSourcesConfig
+	if err := json.Unmarshal([]byte(value), &config); err != nil {
+		return DependencyTrackSourcesConfig{}, fmt.Errorf("parse DependencyTrack sources: %w", err)
+	}
+	if err := config.Active.Validate("active"); err != nil {
+		return DependencyTrackSourcesConfig{}, err
+	}
+	for i, source := range config.Warmup {
+		if err := source.Validate(fmt.Sprintf("warmup[%d]", i)); err != nil {
+			return DependencyTrackSourcesConfig{}, err
+		}
+	}
+	return config, nil
+}
+
+func newDependencyTrackSource(cfg DependencyTrackConfig, log logrus.FieldLogger) (Source, error) {
+	client, err := dependencytrack.NewClient(
+		cfg.Url,
+		cfg.Username,
+		cfg.Password,
+		log.WithField("subsystem", "dp-client"),
+		dependencytrack.WithHTTPClient(&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create DependencyTrack client: %w", err)
+	}
+
+	return NewDependencytrackSourceWithIdentity(client, log.WithFields(logrus.Fields{
+		"source_type":     DependencytrackSourceName,
+		"source_instance": cfg.Instance,
+	}), Identity{Type: DependencytrackSourceName, Instance: cfg.Instance}), nil
+}
+
 type dependencytrackSource struct {
-	client dependencytrack.Client
-	log    *logrus.Entry
+	client   dependencytrack.Client
+	log      *logrus.Entry
+	identity Identity
 }
 
 var _ Source = &dependencytrackSource{}
 
 func NewDependencytrackSource(client dependencytrack.Client, log *logrus.Entry) Source {
+	return NewDependencytrackSourceWithIdentity(client, log, Identity{Type: DependencytrackSourceName, Instance: DependencytrackSourceName})
+}
+
+func NewDependencytrackSourceWithIdentity(client dependencytrack.Client, log *logrus.Entry, identity Identity) Source {
 	return &dependencytrackSource{
-		client: client,
-		log:    log,
+		client:   client,
+		log:      log,
+		identity: identity,
 	}
 }
 
 func (d *dependencytrackSource) Name() string {
-	return DependencytrackSourceName
+	return d.identity.Type
 }
+
+func (d *dependencytrackSource) Identity() Identity { return d.identity }
 
 func (d *dependencytrackSource) IsTaskInProgress(ctx context.Context, tokenProcess string) (bool, error) {
 	_, err := uuid.Parse(tokenProcess)

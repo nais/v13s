@@ -29,7 +29,7 @@ type WorkloadManager struct {
 	pool                     *pgxpool.Pool
 	jobClient                job.Client
 	verifier                 attestation.Verifier
-	src                      sources.Source
+	sources                  *sources.Sources
 	queue                    *kubernetes.WorkloadEventQueue
 	addDispatcher            *Dispatcher[*model.Workload]
 	deleteDispatcher         *Dispatcher[*model.Workload]
@@ -49,6 +49,14 @@ const (
 )
 
 func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, reconcileDeletionEnabled bool, log *logrus.Entry) *WorkloadManager {
+	sourceSet, err := sources.NewSet(source)
+	if err != nil {
+		log.Fatalf("failed to create primary/shadow sources: %v", err)
+	}
+	return NewWorkloadManagerWithSources(ctx, pool, jobCfg, verifier, sourceSet, queue, reconcileDeletionEnabled, log)
+}
+
+func NewWorkloadManagerWithSources(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, sourceSet *sources.Sources, queue *kubernetes.WorkloadEventQueue, reconcileDeletionEnabled bool, log *logrus.Entry) *WorkloadManager {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
@@ -70,17 +78,17 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		log.Fatalf("Failed to create job client: %v", err)
 	}
 	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "add_workload")})
-	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", model.JobKindGetAttestation)})
-	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
-	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
-	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
-	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
+	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, sources: sourceSet, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", model.JobKindGetAttestation)})
+	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, sources: sourceSet, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
+	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, sources: sourceSet, log: log.WithField("subsystem", "remove_from_source")})
+	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, sources: sourceSet, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
+	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, sources: sourceSet, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
 	m := &WorkloadManager{
 		db:                       db,
 		pool:                     pool,
 		jobClient:                jobClient,
 		verifier:                 verifier,
-		src:                      source,
+		sources:                  sourceSet,
 		queue:                    queue,
 		workloadCounter:          udCounter,
 		reconcileDeletionEnabled: reconcileDeletionEnabled,

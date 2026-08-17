@@ -14,21 +14,24 @@ INSERT INTO source_refs(
     image_name,
     image_tag,
     source_id,
-    source_type)
+    source_type,
+    source_instance)
 VALUES (
     $1,
     $2,
     $3,
-    $4)
+    $4,
+    $5)
 ON CONFLICT
     DO NOTHING
 `
 
 type CreateSourceRefParams struct {
-	ImageName  string
-	ImageTag   string
-	SourceID   pgtype.UUID
-	SourceType string
+	ImageName      string
+	ImageTag       string
+	SourceID       pgtype.UUID
+	SourceType     string
+	SourceInstance string
 }
 
 func (q *Queries) CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error {
@@ -37,6 +40,7 @@ func (q *Queries) CreateSourceRef(ctx context.Context, arg CreateSourceRefParams
 		arg.ImageTag,
 		arg.SourceID,
 		arg.SourceType,
+		arg.SourceInstance,
 	)
 	return err
 }
@@ -46,41 +50,55 @@ DELETE FROM source_refs
 WHERE image_name = $1
     AND image_tag = $2
     AND source_type = $3
+    AND source_instance = $4
 `
 
 type DeleteSourceRefParams struct {
-	ImageName  string
-	ImageTag   string
-	SourceType string
+	ImageName      string
+	ImageTag       string
+	SourceType     string
+	SourceInstance string
 }
 
 func (q *Queries) DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error {
-	_, err := q.db.Exec(ctx, deleteSourceRef, arg.ImageName, arg.ImageTag, arg.SourceType)
+	_, err := q.db.Exec(ctx, deleteSourceRef,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.SourceType,
+		arg.SourceInstance,
+	)
 	return err
 }
 
 const getSourceRef = `-- name: GetSourceRef :one
 SELECT
-    id, source_id, source_type, created_at, updated_at, image_name, image_tag
+    id, source_id, source_type, created_at, updated_at, image_name, image_tag, source_instance
 FROM
     source_refs
 WHERE
     image_name = $1
     AND image_tag = $2
     AND source_type = $3
+    AND source_instance = $4
 ORDER BY
     (source_id,
         source_type) DESC
 `
 
 type GetSourceRefParams struct {
-	ImageName  string
-	ImageTag   string
-	SourceType string
+	ImageName      string
+	ImageTag       string
+	SourceType     string
+	SourceInstance string
 }
 
 func (q *Queries) GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error) {
-	row := q.db.QueryRow(ctx, getSourceRef, arg.ImageName, arg.ImageTag, arg.SourceType)
+	row := q.db.QueryRow(ctx, getSourceRef,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.SourceType,
+		arg.SourceInstance,
+	)
 	var i SourceRef
 	err := row.Scan(
 		&i.ID,
@@ -90,13 +108,14 @@ func (q *Queries) GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*So
 		&i.UpdatedAt,
 		&i.ImageName,
 		&i.ImageTag,
+		&i.SourceInstance,
 	)
 	return &i, err
 }
 
 const listUnusedSourceRefs = `-- name: ListUnusedSourceRefs :many
 SELECT
-    sr.id, sr.source_id, sr.source_type, sr.created_at, sr.updated_at, sr.image_name, sr.image_tag
+    sr.id, sr.source_id, sr.source_type, sr.created_at, sr.updated_at, sr.image_name, sr.image_tag, sr.source_instance
 FROM
     source_refs sr
     JOIN images i ON sr.image_name = i.name
@@ -133,6 +152,7 @@ func (q *Queries) ListUnusedSourceRefs(ctx context.Context, name *string) ([]*So
 			&i.UpdatedAt,
 			&i.ImageName,
 			&i.ImageTag,
+			&i.SourceInstance,
 		); err != nil {
 			return nil, err
 		}

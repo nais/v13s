@@ -349,13 +349,14 @@ type RiverJob struct {
 }
 
 type SourceRef struct {
-	ID         pgtype.UUID
-	SourceID   pgtype.UUID
-	SourceType string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
-	ImageName  string
-	ImageTag   string
+	ID             pgtype.UUID
+	SourceID       pgtype.UUID
+	SourceType     string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	ImageName      string
+	ImageTag       string
+	SourceInstance string
 }
 
 type SuppressedVulnerability struct {

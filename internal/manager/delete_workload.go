@@ -9,6 +9,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
@@ -35,8 +36,9 @@ func (u DeleteWorkloadJob) InsertOpts() river.InsertOpts {
 }
 
 type DeleteWorkloadWorker struct {
-	db  sql.Querier
-	log logrus.FieldLogger
+	db      sql.Querier
+	sources *sources.Sources
+	log     logrus.FieldLogger
 	river.WorkerDefaults[DeleteWorkloadJob]
 	jobClient job.Client
 }
@@ -71,8 +73,9 @@ func (d *DeleteWorkloadWorker) Work(ctx context.Context, job *river.Job[DeleteWo
 
 	if len(rows) == 0 {
 		err = d.jobClient.AddJob(ctx, &RemoveFromSourceJob{
-			ImageName: workload.ImageName,
-			ImageTag:  workload.ImageTag,
+			ImageName:      workload.ImageName,
+			ImageTag:       workload.ImageTag,
+			SourceInstance: d.sources.Active().Identity().Instance,
 		})
 		if err != nil {
 			d.log.WithError(err).Error("failed to add remove from source job")

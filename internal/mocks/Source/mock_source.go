@@ -191,6 +191,51 @@ func (_c *MockSource_GetVulnerabilitySummary_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// Identity provides a mock function with no fields
+func (_m *MockSource) Identity() sources.Identity {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Identity")
+	}
+
+	var r0 sources.Identity
+	if rf, ok := ret.Get(0).(func() sources.Identity); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(sources.Identity)
+	}
+
+	return r0
+}
+
+// MockSource_Identity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Identity'
+type MockSource_Identity_Call struct {
+	*mock.Call
+}
+
+// Identity is a helper method to define mock.On call
+func (_e *MockSource_Expecter) Identity() *MockSource_Identity_Call {
+	return &MockSource_Identity_Call{Call: _e.mock.On("Identity")}
+}
+
+func (_c *MockSource_Identity_Call) Run(run func()) *MockSource_Identity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSource_Identity_Call) Return(_a0 sources.Identity) *MockSource_Identity_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSource_Identity_Call) RunAndReturn(run func() sources.Identity) *MockSource_Identity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsTaskInProgress provides a mock function with given fields: ctx, processToken
 func (_m *MockSource) IsTaskInProgress(ctx context.Context, processToken string) (bool, error) {
 	ret := _m.Called(ctx, processToken)

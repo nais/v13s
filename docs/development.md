@@ -148,9 +148,32 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DEPENDENCYTRACK_URL` | DependencyTrack API URL | — |
-| `DEPENDENCYTRACK_USERNAME` | DependencyTrack username | `v13s` |
-| `DEPENDENCYTRACK_PASSWORD` | DependencyTrack password | — |
+| `SOURCES` | JSON source configuration with `active` and optional `warmup` sources | — |
+
+```json
+{
+  "active": {
+    "type": "dependencytrack",
+    "instance": "dependencytrack",
+    "url": "https://dependencytrack-v4.example/api",
+    "username": "v13s",
+    "password": "secret"
+  },
+  "warmup": [
+    {
+      "type": "dependencytrack",
+      "instance": "warmup",
+      "url": "https://dependencytrack-v5.example/api",
+      "username": "v13s",
+      "password": "secret"
+    }
+  ]
+}
+```
+
+When `SOURCES` is unset, `DEPENDENCYTRACK_URL`, `DEPENDENCYTRACK_USERNAME`, and `DEPENDENCYTRACK_PASSWORD` configure the active source.
+
+The Helm chart builds the active source from `dependencytrack.url`, `dependencytrack.username`, and `dependencytrack.password`. Configure `warmupSources` as the JSON array for optional warmup sources.
 | `KEV_CATALOG_URL` | CISA KEV catalog URL | — |
 | `OSV_BASE_URL` | OSV API base URL | — |
 

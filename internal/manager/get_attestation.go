@@ -11,6 +11,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
@@ -47,6 +48,7 @@ type GetAttestationWorker struct {
 	db              sql.Querier
 	jobClient       job.Client
 	verifier        attestation.Verifier
+	sources         *sources.Sources
 	workloadCounter metric.Int64UpDownCounter
 	log             logrus.FieldLogger
 	river.WorkerDefaults[GetAttestationJob]
@@ -140,15 +142,18 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 		if compErr != nil {
 			return fmt.Errorf("failed to compress attestation: %w", compErr)
 		}
-		if enqErr := g.jobClient.AddJob(ctx, &UploadAttestationJob{
-			ImageName:   imageName,
-			ImageTag:    imageTag,
-			WorkloadId:  job.Args.WorkloadId,
-			Attestation: compressed,
-		}); enqErr != nil {
-			span.RecordError(enqErr)
-			span.SetStatus(codes.Error, enqErr.Error())
-			return enqErr
+		for _, sourceInstance := range g.sources.UploadInstances() {
+			if enqErr := g.jobClient.AddJob(ctx, &UploadAttestationJob{
+				ImageName:      imageName,
+				ImageTag:       imageTag,
+				SourceInstance: sourceInstance,
+				WorkloadId:     job.Args.WorkloadId,
+				Attestation:    compressed,
+			}); enqErr != nil {
+				span.RecordError(enqErr)
+				span.SetStatus(codes.Error, enqErr.Error())
+				return enqErr
+			}
 		}
 		g.log.WithFields(logFields).Debug("attestation downloaded and upload_attestation job enqueued")
 	}

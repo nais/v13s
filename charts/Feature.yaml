@@ -79,6 +79,9 @@ values:
     computed:
       template: |
         {{ .Env.v13s_dependencytrack_password | quote }}
+    config:
+      type: string
+      secret: true
 
   dependencytrack.url:
     displayName: dependencytrack URL
@@ -86,6 +89,13 @@ values:
       template: "http://dependencytrack-backend:8080/api"
     config:
       type: string
+
+  warmupSources:
+    displayName: Warmup sources
+    description: JSON array of additional sources that receive SBOM warmup uploads
+    config:
+      type: string
+      secret: true
 
   database.instance:
     displayName: Cloud SQL instance name
