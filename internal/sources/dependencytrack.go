@@ -65,10 +65,7 @@ func NewSources(value string, log logrus.FieldLogger) (*Sources, error) {
 	}
 
 	warmup := make([]Source, 0, len(config.Warmup))
-	for i, sourceConfig := range config.Warmup {
-		if err := sourceConfig.Validate(fmt.Sprintf("warmup[%d]", i)); err != nil {
-			return nil, err
-		}
+	for _, sourceConfig := range config.Warmup {
 		source, err := newDependencyTrackSource(sourceConfig, log)
 		if err != nil {
 			return nil, fmt.Errorf("create warmup DependencyTrack source: %w", err)
@@ -76,7 +73,6 @@ func NewSources(value string, log logrus.FieldLogger) (*Sources, error) {
 		warmup = append(warmup, source)
 	}
 	return NewSet(active, warmup...)
-}
 
 func parseDependencyTrackSourcesConfig(value string) (DependencyTrackSourcesConfig, error) {
 	var config DependencyTrackSourcesConfig
