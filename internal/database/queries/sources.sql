@@ -3,12 +3,14 @@ INSERT INTO source_refs(
     image_name,
     image_tag,
     source_id,
-    source_type)
+    source_type,
+    source_instance)
 VALUES (
     @image_name,
     @image_tag,
     @source_id,
-    @source_type)
+    @source_type,
+    @source_instance)
 ON CONFLICT
     DO NOTHING;
 
@@ -21,6 +23,7 @@ WHERE
     image_name = @image_name
     AND image_tag = @image_tag
     AND source_type = @source_type
+    AND source_instance = @source_instance
 ORDER BY
     (source_id,
         source_type) DESC;
@@ -31,7 +34,8 @@ ORDER BY
 DELETE FROM source_refs
 WHERE image_name = @image_name
     AND image_tag = @image_tag
-    AND source_type = @source_type;
+    AND source_type = @source_type
+    AND source_instance = @source_instance;
 
 -- name: ListUnusedSourceRefs :many
 SELECT

@@ -9,6 +9,7 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	sqmock "github.com/nais/v13s/internal/mocks/Querier"
 	srcmock "github.com/nais/v13s/internal/mocks/Source"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/sirupsen/logrus"
@@ -21,10 +22,11 @@ func makeUploadJob() *river.Job[UploadAttestationJob] {
 	return &river.Job[UploadAttestationJob]{
 		JobRow: &rivertype.JobRow{Attempt: 1, MaxAttempts: 4},
 		Args: UploadAttestationJob{
-			ImageName:   "myimage",
-			ImageTag:    "v1",
-			WorkloadId:  wid,
-			Attestation: []byte{},
+			ImageName:      "myimage",
+			ImageTag:       "v1",
+			SourceInstance: "test-source",
+			WorkloadId:     wid,
+			Attestation:    []byte{},
 		},
 	}
 }
@@ -34,6 +36,7 @@ func TestUploadAttestationWorker_ResyncAndReturn_UpdatesWorkloadStateByImage(t *
 
 	db := sqmock.NewMockQuerier(t)
 	source := srcmock.NewMockSource(t)
+	source.EXPECT().Identity().Return(sources.Identity{Type: "dependencytrack", Instance: "test-source"})
 
 	source.EXPECT().Name().Return("test-source")
 
@@ -56,7 +59,7 @@ func TestUploadAttestationWorker_ResyncAndReturn_UpdatesWorkloadStateByImage(t *
 
 	worker := &UploadAttestationWorker{
 		db:        db,
-		source:    source,
+		sources:   testSources(t, source),
 		jobClient: &stubJobClient{},
 		log:       logrus.NewEntry(logrus.New()),
 	}
@@ -71,6 +74,7 @@ func TestUploadAttestationWorker_NoSourceRef_DoesNotUpdateWorkloadStateByImage(t
 
 	db := sqmock.NewMockQuerier(t)
 	source := srcmock.NewMockSource(t)
+	source.EXPECT().Identity().Return(sources.Identity{Type: "dependencytrack", Instance: "test-source"})
 
 	source.EXPECT().Name().Return("test-source")
 
@@ -78,7 +82,7 @@ func TestUploadAttestationWorker_NoSourceRef_DoesNotUpdateWorkloadStateByImage(t
 
 	worker := &UploadAttestationWorker{
 		db:        db,
-		source:    source,
+		sources:   testSources(t, source),
 		jobClient: &stubJobClient{},
 		log:       logrus.NewEntry(logrus.New()),
 	}

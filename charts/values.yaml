@@ -27,6 +27,7 @@ dependencytrack:
   url:
   username: v13s
   password:
+warmupSources: "[]"
 database:
   instance:
   public_ip:

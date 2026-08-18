@@ -9,7 +9,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/nais/v13s/internal/sources"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -25,7 +24,8 @@ type Config struct {
 	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
 	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
 	Tenant                    string        `envconfig:"TENANT" default:"nav"`
-	DependencyTrack           sources.DependencyTrackConfig
+	Sources                   string        `envconfig:"SOURCES"`
+	DependencyTrack           LegacyDependencyTrackConfig
 	Kev                       KevConfig
 	Osv                       OsvConfig
 	K8s                       K8sConfig
@@ -35,10 +35,21 @@ type Config struct {
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 }
 
-type DependencyTrackConfig struct {
+type LegacyDependencyTrackConfig struct {
 	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
 	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
 	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
+}
+
+func (c Config) SourcesValue() (string, error) {
+	if c.Sources != "" {
+		return c.Sources, nil
+	}
+	if c.DependencyTrack.Url == "" {
+		return "", fmt.Errorf("SOURCES or DEPENDENCYTRACK_URL must be configured")
+	}
+	return fmt.Sprintf(`{"active":{"type":"dependencytrack","instance":"dependencytrack","url":%q,"username":%q,"password":%q}}`,
+		c.DependencyTrack.Url, c.DependencyTrack.Username, c.DependencyTrack.Password), nil
 }
 
 type KevConfig struct {

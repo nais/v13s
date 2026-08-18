@@ -11,3 +11,5 @@ internal/sources/dependencytrack/client/git_push.sh
 /tmp/
 *.out
 *.csv
+/.agents/
+/.claude/

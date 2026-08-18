@@ -19,6 +19,7 @@ import (
 	sqmock "github.com/nais/v13s/internal/mocks/Querier"
 	attmock "github.com/nais/v13s/internal/mocks/Verifier"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/sources"
 )
 
 type stubJobClient struct{}
@@ -30,6 +31,25 @@ func (s *stubJobClient) AddJob(_ context.Context, _ river.JobArgs) error {
 func (s *stubJobClient) GetWorkers() *river.Workers    { return nil }
 func (s *stubJobClient) Start(_ context.Context) error { return nil }
 func (s *stubJobClient) Stop(_ context.Context) error  { return nil }
+
+type recordingJobClient struct {
+	jobs []river.JobArgs
+}
+
+func (c *recordingJobClient) AddJob(_ context.Context, args river.JobArgs) error {
+	c.jobs = append(c.jobs, args)
+	return nil
+}
+func (c *recordingJobClient) GetWorkers() *river.Workers    { return nil }
+func (c *recordingJobClient) Start(_ context.Context) error { return nil }
+func (c *recordingJobClient) Stop(_ context.Context) error  { return nil }
+
+func testSources(t *testing.T, active sources.Source) *sources.Sources {
+	t.Helper()
+	sourceSet, err := sources.NewSet(active)
+	require.NoError(t, err)
+	return sourceSet
+}
 
 func makeGetAttestationJob(attempt, maxAttempts int) *river.Job[GetAttestationJob] {
 	wid := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
@@ -52,10 +72,12 @@ func newGetAttestationWorker(t *testing.T, db *sqmock.MockQuerier, verifier *att
 	noomp := noop.NewMeterProvider()
 	_ = noomp
 	counter, _ := mp.Meter("test").Int64UpDownCounter("workload_counter")
+	sources := testSources(t, &sourceStub{identity: sources.Identity{Type: "dependencytrack", Instance: "test-source"}})
 	return &GetAttestationWorker{
 		db:              db,
 		jobClient:       &stubJobClient{},
 		verifier:        verifier,
+		sources:         sources,
 		workloadCounter: counter,
 		log:             logrus.NewEntry(logrus.New()),
 	}
@@ -117,6 +139,58 @@ func TestGetAttestationWorker_AttestationFound_EnqueuesUpload(t *testing.T) {
 	job := makeGetAttestationJob(1, 4)
 	err := worker.Work(ctx, job)
 	require.NoError(t, err)
+}
+
+func TestGetAttestationWorker_AttestationFound_EnqueuesUploadForEachWriteTarget(t *testing.T) {
+	ctx := context.Background()
+	db := sqmock.NewMockQuerier(t)
+	verifier := attmock.NewMockVerifier(t)
+	verifier.EXPECT().GetAttestation(mock.Anything, "myimage:v1").Return(&attestation.Attestation{Predicate: []byte(`{}`)}, nil)
+
+	v4 := &sourceStub{identity: sources.Identity{Type: "dependencytrack", Instance: "dt-v4"}}
+	v5 := &sourceStub{identity: sources.Identity{Type: "dependencytrack", Instance: "dt-v5"}}
+	sourceSet, err := sources.NewSet(v4, v5)
+	require.NoError(t, err)
+
+	jobClient := &recordingJobClient{}
+	worker := newGetAttestationWorker(t, db, verifier)
+	worker.jobClient = jobClient
+	worker.sources = sourceSet
+
+	require.NoError(t, worker.Work(ctx, makeGetAttestationJob(1, 4)))
+	require.Len(t, jobClient.jobs, 2)
+
+	instances := make([]string, 0, 2)
+	for _, args := range jobClient.jobs {
+		upload, ok := args.(*UploadAttestationJob)
+		require.True(t, ok)
+		instances = append(instances, upload.SourceInstance)
+	}
+	require.ElementsMatch(t, []string{"dt-v4", "dt-v5"}, instances)
+}
+
+type sourceStub struct {
+	identity sources.Identity
+}
+
+func (s *sourceStub) Name() string                                 { return s.identity.Type }
+func (s *sourceStub) Identity() sources.Identity                   { return s.identity }
+func (s *sourceStub) Delete(context.Context, string, string) error { return nil }
+func (s *sourceStub) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
+	return nil, nil
+}
+func (s *sourceStub) GetVulnerabilitySummary(context.Context, string, string) (*sources.VulnerabilitySummary, error) {
+	return nil, nil
+}
+func (s *sourceStub) IsTaskInProgress(context.Context, string) (bool, error) { return false, nil }
+func (s *sourceStub) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
+	return nil
+}
+func (s *sourceStub) ProjectExists(context.Context, string, string) (bool, error) {
+	return false, nil
+}
+func (s *sourceStub) UploadAttestation(context.Context, string, string, []byte) (*sources.UploadAttestationResponse, error) {
+	return nil, nil
 }
 
 func TestImageReference(t *testing.T) {

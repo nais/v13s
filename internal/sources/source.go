@@ -3,29 +3,9 @@ package sources
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/nais/dependencytrack/pkg/dependencytrack"
-	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
-
-type SourceConfig interface {
-	GetUrl() string
-}
-
-type DependencyTrackConfig struct {
-	Url      string `envconfig:"DEPENDENCYTRACK_URL"`
-	Username string `envconfig:"DEPENDENCYTRACK_USERNAME" default:"v13s"`
-	Password string `envconfig:"DEPENDENCYTRACK_PASSWORD"`
-}
-
-func (d DependencyTrackConfig) GetUrl() string {
-	return d.Url
-}
-
-var _ SourceConfig = &DependencyTrackConfig{}
 
 type Source interface {
 	Delete(ctx context.Context, imageName string, imageTag string) error
@@ -34,44 +14,86 @@ type Source interface {
 	IsTaskInProgress(ctx context.Context, processToken string) (bool, error)
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
 	Name() string
+	Identity() Identity
 	ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error)
 	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (*UploadAttestationResponse, error)
 }
 
-func New(config SourceConfig, log logrus.FieldLogger) (Source, error) {
-	switch cfg := config.(type) {
-	case DependencyTrackConfig:
-		c, err := dependencytrack.NewClient(
-			cfg.Url,
-			cfg.Username,
-			cfg.Password,
-			log.WithField("subsystem", "dp-client"),
-			// wrap the default transport with OpenTelemetry instrumentation
-			dependencytrack.WithHTTPClient(&http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}),
-		)
-		if err != nil {
-			log.Fatalf("failed to create DependencyTrack client: %v", err)
-		}
-
-		return NewDependencytrackSource(c, log.WithField("source", "dependencytrack")), nil
-	default:
-		return nil, fmt.Errorf("unsupported source config type: %T", cfg)
-	}
+// Identity distinguishes concrete source instances of the same source type.
+// For example, both dt-v4 and dt-v5 have type dependencytrack.
+type Identity struct {
+	Type     string
+	Instance string
 }
 
-func SetupSources(configs []SourceConfig, log logrus.FieldLogger) ([]Source, error) {
-	sources := make([]Source, 0)
-	for _, config := range configs {
-		s, err := New(config, log)
-		if err != nil {
-			return nil, err
-		}
-		sources = append(sources, s)
-	}
-	return sources, nil
+// Sources keeps the active source used by v13s separate from optional warmup
+// sources. Active owns reads and state; warmup sources only receive SBOM work.
+type Sources struct {
+	active Source
+	warmup []Source
 }
 
-type SourceId string
+func NewSet(active Source, warmup ...Source) (*Sources, error) {
+	if active == nil {
+		return nil, fmt.Errorf("active source must not be nil")
+	}
+
+	activeID := active.Identity()
+	if activeID.Type == "" {
+		return nil, fmt.Errorf("active source type must not be empty")
+	}
+	if activeID.Instance == "" {
+		return nil, fmt.Errorf("active source instance must not be empty")
+	}
+
+	seen := map[Identity]struct{}{activeID: {}}
+	for _, source := range warmup {
+		if source == nil {
+			return nil, fmt.Errorf("warmup source must not be nil")
+		}
+		id := source.Identity()
+		if id.Type == "" {
+			return nil, fmt.Errorf("warmup source type must not be empty")
+		}
+		if id.Instance == "" {
+			return nil, fmt.Errorf("warmup source instance must not be empty")
+		}
+		if _, exists := seen[id]; exists {
+			return nil, fmt.Errorf("duplicate source identity type=%q instance=%q", id.Type, id.Instance)
+		}
+		seen[id] = struct{}{}
+	}
+	return &Sources{active: active, warmup: warmup}, nil
+}
+
+func (s *Sources) Active() Source {
+	return s.active
+}
+
+func (s *Sources) IsActive(instance string) bool {
+	return s.active.Identity().Instance == instance
+}
+
+func (s *Sources) UploadInstances() []string {
+	instances := make([]string, 0, len(s.warmup)+1)
+	instances = append(instances, s.active.Identity().Instance)
+	for _, source := range s.warmup {
+		instances = append(instances, source.Identity().Instance)
+	}
+	return instances
+}
+
+func (s *Sources) Source(instance string) (Source, bool) {
+	if s.active.Identity().Instance == instance {
+		return s.active, true
+	}
+	for _, source := range s.warmup {
+		if source.Identity().Instance == instance {
+			return source, true
+		}
+	}
+	return nil, false
+}
 
 type Workload struct {
 	Cluster   string
