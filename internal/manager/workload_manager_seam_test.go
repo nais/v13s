@@ -118,8 +118,7 @@ func TestNewContextStoresOneWorkloadManager(t *testing.T) {
 }
 
 func TestWorkloadManager_StartRegistersWorkersBeforeStartingClient(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	workers := river.NewWorkers()
 	jc := &fakeJobClient{workers: workers}
