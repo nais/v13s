@@ -110,6 +110,7 @@ func (m *WorkloadManager) Start(ctx context.Context) error {
 		m.runCancel = nil
 		m.mu.Unlock()
 		m.log.WithError(err).Error("failed to start worker manager")
+		cancel()
 		return err
 	}
 	m.addDispatcher.Start(runCtx)
