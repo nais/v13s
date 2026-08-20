@@ -75,7 +75,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
 				LatestVersion: row.LatestVersion,
 				SeveritySince: timestamppb.New(row.SeveritySince.Time),
-				CvssScore:     row.CvssScore,
+				CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
 				FixVersion:    row.FixVersion,
 				Cve: toCve(cvePayload{
 					id:                 row.CveID,
@@ -159,7 +159,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 			LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
 			LatestVersion: row.LatestVersion,
 			SeveritySince: timestamppb.New(row.SeveritySince.Time),
-			CvssScore:     row.CvssScore,
+			CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
 			FixVersion:    row.FixVersion,
 			Cve: toCve(cvePayload{
 				id:                 row.CveID,
@@ -275,7 +275,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 			Suppression:   toSuppression(row.Suppressed, row.Reason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
 			LatestVersion: row.LatestVersion,
 			ImageName:     row.ImageName,
-			CvssScore:     row.CvssScore,
+			CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
 			FixVersion:    row.FixVersion,
 			Cve: toCve(cvePayload{
 				id:                 row.CveID,
@@ -406,7 +406,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 				SeveritySince: timestamppb.New(row.SeveritySince.Time),
 				LastSeverity:  &row.LastSeverity,
 				LatestVersion: row.LatestVersion,
-				CvssScore:     row.CvssScore,
+				CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
 				FixVersion:    row.FixVersion,
 				Cve: toCve(cvePayload{
 					id:                 row.CveID,
@@ -458,7 +458,7 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 			Package:       row.Package,
 			Suppression:   toSuppression(row.Suppressed, row.Reason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
 			LatestVersion: row.LatestVersion,
-			CvssScore:     row.CvssScore,
+			CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
 			FixVersion:    row.FixVersion,
 			Cve: toCve(cvePayload{
 				id:                 row.CveID,
