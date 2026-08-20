@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
@@ -36,6 +37,9 @@ type WorkloadManager struct {
 	workloadCounter          metric.Int64UpDownCounter
 	reconcileDeletionEnabled bool
 	log                      logrus.FieldLogger
+	mu                       sync.Mutex
+	started                  bool
+	runCancel                context.CancelFunc
 }
 
 type WorkloadEvent string
@@ -69,12 +73,6 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	if err != nil {
 		log.Fatalf("Failed to create job client: %v", err)
 	}
-	job.AddWorker(jobClient, &AddWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "add_workload")})
-	job.AddWorker(jobClient, &GetAttestationWorker{db: db, verifier: verifier, jobClient: jobClient, workloadCounter: udCounter, log: log.WithField("subsystem", model.JobKindGetAttestation)})
-	job.AddWorker(jobClient, &UploadAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "upload_attestation")})
-	job.AddWorker(jobClient, &RemoveFromSourceWorker{db: db, source: source, log: log.WithField("subsystem", "remove_from_source")})
-	job.AddWorker(jobClient, &DeleteWorkloadWorker{db: db, jobClient: jobClient, log: log.WithField("subsystem", "delete_workload")})
-	job.AddWorker(jobClient, &FinalizeAttestationWorker{db: db, source: source, jobClient: jobClient, log: log.WithField("subsystem", "finalize_attestation")})
 	m := &WorkloadManager{
 		db:                       db,
 		pool:                     pool,
@@ -93,13 +91,39 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	return m
 }
 
-func (m *WorkloadManager) Start(ctx context.Context) {
-	m.log.Info("starting workload manager")
-	if err := m.jobClient.Start(ctx); err != nil {
-		m.log.WithError(err).Fatal("failed to start worker manager")
+func (m *WorkloadManager) Start(ctx context.Context) error {
+	m.mu.Lock()
+	if m.started {
+		m.mu.Unlock()
+		return fmt.Errorf("workload manager already started")
 	}
-	m.addDispatcher.Start(ctx)
-	m.deleteDispatcher.Start(ctx)
+	runCtx, cancel := context.WithCancel(ctx)
+	m.started = true
+	m.runCancel = cancel
+	m.mu.Unlock()
+
+	m.log.Info("starting workload manager")
+	m.registerWorkers()
+	if err := m.jobClient.Start(runCtx); err != nil {
+		m.mu.Lock()
+		m.started = false
+		m.runCancel = nil
+		m.mu.Unlock()
+		m.log.WithError(err).Error("failed to start worker manager")
+		return err
+	}
+	m.addDispatcher.Start(runCtx)
+	m.deleteDispatcher.Start(runCtx)
+	return nil
+}
+
+func (m *WorkloadManager) registerWorkers() {
+	job.AddWorker(m.jobClient, &AddWorkloadWorker{db: m.db, jobClient: m.jobClient, log: m.log.WithField("subsystem", "add_workload")})
+	job.AddWorker(m.jobClient, &GetAttestationWorker{db: m.db, verifier: m.verifier, jobClient: m.jobClient, workloadCounter: m.workloadCounter, log: m.log.WithField("subsystem", model.JobKindGetAttestation)})
+	job.AddWorker(m.jobClient, &UploadAttestationWorker{db: m.db, source: m.src, jobClient: m.jobClient, log: m.log.WithField("subsystem", "upload_attestation")})
+	job.AddWorker(m.jobClient, &RemoveFromSourceWorker{db: m.db, source: m.src, log: m.log.WithField("subsystem", "remove_from_source")})
+	job.AddWorker(m.jobClient, &DeleteWorkloadWorker{db: m.db, jobClient: m.jobClient, log: m.log.WithField("subsystem", "delete_workload")})
+	job.AddWorker(m.jobClient, &FinalizeAttestationWorker{db: m.db, source: m.src, jobClient: m.jobClient, log: m.log.WithField("subsystem", "finalize_attestation")})
 }
 
 func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worker[*model.Workload] {
@@ -127,10 +151,6 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 		return err
 	}
 	return nil
-}
-
-func (m *WorkloadManager) AddJob(ctx context.Context, job river.JobArgs) error {
-	return m.jobClient.AddJob(ctx, job)
 }
 
 // Only clusters present in liveByCluster are reconciled — clusters not managed
@@ -211,5 +231,22 @@ func formatTypeCounts(counts map[string]int) string {
 }
 
 func (m *WorkloadManager) Stop(ctx context.Context) error {
+	m.mu.Lock()
+	runCancel := m.runCancel
+	started := m.started
+	m.started = false
+	m.runCancel = nil
+	m.mu.Unlock()
+
+	if !started {
+		return nil
+	}
+
+	if runCancel != nil {
+		runCancel()
+	}
+	m.addDispatcher.Wait()
+	m.deleteDispatcher.Wait()
+
 	return m.jobClient.Stop(ctx)
 }
