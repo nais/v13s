@@ -126,7 +126,11 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	if err := mgr.Start(ctx); err != nil {
 		return err
 	}
-	defer mgr.Stop(ctx)
+	defer func() {
+		if err := mgr.Stop(ctx); err != nil {
+			log.WithError(err).Error("failed to stop workload manager")
+		}
+	}()
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
