@@ -161,20 +161,75 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	log.Info("reconciling workloads against k8s state")
 	mgr.ReconcileWorkloads(ctx, informerMgr.ListWorkloadsByCluster())
 
-	u := updater.NewUpdater(
+	runtimeCfg := updater.DefaultRuntimeConfig(updater.ScheduleConfig{
+		Type:     updater.SchedulerInterval,
+		Interval: cfg.UpdateInterval,
+	})
+	runtimeCfg.OrchestrationEnabled = cfg.UpdaterRuntimeOrchestrationEnabled
+	runtimeCfg.MarkUnused = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterMarkUnusedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterMarkUnusedCron,
+		},
+	}
+	runtimeCfg.MarkUntracked = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterMarkUntrackedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterMarkUntrackedCron,
+		},
+	}
+	runtimeCfg.RefreshDailySummary = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterRefreshSummaryEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterRefreshSummaryCron,
+		},
+	}
+	runtimeCfg.RefreshWorkloadLifetimes = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterRefreshLifetimesEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterRefreshLifetimesCron,
+		},
+	}
+	runtimeCfg.SyncKev = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterSyncKevEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterSyncKevCron,
+		},
+	}
+	runtimeCfg.SyncOsv = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterSyncOsvEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterSyncOsvCron,
+		},
+	}
+	runtimeCfg.RekeySuppressedAliases = updater.JobRuntimeConfig{
+		Enabled: cfg.UpdaterRekeySuppressedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.UpdaterRekeySuppressedCron,
+		},
+	}
+
+	u := updater.NewUpdaterWithRuntimeConfig(
 		pool,
 		source,
-		mgr,
-		updater.ScheduleConfig{
-			Type:     updater.SchedulerInterval,
-			Interval: cfg.UpdateInterval,
-		},
-		nil,
 		log.WithField("subsystem", "updater"),
 		cfg.Kev,
 		cfg.Osv,
+		runtimeCfg,
 	)
-	u.Run(ctx)
+	u.Start(ctx)
+	defer func() {
+		if err := u.Stop(context.Background()); err != nil {
+			log.WithError(err).Error("failed to stop updater")
+		}
+	}()
 
 	wg, ctx := errgroup.WithContext(ctx)
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sirupsen/logrus"
 
 	"github.com/nais/v13s/internal/database/sql"
@@ -13,6 +15,7 @@ import (
 
 const (
 	SyncErrorStatusCodeGenericError = "GenericError"
+	RecoverableResyncCooldown       = 15 * time.Minute
 )
 
 type database struct {
@@ -41,10 +44,15 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 			if errors.Is(srcErr, sources.ErrNoProject) {
 				return err
 			}
+			cooldownUntil := time.Now().Add(RecoverableResyncCooldown)
 			n, updateErr := d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				Name:  imageName,
 				Tag:   imageTag,
-				State: sql.ImageStateFailed,
+				State: sql.ImageStateResync,
+				ReadyForResyncAt: pgtype.Timestamptz{
+					Time:  cooldownUntil,
+					Valid: true,
+				},
 			})
 			if updateErr != nil {
 				d.log.Errorf("failed to update image state: %v", updateErr)
