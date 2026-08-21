@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	mockquerier "github.com/nais/v13s/internal/mocks/Querier"
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestSuppressionWorkflowSuppressOne(t *testing.T) {
@@ -139,4 +142,21 @@ func TestSuppressionWorkflowSuppressManySameNamespaceBestEffort(t *testing.T) {
 	assert.Equal(t, int32(1), result.imageCount)
 	assert.Len(t, result.errors, 1)
 	assert.Contains(t, result.errors[0], "img/pkg/CVE-2025-9999")
+}
+
+func TestSuppressionWorkflowSuppressOneNotFound(t *testing.T) {
+	ctx := context.Background()
+	q := mockquerier.NewMockQuerier(t)
+	id := pgtype.UUID{Bytes: uuid.MustParse("00000000-0000-0000-0000-000000000099"), Valid: true}
+
+	q.EXPECT().GetVulnerabilityById(ctx, id).Return(nil, pgx.ErrNoRows)
+
+	wf := newSuppressionWorkflow(q, func(context.Context, []string) ([]string, error) {
+		return []string{"CVE-2025-9999"}, nil
+	})
+
+	result, err := wf.SuppressOne(ctx, suppressOneInput{id: id})
+	require.Nil(t, result)
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
 }

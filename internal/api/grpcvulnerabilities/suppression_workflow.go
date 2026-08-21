@@ -17,16 +17,16 @@ import (
 )
 
 type suppressionWorkflow struct {
-	querier               sql.Querier
-	resolveCanonicalCveID func(ctx context.Context, ids []string) ([]string, error)
-	now                   func() time.Time
+	querier                sql.Querier
+	resolveCanonicalCveIDs func(ctx context.Context, ids []string) ([]string, error)
+	now                    func() time.Time
 }
 
 func newSuppressionWorkflow(querier sql.Querier, resolver func(ctx context.Context, ids []string) ([]string, error)) suppressionWorkflow {
 	return suppressionWorkflow{
-		querier:               querier,
-		resolveCanonicalCveID: resolver,
-		now:                   time.Now,
+		querier:                querier,
+		resolveCanonicalCveIDs: resolver,
+		now:                    time.Now,
 	}
 }
 
@@ -47,7 +47,7 @@ func (w suppressionWorkflow) SuppressOne(ctx context.Context, in suppressOneInpu
 	vuln, err := w.querier.GetVulnerabilityById(ctx, in.id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("vulnerability not found")
+			return nil, status.Errorf(codes.NotFound, "vulnerability not found")
 		}
 		return nil, fmt.Errorf("get suppressed vulnerability: %w", err)
 	}
@@ -94,7 +94,7 @@ func (w suppressionWorkflow) SuppressOne(ctx context.Context, in suppressOneInpu
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update image state: %w", err)
 	}
 
 	return &suppressOneResult{
@@ -230,7 +230,7 @@ func (w suppressionWorkflow) SuppressManySameNamespace(ctx context.Context, in s
 }
 
 func (w suppressionWorkflow) resolveToCanonicalAndAliases(ctx context.Context, cveID string) ([]string, error) {
-	canonicalCveIDs, err := w.resolveCanonicalCveID(ctx, []string{cveID})
+	canonicalCveIDs, err := w.resolveCanonicalCveIDs(ctx, []string{cveID})
 	if err != nil {
 		return nil, err
 	}
