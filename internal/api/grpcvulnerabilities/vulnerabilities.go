@@ -50,9 +50,8 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
 	}
 
-	projector := newVulnerabilityProjector()
 	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
-		return projector.ToFinding(row)
+		return defaultVulnerabilityProjector.ToFinding(row)
 	})
 
 	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
@@ -99,10 +98,9 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	total := 0
-	projector := newVulnerabilityProjector()
 	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
 		total = int(row.TotalCount)
-		return projector.ToVulnerabilityFromListVulnerabilitiesForImageRow(row)
+		return defaultVulnerabilityProjector.ToVulnerabilityFromListVulnerabilitiesForImageRow(row)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)
@@ -194,7 +192,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 	}
 
 	return &vulnerabilities.GetVulnerabilityByIdResponse{
-		Vulnerability: newVulnerabilityProjector().ToVulnerabilityFromGetVulnerabilityByIDRow(row),
+		Vulnerability: defaultVulnerabilityProjector.ToVulnerabilityFromGetVulnerabilityByIDRow(row),
 	}, nil
 }
 
@@ -282,10 +280,9 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	}
 
 	total := 0
-	projector := newVulnerabilityProjector()
 	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
 		total = int(row.TotalCount)
-		return projector.ToWorkloadForVulnerability(row)
+		return defaultVulnerabilityProjector.ToWorkloadForVulnerability(row)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)
@@ -314,7 +311,7 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 	}
 
 	return &vulnerabilities.GetVulnerabilityResponse{
-		Vulnerability: newVulnerabilityProjector().ToVulnerabilityFromGetVulnerabilityRow(row),
+		Vulnerability: defaultVulnerabilityProjector.ToVulnerabilityFromGetVulnerabilityRow(row),
 	}, nil
 }
 
