@@ -49,7 +49,6 @@ type Updater struct {
 type updaterLifecycle struct {
 	mu      sync.Mutex
 	jobs    []Job
-	cancel  context.CancelFunc
 	started atomic.Bool
 }
 
@@ -95,9 +94,6 @@ func (u *Updater) Start(ctx context.Context) {
 	u.lifecycle.mu.Lock()
 	defer u.lifecycle.mu.Unlock()
 
-	jobsCtx, cancel := context.WithCancel(ctx)
-	u.lifecycle.cancel = cancel
-
 	if !u.runtimeConfig.OrchestrationEnabled {
 		u.lifecycle.jobs = u.buildLegacyJobs()
 	} else {
@@ -105,21 +101,15 @@ func (u *Updater) Start(ctx context.Context) {
 	}
 
 	for _, job := range u.lifecycle.jobs {
-		job.Start(jobsCtx)
+		job.Start(ctx)
 	}
 }
 
 func (u *Updater) Stop(ctx context.Context) error {
 	u.lifecycle.mu.Lock()
-	cancel := u.lifecycle.cancel
 	jobs := u.lifecycle.jobs
-	u.lifecycle.cancel = nil
 	u.lifecycle.jobs = nil
 	u.lifecycle.mu.Unlock()
-
-	if cancel != nil {
-		cancel()
-	}
 
 	for _, job := range jobs {
 		if err := job.Stop(ctx); err != nil {

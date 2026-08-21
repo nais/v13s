@@ -208,7 +208,8 @@ func TestUpdater(t *testing.T) {
 		defer cancel()
 
 		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
-		u.Run(updaterCtx)
+		err = u.RunCycle(updaterCtx)
+		assert.NoError(t, err)
 
 		vulns, err := db.ListVulnerabilities(
 			ctx,

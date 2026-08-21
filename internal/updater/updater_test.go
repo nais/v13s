@@ -103,3 +103,86 @@ func TestStartStopRunsConfiguredJobs(t *testing.T) {
 	time.Sleep(40 * time.Millisecond)
 	assert.Equal(t, countSettled, runs.Load())
 }
+
+func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
+	t.Parallel()
+
+	var runs atomic.Int32
+	cfg := RuntimeConfig{
+		OrchestrationEnabled: false,
+		Resync: JobRuntimeConfig{
+			Enabled: false, // legacy path should ignore this and still schedule resync
+			Schedule: ScheduleConfig{
+				Type:     SchedulerInterval,
+				Interval: 10 * time.Millisecond,
+			},
+		},
+	}
+
+	u := NewUpdaterWithRuntimeConfig(
+		nil,
+		nil,
+		logrus.NewEntry(logrus.StandardLogger()),
+		config.KevConfig{},
+		config.OsvConfig{},
+		cfg,
+	)
+	u.cycle.step = func(context.Context) error {
+		runs.Add(1)
+		return nil
+	}
+
+	ctx := t.Context()
+
+	u.Start(ctx)
+	require.Eventually(t, func() bool {
+		return runs.Load() > 0
+	}, time.Second, 20*time.Millisecond)
+	require.NoError(t, u.Stop(context.Background()))
+}
+
+func TestStartDoesNotStartDisabledResyncJob(t *testing.T) {
+	t.Parallel()
+
+	var runs atomic.Int32
+	cfg := RuntimeConfig{
+		OrchestrationEnabled: true,
+		Resync: JobRuntimeConfig{
+			Enabled: false,
+			Schedule: ScheduleConfig{
+				Type:     SchedulerInterval,
+				Interval: 10 * time.Millisecond,
+			},
+		},
+		MarkUnused: JobRuntimeConfig{
+			Enabled: true,
+			Schedule: ScheduleConfig{
+				Type:     SchedulerCron,
+				CronExpr: "0 0 1 1 *",
+			},
+		},
+	}
+
+	u := NewUpdaterWithRuntimeConfig(
+		nil,
+		nil,
+		logrus.NewEntry(logrus.StandardLogger()),
+		config.KevConfig{},
+		config.OsvConfig{},
+		cfg,
+	)
+	u.cycle.step = func(context.Context) error {
+		runs.Add(1)
+		return nil
+	}
+
+	ctx := t.Context()
+
+	u.Start(ctx)
+	defer func() { _ = u.Stop(context.Background()) }()
+
+	time.Sleep(80 * time.Millisecond)
+	assert.Equal(t, int32(0), runs.Load())
+	require.Len(t, u.lifecycle.jobs, 1)
+	assert.Equal(t, "mark unused images", u.lifecycle.jobs[0].Name())
+}
