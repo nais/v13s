@@ -2,7 +2,6 @@ package grpcvulnerabilities
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -52,48 +51,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 	}
 
 	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
-		return &vulnerabilities.Finding{
-			WorkloadRef: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				Type:      row.WorkloadType,
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
-			},
-			Vulnerability: &vulnerabilities.Vulnerability{
-				Id:      row.ID.String(),
-				Package: row.Package,
-				Suppression: toSuppression(
-					row.Suppressed,
-					row.Reason,
-					row.ReasonText,
-					row.SuppressedBy,
-					row.SuppressedAt.Time,
-				),
-				Created:       timestamppb.New(row.CreatedAt.Time),
-				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
-				LatestVersion: row.LatestVersion,
-				SeveritySince: timestamppb.New(row.SeveritySince.Time),
-				CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
-				FixVersion:    row.FixVersion,
-				Cve: toCve(cvePayload{
-					id:                 row.CveID,
-					title:              row.CveTitle,
-					desc:               row.CveDesc,
-					link:               row.CveLink,
-					severity:           row.Severity,
-					created:            timestamppb.New(row.CveCreatedAt.Time),
-					lastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
-					cvssScore:          row.CvssScore,
-					epssScore:          row.EpssScore,
-					epssPercentile:     row.EpssPercentile,
-					hasKevEntry:        row.HasKevEntry,
-					knownRansomwareUse: row.KnownRansomwareUse,
-					priority:           row.Priority,
-				}),
-			},
-		}
+		return defaultVulnerabilityProjector.ToFinding(row)
 	})
 
 	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
@@ -142,42 +100,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	total := 0
 	nodes := collections.Map(vulnz, func(row *sql.ListVulnerabilitiesForImageRow) *vulnerabilities.Vulnerability {
 		total = int(row.TotalCount)
-		refs := map[string]string{}
-		_ = json.Unmarshal(row.CveRefs, &refs)
-
-		return &vulnerabilities.Vulnerability{
-			Id:      row.ID.String(),
-			Package: row.Package,
-			Suppression: toSuppression(
-				row.Suppressed,
-				row.Reason,
-				row.ReasonText,
-				row.SuppressedBy,
-				row.SuppressedAt.Time,
-			),
-			Created:       timestamppb.New(row.CreatedAt.Time),
-			LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
-			LatestVersion: row.LatestVersion,
-			SeveritySince: timestamppb.New(row.SeveritySince.Time),
-			CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
-			FixVersion:    row.FixVersion,
-			Cve: toCve(cvePayload{
-				id:                 row.CveID,
-				title:              row.CveTitle,
-				desc:               row.CveDesc,
-				link:               row.CveLink,
-				severity:           row.Severity,
-				refs:               refs,
-				created:            timestamppb.New(row.CveCreatedAt.Time),
-				lastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
-				cvssScore:          row.CvssScore,
-				epssScore:          row.EpssScore,
-				epssPercentile:     row.EpssPercentile,
-				hasKevEntry:        row.HasKevEntry,
-				knownRansomwareUse: row.KnownRansomwareUse,
-				priority:           row.Priority,
-			}),
-		}
+		return defaultVulnerabilityProjector.ToVulnerabilityFromListVulnerabilitiesForImageRow(row)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)
@@ -269,29 +192,7 @@ func (s *Server) GetVulnerabilityById(ctx context.Context, request *vulnerabilit
 	}
 
 	return &vulnerabilities.GetVulnerabilityByIdResponse{
-		Vulnerability: &vulnerabilities.Vulnerability{
-			Id:            row.ID.String(),
-			Package:       row.Package,
-			Suppression:   toSuppression(row.Suppressed, row.Reason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
-			LatestVersion: row.LatestVersion,
-			ImageName:     row.ImageName,
-			CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
-			FixVersion:    row.FixVersion,
-			Cve: toCve(cvePayload{
-				id:                 row.CveID,
-				title:              row.CveTitle,
-				desc:               row.CveDesc,
-				link:               row.CveLink,
-				severity:           row.Severity,
-				refs:               row.Refs,
-				cvssScore:          row.CvssScore,
-				epssScore:          row.EpssScore,
-				epssPercentile:     row.EpssPercentile,
-				hasKevEntry:        row.HasKevEntry,
-				knownRansomwareUse: row.KnownRansomwareUse,
-				priority:           row.Priority,
-			}),
-		},
+		Vulnerability: defaultVulnerabilityProjector.ToVulnerabilityFromGetVulnerabilityByIDRow(row),
 	}, nil
 }
 
@@ -381,50 +282,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	total := 0
 	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
 		total = int(row.TotalCount)
-		return &vulnerabilities.WorkloadForVulnerability{
-			WorkloadRef: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				Type:      row.WorkloadType,
-				ImageName: row.ImageName,
-				ImageTag:  row.ImageTag,
-			},
-			Vulnerability: &vulnerabilities.Vulnerability{
-				Id:      row.ID.String(),
-				Package: row.Package,
-				Suppression: toSuppression(
-					row.Suppressed,
-					row.Reason,
-					row.ReasonText,
-					row.SuppressedBy,
-					row.SuppressedAt.Time,
-				),
-				ImageName:     row.ImageName,
-				Created:       timestamppb.New(row.CreatedAt.Time),
-				LastUpdated:   timestamppb.New(row.UpdatedAt.Time),
-				SeveritySince: timestamppb.New(row.SeveritySince.Time),
-				LastSeverity:  &row.LastSeverity,
-				LatestVersion: row.LatestVersion,
-				CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
-				FixVersion:    row.FixVersion,
-				Cve: toCve(cvePayload{
-					id:                 row.CveID,
-					title:              row.CveTitle,
-					desc:               row.CveDesc,
-					link:               row.CveLink,
-					severity:           row.Severity,
-					created:            timestamppb.New(row.CveCreatedAt.Time),
-					lastUpdated:        timestamppb.New(row.CveUpdatedAt.Time),
-					cvssScore:          row.CvssScore,
-					epssScore:          row.EpssScore,
-					epssPercentile:     row.EpssPercentile,
-					hasKevEntry:        row.HasKevEntry,
-					knownRansomwareUse: row.KnownRansomwareUse,
-					priority:           row.Priority,
-				}),
-			},
-		}
+		return defaultVulnerabilityProjector.ToWorkloadForVulnerability(row)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)
@@ -453,28 +311,7 @@ func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.
 	}
 
 	return &vulnerabilities.GetVulnerabilityResponse{
-		Vulnerability: &vulnerabilities.Vulnerability{
-			Id:            row.ID.String(),
-			Package:       row.Package,
-			Suppression:   toSuppression(row.Suppressed, row.Reason, row.ReasonText, row.SuppressedBy, row.SuppressedAt.Time),
-			LatestVersion: row.LatestVersion,
-			CvssScore:     row.CvssScore, //lint:ignore SA1019 Temporary backward compatibility for clients still reading deprecated field.
-			FixVersion:    row.FixVersion,
-			Cve: toCve(cvePayload{
-				id:                 row.CveID,
-				title:              row.CveTitle,
-				desc:               row.CveDesc,
-				link:               row.CveLink,
-				severity:           row.Severity,
-				refs:               row.Refs,
-				cvssScore:          row.CvssScore,
-				epssScore:          row.EpssScore,
-				epssPercentile:     row.EpssPercentile,
-				hasKevEntry:        row.HasKevEntry,
-				knownRansomwareUse: row.KnownRansomwareUse,
-				priority:           row.Priority,
-			}),
-		},
+		Vulnerability: defaultVulnerabilityProjector.ToVulnerabilityFromGetVulnerabilityRow(row),
 	}, nil
 }
 
@@ -628,64 +465,6 @@ func SanitizeOrderBy(orderBy *vulnerabilities.OrderBy, defaultOrder vulnerabilit
 	}
 
 	return fmt.Sprintf("%s_%s", field.String(), direction)
-}
-
-type cvePayload struct {
-	id                 string
-	title              string
-	desc               string
-	link               string
-	severity           int32
-	refs               map[string]string
-	created            *timestamppb.Timestamp
-	lastUpdated        *timestamppb.Timestamp
-	cvssScore          *float64
-	epssScore          *float64
-	epssPercentile     *float64
-	hasKevEntry        bool
-	knownRansomwareUse bool
-	priority           *int32
-}
-
-func toCve(data cvePayload) *vulnerabilities.Cve {
-	return &vulnerabilities.Cve{
-		Id:                 data.id,
-		Title:              data.title,
-		Description:        data.desc,
-		Link:               data.link,
-		Severity:           vulnerabilities.Severity(data.severity),
-		References:         data.refs,
-		Created:            data.created,
-		LastUpdated:        data.lastUpdated,
-		CvssScore:          data.cvssScore,
-		EpssScore:          data.epssScore,
-		EpssPercentile:     data.epssPercentile,
-		HasKevEntry:        data.hasKevEntry,
-		KnownRansomwareUse: data.knownRansomwareUse,
-		Priority:           toProtoPriority(data.priority),
-	}
-}
-
-func toSuppression(suppressed bool, suppressReason *sql.VulnerabilitySuppressReason, reasonText *string, suppressedBy *string, suppressedAtTime time.Time) *vulnerabilities.Suppression {
-	var suppression *vulnerabilities.Suppression
-	if suppressReason != nil && suppressReason.Valid() {
-		suppressReasonStr := strings.ToUpper(string(*suppressReason))
-		t := suppressedAtTime
-
-		reason := vulnerabilities.SuppressState_NOT_SET
-		if val, ok := vulnerabilities.SuppressState_value[suppressReasonStr]; ok {
-			reason = vulnerabilities.SuppressState(val)
-		}
-
-		suppression = &vulnerabilities.Suppression{
-			SuppressedReason:  reason,
-			SuppressedDetails: str(reasonText, ""),
-			Suppressed:        suppressed,
-			SuppressedBy:      str(suppressedBy, ""),
-			LastUpdated:       timestamppb.New(t),
-		}
-	}
-	return suppression
 }
 
 func str(s *string, def string) string {
