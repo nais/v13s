@@ -123,8 +123,14 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	} else {
 		log.Info("workload reconciliation: dry-run — orphaned workloads will be logged but not deleted (set RECONCILE_DELETION_ENABLED=true to enable)")
 	}
-	mgr.Start(ctx)
-	defer mgr.Stop(ctx)
+	if err := mgr.Start(ctx); err != nil {
+		return err
+	}
+	defer func() {
+		if err := mgr.Stop(ctx); err != nil {
+			log.WithError(err).Error("failed to stop workload manager")
+		}
+	}()
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {

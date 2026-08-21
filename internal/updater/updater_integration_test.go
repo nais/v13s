@@ -69,7 +69,7 @@ func TestUpdater(t *testing.T) {
 		logrus.NewEntry(logrus.StandardLogger()),
 	)
 
-	mgr.Start(ctx)
+	require.NoError(t, mgr.Start(ctx))
 	defer func() { _ = mgr.Stop(ctx) }()
 
 	for _, project := range projectNames {
