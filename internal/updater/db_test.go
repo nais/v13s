@@ -55,3 +55,25 @@ func TestSyncImageRecoverableErrorSchedulesResync(t *testing.T) {
 	require.NoError(t, err)
 	querier.AssertExpectations(t)
 }
+
+func TestSyncImageDBErrorInHandleErrorIsReturned(t *testing.T) {
+	t.Parallel()
+
+	querier := new(mocksql.MockQuerier)
+	ctx := NewDbContext(context.Background(), querier, logrus.NewEntry(logrus.StandardLogger()))
+
+	srcErr := errors.New("source unavailable")
+	dbErr := errors.New("db connection lost")
+
+	querier.EXPECT().
+		UpdateImageSyncStatus(mock.Anything, mock.Anything).
+		Return(dbErr).
+		Once()
+
+	err := SyncImage(ctx, "image-a", "v1", "dependencytrack", func(context.Context) error {
+		return srcErr
+	})
+
+	require.ErrorIs(t, err, dbErr)
+	querier.AssertExpectations(t)
+}

@@ -2,6 +2,7 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -139,13 +140,16 @@ func (u *Updater) runRefreshDailySummary(ctx context.Context) error {
 	startDate := lastSnapshot.Time.AddDate(0, 0, 1) // next day
 	today := time.Now().Truncate(24 * time.Hour)
 
+	var refreshErrs []error
 	days := 0
 	for d := startDate; !d.After(today); d = d.AddDate(0, 0, 1) {
 		if err = u.querier.RefreshVulnerabilitySummaryForDate(ctx, pgtype.Date{
 			Time:  d,
 			Valid: true,
 		}); err != nil {
-			return fmt.Errorf("refreshing summary for %s: %w", d.Format("2006-01-02"), err)
+			u.log.Errorf("refreshing summary for %s: %v (continuing)", d.Format("2006-01-02"), err)
+			refreshErrs = append(refreshErrs, fmt.Errorf("refreshing summary for %s: %w", d.Format("2006-01-02"), err))
+			continue
 		}
 		days++
 	}
@@ -154,7 +158,7 @@ func (u *Updater) runRefreshDailySummary(ctx context.Context) error {
 	if err = u.querier.RefreshVulnerabilitySummaryDailyView(ctx); err != nil {
 		return fmt.Errorf("refreshing vulnerability summary daily view: %w", err)
 	}
-	return nil
+	return errors.Join(refreshErrs...)
 }
 
 func (u *Updater) runRefreshWorkloadVulnerabilityLifetimes(ctx context.Context) error {
