@@ -34,6 +34,7 @@ type Config struct {
 	Metrics                            MetricConfig
 	ReconcileDeletionEnabled           bool   `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 	UpdaterRuntimeOrchestrationEnabled bool   `envconfig:"UPDATER_RUNTIME_ORCHESTRATION_ENABLED" default:"true"`
+	UpdaterResyncEnabled               bool   `envconfig:"UPDATER_RESYNC_ENABLED" default:"true"`
 	UpdaterMarkUnusedEnabled           bool   `envconfig:"UPDATER_MARK_UNUSED_ENABLED" default:"true"`
 	UpdaterMarkUnusedCron              string `envconfig:"UPDATER_MARK_UNUSED_CRON" default:"*/30 * * * *"`
 	UpdaterMarkUntrackedEnabled        bool   `envconfig:"UPDATER_MARK_UNTRACKED_ENABLED" default:"true"`

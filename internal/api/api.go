@@ -166,6 +166,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		Interval: cfg.UpdateInterval,
 	})
 	runtimeCfg.OrchestrationEnabled = cfg.UpdaterRuntimeOrchestrationEnabled
+	runtimeCfg.Resync.Enabled = cfg.UpdaterResyncEnabled
 	runtimeCfg.MarkUnused = updater.JobRuntimeConfig{
 		Enabled: cfg.UpdaterMarkUnusedEnabled,
 		Schedule: updater.ScheduleConfig{
