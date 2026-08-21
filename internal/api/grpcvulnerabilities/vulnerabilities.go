@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/emicklei/pgtalk/convert"
 	"github.com/google/uuid"
@@ -361,72 +359,21 @@ func validateInput(s string) error {
 }
 
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
-	uuId := convert.StringToUUID(request.Id)
-	vuln, err := s.querier.GetVulnerabilityById(ctx, uuId)
-	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("get suppressed vulnerability: %w", err)
-		}
-	}
-
-	canonicalCveIDs, err := s.resolveCanonicalCveIDs(ctx, []string{vuln.CveID})
-	if err != nil {
-		return nil, err
-	}
-	canonicalCveID := canonicalCveIDs[0]
-
-	cveIDs := []string{canonicalCveID}
-	aliases, err := s.querier.GetAliasesByCanonicalCveId(ctx, canonicalCveID)
-	if err != nil {
-		return nil, fmt.Errorf("get aliases for cve: %w", err)
-	}
-	if len(aliases) > 0 {
-		cveIDs = append(cveIDs, aliases...)
-	}
-
-	suppressParams := sql.SuppressVulnerabilityParams{
-		ImageName:    vuln.ImageName,
-		Package:      vuln.Package,
-		SuppressedBy: request.GetSuppressedBy(),
-		Suppressed:   request.GetSuppress(),
-		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
-		ReasonText:   request.GetReason(),
-	}
-
-	var suppressErrs []string
-	for _, cveID := range cveIDs {
-		suppressParams.CveID = cveID
-		if supErr := s.querier.SuppressVulnerability(ctx, suppressParams); supErr != nil {
-			suppressErrs = append(suppressErrs, fmt.Sprintf("%s: %v", cveID, supErr))
-		}
-	}
-	if len(suppressErrs) > 0 {
-		return nil, fmt.Errorf("failed to suppress %d/%d CVE IDs for %s/%s: %s", len(suppressErrs), len(cveIDs), vuln.ImageName, vuln.Package, strings.Join(suppressErrs, "; "))
-	}
-
-	if err := s.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
-		ImageName: vuln.ImageName,
-		ImageTag:  vuln.ImageTag,
-	}); err != nil {
-		return nil, fmt.Errorf("recalculate vulnerability summary: %w", err)
-	}
-
-	_, err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-		State: sql.ImageStateResync,
-		Name:  vuln.ImageName,
-		Tag:   vuln.ImageTag,
-		ReadyForResyncAt: pgtype.Timestamptz{
-			Time:  time.Now(),
-			Valid: true,
-		},
+	workflow := newSuppressionWorkflow(s.querier, s.resolveCanonicalCveIDs)
+	result, err := workflow.SuppressOne(ctx, suppressOneInput{
+		id:           convert.StringToUUID(request.Id),
+		suppressedBy: request.GetSuppressedBy(),
+		suppress:     request.GetSuppress(),
+		reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
+		reasonText:   request.GetReason(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &vulnerabilities.SuppressVulnerabilityResponse{
-		CveId:      vuln.CveID,
-		Suppressed: request.GetSuppress(),
+		CveId:      result.cveID,
+		Suppressed: result.suppressed,
 	}, nil
 }
 
@@ -519,115 +466,24 @@ func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabi
 		return nil, err
 	}
 
-	canonicalCveIDs, err := s.resolveCanonicalCveIDs(ctx, []string{request.GetCveId()})
+	workflow := newSuppressionWorkflow(s.querier, s.resolveCanonicalCveIDs)
+	result, err := workflow.SuppressManySameNamespace(ctx, suppressManyInput{
+		requestCveID: request.GetCveId(),
+		suppressedBy: request.GetSuppressedBy(),
+		suppress:     request.GetSuppress(),
+		reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
+		reasonText:   request.GetReason(),
+		workloads:    request.GetWorkloads(),
+	})
 	if err != nil {
 		return nil, err
 	}
-	canonicalCveID := canonicalCveIDs[0]
-
-	cveIDs := []string{canonicalCveID}
-	aliases, err := s.querier.GetAliasesByCanonicalCveId(ctx, canonicalCveID)
-	if err != nil {
-		return nil, fmt.Errorf("get aliases for cve: %w", err)
-	}
-	if len(aliases) > 0 {
-		cveIDs = append(cveIDs, aliases...)
-	}
-
-	clusters := make([]string, 0, len(request.GetWorkloads()))
-	namespaces := make([]string, 0, len(request.GetWorkloads()))
-	names := make([]string, 0, len(request.GetWorkloads()))
-	workloadTypes := make([]string, 0, len(request.GetWorkloads()))
-	for _, w := range request.GetWorkloads() {
-		clusters = append(clusters, w.GetCluster())
-		namespaces = append(namespaces, w.GetNamespace())
-		names = append(names, w.GetName())
-		workloadTypes = append(workloadTypes, w.GetWorkloadType())
-	}
-
-	images, err := s.querier.GetImagesForCveAndWorkloads(ctx, sql.GetImagesForCveAndWorkloadsParams{
-		CveID:         canonicalCveID,
-		Clusters:      clusters,
-		Namespaces:    namespaces,
-		Names:         names,
-		WorkloadTypes: workloadTypes,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get images for cve and workloads: %w", err)
-	}
-	if len(images) == 0 {
-		return nil, status.Errorf(codes.NotFound, "no matching images found for cve %s and provided workloads", request.GetCveId())
-	}
-
-	type imageKey struct{ name, tag string }
-	seenImages := make(map[imageKey]struct{})
-	seenWorkloads := make(map[string]*vulnerabilities.SuppressVulnerabilitiesWorkload)
-	var suppressErrs []string
-
-	suppressParams := sql.SuppressVulnerabilityParams{
-		SuppressedBy: request.GetSuppressedBy(),
-		Suppressed:   request.GetSuppress(),
-		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
-		ReasonText:   request.GetReason(),
-	}
-
-	for _, img := range images {
-		suppressParams.ImageName = img.ImageName
-		suppressParams.Package = img.Package
-		for _, cveID := range cveIDs {
-			suppressParams.CveID = cveID
-			if supErr := s.querier.SuppressVulnerability(ctx, suppressParams); supErr != nil {
-				suppressErrs = append(suppressErrs, fmt.Sprintf("%s/%s/%s: %v", img.ImageName, img.Package, cveID, supErr))
-			}
-		}
-		seenImages[imageKey{img.ImageName, img.ImageTag}] = struct{}{}
-		key := img.WorkloadCluster + "/" + img.WorkloadNamespace + "/" + img.WorkloadName + "/" + img.WorkloadType
-		seenWorkloads[key] = &vulnerabilities.SuppressVulnerabilitiesWorkload{
-			Cluster:      img.WorkloadCluster,
-			Namespace:    img.WorkloadNamespace,
-			Name:         img.WorkloadName,
-			WorkloadType: img.WorkloadType,
-			ImageName:    img.ImageName,
-			ImageTag:     img.ImageTag,
-		}
-	}
-
-	for key := range seenImages {
-		if recErr := s.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
-			ImageName: key.name,
-			ImageTag:  key.tag,
-		}); recErr != nil {
-			suppressErrs = append(suppressErrs, fmt.Sprintf("recalculate summary %s:%s: %v", key.name, key.tag, recErr))
-		}
-		if _, updateErr := s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-			State: sql.ImageStateResync,
-			Name:  key.name,
-			Tag:   key.tag,
-			ReadyForResyncAt: pgtype.Timestamptz{
-				Time:  time.Now(),
-				Valid: true,
-			},
-		}); updateErr != nil {
-			suppressErrs = append(suppressErrs, fmt.Sprintf("update image state %s:%s: %v", key.name, key.tag, updateErr))
-		}
-	}
-
-	workloadCount := len(seenWorkloads)
-	imageCount := len(seenImages)
-	if workloadCount > math.MaxInt32 || imageCount > math.MaxInt32 {
-		return nil, fmt.Errorf("result count exceeds int32 range")
-	}
-
-	suppressedWorkloads := make([]*vulnerabilities.SuppressVulnerabilitiesWorkload, 0, workloadCount)
-	for _, w := range seenWorkloads {
-		suppressedWorkloads = append(suppressedWorkloads, w)
-	}
 
 	return &vulnerabilities.SuppressVulnerabilitiesResponse{
-		CveId:         request.GetCveId(),
-		WorkloadCount: int32(workloadCount), //#nosec G115
-		ImageCount:    int32(imageCount),    //#nosec G115
-		Errors:        suppressErrs,
-		Workloads:     suppressedWorkloads,
+		CveId:         result.cveID,
+		WorkloadCount: result.workloadCount,
+		ImageCount:    result.imageCount,
+		Errors:        result.errors,
+		Workloads:     result.workloads,
 	}, nil
 }
