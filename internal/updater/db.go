@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sirupsen/logrus"
 
 	"github.com/nais/v13s/internal/database/sql"
@@ -13,6 +15,7 @@ import (
 
 const (
 	SyncErrorStatusCodeGenericError = "GenericError"
+	RecoverableResyncCooldown       = 15 * time.Minute
 )
 
 type database struct {
@@ -31,20 +34,32 @@ func NewDbContext(ctx context.Context, querier sql.Querier, log *logrus.Entry) c
 	})
 }
 
-// SyncImage runs the provided function and updates the image state in the database based on the result, it should only return an error if the image state update failed.
+// SyncImage runs the provided function and updates the image state in the database based on the result.
+// It returns an error only if a DB state update fails.
+// Recoverable source errors schedule the image for resync with cooldown and return nil.
 func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(ctx context.Context) error) error {
 	d := db(ctx)
 	srcErr := f(ctx)
 	if srcErr != nil {
-		err := handleError(ctx, imageName, imageTag, source, srcErr)
-		if err != nil {
-			if errors.Is(srcErr, sources.ErrNoProject) {
-				return err
-			}
+		handleErr := handleError(ctx, imageName, imageTag, source, srcErr)
+		switch {
+		case handleErr == nil:
+			// terminal: already handled (ErrNoProject, ErrNoMetrics) — state written inside handleError
+			return nil
+		case !errors.Is(handleErr, srcErr):
+			// handleError itself failed (DB error) — propagate, do not schedule resync
+			return handleErr
+		default:
+			// recoverable source error: handleErr == srcErr, sync status persisted — schedule resync
+			cooldownUntil := time.Now().Add(RecoverableResyncCooldown)
 			n, updateErr := d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				Name:  imageName,
 				Tag:   imageTag,
-				State: sql.ImageStateFailed,
+				State: sql.ImageStateResync,
+				ReadyForResyncAt: pgtype.Timestamptz{
+					Time:  cooldownUntil,
+					Valid: true,
+				},
 			})
 			if updateErr != nil {
 				d.log.Errorf("failed to update image state: %v", updateErr)
@@ -55,7 +70,6 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 			}
 			return nil
 		}
-		return nil
 	}
 
 	/*err = d.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{

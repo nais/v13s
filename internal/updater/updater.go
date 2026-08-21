@@ -2,9 +2,11 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/containerd/log"
@@ -13,7 +15,6 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/kev"
 	"github.com/nais/v13s/internal/sources/osv"
@@ -35,127 +36,224 @@ const (
 )
 
 type Updater struct {
-	db                           *pgxpool.Pool
 	querier                      *sql.Queries
-	manager                      *manager.WorkloadManager
-	updateSchedule               ScheduleConfig
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
-	doneChan                     chan struct{}
-	once                         sync.Once
 	log                          *logrus.Entry
 	kevFetcher                   *kev.Fetcher
 	osvFetcher                   *osv.Fetcher
+	runtimeConfig                RuntimeConfig
+	lifecycle                    updaterLifecycle
+	cycle                        updaterCycle
 }
 
-func NewUpdater(pool *pgxpool.Pool, source sources.Source, mgr *manager.WorkloadManager, schedule ScheduleConfig, doneChan chan struct{}, log *log.Entry, kevCfg config.KevConfig, osvCfg config.OsvConfig) *Updater {
+type updaterLifecycle struct {
+	mu      sync.Mutex
+	jobs    []Job
+	started atomic.Bool
+}
+
+type updaterCycle struct {
+	running atomic.Bool
+	step    func(context.Context) error
+}
+
+func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, log *log.Entry, kevCfg config.KevConfig, osvCfg config.OsvConfig) *Updater {
+	return NewUpdaterWithRuntimeConfig(pool, source, log, kevCfg, osvCfg, DefaultRuntimeConfig(schedule))
+}
+
+func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log *log.Entry, kevCfg config.KevConfig, osvCfg config.OsvConfig, runtimeCfg RuntimeConfig) *Updater {
 	if log == nil {
 		log = logrus.NewEntry(logrus.StandardLogger())
 	}
 
-	if doneChan == nil {
-		doneChan = make(chan struct{})
-	}
-
 	querier := sql.New(pool)
-	return &Updater{
-		db:                           pool,
+	u := &Updater{
 		querier:                      querier,
 		source:                       source,
-		manager:                      mgr,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
-		updateSchedule:               schedule,
-		doneChan:                     doneChan,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcherWithClient(kev.NewClientWithURL(kevCfg.CatalogURL), querier, log),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
+		runtimeConfig:                runtimeCfg,
+	}
+	u.cycle.step = u.runResyncCycle
+	return u
+}
+
+// Run starts updater jobs and is kept for backward compatibility.
+func (u *Updater) Run(ctx context.Context) {
+	u.Start(ctx)
+}
+
+func (u *Updater) Start(ctx context.Context) {
+	if !u.lifecycle.started.CompareAndSwap(false, true) {
+		u.log.Warn("updater already started")
+		return
+	}
+
+	u.lifecycle.mu.Lock()
+	defer u.lifecycle.mu.Unlock()
+
+	if !u.runtimeConfig.OrchestrationEnabled {
+		u.lifecycle.jobs = u.buildLegacyJobs()
+	} else {
+		u.lifecycle.jobs = u.buildRuntimeJobs()
+	}
+
+	for _, job := range u.lifecycle.jobs {
+		job.Start(ctx)
 	}
 }
 
-// Run TODO: create a state/log table and log errors? maybe successfull and failed runs?
-func (u *Updater) Run(ctx context.Context) {
-	go runScheduled(ctx, u.updateSchedule, "mark and resync images and sync workload vulnerabilities", u.log, func() {
-		if err := u.RecoverUntrackedImages(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to recover untracked images")
-		}
-		if err := u.MarkForResync(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to mark images for resync")
-		}
-		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to resync images")
-		}
-	})
+func (u *Updater) Stop(ctx context.Context) error {
+	u.lifecycle.mu.Lock()
+	jobs := u.lifecycle.jobs
+	u.lifecycle.jobs = nil
+	u.lifecycle.mu.Unlock()
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, "mark unused images", u.log, func() {
-		if err := u.MarkUnusedImages(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to mark unused images")
+	for _, job := range jobs {
+		if err := job.Stop(ctx); err != nil {
+			u.log.WithError(err).WithField("job", job.Name()).Error("failed to stop updater job")
 		}
-	})
+	}
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUntrackedCronInterval}, "mark untracked images", u.log, func() {
-		if err := u.MarkImagesAsUntracked(ctx); err != nil {
-			u.log.WithError(err).Error("Failed to mark images as untracked")
+	u.lifecycle.started.Store(false)
+	return nil
+}
+
+func (u *Updater) runMarkUnusedImages(ctx context.Context) error {
+	return u.MarkUnusedImages(ctx)
+}
+
+func (u *Updater) runMarkImagesAsUntracked(ctx context.Context) error {
+	return u.MarkImagesAsUntracked(ctx)
+}
+
+func (u *Updater) runRefreshDailySummary(ctx context.Context) error {
+	now := time.Now()
+	lastSnapshot, err := u.querier.GetLastSnapshotDateForVulnerabilitySummary(ctx)
+	if err != nil {
+		return fmt.Errorf("getting last snapshot date: %w", err)
+	}
+
+	startDate := lastSnapshot.Time.AddDate(0, 0, 1) // next day
+	today := time.Now().Truncate(24 * time.Hour)
+
+	var refreshErrs []error
+	days := 0
+	for d := startDate; !d.After(today); d = d.AddDate(0, 0, 1) {
+		if err = u.querier.RefreshVulnerabilitySummaryForDate(ctx, pgtype.Date{
+			Time:  d,
+			Valid: true,
+		}); err != nil {
+			u.log.Errorf("refreshing summary for %s: %v (continuing)", d.Format("2006-01-02"), err)
+			refreshErrs = append(refreshErrs, fmt.Errorf("refreshing summary for %s: %w", d.Format("2006-01-02"), err))
+			continue
 		}
-	})
+		days++
+	}
+	u.log.Infof("vulnerability summary refreshed for %d days, took %f seconds\n", days, time.Since(now).Seconds())
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshVulnerabilitySummaryCronDailyView}, "refresh daily", u.log, func() {
-		now := time.Now()
-		lastSnapshot, err := u.querier.GetLastSnapshotDateForVulnerabilitySummary(ctx)
-		if err != nil {
-			u.log.WithError(err).Error("could not get last snapshot date")
-		}
+	if err = u.querier.RefreshVulnerabilitySummaryDailyView(ctx); err != nil {
+		return fmt.Errorf("refreshing vulnerability summary daily view: %w", err)
+	}
+	return errors.Join(refreshErrs...)
+}
 
-		startDate := lastSnapshot.Time.AddDate(0, 0, 1) // next day
-		today := time.Now().Truncate(24 * time.Hour)
+func (u *Updater) runRefreshWorkloadVulnerabilityLifetimes(ctx context.Context) error {
+	now := time.Now()
+	u.log.Info("starting refresh of workload vulnerability lifetimes")
 
-		days := 0
-		for d := startDate; !d.After(today); d = d.AddDate(0, 0, 1) {
-			if err = u.querier.RefreshVulnerabilitySummaryForDate(ctx, pgtype.Date{
-				Time:  d,
-				Valid: true,
-			}); err != nil {
-				u.log.WithError(err).Errorf("failed to refresh summary for %s", d.Format("2006-01-02"))
-			}
-			days++
-		}
-		u.log.Infof("vulnerability summary refreshed for %d days, took %f seconds\n", days, time.Since(now).Seconds())
+	if err := u.querier.UpsertVulnerabilityLifetimes(ctx); err != nil {
+		return fmt.Errorf("refreshing workload vulnerability lifetimes: %w", err)
+	}
 
-		if err = u.querier.RefreshVulnerabilitySummaryDailyView(ctx); err != nil {
-			u.log.WithError(err).Error("failed to refresh vulnerability summary daily view")
-		}
-	})
+	u.log.Infof("workload vulnerability lifetimes refreshed successfully, took %f seconds", time.Since(now).Seconds())
+	return nil
+}
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshWorkloadVulnerabilityLifetimesCronDailyView}, "refresh workload vulnerability lifetimes", u.log, func() {
-		now := time.Now()
-		u.log.Info("starting refresh of workload vulnerability lifetimes")
+func (u *Updater) runSyncKevCatalog(ctx context.Context) error {
+	return u.kevFetcher.Sync(ctx)
+}
 
-		if err := u.querier.UpsertVulnerabilityLifetimes(ctx); err != nil {
-			u.log.WithError(err).Error("failed to refresh workload vulnerability lifetimes")
+func (u *Updater) runSyncOsvFixVersions(ctx context.Context) error {
+	return u.osvFetcher.Sync(ctx)
+}
+
+func (u *Updater) runRekeySuppressedAliases(ctx context.Context) error {
+	rowsAffected, err := u.querier.RekeySuppressedAliasesToCanonical(ctx)
+	if err != nil {
+		return err
+	}
+	if rowsAffected > 0 {
+		u.log.WithField("rows", rowsAffected).Info("rekeyed suppressed aliases to canonical")
+	}
+	return nil
+}
+
+func (u *Updater) buildLegacyJobs() []Job {
+	return []Job{
+		newScheduledJob("mark and resync images and sync workload vulnerabilities", u.runtimeConfig.Resync.Schedule, u.log, u.RunCycle),
+		newScheduledJob("mark unused images", ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, u.log, u.runMarkUnusedImages),
+		newScheduledJob("mark untracked images", ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUntrackedCronInterval}, u.log, u.runMarkImagesAsUntracked),
+		newScheduledJob("refresh daily", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshVulnerabilitySummaryCronDailyView}, u.log, u.runRefreshDailySummary),
+		newScheduledJob("refresh workload vulnerability lifetimes", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshWorkloadVulnerabilityLifetimesCronDailyView}, u.log, u.runRefreshWorkloadVulnerabilityLifetimes),
+		newScheduledJob("sync CISA KEV catalog", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, u.log, u.runSyncKevCatalog),
+		newScheduledJob("sync OSV fix versions", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, u.log, u.runSyncOsvFixVersions),
+		newScheduledJob("rekey suppressed aliases to canonical", ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, u.log, u.runRekeySuppressedAliases),
+	}
+}
+
+func (u *Updater) buildRuntimeJobs() []Job {
+	jobs := make([]Job, 0, 8)
+
+	add := func(cfg JobRuntimeConfig, name string, run func(context.Context) error) {
+		if !cfg.Enabled {
+			u.log.WithField("job", name).Info("updater job disabled by config")
 			return
 		}
+		jobs = append(jobs, newScheduledJob(name, cfg.Schedule, u.log, run))
+	}
 
-		u.log.Infof("workload vulnerability lifetimes refreshed successfully, took %f seconds", time.Since(now).Seconds())
-	})
+	add(u.runtimeConfig.Resync, "mark and resync images and sync workload vulnerabilities", u.RunCycle)
+	add(u.runtimeConfig.MarkUnused, "mark unused images", u.runMarkUnusedImages)
+	add(u.runtimeConfig.MarkUntracked, "mark untracked images", u.runMarkImagesAsUntracked)
+	add(u.runtimeConfig.RefreshDailySummary, "refresh daily", u.runRefreshDailySummary)
+	add(u.runtimeConfig.RefreshWorkloadLifetimes, "refresh workload vulnerability lifetimes", u.runRefreshWorkloadVulnerabilityLifetimes)
+	add(u.runtimeConfig.SyncKev, "sync CISA KEV catalog", u.runSyncKevCatalog)
+	add(u.runtimeConfig.SyncOsv, "sync OSV fix versions", u.runSyncOsvFixVersions)
+	add(u.runtimeConfig.RekeySuppressedAliases, "rekey suppressed aliases to canonical", u.runRekeySuppressedAliases)
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, "sync CISA KEV catalog", u.log, func() {
-		if err := u.kevFetcher.Sync(ctx); err != nil {
-			u.log.WithError(err).Error("failed to sync KEV catalog")
-		}
-	})
+	return jobs
+}
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, "sync OSV fix versions", u.log, func() {
-		if err := u.osvFetcher.Sync(ctx); err != nil {
-			u.log.WithError(err).Error("failed to sync OSV fix versions")
-		}
-	})
+func (u *Updater) RunCycle(ctx context.Context) error {
+	if !u.cycle.running.CompareAndSwap(false, true) {
+		u.log.Info("resync cycle already running, skipping trigger")
+		return nil
+	}
+	defer u.cycle.running.Store(false)
 
-	go runScheduled(ctx, ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, "rekey suppressed aliases to canonical", u.log, func() {
-		if rowsAffected, err := u.querier.RekeySuppressedAliasesToCanonical(ctx); err != nil {
-			u.log.WithError(err).Error("failed to rekey suppressed aliases to canonical")
-		} else if rowsAffected > 0 {
-			u.log.WithField("rows", rowsAffected).Info("rekeyed suppressed aliases to canonical")
-		}
-	})
+	step := u.cycle.step
+	if step == nil {
+		step = u.runResyncCycle
+	}
+
+	return step(ctx)
+}
+
+func (u *Updater) runResyncCycle(ctx context.Context) error {
+	if err := u.RecoverUntrackedImages(ctx); err != nil {
+		return fmt.Errorf("recovering untracked images: %w", err)
+	}
+	if err := u.MarkForResync(ctx); err != nil {
+		return fmt.Errorf("marking images for resync: %w", err)
+	}
+	if err := u.ResyncImageVulnerabilities(ctx); err != nil {
+		return fmt.Errorf("resyncing image vulnerabilities: %w", err)
+	}
+	return nil
 }
 
 func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
@@ -197,12 +295,6 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 	}
 
 	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
-
-	if u.doneChan != nil {
-		u.once.Do(func() {
-			close(u.doneChan)
-		})
-	}
 
 	return nil
 }
