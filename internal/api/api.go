@@ -165,55 +165,55 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		Type:     updater.SchedulerInterval,
 		Interval: cfg.UpdateInterval,
 	})
-	runtimeCfg.OrchestrationEnabled = cfg.UpdaterRuntimeOrchestrationEnabled
-	runtimeCfg.Resync.Enabled = cfg.UpdaterResyncEnabled
+	runtimeCfg.OrchestrationEnabled = cfg.Updater.RuntimeOrchestrationEnabled
+	runtimeCfg.Resync.Enabled = cfg.Updater.ResyncEnabled
 	runtimeCfg.MarkUnused = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterMarkUnusedEnabled,
+		Enabled: cfg.Updater.MarkUnusedEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterMarkUnusedCron,
+			CronExpr: cfg.Updater.MarkUnusedCron,
 		},
 	}
 	runtimeCfg.MarkUntracked = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterMarkUntrackedEnabled,
+		Enabled: cfg.Updater.MarkUntrackedEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterMarkUntrackedCron,
+			CronExpr: cfg.Updater.MarkUntrackedCron,
 		},
 	}
 	runtimeCfg.RefreshDailySummary = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterRefreshSummaryEnabled,
+		Enabled: cfg.Updater.RefreshSummaryEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterRefreshSummaryCron,
+			CronExpr: cfg.Updater.RefreshSummaryCron,
 		},
 	}
 	runtimeCfg.RefreshWorkloadLifetimes = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterRefreshLifetimesEnabled,
+		Enabled: cfg.Updater.RefreshLifetimesEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterRefreshLifetimesCron,
+			CronExpr: cfg.Updater.RefreshLifetimesCron,
 		},
 	}
 	runtimeCfg.SyncKev = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterSyncKevEnabled,
+		Enabled: cfg.Updater.SyncKevEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterSyncKevCron,
+			CronExpr: cfg.Updater.SyncKevCron,
 		},
 	}
 	runtimeCfg.SyncOsv = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterSyncOsvEnabled,
+		Enabled: cfg.Updater.SyncOsvEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterSyncOsvCron,
+			CronExpr: cfg.Updater.SyncOsvCron,
 		},
 	}
 	runtimeCfg.RekeySuppressedAliases = updater.JobRuntimeConfig{
-		Enabled: cfg.UpdaterRekeySuppressedEnabled,
+		Enabled: cfg.Updater.RekeySuppressedEnabled,
 		Schedule: updater.ScheduleConfig{
 			Type:     updater.SchedulerCron,
-			CronExpr: cfg.UpdaterRekeySuppressedCron,
+			CronExpr: cfg.Updater.RekeySuppressedCron,
 		},
 	}
 

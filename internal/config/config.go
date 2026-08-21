@@ -16,39 +16,43 @@ import (
 )
 
 type Config struct {
-	ListenAddr                         string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	InternalListenAddr                 string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
-	DatabaseUrl                        string        `envconfig:"DATABASE_URL" required:"true"`
-	UpdateInterval                     time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
-	RequiredAudience                   string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
-	AuthorizedServiceAccounts          []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
-	LogFormat                          string        `envconfig:"LOG_FORMAT" default:"json"`
-	LogLevel                           string        `envconfig:"LOG_LEVEL" default:"info"`
-	Tenant                             string        `envconfig:"TENANT" default:"nav"`
-	DependencyTrack                    sources.DependencyTrackConfig
-	Kev                                KevConfig
-	Osv                                OsvConfig
-	K8s                                K8sConfig
-	LeaderElection                     LeaderElectionConfig
-	GithubOrganizations                []string `envconfig:"GITHUB_ORGANIZATIONS"`
-	Metrics                            MetricConfig
-	ReconcileDeletionEnabled           bool   `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
-	UpdaterRuntimeOrchestrationEnabled bool   `envconfig:"UPDATER_RUNTIME_ORCHESTRATION_ENABLED" default:"true"`
-	UpdaterResyncEnabled               bool   `envconfig:"UPDATER_RESYNC_ENABLED" default:"true"`
-	UpdaterMarkUnusedEnabled           bool   `envconfig:"UPDATER_MARK_UNUSED_ENABLED" default:"true"`
-	UpdaterMarkUnusedCron              string `envconfig:"UPDATER_MARK_UNUSED_CRON" default:"*/30 * * * *"`
-	UpdaterMarkUntrackedEnabled        bool   `envconfig:"UPDATER_MARK_UNTRACKED_ENABLED" default:"true"`
-	UpdaterMarkUntrackedCron           string `envconfig:"UPDATER_MARK_UNTRACKED_CRON" default:"*/20 * * * *"`
-	UpdaterRefreshSummaryEnabled       bool   `envconfig:"UPDATER_REFRESH_SUMMARY_ENABLED" default:"true"`
-	UpdaterRefreshSummaryCron          string `envconfig:"UPDATER_REFRESH_SUMMARY_CRON" default:"30 4 * * *"`
-	UpdaterRefreshLifetimesEnabled     bool   `envconfig:"UPDATER_REFRESH_LIFETIMES_ENABLED" default:"true"`
-	UpdaterRefreshLifetimesCron        string `envconfig:"UPDATER_REFRESH_LIFETIMES_CRON" default:"0 5 * * *"`
-	UpdaterSyncKevEnabled              bool   `envconfig:"UPDATER_SYNC_KEV_ENABLED" default:"true"`
-	UpdaterSyncKevCron                 string `envconfig:"UPDATER_SYNC_KEV_CRON" default:"0 6 * * *"`
-	UpdaterSyncOsvEnabled              bool   `envconfig:"UPDATER_SYNC_OSV_ENABLED" default:"true"`
-	UpdaterSyncOsvCron                 string `envconfig:"UPDATER_SYNC_OSV_CRON" default:"0 7 * * *"`
-	UpdaterRekeySuppressedEnabled      bool   `envconfig:"UPDATER_REKEY_SUPPRESSED_ENABLED" default:"true"`
-	UpdaterRekeySuppressedCron         string `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
+	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	InternalListenAddr        string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
+	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
+	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
+	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
+	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
+	LogFormat                 string        `envconfig:"LOG_FORMAT" default:"json"`
+	LogLevel                  string        `envconfig:"LOG_LEVEL" default:"info"`
+	Tenant                    string        `envconfig:"TENANT" default:"nav"`
+	DependencyTrack           sources.DependencyTrackConfig
+	Kev                       KevConfig
+	Osv                       OsvConfig
+	K8s                       K8sConfig
+	LeaderElection            LeaderElectionConfig
+	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
+	Metrics                   MetricConfig
+	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
+	Updater                   UpdaterConfig
+}
+
+type UpdaterConfig struct {
+	RuntimeOrchestrationEnabled bool   `envconfig:"UPDATER_RUNTIME_ORCHESTRATION_ENABLED" default:"true"`
+	ResyncEnabled               bool   `envconfig:"UPDATER_RESYNC_ENABLED" default:"true"`
+	MarkUnusedEnabled           bool   `envconfig:"UPDATER_MARK_UNUSED_ENABLED" default:"true"`
+	MarkUnusedCron              string `envconfig:"UPDATER_MARK_UNUSED_CRON" default:"*/30 * * * *"`
+	MarkUntrackedEnabled        bool   `envconfig:"UPDATER_MARK_UNTRACKED_ENABLED" default:"true"`
+	MarkUntrackedCron           string `envconfig:"UPDATER_MARK_UNTRACKED_CRON" default:"*/20 * * * *"`
+	RefreshSummaryEnabled       bool   `envconfig:"UPDATER_REFRESH_SUMMARY_ENABLED" default:"true"`
+	RefreshSummaryCron          string `envconfig:"UPDATER_REFRESH_SUMMARY_CRON" default:"30 4 * * *"`
+	RefreshLifetimesEnabled     bool   `envconfig:"UPDATER_REFRESH_LIFETIMES_ENABLED" default:"true"`
+	RefreshLifetimesCron        string `envconfig:"UPDATER_REFRESH_LIFETIMES_CRON" default:"0 5 * * *"`
+	SyncKevEnabled              bool   `envconfig:"UPDATER_SYNC_KEV_ENABLED" default:"true"`
+	SyncKevCron                 string `envconfig:"UPDATER_SYNC_KEV_CRON" default:"0 6 * * *"`
+	SyncOsvEnabled              bool   `envconfig:"UPDATER_SYNC_OSV_ENABLED" default:"true"`
+	SyncOsvCron                 string `envconfig:"UPDATER_SYNC_OSV_CRON" default:"0 7 * * *"`
+	RekeySuppressedEnabled      bool   `envconfig:"UPDATER_REKEY_SUPPRESSED_ENABLED" default:"true"`
+	RekeySuppressedCron         string `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
 }
 
 type DependencyTrackConfig struct {
