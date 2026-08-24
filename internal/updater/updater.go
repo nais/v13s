@@ -112,9 +112,12 @@ func (u *Updater) Start(ctx context.Context) {
 	}
 
 	u.lifecycle.mu.Lock()
-	u.lifecycle.jobs = jobs
-	u.lifecycle.mu.Unlock()
+	defer u.lifecycle.mu.Unlock()
 
+	if !u.lifecycle.started.Load() {
+		return
+	}
+	u.lifecycle.jobs = jobs
 	for _, job := range jobs {
 		job.Start(ctx)
 	}
@@ -124,6 +127,7 @@ func (u *Updater) Stop(ctx context.Context) error {
 	u.lifecycle.mu.Lock()
 	jobs := u.lifecycle.jobs
 	u.lifecycle.jobs = nil
+	u.lifecycle.started.Store(false)
 	u.lifecycle.mu.Unlock()
 
 	var stopErrs []error
@@ -134,7 +138,6 @@ func (u *Updater) Stop(ctx context.Context) error {
 		}
 	}
 
-	u.lifecycle.started.Store(false)
 	return errors.Join(stopErrs...)
 }
 
