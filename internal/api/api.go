@@ -231,7 +231,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	)
 	u.Start(ctx)
 	defer func() {
-		if err := u.Stop(context.Background()); err != nil {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := u.Stop(stopCtx); err != nil {
 			log.WithError(err).Error("failed to stop updater")
 		}
 	}()

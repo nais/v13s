@@ -128,11 +128,9 @@ func (c *client) Start(ctx context.Context) error {
 }
 
 func (c *client) Stop(ctx context.Context) error {
-	if err := c.riverClient.Stop(ctx); err != nil {
-		return err
-	}
+	err := c.riverClient.Stop(ctx)
 	c.pool.Close()
-	return nil
+	return err
 }
 
 func migrate(ctx context.Context, pool *pgxpool.Pool) error {
