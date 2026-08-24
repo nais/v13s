@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -95,6 +94,9 @@ func (j *scheduledJob) Name() string {
 func (j *scheduledJob) Start(ctx context.Context) {
 	jobCtx, cancel := context.WithCancel(ctx)
 	j.mu.Lock()
+	if j.cancel != nil {
+		j.cancel()
+	}
 	j.cancel = cancel
 	j.mu.Unlock()
 
@@ -105,7 +107,7 @@ func (j *scheduledJob) Start(ctx context.Context) {
 	})
 }
 
-func (j *scheduledJob) Stop(ctx context.Context) error {
+func (j *scheduledJob) Stop(_ context.Context) error {
 	j.mu.Lock()
 	cancel := j.cancel
 	j.cancel = nil
@@ -113,9 +115,6 @@ func (j *scheduledJob) Stop(ctx context.Context) error {
 
 	if cancel != nil {
 		cancel()
-	}
-	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("stopping job '%s': %w", j.name, err)
 	}
 	return nil
 }

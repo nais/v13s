@@ -167,7 +167,7 @@ func (u *Updater) runRefreshDailySummary(ctx context.Context) error {
 		}
 		days++
 	}
-	u.log.Infof("vulnerability summary refreshed for %d days, took %f seconds\n", days, time.Since(now).Seconds())
+	u.log.Infof("vulnerability summary refreshed for %d days, took %f seconds", days, time.Since(now).Seconds())
 
 	if err = u.querier.RefreshVulnerabilitySummaryDailyView(ctx); err != nil {
 		return fmt.Errorf("refreshing vulnerability summary daily view: %w", err)
@@ -358,7 +358,12 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 
 func (u *Updater) withResyncAdvisoryLock(ctx context.Context, run func(context.Context) error) error {
 	if u.pool == nil {
-		return run(ctx)
+		if err := run(ctx); err != nil {
+			metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeFailed)
+			return err
+		}
+		metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeSuccess)
+		return nil
 	}
 
 	conn, err := u.pool.Acquire(ctx)
