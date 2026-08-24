@@ -222,6 +222,7 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 		return nil, err
 	}
 	workloads := make([]string, 0)
+	needsResync := false
 	for _, row := range rows {
 		workload := &model.Workload{
 			Cluster:   row.Cluster,
@@ -254,13 +255,16 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			if err != nil {
 				return nil, err
 			}
-
-			go func() {
-				if runErr := s.updater.RunCycle(s.parentCtx); runErr != nil {
-					s.log.WithError(runErr).Error("failed to resync images")
-				}
-			}()
+			needsResync = true
 		}
+	}
+
+	if needsResync {
+		go func() {
+			if runErr := s.updater.RunCycle(s.parentCtx); runErr != nil {
+				s.log.WithError(runErr).Error("failed to resync images")
+			}
+		}()
 	}
 
 	if len(workloads) == 0 {
