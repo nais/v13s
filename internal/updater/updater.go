@@ -96,24 +96,26 @@ func (u *Updater) Start(ctx context.Context) {
 		return
 	}
 
-	u.lifecycle.mu.Lock()
-	defer u.lifecycle.mu.Unlock()
-
+	var jobs []Job
 	if !u.runtimeConfig.OrchestrationEnabled {
-		u.lifecycle.jobs = u.buildLegacyJobs()
+		jobs = u.buildLegacyJobs()
 		u.log.WithFields(logrus.Fields{
 			"mode": "legacy",
-			"jobs": len(u.lifecycle.jobs),
+			"jobs": len(jobs),
 		}).Info("starting updater jobs with legacy scheduling")
 	} else {
-		u.lifecycle.jobs = u.buildRuntimeJobs()
+		jobs = u.buildRuntimeJobs()
 		u.log.WithFields(logrus.Fields{
 			"mode": "runtime",
-			"jobs": len(u.lifecycle.jobs),
+			"jobs": len(jobs),
 		}).Info("starting updater jobs with runtime orchestration")
 	}
 
-	for _, job := range u.lifecycle.jobs {
+	u.lifecycle.mu.Lock()
+	u.lifecycle.jobs = jobs
+	u.lifecycle.mu.Unlock()
+
+	for _, job := range jobs {
 		job.Start(ctx)
 	}
 }
@@ -260,16 +262,17 @@ func (u *Updater) RunCycle(ctx context.Context) error {
 
 func (u *Updater) runResyncCycle(ctx context.Context) error {
 	return u.withResyncAdvisoryLock(ctx, func(ctx context.Context) error {
+		var errs []error
 		if err := u.RecoverUntrackedImages(ctx); err != nil {
-			return fmt.Errorf("recovering untracked images: %w", err)
+			errs = append(errs, fmt.Errorf("recovering untracked images: %w", err))
 		}
 		if err := u.MarkForResync(ctx); err != nil {
-			return fmt.Errorf("marking images for resync: %w", err)
+			errs = append(errs, fmt.Errorf("marking images for resync: %w", err))
 		}
 		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
-			return fmt.Errorf("resyncing image vulnerabilities: %w", err)
+			errs = append(errs, fmt.Errorf("resyncing image vulnerabilities: %w", err))
 		}
-		return nil
+		return errors.Join(errs...)
 	})
 }
 
