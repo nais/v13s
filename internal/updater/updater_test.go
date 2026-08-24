@@ -121,7 +121,8 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 	cfg := RuntimeConfig{
 		OrchestrationEnabled: false,
 		Resync: JobRuntimeConfig{
-			Enabled: false, // legacy path should ignore this and still schedule resync
+			// Legacy orchestration always schedules the resync job, even when this flag is false.
+			Enabled: false,
 			Schedule: ScheduleConfig{
 				Type:     SchedulerInterval,
 				Interval: 10 * time.Millisecond,

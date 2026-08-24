@@ -15,6 +15,7 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/kev"
 	"github.com/nais/v13s/internal/sources/osv"
@@ -30,12 +31,14 @@ const (
 	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
 	SyncOsvCronInterval                                = "0 7 * * *"    // every day at 9:00 AM CEST
 	RekeySuppressedAliasesCronInterval                 = "0 8 * * *"    // every day at 10:00 AM CEST
+	ResyncCycleLockKey                                 = int64(7705370001)
 	ImageMarkAge                                       = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
 )
 
 type Updater struct {
+	pool                         *pgxpool.Pool
 	querier                      *sql.Queries
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
@@ -69,6 +72,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 
 	querier := sql.New(pool)
 	u := &Updater{
+		pool:                         pool,
 		querier:                      querier,
 		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
@@ -239,6 +243,7 @@ func (u *Updater) buildRuntimeJobs() []Job {
 func (u *Updater) RunCycle(ctx context.Context) error {
 	if !u.cycle.running.CompareAndSwap(false, true) {
 		u.log.Info("resync cycle already running, skipping trigger")
+		metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeSkipped)
 		return nil
 	}
 	defer u.cycle.running.Store(false)
@@ -252,16 +257,18 @@ func (u *Updater) RunCycle(ctx context.Context) error {
 }
 
 func (u *Updater) runResyncCycle(ctx context.Context) error {
-	if err := u.RecoverUntrackedImages(ctx); err != nil {
-		return fmt.Errorf("recovering untracked images: %w", err)
-	}
-	if err := u.MarkForResync(ctx); err != nil {
-		return fmt.Errorf("marking images for resync: %w", err)
-	}
-	if err := u.ResyncImageVulnerabilities(ctx); err != nil {
-		return fmt.Errorf("resyncing image vulnerabilities: %w", err)
-	}
-	return nil
+	return u.withResyncAdvisoryLock(ctx, func(ctx context.Context) error {
+		if err := u.RecoverUntrackedImages(ctx); err != nil {
+			return fmt.Errorf("recovering untracked images: %w", err)
+		}
+		if err := u.MarkForResync(ctx); err != nil {
+			return fmt.Errorf("marking images for resync: %w", err)
+		}
+		if err := u.ResyncImageVulnerabilities(ctx); err != nil {
+			return fmt.Errorf("resyncing image vulnerabilities: %w", err)
+		}
+		return nil
+	})
 }
 
 func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
@@ -344,6 +351,57 @@ func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {
 		return err
 	}
 	u.log.Debugf("MarkImagesAsUntracked affected %d rows", rowsAffected)
+	return nil
+}
+
+func (u *Updater) withResyncAdvisoryLock(ctx context.Context, run func(context.Context) error) error {
+	if u.pool == nil {
+		return run(ctx)
+	}
+
+	conn, err := u.pool.Acquire(ctx)
+	if err != nil {
+		metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeFailed)
+		return fmt.Errorf("acquiring DB connection for resync cycle: %w", err)
+	}
+	lockQuerier := sql.New(conn)
+
+	locked, err := lockQuerier.TryAdvisoryLock(ctx, ResyncCycleLockKey)
+	if err != nil {
+		conn.Release()
+		metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeFailed)
+		return fmt.Errorf("acquiring resync cycle advisory lock: %w", err)
+	}
+	if !locked {
+		conn.Release()
+		u.log.Info("resync cycle already running on another pod, skipping trigger")
+		metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeSkipped)
+		return nil
+	}
+
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		released, unlockErr := lockQuerier.AdvisoryUnlock(unlockCtx, ResyncCycleLockKey)
+		if unlockErr != nil {
+			u.log.WithError(unlockErr).Warn("failed to release resync cycle advisory lock, discarding connection")
+			if closeErr := conn.Hijack().Close(context.Background()); closeErr != nil {
+				u.log.WithError(closeErr).Warn("failed to close connection after advisory unlock failure")
+			}
+			return
+		}
+		if !released {
+			u.log.Warn("resync cycle advisory lock was not held at unlock time")
+		}
+		conn.Release()
+	}()
+
+	if err := run(ctx); err != nil {
+		metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeFailed)
+		return err
+	}
+
+	metrics.RecordUpdaterResyncCycle(metrics.UpdaterResyncCycleOutcomeSuccess)
 	return nil
 }
 
