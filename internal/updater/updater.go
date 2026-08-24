@@ -97,8 +97,16 @@ func (u *Updater) Start(ctx context.Context) {
 
 	if !u.runtimeConfig.OrchestrationEnabled {
 		u.lifecycle.jobs = u.buildLegacyJobs()
+		u.log.WithFields(logrus.Fields{
+			"mode":  "legacy",
+			"jobs":  len(u.lifecycle.jobs),
+		}).Info("starting updater jobs with legacy scheduling")
 	} else {
 		u.lifecycle.jobs = u.buildRuntimeJobs()
+		u.log.WithFields(logrus.Fields{
+			"mode":  "runtime",
+			"jobs":  len(u.lifecycle.jobs),
+		}).Info("starting updater jobs with runtime orchestration")
 	}
 
 	for _, job := range u.lifecycle.jobs {

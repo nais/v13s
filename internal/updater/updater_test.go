@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync/atomic"
@@ -12,6 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newBufferedLogger(buf *bytes.Buffer) *logrus.Entry {
+	logger := logrus.New()
+	logger.SetOutput(buf)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+	return logrus.NewEntry(logger)
+}
 
 func TestRunCycleSkipsWhenAlreadyRunning(t *testing.T) {
 	t.Parallel()
@@ -108,6 +117,7 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 	t.Parallel()
 
 	var runs atomic.Int32
+	var logs bytes.Buffer
 	cfg := RuntimeConfig{
 		OrchestrationEnabled: false,
 		Resync: JobRuntimeConfig{
@@ -122,7 +132,7 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 	u := NewUpdaterWithRuntimeConfig(
 		nil,
 		nil,
-		logrus.NewEntry(logrus.StandardLogger()),
+		newBufferedLogger(&logs),
 		config.KevConfig{},
 		config.OsvConfig{},
 		cfg,
@@ -135,10 +145,43 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 	ctx := t.Context()
 
 	u.Start(ctx)
+	assert.Contains(t, logs.String(), "starting updater jobs with legacy scheduling")
+	assert.Contains(t, logs.String(), "\"mode\":\"legacy\"")
 	require.Eventually(t, func() bool {
 		return runs.Load() > 0
 	}, time.Second, 20*time.Millisecond)
 	require.NoError(t, u.Stop(context.Background()))
+}
+
+func TestStartUsesRuntimeOrchestrationWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	var logs bytes.Buffer
+	cfg := RuntimeConfig{
+		OrchestrationEnabled: true,
+		Resync: JobRuntimeConfig{
+			Enabled: false,
+			Schedule: ScheduleConfig{
+				Type:     SchedulerInterval,
+				Interval: 10 * time.Millisecond,
+			},
+		},
+	}
+
+	u := NewUpdaterWithRuntimeConfig(
+		nil,
+		nil,
+		newBufferedLogger(&logs),
+		config.KevConfig{},
+		config.OsvConfig{},
+		cfg,
+	)
+
+	u.Start(t.Context())
+	defer func() { _ = u.Stop(context.Background()) }()
+
+	assert.Contains(t, logs.String(), "starting updater jobs with runtime orchestration")
+	assert.Contains(t, logs.String(), "\"mode\":\"runtime\"")
 }
 
 func TestStartDoesNotStartDisabledResyncJob(t *testing.T) {
