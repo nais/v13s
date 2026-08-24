@@ -118,6 +118,10 @@ func (u *Updater) Start(ctx context.Context) {
 		return
 	}
 	u.lifecycle.jobs = jobs
+	// job.Start is called while holding the lock to prevent Stop from racing in
+	// and clearing the job list before these goroutines are scheduled.
+	// Job.Start implementations must be fast (goroutine spawn + cron parse only)
+	// and must not call back into Updater to avoid deadlock.
 	for _, job := range jobs {
 		job.Start(ctx)
 	}
