@@ -70,7 +70,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			log.Warn("No tracer provider to shut down")
 			return
 		}
-		if err = tp.Shutdown(ctx); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err = tp.Shutdown(shutdownCtx); err != nil {
 			log.WithError(err).Warn("Failed to shut down tracer provider")
 		}
 	}()
@@ -127,7 +129,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return err
 	}
 	defer func() {
-		if err := mgr.Stop(ctx); err != nil {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := mgr.Stop(stopCtx); err != nil {
 			log.WithError(err).Error("failed to stop workload manager")
 		}
 	}()

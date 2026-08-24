@@ -97,7 +97,7 @@ func (m *WorkloadManager) Start(ctx context.Context) error {
 		m.mu.Unlock()
 		return fmt.Errorf("workload manager already started")
 	}
-	runCtx, cancel := context.WithCancel(ctx)
+	runCtx, cancel := context.WithCancel(context.Background())
 	m.started = true
 	m.runCancel = cancel
 	m.mu.Unlock()

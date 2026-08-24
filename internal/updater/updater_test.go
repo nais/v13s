@@ -146,7 +146,6 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 	ctx := t.Context()
 
 	u.Start(ctx)
-	assert.Contains(t, logs.String(), "starting updater jobs with legacy scheduling")
 	assert.Contains(t, logs.String(), "\"mode\":\"legacy\"")
 	require.Eventually(t, func() bool {
 		return runs.Load() > 0

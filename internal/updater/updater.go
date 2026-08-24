@@ -102,7 +102,7 @@ func (u *Updater) Start(ctx context.Context) {
 		u.log.WithFields(logrus.Fields{
 			"mode": "legacy",
 			"jobs": len(jobs),
-		}).Info("starting updater jobs with legacy scheduling")
+		}).Info("starting updater jobs with legacy scheduling; per-job Enabled/cron overrides are ignored in this mode")
 	} else {
 		jobs = u.buildRuntimeJobs()
 		u.log.WithFields(logrus.Fields{
