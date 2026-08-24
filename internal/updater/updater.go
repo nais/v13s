@@ -124,14 +124,16 @@ func (u *Updater) Stop(ctx context.Context) error {
 	u.lifecycle.jobs = nil
 	u.lifecycle.mu.Unlock()
 
+	var stopErrs []error
 	for _, job := range jobs {
 		if err := job.Stop(ctx); err != nil {
 			u.log.WithError(err).WithField("job", job.Name()).Error("failed to stop updater job")
+			stopErrs = append(stopErrs, fmt.Errorf("stopping job %q: %w", job.Name(), err))
 		}
 	}
 
 	u.lifecycle.started.Store(false)
-	return nil
+	return errors.Join(stopErrs...)
 }
 
 func (u *Updater) runMarkUnusedImages(ctx context.Context) error {
