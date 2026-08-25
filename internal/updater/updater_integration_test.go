@@ -126,8 +126,7 @@ func TestUpdater(t *testing.T) {
 	log := logrus.NewEntry(logrus.StandardLogger())
 	logrus.SetLevel(logrus.DebugLevel)
 
-	done := make(chan struct{})
-	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), mgr, updateSchedule, done, log, config.KevConfig{}, config.OsvConfig{})
+	u := updater.NewUpdater(pool, sources.NewDependencytrackSource(mockDPTrack, log), updateSchedule, log, config.KevConfig{}, config.OsvConfig{})
 
 	t.Run("images in initialized state should be updated and vulnerabilities fetched", func(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
@@ -142,13 +141,6 @@ func TestUpdater(t *testing.T) {
 
 		err = u.ResyncImageVulnerabilities(updaterCtx)
 		assert.NoError(t, err)
-
-		select {
-		case <-done:
-			// proceed with asserts
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
-		}
 
 		for _, p := range projectNames {
 			imageName := p
@@ -215,16 +207,9 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
-		u.Run(updaterCtx)
-
-		select {
-		case <-done:
-			// proceed with asserts
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
-		}
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		err = u.RunCycle(updaterCtx)
+		assert.NoError(t, err)
 
 		vulns, err := db.ListVulnerabilities(
 			ctx,
@@ -276,8 +261,7 @@ func TestUpdater(t *testing.T) {
 		threshold := time.Now().UTC().Add(-updater.ImageMarkAge)
 		fmt.Printf("Threshold for untracking: %v\n", threshold)
 
-		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
@@ -319,7 +303,7 @@ func TestUpdater(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
@@ -352,7 +336,7 @@ func TestUpdater(t *testing.T) {
 			sql.ImageStateInitialized, time.Now().UTC().Add(-1*time.Hour), orphanImage, orphanTag)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkImagesAsUntracked(ctx)
 		assert.NoError(t, err)
@@ -378,7 +362,7 @@ func TestUpdater(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.RecoverUntrackedImages(ctx)
 		assert.NoError(t, err)
@@ -404,7 +388,7 @@ func TestUpdater(t *testing.T) {
 		)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.RecoverUntrackedImages(ctx)
 		assert.NoError(t, err)
@@ -430,7 +414,7 @@ func TestUpdater(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkUnusedImages(ctx)
 		assert.NoError(t, err)
@@ -602,7 +586,7 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(2*time.Second))
 		defer cancel()
 
-		u := updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u := updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkForResync(updaterCtx)
 		assert.NoError(t, err)
@@ -648,7 +632,7 @@ func TestUpdater(t *testing.T) {
 			imageName, imageVersion)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkForResync(ctx)
 		assert.NoError(t, err)
@@ -682,7 +666,7 @@ func TestUpdater(t *testing.T) {
 			imageName, imageVersion)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkForResync(ctx)
 		assert.NoError(t, err)
@@ -719,7 +703,7 @@ func TestUpdater(t *testing.T) {
 			imageName, imageVersion)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkForResync(ctx)
 		assert.NoError(t, err)
@@ -758,7 +742,7 @@ func TestUpdater(t *testing.T) {
 			imageName, imageVersion)
 		assert.NoError(t, err)
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.MarkForResync(ctx)
 		assert.NoError(t, err)
@@ -804,7 +788,7 @@ func TestUpdater(t *testing.T) {
 		assert.WithinDuration(t, readyAt, image.ReadyForResyncAt.Time, 2*time.Second,
 			"ready_for_resync_at should match the value we set")
 
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, nil, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		images, err := db.GetImagesScheduledForSync(ctx)
 		assert.NoError(t, err)
@@ -837,17 +821,10 @@ func TestUpdater(t *testing.T) {
 		updaterCtx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
 		defer cancel()
 
-		done = make(chan struct{})
-		u = updater.NewUpdater(pool, sourceMock, mgr, updateSchedule, done, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+		u = updater.NewUpdater(pool, sourceMock, updateSchedule, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 		err = u.ResyncImageVulnerabilities(updaterCtx)
 		require.NoError(t, err)
-
-		select {
-		case <-done:
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for updater to complete")
-		}
 
 		workloads, err := pool.Query(ctx,
 			"SELECT state FROM workloads WHERE image_name = $1 AND image_tag = $2",
@@ -1014,7 +991,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
 
-	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 	imageName := "image-1"
 	imageTag := "v1"
@@ -1106,7 +1083,7 @@ func TestBatchUpdateVulnerabilityData_GitHubFindingPromotion(t *testing.T) {
 	db := sql.New(pool)
 	require.NoError(t, db.ResetDatabase(ctx))
 
-	u := updater.NewUpdater(pool, nil, nil, updater.ScheduleConfig{}, make(chan struct{}), logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
 
 	const (
 		imageName    = "test-image"

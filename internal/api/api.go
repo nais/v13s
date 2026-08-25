@@ -70,7 +70,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			log.Warn("No tracer provider to shut down")
 			return
 		}
-		if err = tp.Shutdown(ctx); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err = tp.Shutdown(shutdownCtx); err != nil {
 			log.WithError(err).Warn("Failed to shut down tracer provider")
 		}
 	}()
@@ -127,7 +129,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return err
 	}
 	defer func() {
-		if err := mgr.Stop(ctx); err != nil {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := mgr.Stop(stopCtx); err != nil {
 			log.WithError(err).Error("failed to stop workload manager")
 		}
 	}()
@@ -161,20 +165,78 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	log.Info("reconciling workloads against k8s state")
 	mgr.ReconcileWorkloads(ctx, informerMgr.ListWorkloadsByCluster())
 
-	u := updater.NewUpdater(
+	runtimeCfg := updater.DefaultRuntimeConfig(updater.ScheduleConfig{
+		Type:     updater.SchedulerInterval,
+		Interval: cfg.UpdateInterval,
+	})
+	runtimeCfg.OrchestrationEnabled = cfg.Updater.RuntimeOrchestrationEnabled
+	runtimeCfg.Resync.Enabled = cfg.Updater.ResyncEnabled
+	runtimeCfg.MarkUnused = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.MarkUnusedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.MarkUnusedCron,
+		},
+	}
+	runtimeCfg.MarkUntracked = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.MarkUntrackedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.MarkUntrackedCron,
+		},
+	}
+	runtimeCfg.RefreshDailySummary = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.RefreshSummaryEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.RefreshSummaryCron,
+		},
+	}
+	runtimeCfg.RefreshWorkloadLifetimes = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.RefreshLifetimesEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.RefreshLifetimesCron,
+		},
+	}
+	runtimeCfg.SyncKev = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.SyncKevEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.SyncKevCron,
+		},
+	}
+	runtimeCfg.SyncOsv = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.SyncOsvEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.SyncOsvCron,
+		},
+	}
+	runtimeCfg.RekeySuppressedAliases = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.RekeySuppressedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.RekeySuppressedCron,
+		},
+	}
+
+	u := updater.NewUpdaterWithRuntimeConfig(
 		pool,
 		source,
-		mgr,
-		updater.ScheduleConfig{
-			Type:     updater.SchedulerInterval,
-			Interval: cfg.UpdateInterval,
-		},
-		nil,
 		log.WithField("subsystem", "updater"),
 		cfg.Kev,
 		cfg.Osv,
+		runtimeCfg,
 	)
-	u.Run(ctx)
+	u.Start(ctx)
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := u.Stop(stopCtx); err != nil {
+			log.WithError(err).Error("failed to stop updater")
+		}
+	}()
 
 	wg, ctx := errgroup.WithContext(ctx)
 

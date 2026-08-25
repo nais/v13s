@@ -12,9 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
-	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -24,16 +22,25 @@ import (
 
 var _ management.ManagementServer = (*Server)(nil)
 
+type workloadManager interface {
+	AddWorkload(ctx context.Context, workload *model.Workload) error
+	DeleteWorkload(ctx context.Context, workload *model.Workload) error
+}
+
+type resyncRunner interface {
+	RunCycle(ctx context.Context) error
+}
+
 type Server struct {
 	management.UnimplementedManagementServer
 	querier   sql.Querier
-	mgr       *manager.WorkloadManager
-	updater   *updater.Updater
+	mgr       workloadManager
+	updater   resyncRunner
 	parentCtx context.Context
 	log       *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr *manager.WorkloadManager, updater *updater.Updater, field *logrus.Entry) *Server {
+func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr workloadManager, updater resyncRunner, field *logrus.Entry) *Server {
 	return &Server{
 		parentCtx: parentCtx,
 		querier:   sql.New(pool),
@@ -215,6 +222,7 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 		return nil, err
 	}
 	workloads := make([]string, 0)
+	needsResync := false
 	for _, row := range rows {
 		workload := &model.Workload{
 			Cluster:   row.Cluster,
@@ -247,14 +255,16 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 			if err != nil {
 				return nil, err
 			}
-
-			go func() {
-				err = s.updater.ResyncImageVulnerabilities(s.parentCtx)
-				if err != nil {
-					fmt.Printf("failed to resync images: %v\n", err)
-				}
-			}()
+			needsResync = true
 		}
+	}
+
+	if needsResync {
+		go func() {
+			if runErr := s.updater.RunCycle(s.parentCtx); runErr != nil {
+				s.log.WithError(runErr).Error("failed to resync images")
+			}
+		}()
 	}
 
 	if len(workloads) == 0 {

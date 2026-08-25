@@ -33,6 +33,26 @@ type Config struct {
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
 	Metrics                   MetricConfig
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
+	Updater                   UpdaterConfig
+}
+
+type UpdaterConfig struct {
+	RuntimeOrchestrationEnabled bool   `envconfig:"UPDATER_RUNTIME_ORCHESTRATION_ENABLED" default:"true"`
+	ResyncEnabled               bool   `envconfig:"UPDATER_RESYNC_ENABLED" default:"true"`
+	MarkUnusedEnabled           bool   `envconfig:"UPDATER_MARK_UNUSED_ENABLED" default:"true"`
+	MarkUnusedCron              string `envconfig:"UPDATER_MARK_UNUSED_CRON" default:"*/30 * * * *"`
+	MarkUntrackedEnabled        bool   `envconfig:"UPDATER_MARK_UNTRACKED_ENABLED" default:"true"`
+	MarkUntrackedCron           string `envconfig:"UPDATER_MARK_UNTRACKED_CRON" default:"*/20 * * * *"`
+	RefreshSummaryEnabled       bool   `envconfig:"UPDATER_REFRESH_SUMMARY_ENABLED" default:"true"`
+	RefreshSummaryCron          string `envconfig:"UPDATER_REFRESH_SUMMARY_CRON" default:"30 4 * * *"`
+	RefreshLifetimesEnabled     bool   `envconfig:"UPDATER_REFRESH_LIFETIMES_ENABLED" default:"true"`
+	RefreshLifetimesCron        string `envconfig:"UPDATER_REFRESH_LIFETIMES_CRON" default:"0 5 * * *"`
+	SyncKevEnabled              bool   `envconfig:"UPDATER_SYNC_KEV_ENABLED" default:"true"`
+	SyncKevCron                 string `envconfig:"UPDATER_SYNC_KEV_CRON" default:"0 6 * * *"`
+	SyncOsvEnabled              bool   `envconfig:"UPDATER_SYNC_OSV_ENABLED" default:"true"`
+	SyncOsvCron                 string `envconfig:"UPDATER_SYNC_OSV_CRON" default:"0 7 * * *"`
+	RekeySuppressedEnabled      bool   `envconfig:"UPDATER_REKEY_SUPPRESSED_ENABLED" default:"true"`
+	RekeySuppressedCron         string `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
 }
 
 type DependencyTrackConfig struct {

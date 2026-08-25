@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,6 +20,9 @@ func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Po
 	if testcontainers {
 		container, dsn, err := startPostgresql(ctx, log, t)
 		if err != nil {
+			if strings.Contains(err.Error(), "permission denied while trying to connect to the docker API") {
+				t.Skipf("skipping test: docker is unavailable in this environment: %v", err)
+			}
 			t.Fatalf("failed to start postgresql: %v", err)
 		}
 		return getConnection(ctx, t, container, dsn, log)
