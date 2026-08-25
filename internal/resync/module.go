@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 )
@@ -40,24 +41,42 @@ type Module interface {
 }
 
 type WorkloadResyncModule struct {
-	parentCtx context.Context
-	querier   sql.Querier
-	mgr       WorkloadEnqueuer
-	updater   Updater
-	log       logrus.FieldLogger
+	parentCtx     context.Context
+	querier       sql.Querier
+	mgr           WorkloadEnqueuer
+	updater       Updater
+	log           logrus.FieldLogger
+	recordOutcome func(metrics.WorkloadResyncOutcome)
 }
 
 func NewWorkloadResyncModule(parentCtx context.Context, querier sql.Querier, mgr WorkloadEnqueuer, updater Updater, log logrus.FieldLogger) *WorkloadResyncModule {
 	return &WorkloadResyncModule{
-		parentCtx: parentCtx,
-		querier:   querier,
-		mgr:       mgr,
-		updater:   updater,
-		log:       log,
+		parentCtx:     parentCtx,
+		querier:       querier,
+		mgr:           mgr,
+		updater:       updater,
+		log:           log,
+		recordOutcome: metrics.RecordWorkloadResyncOutcome,
 	}
 }
 
-func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (Result, error) {
+func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (result Result, err error) {
+	defer func() {
+		outcome := metrics.WorkloadResyncOutcomeSuccess
+		switch {
+		case err != nil:
+			outcome = metrics.WorkloadResyncOutcomeFailed
+		case result.NumWorkloads == 0:
+			outcome = metrics.WorkloadResyncOutcomeNoOp
+		}
+
+		recordOutcome := m.recordOutcome
+		if recordOutcome == nil {
+			recordOutcome = metrics.RecordWorkloadResyncOutcome
+		}
+		recordOutcome(outcome)
+	}()
+
 	cluster := input.Cluster
 	namespace := input.Namespace
 	workloadName := input.Workload
@@ -75,7 +94,7 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (Result,
 		return Result{}, err
 	}
 
-	result := Result{
+	result = Result{
 		Workloads: make([]string, 0, len(rows)),
 	}
 

@@ -45,6 +45,7 @@ var (
 func Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		UpdaterResyncCycles,
+		WorkloadResyncRequests,
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
 		WorkloadVulnerabilitiesPriority,

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	mocksql "github.com/nais/v13s/internal/mocks/Querier"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
@@ -85,6 +86,10 @@ func TestWorkloadResyncModule_ResyncEnqueuesWorkloadsAndTriggersUpdaterOnce(t *t
 		Once()
 
 	module := NewWorkloadResyncModule(context.Background(), querier, mgr, updater, logrus.New())
+	var recorded []metrics.WorkloadResyncOutcome
+	module.recordOutcome = func(outcome metrics.WorkloadResyncOutcome) {
+		recorded = append(recorded, outcome)
+	}
 
 	imageState := "resync"
 	result, err := module.Resync(context.Background(), Input{
@@ -100,6 +105,7 @@ func TestWorkloadResyncModule_ResyncEnqueuesWorkloadsAndTriggersUpdaterOnce(t *t
 		NumWorkloads: 1,
 		Workloads:    []string{"c-1/ns-1/app/wl-1"},
 	}, result)
+	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeSuccess}, recorded)
 
 	require.Eventually(t, func() bool {
 		return updater.calls.Load() == 1
@@ -121,6 +127,10 @@ func TestWorkloadResyncModule_ResyncReturnsEmptyResultForNoMatches(t *testing.T)
 		Once()
 
 	module := NewWorkloadResyncModule(context.Background(), querier, mgr, updater, logrus.New())
+	var recorded []metrics.WorkloadResyncOutcome
+	module.recordOutcome = func(outcome metrics.WorkloadResyncOutcome) {
+		recorded = append(recorded, outcome)
+	}
 
 	result, err := module.Resync(context.Background(), Input{
 		Cluster:       "c-1",
@@ -131,6 +141,7 @@ func TestWorkloadResyncModule_ResyncReturnsEmptyResultForNoMatches(t *testing.T)
 	})
 	require.NoError(t, err)
 	require.Equal(t, Result{Workloads: []string{}}, result)
+	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeNoOp}, recorded)
 	require.Equal(t, int32(0), mgr.calls.Load())
 	require.Equal(t, int32(0), updater.calls.Load())
 	querier.AssertExpectations(t)
@@ -174,6 +185,10 @@ func TestWorkloadResyncModule_ResyncContinuesAfterRowFailure(t *testing.T) {
 		Once()
 
 	module := NewWorkloadResyncModule(context.Background(), querier, mgr, updater, logrus.New())
+	var recorded []metrics.WorkloadResyncOutcome
+	module.recordOutcome = func(outcome metrics.WorkloadResyncOutcome) {
+		recorded = append(recorded, outcome)
+	}
 
 	result, err := module.Resync(context.Background(), Input{
 		Cluster:       "c-1",
@@ -188,6 +203,7 @@ func TestWorkloadResyncModule_ResyncContinuesAfterRowFailure(t *testing.T) {
 		NumWorkloads: 2,
 		Workloads:    []string{"c-1/ns-1/app/wl-1", "c-1/ns-1/app/wl-3"},
 	}, result)
+	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeFailed}, recorded)
 	require.Equal(t, int32(3), mgr.calls.Load())
 	require.Equal(t, int32(0), updater.calls.Load())
 	querier.AssertExpectations(t)
@@ -230,6 +246,10 @@ func TestWorkloadResyncModule_ResyncDedupsImagesAndTriggersUpdaterOnce(t *testin
 		Once()
 
 	module := NewWorkloadResyncModule(context.Background(), querier, mgr, updater, logrus.New())
+	var recorded []metrics.WorkloadResyncOutcome
+	module.recordOutcome = func(outcome metrics.WorkloadResyncOutcome) {
+		recorded = append(recorded, outcome)
+	}
 
 	imageState := "resync"
 	result, err := module.Resync(context.Background(), Input{
@@ -245,6 +265,7 @@ func TestWorkloadResyncModule_ResyncDedupsImagesAndTriggersUpdaterOnce(t *testin
 		NumWorkloads: 2,
 		Workloads:    []string{"c-1/ns-1/app/wl-1", "c-1/ns-1/app/wl-2"},
 	}, result)
+	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeSuccess}, recorded)
 
 	require.Eventually(t, func() bool {
 		return updater.calls.Load() == 1
