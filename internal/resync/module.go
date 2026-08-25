@@ -18,6 +18,11 @@ type WorkloadEnqueuer interface {
 	AddWorkload(ctx context.Context, workload *model.Workload) error
 }
 
+type Querier interface {
+	SetWorkloadState(ctx context.Context, arg sql.SetWorkloadStateParams) ([]*sql.SetWorkloadStateRow, error)
+	UpdateImageState(ctx context.Context, arg sql.UpdateImageStateParams) (int64, error)
+}
+
 type Updater interface {
 	RunCycle(ctx context.Context) error
 }
@@ -42,14 +47,14 @@ type Module interface {
 
 type WorkloadResyncModule struct {
 	parentCtx     context.Context
-	querier       sql.Querier
+	querier       Querier
 	mgr           WorkloadEnqueuer
 	updater       Updater
 	log           logrus.FieldLogger
 	recordOutcome func(metrics.WorkloadResyncOutcome)
 }
 
-func NewWorkloadResyncModule(parentCtx context.Context, querier sql.Querier, mgr WorkloadEnqueuer, updater Updater, log logrus.FieldLogger) *WorkloadResyncModule {
+func NewWorkloadResyncModule(parentCtx context.Context, querier Querier, mgr WorkloadEnqueuer, updater Updater, log logrus.FieldLogger) *WorkloadResyncModule {
 	return &WorkloadResyncModule{
 		parentCtx:     parentCtx,
 		querier:       querier,
