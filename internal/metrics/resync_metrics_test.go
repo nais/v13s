@@ -56,3 +56,24 @@ func TestCollectorsIncludesWorkloadResyncRequests(t *testing.T) {
 	collectors := Collectors()
 	require.Contains(t, collectors, WorkloadResyncRequests)
 }
+
+func TestResetWorkloadMetricsResetsWorkloadResyncRequests(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(WorkloadResyncRequests)
+
+	RecordWorkloadResyncOutcome(WorkloadResyncOutcomeSuccess)
+	before, err := reg.Gather()
+	require.NoError(t, err)
+	require.NotEmpty(t, before)
+
+	ResetWorkloadMetrics()
+
+	after, err := reg.Gather()
+	require.NoError(t, err)
+	for _, mf := range after {
+		if mf.GetName() == "nais_v13s_workload_resync_requests_total" {
+			require.Empty(t, mf.GetMetric())
+			return
+		}
+	}
+}

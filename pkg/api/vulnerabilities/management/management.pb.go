@@ -798,17 +798,71 @@ func (x *ResyncRequest) GetImageState() string {
 	return ""
 }
 
+type ResyncFailure struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Subject       string                 `protobuf:"bytes,1,opt,name=subject,proto3" json:"subject,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResyncFailure) Reset() {
+	*x = ResyncFailure{}
+	mi := &file_management_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResyncFailure) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResyncFailure) ProtoMessage() {}
+
+func (x *ResyncFailure) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResyncFailure.ProtoReflect.Descriptor instead.
+func (*ResyncFailure) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ResyncFailure) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *ResyncFailure) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type ResyncResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	NumWorkloads  int32                  `protobuf:"varint,1,opt,name=num_workloads,json=numWorkloads,proto3" json:"num_workloads,omitempty"`
 	Workloads     []string               `protobuf:"bytes,2,rep,name=workloads,proto3" json:"workloads,omitempty"` // List of workload identifiers that were resynced
+	NumFailures   int32                  `protobuf:"varint,3,opt,name=num_failures,json=numFailures,proto3" json:"num_failures,omitempty"`
+	Failures      []*ResyncFailure       `protobuf:"bytes,4,rep,name=failures,proto3" json:"failures,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResyncResponse) Reset() {
 	*x = ResyncResponse{}
-	mi := &file_management_proto_msgTypes[10]
+	mi := &file_management_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -820,7 +874,7 @@ func (x *ResyncResponse) String() string {
 func (*ResyncResponse) ProtoMessage() {}
 
 func (x *ResyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[10]
+	mi := &file_management_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -833,7 +887,7 @@ func (x *ResyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResyncResponse.ProtoReflect.Descriptor instead.
 func (*ResyncResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{10}
+	return file_management_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ResyncResponse) GetNumWorkloads() int32 {
@@ -850,6 +904,20 @@ func (x *ResyncResponse) GetWorkloads() []string {
 	return nil
 }
 
+func (x *ResyncResponse) GetNumFailures() int32 {
+	if x != nil {
+		return x.NumFailures
+	}
+	return 0
+}
+
+func (x *ResyncResponse) GetFailures() []*ResyncFailure {
+	if x != nil {
+		return x.Failures
+	}
+	return nil
+}
+
 type DeleteWorkloadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Cluster       string                 `protobuf:"bytes,1,opt,name=cluster,proto3" json:"cluster,omitempty"`
@@ -862,7 +930,7 @@ type DeleteWorkloadRequest struct {
 
 func (x *DeleteWorkloadRequest) Reset() {
 	*x = DeleteWorkloadRequest{}
-	mi := &file_management_proto_msgTypes[11]
+	mi := &file_management_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +942,7 @@ func (x *DeleteWorkloadRequest) String() string {
 func (*DeleteWorkloadRequest) ProtoMessage() {}
 
 func (x *DeleteWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[11]
+	mi := &file_management_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +955,7 @@ func (x *DeleteWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{11}
+	return file_management_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DeleteWorkloadRequest) GetCluster() string {
@@ -926,7 +994,7 @@ type DeleteWorkloadResponse struct {
 
 func (x *DeleteWorkloadResponse) Reset() {
 	*x = DeleteWorkloadResponse{}
-	mi := &file_management_proto_msgTypes[12]
+	mi := &file_management_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -938,7 +1006,7 @@ func (x *DeleteWorkloadResponse) String() string {
 func (*DeleteWorkloadResponse) ProtoMessage() {}
 
 func (x *DeleteWorkloadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_management_proto_msgTypes[12]
+	mi := &file_management_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -951,7 +1019,7 @@ func (x *DeleteWorkloadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkloadResponse.ProtoReflect.Descriptor instead.
 func (*DeleteWorkloadResponse) Descriptor() ([]byte, []int) {
-	return file_management_proto_rawDescGZIP(), []int{12}
+	return file_management_proto_rawDescGZIP(), []int{13}
 }
 
 var File_management_proto protoreflect.FileDescriptor
@@ -1052,10 +1120,15 @@ const file_management_proto_rawDesc = "" +
 	"\t_workloadB\x10\n" +
 	"\x0e_workload_typeB\x11\n" +
 	"\x0f_workload_stateB\x0e\n" +
-	"\f_image_state\"S\n" +
+	"\f_image_state\"A\n" +
+	"\rResyncFailure\x12\x18\n" +
+	"\asubject\x18\x01 \x01(\tR\asubject\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xb4\x01\n" +
 	"\x0eResyncResponse\x12#\n" +
 	"\rnum_workloads\x18\x01 \x01(\x05R\fnumWorkloads\x12\x1c\n" +
-	"\tworkloads\x18\x02 \x03(\tR\tworkloads\"\xa7\x01\n" +
+	"\tworkloads\x18\x02 \x03(\tR\tworkloads\x12!\n" +
+	"\fnum_failures\x18\x03 \x01(\x05R\vnumFailures\x12<\n" +
+	"\bfailures\x18\x04 \x03(\v2 .v13s.api.protobuf.ResyncFailureR\bfailures\"\xa7\x01\n" +
 	"\x15DeleteWorkloadRequest\x12\x18\n" +
 	"\acluster\x18\x01 \x01(\tR\acluster\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1a\n" +
@@ -1083,7 +1156,7 @@ func file_management_proto_rawDescGZIP() []byte {
 	return file_management_proto_rawDescData
 }
 
-var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_management_proto_goTypes = []any{
 	(*RegisterWorkloadRequest)(nil),   // 0: v13s.api.protobuf.RegisterWorkloadRequest
 	(*Metadata)(nil),                  // 1: v13s.api.protobuf.Metadata
@@ -1095,36 +1168,38 @@ var file_management_proto_goTypes = []any{
 	(*GetWorkloadJobsRequest)(nil),    // 7: v13s.api.protobuf.GetWorkloadJobsRequest
 	(*GetWorkloadJobsResponse)(nil),   // 8: v13s.api.protobuf.GetWorkloadJobsResponse
 	(*ResyncRequest)(nil),             // 9: v13s.api.protobuf.ResyncRequest
-	(*ResyncResponse)(nil),            // 10: v13s.api.protobuf.ResyncResponse
-	(*DeleteWorkloadRequest)(nil),     // 11: v13s.api.protobuf.DeleteWorkloadRequest
-	(*DeleteWorkloadResponse)(nil),    // 12: v13s.api.protobuf.DeleteWorkloadResponse
-	nil,                               // 13: v13s.api.protobuf.Metadata.LabelsEntry
-	(*timestamppb.Timestamp)(nil),     // 14: google.protobuf.Timestamp
+	(*ResyncFailure)(nil),             // 10: v13s.api.protobuf.ResyncFailure
+	(*ResyncResponse)(nil),            // 11: v13s.api.protobuf.ResyncResponse
+	(*DeleteWorkloadRequest)(nil),     // 12: v13s.api.protobuf.DeleteWorkloadRequest
+	(*DeleteWorkloadResponse)(nil),    // 13: v13s.api.protobuf.DeleteWorkloadResponse
+	nil,                               // 14: v13s.api.protobuf.Metadata.LabelsEntry
+	(*timestamppb.Timestamp)(nil),     // 15: google.protobuf.Timestamp
 }
 var file_management_proto_depIdxs = []int32{
 	1,  // 0: v13s.api.protobuf.RegisterWorkloadRequest.metadata:type_name -> v13s.api.protobuf.Metadata
-	13, // 1: v13s.api.protobuf.Metadata.labels:type_name -> v13s.api.protobuf.Metadata.LabelsEntry
+	14, // 1: v13s.api.protobuf.Metadata.labels:type_name -> v13s.api.protobuf.Metadata.LabelsEntry
 	6,  // 2: v13s.api.protobuf.WorkloadStatus.jobs:type_name -> v13s.api.protobuf.Job
-	14, // 3: v13s.api.protobuf.WorkloadStatus.workload_updated_at:type_name -> google.protobuf.Timestamp
-	14, // 4: v13s.api.protobuf.WorkloadStatus.image_updated_at:type_name -> google.protobuf.Timestamp
+	15, // 3: v13s.api.protobuf.WorkloadStatus.workload_updated_at:type_name -> google.protobuf.Timestamp
+	15, // 4: v13s.api.protobuf.WorkloadStatus.image_updated_at:type_name -> google.protobuf.Timestamp
 	4,  // 5: v13s.api.protobuf.GetWorkloadStatusResponse.workload_status:type_name -> v13s.api.protobuf.WorkloadStatus
-	14, // 6: v13s.api.protobuf.Job.finished_at:type_name -> google.protobuf.Timestamp
+	15, // 6: v13s.api.protobuf.Job.finished_at:type_name -> google.protobuf.Timestamp
 	6,  // 7: v13s.api.protobuf.GetWorkloadJobsResponse.jobs:type_name -> v13s.api.protobuf.Job
-	0,  // 8: v13s.api.protobuf.Management.RegisterWorkload:input_type -> v13s.api.protobuf.RegisterWorkloadRequest
-	3,  // 9: v13s.api.protobuf.Management.GetWorkloadStatus:input_type -> v13s.api.protobuf.GetWorkloadStatusRequest
-	7,  // 10: v13s.api.protobuf.Management.GetWorkloadJobs:input_type -> v13s.api.protobuf.GetWorkloadJobsRequest
-	9,  // 11: v13s.api.protobuf.Management.Resync:input_type -> v13s.api.protobuf.ResyncRequest
-	11, // 12: v13s.api.protobuf.Management.DeleteWorkload:input_type -> v13s.api.protobuf.DeleteWorkloadRequest
-	2,  // 13: v13s.api.protobuf.Management.RegisterWorkload:output_type -> v13s.api.protobuf.RegisterWorkloadResponse
-	5,  // 14: v13s.api.protobuf.Management.GetWorkloadStatus:output_type -> v13s.api.protobuf.GetWorkloadStatusResponse
-	8,  // 15: v13s.api.protobuf.Management.GetWorkloadJobs:output_type -> v13s.api.protobuf.GetWorkloadJobsResponse
-	10, // 16: v13s.api.protobuf.Management.Resync:output_type -> v13s.api.protobuf.ResyncResponse
-	12, // 17: v13s.api.protobuf.Management.DeleteWorkload:output_type -> v13s.api.protobuf.DeleteWorkloadResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	10, // 8: v13s.api.protobuf.ResyncResponse.failures:type_name -> v13s.api.protobuf.ResyncFailure
+	0,  // 9: v13s.api.protobuf.Management.RegisterWorkload:input_type -> v13s.api.protobuf.RegisterWorkloadRequest
+	3,  // 10: v13s.api.protobuf.Management.GetWorkloadStatus:input_type -> v13s.api.protobuf.GetWorkloadStatusRequest
+	7,  // 11: v13s.api.protobuf.Management.GetWorkloadJobs:input_type -> v13s.api.protobuf.GetWorkloadJobsRequest
+	9,  // 12: v13s.api.protobuf.Management.Resync:input_type -> v13s.api.protobuf.ResyncRequest
+	12, // 13: v13s.api.protobuf.Management.DeleteWorkload:input_type -> v13s.api.protobuf.DeleteWorkloadRequest
+	2,  // 14: v13s.api.protobuf.Management.RegisterWorkload:output_type -> v13s.api.protobuf.RegisterWorkloadResponse
+	5,  // 15: v13s.api.protobuf.Management.GetWorkloadStatus:output_type -> v13s.api.protobuf.GetWorkloadStatusResponse
+	8,  // 16: v13s.api.protobuf.Management.GetWorkloadJobs:output_type -> v13s.api.protobuf.GetWorkloadJobsResponse
+	11, // 17: v13s.api.protobuf.Management.Resync:output_type -> v13s.api.protobuf.ResyncResponse
+	13, // 18: v13s.api.protobuf.Management.DeleteWorkload:output_type -> v13s.api.protobuf.DeleteWorkloadResponse
+	14, // [14:19] is the sub-list for method output_type
+	9,  // [9:14] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_management_proto_init() }
@@ -1136,14 +1211,14 @@ func file_management_proto_init() {
 	file_management_proto_msgTypes[3].OneofWrappers = []any{}
 	file_management_proto_msgTypes[7].OneofWrappers = []any{}
 	file_management_proto_msgTypes[9].OneofWrappers = []any{}
-	file_management_proto_msgTypes[11].OneofWrappers = []any{}
+	file_management_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_management_proto_rawDesc), len(file_management_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

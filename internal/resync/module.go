@@ -27,18 +27,29 @@ type Updater interface {
 	RunCycle(ctx context.Context) error
 }
 
+type WorkloadState string
+
+type ImageState string
+
 type Input struct {
-	Cluster       string
-	Namespace     string
-	Workload      string
-	WorkloadType  *string
-	WorkloadState sql.WorkloadState
-	ImageState    *string
+	Cluster       *string
+	Namespace     *string
+	Workload      *string
+	WorkloadType  *model.WorkloadType
+	WorkloadState WorkloadState
+	ImageState    *ImageState
+}
+
+type Failure struct {
+	Subject string
+	Reason  string
 }
 
 type Result struct {
 	NumWorkloads int32
+	NumFailures  int32
 	Workloads    []string
+	Failures     []Failure
 }
 
 type Module interface {
@@ -82,16 +93,12 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (result 
 		recordOutcome(outcome)
 	}()
 
-	cluster := input.Cluster
-	namespace := input.Namespace
-	workloadName := input.Workload
-
 	rows, err := m.querier.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
-		Cluster:      &cluster,
-		Namespace:    &namespace,
-		WorkloadName: &workloadName,
-		WorkloadType: input.WorkloadType,
-		OldState:     input.WorkloadState,
+		Cluster:      input.Cluster,
+		Namespace:    input.Namespace,
+		WorkloadName: input.Workload,
+		WorkloadType: workloadTypePtr(input.WorkloadType),
+		OldState:     sql.WorkloadState(input.WorkloadState),
 		State:        sql.WorkloadStateResync,
 	})
 	if err != nil {
@@ -129,6 +136,7 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (result 
 	}
 
 	var errs []error
+	var failures []Failure
 	needsResync := false
 	defer func() {
 		if !needsResync {
@@ -150,15 +158,19 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (result 
 			ImageName: row.ImageName,
 			ImageTag:  row.ImageTag,
 		}
+		workloadID := workload.String()
 
 		if err := m.mgr.AddWorkload(ctx, workload); err != nil {
 			m.log.WithError(err).Error("failed to add workload to job queue")
+			failures = append(failures, Failure{
+				Subject: workloadID,
+				Reason:  err.Error(),
+			})
 			errs = append(errs, fmt.Errorf("adding workload %s: %w", workload, err))
 			continue
 		}
 
-		result.Workloads = append(result.Workloads,
-			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
+		result.Workloads = append(result.Workloads, workloadID)
 	}
 
 	if len(imageStates) > 0 {
@@ -173,6 +185,10 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (result 
 				},
 			}); err != nil {
 				m.log.WithError(err).Error("failed to update image state")
+				failures = append(failures, Failure{
+					Subject: fmt.Sprintf("%s:%s", image.name, image.tag),
+					Reason:  err.Error(),
+				})
 				errs = append(errs, fmt.Errorf("updating image %s:%s: %w", image.name, image.tag, err))
 				continue
 			}
@@ -188,12 +204,25 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (result 
 	if err != nil {
 		return Result{}, err
 	}
+	result.NumFailures, err = safeIntToInt32(len(failures))
+	if err != nil {
+		return Result{}, err
+	}
+	result.Failures = failures
 
 	if len(errs) > 0 {
 		return result, errors.Join(errs...)
 	}
 
 	return result, nil
+}
+
+func workloadTypePtr(workloadType *model.WorkloadType) *string {
+	if workloadType == nil {
+		return nil
+	}
+	s := string(*workloadType)
+	return &s
 }
 
 func safeIntToInt32(n int) (int32, error) {

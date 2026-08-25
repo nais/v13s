@@ -114,12 +114,20 @@ func (u *inMemoryUpdater) RunCycle(_ context.Context) error {
 	return nil
 }
 
-func ptrString(s string) *string {
-	return &s
-}
-
 func imageKey(name, tag string) string {
 	return strings.Join([]string{name, tag}, "\x00")
+}
+
+func ptrString(s string) *string {
+	p := new(string)
+	*p = s
+	return p
+}
+
+func ptrWorkloadType(t model.WorkloadType) *model.WorkloadType {
+	p := new(model.WorkloadType)
+	*p = t
+	return p
 }
 
 func TestWorkloadResyncModule_ResyncNoOp(t *testing.T) {
@@ -136,11 +144,11 @@ func TestWorkloadResyncModule_ResyncNoOp(t *testing.T) {
 	var moduleIface Module = module
 
 	result, err := moduleIface.Resync(context.Background(), Input{
-		Cluster:       "c-1",
-		Namespace:     "ns-1",
-		Workload:      "wl-1",
-		WorkloadType:  ptrString("app"),
-		WorkloadState: sql.WorkloadStateUpdated,
+		Cluster:       ptrString("c-1"),
+		Namespace:     ptrString("ns-1"),
+		Workload:      ptrString("wl-1"),
+		WorkloadType:  ptrWorkloadType(model.WorkloadTypeApp),
+		WorkloadState: WorkloadState(sql.WorkloadStateUpdated),
 	})
 	require.NoError(t, err)
 	require.Equal(t, Result{Workloads: []string{}}, result)
@@ -168,17 +176,21 @@ func TestWorkloadResyncModule_ResyncContinuesAfterRowFailure(t *testing.T) {
 	var moduleIface Module = module
 
 	result, err := moduleIface.Resync(context.Background(), Input{
-		Cluster:       "c-1",
-		Namespace:     "ns-1",
-		Workload:      "wl-1",
-		WorkloadType:  ptrString("app"),
-		WorkloadState: sql.WorkloadStateUpdated,
+		Cluster:       ptrString("c-1"),
+		Namespace:     ptrString("ns-1"),
+		Workload:      ptrString("wl-1"),
+		WorkloadType:  ptrWorkloadType(model.WorkloadTypeApp),
+		WorkloadState: WorkloadState(sql.WorkloadStateUpdated),
 	})
 	require.Error(t, err)
 	require.ErrorContains(t, err, "adding workload c-1/ns-1/app/wl-2")
 	require.Equal(t, Result{
 		NumWorkloads: 2,
+		NumFailures:  1,
 		Workloads:    []string{"c-1/ns-1/app/wl-1", "c-1/ns-1/app/wl-3"},
+		Failures: []Failure{
+			{Subject: "c-1/ns-1/app/wl-2", Reason: "add workload failed"},
+		},
 	}, result)
 	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeFailed}, recorded)
 	require.Len(t, enqueuer.Calls(), 3)
@@ -202,18 +214,19 @@ func TestWorkloadResyncModule_ResyncDedupsImages(t *testing.T) {
 	}
 	var moduleIface Module = module
 
-	imageState := "resync"
+	imageState := ImageState("resync")
 	result, err := moduleIface.Resync(context.Background(), Input{
-		Cluster:       "c-1",
-		Namespace:     "ns-1",
-		Workload:      "wl-1",
-		WorkloadType:  ptrString("app"),
-		WorkloadState: sql.WorkloadStateUpdated,
+		Cluster:       ptrString("c-1"),
+		Namespace:     ptrString("ns-1"),
+		Workload:      ptrString("wl-1"),
+		WorkloadType:  ptrWorkloadType(model.WorkloadTypeApp),
+		WorkloadState: WorkloadState(sql.WorkloadStateUpdated),
 		ImageState:    &imageState,
 	})
 	require.NoError(t, err)
 	require.Equal(t, Result{
 		NumWorkloads: 2,
+		NumFailures:  0,
 		Workloads:    []string{"c-1/ns-1/app/wl-1", "c-1/ns-1/app/wl-2"},
 	}, result)
 	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeSuccess}, recorded)
@@ -240,18 +253,19 @@ func TestWorkloadResyncModule_ResyncTriggersUpdaterOncePerRequest(t *testing.T) 
 	}
 	var moduleIface Module = module
 
-	imageState := "resync"
+	imageState := ImageState("resync")
 	result, err := moduleIface.Resync(context.Background(), Input{
-		Cluster:       "c-1",
-		Namespace:     "ns-1",
-		Workload:      "wl-1",
-		WorkloadType:  ptrString("app"),
-		WorkloadState: sql.WorkloadStateUpdated,
+		Cluster:       ptrString("c-1"),
+		Namespace:     ptrString("ns-1"),
+		Workload:      ptrString("wl-1"),
+		WorkloadType:  ptrWorkloadType(model.WorkloadTypeApp),
+		WorkloadState: WorkloadState(sql.WorkloadStateUpdated),
 		ImageState:    &imageState,
 	})
 	require.NoError(t, err)
 	require.Equal(t, Result{
 		NumWorkloads: 2,
+		NumFailures:  0,
 		Workloads:    []string{"c-1/ns-1/app/wl-1", "c-1/ns-1/app/wl-2"},
 	}, result)
 	require.Equal(t, []metrics.WorkloadResyncOutcome{metrics.WorkloadResyncOutcomeSuccess}, recorded)

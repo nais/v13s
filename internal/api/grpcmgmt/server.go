@@ -199,26 +199,67 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 	workloadState := sql.WorkloadStateUpdated
 	if request.WorkloadState != nil {
 		workloadState = sql.WorkloadState(*request.WorkloadState)
+		if !workloadState.Valid() {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid workload_state: %q", *request.WorkloadState)
+		}
+	}
+	if request.ImageState != nil {
+		imageState := sql.ImageState(*request.ImageState)
+		if !imageState.Valid() {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid image_state: %q", *request.ImageState)
+		}
 	}
 
 	result, err := s.resync.Resync(ctx, resync.Input{
-		Cluster:       request.GetCluster(),
-		Namespace:     request.GetNamespace(),
-		Workload:      request.GetWorkload(),
-		WorkloadType:  request.WorkloadType,
-		WorkloadState: workloadState,
-		ImageState:    request.ImageState,
+		Cluster:       request.Cluster,
+		Namespace:     request.Namespace,
+		Workload:      request.Workload,
+		WorkloadType:  workloadTypePtr(request.WorkloadType),
+		WorkloadState: resync.WorkloadState(workloadState),
+		ImageState:    imageStatePtr(request.ImageState),
 	})
 	if err != nil {
-		return nil, err
-	}
-	if result.NumWorkloads == 0 {
-		return &management.ResyncResponse{}, nil
+		if result.NumWorkloads == 0 && result.NumFailures == 0 {
+			return nil, status.Errorf(codes.Internal, "resync failed: %v", err)
+		}
+		s.log.WithError(err).Warn("resync completed with partial failures")
 	}
 	return &management.ResyncResponse{
 		NumWorkloads: result.NumWorkloads,
 		Workloads:    result.Workloads,
+		NumFailures:  result.NumFailures,
+		Failures:     toProtoFailures(result.Failures),
 	}, nil
+}
+
+func workloadTypePtr(value *string) *model.WorkloadType {
+	if value == nil {
+		return nil
+	}
+	workloadType := model.WorkloadType(*value)
+	return &workloadType
+}
+
+func imageStatePtr(value *string) *resync.ImageState {
+	if value == nil {
+		return nil
+	}
+	imageState := resync.ImageState(*value)
+	return &imageState
+}
+
+func toProtoFailures(failures []resync.Failure) []*management.ResyncFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+	out := make([]*management.ResyncFailure, 0, len(failures))
+	for _, failure := range failures {
+		out = append(out, &management.ResyncFailure{
+			Subject: failure.Subject,
+			Reason:  failure.Reason,
+		})
+	}
+	return out
 }
 
 func (s *Server) DeleteWorkload(ctx context.Context, request *management.DeleteWorkloadRequest) (*management.DeleteWorkloadResponse, error) {
