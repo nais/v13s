@@ -32,12 +32,11 @@ type Server struct {
 	log     *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr workloadManager, updater resync.Updater, field *logrus.Entry) *Server {
-	querier := sql.New(pool)
+func NewServer(pool *pgxpool.Pool, mgr workloadManager, resyncModule resync.Module, field *logrus.Entry) *Server {
 	return &Server{
-		querier: querier,
+		querier: sql.New(pool),
 		mgr:     mgr,
-		resync:  resync.NewWorkloadResyncModule(parentCtx, querier, mgr, updater, field.WithField("subsystem", "workload_resync")),
+		resync:  resyncModule,
 		log:     field,
 	}
 }
