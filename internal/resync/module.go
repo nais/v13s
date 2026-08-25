@@ -2,6 +2,7 @@ package resync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -77,6 +78,33 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (Result,
 	result := Result{
 		Workloads: make([]string, 0, len(rows)),
 	}
+
+	type imageKey struct {
+		name string
+		tag  string
+	}
+
+	seenImages := make(map[imageKey]struct{})
+	var imageStates []struct {
+		name string
+		tag  string
+	}
+	for _, row := range rows {
+		if input.ImageState == nil {
+			continue
+		}
+		key := imageKey{name: row.ImageName, tag: row.ImageTag}
+		if _, seen := seenImages[key]; seen {
+			continue
+		}
+		seenImages[key] = struct{}{}
+		imageStates = append(imageStates, struct {
+			name string
+			tag  string
+		}{name: row.ImageName, tag: row.ImageTag})
+	}
+
+	var errs []error
 	needsResync := false
 	defer func() {
 		if !needsResync {
@@ -101,24 +129,28 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (Result,
 
 		if err := m.mgr.AddWorkload(ctx, workload); err != nil {
 			m.log.WithError(err).Error("failed to add workload to job queue")
-			return Result{}, err
+			errs = append(errs, fmt.Errorf("adding workload %s: %w", workload, err))
+			continue
 		}
 
 		result.Workloads = append(result.Workloads,
 			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
+	}
 
-		if input.ImageState != nil {
-			_, err = m.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	if len(imageStates) > 0 {
+		for _, image := range imageStates {
+			if _, err := m.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
 				State: sql.ImageState(*input.ImageState),
-				Name:  workload.ImageName,
-				Tag:   workload.ImageTag,
+				Name:  image.name,
+				Tag:   image.tag,
 				ReadyForResyncAt: pgtype.Timestamptz{
 					Time:  time.Now(),
 					Valid: true,
 				},
-			})
-			if err != nil {
-				return Result{}, err
+			}); err != nil {
+				m.log.WithError(err).Error("failed to update image state")
+				errs = append(errs, fmt.Errorf("updating image %s:%s: %w", image.name, image.tag, err))
+				continue
 			}
 			needsResync = true
 		}
@@ -126,12 +158,15 @@ func (m *WorkloadResyncModule) Resync(ctx context.Context, input Input) (Result,
 
 	if len(result.Workloads) == 0 {
 		m.log.Debugf("no workloads to resync")
-		return result, nil
 	}
 
 	result.NumWorkloads, err = safeIntToInt32(len(result.Workloads))
 	if err != nil {
 		return Result{}, err
+	}
+
+	if len(errs) > 0 {
+		return result, errors.Join(errs...)
 	}
 
 	return result, nil
