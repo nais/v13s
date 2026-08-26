@@ -1392,6 +1392,11 @@ func TestServer_GetVulnerabilitySummary_PriorityThresholds(t *testing.T) {
 			ImageTag:  imgTag,
 		}))
 	}
+	snapshotDate := pgtype.Date{
+		Time:  time.Now().UTC().Truncate(24 * time.Hour),
+		Valid: true,
+	}
+	require.NoError(t, db.RefreshVulnerabilitySummaryForDate(ctx, snapshotDate))
 	require.NoError(t, db.RefreshVulnerabilitySummaryDailyView(ctx))
 
 	cases := []struct {
@@ -1477,7 +1482,7 @@ func TestServer_GetVulnerabilitySummary_PriorityThresholds(t *testing.T) {
 			resp, err := client.GetVulnerabilitySummaryTimeSeries(
 				ctx,
 				vulnerabilities.PriorityFilter(tc.threshold),
-				vulnerabilities.Since(time.Now().Add(-24*time.Hour)),
+				vulnerabilities.Since(snapshotDate.Time),
 			)
 			require.NoError(t, err)
 			require.Len(t, resp.Points, 1)
