@@ -145,15 +145,15 @@ WITH filtered_workloads AS (
         w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
     FROM
         workloads w
-    WHERE ($1::TEXT IS NULL
-        OR w.cluster = $1::TEXT)
-    AND ($2::TEXT IS NULL
-        OR w.namespace = $2::TEXT)
-    AND ($3::TEXT[] IS NULL
-        OR w.workload_type = ANY ($3::TEXT[]))
-    AND ($4::TEXT IS NULL
-        OR w.name = $4::TEXT)
-    AND ($5::INT IS NULL
+    WHERE ($2::TEXT IS NULL
+        OR w.cluster = $2::TEXT)
+    AND ($3::TEXT IS NULL
+        OR w.namespace = $3::TEXT)
+    AND ($4::TEXT[] IS NULL
+        OR w.workload_type = ANY ($4::TEXT[]))
+    AND ($5::TEXT IS NULL
+        OR w.name = $5::TEXT)
+    AND ($1::INT IS NULL
         OR EXISTS (
             SELECT
                 1
@@ -162,7 +162,7 @@ WITH filtered_workloads AS (
             WHERE
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
-                AND v.top_risk_tier = $5::INT))
+                AND v.top_risk_tier <= $1::INT))
 ),
 joined_data AS (
     SELECT
@@ -222,15 +222,21 @@ joined_data AS (
                         act_now
                     END), 0) AS INT4) AS act_now,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
+                    CASE WHEN is_active
+                        AND ($1::INT IS NULL
+                            OR $1::INT >= 2) THEN
                         high_risk
                     END), 0) AS INT4) AS high_risk,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
+                    CASE WHEN is_active
+                        AND ($1::INT IS NULL
+                            OR $1::INT >= 3) THEN
                         elevated_risk
                     END), 0) AS INT4) AS elevated_risk,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
+                    CASE WHEN is_active
+                        AND ($1::INT IS NULL
+                            OR $1::INT >= 4) THEN
                         monitor
                     END), 0) AS INT4) AS monitor,
         CAST(COALESCE(SUM(
@@ -259,11 +265,11 @@ joined_data AS (
 `
 
 type GetVulnerabilitySummaryParams struct {
+	RiskTier      *int32
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
-	RiskTier      *int32
 }
 
 type GetVulnerabilitySummaryRow struct {
@@ -287,11 +293,11 @@ type GetVulnerabilitySummaryRow struct {
 
 func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerabilitySummary,
+		arg.RiskTier,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
-		arg.RiskTier,
 	)
 	var i GetVulnerabilitySummaryRow
 	err := row.Scan(
@@ -366,9 +372,27 @@ SELECT
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
     COALESCE(SUM(act_now), 0)::INT4 AS act_now,
-    COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
-    COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
-    COALESCE(SUM(monitor), 0)::INT4 AS monitor,
+    COALESCE(SUM(
+            CASE WHEN $1::INT IS NULL
+                OR $1::INT >= 2 THEN
+                high_risk
+            ELSE
+                0
+            END), 0)::INT4 AS high_risk,
+    COALESCE(SUM(
+            CASE WHEN $1::INT IS NULL
+                OR $1::INT >= 3 THEN
+                elevated_risk
+            ELSE
+                0
+            END), 0)::INT4 AS elevated_risk,
+    COALESCE(SUM(
+            CASE WHEN $1::INT IS NULL
+                OR $1::INT >= 4 THEN
+                monitor
+            ELSE
+                0
+            END), 0)::INT4 AS monitor,
     COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
     COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
     MIN(top_risk_tier) AS top_risk_tier,
@@ -377,18 +401,18 @@ SELECT
 FROM
     mv_vuln_summary_daily_by_workload
 WHERE
-    snapshot_date >= $1::TIMESTAMPTZ
+    snapshot_date >= $2::TIMESTAMPTZ
     AND snapshot_date <= CURRENT_DATE
-    AND ($2::TEXT IS NULL
-        OR CLUSTER = $2::TEXT)
     AND ($3::TEXT IS NULL
-        OR namespace = $3::TEXT)
-    AND ($4::TEXT[] IS NULL
-        OR workload_type = ANY ($4::TEXT[]))
-    AND ($5::TEXT IS NULL
-        OR workload_name = $5::TEXT)
-    AND ($6::INT IS NULL
-        OR top_risk_tier = $6::INT)
+        OR CLUSTER = $3::TEXT)
+    AND ($4::TEXT IS NULL
+        OR namespace = $4::TEXT)
+    AND ($5::TEXT[] IS NULL
+        OR workload_type = ANY ($5::TEXT[]))
+    AND ($6::TEXT IS NULL
+        OR workload_name = $6::TEXT)
+    AND ($1::INT IS NULL
+        OR top_risk_tier <= $1::INT)
 GROUP BY
     snapshot_date
 ORDER BY
@@ -396,12 +420,12 @@ ORDER BY
 `
 
 type GetVulnerabilitySummaryTimeSeriesParams struct {
+	RiskTier      *int32
 	Since         pgtype.Timestamptz
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
-	RiskTier      *int32
 }
 
 type GetVulnerabilitySummaryTimeSeriesRow struct {
@@ -425,12 +449,12 @@ type GetVulnerabilitySummaryTimeSeriesRow struct {
 
 func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error) {
 	rows, err := q.db.Query(ctx, getVulnerabilitySummaryTimeSeries,
+		arg.RiskTier,
 		arg.Since,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
-		arg.RiskTier,
 	)
 	if err != nil {
 		return nil, err
@@ -632,7 +656,7 @@ vulnerability_data AS (
     AND ($10::TEXT IS NULL
         OR v.image_tag = $10::TEXT)
     AND ($11::INT IS NULL
-        OR v.top_risk_tier = $11::INT)
+        OR v.top_risk_tier <= $11::INT)
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),
@@ -672,15 +696,21 @@ summary_data AS (
                 act_now
             END, 0)::INT4 AS act_now,
         COALESCE(
-            CASE WHEN is_active THEN
+            CASE WHEN is_active
+                AND ($11::INT IS NULL
+                    OR $11::INT >= 2) THEN
                 high_risk
             END, 0)::INT4 AS high_risk,
         COALESCE(
-            CASE WHEN is_active THEN
+            CASE WHEN is_active
+                AND ($11::INT IS NULL
+                    OR $11::INT >= 3) THEN
                 elevated_risk
             END, 0)::INT4 AS elevated_risk,
         COALESCE(
-            CASE WHEN is_active THEN
+            CASE WHEN is_active
+                AND ($11::INT IS NULL
+                    OR $11::INT >= 4) THEN
                 monitor
             END, 0)::INT4 AS monitor,
         COALESCE(
