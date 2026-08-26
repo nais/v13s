@@ -75,8 +75,7 @@ func NewVerifier(_ context.Context, log *logrus.Entry, organizations ...string) 
 	v.verifyFunc = func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
 		sigs, _, err := cosign.VerifyImageAttestations(ctx, ref, co)
 
-		var tErr *transport.Error
-		if errors.As(err, &tErr) {
+		if tErr, ok := errors.AsType[*transport.Error](err); ok {
 			if tErr.StatusCode >= 400 && tErr.StatusCode < 500 {
 				return sigs, model.ToUnrecoverableError(
 					fmt.Errorf("status: %d, error: %w", tErr.StatusCode, tErr),
@@ -152,8 +151,7 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 	}
 
 	shouldFallback := len(sigs) == 0
-	var noMatch *cosign.ErrNoMatchingAttestations
-	if errors.As(err, &noMatch) {
+	if _, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err); ok {
 		shouldFallback = true
 	}
 
@@ -176,8 +174,7 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 
 	// Prefer legacy error if we tried it; otherwise return v3 error
 	if legacyErr != nil {
-		var noMatch *cosign.ErrNoMatchingAttestations
-		if errors.As(legacyErr, &noMatch) {
+		if _, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](legacyErr); ok {
 			v.log.WithError(legacyErr).WithField("ref", ref.String()).Info("legacy attestation reported no matching attestations")
 			return nil, legacyErr
 		}
@@ -197,8 +194,7 @@ func (v *verifier) GetAttestation(ctx context.Context, image string) (*Attestati
 
 	verified, err := v.verifyBundleFormat(ctx, ref)
 	if err != nil {
-		var noMatch *cosign.ErrNoMatchingAttestations
-		if errors.As(err, &noMatch) {
+		if _, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err); ok {
 			return nil, err
 		}
 		return nil, err
