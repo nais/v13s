@@ -340,15 +340,16 @@ func (SbomStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 type Filter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cluster       *string                `protobuf:"bytes,1,opt,name=cluster,proto3,oneof" json:"cluster,omitempty"`
-	Namespace     *string                `protobuf:"bytes,2,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
-	Workload      *string                `protobuf:"bytes,3,opt,name=workload,proto3,oneof" json:"workload,omitempty"`
-	WorkloadType  *string                `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3,oneof" json:"workload_type,omitempty"`
-	ImageName     *string                `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3,oneof" json:"image_name,omitempty"`
-	ImageTag      *string                `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3,oneof" json:"image_tag,omitempty"`
-	Namespaces    []string               `protobuf:"bytes,7,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
-	Priority      *Priority              `protobuf:"varint,8,opt,name=priority,proto3,enum=v13s.api.protobuf.Priority,oneof" json:"priority,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Cluster      *string                `protobuf:"bytes,1,opt,name=cluster,proto3,oneof" json:"cluster,omitempty"`
+	Namespace    *string                `protobuf:"bytes,2,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	Workload     *string                `protobuf:"bytes,3,opt,name=workload,proto3,oneof" json:"workload,omitempty"`
+	WorkloadType *string                `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3,oneof" json:"workload_type,omitempty"`
+	ImageName    *string                `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3,oneof" json:"image_name,omitempty"`
+	ImageTag     *string                `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3,oneof" json:"image_tag,omitempty"`
+	Namespaces   []string               `protobuf:"bytes,7,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
+	// Minimum priority threshold; includes this tier and all higher-priority findings.
+	Priority      *Priority `protobuf:"varint,8,opt,name=priority,proto3,enum=v13s.api.protobuf.Priority,oneof" json:"priority,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

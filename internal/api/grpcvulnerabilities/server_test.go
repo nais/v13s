@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -1362,6 +1363,136 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 	})
 }
 
+func TestServer_GetVulnerabilitySummary_PriorityThresholds(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 4,
+		vulnsPerWorkload:      4,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	_, err := pool.Exec(ctx, `UPDATE cve SET has_kev_entry = FALSE, known_ransomware_use = FALSE, epss_percentile = 0.10, epss_score = 0.10`)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = TRUE WHERE cve_id = $1`, "CWE-1-1")
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.95, epss_score = 0.95 WHERE cve_id = $1`, "CWE-2-1")
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.50, epss_score = 0.50 WHERE cve_id = $1`, "CWE-3-1")
+	require.NoError(t, err)
+
+	require.NoError(t, db.UpdateCvePriority(ctx))
+	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
+		imgName := fmt.Sprintf("image-cluster-1-namespace-1-workload-%d", wl)
+		imgTag := fmt.Sprintf("v%d.0", wl)
+		require.NoError(t, db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: imgName,
+			ImageTag:  imgTag,
+		}))
+	}
+	require.NoError(t, db.RefreshVulnerabilitySummaryDailyView(ctx))
+
+	cases := []struct {
+		name              string
+		threshold         vulnerabilities.Priority
+		wantWorkloads     int32
+		wantActNow        int32
+		wantHighRisk      int32
+		wantElevatedRisk  int32
+		wantMonitor       int32
+		wantTopPriorities []int
+	}{
+		{
+			name:              "urgent",
+			threshold:         vulnerabilities.Priority_PRIORITY_ACT_NOW,
+			wantWorkloads:     1,
+			wantActNow:        1,
+			wantTopPriorities: []int{1},
+		},
+		{
+			name:              "high",
+			threshold:         vulnerabilities.Priority_PRIORITY_HIGH,
+			wantWorkloads:     2,
+			wantActNow:        1,
+			wantHighRisk:      1,
+			wantTopPriorities: []int{1, 2},
+		},
+		{
+			name:              "elevated",
+			threshold:         vulnerabilities.Priority_PRIORITY_ELEVATED,
+			wantWorkloads:     3,
+			wantActNow:        1,
+			wantHighRisk:      1,
+			wantElevatedRisk:  1,
+			wantTopPriorities: []int{1, 2, 3},
+		},
+		{
+			name:              "monitor",
+			threshold:         vulnerabilities.Priority_PRIORITY_MONITOR,
+			wantWorkloads:     4,
+			wantActNow:        1,
+			wantHighRisk:      1,
+			wantElevatedRisk:  1,
+			wantMonitor:       13,
+			wantTopPriorities: []int{1, 2, 3, 4},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name+"/get", func(t *testing.T) {
+			resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.PriorityFilter(tc.threshold))
+			require.NoError(t, err)
+			require.NotNil(t, resp.GetVulnerabilitySummary())
+
+			assert.Equal(t, tc.wantWorkloads, resp.GetWorkloadCount())
+			assert.Equal(t, tc.wantWorkloads, resp.GetSbomCount())
+			assert.Equal(t, tc.wantActNow, resp.GetVulnerabilitySummary().GetActNow())
+			assert.Equal(t, tc.wantHighRisk, resp.GetVulnerabilitySummary().GetHighRisk())
+			assert.Equal(t, tc.wantElevatedRisk, resp.GetVulnerabilitySummary().GetElevatedRisk())
+			assert.Equal(t, tc.wantMonitor, resp.GetVulnerabilitySummary().GetMonitor())
+			assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, resp.GetVulnerabilitySummary().GetTopPriority())
+		})
+
+		t.Run(tc.name+"/list", func(t *testing.T) {
+			resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.PriorityFilter(tc.threshold), vulnerabilities.Limit(10))
+			require.NoError(t, err)
+			require.Len(t, resp.Nodes, int(tc.wantWorkloads))
+
+			gotTopPriorities := make([]int, 0, len(resp.Nodes))
+			for _, node := range resp.Nodes {
+				require.NotNil(t, node.GetVulnerabilitySummary())
+				gotTopPriorities = append(gotTopPriorities, priorityRank(node.GetVulnerabilitySummary().GetTopPriority()))
+				assert.LessOrEqual(t, priorityRank(node.GetVulnerabilitySummary().GetTopPriority()), priorityRank(tc.threshold))
+				if tc.threshold != vulnerabilities.Priority_PRIORITY_MONITOR {
+					assert.Zero(t, node.GetVulnerabilitySummary().GetMonitor())
+				}
+			}
+			sort.Ints(gotTopPriorities)
+			assert.Equal(t, tc.wantTopPriorities, gotTopPriorities)
+		})
+
+		t.Run(tc.name+"/time-series", func(t *testing.T) {
+			resp, err := client.GetVulnerabilitySummaryTimeSeries(
+				ctx,
+				vulnerabilities.PriorityFilter(tc.threshold),
+				vulnerabilities.Since(time.Now().Add(-24*time.Hour)),
+			)
+			require.NoError(t, err)
+			require.Len(t, resp.Points, 1)
+
+			point := resp.Points[0]
+			assert.Equal(t, tc.wantWorkloads, point.GetWorkloadCount())
+			assert.Equal(t, tc.wantActNow, point.GetActNow())
+			assert.Equal(t, tc.wantHighRisk, point.GetHighRisk())
+			assert.Equal(t, tc.wantElevatedRisk, point.GetElevatedRisk())
+			assert.Equal(t, tc.wantMonitor, point.GetMonitor())
+			assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, point.GetTopPriority())
+		})
+	}
+}
+
 func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
@@ -1604,6 +1735,21 @@ func setSbomProcessingStartedAt(ctx context.Context, t *testing.T, pool *pgxpool
 		ts, imageName, imageTag,
 	)
 	require.NoError(t, err)
+}
+
+func priorityRank(priority vulnerabilities.Priority) int {
+	switch priority {
+	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
+		return 1
+	case vulnerabilities.Priority_PRIORITY_HIGH:
+		return 2
+	case vulnerabilities.Priority_PRIORITY_ELEVATED:
+		return 3
+	case vulnerabilities.Priority_PRIORITY_MONITOR:
+		return 4
+	default:
+		return 0
+	}
 }
 
 func TestServer_GetVulnerabilityById(t *testing.T) {
