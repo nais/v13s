@@ -15,8 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// safeBuffer wraps bytes.Buffer with a mutex to allow concurrent reads and
-// writes from test goroutines and the updater's background goroutines.
 type safeBuffer struct {
 	mu  sync.Mutex
 	buf bytes.Buffer
