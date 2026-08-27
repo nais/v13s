@@ -89,7 +89,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	)
 
 	if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
-		metrics.PushOnce(cfg.Metrics, promReg, log)
+		go metrics.PushOnce(cfg.Metrics, promReg, log)
 		metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
 	} else {
 		log.Info("Prometheus Pushgateway endpoint not configured, skipping metrics push setup")
