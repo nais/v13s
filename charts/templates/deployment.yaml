@@ -17,6 +17,7 @@ spec:
         kubectl.kubernetes.io/default-container: {{ .Chart.Name }}
     spec:
       serviceAccountName: {{ .Values.serviceAccountName }}
+      terminationGracePeriodSeconds: 60
       securityContext:
         seccompProfile:
           type: RuntimeDefault

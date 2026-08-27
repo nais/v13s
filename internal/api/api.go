@@ -129,7 +129,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		return err
 	}
 	defer func() {
-		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		stopCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if err := mgr.Stop(stopCtx); err != nil {
 			log.WithError(err).Error("failed to stop workload manager")
@@ -152,6 +152,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	select {
 	case err := <-httpErrCh:
+		if ctx.Err() != nil {
+			// SIGTERM/SIGINT arrived before watchers synced — this is a clean shutdown, not a crash.
+			return nil
+		}
 		return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
 	case ready := <-syncDone:
 		if !ready {
@@ -267,7 +271,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}()
 
 	select {
-	case <-time.After(10 * time.Second):
+	case <-time.After(45 * time.Second):
 		log.Warn("timed out waiting for graceful shutdown")
 	case err := <-ch:
 		return err
