@@ -152,6 +152,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	select {
 	case err := <-httpErrCh:
+		if ctx.Err() != nil {
+			// SIGTERM/SIGINT arrived before watchers synced — this is a clean shutdown, not a crash.
+			return nil
+		}
 		return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
 	case ready := <-syncDone:
 		if !ready {
