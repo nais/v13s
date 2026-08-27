@@ -133,9 +133,20 @@ func triggerSync(ctx context.Context, opts *flag.Options, c vulnerabilities.Clie
 		return fmt.Errorf("failed to trigger sync: %w", err)
 	}
 
-	tbl := output.New("Updated Workloads", "Success")
-	tbl.AddRow(strconv.Itoa(len(resp.Workloads)), strconv.FormatBool(len(resp.Workloads) > 0))
+	tbl := output.New("Updated Workloads", "Failures", "Success")
+	tbl.AddRow(
+		strconv.Itoa(len(resp.Workloads)),
+		strconv.Itoa(int(resp.GetNumFailures())),
+		strconv.FormatBool(len(resp.Workloads) > 0),
+	)
 	tbl.Print()
+	if len(resp.GetFailures()) > 0 {
+		failureTbl := output.New("Subject", "Reason")
+		for _, failure := range resp.GetFailures() {
+			failureTbl.AddRow(failure.GetSubject(), failure.GetReason())
+		}
+		failureTbl.Print()
+	}
 	return nil
 }
 

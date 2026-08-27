@@ -17,11 +17,13 @@ import (
 	"github.com/nais/v13s/internal/attestation"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
+	dbsql "github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/kubernetes"
 	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/resync"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -242,6 +244,8 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}()
 
+	resyncModule := resync.NewWorkloadResyncModule(ctx, dbsql.New(pool), mgr, u, log.WithField("subsystem", "workload_resync"))
+
 	wg, ctx := errgroup.WithContext(ctx)
 
 	wg.Go(func() error {
@@ -254,7 +258,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	})
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, cfg, pool, mgr, u, log, func() { ready.Store(true) }); err != nil {
+		if err = runGrpcServer(ctx, cfg, pool, mgr, resyncModule, log, func() { ready.Store(true) }); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
@@ -280,7 +284,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, u *updater.Updater, log logrus.FieldLogger, onReady func()) error {
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, resyncModule resync.Module, log logrus.FieldLogger, onReady func()) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
@@ -296,7 +300,7 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 
 	s := grpc.NewServer(opts...)
 	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
-	management.RegisterManagementServer(s, grpcmgmt.NewServer(ctx, pool, mgr, u, log.WithField("subsystem", "management")))
+	management.RegisterManagementServer(s, grpcmgmt.NewServer(pool, mgr, resyncModule, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {

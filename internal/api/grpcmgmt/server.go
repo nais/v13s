@@ -3,16 +3,13 @@ package grpcmgmt
 import (
 	"context"
 	"errors"
-	"fmt"
-	"math"
-	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/model"
+	"github.com/nais/v13s/internal/resync"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -27,26 +24,20 @@ type workloadManager interface {
 	DeleteWorkload(ctx context.Context, workload *model.Workload) error
 }
 
-type resyncRunner interface {
-	RunCycle(ctx context.Context) error
-}
-
 type Server struct {
 	management.UnimplementedManagementServer
-	querier   sql.Querier
-	mgr       workloadManager
-	updater   resyncRunner
-	parentCtx context.Context
-	log       *logrus.Entry
+	querier sql.Querier
+	mgr     workloadManager
+	resync  resync.Module
+	log     *logrus.Entry
 }
 
-func NewServer(parentCtx context.Context, pool *pgxpool.Pool, mgr workloadManager, updater resyncRunner, field *logrus.Entry) *Server {
+func NewServer(pool *pgxpool.Pool, mgr workloadManager, resyncModule resync.Module, field *logrus.Entry) *Server {
 	return &Server{
-		parentCtx: parentCtx,
-		querier:   sql.New(pool),
-		mgr:       mgr,
-		updater:   updater,
-		log:       field,
+		querier: sql.New(pool),
+		mgr:     mgr,
+		resync:  resyncModule,
+		log:     field,
 	}
 }
 
@@ -208,78 +199,67 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 	workloadState := sql.WorkloadStateUpdated
 	if request.WorkloadState != nil {
 		workloadState = sql.WorkloadState(*request.WorkloadState)
+		if !workloadState.Valid() {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid workload_state: %q", *request.WorkloadState)
+		}
 	}
-	rows, err := s.querier.SetWorkloadState(ctx, sql.SetWorkloadStateParams{
-		Cluster:      request.Cluster,
-		Namespace:    request.Namespace,
-		WorkloadName: request.Workload,
-		WorkloadType: request.WorkloadType,
-		OldState:     workloadState,
-		State:        sql.WorkloadStateResync,
+	if request.ImageState != nil {
+		imageState := sql.ImageState(*request.ImageState)
+		if !imageState.Valid() {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid image_state: %q", *request.ImageState)
+		}
+	}
+
+	result, err := s.resync.Resync(ctx, resync.Input{
+		Cluster:       request.Cluster,
+		Namespace:     request.Namespace,
+		Workload:      request.Workload,
+		WorkloadType:  workloadTypePtr(request.WorkloadType),
+		WorkloadState: resync.WorkloadState(workloadState),
+		ImageState:    imageStatePtr(request.ImageState),
 	})
 	if err != nil {
-		s.log.WithError(err).Error("failed to set workload state")
-		return nil, err
-	}
-	workloads := make([]string, 0)
-	needsResync := false
-	for _, row := range rows {
-		workload := &model.Workload{
-			Cluster:   row.Cluster,
-			Namespace: row.Namespace,
-			Name:      row.Name,
-			Type:      model.WorkloadType(row.WorkloadType),
-			ImageName: row.ImageName,
-			ImageTag:  row.ImageTag,
+		if result.NumWorkloads == 0 && result.NumFailures == 0 {
+			return nil, status.Errorf(codes.Internal, "resync failed: %v", err)
 		}
-
-		err = s.mgr.AddWorkload(ctx, workload)
-		if err != nil {
-			s.log.WithError(err).Error("failed to add workload to job queue")
-			return nil, err
-		}
-
-		workloads = append(workloads,
-			fmt.Sprintf("%s/%s/%s/%s", workload.Cluster, workload.Namespace, workload.Type, workload.Name))
-
-		if request.ImageState != nil {
-			_, err = s.querier.UpdateImageState(ctx, sql.UpdateImageStateParams{
-				State: sql.ImageState(*request.ImageState),
-				Name:  workload.ImageName,
-				Tag:   workload.ImageTag,
-				ReadyForResyncAt: pgtype.Timestamptz{
-					Time:  time.Now(),
-					Valid: true,
-				},
-			})
-			if err != nil {
-				return nil, err
-			}
-			needsResync = true
-		}
-	}
-
-	if needsResync {
-		go func() {
-			if runErr := s.updater.RunCycle(s.parentCtx); runErr != nil {
-				s.log.WithError(runErr).Error("failed to resync images")
-			}
-		}()
-	}
-
-	if len(workloads) == 0 {
-		s.log.Debugf("no workloads to resync")
-		return &management.ResyncResponse{}, nil
-	}
-
-	numWorkloads, err := safeIntToInt32(len(workloads))
-	if err != nil {
-		return nil, err
+		s.log.WithError(err).Warn("resync completed with partial failures")
 	}
 	return &management.ResyncResponse{
-		NumWorkloads: numWorkloads,
-		Workloads:    workloads,
+		NumWorkloads: result.NumWorkloads,
+		Workloads:    result.Workloads,
+		NumFailures:  result.NumFailures,
+		Failures:     toProtoFailures(result.Failures),
 	}, nil
+}
+
+func workloadTypePtr(value *string) *model.WorkloadType {
+	if value == nil {
+		return nil
+	}
+	workloadType := model.WorkloadType(*value)
+	return &workloadType
+}
+
+func imageStatePtr(value *string) *resync.ImageState {
+	if value == nil {
+		return nil
+	}
+	imageState := resync.ImageState(*value)
+	return &imageState
+}
+
+func toProtoFailures(failures []resync.Failure) []*management.ResyncFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+	out := make([]*management.ResyncFailure, 0, len(failures))
+	for _, failure := range failures {
+		out = append(out, &management.ResyncFailure{
+			Subject: failure.Subject,
+			Reason:  failure.Reason,
+		})
+	}
+	return out
 }
 
 func (s *Server) DeleteWorkload(ctx context.Context, request *management.DeleteWorkloadRequest) (*management.DeleteWorkloadResponse, error) {
@@ -318,11 +298,4 @@ func (s *Server) DeleteWorkload(ctx context.Context, request *management.DeleteW
 	}
 
 	return &management.DeleteWorkloadResponse{}, nil
-}
-
-func safeIntToInt32(n int) (int32, error) {
-	if n > math.MaxInt32 || n < math.MinInt32 {
-		return 0, fmt.Errorf("integer %d overflows int32", n)
-	}
-	return int32(n), nil
 }

@@ -95,9 +95,16 @@ message ResyncRequest {
   optional string image_state = 6;
 }
 
+message ResyncFailure {
+  string subject = 1;
+  string reason = 2;
+}
+
 message ResyncResponse {
   int32 num_workloads = 1;
   repeated string workloads = 2; // List of workload identifiers that were resynced
+  int32 num_failures = 3;
+  repeated ResyncFailure failures = 4;
 }
 
 message DeleteWorkloadRequest {
