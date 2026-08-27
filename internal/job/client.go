@@ -52,7 +52,7 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 	if err != nil {
 		return nil, err
 	}
-	dbConfig.MaxConns = 40
+	dbConfig.MaxConns = 50
 	dbConfig.MinConns = 2
 	dbConfig.MaxConnIdleTime = 5 * time.Minute
 	dbConfig.HealthCheckPeriod = 30 * time.Second

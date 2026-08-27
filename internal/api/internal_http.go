@@ -117,7 +117,12 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 }
 
 func riverUI(ctx context.Context, dbUrl string) *riverui.Handler {
-	pool, err := pgxpool.New(ctx, dbUrl)
+	config, err := pgxpool.ParseConfig(dbUrl)
+	if err != nil {
+		logrus.Errorf("riverUI: failed to parse db url: %v", err)
+		return nil
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		logrus.Errorf("%v", err)
 		return nil
