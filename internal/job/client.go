@@ -57,7 +57,8 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 	dbConfig.MaxConnIdleTime = 5 * time.Minute
 	dbConfig.HealthCheckPeriod = 30 * time.Second
 
-	initCtx := context.WithoutCancel(ctx)
+	initCtx, initCancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+	defer initCancel()
 
 	pool, err := pgxpool.NewWithConfig(initCtx, dbConfig)
 	if err != nil {

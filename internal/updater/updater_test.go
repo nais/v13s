@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -14,7 +15,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newBufferedLogger(buf *bytes.Buffer) *logrus.Entry {
+// safeBuffer wraps bytes.Buffer with a mutex to allow concurrent reads and
+// writes from test goroutines and the updater's background goroutines.
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *safeBuffer) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+func (s *safeBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.String()
+}
+
+func newBufferedLogger(buf *safeBuffer) *logrus.Entry {
 	logger := logrus.New()
 	logger.SetOutput(buf)
 	logger.SetFormatter(&logrus.JSONFormatter{})
@@ -117,7 +137,7 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 	t.Parallel()
 
 	var runs atomic.Int32
-	var logs bytes.Buffer
+	var logs safeBuffer
 	cfg := RuntimeConfig{
 		OrchestrationEnabled: false,
 		Resync: JobRuntimeConfig{
@@ -156,7 +176,7 @@ func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
 func TestStartUsesRuntimeOrchestrationWhenEnabled(t *testing.T) {
 	t.Parallel()
 
-	var logs bytes.Buffer
+	var logs safeBuffer
 	cfg := RuntimeConfig{
 		OrchestrationEnabled: true,
 		Resync: JobRuntimeConfig{
