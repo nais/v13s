@@ -57,15 +57,12 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 	dbConfig.MaxConnIdleTime = 5 * time.Minute
 	dbConfig.HealthCheckPeriod = 30 * time.Second
 
-	initCtx, initCancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
-	defer initCancel()
-
-	pool, err := pgxpool.NewWithConfig(initCtx, dbConfig)
+	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := migrate(initCtx, pool); err != nil {
+	if err := migrate(ctx, pool); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
