@@ -107,4 +107,4 @@ The system maintains several scheduled tasks:
 - **Mark Untracked** (every 20 minutes): Identifies images with no SBOMs
 - **Mark Unused** (every 30 minutes): Marks images that are no longer in use by any workload
 - **Daily Summary Refresh** (daily at 4:30 AM CEST): Updates materialized views for reporting
-- **MTTF Calculation** (daily at 5:00 AM CEST): Calculates Mean Time to Fix metrics
+- **MTTF Calculation** (daily at 5:00 AM CEST): Calculates Mean Time to Fix metrics. Each history point is a cumulative snapshot per severity: it averages the fix duration of every unique vulnerability period fixed by that snapshot date. `fixed_count` is the corresponding cumulative count, not only vulnerabilities fixed that day. A `since` filter uses the snapshot date by default; with `since_type = fixed`, it instead filters on fix date before aggregation.
