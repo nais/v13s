@@ -2193,7 +2193,7 @@ func TestServer_ListMeanTimeToFixTrend_IsCumulativePerSnapshot(t *testing.T) {
 	firstSnapshot := time.Date(2026, time.January, 3, 0, 0, 0, 0, time.UTC)
 	laterSnapshot := time.Date(2026, time.January, 5, 0, 0, 0, 0, time.UTC)
 	firstIntroducedAt := firstSnapshot.AddDate(0, 0, -2)
-	secondIntroducedAt := laterSnapshot.AddDate(0, 0, -4)
+	secondIntroducedAt := laterSnapshot.AddDate(0, 0, -3)
 
 	_, err = pool.Exec(ctx, `
 		INSERT INTO vuln_fix_summary (
