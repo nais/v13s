@@ -26,7 +26,7 @@ const (
 	FetchVulnerabilityDataForImagesDefaultLimit        = 10
 	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
 	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
-	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 6:30 AM CEST
+	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 4:30 AM CEST
 	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 5:00 AM CEST (30 min later)
 	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
 	SyncOsvCronInterval                                = "0 7 * * *"    // every day at 9:00 AM CEST
