@@ -2173,6 +2173,13 @@ func TestServer_ListMeanTimeToFixTrend_IsCumulativePerSnapshot(t *testing.T) {
 	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	err := db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     "mttf-test-image",
+		Tag:      "v1",
+		Metadata: map[string]string{},
+	})
+	require.NoError(t, err)
+
 	workloadID, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 		Name:         "cumulative-mttf-workload",
 		WorkloadType: "app",
