@@ -3,6 +3,7 @@ WITH resolved_vulnerabilities AS (
     SELECT DISTINCT
         c.cve_id AS id,
         c.severity,
+        c.epss_score,
         c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
@@ -21,6 +22,7 @@ unsuppressed_vulnerabilities AS (
     SELECT
         rv.id,
         rv.severity,
+        rv.epss_score,
         rv.epss_percentile,
         rv.has_kev_entry,
         rv.known_ransomware_use
@@ -39,34 +41,52 @@ counts AS (
     COUNT(*) FILTER (WHERE severity = 2) AS medium,
     COUNT(*) FILTER (WHERE severity = 3) AS low,
     COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
-    COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
-    COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-        AND (known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
-COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-    AND NOT (known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.90)
-AND severity IN (0, 1)
-AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
-COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-    OR known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.90
-    OR (severity IN (0, 1)
-    AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
-COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-MIN(
-    CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
-        3
-    ELSE
-        4
-    END) AS top_risk_tier
+    -- v13s has no internetFacing/exposure signal (owned by nais/api), so it can
+    -- never compute URGENT/ACT_NOW on its own; this bucket is deprecated at the
+    -- v13s layer and always reports 0 (see Decision 1 "As implemented").
+    0 AS act_now,
+    -- HIGH (Decisions 1 and 4-5): KEV, confirmed ransomware use, or high EPSS
+    -- (percentile >= 0.95 OR score >= 0.10 -- percentile is population-relative,
+    -- score is an absolute exploitation probability, so either alone is a
+    -- sufficient signal; requiring both was too strict versus common industry
+    -- EPSS-tiering practice).
+    COUNT(*) FILTER (WHERE has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10) AS high_risk,
+    -- ELEVATED (Decisions 6 and 9): Critical/High severity with EPSS >= 0.90,
+    -- or Critical/High severity where EPSS is unknown (precautionary), provided
+    -- no HIGH rule already matched.
+    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.95
+            OR COALESCE(epss_score, 0) >= 0.10)
+        AND severity IN (0, 1)
+        AND (epss_percentile IS NULL
+            OR epss_percentile >= 0.90)) AS elevated_risk,
+    -- MONITOR (Decision 8): no known signal requires action now.
+    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.95
+            OR COALESCE(epss_score, 0) >= 0.10)
+            AND NOT (severity IN (0, 1)
+                AND (epss_percentile IS NULL
+                    OR epss_percentile >= 0.90))) AS monitor,
+    COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+    COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+    MIN(
+        CASE WHEN has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.95
+            OR COALESCE(epss_score, 0) >= 0.10 THEN
+            2
+        WHEN severity IN (0, 1)
+            AND (epss_percentile IS NULL
+                OR epss_percentile >= 0.90) THEN
+            3
+        ELSE
+            4
+        END) AS top_risk_tier
 FROM
     unsuppressed_vulnerabilities)
 INSERT INTO vulnerability_summary(
@@ -124,6 +144,7 @@ ON CONFLICT (image_name,
         top_risk_tier = EXCLUDED.top_risk_tier,
         risk_score = EXCLUDED.risk_score,
         updated_at = NOW();
+
 
 -- name: BatchUpsertCve :batchexec
 INSERT INTO cve(
@@ -614,7 +635,9 @@ AND (
         TRUE
     END)
 AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
-    OR COALESCE(sv.suppressed, FALSE) = FALSE);
+    OR COALESCE(sv.suppressed, FALSE) = FALSE)
+AND (sqlc.narg('risk_tiers')::INT[] IS NULL
+    OR c.priority = ANY (sqlc.narg('risk_tiers')::INT[]));
 
 -- name: ListVulnerabilitiesForImage :many
 WITH image_all_vulns AS (
@@ -678,7 +701,9 @@ distinct_image_vulnerabilities AS (
     AND (sqlc.narg('since')::TIMESTAMPTZ IS NULL
         OR v.severity_since > sqlc.narg('since')::TIMESTAMPTZ)
     AND (sqlc.narg('severity')::INT IS NULL
-        OR v.severity = sqlc.narg('severity')::INT))
+        OR v.severity = sqlc.narg('severity')::INT)
+    AND (sqlc.narg('risk_tiers')::INT[] IS NULL
+        OR v.priority = ANY (sqlc.narg('risk_tiers')::INT[])))
 SELECT
     id,
     image_name,
@@ -766,6 +791,39 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN
         updated_at
     END DESC,
+    -- Decision 11: stable ordering within a priority (fix available first,
+    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
+    -- tie-breaker). Applied when ordering by priority or using the default
+    -- listing order, so cursor pagination stays stable.
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        CASE WHEN fix_version IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        epss_score
+    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        cvss_score
+    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        created_at
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        cve_id
+    END ASC,
     severity,
     id ASC
 LIMIT sqlc.arg('limit')
@@ -851,6 +909,8 @@ AND (
     END)
 AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
+AND (sqlc.narg('risk_tiers')::INT[] IS NULL
+    OR c.priority = ANY (sqlc.narg('risk_tiers')::INT[]))
 ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
         c.priority
@@ -894,6 +954,39 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN
         v.updated_at
     END DESC,
+    -- Decision 11: stable ordering within a priority (fix available first,
+    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
+    -- tie-breaker). Applied when ordering by priority or using the default
+    -- listing order, so cursor pagination stays stable.
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        CASE WHEN v.fix_version IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        c.epss_score
+    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        c.cvss_score
+    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        v.created_at
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        v.cve_id
+    END ASC,
     v.id ASC
 LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
@@ -1043,6 +1136,39 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN
         w.cluster
     END DESC,
+    -- Decision 11: stable ordering within a priority (fix available first,
+    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
+    -- tie-breaker). Applied when ordering by priority or using the default
+    -- listing order, so cursor pagination stays stable.
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        CASE WHEN v.fix_version IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        c.epss_score
+    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        c.cvss_score
+    END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        v.created_at
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_asc'
+        OR sqlc.narg('order_by') = 'priority_desc'
+        OR sqlc.narg('order_by') IS NULL THEN
+        v.cve_id
+    END ASC,
     v.id ASC
 LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
@@ -1059,26 +1185,36 @@ WHERE
 UPDATE
     cve
 SET
-    priority = CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+    -- HIGH (Decisions 1, 4-5): KEV, confirmed ransomware use, or high EPSS
+    -- (percentile >= 0.95 OR score >= 0.10). v13s has no internetFacing signal,
+    -- so it can never assign tier 1 (ACT_NOW/URGENT); that tier is deprecated
+    -- at this layer (see Decision 1 "As implemented").
+    priority = CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
+    -- ELEVATED (Decisions 6, 9): Critical/High severity with EPSS >= 0.90, or
+    -- Critical/High severity where EPSS is unknown (precautionary).
     WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        AND (epss_percentile IS NULL
+            OR epss_percentile >= 0.90) THEN
         3
+    -- MONITOR (Decision 8): no known signal requires action now.
     ELSE
         4
     END
 WHERE
-    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
     WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        AND (epss_percentile IS NULL
+            OR epss_percentile >= 0.90) THEN
         3
     ELSE
         4
     END;
+

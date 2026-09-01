@@ -163,6 +163,16 @@ WITH filtered_workloads AS (
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
                 AND v.top_risk_tier <= $1::INT))
+    AND ($6::INT[] IS NULL
+        OR EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerability_summary v
+            WHERE
+                v.image_name = w.image_name
+                AND v.image_tag = w.image_tag
+                AND v.top_risk_tier = ANY ($6::INT[])))
 ),
 joined_data AS (
     SELECT
@@ -270,6 +280,7 @@ type GetVulnerabilitySummaryParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	RiskTiers     []int32
 }
 
 type GetVulnerabilitySummaryRow struct {
@@ -298,6 +309,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.RiskTiers,
 	)
 	var i GetVulnerabilitySummaryRow
 	err := row.Scan(
@@ -657,6 +669,8 @@ vulnerability_data AS (
         OR v.image_tag = $10::TEXT)
     AND ($11::INT IS NULL
         OR v.top_risk_tier <= $11::INT)
+    AND ($12::INT[] IS NULL
+        OR v.top_risk_tier = ANY ($12::INT[]))
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),
@@ -860,6 +874,7 @@ type ListVulnerabilitySummariesParams struct {
 	ImageName     *string
 	ImageTag      *string
 	RiskTier      *int32
+	RiskTiers     []int32
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -909,6 +924,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.ImageName,
 		arg.ImageTag,
 		arg.RiskTier,
+		arg.RiskTiers,
 	)
 	if err != nil {
 		return nil, err

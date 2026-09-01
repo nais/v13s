@@ -27,13 +27,14 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	priorityFilter := toSQLPriorityFilter(request.GetFilter())
-
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
 		since.Time = request.GetSince().AsTime()
 		since.Valid = true
 	}
+
+	priorityFilter := toSQLPriorityFilter(request.GetFilter())
+	riskTiers := toSQLPriorityTiers(request.GetFilter())
 
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
@@ -43,6 +44,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
 		RiskTier:      priorityFilter,
+		RiskTiers:     riskTiers,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
 		Offset:        offset,
@@ -55,60 +57,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		// if a workload does not have a sbom, the image name and tag will be nil from vulnerabilities_summary
-		imageName := row.CurrentImageName
-		if row.ImageName != nil {
-			imageName = *row.ImageName
-		}
-		imageTag := row.CurrentImageTag
-		if row.ImageTag != nil {
-			imageTag = *row.ImageTag
-		}
-
-		sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
-
-		var vulnSummary *vulnerabilities.Summary
-		if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY && row.HasSbom && row.SummaryUpdatedAt.Valid {
-			critical := row.Critical
-			high := row.High
-			medium := row.Medium
-			low := row.Low
-			unassigned := row.Unassigned
-			riskScore := row.RiskScore
-
-			vulnSummary = &vulnerabilities.Summary{
-				Critical:        critical,
-				High:            high,
-				Medium:          medium,
-				Low:             low,
-				Unassigned:      unassigned,
-				Total:           critical + high + medium + low + unassigned,
-				RiskScore:       riskScore,
-				LastUpdated:     timestamppb.New(row.SummaryUpdatedAt.Time),
-				HasSbom:         row.HasSbom,
-				ActNow:          row.ActNow,
-				HighRisk:        row.HighRisk,
-				ElevatedRisk:    row.ElevatedRisk,
-				Monitor:         row.Monitor,
-				RansomwareCount: row.RansomwareCount,
-				HighEpssCount:   row.HighEpssCount,
-				TopPriority:     toProtoPriority(row.TopRiskTier),
-			}
-		}
-
-		return &vulnerabilities.WorkloadSummary{
-			Id: row.ID.String(),
-			Workload: &vulnerabilities.Workload{
-				Cluster:   row.Cluster,
-				Namespace: row.Namespace,
-				Name:      row.WorkloadName,
-				Type:      row.WorkloadType,
-				ImageName: imageName,
-				ImageTag:  imageTag,
-			},
-			VulnerabilitySummary: vulnSummary,
-			SbomStatus:           sbomStatus,
-		}
+		return toWorkloadSummary(row)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
@@ -122,6 +71,60 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	return response, nil
 }
 
+func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+	imageName := row.CurrentImageName
+	if row.ImageName != nil {
+		imageName = *row.ImageName
+	}
+	imageTag := row.CurrentImageTag
+	if row.ImageTag != nil {
+		imageTag = *row.ImageTag
+	}
+
+	sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
+	var vulnSummary *vulnerabilities.Summary
+	if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY && row.HasSbom && row.SummaryUpdatedAt.Valid {
+		critical := row.Critical
+		high := row.High
+		medium := row.Medium
+		low := row.Low
+		unassigned := row.Unassigned
+		riskScore := row.RiskScore
+
+		vulnSummary = &vulnerabilities.Summary{
+			Critical:        critical,
+			High:            high,
+			Medium:          medium,
+			Low:             low,
+			Unassigned:      unassigned,
+			Total:           critical + high + medium + low + unassigned,
+			RiskScore:       riskScore,
+			LastUpdated:     timestamppb.New(row.SummaryUpdatedAt.Time),
+			HasSbom:         row.HasSbom,
+			ActNow:          row.ActNow,
+			HighRisk:        row.HighRisk,
+			ElevatedRisk:    row.ElevatedRisk,
+			Monitor:         row.Monitor,
+			RansomwareCount: row.RansomwareCount,
+			HighEpssCount:   row.HighEpssCount,
+			TopPriority:     toProtoPriority(row.TopRiskTier),
+		}
+	}
+	return &vulnerabilities.WorkloadSummary{
+		Id: row.ID.String(),
+		Workload: &vulnerabilities.Workload{
+			Cluster:   row.Cluster,
+			Namespace: row.Namespace,
+			Name:      row.WorkloadName,
+			Type:      row.WorkloadType,
+			ImageName: imageName,
+			ImageTag:  imageTag,
+		},
+		VulnerabilitySummary: vulnSummary,
+		SbomStatus:           sbomStatus,
+	}
+}
+
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
 	if request.GetFilter() == nil {
@@ -129,6 +132,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	priorityFilter := toSQLPriorityFilter(request.GetFilter())
+	riskTiers := toSQLPriorityTiers(request.GetFilter())
 
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
@@ -136,6 +140,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTier:      priorityFilter,
+		RiskTiers:     riskTiers,
 	})
 	if err != nil {
 		return nil, err
@@ -354,22 +359,48 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}, nil
 }
 
+func toSQLPriorityTiers(filter *vulnerabilities.Filter) []int32 {
+	if filter == nil {
+		return nil
+	}
+	return priorityTiersFromPriorities(filter.GetPriorities())
+}
+
+func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 {
+	seen := make(map[int32]struct{}, len(priorities))
+	for _, priority := range priorities {
+		if priority == vulnerabilities.Priority_PRIORITY_UNSPECIFIED {
+			continue
+		}
+		if tier, ok := priorityToRiskTier[priority]; ok {
+			seen[tier] = struct{}{}
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	tiers := make([]int32, 0, len(seen))
+	for tier := range seen {
+		tiers = append(tiers, tier)
+	}
+	return tiers
+}
+
+var priorityToRiskTier = map[vulnerabilities.Priority]int32{
+	//lint:ignore SA1019 ACT_NOW is deprecated at the v13s layer but still mapped for wire compatibility.
+	vulnerabilities.Priority_PRIORITY_ACT_NOW:  1,
+	vulnerabilities.Priority_PRIORITY_HIGH:     2,
+	vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
+	vulnerabilities.Priority_PRIORITY_MONITOR:  4,
+}
+
 func toSQLPriorityFilter(filter *vulnerabilities.Filter) *int32 {
+	//lint:ignore SA1019 the deprecated single-value field is read here purely for wire compatibility.
 	if filter == nil || filter.Priority == nil {
 		return nil
 	}
-
-	var v int32
-	switch filter.GetPriority() {
-	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
-		v = 1
-	case vulnerabilities.Priority_PRIORITY_HIGH:
-		v = 2
-	case vulnerabilities.Priority_PRIORITY_ELEVATED:
-		v = 3
-	case vulnerabilities.Priority_PRIORITY_MONITOR:
-		v = 4
-	default:
+	v, ok := priorityToRiskTier[filter.GetPriority()]
+	if !ok {
 		return nil
 	}
 	return &v
@@ -406,6 +437,7 @@ func derefInt32(p *int32) int32 {
 func mapIntPriority(v int32) vulnerabilities.Priority {
 	switch v {
 	case 1:
+		//lint:ignore SA1019 tier 1 is only ever seen from data written before ACT_NOW was deprecated at the v13s layer.
 		return vulnerabilities.Priority_PRIORITY_ACT_NOW
 	case 2:
 		return vulnerabilities.Priority_PRIORITY_HIGH

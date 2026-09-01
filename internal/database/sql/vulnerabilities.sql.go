@@ -120,6 +120,8 @@ AND (
     END)
 AND ($5::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
+AND ($6::INT[] IS NULL
+    OR c.priority = ANY ($6::INT[]))
 `
 
 type CountVulnerabilitiesParams struct {
@@ -128,6 +130,7 @@ type CountVulnerabilitiesParams struct {
 	WorkloadType      *string
 	WorkloadName      *string
 	IncludeSuppressed *bool
+	RiskTiers         []int32
 }
 
 func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error) {
@@ -137,6 +140,7 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 		arg.WorkloadType,
 		arg.WorkloadName,
 		arg.IncludeSuppressed,
+		arg.RiskTiers,
 	)
 	var total int64
 	err := row.Scan(&total)
@@ -882,52 +886,87 @@ AND (
     END)
 AND ($7::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
+AND ($8::INT[] IS NULL
+    OR c.priority = ANY ($8::INT[]))
 ORDER BY
-    CASE WHEN $8 = 'priority_asc' THEN
+    CASE WHEN $9 = 'priority_asc' THEN
         c.priority
     END ASC NULLS LAST,
-    CASE WHEN $8 = 'priority_desc' THEN
+    CASE WHEN $9 = 'priority_desc' THEN
         c.priority
     END DESC NULLS LAST,
-    CASE WHEN $8 = 'severity_asc' THEN
+    CASE WHEN $9 = 'severity_asc' THEN
         c.severity
     END ASC,
-    CASE WHEN $8 = 'severity_desc' THEN
+    CASE WHEN $9 = 'severity_desc' THEN
         c.severity
     END DESC,
-    CASE WHEN $8 = 'workload_asc' THEN
+    CASE WHEN $9 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $8 = 'workload_desc' THEN
+    CASE WHEN $9 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $8 = 'namespace_asc' THEN
+    CASE WHEN $9 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $8 = 'namespace_desc' THEN
+    CASE WHEN $9 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $8 = 'cluster_asc' THEN
+    CASE WHEN $9 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $8 = 'cluster_desc' THEN
+    CASE WHEN $9 = 'cluster_desc' THEN
         w.cluster
     END DESC,
-    CASE WHEN $8 = 'created_at_asc' THEN
+    CASE WHEN $9 = 'created_at_asc' THEN
         v.created_at
     END ASC,
-    CASE WHEN $8 = 'created_at_desc' THEN
+    CASE WHEN $9 = 'created_at_desc' THEN
         v.created_at
     END DESC,
-    CASE WHEN $8 = 'updated_at_asc' THEN
+    CASE WHEN $9 = 'updated_at_asc' THEN
         v.updated_at
     END ASC,
-    CASE WHEN $8 = 'updated_at_desc' THEN
+    CASE WHEN $9 = 'updated_at_desc' THEN
         v.updated_at
     END DESC,
+    -- Decision 11: stable ordering within a priority (fix available first,
+    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
+    -- tie-breaker). Applied when ordering by priority or using the default
+    -- listing order, so cursor pagination stays stable.
+    CASE WHEN $9 = 'priority_asc'
+        OR $9 = 'priority_desc'
+        OR $9 IS NULL THEN
+        CASE WHEN v.fix_version IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN $9 = 'priority_asc'
+        OR $9 = 'priority_desc'
+        OR $9 IS NULL THEN
+        c.epss_score
+    END DESC NULLS LAST,
+    CASE WHEN $9 = 'priority_asc'
+        OR $9 = 'priority_desc'
+        OR $9 IS NULL THEN
+        c.cvss_score
+    END DESC NULLS LAST,
+    CASE WHEN $9 = 'priority_asc'
+        OR $9 = 'priority_desc'
+        OR $9 IS NULL THEN
+        v.created_at
+    END ASC,
+    CASE WHEN $9 = 'priority_asc'
+        OR $9 = 'priority_desc'
+        OR $9 IS NULL THEN
+        v.cve_id
+    END ASC,
     v.id ASC
-LIMIT $10
-OFFSET $9
+LIMIT $11
+OFFSET $10
 `
 
 type ListVulnerabilitiesParams struct {
@@ -938,6 +977,7 @@ type ListVulnerabilitiesParams struct {
 	ImageName         *string
 	ImageTag          *string
 	IncludeSuppressed *bool
+	RiskTiers         []int32
 	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
@@ -986,6 +1026,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
+		arg.RiskTiers,
 		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
@@ -1102,7 +1143,9 @@ distinct_image_vulnerabilities AS (
     AND ($7::TIMESTAMPTZ IS NULL
         OR v.severity_since > $7::TIMESTAMPTZ)
     AND ($8::INT IS NULL
-        OR v.severity = $8::INT))
+        OR v.severity = $8::INT)
+    AND ($9::INT[] IS NULL
+        OR v.priority = ANY ($9::INT[])))
 SELECT
     id,
     image_name,
@@ -1190,6 +1233,39 @@ ORDER BY
     CASE WHEN $1 = 'updated_at_desc' THEN
         updated_at
     END DESC,
+    -- Decision 11: stable ordering within a priority (fix available first,
+    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
+    -- tie-breaker). Applied when ordering by priority or using the default
+    -- listing order, so cursor pagination stays stable.
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        CASE WHEN fix_version IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        epss_score
+    END DESC NULLS LAST,
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        cvss_score
+    END DESC NULLS LAST,
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        created_at
+    END ASC,
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        cve_id
+    END ASC,
     severity,
     id ASC
 LIMIT $3
@@ -1205,6 +1281,7 @@ type ListVulnerabilitiesForImageParams struct {
 	IncludeSuppressed *bool
 	Since             pgtype.Timestamptz
 	Severity          *int32
+	RiskTiers         []int32
 }
 
 type ListVulnerabilitiesForImageRow struct {
@@ -1249,6 +1326,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 		arg.IncludeSuppressed,
 		arg.Since,
 		arg.Severity,
+		arg.RiskTiers,
 	)
 	if err != nil {
 		return nil, err
@@ -1433,6 +1511,39 @@ ORDER BY
     CASE WHEN $12 = 'cluster_desc' THEN
         w.cluster
     END DESC,
+    -- Decision 11: stable ordering within a priority (fix available first,
+    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
+    -- tie-breaker). Applied when ordering by priority or using the default
+    -- listing order, so cursor pagination stays stable.
+    CASE WHEN $12 = 'priority_asc'
+        OR $12 = 'priority_desc'
+        OR $12 IS NULL THEN
+        CASE WHEN v.fix_version IS NULL THEN
+            1
+        ELSE
+            0
+        END
+    END ASC,
+    CASE WHEN $12 = 'priority_asc'
+        OR $12 = 'priority_desc'
+        OR $12 IS NULL THEN
+        c.epss_score
+    END DESC NULLS LAST,
+    CASE WHEN $12 = 'priority_asc'
+        OR $12 = 'priority_desc'
+        OR $12 IS NULL THEN
+        c.cvss_score
+    END DESC NULLS LAST,
+    CASE WHEN $12 = 'priority_asc'
+        OR $12 = 'priority_desc'
+        OR $12 IS NULL THEN
+        v.created_at
+    END ASC,
+    CASE WHEN $12 = 'priority_asc'
+        OR $12 = 'priority_desc'
+        OR $12 IS NULL THEN
+        v.cve_id
+    END ASC,
     v.id ASC
 LIMIT $14
 OFFSET $13
@@ -1624,6 +1735,7 @@ WITH resolved_vulnerabilities AS (
     SELECT DISTINCT
         c.cve_id AS id,
         c.severity,
+        c.epss_score,
         c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
@@ -1642,6 +1754,7 @@ unsuppressed_vulnerabilities AS (
     SELECT
         rv.id,
         rv.severity,
+        rv.epss_score,
         rv.epss_percentile,
         rv.has_kev_entry,
         rv.known_ransomware_use
@@ -1660,34 +1773,52 @@ counts AS (
     COUNT(*) FILTER (WHERE severity = 2) AS medium,
     COUNT(*) FILTER (WHERE severity = 3) AS low,
     COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
-    COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS act_now,
-    COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-        AND (known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90)) AS high_risk,
-COUNT(*) FILTER (WHERE has_kev_entry = FALSE
-    AND NOT (known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.90)
-AND severity IN (0, 1)
-AND COALESCE(epss_percentile, 0) >= 0.50) AS elevated_risk,
-COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-    OR known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.90
-    OR (severity IN (0, 1)
-    AND COALESCE(epss_percentile, 0) >= 0.50))) AS monitor,
-COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-MIN(
-    CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
-        3
-    ELSE
-        4
-    END) AS top_risk_tier
+    -- v13s has no internetFacing/exposure signal (owned by nais/api), so it can
+    -- never compute URGENT/ACT_NOW on its own; this bucket is deprecated at the
+    -- v13s layer and always reports 0 (see Decision 1 "As implemented").
+    0 AS act_now,
+    -- HIGH (Decisions 1 and 4-5): KEV, confirmed ransomware use, or high EPSS
+    -- (percentile >= 0.95 OR score >= 0.10 -- percentile is population-relative,
+    -- score is an absolute exploitation probability, so either alone is a
+    -- sufficient signal; requiring both was too strict versus common industry
+    -- EPSS-tiering practice).
+    COUNT(*) FILTER (WHERE has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10) AS high_risk,
+    -- ELEVATED (Decisions 6 and 9): Critical/High severity with EPSS >= 0.90,
+    -- or Critical/High severity where EPSS is unknown (precautionary), provided
+    -- no HIGH rule already matched.
+    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.95
+            OR COALESCE(epss_score, 0) >= 0.10)
+        AND severity IN (0, 1)
+        AND (epss_percentile IS NULL
+            OR epss_percentile >= 0.90)) AS elevated_risk,
+    -- MONITOR (Decision 8): no known signal requires action now.
+    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.95
+            OR COALESCE(epss_score, 0) >= 0.10)
+            AND NOT (severity IN (0, 1)
+                AND (epss_percentile IS NULL
+                    OR epss_percentile >= 0.90))) AS monitor,
+    COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+    COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+    MIN(
+        CASE WHEN has_kev_entry = TRUE
+            OR known_ransomware_use = TRUE
+            OR COALESCE(epss_percentile, 0) >= 0.95
+            OR COALESCE(epss_score, 0) >= 0.10 THEN
+            2
+        WHEN severity IN (0, 1)
+            AND (epss_percentile IS NULL
+                OR epss_percentile >= 0.90) THEN
+            3
+        ELSE
+            4
+        END) AS top_risk_tier
 FROM
     unsuppressed_vulnerabilities)
 INSERT INTO vulnerability_summary(
@@ -1864,25 +1995,34 @@ const updateCvePriority = `-- name: UpdateCvePriority :exec
 UPDATE
     cve
 SET
-    priority = CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+    -- HIGH (Decisions 1, 4-5): KEV, confirmed ransomware use, or high EPSS
+    -- (percentile >= 0.95 OR score >= 0.10). v13s has no internetFacing signal,
+    -- so it can never assign tier 1 (ACT_NOW/URGENT); that tier is deprecated
+    -- at this layer (see Decision 1 "As implemented").
+    priority = CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
+    -- ELEVATED (Decisions 6, 9): Critical/High severity with EPSS >= 0.90, or
+    -- Critical/High severity where EPSS is unknown (precautionary).
     WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        AND (epss_percentile IS NULL
+            OR epss_percentile >= 0.90) THEN
         3
+    -- MONITOR (Decision 8): no known signal requires action now.
     ELSE
         4
     END
 WHERE
-    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE THEN
-        1
-    WHEN known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.90 THEN
+    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
     WHEN severity IN (0, 1)
-        AND COALESCE(epss_percentile, 0) >= 0.50 THEN
+        AND (epss_percentile IS NULL
+            OR epss_percentile >= 0.90) THEN
         3
     ELSE
         4

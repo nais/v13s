@@ -1363,7 +1363,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 	})
 }
 
-func TestServer_GetVulnerabilitySummary_PriorityThresholds(t *testing.T) {
+func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
 		namespaces:            []string{"namespace-1"},
@@ -1374,14 +1374,19 @@ func TestServer_GetVulnerabilitySummary_PriorityThresholds(t *testing.T) {
 	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	_, err := pool.Exec(ctx, `UPDATE cve SET has_kev_entry = FALSE, known_ransomware_use = FALSE, epss_percentile = 0.10, epss_score = 0.10`)
+	// Baseline: no threat signals, so every finding lands in MONITOR.
+	_, err := pool.Exec(ctx, `UPDATE cve SET has_kev_entry = FALSE, known_ransomware_use = FALSE, epss_percentile = 0.10, epss_score = 0.0`)
 	require.NoError(t, err)
+	// workload-1: a KEV finding -> HIGH.
 	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = TRUE WHERE cve_id = $1`, "CWE-1-1")
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.95, epss_score = 0.95 WHERE cve_id = $1`, "CWE-2-1")
+	// workload-2: a very-high EPSS percentile finding -> HIGH.
+	_, err = pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.96 WHERE cve_id = $1`, "CWE-2-1")
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.50, epss_score = 0.50 WHERE cve_id = $1`, "CWE-3-1")
+	// workload-3: critical/high severity with EPSS percentile >= 0.90 but below HIGH -> ELEVATED.
+	_, err = pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92 WHERE cve_id = $1`, "CWE-3-1")
 	require.NoError(t, err)
+	// workload-4: untouched -> all MONITOR.
 
 	require.NoError(t, db.UpdateCvePriority(ctx))
 	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
@@ -1392,108 +1397,110 @@ func TestServer_GetVulnerabilitySummary_PriorityThresholds(t *testing.T) {
 			ImageTag:  imgTag,
 		}))
 	}
-	snapshotDate := pgtype.Date{
-		Time:  time.Now().UTC().Truncate(24 * time.Hour),
-		Valid: true,
-	}
-	require.NoError(t, db.RefreshVulnerabilitySummaryForDate(ctx, snapshotDate))
-	require.NoError(t, db.RefreshVulnerabilitySummaryDailyView(ctx))
+
+	const (
+		high     = vulnerabilities.Priority_PRIORITY_HIGH
+		elevated = vulnerabilities.Priority_PRIORITY_ELEVATED
+		monitor  = vulnerabilities.Priority_PRIORITY_MONITOR
+		actNow   = vulnerabilities.Priority_PRIORITY_ACT_NOW
+	)
 
 	cases := []struct {
 		name              string
-		threshold         vulnerabilities.Priority
-		wantWorkloads     int32
-		wantActNow        int32
+		priorities        []vulnerabilities.Priority
+		wantWorkloads     int
+		wantTopPriorities []vulnerabilities.Priority
 		wantHighRisk      int32
 		wantElevatedRisk  int32
 		wantMonitor       int32
-		wantTopPriorities []int
+		wantFindings      int
 	}{
 		{
-			name:              "urgent",
-			threshold:         vulnerabilities.Priority_PRIORITY_ACT_NOW,
-			wantWorkloads:     1,
-			wantActNow:        1,
-			wantTopPriorities: []int{1},
-		},
-		{
-			name:              "high",
-			threshold:         vulnerabilities.Priority_PRIORITY_HIGH,
+			name:              "high only",
+			priorities:        []vulnerabilities.Priority{high},
 			wantWorkloads:     2,
-			wantActNow:        1,
-			wantHighRisk:      1,
-			wantTopPriorities: []int{1, 2},
+			wantTopPriorities: []vulnerabilities.Priority{high, high},
+			wantHighRisk:      2,
+			wantMonitor:       6,
+			wantFindings:      2,
 		},
 		{
-			name:              "elevated",
-			threshold:         vulnerabilities.Priority_PRIORITY_ELEVATED,
+			name:              "elevated only",
+			priorities:        []vulnerabilities.Priority{elevated},
+			wantWorkloads:     1,
+			wantTopPriorities: []vulnerabilities.Priority{elevated},
+			wantElevatedRisk:  1,
+			wantMonitor:       3,
+			wantFindings:      1,
+		},
+		{
+			name:              "monitor only",
+			priorities:        []vulnerabilities.Priority{monitor},
+			wantWorkloads:     1,
+			wantTopPriorities: []vulnerabilities.Priority{monitor},
+			wantMonitor:       4,
+			wantFindings:      13,
+		},
+		{
+			name:              "high and elevated",
+			priorities:        []vulnerabilities.Priority{high, elevated},
 			wantWorkloads:     3,
-			wantActNow:        1,
-			wantHighRisk:      1,
+			wantTopPriorities: []vulnerabilities.Priority{high, high, elevated},
+			wantHighRisk:      2,
 			wantElevatedRisk:  1,
-			wantTopPriorities: []int{1, 2, 3},
+			wantMonitor:       9,
+			wantFindings:      3,
 		},
 		{
-			name:              "monitor",
-			threshold:         vulnerabilities.Priority_PRIORITY_MONITOR,
-			wantWorkloads:     4,
-			wantActNow:        1,
-			wantHighRisk:      1,
-			wantElevatedRisk:  1,
-			wantMonitor:       13,
-			wantTopPriorities: []int{1, 2, 3, 4},
+			name:              "act_now is never produced by v13s",
+			priorities:        []vulnerabilities.Priority{actNow},
+			wantWorkloads:     0,
+			wantTopPriorities: []vulnerabilities.Priority{},
+			wantFindings:      0,
 		},
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.name+"/get", func(t *testing.T) {
-			resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.PriorityFilter(tc.threshold))
+		t.Run(tc.name+"/summary", func(t *testing.T) {
+			resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.PriorityFilter(tc.priorities...))
 			require.NoError(t, err)
 			require.NotNil(t, resp.GetVulnerabilitySummary())
 
-			assert.Equal(t, tc.wantWorkloads, resp.GetWorkloadCount())
-			assert.Equal(t, tc.wantWorkloads, resp.GetSbomCount())
-			assert.Equal(t, tc.wantActNow, resp.GetVulnerabilitySummary().GetActNow())
+			assert.Equal(t, int32(tc.wantWorkloads), resp.GetWorkloadCount())
+			assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetActNow())
 			assert.Equal(t, tc.wantHighRisk, resp.GetVulnerabilitySummary().GetHighRisk())
 			assert.Equal(t, tc.wantElevatedRisk, resp.GetVulnerabilitySummary().GetElevatedRisk())
 			assert.Equal(t, tc.wantMonitor, resp.GetVulnerabilitySummary().GetMonitor())
-			assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, resp.GetVulnerabilitySummary().GetTopPriority())
 		})
 
-		t.Run(tc.name+"/list", func(t *testing.T) {
-			resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.PriorityFilter(tc.threshold), vulnerabilities.Limit(10))
+		t.Run(tc.name+"/list-summaries", func(t *testing.T) {
+			resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.PriorityFilter(tc.priorities...), vulnerabilities.Limit(10))
 			require.NoError(t, err)
-			require.Len(t, resp.Nodes, int(tc.wantWorkloads))
+			require.Len(t, resp.Nodes, tc.wantWorkloads)
 
-			gotTopPriorities := make([]int, 0, len(resp.Nodes))
+			got := make([]vulnerabilities.Priority, 0, len(resp.Nodes))
 			for _, node := range resp.Nodes {
 				require.NotNil(t, node.GetVulnerabilitySummary())
-				gotTopPriorities = append(gotTopPriorities, priorityRank(node.GetVulnerabilitySummary().GetTopPriority()))
-				assert.LessOrEqual(t, priorityRank(node.GetVulnerabilitySummary().GetTopPriority()), priorityRank(tc.threshold))
-				if tc.threshold != vulnerabilities.Priority_PRIORITY_MONITOR {
-					assert.Zero(t, node.GetVulnerabilitySummary().GetMonitor())
-				}
+				got = append(got, node.GetVulnerabilitySummary().GetTopPriority())
 			}
-			sort.Ints(gotTopPriorities)
-			assert.Equal(t, tc.wantTopPriorities, gotTopPriorities)
+			sort.Slice(got, func(i, j int) bool { return priorityRank(got[i]) < priorityRank(got[j]) })
+			assert.Equal(t, tc.wantTopPriorities, got)
 		})
 
-		t.Run(tc.name+"/time-series", func(t *testing.T) {
-			resp, err := client.GetVulnerabilitySummaryTimeSeries(
-				ctx,
-				vulnerabilities.PriorityFilter(tc.threshold),
-				vulnerabilities.Since(snapshotDate.Time),
-			)
+		t.Run(tc.name+"/list-findings", func(t *testing.T) {
+			resp, err := client.ListVulnerabilities(ctx, vulnerabilities.PriorityFilter(tc.priorities...), vulnerabilities.Limit(100))
 			require.NoError(t, err)
-			require.Len(t, resp.Points, 1)
+			assert.Len(t, resp.Nodes, tc.wantFindings)
 
-			point := resp.Points[0]
-			assert.Equal(t, tc.wantWorkloads, point.GetWorkloadCount())
-			assert.Equal(t, tc.wantActNow, point.GetActNow())
-			assert.Equal(t, tc.wantHighRisk, point.GetHighRisk())
-			assert.Equal(t, tc.wantElevatedRisk, point.GetElevatedRisk())
-			assert.Equal(t, tc.wantMonitor, point.GetMonitor())
-			assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, point.GetTopPriority())
+			wantRanks := map[int]struct{}{}
+			for _, p := range tc.priorities {
+				wantRanks[priorityRank(p)] = struct{}{}
+			}
+			for _, node := range resp.Nodes {
+				got := node.GetVulnerability().GetCve().GetPriority()
+				_, ok := wantRanks[priorityRank(got)]
+				assert.True(t, ok, "finding priority %s outside requested set", got)
+			}
 		})
 	}
 }
@@ -3131,7 +3138,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, "1.2.3", v.GetFixVersion())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
-		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, v.GetCve().GetPriority())
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListVulnerabilities returns enriched Cve fields", func(t *testing.T) {
@@ -3182,7 +3189,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, cveID, v.GetCve().GetId())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
-		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, v.GetCve().GetPriority())
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListWorkloadsForVulnerability returns Cve.CvssScore", func(t *testing.T) {
@@ -3512,29 +3519,24 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		imageTag  = "v1.0"
 	)
 
-	cveActNow := "CVE-PRIORITY-ACT-NOW"
 	cveHigh := "CVE-PRIORITY-HIGH"
 	cveElevated := "CVE-PRIORITY-ELEVATED"
 	cveMonitor := "CVE-PRIORITY-MONITOR"
 
-	// Seed four CVEs — one per risk tier.
+	// Seed one CVE per risk tier v13s can produce (HIGH, ELEVATED, MONITOR;
+	// ACT_NOW requires internet-facing context that only nais/api has).
 	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
-		// ACT_NOW: has_kev_entry = true (set via BulkUpdateKevData below)
-		{
-			CveID: cveActNow, CveTitle: "Act Now", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
-			EpssScore: new(0.10), EpssPercentile: new(0.80),
-		},
-		// HIGH_RISK: epss_percentile >= 0.90, no KEV
+		// HIGH: has_kev_entry = true (set via BulkUpdateKevData below).
 		{
 			CveID: cveHigh, CveTitle: "High", CveDesc: "d", CveLink: "l", Severity: 1, Refs: map[string]string{},
-			EpssScore: new(0.95), EpssPercentile: new(0.95),
+			EpssScore: new(0.0), EpssPercentile: new(0.10),
 		},
-		// ELEVATED_RISK: severity CRITICAL (0), epss_percentile >= 0.50 but < 0.90, no KEV
+		// ELEVATED: severity CRITICAL, epss_percentile >= 0.90 but below the HIGH thresholds, no KEV.
 		{
 			CveID: cveElevated, CveTitle: "Elevated", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
-			EpssScore: new(0.40), EpssPercentile: new(0.65),
+			EpssScore: new(0.0), EpssPercentile: new(0.92),
 		},
-		// MONITOR: severity MEDIUM (2), low EPSS — nothing matches higher tiers
+		// MONITOR: severity MEDIUM, low EPSS — nothing matches a higher tier.
 		{
 			CveID: cveMonitor, CveTitle: "Monitor", CveDesc: "d", CveLink: "l", Severity: 2, Refs: map[string]string{},
 			EpssScore: new(0.01), EpssPercentile: new(0.05),
@@ -3544,7 +3546,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	})
 
 	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
-		CveIds:             []string{cveActNow},
+		CveIds:             []string{cveHigh},
 		KnownRansomwareUse: []bool{false},
 	})
 	require.NoError(t, err)
@@ -3553,12 +3555,8 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	err = db.UpdateCvePriority(ctx)
 	require.NoError(t, err)
 
-	// Attach all four CVEs to the existing workload image.
+	// Attach all three CVEs to the existing workload image.
 	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
-		{
-			ImageName: imageName, ImageTag: imageTag, Package: "pkg-act-now", CveID: cveActNow, Source: "test", LastSeverity: 0,
-			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		},
 		{
 			ImageName: imageName, ImageTag: imageTag, Package: "pkg-high", CveID: cveHigh, Source: "test", LastSeverity: 1,
 			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
@@ -3596,28 +3594,27 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("tier counts reflect all four priority classes", func(t *testing.T) {
+	t.Run("tier counts reflect the priority classes v13s produces", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, imageTag)
 		require.NoError(t, err)
 		sum := resp.GetVulnerabilitySummary()
 		require.NotNil(t, sum)
 
-		assert.Equal(t, int32(1), sum.GetActNow(), "act_now must be 1 (KEV CVE)")
-		assert.Equal(t, int32(1), sum.GetHighRisk(), "high_risk must be 1 (high-EPSS CVE)")
-		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical+mid-EPSS CVE)")
+		assert.Equal(t, int32(0), sum.GetActNow(), "act_now is never produced by v13s")
+		assert.Equal(t, int32(1), sum.GetHighRisk(), "high_risk must be 1 (KEV CVE)")
+		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical + high-percentile CVE)")
 		assert.Equal(t, int32(1), sum.GetMonitor(), "monitor must be 1 (low-risk CVE)")
-		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ACT_NOW, sum.GetTopPriority(), "top priority must be ACT_NOW")
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, sum.GetTopPriority(), "top priority must be HIGH")
 	})
 
 	t.Run("priority ordering: ListVulnerabilitiesForImage order_by=priority_asc", func(t *testing.T) {
-		// Verify that per-CVE ordering via priority_asc returns
-		// ACT_NOW → HIGH → ELEVATED → MONITOR.
+		// Verify that per-CVE ordering via priority_asc returns HIGH → ELEVATED → MONITOR.
 		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag,
 			vulnerabilities.Order(vulnerabilities.OrderByPriority, vulnerabilities.Direction_ASC),
 			vulnerabilities.Limit(10),
 		)
 		require.NoError(t, err)
-		require.Len(t, resp.Nodes, 4, "expected exactly 4 CVEs for the image")
+		require.Len(t, resp.Nodes, 3, "expected exactly 3 CVEs for the image")
 
 		gotIDs := make([]string, len(resp.Nodes))
 		gotPriorities := make([]vulnerabilities.Priority, len(resp.Nodes))
@@ -3626,13 +3623,12 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 			gotPriorities[i] = v.GetCve().GetPriority()
 		}
 		assert.Equal(t,
-			[]string{cveActNow, cveHigh, cveElevated, cveMonitor},
+			[]string{cveHigh, cveElevated, cveMonitor},
 			gotIDs,
-			"CVEs must be returned in priority order: ACT_NOW → HIGH → ELEVATED → MONITOR",
+			"CVEs must be returned in priority order: HIGH → ELEVATED → MONITOR",
 		)
 		assert.Equal(t,
 			[]vulnerabilities.Priority{
-				vulnerabilities.Priority_PRIORITY_ACT_NOW,
 				vulnerabilities.Priority_PRIORITY_HIGH,
 				vulnerabilities.Priority_PRIORITY_ELEVATED,
 				vulnerabilities.Priority_PRIORITY_MONITOR,
@@ -3640,5 +3636,16 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 			gotPriorities,
 			"CVE responses must expose computed priority enum",
 		)
+	})
+
+	t.Run("exact priority filter: ListVulnerabilitiesForImage priorities=[ELEVATED]", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag,
+			vulnerabilities.PriorityFilter(vulnerabilities.Priority_PRIORITY_ELEVATED),
+			vulnerabilities.Limit(10),
+		)
+		require.NoError(t, err)
+		require.Len(t, resp.Nodes, 1)
+		assert.Equal(t, cveElevated, resp.Nodes[0].GetCve().GetId())
+		assert.Equal(t, vulnerabilities.Priority_PRIORITY_ELEVATED, resp.Nodes[0].GetCve().GetPriority())
 	})
 }

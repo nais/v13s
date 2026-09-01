@@ -114,6 +114,8 @@ vulnerability_data AS (
         OR v.image_tag = sqlc.narg('image_tag')::TEXT)
     AND (sqlc.narg('risk_tier')::INT IS NULL
         OR v.top_risk_tier <= sqlc.narg('risk_tier')::INT)
+    AND (sqlc.narg('risk_tiers')::INT[] IS NULL
+        OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
 ),
@@ -331,6 +333,16 @@ WITH filtered_workloads AS (
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
                 AND v.top_risk_tier <= sqlc.narg('risk_tier')::INT))
+    AND (sqlc.narg('risk_tiers')::INT[] IS NULL
+        OR EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerability_summary v
+            WHERE
+                v.image_name = w.image_name
+                AND v.image_tag = w.image_tag
+                AND v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[])))
 ),
 joined_data AS (
     SELECT

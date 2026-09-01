@@ -229,12 +229,17 @@ func ImageFilter(name, tag string) Option {
 	})
 }
 
-func PriorityFilter(priority Priority) Option {
+func PriorityFilter(priorities ...Priority) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
 			o.Filter = &Filter{}
 		}
-		o.Filter.Priority = &priority
+		o.Filter.Priority = nil
+		if len(priorities) == 0 {
+			o.Filter.Priorities = nil
+			return
+		}
+		o.Filter.Priorities = append([]Priority(nil), priorities...)
 	})
 }
 

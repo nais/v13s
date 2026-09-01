@@ -12,27 +12,9 @@ spec:
     - name: namespace-workload-vulnerability-recording
       rules:
 
-        - record: namespace:workload:vulnerabilities:priority:act_now:max1h
-          expr: max by (workload_namespace, workload_name) (
-            max_over_time(
-            nais_workload_vulnerabilities_priority{
-            priority="ACT_NOW",
-            workload_namespace="nais-system"
-            }[1h]
-            )
-            )
-
-        - record: namespace:workload:vulnerabilities:priority:act_now:current
-          expr: max by (workload_namespace, workload_name) (
-            nais_workload_vulnerabilities_priority{
-            priority="ACT_NOW",
-            workload_namespace="nais-system"
-            }
-            )
-            or
-            max by (workload_namespace, workload_name) (
-            0 * nais_workload_vulnerabilities_priority{workload_namespace="nais-system"}
-            )
+        # v13s computes only the HIGH, ELEVATED and MONITOR priority tiers.
+        # ACT_NOW requires confirmed internet-facing context that only nais/api
+        # has, so it is never emitted here and has no rules.
 
         - record: namespace:workload:vulnerabilities:priority:high:max1h
           expr: max by (workload_namespace, workload_name) (
@@ -48,6 +30,28 @@ spec:
           expr: max by (workload_namespace, workload_name) (
             nais_workload_vulnerabilities_priority{
             priority="HIGH",
+            workload_namespace="nais-system"
+            }
+            )
+            or
+            max by (workload_namespace, workload_name) (
+            0 * nais_workload_vulnerabilities_priority{workload_namespace="nais-system"}
+            )
+
+        - record: namespace:workload:vulnerabilities:priority:elevated:max1h
+          expr: max by (workload_namespace, workload_name) (
+            max_over_time(
+            nais_workload_vulnerabilities_priority{
+            priority="ELEVATED",
+            workload_namespace="nais-system"
+            }[1h]
+            )
+            )
+
+        - record: namespace:workload:vulnerabilities:priority:elevated:current
+          expr: max by (workload_namespace, workload_name) (
+            nais_workload_vulnerabilities_priority{
+            priority="ELEVATED",
             workload_namespace="nais-system"
             }
             )
@@ -80,9 +84,9 @@ spec:
 
     - name: namespace-workload-vulnerability-alerts
       rules:
-        - alert: "workload priority urgent vulnerabilities"
-          expr: (namespace:workload:vulnerabilities:priority:act_now:current > 0)
-            and (namespace:workload:vulnerabilities:priority:act_now:max1h > 0)
+        - alert: "workload high priority vulnerabilities"
+          expr: (namespace:workload:vulnerabilities:priority:high:current > 0)
+            and (namespace:workload:vulnerabilities:priority:high:max1h > 0)
           for: 10m
           labels:
             namespace: nais-system
@@ -92,22 +96,22 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":rotating_light: Priority URGENT vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":rotating_light: Priority HIGH vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
               {{ "`{{ $labels.workload_name }}` has `{{ $value }}` priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: Immediate security risk; workload may be actively exploitable
+            consequence: Known exploitation or high exploitation likelihood; workload should be patched now
             action: |
-              1. URGENT is set by v13s priority logic when a CVE has `has_kev_entry=true` from the CISA KEV (Known Exploited Vulnerabilities) feed
-              2. In practice this means known exploitation in the wild and should be treated as highest remediation priority
+              1. HIGH is set by v13s priority logic when a CVE is in the CISA KEV (Known Exploited Vulnerabilities) feed, has `known_ransomware_use=true`, or has `EPSS percentile >= 0.95` or `EPSS score >= 0.10`
+              2. In practice this means known or highly likely exploitation and should be treated as the top remediation priority
               3. Visit Salsa and open the affected workload from this alert
               4. Verify affected packages and running image tag
-              5. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat URGENT as the primary remediation priority
+              5. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat HIGH priority as the primary remediation priority
               6. Redeploy affected workloads
 
-        - alert: "workload high priority vulnerabilities"
-          expr: (namespace:workload:vulnerabilities:priority:high:current > 0)
-            and (namespace:workload:vulnerabilities:priority:high:max1h > 0)
+        - alert: "workload elevated priority vulnerabilities"
+          expr: (namespace:workload:vulnerabilities:priority:elevated:current > 0)
+            and (namespace:workload:vulnerabilities:priority:elevated:max1h > 0)
           for: 10m
           labels:
             namespace: nais-system
@@ -117,17 +121,17 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":warning: Priority HIGH vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
+              {{ ":warning: Priority ELEVATED vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
               {{ "`{{ $labels.workload_name }}` has `{{ $value }}` priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: Elevated security risk; workload should be patched soon
             action: |
-              1. HIGH is set by v13s priority logic when a CVE has `known_ransomware_use=true` or `EPSS percentile >= 0.90`
-              2. In practice this means elevated likelihood of exploitation and should be handled quickly
+              1. ELEVATED is set by v13s priority logic for CRITICAL/HIGH severity findings with `EPSS percentile >= 0.90`, or where EPSS data is missing (precautionary), and no HIGH rule matched
+              2. In practice this means a plausible exploitation path that is not yet confirmed
               3. Visit Salsa and open the affected workload from this alert
               4. Verify affected packages and exposure surface
-              5. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat HIGH priority as the primary remediation priority
+              5. Use CVSS score/severity as supporting context
               6. Redeploy affected workloads
 
         - alert: "workload critical vulnerabilities"
@@ -149,7 +153,7 @@ spec:
             consequence: Informational rollup; review and prioritize remediation based on risk
             action: |
               1. Visit Salsa and open the affected workload
-              2. Review vulnerabilities and prioritize any findings that are URGENT or HIGH
+              2. Review vulnerabilities and prioritize any findings that are HIGH or ELEVATED priority
               3. Check for available patches and update images
               4. Redeploy affected workloads
 {{- end }}

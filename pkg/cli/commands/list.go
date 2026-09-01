@@ -373,6 +373,7 @@ func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
 
 func formatPriority(p vulnerabilities.Priority) string {
 	switch p {
+	//lint:ignore SA1019 v13s never emits ACT_NOW but the CLI still renders it if a peer does.
 	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
 		return "URGENT"
 	case vulnerabilities.Priority_PRIORITY_HIGH:
@@ -391,6 +392,7 @@ func formatTopPriority(sum *vulnerabilities.Summary, hasSummary bool) string {
 		return "-"
 	}
 	switch sum.GetTopPriority() {
+	//lint:ignore SA1019 v13s never emits ACT_NOW but the CLI still renders it if a peer does.
 	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
 		return "ACT_NOW"
 	case vulnerabilities.Priority_PRIORITY_HIGH:
