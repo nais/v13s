@@ -2163,6 +2163,56 @@ func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	})
 }
 
+func TestServer_ListMeanTimeToFixTrend_IsCumulativePerSnapshot(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	workloadID, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "cumulative-mttf-workload",
+		WorkloadType: "app",
+		Namespace:    "mttf-test",
+		Cluster:      "mttf-test",
+		ImageName:    "mttf-test-image",
+		ImageTag:     "v1",
+	})
+	require.NoError(t, err)
+
+	firstSnapshot := time.Date(2026, time.January, 3, 0, 0, 0, 0, time.UTC)
+	laterSnapshot := time.Date(2026, time.January, 5, 0, 0, 0, 0, time.UTC)
+	firstIntroducedAt := firstSnapshot.AddDate(0, 0, -2)
+	secondIntroducedAt := laterSnapshot.AddDate(0, 0, -4)
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO vuln_fix_summary (
+			workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
+		) VALUES
+			($1, $2, $3, $4, $5, TRUE, $6),
+			($1, $2, $3, $4, $5, TRUE, $7),
+			($1, $2, $8, $7, $9, TRUE, $7)
+	`, workloadID, 0, firstIntroducedAt, firstSnapshot, 2, firstSnapshot, laterSnapshot, secondIntroducedAt, 4)
+	require.NoError(t, err)
+
+	resp, err := client.ListMeanTimeToFixTrendBySeverity(ctx,
+		vulnerabilities.WorkloadFilter("cumulative-mttf-workload"),
+	)
+	require.NoError(t, err)
+	require.Len(t, resp.Points, 2)
+
+	assert.Equal(t, firstSnapshot, resp.Points[0].SnapshotDate.AsTime())
+	assert.Equal(t, int32(1), resp.Points[0].FixedCount)
+	assert.Equal(t, int32(2), resp.Points[0].MeanTimeToFixDays)
+
+	assert.Equal(t, laterSnapshot, resp.Points[1].SnapshotDate.AsTime())
+	assert.Equal(t, int32(2), resp.Points[1].FixedCount)
+	assert.Equal(t, int32(3), resp.Points[1].MeanTimeToFixDays)
+}
+
 func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1", "cluster-2"},
