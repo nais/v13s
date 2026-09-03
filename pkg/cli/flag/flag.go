@@ -262,7 +262,7 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		var priority vulnerabilities.Priority
 		switch strings.ToLower(o.Priority) {
 		case "act_now", "act-now":
-			//lint:ignore SA1019 v13s never emits ACT_NOW; the CLI still accepts it for peers that do.
+			//lint:ignore SA1019 wire compatibility.
 			priority = vulnerabilities.Priority_PRIORITY_ACT_NOW
 		case "high", "high_risk", "high-risk":
 			priority = vulnerabilities.Priority_PRIORITY_HIGH

@@ -32,7 +32,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	riskTiers := toSQLPriorityTiers(request.GetFilter())
+	riskTiers := priorityRiskTiers(request.GetFilter())
 
 	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,

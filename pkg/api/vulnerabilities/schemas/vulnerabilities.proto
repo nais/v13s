@@ -44,9 +44,7 @@ enum SinceType {
 
 enum Priority {
   PRIORITY_UNSPECIFIED = 0;
-  // Deprecated: v13s has no internetFacing/exposure signal (owned by nais/api)
-  // and can never compute URGENT/ACT_NOW on its own. Kept for wire
-  // compatibility only; v13s never emits this value. See ticket 1 Decision 1.
+  // Deprecated: v13s never emits this value.
   PRIORITY_ACT_NOW = 1 [deprecated = true];
   PRIORITY_HIGH = 2;
   PRIORITY_ELEVATED = 3;

@@ -41,22 +41,11 @@ counts AS (
     COUNT(*) FILTER (WHERE severity = 2) AS medium,
     COUNT(*) FILTER (WHERE severity = 3) AS low,
     COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
-    -- v13s has no internetFacing/exposure signal (owned by nais/api), so it can
-    -- never compute URGENT/ACT_NOW on its own; this bucket is deprecated at the
-    -- v13s layer and always reports 0 (see Decision 1 "As implemented").
     0 AS act_now,
-    -- HIGH (Decisions 1 and 4-5): KEV, confirmed ransomware use, or high EPSS
-    -- (percentile >= 0.95 OR score >= 0.10 -- percentile is population-relative,
-    -- score is an absolute exploitation probability, so either alone is a
-    -- sufficient signal; requiring both was too strict versus common industry
-    -- EPSS-tiering practice).
     COUNT(*) FILTER (WHERE has_kev_entry = TRUE
         OR known_ransomware_use = TRUE
         OR COALESCE(epss_percentile, 0) >= 0.95
         OR COALESCE(epss_score, 0) >= 0.10) AS high_risk,
-    -- ELEVATED (Decisions 6 and 9): Critical/High severity with EPSS >= 0.90,
-    -- or Critical/High severity where EPSS is unknown (precautionary), provided
-    -- no HIGH rule already matched.
     COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
             OR known_ransomware_use = TRUE
             OR COALESCE(epss_percentile, 0) >= 0.95
@@ -64,7 +53,6 @@ counts AS (
         AND severity IN (0, 1)
         AND (epss_percentile IS NULL
             OR epss_percentile >= 0.90)) AS elevated_risk,
-    -- MONITOR (Decision 8): no known signal requires action now.
     COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
             OR known_ransomware_use = TRUE
             OR COALESCE(epss_percentile, 0) >= 0.95
@@ -791,10 +779,6 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN
         updated_at
     END DESC,
-    -- Decision 11: stable ordering within a priority (fix available first,
-    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
-    -- tie-breaker). Applied when ordering by priority or using the default
-    -- listing order, so cursor pagination stays stable.
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
@@ -954,10 +938,6 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'updated_at_desc' THEN
         v.updated_at
     END DESC,
-    -- Decision 11: stable ordering within a priority (fix available first,
-    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
-    -- tie-breaker). Applied when ordering by priority or using the default
-    -- listing order, so cursor pagination stays stable.
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
@@ -1136,10 +1116,6 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN
         w.cluster
     END DESC,
-    -- Decision 11: stable ordering within a priority (fix available first,
-    -- highest EPSS, highest CVSS, oldest finding first, CVE id as final
-    -- tie-breaker). Applied when ordering by priority or using the default
-    -- listing order, so cursor pagination stays stable.
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
@@ -1185,22 +1161,15 @@ WHERE
 UPDATE
     cve
 SET
-    -- HIGH (Decisions 1, 4-5): KEV, confirmed ransomware use, or high EPSS
-    -- (percentile >= 0.95 OR score >= 0.10). v13s has no internetFacing signal,
-    -- so it can never assign tier 1 (ACT_NOW/URGENT); that tier is deprecated
-    -- at this layer (see Decision 1 "As implemented").
     priority = CASE WHEN has_kev_entry = TRUE
         OR known_ransomware_use = TRUE
         OR COALESCE(epss_percentile, 0) >= 0.95
         OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
-    -- ELEVATED (Decisions 6, 9): Critical/High severity with EPSS >= 0.90, or
-    -- Critical/High severity where EPSS is unknown (precautionary).
     WHEN severity IN (0, 1)
         AND (epss_percentile IS NULL
             OR epss_percentile >= 0.90) THEN
         3
-    -- MONITOR (Decision 8): no known signal requires action now.
     ELSE
         4
     END

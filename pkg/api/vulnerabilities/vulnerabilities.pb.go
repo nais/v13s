@@ -233,9 +233,7 @@ type Priority int32
 
 const (
 	Priority_PRIORITY_UNSPECIFIED Priority = 0
-	// Deprecated: v13s has no internetFacing/exposure signal (owned by nais/api)
-	// and can never compute URGENT/ACT_NOW on its own. Kept for wire
-	// compatibility only; v13s never emits this value. See ticket 1 Decision 1.
+	// Deprecated: v13s never emits this value.
 	//
 	// Deprecated: Marked as deprecated in vulnerabilities.proto.
 	Priority_PRIORITY_ACT_NOW  Priority = 1

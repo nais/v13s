@@ -366,6 +366,21 @@ func toSQLPriorityTiers(filter *vulnerabilities.Filter) []int32 {
 	return priorityTiersFromPriorities(filter.GetPriorities())
 }
 
+func priorityRiskTiers(filter *vulnerabilities.Filter) []int32 {
+	if tiers := toSQLPriorityTiers(filter); len(tiers) > 0 {
+		return tiers
+	}
+	threshold := toSQLPriorityFilter(filter)
+	if threshold == nil {
+		return nil
+	}
+	tiers := make([]int32, 0, *threshold)
+	for t := int32(1); t <= *threshold; t++ {
+		tiers = append(tiers, t)
+	}
+	return tiers
+}
+
 func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 {
 	seen := make(map[int32]struct{}, len(priorities))
 	for _, priority := range priorities {
@@ -387,7 +402,7 @@ func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 
 }
 
 var priorityToRiskTier = map[vulnerabilities.Priority]int32{
-	//lint:ignore SA1019 ACT_NOW is deprecated at the v13s layer but still mapped for wire compatibility.
+	//lint:ignore SA1019 mapped for wire compatibility.
 	vulnerabilities.Priority_PRIORITY_ACT_NOW:  1,
 	vulnerabilities.Priority_PRIORITY_HIGH:     2,
 	vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
@@ -395,7 +410,7 @@ var priorityToRiskTier = map[vulnerabilities.Priority]int32{
 }
 
 func toSQLPriorityFilter(filter *vulnerabilities.Filter) *int32 {
-	//lint:ignore SA1019 the deprecated single-value field is read here purely for wire compatibility.
+	//lint:ignore SA1019 wire compatibility.
 	if filter == nil || filter.Priority == nil || len(filter.GetPriorities()) > 0 {
 		return nil
 	}
@@ -437,7 +452,7 @@ func derefInt32(p *int32) int32 {
 func mapIntPriority(v int32) vulnerabilities.Priority {
 	switch v {
 	case 1:
-		//lint:ignore SA1019 tier 1 is only ever seen from data written before ACT_NOW was deprecated at the v13s layer.
+		//lint:ignore SA1019 wire compatibility.
 		return vulnerabilities.Priority_PRIORITY_ACT_NOW
 	case 2:
 		return vulnerabilities.Priority_PRIORITY_HIGH

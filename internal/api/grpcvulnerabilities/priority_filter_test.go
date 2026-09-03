@@ -79,10 +79,8 @@ func TestToSQLPriorityTiers(t *testing.T) {
 	}
 }
 
-// legacyPriorityFilter builds a Filter using the deprecated single-value field,
-// which the legacy "at or above" path still reads for wire compatibility.
 func legacyPriorityFilter(p vulnerabilities.Priority) *vulnerabilities.Filter {
-	//lint:ignore SA1019 exercising the deprecated wire-compat field on purpose.
+	//lint:ignore SA1019 wire compatibility.
 	return &vulnerabilities.Filter{Priority: &p}
 }
 
@@ -109,4 +107,21 @@ func TestToSQLPriorityFilterExactSetTakesPrecedence(t *testing.T) {
 
 	assert.Nil(t, toSQLPriorityFilter(filter),
 		"the deprecated threshold must be ignored when Filter.priorities is set, so the two filters cannot intersect")
+}
+
+func TestPriorityRiskTiers(t *testing.T) {
+	assert.Nil(t, priorityRiskTiers(nil))
+	assert.Nil(t, priorityRiskTiers(&vulnerabilities.Filter{}))
+
+	exact := priorityRiskTiers(&vulnerabilities.Filter{
+		Priorities: []vulnerabilities.Priority{vulnerabilities.Priority_PRIORITY_ELEVATED},
+	})
+	assert.Equal(t, []int32{3}, exact)
+
+	threshold := priorityRiskTiers(legacyPriorityFilter(vulnerabilities.Priority_PRIORITY_ELEVATED))
+	assert.ElementsMatch(t, []int32{1, 2, 3}, threshold)
+
+	both := legacyPriorityFilter(vulnerabilities.Priority_PRIORITY_MONITOR)
+	both.Priorities = []vulnerabilities.Priority{vulnerabilities.Priority_PRIORITY_HIGH}
+	assert.Equal(t, []int32{2}, priorityRiskTiers(both))
 }
