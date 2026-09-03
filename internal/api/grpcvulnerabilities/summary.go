@@ -396,7 +396,7 @@ var priorityToRiskTier = map[vulnerabilities.Priority]int32{
 
 func toSQLPriorityFilter(filter *vulnerabilities.Filter) *int32 {
 	//lint:ignore SA1019 the deprecated single-value field is read here purely for wire compatibility.
-	if filter == nil || filter.Priority == nil {
+	if filter == nil || filter.Priority == nil || len(filter.GetPriorities()) > 0 {
 		return nil
 	}
 	v, ok := priorityToRiskTier[filter.GetPriority()]

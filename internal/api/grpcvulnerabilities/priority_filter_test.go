@@ -1,7 +1,7 @@
 package grpcvulnerabilities
 
 import (
-	"sort"
+	"slices"
 	"testing"
 
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
@@ -73,7 +73,7 @@ func TestToSQLPriorityTiers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := toSQLPriorityTiers(tt.filter)
-			sort.Slice(got, func(i, j int) bool { return got[i] < got[j] })
+			slices.Sort(got)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -101,4 +101,12 @@ func TestToSQLPriorityFilter(t *testing.T) {
 	if assert.NotNil(t, got) {
 		assert.Equal(t, int32(2), *got)
 	}
+}
+
+func TestToSQLPriorityFilterExactSetTakesPrecedence(t *testing.T) {
+	filter := legacyPriorityFilter(vulnerabilities.Priority_PRIORITY_HIGH)
+	filter.Priorities = []vulnerabilities.Priority{vulnerabilities.Priority_PRIORITY_ELEVATED}
+
+	assert.Nil(t, toSQLPriorityFilter(filter),
+		"the deprecated threshold must be ignored when Filter.priorities is set, so the two filters cannot intersect")
 }
