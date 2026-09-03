@@ -12,10 +12,6 @@ spec:
     - name: namespace-workload-vulnerability-recording
       rules:
 
-        # v13s computes only the HIGH, ELEVATED and MONITOR priority tiers.
-        # ACT_NOW requires confirmed internet-facing context that only nais/api
-        # has, so it is never emitted here and has no rules.
-
         - record: namespace:workload:vulnerabilities:priority:high:max1h
           expr: max by (workload_namespace, workload_name) (
             max_over_time(
