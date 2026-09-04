@@ -34,6 +34,26 @@ spec:
             0 * nais_workload_vulnerabilities_priority{workload_namespace="nais-system"}
             )
 
+        - record: namespace:workload:vulnerabilities:kev:max1h
+          expr: max by (workload_namespace, workload_name) (
+            max_over_time(
+            nais_workload_vulnerabilities_kev{
+            workload_namespace="nais-system"
+            }[1h]
+            )
+            )
+
+        - record: namespace:workload:vulnerabilities:kev:current
+          expr: max by (workload_namespace, workload_name) (
+            nais_workload_vulnerabilities_kev{
+            workload_namespace="nais-system"
+            }
+            )
+            or
+            max by (workload_namespace, workload_name) (
+            0 * nais_workload_vulnerabilities_kev{workload_namespace="nais-system"}
+            )
+
         - record: namespace:workload:vulnerabilities:priority:elevated:max1h
           expr: max by (workload_namespace, workload_name) (
             max_over_time(
@@ -94,16 +114,38 @@ spec:
             summary: |
               {{ ":rotating_light: Priority HIGH vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "`{{ $labels.workload_name }}` has `{{ $value }}` priority vulnerabilities." }}
+              {{ "`{{ $labels.workload_name }}` has `{{ $value }}` HIGH-priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: Known exploitation or high exploitation likelihood; workload should be patched now
+            consequence: HIGH is a broad operational priority. It may include KEV findings, but also ransomware or EPSS-based risk signals. Use the separate KEV alert to identify confirmed exploitation.
             action: |
-              1. HIGH is set by v13s priority logic when a CVE is in the CISA KEV (Known Exploited Vulnerabilities) feed, has `known_ransomware_use=true`, or has `EPSS percentile >= 0.95` or `EPSS score >= 0.10`
-              2. In practice this means known or highly likely exploitation and should be treated as the top remediation priority
-              3. Visit Salsa and open the affected workload from this alert
-              4. Verify affected packages and running image tag
-              5. Use CVSS score/severity (e.g. CRITICAL/HIGH) as supporting context, but treat HIGH priority as the primary remediation priority
-              6. Redeploy affected workloads
+              1. Open the workload in Salsa and identify the affected packages, CVEs, and running image tag.
+              2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.
+              3. Build and redeploy the patched image.
+              4. Confirm that the next vulnerability scan no longer reports the finding.
+              HIGH includes CVEs in CISA KEV, findings with known ransomware use, and findings with an EPSS percentile of at least 0.95 or score of at least 0.10. A HIGH alert alone does not mean the CVE is in KEV.
+
+        - alert: "workload KEV vulnerabilities"
+          expr: (namespace:workload:vulnerabilities:kev:current > 0)
+            and (namespace:workload:vulnerabilities:kev:max1h > 0)
+          for: 10m
+          labels:
+            namespace: nais-system
+            severity: critical
+            channel: nais-alerts
+            alert_type: custom
+            repeat_interval: 1d
+          annotations:
+            summary: |
+              {{ ":rotating_light: CISA KEV vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
+            description: |
+              {{ "`{{ $labels.workload_name }}` has `{{ $value }}` vulnerabilities listed in CISA's Known Exploited Vulnerabilities catalog." }}
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+            consequence: CISA lists these CVEs as exploited in the wild. Unlike the broader HIGH-priority alert, this alert confirms that the workload contains a KEV finding. Treat this as an urgent remediation task.
+            action: |
+              1. Open the workload in Salsa and identify the affected packages, CVEs, and running image tag.
+              2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.
+              3. Build and redeploy the patched image.
+              4. Confirm that the next vulnerability scan no longer reports the finding.
 
         - alert: "workload elevated priority vulnerabilities"
           expr: (namespace:workload:vulnerabilities:priority:elevated:current > 0)
@@ -119,16 +161,15 @@ spec:
             summary: |
               {{ ":warning: Priority ELEVATED vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              {{ "`{{ $labels.workload_name }}` has `{{ $value }}` priority vulnerabilities." }}
+              {{ "`{{ $labels.workload_name }}` has `{{ $value }}` ELEVATED-priority vulnerabilities." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: Elevated security risk; workload should be patched soon
+            consequence: These are CRITICAL or HIGH severity findings with an elevated predicted likelihood of exploitation, but no HIGH-priority signal. They are not CISA KEV findings.
             action: |
-              1. ELEVATED is set by v13s priority logic for CRITICAL/HIGH severity findings with `EPSS percentile >= 0.90`, or where EPSS data is missing (precautionary), and no HIGH rule matched
-              2. In practice this means a plausible exploitation path that is not yet confirmed
-              3. Visit Salsa and open the affected workload from this alert
-              4. Verify affected packages and exposure surface
-              5. Use CVSS score/severity as supporting context
-              6. Redeploy affected workloads
+              1. Open the workload in Salsa and identify the affected packages, CVEs, and running image tag.
+              2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.
+              3. Build and redeploy the patched image.
+              4. Confirm that the next vulnerability scan no longer reports the finding.
+              ELEVATED covers CRITICAL or HIGH findings with an EPSS percentile of at least 0.90, or missing EPSS data, when no HIGH-priority signal applies.
 
         - alert: "workload critical vulnerabilities"
           expr: (namespace:workload:vulnerabilities:critical:current > 0)
@@ -146,10 +187,10 @@ spec:
             description: |
               {{ "`{{ $labels.workload_name }}` has `{{ $value }}` vulnerabilities with CVSS severity CRITICAL." }}
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: Informational rollup; review and prioritize remediation based on risk
+            consequence: This is an informational rollup. Critical severity alone does not establish exploitation likelihood.
             action: |
-              1. Visit Salsa and open the affected workload
-              2. Review vulnerabilities and prioritize any findings that are HIGH or ELEVATED priority
-              3. Check for available patches and update images
-              4. Redeploy affected workloads
+              1. Open the workload in Salsa and identify the affected packages, CVEs, and running image tag.
+              2. Prioritize any finding that is also HIGH or ELEVATED, or is listed in CISA KEV.
+              3. Upgrade the affected dependency or use an image with the fix.
+              4. Build and redeploy the patched image, then confirm that the next vulnerability scan no longer reports the finding.
 {{- end }}
