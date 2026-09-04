@@ -44,7 +44,8 @@ enum SinceType {
 
 enum Priority {
   PRIORITY_UNSPECIFIED = 0;
-  PRIORITY_ACT_NOW = 1;
+  reserved 1;
+  reserved "PRIORITY_ACT_NOW";
   PRIORITY_HIGH = 2;
   PRIORITY_ELEVATED = 3;
   PRIORITY_MONITOR = 4;
@@ -68,8 +69,10 @@ message Filter {
   optional string image_name = 5;
   optional string image_tag = 6;
   repeated string namespaces = 7;
-  // Minimum priority threshold; includes this tier and all higher-priority findings.
-  optional Priority priority = 8;
+  reserved 8;
+  reserved "priority";
+  // Exact priority filter. When set, only workloads/findings whose top priority is in this set are returned.
+  repeated Priority priorities = 9;
 }
 
 message OrderBy {
@@ -99,7 +102,8 @@ message Summary {
   optional google.protobuf.Timestamp last_updated = 9;
   optional string stale_image_tag = 10;
   // Priority distribution (use when breakdown/trend is needed).
-  int32 act_now = 11;
+  // kev_count: findings in the CISA KEV catalogue (a signal, not a verdict).
+  int32 kev_count = 11;
   int32 high_risk = 12;
   int32 elevated_risk = 13;
   int32 monitor = 14;
@@ -244,6 +248,8 @@ message ListVulnerabilitiesForImageRequest {
   optional OrderBy order_by = 6;
   optional google.protobuf.Timestamp since = 7;
   optional Severity severity = 8;
+  // Exact priority filter. When set, only findings whose priority is in this set are returned.
+  repeated Priority priorities = 9;
 }
 
 message ListVulnerabilitiesForImageResponse {
@@ -406,7 +412,7 @@ message VulnerabilitySummaryPoint {
   int32 riskScore = 7;
   int32 workload_count = 8;
   google.protobuf.Timestamp bucket_time = 9;
-  int32 act_now = 10;
+  int32 kev_count = 10;
   int32 high_risk = 11;
   int32 elevated_risk = 12;
   int32 monitor = 13;

@@ -29,7 +29,7 @@ VALUES (
     $7,
     $8)
 RETURNING
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
 `
 
 type CreateVulnerabilitySummaryParams struct {
@@ -67,7 +67,7 @@ func (q *Queries) CreateVulnerabilitySummary(ctx context.Context, arg CreateVuln
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ActNow,
+		&i.KevCount,
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
@@ -94,7 +94,7 @@ func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context
 
 const getLatestSummaryForImageName = `-- name: GetLatestSummaryForImageName :one
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
 FROM
     vulnerability_summary
 WHERE
@@ -125,7 +125,7 @@ func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLates
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ActNow,
+		&i.KevCount,
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
@@ -145,15 +145,15 @@ WITH filtered_workloads AS (
         w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
     FROM
         workloads w
-    WHERE ($2::TEXT IS NULL
-        OR w.cluster = $2::TEXT)
-    AND ($3::TEXT IS NULL
-        OR w.namespace = $3::TEXT)
-    AND ($4::TEXT[] IS NULL
-        OR w.workload_type = ANY ($4::TEXT[]))
-    AND ($5::TEXT IS NULL
-        OR w.name = $5::TEXT)
-    AND ($1::INT IS NULL
+    WHERE ($1::TEXT IS NULL
+        OR w.cluster = $1::TEXT)
+    AND ($2::TEXT IS NULL
+        OR w.namespace = $2::TEXT)
+    AND ($3::TEXT[] IS NULL
+        OR w.workload_type = ANY ($3::TEXT[]))
+    AND ($4::TEXT IS NULL
+        OR w.name = $4::TEXT)
+    AND ($5::INT[] IS NULL
         OR EXISTS (
             SELECT
                 1
@@ -162,7 +162,7 @@ WITH filtered_workloads AS (
             WHERE
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
-                AND v.top_risk_tier <= $1::INT))
+                AND v.top_risk_tier = ANY ($5::INT[])))
 ),
 joined_data AS (
     SELECT
@@ -175,7 +175,7 @@ joined_data AS (
         v.medium,
         v.low,
         v.unassigned,
-        v.act_now,
+        v.kev_count,
         v.high_risk,
         v.elevated_risk,
         v.monitor,
@@ -219,24 +219,18 @@ joined_data AS (
                     END), 0) AS INT4) AS unassigned,
         CAST(COALESCE(SUM(
                     CASE WHEN is_active THEN
-                        act_now
-                    END), 0) AS INT4) AS act_now,
+                        kev_count
+                    END), 0) AS INT4) AS kev_count,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active
-                        AND ($1::INT IS NULL
-                            OR $1::INT >= 2) THEN
+                    CASE WHEN is_active THEN
                         high_risk
                     END), 0) AS INT4) AS high_risk,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active
-                        AND ($1::INT IS NULL
-                            OR $1::INT >= 3) THEN
+                    CASE WHEN is_active THEN
                         elevated_risk
                     END), 0) AS INT4) AS elevated_risk,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active
-                        AND ($1::INT IS NULL
-                            OR $1::INT >= 4) THEN
+                    CASE WHEN is_active THEN
                         monitor
                     END), 0) AS INT4) AS monitor,
         CAST(COALESCE(SUM(
@@ -265,11 +259,11 @@ joined_data AS (
 `
 
 type GetVulnerabilitySummaryParams struct {
-	RiskTier      *int32
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	RiskTiers     []int32
 }
 
 type GetVulnerabilitySummaryRow struct {
@@ -280,7 +274,7 @@ type GetVulnerabilitySummaryRow struct {
 	Medium           int32
 	Low              int32
 	Unassigned       int32
-	ActNow           int32
+	KevCount         int32
 	HighRisk         int32
 	ElevatedRisk     int32
 	Monitor          int32
@@ -293,11 +287,11 @@ type GetVulnerabilitySummaryRow struct {
 
 func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
 	row := q.db.QueryRow(ctx, getVulnerabilitySummary,
-		arg.RiskTier,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.RiskTiers,
 	)
 	var i GetVulnerabilitySummaryRow
 	err := row.Scan(
@@ -308,7 +302,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		&i.Medium,
 		&i.Low,
 		&i.Unassigned,
-		&i.ActNow,
+		&i.KevCount,
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
@@ -323,7 +317,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 
 const getVulnerabilitySummaryForImage = `-- name: GetVulnerabilitySummaryForImage :one
 SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, act_now, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
+    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
 FROM
     vulnerability_summary
 WHERE
@@ -351,7 +345,7 @@ func (q *Queries) GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVu
 		&i.RiskScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ActNow,
+		&i.KevCount,
 		&i.HighRisk,
 		&i.ElevatedRisk,
 		&i.Monitor,
@@ -371,28 +365,10 @@ SELECT
     SUM(medium)::INT4 AS medium,
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
-    COALESCE(SUM(act_now), 0)::INT4 AS act_now,
-    COALESCE(SUM(
-            CASE WHEN $1::INT IS NULL
-                OR $1::INT >= 2 THEN
-                high_risk
-            ELSE
-                0
-            END), 0)::INT4 AS high_risk,
-    COALESCE(SUM(
-            CASE WHEN $1::INT IS NULL
-                OR $1::INT >= 3 THEN
-                elevated_risk
-            ELSE
-                0
-            END), 0)::INT4 AS elevated_risk,
-    COALESCE(SUM(
-            CASE WHEN $1::INT IS NULL
-                OR $1::INT >= 4 THEN
-                monitor
-            ELSE
-                0
-            END), 0)::INT4 AS monitor,
+    COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
+    COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
+    COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
+    COALESCE(SUM(monitor), 0)::INT4 AS monitor,
     COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
     COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
     MIN(top_risk_tier) AS top_risk_tier,
@@ -401,18 +377,18 @@ SELECT
 FROM
     mv_vuln_summary_daily_by_workload
 WHERE
-    snapshot_date >= $2::TIMESTAMPTZ
+    snapshot_date >= $1::TIMESTAMPTZ
     AND snapshot_date <= CURRENT_DATE
+    AND ($2::TEXT IS NULL
+        OR CLUSTER = $2::TEXT)
     AND ($3::TEXT IS NULL
-        OR CLUSTER = $3::TEXT)
-    AND ($4::TEXT IS NULL
-        OR namespace = $4::TEXT)
-    AND ($5::TEXT[] IS NULL
-        OR workload_type = ANY ($5::TEXT[]))
-    AND ($6::TEXT IS NULL
-        OR workload_name = $6::TEXT)
-    AND ($1::INT IS NULL
-        OR top_risk_tier <= $1::INT)
+        OR namespace = $3::TEXT)
+    AND ($4::TEXT[] IS NULL
+        OR workload_type = ANY ($4::TEXT[]))
+    AND ($5::TEXT IS NULL
+        OR workload_name = $5::TEXT)
+    AND ($6::INT[] IS NULL
+        OR top_risk_tier = ANY ($6::INT[]))
 GROUP BY
     snapshot_date
 ORDER BY
@@ -420,12 +396,12 @@ ORDER BY
 `
 
 type GetVulnerabilitySummaryTimeSeriesParams struct {
-	RiskTier      *int32
 	Since         pgtype.Timestamptz
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	RiskTiers     []int32
 }
 
 type GetVulnerabilitySummaryTimeSeriesRow struct {
@@ -436,7 +412,7 @@ type GetVulnerabilitySummaryTimeSeriesRow struct {
 	Medium          int32
 	Low             int32
 	Unassigned      int32
-	ActNow          int32
+	KevCount        int32
 	HighRisk        int32
 	ElevatedRisk    int32
 	Monitor         int32
@@ -449,12 +425,12 @@ type GetVulnerabilitySummaryTimeSeriesRow struct {
 
 func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error) {
 	rows, err := q.db.Query(ctx, getVulnerabilitySummaryTimeSeries,
-		arg.RiskTier,
 		arg.Since,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.RiskTiers,
 	)
 	if err != nil {
 		return nil, err
@@ -471,7 +447,7 @@ func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg Get
 			&i.Medium,
 			&i.Low,
 			&i.Unassigned,
-			&i.ActNow,
+			&i.KevCount,
 			&i.HighRisk,
 			&i.ElevatedRisk,
 			&i.Monitor,
@@ -505,7 +481,7 @@ SELECT
     s.medium,
     s.low,
     s.unassigned,
-    s.act_now,
+    s.kev_count,
     s.high_risk,
     s.elevated_risk,
     s.monitor,
@@ -541,7 +517,7 @@ type ListUpdatedWorkloadsWithSummariesRow struct {
 	Medium          int32
 	Low             int32
 	Unassigned      int32
-	ActNow          *int32
+	KevCount        *int32
 	HighRisk        *int32
 	ElevatedRisk    *int32
 	Monitor         *int32
@@ -573,7 +549,7 @@ func (q *Queries) ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*Lis
 			&i.Medium,
 			&i.Low,
 			&i.Unassigned,
-			&i.ActNow,
+			&i.KevCount,
 			&i.HighRisk,
 			&i.ElevatedRisk,
 			&i.Monitor,
@@ -625,7 +601,7 @@ vulnerability_data AS (
         v.medium,
         v.low,
         v.unassigned,
-        v.act_now,
+        v.kev_count,
         v.high_risk,
         v.elevated_risk,
         v.monitor,
@@ -655,8 +631,8 @@ vulnerability_data AS (
         OR v.image_name = $9::TEXT)
     AND ($10::TEXT IS NULL
         OR v.image_tag = $10::TEXT)
-    AND ($11::INT IS NULL
-        OR v.top_risk_tier <= $11::INT)
+    AND ($11::INT[] IS NULL
+        OR v.top_risk_tier = ANY ($11::INT[]))
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),
@@ -693,24 +669,18 @@ summary_data AS (
             END, 0)::INT4 AS unassigned,
         COALESCE(
             CASE WHEN is_active THEN
-                act_now
-            END, 0)::INT4 AS act_now,
+                kev_count
+            END, 0)::INT4 AS kev_count,
         COALESCE(
-            CASE WHEN is_active
-                AND ($11::INT IS NULL
-                    OR $11::INT >= 2) THEN
+            CASE WHEN is_active THEN
                 high_risk
             END, 0)::INT4 AS high_risk,
         COALESCE(
-            CASE WHEN is_active
-                AND ($11::INT IS NULL
-                    OR $11::INT >= 3) THEN
+            CASE WHEN is_active THEN
                 elevated_risk
             END, 0)::INT4 AS elevated_risk,
         COALESCE(
-            CASE WHEN is_active
-                AND ($11::INT IS NULL
-                    OR $11::INT >= 4) THEN
+            CASE WHEN is_active THEN
                 monitor
             END, 0)::INT4 AS monitor,
         COALESCE(
@@ -742,7 +712,7 @@ summary_data AS (
         vulnerability_data
 )
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, act_now, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
+    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
 FROM
     summary_data
 ORDER BY
@@ -800,11 +770,11 @@ ORDER BY
     CASE WHEN $1 = 'risk_score_desc' THEN
         COALESCE(risk_score, -1)
     END DESC,
-    CASE WHEN $1 = 'act_now_asc' THEN
-        COALESCE(act_now, 999999)
+    CASE WHEN $1 = 'kev_count_asc' THEN
+        COALESCE(kev_count, 999999)
     END ASC,
-    CASE WHEN $1 = 'act_now_desc' THEN
-        COALESCE(act_now, -1)
+    CASE WHEN $1 = 'kev_count_desc' THEN
+        COALESCE(kev_count, -1)
     END DESC,
     CASE WHEN $1 = 'high_risk_asc' THEN
         COALESCE(high_risk, 999999)
@@ -859,7 +829,7 @@ type ListVulnerabilitySummariesParams struct {
 	Since         pgtype.Timestamptz
 	ImageName     *string
 	ImageTag      *string
-	RiskTier      *int32
+	RiskTiers     []int32
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -877,7 +847,7 @@ type ListVulnerabilitySummariesRow struct {
 	Medium                  int32
 	Low                     int32
 	Unassigned              int32
-	ActNow                  int32
+	KevCount                int32
 	HighRisk                int32
 	ElevatedRisk            int32
 	Monitor                 int32
@@ -908,7 +878,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.Since,
 		arg.ImageName,
 		arg.ImageTag,
-		arg.RiskTier,
+		arg.RiskTiers,
 	)
 	if err != nil {
 		return nil, err
@@ -932,7 +902,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.Medium,
 			&i.Low,
 			&i.Unassigned,
-			&i.ActNow,
+			&i.KevCount,
 			&i.HighRisk,
 			&i.ElevatedRisk,
 			&i.Monitor,
@@ -1009,8 +979,8 @@ WITH latest_summary_per_day AS (
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
-                vs.act_now
-            END, 0) AS act_now,
+                vs.kev_count
+            END, 0) AS kev_count,
         COALESCE(
             CASE WHEN w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
                 AND img.state = 'updated' THEN
@@ -1074,7 +1044,7 @@ WITH latest_summary_per_day AS (
         medium,
         low,
         unassigned,
-        act_now,
+        kev_count,
         high_risk,
         elevated_risk,
         monitor,
@@ -1096,7 +1066,7 @@ WITH latest_summary_per_day AS (
         COALESCE(medium, 0)::INT4,
         COALESCE(low, 0)::INT4,
         COALESCE(unassigned, 0)::INT4,
-        COALESCE(act_now, 0)::INT4,
+        COALESCE(kev_count, 0)::INT4,
         COALESCE(high_risk, 0)::INT4,
         COALESCE(elevated_risk, 0)::INT4,
         COALESCE(monitor, 0)::INT4,
@@ -1115,7 +1085,7 @@ WITH latest_summary_per_day AS (
             medium = EXCLUDED.medium,
             low = EXCLUDED.low,
             unassigned = EXCLUDED.unassigned,
-            act_now = EXCLUDED.act_now,
+            kev_count = EXCLUDED.kev_count,
             high_risk = EXCLUDED.high_risk,
             elevated_risk = EXCLUDED.elevated_risk,
             monitor = EXCLUDED.monitor,

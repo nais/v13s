@@ -32,6 +32,8 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
+
 	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
@@ -40,6 +42,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
 		IncludeSuppressed: request.IncludeSuppressed,
+		RiskTiers:         riskTiers,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Limit:             limit,
 		Offset:            offset,
@@ -58,6 +61,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
+		RiskTiers:         riskTiers,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
@@ -90,6 +94,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Since:             timestamptzFromProto(request.GetSince()),
 		Severity:          toInt32Ptr(request.Severity),
+		RiskTiers:         priorityTiersFromPriorities(request.GetPriorities()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)

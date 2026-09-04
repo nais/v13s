@@ -32,11 +32,20 @@ var (
 		append(labels, "severity"),
 	)
 
+	WorkloadVulnerabilitiesKEV = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "workload_vulnerabilities_kev",
+			Help:      "Number of vulnerabilities in the workload with an entry in the CISA Known Exploited Vulnerabilities catalog.",
+		},
+		labels,
+	)
+
 	WorkloadVulnerabilitiesPriority = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "workload_vulnerabilities_priority",
-			Help:      "Number of vulnerabilities detected in the workload, grouped by priority.",
+			Help:      "Number of unsuppressed vulnerabilities in the workload, grouped by the priority tier v13s computes (HIGH, ELEVATED, MONITOR). ACT_NOW requires internet-facing context that only nais/api has and is never emitted here.",
 		},
 		append(labels, "priority"),
 	)
@@ -48,6 +57,7 @@ func Collectors() []prometheus.Collector {
 		WorkloadResyncRequests,
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
+		WorkloadVulnerabilitiesKEV,
 		WorkloadVulnerabilitiesPriority,
 	}
 }
@@ -57,6 +67,7 @@ func ResetWorkloadMetrics() {
 	WorkloadResyncRequests.Reset()
 	WorkloadRiskScore.Reset()
 	WorkloadVulnerabilities.Reset()
+	WorkloadVulnerabilitiesKEV.Reset()
 	WorkloadVulnerabilitiesPriority.Reset()
 }
 
@@ -68,6 +79,8 @@ func SetWorkloadMetrics(w *sql.ListWorkloadsByImageRow, summary *sources.Vulnera
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "MEDIUM")...).Set(float64(summary.Medium))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "LOW")...).Set(float64(summary.Low))
 	WorkloadVulnerabilities.WithLabelValues(append(labelValues, "UNASSIGNED")...).Set(float64(summary.Unassigned))
-	WorkloadVulnerabilitiesPriority.WithLabelValues(append(labelValues, "ACT_NOW")...).Set(float64(summary.ActNow))
+	WorkloadVulnerabilitiesKEV.WithLabelValues(labelValues...).Set(float64(summary.KevCount))
 	WorkloadVulnerabilitiesPriority.WithLabelValues(append(labelValues, "HIGH")...).Set(float64(summary.HighRisk))
+	WorkloadVulnerabilitiesPriority.WithLabelValues(append(labelValues, "ELEVATED")...).Set(float64(summary.ElevatedRisk))
+	WorkloadVulnerabilitiesPriority.WithLabelValues(append(labelValues, "MONITOR")...).Set(float64(summary.Monitor))
 }
