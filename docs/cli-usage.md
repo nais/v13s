@@ -31,7 +31,7 @@ vulnz list summary --priority elevated
 
 Passing `--priority` with a value other than `high`, `elevated`, or `monitor` is
 rejected. The materialized `KEV` column in `list summary` output is the per-workload
-count of findings in the CISA KEV catalogue — a signal, not a priority tier.
+count of findings in the CISA KEV catalogue, a signal rather than a priority tier.
 
 ## Ordering
 

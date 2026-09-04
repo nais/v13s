@@ -261,9 +261,9 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 	if o.Priority != "" {
 		var priority vulnerabilities.Priority
 		switch strings.ToLower(o.Priority) {
-		case "high", "high_risk", "high-risk":
+		case "high":
 			priority = vulnerabilities.Priority_PRIORITY_HIGH
-		case "elevated", "elevated_risk", "elevated-risk":
+		case "elevated":
 			priority = vulnerabilities.Priority_PRIORITY_ELEVATED
 		case "monitor":
 			priority = vulnerabilities.Priority_PRIORITY_MONITOR
