@@ -33,8 +33,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		since.Valid = true
 	}
 
-	priorityFilter := toSQLPriorityFilter(request.GetFilter())
-	riskTiers := toSQLPriorityTiers(request.GetFilter())
+	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
 
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
@@ -43,7 +42,6 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		WorkloadName:  request.GetFilter().Workload,
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
-		RiskTier:      priorityFilter,
 		RiskTiers:     riskTiers,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
@@ -131,15 +129,13 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	priorityFilter := toSQLPriorityFilter(request.GetFilter())
-	riskTiers := toSQLPriorityTiers(request.GetFilter())
+	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
 
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
-		RiskTier:      priorityFilter,
 		RiskTiers:     riskTiers,
 	})
 	if err != nil {
@@ -189,8 +185,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	priorityFilter := toSQLPriorityFilter(request.GetFilter())
-	riskTiers := toSQLPriorityTiers(request.GetFilter())
+	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
 
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
@@ -203,7 +198,6 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
-		RiskTier:      priorityFilter,
 		RiskTiers:     riskTiers,
 		Since:         since,
 	})
@@ -361,28 +355,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 	}, nil
 }
 
-func toSQLPriorityTiers(filter *vulnerabilities.Filter) []int32 {
-	if filter == nil {
-		return nil
-	}
-	return priorityTiersFromPriorities(filter.GetPriorities())
-}
-
-func priorityRiskTiers(filter *vulnerabilities.Filter) []int32 {
-	if tiers := toSQLPriorityTiers(filter); tiers != nil {
-		return tiers
-	}
-	threshold := toSQLPriorityFilter(filter)
-	if threshold == nil {
-		return nil
-	}
-	tiers := make([]int32, 0, *threshold)
-	for t := int32(2); t <= *threshold; t++ {
-		tiers = append(tiers, t)
-	}
-	return tiers
-}
-
 func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 {
 	requested := false
 	seen := make(map[int32]struct{}, len(priorities))
@@ -409,18 +381,6 @@ var priorityToRiskTier = map[vulnerabilities.Priority]int32{
 	vulnerabilities.Priority_PRIORITY_HIGH:     2,
 	vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
 	vulnerabilities.Priority_PRIORITY_MONITOR:  4,
-}
-
-func toSQLPriorityFilter(filter *vulnerabilities.Filter) *int32 {
-	//lint:ignore SA1019 wire compatibility.
-	if filter == nil || filter.Priority == nil || len(filter.GetPriorities()) > 0 {
-		return nil
-	}
-	v, ok := priorityToRiskTier[filter.GetPriority()]
-	if !ok {
-		return nil
-	}
-	return &v
 }
 
 func toProtoPriority(riskTier any) vulnerabilities.Priority {

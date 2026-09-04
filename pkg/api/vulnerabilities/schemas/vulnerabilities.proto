@@ -69,8 +69,8 @@ message Filter {
   optional string image_name = 5;
   optional string image_tag = 6;
   repeated string namespaces = 7;
-  // Deprecated: use priorities for exact matching. Kept for wire compatibility.
-  optional Priority priority = 8;
+  reserved 8;
+  reserved "priority";
   // Exact priority filter. When set, only workloads/findings whose top priority is in this set are returned.
   repeated Priority priorities = 9;
 }

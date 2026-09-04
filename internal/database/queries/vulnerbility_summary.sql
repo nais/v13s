@@ -112,8 +112,6 @@ vulnerability_data AS (
         OR v.image_name = sqlc.narg('image_name')::TEXT)
     AND (sqlc.narg('image_tag')::TEXT IS NULL
         OR v.image_tag = sqlc.narg('image_tag')::TEXT)
-    AND (sqlc.narg('risk_tier')::INT IS NULL
-        OR v.top_risk_tier <= sqlc.narg('risk_tier')::INT)
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
@@ -155,21 +153,15 @@ summary_data AS (
                 kev_count
             END, 0)::INT4 AS kev_count,
         COALESCE(
-            CASE WHEN is_active
-                AND (sqlc.narg('risk_tier')::INT IS NULL
-                    OR sqlc.narg('risk_tier')::INT >= 2) THEN
+            CASE WHEN is_active THEN
                 high_risk
             END, 0)::INT4 AS high_risk,
         COALESCE(
-            CASE WHEN is_active
-                AND (sqlc.narg('risk_tier')::INT IS NULL
-                    OR sqlc.narg('risk_tier')::INT >= 3) THEN
+            CASE WHEN is_active THEN
                 elevated_risk
             END, 0)::INT4 AS elevated_risk,
         COALESCE(
-            CASE WHEN is_active
-                AND (sqlc.narg('risk_tier')::INT IS NULL
-                    OR sqlc.narg('risk_tier')::INT >= 4) THEN
+            CASE WHEN is_active THEN
                 monitor
             END, 0)::INT4 AS monitor,
         COALESCE(
@@ -323,16 +315,6 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
-    AND (sqlc.narg('risk_tier')::INT IS NULL
-        OR EXISTS (
-            SELECT
-                1
-            FROM
-                vulnerability_summary v
-            WHERE
-                v.image_name = w.image_name
-                AND v.image_tag = w.image_tag
-                AND v.top_risk_tier <= sqlc.narg('risk_tier')::INT))
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR EXISTS (
             SELECT
@@ -402,21 +384,15 @@ joined_data AS (
                         kev_count
                     END), 0) AS INT4) AS kev_count,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active
-                        AND (sqlc.narg('risk_tier')::INT IS NULL
-                            OR sqlc.narg('risk_tier')::INT >= 2) THEN
+                    CASE WHEN is_active THEN
                         high_risk
                     END), 0) AS INT4) AS high_risk,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active
-                        AND (sqlc.narg('risk_tier')::INT IS NULL
-                            OR sqlc.narg('risk_tier')::INT >= 3) THEN
+                    CASE WHEN is_active THEN
                         elevated_risk
                     END), 0) AS INT4) AS elevated_risk,
         CAST(COALESCE(SUM(
-                    CASE WHEN is_active
-                        AND (sqlc.narg('risk_tier')::INT IS NULL
-                            OR sqlc.narg('risk_tier')::INT >= 4) THEN
+                    CASE WHEN is_active THEN
                         monitor
                     END), 0) AS INT4) AS monitor,
         CAST(COALESCE(SUM(
@@ -453,27 +429,9 @@ SELECT
     SUM(low)::INT4 AS low,
     SUM(unassigned)::INT4 AS unassigned,
     COALESCE(SUM(kev_count), 0)::INT4 AS kev_count,
-    COALESCE(SUM(
-            CASE WHEN sqlc.narg('risk_tier')::INT IS NULL
-                OR sqlc.narg('risk_tier')::INT >= 2 THEN
-                high_risk
-            ELSE
-                0
-            END), 0)::INT4 AS high_risk,
-    COALESCE(SUM(
-            CASE WHEN sqlc.narg('risk_tier')::INT IS NULL
-                OR sqlc.narg('risk_tier')::INT >= 3 THEN
-                elevated_risk
-            ELSE
-                0
-            END), 0)::INT4 AS elevated_risk,
-    COALESCE(SUM(
-            CASE WHEN sqlc.narg('risk_tier')::INT IS NULL
-                OR sqlc.narg('risk_tier')::INT >= 4 THEN
-                monitor
-            ELSE
-                0
-            END), 0)::INT4 AS monitor,
+    COALESCE(SUM(high_risk), 0)::INT4 AS high_risk,
+    COALESCE(SUM(elevated_risk), 0)::INT4 AS elevated_risk,
+    COALESCE(SUM(monitor), 0)::INT4 AS monitor,
     COALESCE(SUM(ransomware_count), 0)::INT4 AS ransomware_count,
     COALESCE(SUM(high_epss_count), 0)::INT4 AS high_epss_count,
     MIN(top_risk_tier) AS top_risk_tier,
@@ -492,8 +450,6 @@ WHERE
         OR workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR workload_name = sqlc.narg('workload_name')::TEXT)
-    AND (sqlc.narg('risk_tier')::INT IS NULL
-        OR top_risk_tier <= sqlc.narg('risk_tier')::INT)
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
 GROUP BY

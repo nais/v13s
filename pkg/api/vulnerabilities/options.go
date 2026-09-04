@@ -234,7 +234,6 @@ func PriorityFilter(priorities ...Priority) Option {
 		if o.Filter == nil {
 			o.Filter = &Filter{}
 		}
-		o.Filter.Priority = nil
 		if len(priorities) == 0 {
 			o.Filter.Priorities = nil
 			return
