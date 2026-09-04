@@ -152,7 +152,7 @@ func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.Fie
 					Medium:       row.Medium,
 					Low:          row.Low,
 					Unassigned:   row.Unassigned,
-					ActNow:       row.ActNow,
+					KevCount:     row.KevCount,
 					HighRisk:     row.HighRisk,
 					ElevatedRisk: row.ElevatedRisk,
 					Monitor:      row.Monitor,

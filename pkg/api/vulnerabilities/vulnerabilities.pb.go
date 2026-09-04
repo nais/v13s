@@ -233,27 +233,21 @@ type Priority int32
 
 const (
 	Priority_PRIORITY_UNSPECIFIED Priority = 0
-	// Deprecated: v13s never emits this value.
-	//
-	// Deprecated: Marked as deprecated in vulnerabilities.proto.
-	Priority_PRIORITY_ACT_NOW  Priority = 1
-	Priority_PRIORITY_HIGH     Priority = 2
-	Priority_PRIORITY_ELEVATED Priority = 3
-	Priority_PRIORITY_MONITOR  Priority = 4
+	Priority_PRIORITY_HIGH        Priority = 2
+	Priority_PRIORITY_ELEVATED    Priority = 3
+	Priority_PRIORITY_MONITOR     Priority = 4
 )
 
 // Enum value maps for Priority.
 var (
 	Priority_name = map[int32]string{
 		0: "PRIORITY_UNSPECIFIED",
-		1: "PRIORITY_ACT_NOW",
 		2: "PRIORITY_HIGH",
 		3: "PRIORITY_ELEVATED",
 		4: "PRIORITY_MONITOR",
 	}
 	Priority_value = map[string]int32{
 		"PRIORITY_UNSPECIFIED": 0,
-		"PRIORITY_ACT_NOW":     1,
 		"PRIORITY_HIGH":        2,
 		"PRIORITY_ELEVATED":    3,
 		"PRIORITY_MONITOR":     4,
@@ -602,7 +596,8 @@ type Summary struct {
 	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
 	StaleImageTag *string                `protobuf:"bytes,10,opt,name=stale_image_tag,json=staleImageTag,proto3,oneof" json:"stale_image_tag,omitempty"`
 	// Priority distribution (use when breakdown/trend is needed).
-	ActNow          int32 `protobuf:"varint,11,opt,name=act_now,json=actNow,proto3" json:"act_now,omitempty"`
+	// kev_count: findings in the CISA KEV catalogue (a signal, not a verdict).
+	KevCount        int32 `protobuf:"varint,11,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	HighRisk        int32 `protobuf:"varint,12,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
 	ElevatedRisk    int32 `protobuf:"varint,13,opt,name=elevated_risk,json=elevatedRisk,proto3" json:"elevated_risk,omitempty"`
 	Monitor         int32 `protobuf:"varint,14,opt,name=monitor,proto3" json:"monitor,omitempty"`
@@ -714,9 +709,9 @@ func (x *Summary) GetStaleImageTag() string {
 	return ""
 }
 
-func (x *Summary) GetActNow() int32 {
+func (x *Summary) GetKevCount() int32 {
 	if x != nil {
-		return x.ActNow
+		return x.KevCount
 	}
 	return 0
 }
@@ -3545,7 +3540,7 @@ type VulnerabilitySummaryPoint struct {
 	RiskScore       int32                  `protobuf:"varint,7,opt,name=riskScore,proto3" json:"riskScore,omitempty"`
 	WorkloadCount   int32                  `protobuf:"varint,8,opt,name=workload_count,json=workloadCount,proto3" json:"workload_count,omitempty"`
 	BucketTime      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=bucket_time,json=bucketTime,proto3" json:"bucket_time,omitempty"`
-	ActNow          int32                  `protobuf:"varint,10,opt,name=act_now,json=actNow,proto3" json:"act_now,omitempty"`
+	KevCount        int32                  `protobuf:"varint,10,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	HighRisk        int32                  `protobuf:"varint,11,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
 	ElevatedRisk    int32                  `protobuf:"varint,12,opt,name=elevated_risk,json=elevatedRisk,proto3" json:"elevated_risk,omitempty"`
 	Monitor         int32                  `protobuf:"varint,13,opt,name=monitor,proto3" json:"monitor,omitempty"`
@@ -3649,9 +3644,9 @@ func (x *VulnerabilitySummaryPoint) GetBucketTime() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *VulnerabilitySummaryPoint) GetActNow() int32 {
+func (x *VulnerabilitySummaryPoint) GetKevCount() int32 {
 	if x != nil {
-		return x.ActNow
+		return x.KevCount
 	}
 	return 0
 }
@@ -4401,7 +4396,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xef\x04\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xf3\x04\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4415,8 +4410,8 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\ahasSbom\x18\b \x01(\bR\ahasSbom\x12B\n" +
 	"\flast_updated\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vlastUpdated\x88\x01\x01\x12+\n" +
 	"\x0fstale_image_tag\x18\n" +
-	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01\x12\x17\n" +
-	"\aact_now\x18\v \x01(\x05R\x06actNow\x12\x1b\n" +
+	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01\x12\x1b\n" +
+	"\tkev_count\x18\v \x01(\x05R\bkevCount\x12\x1b\n" +
 	"\thigh_risk\x18\f \x01(\x05R\bhighRisk\x12#\n" +
 	"\relevated_risk\x18\r \x01(\x05R\felevatedRisk\x12\x18\n" +
 	"\amonitor\x18\x0e \x01(\x05R\amonitor\x12)\n" +
@@ -4710,7 +4705,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x05since\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05since\x88\x01\x01B\b\n" +
 	"\x06_since\"q\n" +
 	")GetVulnerabilitySummaryTimeSeriesResponse\x12D\n" +
-	"\x06points\x18\x01 \x03(\v2,.v13s.api.protobuf.VulnerabilitySummaryPointR\x06points\"\xb5\x04\n" +
+	"\x06points\x18\x01 \x03(\v2,.v13s.api.protobuf.VulnerabilitySummaryPointR\x06points\"\xb9\x04\n" +
 	"\x19VulnerabilitySummaryPoint\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4723,9 +4718,9 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\triskScore\x18\a \x01(\x05R\triskScore\x12%\n" +
 	"\x0eworkload_count\x18\b \x01(\x05R\rworkloadCount\x12;\n" +
 	"\vbucket_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"bucketTime\x12\x17\n" +
-	"\aact_now\x18\n" +
-	" \x01(\x05R\x06actNow\x12\x1b\n" +
+	"bucketTime\x12\x1b\n" +
+	"\tkev_count\x18\n" +
+	" \x01(\x05R\bkevCount\x12\x1b\n" +
 	"\thigh_risk\x18\v \x01(\x05R\bhighRisk\x12#\n" +
 	"\relevated_risk\x18\f \x01(\x05R\felevatedRisk\x12\x18\n" +
 	"\amonitor\x18\r \x01(\x05R\amonitor\x12)\n" +
@@ -4806,13 +4801,12 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"UNASSIGNED\x10\x04*$\n" +
 	"\tSinceType\x12\f\n" +
 	"\bSNAPSHOT\x10\x00\x12\t\n" +
-	"\x05FIXED\x10\x01*~\n" +
+	"\x05FIXED\x10\x01*|\n" +
 	"\bPriority\x12\x18\n" +
-	"\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x18\n" +
-	"\x10PRIORITY_ACT_NOW\x10\x01\x1a\x02\b\x01\x12\x11\n" +
+	"\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rPRIORITY_HIGH\x10\x02\x12\x15\n" +
 	"\x11PRIORITY_ELEVATED\x10\x03\x12\x14\n" +
-	"\x10PRIORITY_MONITOR\x10\x04*\x8d\x01\n" +
+	"\x10PRIORITY_MONITOR\x10\x04\"\x04\b\x01\x10\x01*\x10PRIORITY_ACT_NOW*\x8d\x01\n" +
 	"\n" +
 	"SbomStatus\x12\x1b\n" +
 	"\x17SBOM_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +

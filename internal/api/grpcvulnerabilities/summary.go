@@ -101,7 +101,7 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.
 			RiskScore:       riskScore,
 			LastUpdated:     timestamppb.New(row.SummaryUpdatedAt.Time),
 			HasSbom:         row.HasSbom,
-			ActNow:          row.ActNow,
+			KevCount:        row.KevCount,
 			HighRisk:        row.HighRisk,
 			ElevatedRisk:    row.ElevatedRisk,
 			Monitor:         row.Monitor,
@@ -160,7 +160,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		RiskScore:       row.RiskScore,
 		LastUpdated:     timestamppb.New(row.UpdatedAt.Time),
 		HasSbom:         true,
-		ActNow:          row.ActNow,
+		KevCount:        row.KevCount,
 		HighRisk:        row.HighRisk,
 		ElevatedRisk:    row.ElevatedRisk,
 		Monitor:         row.Monitor,
@@ -190,6 +190,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 	}
 
 	priorityFilter := toSQLPriorityFilter(request.GetFilter())
+	riskTiers := toSQLPriorityTiers(request.GetFilter())
 
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
@@ -203,6 +204,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTier:      priorityFilter,
+		RiskTiers:     riskTiers,
 		Since:         since,
 	})
 	if err != nil {
@@ -220,7 +222,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 			RiskScore:       row.RiskScore,
 			WorkloadCount:   row.WorkloadCount,
 			BucketTime:      timestamppb.New(row.SnapshotDate.Time),
-			ActNow:          row.ActNow,
+			KevCount:        row.KevCount,
 			HighRisk:        row.HighRisk,
 			ElevatedRisk:    row.ElevatedRisk,
 			Monitor:         row.Monitor,
@@ -339,7 +341,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			RiskScore:       riskScore,
 			LastUpdated:     timestamppb.New(summary.UpdatedAt.Time),
 			HasSbom:         true,
-			ActNow:          derefInt32(summary.ActNow),
+			KevCount:        derefInt32(summary.KevCount),
 			HighRisk:        derefInt32(summary.HighRisk),
 			ElevatedRisk:    derefInt32(summary.ElevatedRisk),
 			Monitor:         derefInt32(summary.Monitor),
@@ -367,7 +369,7 @@ func toSQLPriorityTiers(filter *vulnerabilities.Filter) []int32 {
 }
 
 func priorityRiskTiers(filter *vulnerabilities.Filter) []int32 {
-	if tiers := toSQLPriorityTiers(filter); len(tiers) > 0 {
+	if tiers := toSQLPriorityTiers(filter); tiers != nil {
 		return tiers
 	}
 	threshold := toSQLPriorityFilter(filter)
@@ -375,23 +377,25 @@ func priorityRiskTiers(filter *vulnerabilities.Filter) []int32 {
 		return nil
 	}
 	tiers := make([]int32, 0, *threshold)
-	for t := int32(1); t <= *threshold; t++ {
+	for t := int32(2); t <= *threshold; t++ {
 		tiers = append(tiers, t)
 	}
 	return tiers
 }
 
 func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 {
+	requested := false
 	seen := make(map[int32]struct{}, len(priorities))
 	for _, priority := range priorities {
 		if priority == vulnerabilities.Priority_PRIORITY_UNSPECIFIED {
 			continue
 		}
+		requested = true
 		if tier, ok := priorityToRiskTier[priority]; ok {
 			seen[tier] = struct{}{}
 		}
 	}
-	if len(seen) == 0 {
+	if !requested {
 		return nil
 	}
 	tiers := make([]int32, 0, len(seen))
@@ -402,8 +406,6 @@ func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 
 }
 
 var priorityToRiskTier = map[vulnerabilities.Priority]int32{
-	//lint:ignore SA1019 mapped for wire compatibility.
-	vulnerabilities.Priority_PRIORITY_ACT_NOW:  1,
 	vulnerabilities.Priority_PRIORITY_HIGH:     2,
 	vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
 	vulnerabilities.Priority_PRIORITY_MONITOR:  4,
@@ -451,9 +453,6 @@ func derefInt32(p *int32) int32 {
 
 func mapIntPriority(v int32) vulnerabilities.Priority {
 	switch v {
-	case 1:
-		//lint:ignore SA1019 wire compatibility.
-		return vulnerabilities.Priority_PRIORITY_ACT_NOW
 	case 2:
 		return vulnerabilities.Priority_PRIORITY_HIGH
 	case 3:

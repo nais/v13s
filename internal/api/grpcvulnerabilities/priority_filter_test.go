@@ -68,6 +68,13 @@ func TestToSQLPriorityTiers(t *testing.T) {
 			},
 			want: nil,
 		},
+		{
+			name: "unrecognised priority yields a non-nil empty slice (matches nothing)",
+			filter: &vulnerabilities.Filter{
+				Priorities: []vulnerabilities.Priority{vulnerabilities.Priority(1)},
+			},
+			want: []int32{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -75,6 +82,9 @@ func TestToSQLPriorityTiers(t *testing.T) {
 			got := toSQLPriorityTiers(tt.filter)
 			slices.Sort(got)
 			assert.Equal(t, tt.want, got)
+			if tt.want != nil {
+				assert.NotNil(t, got)
+			}
 		})
 	}
 }
@@ -119,7 +129,7 @@ func TestPriorityRiskTiers(t *testing.T) {
 	assert.Equal(t, []int32{3}, exact)
 
 	threshold := priorityRiskTiers(legacyPriorityFilter(vulnerabilities.Priority_PRIORITY_ELEVATED))
-	assert.ElementsMatch(t, []int32{1, 2, 3}, threshold)
+	assert.ElementsMatch(t, []int32{2, 3}, threshold)
 
 	both := legacyPriorityFilter(vulnerabilities.Priority_PRIORITY_MONITOR)
 	both.Priorities = []vulnerabilities.Priority{vulnerabilities.Priority_PRIORITY_HIGH}

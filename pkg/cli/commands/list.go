@@ -169,7 +169,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 			return 0, false, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 		}
 
-		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Top Priority", "P:Urgent", "P:High", "P:Elevated", "P:Monitor", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
+		headers := []any{"Workload", "Type", "Cluster", "Namespace", "SBOM Status", "Top Priority", "KEV", "P:High", "P:Elevated", "P:Monitor", "Critical", "High", "Medium", "Low", "Unassigned", "RiskScore"}
 		if o.Since != "" {
 			headers = append(headers, "ImageTag", "Last Updated")
 		}
@@ -186,7 +186,7 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 				n.Workload.GetNamespace(),
 				formatSbomStatus(n.GetSbomStatus()),
 				formatTopPriority(sum, hasSummary),
-				intOrDash(sum.GetActNow(), hasSummary),
+				intOrDash(sum.GetKevCount(), hasSummary),
 				intOrDash(sum.GetHighRisk(), hasSummary),
 				intOrDash(sum.GetElevatedRisk(), hasSummary),
 				intOrDash(sum.GetMonitor(), hasSummary),
@@ -373,9 +373,6 @@ func formatSbomStatus(s *vulnerabilities.SbomStatusInfo) string {
 
 func formatPriority(p vulnerabilities.Priority) string {
 	switch p {
-	//lint:ignore SA1019 wire compatibility.
-	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
-		return "URGENT"
 	case vulnerabilities.Priority_PRIORITY_HIGH:
 		return "HIGH"
 	case vulnerabilities.Priority_PRIORITY_ELEVATED:
@@ -392,9 +389,6 @@ func formatTopPriority(sum *vulnerabilities.Summary, hasSummary bool) string {
 		return "-"
 	}
 	switch sum.GetTopPriority() {
-	//lint:ignore SA1019 wire compatibility.
-	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
-		return "ACT_NOW"
 	case vulnerabilities.Priority_PRIORITY_HIGH:
 		return "HIGH"
 	case vulnerabilities.Priority_PRIORITY_ELEVATED:

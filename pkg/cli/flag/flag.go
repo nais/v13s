@@ -126,7 +126,7 @@ func CommonFlags(opts *Options, excludes ...string) []cli.Flag {
 			Name:        "priority",
 			Aliases:     []string{"p"},
 			Value:       "",
-			Usage:       "filter by priority (act_now, high, elevated, monitor)",
+			Usage:       "filter by priority (high, elevated, monitor)",
 			Destination: &opts.Priority,
 		},
 		&cli.StringSliceFlag{
@@ -261,9 +261,6 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 	if o.Priority != "" {
 		var priority vulnerabilities.Priority
 		switch strings.ToLower(o.Priority) {
-		case "act_now", "act-now":
-			//lint:ignore SA1019 wire compatibility.
-			priority = vulnerabilities.Priority_PRIORITY_ACT_NOW
 		case "high", "high_risk", "high-risk":
 			priority = vulnerabilities.Priority_PRIORITY_HIGH
 		case "elevated", "elevated_risk", "elevated-risk":
@@ -271,7 +268,7 @@ func ParseOptions(cmd *cli.Command, o *Options) []vulnerabilities.Option {
 		case "monitor":
 			priority = vulnerabilities.Priority_PRIORITY_MONITOR
 		default:
-			log.Fatalf("invalid priority: %s, valid values are act_now, high, elevated, monitor", o.Priority)
+			log.Fatalf("invalid priority: %s, valid values are high, elevated, monitor", o.Priority)
 		}
 		opts = append(opts, vulnerabilities.PriorityFilter(priority))
 	}

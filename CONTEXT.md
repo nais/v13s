@@ -7,12 +7,12 @@
 - **SBOM**: the attestation uploaded for an image.
 - **Vulnerability summary**: the per-image or per-workload count of vulnerabilities and risk data.
 - **Priority**: the operational threat tier of a CVE or workload — `HIGH`, `ELEVATED`, or `MONITOR` in the API.
-- **Risk tier**: the database representation of Priority, an integer where lower is more severe (`2` = `HIGH`, `3` = `ELEVATED`, `4` = `MONITOR`). Stored as `cve.priority` and `vulnerability_summary.top_risk_tier`.
+- **Risk tier**: the database representation of Priority, an integer where lower is more severe (`2` = `HIGH`, `3` = `ELEVATED`, `4` = `MONITOR`). Stored as `cve.priority` and `vulnerability_summary.top_risk_tier`. Tier `1` is reserved (formerly `ACT_NOW`) and never produced by v13s.
 - **Updater**: the part that syncs vulnerability data from external sources.
 - **Workload resync**: an operation that marks selected Workload and Image records for resync, enqueues Workload processing, and may trigger one updater cycle.
 - **Workload manager**: the part that reacts to workload changes and enqueues jobs.
 - **DependencyTrack**: the external source used to upload SBOMs and fetch findings.
-- **KEV**: the CISA Known Exploited Vulnerabilities catalog.
+- **KEV**: the CISA Known Exploited Vulnerabilities catalog. `vulnerability_summary.kev_count` is the per-image count of findings in it — a signal, not a priority tier.
 - **OSV**: the Open Source Vulnerabilities source.
 - **River job**: an async job handled through River.
 

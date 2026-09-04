@@ -718,7 +718,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 		assert.Equal(t, int32(0), sum.Medium)
 		assert.Equal(t, int32(0), sum.Low)
 		assert.Equal(t, int32(0), sum.Unassigned)
-		assert.Equal(t, int32(0), sum.GetActNow())
+		assert.Equal(t, int32(0), sum.GetKevCount())
 		assert.Equal(t, int32(1), sum.GetHighRisk())
 		assert.Equal(t, int32(0), sum.GetElevatedRisk())
 		assert.Equal(t, int32(0), sum.GetMonitor())
@@ -1353,7 +1353,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
-		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetActNow())
+		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
@@ -1397,19 +1397,25 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			ImageTag:  imgTag,
 		}))
 	}
+	snapshotDate := pgtype.Date{Time: time.Now().UTC().Truncate(24 * time.Hour), Valid: true}
+	require.NoError(t, db.RefreshVulnerabilitySummaryForDate(ctx, snapshotDate))
+	require.NoError(t, db.RefreshVulnerabilitySummaryDailyView(ctx))
 
 	const (
 		high     = vulnerabilities.Priority_PRIORITY_HIGH
 		elevated = vulnerabilities.Priority_PRIORITY_ELEVATED
 		monitor  = vulnerabilities.Priority_PRIORITY_MONITOR
-		actNow   = vulnerabilities.Priority_PRIORITY_ACT_NOW
+		// reserved tier 1 (formerly ACT_NOW); v13s never produces it.
+		reservedTier1 = vulnerabilities.Priority(1)
 	)
 
 	cases := []struct {
 		name              string
 		priorities        []vulnerabilities.Priority
 		wantWorkloads     int
+		wantTopPriority   vulnerabilities.Priority
 		wantTopPriorities []vulnerabilities.Priority
+		wantKevCount      int32
 		wantHighRisk      int32
 		wantElevatedRisk  int32
 		wantMonitor       int32
@@ -1419,7 +1425,9 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			name:              "high only",
 			priorities:        []vulnerabilities.Priority{high},
 			wantWorkloads:     2,
+			wantTopPriority:   high,
 			wantTopPriorities: []vulnerabilities.Priority{high, high},
+			wantKevCount:      1,
 			wantHighRisk:      2,
 			wantMonitor:       6,
 			wantFindings:      2,
@@ -1428,6 +1436,7 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			name:              "elevated only",
 			priorities:        []vulnerabilities.Priority{elevated},
 			wantWorkloads:     1,
+			wantTopPriority:   elevated,
 			wantTopPriorities: []vulnerabilities.Priority{elevated},
 			wantElevatedRisk:  1,
 			wantMonitor:       3,
@@ -1437,6 +1446,7 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			name:              "monitor only",
 			priorities:        []vulnerabilities.Priority{monitor},
 			wantWorkloads:     1,
+			wantTopPriority:   monitor,
 			wantTopPriorities: []vulnerabilities.Priority{monitor},
 			wantMonitor:       4,
 			wantFindings:      13,
@@ -1445,16 +1455,19 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			name:              "high and elevated",
 			priorities:        []vulnerabilities.Priority{high, elevated},
 			wantWorkloads:     3,
+			wantTopPriority:   high,
 			wantTopPriorities: []vulnerabilities.Priority{high, high, elevated},
+			wantKevCount:      1,
 			wantHighRisk:      2,
 			wantElevatedRisk:  1,
 			wantMonitor:       9,
 			wantFindings:      3,
 		},
 		{
-			name:              "act_now is never produced by v13s",
-			priorities:        []vulnerabilities.Priority{actNow},
+			name:              "reserved tier 1 is never produced by v13s",
+			priorities:        []vulnerabilities.Priority{reservedTier1},
 			wantWorkloads:     0,
+			wantTopPriority:   vulnerabilities.Priority_PRIORITY_UNSPECIFIED,
 			wantTopPriorities: []vulnerabilities.Priority{},
 			wantFindings:      0,
 		},
@@ -1467,10 +1480,31 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			require.NotNil(t, resp.GetVulnerabilitySummary())
 
 			assert.Equal(t, int32(tc.wantWorkloads), resp.GetWorkloadCount())
-			assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetActNow())
+			assert.Equal(t, tc.wantTopPriority, resp.GetVulnerabilitySummary().GetTopPriority())
+			assert.Equal(t, tc.wantKevCount, resp.GetVulnerabilitySummary().GetKevCount())
 			assert.Equal(t, tc.wantHighRisk, resp.GetVulnerabilitySummary().GetHighRisk())
 			assert.Equal(t, tc.wantElevatedRisk, resp.GetVulnerabilitySummary().GetElevatedRisk())
 			assert.Equal(t, tc.wantMonitor, resp.GetVulnerabilitySummary().GetMonitor())
+		})
+
+		t.Run(tc.name+"/time-series", func(t *testing.T) {
+			resp, err := client.GetVulnerabilitySummaryTimeSeries(ctx,
+				vulnerabilities.PriorityFilter(tc.priorities...),
+				vulnerabilities.Since(snapshotDate.Time),
+			)
+			require.NoError(t, err)
+
+			if tc.wantWorkloads == 0 {
+				assert.Empty(t, resp.GetPoints())
+				return
+			}
+			require.Len(t, resp.GetPoints(), 1)
+			point := resp.GetPoints()[0]
+			assert.Equal(t, int32(tc.wantWorkloads), point.GetWorkloadCount())
+			assert.Equal(t, tc.wantKevCount, point.GetKevCount())
+			assert.Equal(t, tc.wantHighRisk, point.GetHighRisk())
+			assert.Equal(t, tc.wantElevatedRisk, point.GetElevatedRisk())
+			assert.Equal(t, tc.wantMonitor, point.GetMonitor())
 		})
 
 		t.Run(tc.name+"/list-summaries", func(t *testing.T) {
@@ -1558,7 +1592,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Medium)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Low)
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().Unassigned)
-		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetActNow())
+		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetKevCount())
 		assert.Equal(t, int32(1), resp.GetVulnerabilitySummary().GetHighRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetElevatedRisk())
 		assert.Equal(t, int32(0), resp.GetVulnerabilitySummary().GetMonitor())
@@ -1751,8 +1785,6 @@ func setSbomProcessingStartedAt(ctx context.Context, t *testing.T, pool *pgxpool
 
 func priorityRank(priority vulnerabilities.Priority) int {
 	switch priority {
-	case vulnerabilities.Priority_PRIORITY_ACT_NOW:
-		return 1
 	case vulnerabilities.Priority_PRIORITY_HIGH:
 		return 2
 	case vulnerabilities.Priority_PRIORITY_ELEVATED:
@@ -1849,7 +1881,7 @@ func TestSanitizeOrderBy(t *testing.T) {
 			expected: "severity_asc",
 		},
 		{
-			name: "top_priority asc flips to desc (ACT_NOW first)",
+			name: "top_priority asc flips to desc (HIGH first)",
 			orderBy: &vulnerabilities.OrderBy{
 				Field:     string(vulnerabilities.OrderByTopPriority),
 				Direction: vulnerabilities.Direction_ASC,
@@ -3523,8 +3555,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	cveElevated := "CVE-PRIORITY-ELEVATED"
 	cveMonitor := "CVE-PRIORITY-MONITOR"
 
-	// Seed one CVE per risk tier v13s can produce (HIGH, ELEVATED, MONITOR;
-	// ACT_NOW requires internet-facing context that only nais/api has).
+	// Seed one CVE per risk tier v13s can produce (HIGH, ELEVATED, MONITOR).
 	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
 		// HIGH: has_kev_entry = true (set via BulkUpdateKevData below).
 		{
@@ -3600,7 +3631,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		sum := resp.GetVulnerabilitySummary()
 		require.NotNil(t, sum)
 
-		assert.Equal(t, int32(0), sum.GetActNow(), "act_now is never produced by v13s")
+		assert.Equal(t, int32(1), sum.GetKevCount(), "kev_count must be 1 (the KEV CVE)")
 		assert.Equal(t, int32(1), sum.GetHighRisk(), "high_risk must be 1 (KEV CVE)")
 		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical + high-percentile CVE)")
 		assert.Equal(t, int32(1), sum.GetMonitor(), "monitor must be 1 (low-risk CVE)")
