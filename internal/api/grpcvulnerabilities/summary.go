@@ -33,7 +33,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		since.Valid = true
 	}
 
-	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
+	riskTiers := priorityTiersFromFilter(request.GetFilter())
 
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
@@ -90,15 +90,17 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.
 		riskScore := row.RiskScore
 
 		vulnSummary = &vulnerabilities.Summary{
-			Critical:        critical,
-			High:            high,
-			Medium:          medium,
-			Low:             low,
-			Unassigned:      unassigned,
-			Total:           critical + high + medium + low + unassigned,
-			RiskScore:       riskScore,
-			LastUpdated:     timestamppb.New(row.SummaryUpdatedAt.Time),
-			HasSbom:         row.HasSbom,
+			Critical:    critical,
+			High:        high,
+			Medium:      medium,
+			Low:         low,
+			Unassigned:  unassigned,
+			Total:       critical + high + medium + low + unassigned,
+			RiskScore:   riskScore,
+			LastUpdated: timestamppb.New(row.SummaryUpdatedAt.Time),
+			HasSbom:     row.HasSbom,
+			//lint:ignore SA1019 Kept at zero for source and wire compatibility with old clients.
+			ActNow:          0,
 			KevCount:        row.KevCount,
 			HighRisk:        row.HighRisk,
 			ElevatedRisk:    row.ElevatedRisk,
@@ -129,7 +131,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
+	riskTiers := priorityTiersFromFilter(request.GetFilter())
 
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
 		Cluster:       request.GetFilter().Cluster,
@@ -147,15 +149,17 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	summary := &vulnerabilities.Summary{
-		Critical:        row.Critical,
-		High:            row.High,
-		Medium:          row.Medium,
-		Low:             row.Low,
-		Unassigned:      row.Unassigned,
-		Total:           row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-		RiskScore:       row.RiskScore,
-		LastUpdated:     timestamppb.New(row.UpdatedAt.Time),
-		HasSbom:         true,
+		Critical:    row.Critical,
+		High:        row.High,
+		Medium:      row.Medium,
+		Low:         row.Low,
+		Unassigned:  row.Unassigned,
+		Total:       row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+		RiskScore:   row.RiskScore,
+		LastUpdated: timestamppb.New(row.UpdatedAt.Time),
+		HasSbom:     true,
+		//lint:ignore SA1019 Kept at zero for source and wire compatibility with old clients.
+		ActNow:          0,
 		KevCount:        row.KevCount,
 		HighRisk:        row.HighRisk,
 		ElevatedRisk:    row.ElevatedRisk,
@@ -185,7 +189,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	riskTiers := priorityTiersFromPriorities(request.GetFilter().GetPriorities())
+	riskTiers := priorityTiersFromFilter(request.GetFilter())
 
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
@@ -207,15 +211,17 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 
 	points := collections.Map(timeSeries, func(row *sql.GetVulnerabilitySummaryTimeSeriesRow) *vulnerabilities.VulnerabilitySummaryPoint {
 		return &vulnerabilities.VulnerabilitySummaryPoint{
-			Critical:        row.Critical,
-			High:            row.High,
-			Medium:          row.Medium,
-			Low:             row.Low,
-			Unassigned:      row.Unassigned,
-			Total:           row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
-			RiskScore:       row.RiskScore,
-			WorkloadCount:   row.WorkloadCount,
-			BucketTime:      timestamppb.New(row.SnapshotDate.Time),
+			Critical:      row.Critical,
+			High:          row.High,
+			Medium:        row.Medium,
+			Low:           row.Low,
+			Unassigned:    row.Unassigned,
+			Total:         row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
+			RiskScore:     row.RiskScore,
+			WorkloadCount: row.WorkloadCount,
+			BucketTime:    timestamppb.New(row.SnapshotDate.Time),
+			//lint:ignore SA1019 Kept at zero for source and wire compatibility with old clients.
+			ActNow:          0,
 			KevCount:        row.KevCount,
 			HighRisk:        row.HighRisk,
 			ElevatedRisk:    row.ElevatedRisk,
@@ -326,15 +332,17 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		riskScore := summary.RiskScore
 
 		vulnSummary = &vulnerabilities.Summary{
-			Critical:        critical,
-			High:            high,
-			Medium:          medium,
-			Low:             low,
-			Unassigned:      unassigned,
-			Total:           critical + high + medium + low + unassigned,
-			RiskScore:       riskScore,
-			LastUpdated:     timestamppb.New(summary.UpdatedAt.Time),
-			HasSbom:         true,
+			Critical:    critical,
+			High:        high,
+			Medium:      medium,
+			Low:         low,
+			Unassigned:  unassigned,
+			Total:       critical + high + medium + low + unassigned,
+			RiskScore:   riskScore,
+			LastUpdated: timestamppb.New(summary.UpdatedAt.Time),
+			HasSbom:     true,
+			//lint:ignore SA1019 Kept at zero for source and wire compatibility with old clients.
+			ActNow:          0,
 			KevCount:        derefInt32(summary.KevCount),
 			HighRisk:        derefInt32(summary.HighRisk),
 			ElevatedRisk:    derefInt32(summary.ElevatedRisk),
@@ -375,6 +383,28 @@ func priorityTiersFromPriorities(priorities []vulnerabilities.Priority) []int32 
 		tiers = append(tiers, tier)
 	}
 	return tiers
+}
+
+func priorityTiersFromFilter(filter *vulnerabilities.Filter) []int32 {
+	if filter == nil {
+		return nil
+	}
+	if len(filter.GetPriorities()) > 0 {
+		return priorityTiersFromPriorities(filter.GetPriorities())
+	}
+	if legacyPriority := getLegacyPriority(filter); legacyPriority != vulnerabilities.Priority_PRIORITY_UNSPECIFIED {
+		return priorityTiersFromPriorities([]vulnerabilities.Priority{legacyPriority})
+	}
+	return nil
+}
+
+func getLegacyPriority(filter *vulnerabilities.Filter) vulnerabilities.Priority {
+	//lint:ignore SA1019 This is the compatibility path for clients using field 8.
+	if filter.Priority == nil {
+		return vulnerabilities.Priority_PRIORITY_UNSPECIFIED
+	}
+	//lint:ignore SA1019 This is the compatibility path for clients using field 8.
+	return filter.GetPriority()
 }
 
 var priorityToRiskTier = map[vulnerabilities.Priority]int32{

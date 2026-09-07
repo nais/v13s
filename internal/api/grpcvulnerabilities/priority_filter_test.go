@@ -71,3 +71,32 @@ func TestPriorityTiersFromPriorities(t *testing.T) {
 		})
 	}
 }
+
+func TestPriorityTiersFromFilter_PrefersNewFilter(t *testing.T) {
+	legacy := vulnerabilities.Priority_PRIORITY_HIGH
+	filter := &vulnerabilities.Filter{
+		//lint:ignore SA1019 Exercises the deprecated field-8 compatibility path.
+		Priority:   &legacy,
+		Priorities: []vulnerabilities.Priority{vulnerabilities.Priority_PRIORITY_MONITOR},
+	}
+
+	assert.Equal(t, []int32{4}, priorityTiersFromFilter(filter))
+}
+
+func TestPriorityTiersFromFilter_MapsLegacyFilter(t *testing.T) {
+	legacy := vulnerabilities.Priority_PRIORITY_ELEVATED
+	//lint:ignore SA1019 Exercises the deprecated field-8 compatibility path.
+	filter := &vulnerabilities.Filter{Priority: &legacy}
+
+	assert.Equal(t, []int32{3}, priorityTiersFromFilter(filter))
+}
+
+func TestPriorityTiersFromFilter_LegacyActNowMatchesNothing(t *testing.T) {
+	//lint:ignore SA1019 Exercises the deprecated enum compatibility path.
+	legacy := vulnerabilities.Priority_PRIORITY_ACT_NOW
+	//lint:ignore SA1019 Exercises the deprecated field-8 compatibility path.
+	filter := &vulnerabilities.Filter{Priority: &legacy}
+
+	assert.NotNil(t, priorityTiersFromFilter(filter))
+	assert.Empty(t, priorityTiersFromFilter(filter))
+}
