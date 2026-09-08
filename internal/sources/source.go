@@ -131,15 +131,17 @@ type Vulnerability struct {
 type VulnerabilityMetadata any
 
 type VulnerabilitySummary struct {
-	Id         string
-	Critical   int32
-	High       int32
-	Medium     int32
-	Low        int32
-	Unassigned int32
-	ActNow     int32
-	HighRisk   int32
-	RiskScore  int32
+	Id           string
+	Critical     int32
+	High         int32
+	Medium       int32
+	Low          int32
+	Unassigned   int32
+	KevCount     int32
+	HighRisk     int32
+	ElevatedRisk int32
+	Monitor      int32
+	RiskScore    int32
 }
 
 type SuppressedVulnerability struct {

@@ -383,7 +383,7 @@ type VulnerabilitySummary struct {
 	RiskScore       int32
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
-	ActNow          *int32
+	KevCount        *int32
 	HighRisk        *int32
 	ElevatedRisk    *int32
 	Monitor         *int32

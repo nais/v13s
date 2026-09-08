@@ -24,7 +24,6 @@ const (
 
 const (
 	OrderByAffectedWorkloads OrderByField = "affected_workloads"
-	OrderByActNow            OrderByField = "act_now"
 	OrderByCluster           OrderByField = "cluster"
 	OrderByCreatedAt         OrderByField = "created_at"
 	OrderByCritical          OrderByField = "critical"
@@ -34,6 +33,7 @@ const (
 	OrderByHigh              OrderByField = "high"
 	OrderByHighEpssCount     OrderByField = "high_epss_count"
 	OrderByHighRisk          OrderByField = "high_risk"
+	OrderByKevCount          OrderByField = "kev_count"
 	OrderByLow               OrderByField = "low"
 	OrderByMedium            OrderByField = "medium"
 	OrderByMonitor           OrderByField = "monitor"
@@ -55,7 +55,6 @@ const (
 // Map of valid fields
 var validOrderByFields = map[OrderByField]struct{}{
 	OrderByAffectedWorkloads: {},
-	OrderByActNow:            {},
 	OrderByCluster:           {},
 	OrderByCreatedAt:         {},
 	OrderByCritical:          {},
@@ -65,6 +64,7 @@ var validOrderByFields = map[OrderByField]struct{}{
 	OrderByHigh:              {},
 	OrderByHighEpssCount:     {},
 	OrderByHighRisk:          {},
+	OrderByKevCount:          {},
 	OrderByLow:               {},
 	OrderByMedium:            {},
 	OrderByMonitor:           {},
@@ -229,12 +229,16 @@ func ImageFilter(name, tag string) Option {
 	})
 }
 
-func PriorityFilter(priority Priority) Option {
+func PriorityFilter(priorities ...Priority) Option {
 	return newFuncOption(func(o *Options) {
 		if o.Filter == nil {
 			o.Filter = &Filter{}
 		}
-		o.Filter.Priority = &priority
+		if len(priorities) == 0 {
+			o.Filter.Priorities = nil
+			return
+		}
+		o.Filter.Priorities = append([]Priority(nil), priorities...)
 	})
 }
 
