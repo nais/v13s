@@ -603,19 +603,16 @@ type Summary struct {
 	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
 	StaleImageTag *string                `protobuf:"bytes,10,opt,name=stale_image_tag,json=staleImageTag,proto3,oneof" json:"stale_image_tag,omitempty"`
 	// Priority distribution (use when breakdown/trend is needed).
-	// Deprecated: use kev_count. Kept for wire and source compatibility.
-	//
-	// Deprecated: Marked as deprecated in vulnerabilities.proto.
-	ActNow          int32 `protobuf:"varint,11,opt,name=act_now,json=actNow,proto3" json:"act_now,omitempty"`
+	// Findings in the CISA KEV catalogue (a signal, not a verdict).
+	// Field 11 was previously act_now; renamed in place, wire-compatible.
+	KevCount        int32 `protobuf:"varint,11,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	HighRisk        int32 `protobuf:"varint,12,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
 	ElevatedRisk    int32 `protobuf:"varint,13,opt,name=elevated_risk,json=elevatedRisk,proto3" json:"elevated_risk,omitempty"`
 	Monitor         int32 `protobuf:"varint,14,opt,name=monitor,proto3" json:"monitor,omitempty"`
 	RansomwareCount int32 `protobuf:"varint,15,opt,name=ransomware_count,json=ransomwareCount,proto3" json:"ransomware_count,omitempty"`
 	HighEpssCount   int32 `protobuf:"varint,16,opt,name=high_epss_count,json=highEpssCount,proto3" json:"high_epss_count,omitempty"`
 	// Use top_priority for primary ranking/display of risk.
-	TopPriority Priority `protobuf:"varint,17,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
-	// Findings in the CISA KEV catalogue (a signal, not a verdict).
-	KevCount      int32 `protobuf:"varint,18,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
+	TopPriority   Priority `protobuf:"varint,17,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -720,10 +717,9 @@ func (x *Summary) GetStaleImageTag() string {
 	return ""
 }
 
-// Deprecated: Marked as deprecated in vulnerabilities.proto.
-func (x *Summary) GetActNow() int32 {
+func (x *Summary) GetKevCount() int32 {
 	if x != nil {
-		return x.ActNow
+		return x.KevCount
 	}
 	return 0
 }
@@ -768,13 +764,6 @@ func (x *Summary) GetTopPriority() Priority {
 		return x.TopPriority
 	}
 	return Priority_PRIORITY_UNSPECIFIED
-}
-
-func (x *Summary) GetKevCount() int32 {
-	if x != nil {
-		return x.KevCount
-	}
-	return 0
 }
 
 type Cve struct {
@@ -3559,20 +3548,17 @@ type VulnerabilitySummaryPoint struct {
 	RiskScore     int32                  `protobuf:"varint,7,opt,name=riskScore,proto3" json:"riskScore,omitempty"`
 	WorkloadCount int32                  `protobuf:"varint,8,opt,name=workload_count,json=workloadCount,proto3" json:"workload_count,omitempty"`
 	BucketTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=bucket_time,json=bucketTime,proto3" json:"bucket_time,omitempty"`
-	// Deprecated: use kev_count. Kept for wire and source compatibility.
-	//
-	// Deprecated: Marked as deprecated in vulnerabilities.proto.
-	ActNow          int32    `protobuf:"varint,10,opt,name=act_now,json=actNow,proto3" json:"act_now,omitempty"`
+	// Findings in the CISA KEV catalogue (a signal, not a verdict).
+	// Field 10 was previously act_now; renamed in place, wire-compatible.
+	KevCount        int32    `protobuf:"varint,10,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	HighRisk        int32    `protobuf:"varint,11,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
 	ElevatedRisk    int32    `protobuf:"varint,12,opt,name=elevated_risk,json=elevatedRisk,proto3" json:"elevated_risk,omitempty"`
 	Monitor         int32    `protobuf:"varint,13,opt,name=monitor,proto3" json:"monitor,omitempty"`
 	RansomwareCount int32    `protobuf:"varint,14,opt,name=ransomware_count,json=ransomwareCount,proto3" json:"ransomware_count,omitempty"`
 	HighEpssCount   int32    `protobuf:"varint,15,opt,name=high_epss_count,json=highEpssCount,proto3" json:"high_epss_count,omitempty"`
 	TopPriority     Priority `protobuf:"varint,16,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
-	// Findings in the CISA KEV catalogue (a signal, not a verdict).
-	KevCount      int32 `protobuf:"varint,17,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *VulnerabilitySummaryPoint) Reset() {
@@ -3668,10 +3654,9 @@ func (x *VulnerabilitySummaryPoint) GetBucketTime() *timestamppb.Timestamp {
 	return nil
 }
 
-// Deprecated: Marked as deprecated in vulnerabilities.proto.
-func (x *VulnerabilitySummaryPoint) GetActNow() int32 {
+func (x *VulnerabilitySummaryPoint) GetKevCount() int32 {
 	if x != nil {
-		return x.ActNow
+		return x.KevCount
 	}
 	return 0
 }
@@ -3716,13 +3701,6 @@ func (x *VulnerabilitySummaryPoint) GetTopPriority() Priority {
 		return x.TopPriority
 	}
 	return Priority_PRIORITY_UNSPECIFIED
-}
-
-func (x *VulnerabilitySummaryPoint) GetKevCount() int32 {
-	if x != nil {
-		return x.KevCount
-	}
-	return 0
 }
 
 type GetVulnerabilityByIdRequest struct {
@@ -4428,7 +4406,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\x90\x05\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xf3\x04\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4443,14 +4421,13 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\flast_updated\x18\t \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vlastUpdated\x88\x01\x01\x12+\n" +
 	"\x0fstale_image_tag\x18\n" +
 	" \x01(\tH\x01R\rstaleImageTag\x88\x01\x01\x12\x1b\n" +
-	"\aact_now\x18\v \x01(\x05B\x02\x18\x01R\x06actNow\x12\x1b\n" +
+	"\tkev_count\x18\v \x01(\x05R\bkevCount\x12\x1b\n" +
 	"\thigh_risk\x18\f \x01(\x05R\bhighRisk\x12#\n" +
 	"\relevated_risk\x18\r \x01(\x05R\felevatedRisk\x12\x18\n" +
 	"\amonitor\x18\x0e \x01(\x05R\amonitor\x12)\n" +
 	"\x10ransomware_count\x18\x0f \x01(\x05R\x0fransomwareCount\x12&\n" +
 	"\x0fhigh_epss_count\x18\x10 \x01(\x05R\rhighEpssCount\x12>\n" +
-	"\ftop_priority\x18\x11 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriority\x12\x1b\n" +
-	"\tkev_count\x18\x12 \x01(\x05R\bkevCountB\x0f\n" +
+	"\ftop_priority\x18\x11 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriorityB\x0f\n" +
 	"\r_last_updatedB\x12\n" +
 	"\x10_stale_image_tag\"\xf4\x05\n" +
 	"\x03Cve\x12\x0e\n" +
@@ -4738,7 +4715,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x05since\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05since\x88\x01\x01B\b\n" +
 	"\x06_since\"q\n" +
 	")GetVulnerabilitySummaryTimeSeriesResponse\x12D\n" +
-	"\x06points\x18\x01 \x03(\v2,.v13s.api.protobuf.VulnerabilitySummaryPointR\x06points\"\xd6\x04\n" +
+	"\x06points\x18\x01 \x03(\v2,.v13s.api.protobuf.VulnerabilitySummaryPointR\x06points\"\xb9\x04\n" +
 	"\x19VulnerabilitySummaryPoint\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4752,15 +4729,14 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x0eworkload_count\x18\b \x01(\x05R\rworkloadCount\x12;\n" +
 	"\vbucket_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"bucketTime\x12\x1b\n" +
-	"\aact_now\x18\n" +
-	" \x01(\x05B\x02\x18\x01R\x06actNow\x12\x1b\n" +
+	"\tkev_count\x18\n" +
+	" \x01(\x05R\bkevCount\x12\x1b\n" +
 	"\thigh_risk\x18\v \x01(\x05R\bhighRisk\x12#\n" +
 	"\relevated_risk\x18\f \x01(\x05R\felevatedRisk\x12\x18\n" +
 	"\amonitor\x18\r \x01(\x05R\amonitor\x12)\n" +
 	"\x10ransomware_count\x18\x0e \x01(\x05R\x0fransomwareCount\x12&\n" +
 	"\x0fhigh_epss_count\x18\x0f \x01(\x05R\rhighEpssCount\x12>\n" +
-	"\ftop_priority\x18\x10 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriority\x12\x1b\n" +
-	"\tkev_count\x18\x11 \x01(\x05R\bkevCount\"-\n" +
+	"\ftop_priority\x18\x10 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriority\"-\n" +
 	"\x1bGetVulnerabilityByIdRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"f\n" +
 	"\x1cGetVulnerabilityByIdResponse\x12F\n" +

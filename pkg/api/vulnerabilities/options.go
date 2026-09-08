@@ -24,40 +24,37 @@ const (
 
 const (
 	OrderByAffectedWorkloads OrderByField = "affected_workloads"
-	// Deprecated: use OrderByKevCount. The server returns zero for act_now.
-	OrderByActNow          OrderByField = "act_now"
-	OrderByCluster         OrderByField = "cluster"
-	OrderByCreatedAt       OrderByField = "created_at"
-	OrderByCritical        OrderByField = "critical"
-	OrderByCveId           OrderByField = "cve_id"
-	OrderByCvssScore       OrderByField = "cvss_score"
-	OrderByElevatedRisk    OrderByField = "elevated_risk"
-	OrderByHigh            OrderByField = "high"
-	OrderByHighEpssCount   OrderByField = "high_epss_count"
-	OrderByHighRisk        OrderByField = "high_risk"
-	OrderByKevCount        OrderByField = "kev_count"
-	OrderByLow             OrderByField = "low"
-	OrderByMedium          OrderByField = "medium"
-	OrderByMonitor         OrderByField = "monitor"
-	OrderByNamespace       OrderByField = "namespace"
-	OrderByPackage         OrderByField = "package"
-	OrderByPriority        OrderByField = "priority"
-	OrderByRansomwareCount OrderByField = "ransomware_count"
-	OrderByReason          OrderByField = "reason"
-	OrderByRiskScore       OrderByField = "risk_score"
-	OrderBySeverity        OrderByField = "severity"
-	OrderBySeveritySince   OrderByField = "severity_since"
-	OrderBySuppressed      OrderByField = "suppressed"
-	OrderByTopPriority     OrderByField = "top_priority"
-	OrderByUnassigned      OrderByField = "unassigned"
-	OrderByUpdatedAt       OrderByField = "updated_at"
-	OrderByWorkload        OrderByField = "workload"
+	OrderByCluster           OrderByField = "cluster"
+	OrderByCreatedAt         OrderByField = "created_at"
+	OrderByCritical          OrderByField = "critical"
+	OrderByCveId             OrderByField = "cve_id"
+	OrderByCvssScore         OrderByField = "cvss_score"
+	OrderByElevatedRisk      OrderByField = "elevated_risk"
+	OrderByHigh              OrderByField = "high"
+	OrderByHighEpssCount     OrderByField = "high_epss_count"
+	OrderByHighRisk          OrderByField = "high_risk"
+	OrderByKevCount          OrderByField = "kev_count"
+	OrderByLow               OrderByField = "low"
+	OrderByMedium            OrderByField = "medium"
+	OrderByMonitor           OrderByField = "monitor"
+	OrderByNamespace         OrderByField = "namespace"
+	OrderByPackage           OrderByField = "package"
+	OrderByPriority          OrderByField = "priority"
+	OrderByRansomwareCount   OrderByField = "ransomware_count"
+	OrderByReason            OrderByField = "reason"
+	OrderByRiskScore         OrderByField = "risk_score"
+	OrderBySeverity          OrderByField = "severity"
+	OrderBySeveritySince     OrderByField = "severity_since"
+	OrderBySuppressed        OrderByField = "suppressed"
+	OrderByTopPriority       OrderByField = "top_priority"
+	OrderByUnassigned        OrderByField = "unassigned"
+	OrderByUpdatedAt         OrderByField = "updated_at"
+	OrderByWorkload          OrderByField = "workload"
 )
 
 // Map of valid fields
 var validOrderByFields = map[OrderByField]struct{}{
 	OrderByAffectedWorkloads: {},
-	OrderByActNow:            {},
 	OrderByCluster:           {},
 	OrderByCreatedAt:         {},
 	OrderByCritical:          {},
