@@ -29,14 +29,14 @@ spec:
           expr: |
             label_replace(
               (namespace:vulnerabilities:priority:high:current > 0)
-                and on (priority) (namespace:vulnerabilities:priority:high:max1h > 0),
-              "vulnerability_type", "priority $1", "priority", "(.*)"
+                and (namespace:vulnerabilities:priority:high:max1h > 0),
+              "vulnerability_type", "priority", "", ""
             )
             or
             label_replace(
               (namespace:vulnerabilities:severity:critical:current > 0)
-                and on (severity) (namespace:vulnerabilities:severity:critical:max1h > 0),
-              "vulnerability_type", "severity $1", "severity", "(.*)"
+                and (namespace:vulnerabilities:severity:critical:max1h > 0),
+              "vulnerability_type", "severity", "", ""
             )
           for: 10m
           labels:
