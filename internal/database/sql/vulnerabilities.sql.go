@@ -1771,15 +1771,14 @@ counts AS (
             OR COALESCE(epss_percentile, 0) >= 0.95
             OR COALESCE(epss_score, 0) >= 0.10)
         AND severity IN (0, 1)
-        AND (epss_percentile IS NULL
-            OR epss_percentile >= 0.90)) AS elevated_risk,
+        AND epss_percentile >= 0.90) AS elevated_risk,
     COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
             OR known_ransomware_use = TRUE
             OR COALESCE(epss_percentile, 0) >= 0.95
             OR COALESCE(epss_score, 0) >= 0.10)
-            AND NOT (severity IN (0, 1)
-                AND (epss_percentile IS NULL
-                    OR epss_percentile >= 0.90))) AS monitor,
+            AND (severity NOT IN (0, 1)
+                OR epss_percentile IS NULL
+                OR epss_percentile < 0.90)) AS monitor,
     COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
     COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
     MIN(
@@ -1789,8 +1788,7 @@ counts AS (
             OR COALESCE(epss_score, 0) >= 0.10 THEN
             2
         WHEN severity IN (0, 1)
-            AND (epss_percentile IS NULL
-                OR epss_percentile >= 0.90) THEN
+            AND epss_percentile >= 0.90 THEN
             3
         ELSE
             4
@@ -1977,8 +1975,7 @@ SET
         OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
     WHEN severity IN (0, 1)
-        AND (epss_percentile IS NULL
-            OR epss_percentile >= 0.90) THEN
+        AND epss_percentile >= 0.90 THEN
         3
     ELSE
         4
@@ -1990,8 +1987,7 @@ WHERE
         OR COALESCE(epss_score, 0) >= 0.10 THEN
         2
     WHEN severity IN (0, 1)
-        AND (epss_percentile IS NULL
-            OR epss_percentile >= 0.90) THEN
+        AND epss_percentile >= 0.90 THEN
         3
     ELSE
         4
