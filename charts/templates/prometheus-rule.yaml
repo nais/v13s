@@ -50,7 +50,9 @@ spec:
               {{ ":warning: `{{ $labels.workload_name }}` in `{{ $labels.workload_cluster }}` has `{{ $value }}` {{ $labels.vulnerability_type }} vulnerabilities" }}
             description: |
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
-            consequence: HIGH-priority and CRITICAL-severity vulnerabilities require remediation.
+            consequence: |
+              HIGH-priority and CRITICAL-severity vulnerabilities require remediation.
+              HIGH priority includes CISA KEV findings, vulnerabilities with known ransomware use, and vulnerabilities with an EPSS percentile of at least 0.95 or score of at least 0.10. A HIGH-priority finding is not necessarily a CISA KEV finding.
             action: |
               1. Open the affected workload in Salsa and identify the packages, CVEs, and running image tag.
               2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.

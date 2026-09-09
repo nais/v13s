@@ -3554,8 +3554,9 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	cveHigh := "CVE-PRIORITY-HIGH"
 	cveElevated := "CVE-PRIORITY-ELEVATED"
 	cveMonitor := "CVE-PRIORITY-MONITOR"
+	cveMissingEpss := "CVE-PRIORITY-MISSING-EPSS"
 
-	// Seed one CVE per risk tier v13s can produce (HIGH, ELEVATED, MONITOR).
+	// Seed CVEs for each priority tier and one CRITICAL finding without EPSS.
 	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
 		// HIGH: has_kev_entry = true (set via BulkUpdateKevData below).
 		{
@@ -3571,6 +3572,10 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		{
 			CveID: cveMonitor, CveTitle: "Monitor", CveDesc: "d", CveLink: "l", Severity: 2, Refs: map[string]string{},
 			EpssScore: new(0.01), EpssPercentile: new(0.05),
+		},
+		// MONITOR: severity CRITICAL without EPSS is not elevated.
+		{
+			CveID: cveMissingEpss, CveTitle: "Missing EPSS", CveDesc: "d", CveLink: "l", Severity: 0, Refs: map[string]string{},
 		},
 	}).Exec(func(i int, err error) {
 		require.NoError(t, err)
@@ -3598,6 +3603,10 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		},
 		{
 			ImageName: imageName, ImageTag: imageTag, Package: "pkg-monitor", CveID: cveMonitor, Source: "test", LastSeverity: 2,
+			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		},
+		{
+			ImageName: imageName, ImageTag: imageTag, Package: "pkg-missing-epss", CveID: cveMissingEpss, Source: "test", LastSeverity: 0,
 			SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		},
 	}).Exec(func(i int, err error) {
@@ -3634,7 +3643,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		assert.Equal(t, int32(1), sum.GetKevCount(), "kev_count must be 1 (the KEV CVE)")
 		assert.Equal(t, int32(1), sum.GetHighRisk(), "high_risk must be 1 (KEV CVE)")
 		assert.Equal(t, int32(1), sum.GetElevatedRisk(), "elevated_risk must be 1 (critical + high-percentile CVE)")
-		assert.Equal(t, int32(1), sum.GetMonitor(), "monitor must be 1 (low-risk CVE)")
+		assert.Equal(t, int32(2), sum.GetMonitor(), "monitor must include low-risk and missing-EPSS CVEs")
 		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, sum.GetTopPriority(), "top priority must be HIGH")
 	})
 
@@ -3645,7 +3654,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 			vulnerabilities.Limit(10),
 		)
 		require.NoError(t, err)
-		require.Len(t, resp.Nodes, 3, "expected exactly 3 CVEs for the image")
+		require.Len(t, resp.Nodes, 4, "expected exactly 4 CVEs for the image")
 
 		gotIDs := make([]string, len(resp.Nodes))
 		gotPriorities := make([]vulnerabilities.Priority, len(resp.Nodes))
@@ -3654,7 +3663,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 			gotPriorities[i] = v.GetCve().GetPriority()
 		}
 		assert.Equal(t,
-			[]string{cveHigh, cveElevated, cveMonitor},
+			[]string{cveHigh, cveElevated, cveMonitor, cveMissingEpss},
 			gotIDs,
 			"CVEs must be returned in priority order: HIGH → ELEVATED → MONITOR",
 		)
@@ -3662,6 +3671,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 			[]vulnerabilities.Priority{
 				vulnerabilities.Priority_PRIORITY_HIGH,
 				vulnerabilities.Priority_PRIORITY_ELEVATED,
+				vulnerabilities.Priority_PRIORITY_MONITOR,
 				vulnerabilities.Priority_PRIORITY_MONITOR,
 			},
 			gotPriorities,
