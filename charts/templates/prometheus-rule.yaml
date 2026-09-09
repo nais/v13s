@@ -42,7 +42,7 @@ spec:
           labels:
             namespace: nais-system
             severity: warning
-            channel: nais-alerts
+            channel: nais-alerts-info
             alert_type: custom
             repeat_interval: 1d
           annotations:
