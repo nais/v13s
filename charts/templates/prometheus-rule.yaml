@@ -30,13 +30,13 @@ spec:
             label_replace(
               (namespace:vulnerabilities:priority:high:current > 0)
                 and (namespace:vulnerabilities:priority:high:max1h > 0),
-              "vulnerability_type", "priority", "", ""
+              "vulnerability_type", "priority", "workload_name", ".*"
             )
             or
             label_replace(
               (namespace:vulnerabilities:severity:critical:current > 0)
                 and (namespace:vulnerabilities:severity:critical:max1h > 0),
-              "vulnerability_type", "severity", "", ""
+              "vulnerability_type", "severity", "workload_name", ".*"
             )
           for: 10m
           labels:
