@@ -38,9 +38,9 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":warning: `{{ $labels.workload_name }}` in `{{ $labels.workload_cluster }}` has `{{ $value }}` CRITICAL-severity vulnerabilities" }}
+              {{ ":warning: CRITICAL-severity vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+              {{ "`{{ $labels.workload_cluster }}/{{ $labels.workload_name }}`: `{{ $value }}` CRITICAL-severity vulnerabilities — " }}https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: |
               CRITICAL-severity vulnerabilities require remediation. This is a raw CVSS severity rollup; it does not by itself mean the vulnerability is known to be exploited. See the separate KEV alert for confirmed exploitation.
             action: |
@@ -62,9 +62,9 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":rotating_light: `{{ $labels.workload_name }}` in `{{ $labels.workload_cluster }}` has `{{ $value }}` CISA KEV vulnerabilities" }}
+              {{ ":rotating_light: CISA KEV vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
             description: |
-              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+              {{ "`{{ $labels.workload_cluster }}/{{ $labels.workload_name }}`: `{{ $value }}` CISA KEV vulnerabilities — " }}https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: |
               These CVEs are listed in CISA's Known Exploited Vulnerabilities catalog, meaning exploitation has been observed in the wild. Treat this as the highest remediation priority.
             action: |
