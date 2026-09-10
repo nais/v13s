@@ -11,33 +11,24 @@ spec:
   groups:
     - name: namespace-workload-vulnerability-recording
       rules:
-        - record: namespace:vulnerabilities:priority:high:current
-          expr: max by (workload_cluster, workload_namespace, workload_name) (nais_workload_vulnerabilities_priority{priority="HIGH", workload_namespace="nais-system"})
-
-        - record: namespace:vulnerabilities:priority:high:max1h
-          expr: max by (workload_cluster, workload_namespace, workload_name) (max_over_time(nais_workload_vulnerabilities_priority{priority="HIGH", workload_namespace="nais-system"}[1h]))
-
         - record: namespace:vulnerabilities:severity:critical:current
           expr: max by (workload_cluster, workload_namespace, workload_name) (nais_workload_vulnerabilities{severity="CRITICAL", workload_namespace="nais-system"})
 
         - record: namespace:vulnerabilities:severity:critical:max1h
           expr: max by (workload_cluster, workload_namespace, workload_name) (max_over_time(nais_workload_vulnerabilities{severity="CRITICAL", workload_namespace="nais-system"}[1h]))
 
+        - record: namespace:vulnerabilities:kev:current
+          expr: max by (workload_cluster, workload_namespace, workload_name) (nais_workload_vulnerabilities_kev{workload_namespace="nais-system"})
+
+        - record: namespace:vulnerabilities:kev:max1h
+          expr: max by (workload_cluster, workload_namespace, workload_name) (max_over_time(nais_workload_vulnerabilities_kev{workload_namespace="nais-system"}[1h]))
+
     - name: namespace-workload-vulnerability-alerts
       rules:
-        - alert: "namespace workload vulnerabilities"
+        - alert: "namespace workload critical vulnerabilities"
           expr: |
-            label_replace(
-              (namespace:vulnerabilities:priority:high:current > 0)
-                and (namespace:vulnerabilities:priority:high:max1h > 0),
-              "vulnerability_type", "priority", "workload_name", ".*"
-            )
-            or
-            label_replace(
-              (namespace:vulnerabilities:severity:critical:current > 0)
-                and (namespace:vulnerabilities:severity:critical:max1h > 0),
-              "vulnerability_type", "severity", "workload_name", ".*"
-            )
+            (namespace:vulnerabilities:severity:critical:current > 0)
+              and (namespace:vulnerabilities:severity:critical:max1h > 0)
           for: 10m
           labels:
             namespace: nais-system
@@ -47,12 +38,35 @@ spec:
             repeat_interval: 1d
           annotations:
             summary: |
-              {{ ":warning: `{{ $labels.workload_name }}` in `{{ $labels.workload_cluster }}` has `{{ $value }}` {{ $labels.vulnerability_type }} vulnerabilities" }}
+              {{ ":warning: `{{ $labels.workload_name }}` in `{{ $labels.workload_cluster }}` has `{{ $value }}` CRITICAL-severity vulnerabilities" }}
             description: |
               https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: |
-              HIGH-priority and CRITICAL-severity vulnerabilities require remediation.
-              HIGH priority includes CISA KEV findings, vulnerabilities with known ransomware use, and vulnerabilities with an EPSS percentile of at least 0.95 or score of at least 0.10. A HIGH-priority finding is not necessarily a CISA KEV finding.
+              CRITICAL-severity vulnerabilities require remediation. This is a raw CVSS severity rollup; it does not by itself mean the vulnerability is known to be exploited. See the separate KEV alert for confirmed exploitation.
+            action: |
+              1. Open the affected workload in Salsa and identify the packages, CVEs, and running image tag.
+              2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.
+              3. Build and redeploy the patched image.
+              4. Confirm that the next vulnerability scan no longer reports the finding.
+
+        - alert: "namespace workload KEV vulnerabilities"
+          expr: |
+            (namespace:vulnerabilities:kev:current > 0)
+              and (namespace:vulnerabilities:kev:max1h > 0)
+          for: 10m
+          labels:
+            namespace: nais-system
+            severity: critical
+            channel: nais-alerts-info
+            alert_type: custom
+            repeat_interval: 1d
+          annotations:
+            summary: |
+              {{ ":rotating_light: `{{ $labels.workload_name }}` in `{{ $labels.workload_cluster }}` has `{{ $value }}` CISA KEV vulnerabilities" }}
+            description: |
+              https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
+            consequence: |
+              These CVEs are listed in CISA's Known Exploited Vulnerabilities catalog, meaning exploitation has been observed in the wild. Treat this as the highest remediation priority.
             action: |
               1. Open the affected workload in Salsa and identify the packages, CVEs, and running image tag.
               2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.
