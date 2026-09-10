@@ -410,15 +410,15 @@ joined_data AS (
         CAST(COUNT(DISTINCT CASE WHEN is_active
                     AND top_risk_tier = 2 THEN
                     id
-                END) AS INT4) AS workloads_high_risk,
+                END) AS INT4) AS high_risk_workload_count,
         CAST(COUNT(DISTINCT CASE WHEN is_active
                     AND top_risk_tier = 3 THEN
                     id
-                END) AS INT4) AS workloads_elevated_risk,
+                END) AS INT4) AS elevated_risk_workload_count,
         CAST(COUNT(DISTINCT CASE WHEN is_active
                     AND top_risk_tier = 4 THEN
                     id
-                END) AS INT4) AS workloads_monitor,
+                END) AS INT4) AS monitor_workload_count,
         CAST(COALESCE(SUM(
                     CASE WHEN is_active THEN
                         risk_score

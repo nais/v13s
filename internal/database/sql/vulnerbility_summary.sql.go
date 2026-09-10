@@ -248,15 +248,15 @@ joined_data AS (
         CAST(COUNT(DISTINCT CASE WHEN is_active
                     AND top_risk_tier = 2 THEN
                     id
-                END) AS INT4) AS workloads_high_risk,
+                END) AS INT4) AS high_risk_workload_count,
         CAST(COUNT(DISTINCT CASE WHEN is_active
                     AND top_risk_tier = 3 THEN
                     id
-                END) AS INT4) AS workloads_elevated_risk,
+                END) AS INT4) AS elevated_risk_workload_count,
         CAST(COUNT(DISTINCT CASE WHEN is_active
                     AND top_risk_tier = 4 THEN
                     id
-                END) AS INT4) AS workloads_monitor,
+                END) AS INT4) AS monitor_workload_count,
         CAST(COALESCE(SUM(
                     CASE WHEN is_active THEN
                         risk_score
@@ -279,25 +279,25 @@ type GetVulnerabilitySummaryParams struct {
 }
 
 type GetVulnerabilitySummaryRow struct {
-	WorkloadCount         int32
-	WorkloadWithSbom      int32
-	Critical              int32
-	High                  int32
-	Medium                int32
-	Low                   int32
-	Unassigned            int32
-	KevCount              int32
-	HighRisk              int32
-	ElevatedRisk          int32
-	Monitor               int32
-	RansomwareCount       int32
-	HighEpssCount         int32
-	TopRiskTier           interface{}
-	WorkloadsHighRisk     int32
-	WorkloadsElevatedRisk int32
-	WorkloadsMonitor      int32
-	RiskScore             int32
-	UpdatedAt             pgtype.Timestamptz
+	WorkloadCount             int32
+	WorkloadWithSbom          int32
+	Critical                  int32
+	High                      int32
+	Medium                    int32
+	Low                       int32
+	Unassigned                int32
+	KevCount                  int32
+	HighRisk                  int32
+	ElevatedRisk              int32
+	Monitor                   int32
+	RansomwareCount           int32
+	HighEpssCount             int32
+	TopRiskTier               interface{}
+	HighRiskWorkloadCount     int32
+	ElevatedRiskWorkloadCount int32
+	MonitorWorkloadCount      int32
+	RiskScore                 int32
+	UpdatedAt                 pgtype.Timestamptz
 }
 
 func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error) {
@@ -324,9 +324,9 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		&i.RansomwareCount,
 		&i.HighEpssCount,
 		&i.TopRiskTier,
-		&i.WorkloadsHighRisk,
-		&i.WorkloadsElevatedRisk,
-		&i.WorkloadsMonitor,
+		&i.HighRiskWorkloadCount,
+		&i.ElevatedRiskWorkloadCount,
+		&i.MonitorWorkloadCount,
 		&i.RiskScore,
 		&i.UpdatedAt,
 	)

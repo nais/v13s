@@ -1362,17 +1362,18 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, resp.GetVulnerabilitySummary().GetTopPriority())
 	})
 
-	t.Run("workload counts partition by top priority", func(t *testing.T) {
+	t.Run("workload counts are mutually exclusive by top priority", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummary(ctx)
 		require.NoError(t, err)
 
 		s := resp.GetVulnerabilitySummary()
-		assert.Equal(t, int32(4), s.GetWorkloadsHighRisk())
-		assert.Equal(t, int32(0), s.GetWorkloadsElevatedRisk())
-		assert.Equal(t, int32(0), s.GetWorkloadsMonitor())
+		assert.Equal(t, int32(cfg.workloadsPerNamespace), s.GetHighRiskWorkloadCount())
+		assert.Equal(t, int32(0), s.GetElevatedRiskWorkloadCount())
+		assert.Equal(t, int32(0), s.GetMonitorWorkloadCount())
 
-		sum := s.GetWorkloadsHighRisk() + s.GetWorkloadsElevatedRisk() + s.GetWorkloadsMonitor()
-		assert.Equal(t, int32(cfg.workloadsPerNamespace), sum)
+		sum := s.GetHighRiskWorkloadCount() + s.GetElevatedRiskWorkloadCount() + s.GetMonitorWorkloadCount()
+		assert.LessOrEqual(t, sum, resp.GetSbomCount(),
+			"a workload is counted under at most one tier, and only if it has a summary")
 	})
 }
 

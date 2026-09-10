@@ -111,11 +111,15 @@ message Summary {
   int32 high_epss_count = 16;
   // Use top_priority for primary ranking/display of risk.
   Priority top_priority = 17;
-  // Workload counts grouped by top priority. Fields 12-14 count findings;
-  // these count workloads whose top priority is that tier.
-  int32 workloads_high_risk = 18;
-  int32 workloads_elevated_risk = 19;
-  int32 workloads_monitor = 20;
+  // Workload counts by top priority, for the HIGH, ELEVATED and MONITOR tiers.
+  // Fields 12-14 count findings and overlap across tiers; these count workloads
+  // and are mutually exclusive, each workload counted at most once.
+  // Workloads with a summary but no unsuppressed findings have an unspecified
+  // top priority and appear in none of these, so the three do not necessarily
+  // sum to sbom_count.
+  int32 high_risk_workload_count = 18;
+  int32 elevated_risk_workload_count = 19;
+  int32 monitor_workload_count = 20;
 }
 
 message Cve {

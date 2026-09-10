@@ -613,13 +613,17 @@ type Summary struct {
 	HighEpssCount   int32 `protobuf:"varint,16,opt,name=high_epss_count,json=highEpssCount,proto3" json:"high_epss_count,omitempty"`
 	// Use top_priority for primary ranking/display of risk.
 	TopPriority Priority `protobuf:"varint,17,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
-	// Workload counts grouped by top priority. Fields 12-14 count findings;
-	// these count workloads whose top priority is that tier.
-	WorkloadsHighRisk     int32 `protobuf:"varint,18,opt,name=workloads_high_risk,json=workloadsHighRisk,proto3" json:"workloads_high_risk,omitempty"`
-	WorkloadsElevatedRisk int32 `protobuf:"varint,19,opt,name=workloads_elevated_risk,json=workloadsElevatedRisk,proto3" json:"workloads_elevated_risk,omitempty"`
-	WorkloadsMonitor      int32 `protobuf:"varint,20,opt,name=workloads_monitor,json=workloadsMonitor,proto3" json:"workloads_monitor,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Workload counts by top priority, for the HIGH, ELEVATED and MONITOR tiers.
+	// Fields 12-14 count findings and overlap across tiers; these count workloads
+	// and are mutually exclusive, each workload counted at most once.
+	// Workloads with a summary but no unsuppressed findings have an unspecified
+	// top priority and appear in none of these, so the three do not necessarily
+	// sum to sbom_count.
+	HighRiskWorkloadCount     int32 `protobuf:"varint,18,opt,name=high_risk_workload_count,json=highRiskWorkloadCount,proto3" json:"high_risk_workload_count,omitempty"`
+	ElevatedRiskWorkloadCount int32 `protobuf:"varint,19,opt,name=elevated_risk_workload_count,json=elevatedRiskWorkloadCount,proto3" json:"elevated_risk_workload_count,omitempty"`
+	MonitorWorkloadCount      int32 `protobuf:"varint,20,opt,name=monitor_workload_count,json=monitorWorkloadCount,proto3" json:"monitor_workload_count,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *Summary) Reset() {
@@ -771,23 +775,23 @@ func (x *Summary) GetTopPriority() Priority {
 	return Priority_PRIORITY_UNSPECIFIED
 }
 
-func (x *Summary) GetWorkloadsHighRisk() int32 {
+func (x *Summary) GetHighRiskWorkloadCount() int32 {
 	if x != nil {
-		return x.WorkloadsHighRisk
+		return x.HighRiskWorkloadCount
 	}
 	return 0
 }
 
-func (x *Summary) GetWorkloadsElevatedRisk() int32 {
+func (x *Summary) GetElevatedRiskWorkloadCount() int32 {
 	if x != nil {
-		return x.WorkloadsElevatedRisk
+		return x.ElevatedRiskWorkloadCount
 	}
 	return 0
 }
 
-func (x *Summary) GetWorkloadsMonitor() int32 {
+func (x *Summary) GetMonitorWorkloadCount() int32 {
 	if x != nil {
-		return x.WorkloadsMonitor
+		return x.MonitorWorkloadCount
 	}
 	return 0
 }
@@ -4432,7 +4436,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\x88\x06\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xa3\x06\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4453,10 +4457,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\amonitor\x18\x0e \x01(\x05R\amonitor\x12)\n" +
 	"\x10ransomware_count\x18\x0f \x01(\x05R\x0fransomwareCount\x12&\n" +
 	"\x0fhigh_epss_count\x18\x10 \x01(\x05R\rhighEpssCount\x12>\n" +
-	"\ftop_priority\x18\x11 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriority\x12.\n" +
-	"\x13workloads_high_risk\x18\x12 \x01(\x05R\x11workloadsHighRisk\x126\n" +
-	"\x17workloads_elevated_risk\x18\x13 \x01(\x05R\x15workloadsElevatedRisk\x12+\n" +
-	"\x11workloads_monitor\x18\x14 \x01(\x05R\x10workloadsMonitorB\x0f\n" +
+	"\ftop_priority\x18\x11 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriority\x127\n" +
+	"\x18high_risk_workload_count\x18\x12 \x01(\x05R\x15highRiskWorkloadCount\x12?\n" +
+	"\x1celevated_risk_workload_count\x18\x13 \x01(\x05R\x19elevatedRiskWorkloadCount\x124\n" +
+	"\x16monitor_workload_count\x18\x14 \x01(\x05R\x14monitorWorkloadCountB\x0f\n" +
 	"\r_last_updatedB\x12\n" +
 	"\x10_stale_image_tag\"\xf4\x05\n" +
 	"\x03Cve\x12\x0e\n" +
