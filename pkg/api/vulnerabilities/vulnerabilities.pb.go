@@ -614,11 +614,11 @@ type Summary struct {
 	// Use top_priority for primary ranking/display of risk.
 	TopPriority Priority `protobuf:"varint,17,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
 	// Workload counts by top priority, for the HIGH, ELEVATED and MONITOR tiers.
-	// Fields 12-14 count findings and overlap across tiers; these count workloads
-	// and are mutually exclusive, each workload counted at most once.
-	// Workloads with a summary but no unsuppressed findings have an unspecified
-	// top priority and appear in none of these, so the three do not necessarily
-	// sum to sbom_count.
+	// Fields 12-14 count findings and can overlap across tiers; these count distinct workloads.
+	// These counts are mutually exclusive: each workload is counted at most once, under its top_priority.
+	// Workloads with no unsuppressed findings have an unspecified top_priority and are excluded.
+	// These fields are only populated for aggregated summaries (e.g. GetVulnerabilitySummary); per-workload summaries leave them unset.
+	// Do not assume these counts will sum to other totals.
 	HighRiskWorkloadCount     int32 `protobuf:"varint,18,opt,name=high_risk_workload_count,json=highRiskWorkloadCount,proto3" json:"high_risk_workload_count,omitempty"`
 	ElevatedRiskWorkloadCount int32 `protobuf:"varint,19,opt,name=elevated_risk_workload_count,json=elevatedRiskWorkloadCount,proto3" json:"elevated_risk_workload_count,omitempty"`
 	MonitorWorkloadCount      int32 `protobuf:"varint,20,opt,name=monitor_workload_count,json=monitorWorkloadCount,proto3" json:"monitor_workload_count,omitempty"`
