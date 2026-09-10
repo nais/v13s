@@ -612,9 +612,14 @@ type Summary struct {
 	RansomwareCount int32 `protobuf:"varint,15,opt,name=ransomware_count,json=ransomwareCount,proto3" json:"ransomware_count,omitempty"`
 	HighEpssCount   int32 `protobuf:"varint,16,opt,name=high_epss_count,json=highEpssCount,proto3" json:"high_epss_count,omitempty"`
 	// Use top_priority for primary ranking/display of risk.
-	TopPriority   Priority `protobuf:"varint,17,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TopPriority Priority `protobuf:"varint,17,opt,name=top_priority,json=topPriority,proto3,enum=v13s.api.protobuf.Priority" json:"top_priority,omitempty"`
+	// Workload counts grouped by top priority. Fields 12-14 count findings;
+	// these count workloads whose top priority is that tier.
+	WorkloadsHighRisk     int32 `protobuf:"varint,18,opt,name=workloads_high_risk,json=workloadsHighRisk,proto3" json:"workloads_high_risk,omitempty"`
+	WorkloadsElevatedRisk int32 `protobuf:"varint,19,opt,name=workloads_elevated_risk,json=workloadsElevatedRisk,proto3" json:"workloads_elevated_risk,omitempty"`
+	WorkloadsMonitor      int32 `protobuf:"varint,20,opt,name=workloads_monitor,json=workloadsMonitor,proto3" json:"workloads_monitor,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Summary) Reset() {
@@ -764,6 +769,27 @@ func (x *Summary) GetTopPriority() Priority {
 		return x.TopPriority
 	}
 	return Priority_PRIORITY_UNSPECIFIED
+}
+
+func (x *Summary) GetWorkloadsHighRisk() int32 {
+	if x != nil {
+		return x.WorkloadsHighRisk
+	}
+	return 0
+}
+
+func (x *Summary) GetWorkloadsElevatedRisk() int32 {
+	if x != nil {
+		return x.WorkloadsElevatedRisk
+	}
+	return 0
+}
+
+func (x *Summary) GetWorkloadsMonitor() int32 {
+	if x != nil {
+		return x.WorkloadsMonitor
+	}
+	return 0
 }
 
 type Cve struct {
@@ -4406,7 +4432,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xf3\x04\n" +
+	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\x88\x06\n" +
 	"\aSummary\x12\x1a\n" +
 	"\bcritical\x18\x01 \x01(\x05R\bcritical\x12\x12\n" +
 	"\x04high\x18\x02 \x01(\x05R\x04high\x12\x16\n" +
@@ -4427,7 +4453,10 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\amonitor\x18\x0e \x01(\x05R\amonitor\x12)\n" +
 	"\x10ransomware_count\x18\x0f \x01(\x05R\x0fransomwareCount\x12&\n" +
 	"\x0fhigh_epss_count\x18\x10 \x01(\x05R\rhighEpssCount\x12>\n" +
-	"\ftop_priority\x18\x11 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriorityB\x0f\n" +
+	"\ftop_priority\x18\x11 \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\vtopPriority\x12.\n" +
+	"\x13workloads_high_risk\x18\x12 \x01(\x05R\x11workloadsHighRisk\x126\n" +
+	"\x17workloads_elevated_risk\x18\x13 \x01(\x05R\x15workloadsElevatedRisk\x12+\n" +
+	"\x11workloads_monitor\x18\x14 \x01(\x05R\x10workloadsMonitorB\x0f\n" +
 	"\r_last_updatedB\x12\n" +
 	"\x10_stale_image_tag\"\xf4\x05\n" +
 	"\x03Cve\x12\x0e\n" +

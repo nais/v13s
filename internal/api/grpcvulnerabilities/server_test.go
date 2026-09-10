@@ -1361,6 +1361,19 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		assert.Equal(t, int32(16), resp.GetVulnerabilitySummary().GetHighEpssCount())
 		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, resp.GetVulnerabilitySummary().GetTopPriority())
 	})
+
+	t.Run("workload counts partition by top priority", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummary(ctx)
+		require.NoError(t, err)
+
+		s := resp.GetVulnerabilitySummary()
+		assert.Equal(t, int32(4), s.GetWorkloadsHighRisk())
+		assert.Equal(t, int32(0), s.GetWorkloadsElevatedRisk())
+		assert.Equal(t, int32(0), s.GetWorkloadsMonitor())
+
+		sum := s.GetWorkloadsHighRisk() + s.GetWorkloadsElevatedRisk() + s.GetWorkloadsMonitor()
+		assert.Equal(t, int32(cfg.workloadsPerNamespace), sum)
+	})
 }
 
 func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
