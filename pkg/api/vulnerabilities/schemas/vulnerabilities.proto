@@ -111,6 +111,15 @@ message Summary {
   int32 high_epss_count = 16;
   // Use top_priority for primary ranking/display of risk.
   Priority top_priority = 17;
+  // Workload counts by top priority, for the HIGH, ELEVATED and MONITOR tiers.
+  // Fields 12-14 count findings and can overlap across tiers; these count distinct workloads.
+  // These counts are mutually exclusive: each workload is counted at most once, under its top_priority.
+  // Workloads with no unsuppressed findings have an unspecified top_priority and are excluded.
+  // These fields are only populated for aggregated summaries (e.g. GetVulnerabilitySummary); per-workload summaries leave them unset.
+  // Do not assume these counts will sum to other totals.
+  int32 high_risk_workload_count = 18;
+  int32 elevated_risk_workload_count = 19;
+  int32 monitor_workload_count = 20;
 }
 
 message Cve {
