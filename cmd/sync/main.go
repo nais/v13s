@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -94,11 +95,12 @@ func lookupSource(name string) (source, bool) {
 }
 
 func usage() string {
-	out := "usage: sync <source>\n\nsources:\n"
+	var out strings.Builder
+	out.WriteString("usage: sync <source>\n\nsources:\n")
 	for _, s := range sources {
-		out += fmt.Sprintf("  %-8s %s\n", s.name, s.description)
+		out.WriteString(fmt.Sprintf("  %-8s %s\n", s.name, s.description))
 	}
-	return out
+	return out.String()
 }
 
 func main() {
