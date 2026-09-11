@@ -47,32 +47,32 @@ counts AS (
         OR COALESCE(epss_percentile, 0) >= 0.95
         OR COALESCE(epss_score, 0) >= 0.10) AS high_risk,
     COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-            OR known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.95
-            OR COALESCE(epss_score, 0) >= 0.10)
-        AND severity IN (0, 1)
-        AND epss_percentile >= 0.90) AS elevated_risk,
-    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-            OR known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.95
-            OR COALESCE(epss_score, 0) >= 0.10)
-            AND (severity NOT IN (0, 1)
-                OR epss_percentile IS NULL
-                OR epss_percentile < 0.90)) AS monitor,
-    COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-    COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-    MIN(
-        CASE WHEN has_kev_entry = TRUE
-            OR known_ransomware_use = TRUE
-            OR COALESCE(epss_percentile, 0) >= 0.95
-            OR COALESCE(epss_score, 0) >= 0.10 THEN
-            2
-        WHEN severity IN (0, 1)
-            AND epss_percentile >= 0.90 THEN
-            3
-        ELSE
-            4
-        END) AS top_risk_tier
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10)
+    AND severity IN (0, 1)
+    AND epss_percentile >= 0.90) AS elevated_risk,
+COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
+    OR known_ransomware_use = TRUE
+    OR COALESCE(epss_percentile, 0) >= 0.95
+    OR COALESCE(epss_score, 0) >= 0.10)
+AND (severity NOT IN (0, 1)
+    OR epss_percentile IS NULL
+    OR epss_percentile < 0.90)) AS monitor,
+COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+MIN(
+    CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.90 THEN
+        3
+    ELSE
+        4
+    END) AS top_risk_tier
 FROM
     unsuppressed_vulnerabilities)
 INSERT INTO vulnerability_summary(
@@ -130,7 +130,6 @@ ON CONFLICT (image_name,
         top_risk_tier = EXCLUDED.top_risk_tier,
         risk_score = EXCLUDED.risk_score,
         updated_at = NOW();
-
 
 -- name: BatchUpsertCve :batchexec
 INSERT INTO cve(

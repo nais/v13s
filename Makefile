@@ -27,7 +27,7 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-check: vet fmt vulncheck deadcode staticcheck goimport helm-lint gofix
+check: vet gofix fmt vulncheck deadcode staticcheck goimport helm-lint
 
 vet:
 	mise run check:govet
