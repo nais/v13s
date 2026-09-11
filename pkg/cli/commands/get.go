@@ -189,9 +189,28 @@ func getCve(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client) err
 	tbl.AddRow("CVE ID", resp.Cve.GetId())
 	tbl.AddRow("Severity", resp.Cve.GetSeverity().String())
 	tbl.AddRow("CVSS Score", cvssScore)
+	tbl.AddRow("Priority", resp.Cve.GetPriority().String())
+	tbl.AddRow("Known exploited", formatBool(resp.Cve.GetHasKevEntry()))
+	tbl.AddRow("Ransomware use", formatBool(resp.Cve.GetKnownRansomwareUse()))
+	tbl.AddRow("EPSS Score", formatOptionalFloat(resp.Cve.EpssScore))
+	tbl.AddRow("EPSS Percentile", formatOptionalFloat(resp.Cve.EpssPercentile))
 	tbl.AddRow("Description", resp.Cve.GetDescription())
 	tbl.Print()
 	return nil
+}
+
+func formatBool(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no"
+}
+
+func formatOptionalFloat(v *float64) string {
+	if v == nil {
+		return "N/A"
+	}
+	return fmt.Sprintf("%g", *v)
 }
 
 func getImageSummary(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client) error {

@@ -1160,7 +1160,7 @@ FROM
 WHERE
     alias = @alias;
 
--- name: UpdateCvePriority :exec
+-- name: UpdateCvePriority :execrows
 UPDATE
     cve
 SET
@@ -1177,6 +1177,35 @@ SET
     END
 WHERE
     priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.90 THEN
+        3
+    ELSE
+        4
+    END;
+
+-- name: UpdateCvePriorityForCves :execrows
+UPDATE
+    cve
+SET
+    priority = CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.90 THEN
+        3
+    ELSE
+        4
+    END
+WHERE
+    cve_id = ANY (@cve_ids::TEXT[])
+    AND priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
         OR known_ransomware_use = TRUE
         OR COALESCE(epss_percentile, 0) >= 0.95
         OR COALESCE(epss_score, 0) >= 0.10 THEN
