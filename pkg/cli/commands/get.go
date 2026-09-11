@@ -189,7 +189,7 @@ func getCve(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client) err
 	tbl.AddRow("CVE ID", resp.Cve.GetId())
 	tbl.AddRow("Severity", resp.Cve.GetSeverity().String())
 	tbl.AddRow("CVSS Score", cvssScore)
-	tbl.AddRow("Priority", resp.Cve.GetPriority().String())
+	tbl.AddRow("Priority", formatPriority(resp.Cve.GetPriority()))
 	tbl.AddRow("Known exploited", formatBool(resp.Cve.GetHasKevEntry()))
 	tbl.AddRow("Ransomware use", formatBool(resp.Cve.GetKnownRansomwareUse()))
 	tbl.AddRow("EPSS Score", formatOptionalFloat(resp.Cve.EpssScore))
