@@ -77,7 +77,8 @@ type Querier interface {
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	TryAdvisoryLock(ctx context.Context, key int64) (bool, error)
-	UpdateCvePriority(ctx context.Context) error
+	UpdateCvePriority(ctx context.Context) (int64, error)
+	UpdateCvePriorityForCves(ctx context.Context, cveIds []string) (int64, error)
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) (int64, error)
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error

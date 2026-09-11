@@ -1965,7 +1965,7 @@ func (q *Queries) SuppressVulnerability(ctx context.Context, arg SuppressVulnera
 	return err
 }
 
-const updateCvePriority = `-- name: UpdateCvePriority :exec
+const updateCvePriority = `-- name: UpdateCvePriority :execrows
 UPDATE
     cve
 SET
@@ -1994,7 +1994,48 @@ WHERE
     END
 `
 
-func (q *Queries) UpdateCvePriority(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, updateCvePriority)
-	return err
+func (q *Queries) UpdateCvePriority(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCvePriority)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateCvePriorityForCves = `-- name: UpdateCvePriorityForCves :execrows
+UPDATE
+    cve
+SET
+    priority = CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.90 THEN
+        3
+    ELSE
+        4
+    END
+WHERE
+    cve_id = ANY ($1::TEXT[])
+    AND priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
+        OR known_ransomware_use = TRUE
+        OR COALESCE(epss_percentile, 0) >= 0.95
+        OR COALESCE(epss_score, 0) >= 0.10 THEN
+        2
+    WHEN severity IN (0, 1)
+        AND epss_percentile >= 0.90 THEN
+        3
+    ELSE
+        4
+    END
+`
+
+func (q *Queries) UpdateCvePriorityForCves(ctx context.Context, cveIds []string) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCvePriorityForCves, cveIds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

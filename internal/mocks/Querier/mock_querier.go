@@ -3817,21 +3817,31 @@ func (_c *MockQuerier_TryAdvisoryLock_Call) RunAndReturn(run func(context.Contex
 }
 
 // UpdateCvePriority provides a mock function with given fields: ctx
-func (_m *MockQuerier) UpdateCvePriority(ctx context.Context) error {
+func (_m *MockQuerier) UpdateCvePriority(ctx context.Context) (int64, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateCvePriority")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int64); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int64)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockQuerier_UpdateCvePriority_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateCvePriority'
@@ -3852,12 +3862,69 @@ func (_c *MockQuerier_UpdateCvePriority_Call) Run(run func(ctx context.Context))
 	return _c
 }
 
-func (_c *MockQuerier_UpdateCvePriority_Call) Return(_a0 error) *MockQuerier_UpdateCvePriority_Call {
-	_c.Call.Return(_a0)
+func (_c *MockQuerier_UpdateCvePriority_Call) Return(_a0 int64, _a1 error) *MockQuerier_UpdateCvePriority_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_UpdateCvePriority_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_UpdateCvePriority_Call {
+func (_c *MockQuerier_UpdateCvePriority_Call) RunAndReturn(run func(context.Context) (int64, error)) *MockQuerier_UpdateCvePriority_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateCvePriorityForCves provides a mock function with given fields: ctx, cveIds
+func (_m *MockQuerier) UpdateCvePriorityForCves(ctx context.Context, cveIds []string) (int64, error) {
+	ret := _m.Called(ctx, cveIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateCvePriorityForCves")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) (int64, error)); ok {
+		return rf(ctx, cveIds)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) int64); ok {
+		r0 = rf(ctx, cveIds)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, cveIds)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_UpdateCvePriorityForCves_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateCvePriorityForCves'
+type MockQuerier_UpdateCvePriorityForCves_Call struct {
+	*mock.Call
+}
+
+// UpdateCvePriorityForCves is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cveIds []string
+func (_e *MockQuerier_Expecter) UpdateCvePriorityForCves(ctx interface{}, cveIds interface{}) *MockQuerier_UpdateCvePriorityForCves_Call {
+	return &MockQuerier_UpdateCvePriorityForCves_Call{Call: _e.mock.On("UpdateCvePriorityForCves", ctx, cveIds)}
+}
+
+func (_c *MockQuerier_UpdateCvePriorityForCves_Call) Run(run func(ctx context.Context, cveIds []string)) *MockQuerier_UpdateCvePriorityForCves_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateCvePriorityForCves_Call) Return(_a0 int64, _a1 error) *MockQuerier_UpdateCvePriorityForCves_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateCvePriorityForCves_Call) RunAndReturn(run func(context.Context, []string) (int64, error)) *MockQuerier_UpdateCvePriorityForCves_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -160,14 +160,15 @@ func createVulnerability(severity int, cveID string, imageName string, imageTag 
 		return int32(value)
 	}
 
-	return sql.BatchUpsertVulnerabilitiesParams{
+	vuln := sql.BatchUpsertVulnerabilitiesParams{
 		ImageName:     imageName,
 		ImageTag:      imageTag,
 		Package:       fmt.Sprintf("package-%s", cveID),
 		Source:        "seed",
 		CveID:         cveID,
 		LatestVersion: "2",
-	}, sql.BatchUpsertCveParams{
+	}
+	cve := sql.BatchUpsertCveParams{
 		CveID:    cveID,
 		CveTitle: "Title for " + cveID,
 		CveDesc:  "description for " + cveID,
@@ -175,4 +176,5 @@ func createVulnerability(severity int, cveID string, imageName string, imageTag 
 		Severity: safeInt(severity),
 		Refs:     map[string]string{},
 	}
+	return vuln, cve
 }
