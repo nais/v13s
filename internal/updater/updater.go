@@ -518,6 +518,25 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
 	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
 
+	if len(cves) > 0 {
+		cveIDs := make([]string, 0, len(cves))
+		seen := make(map[string]struct{}, len(cves))
+		for _, c := range cves {
+			if _, ok := seen[c.CveID]; ok {
+				continue
+			}
+			seen[c.CveID] = struct{}{}
+			cveIDs = append(cveIDs, c.CveID)
+		}
+
+		updated, err := u.querier.UpdateCvePriorityForCves(ctx, cveIDs)
+		if err != nil {
+			u.log.WithError(err).Error("update cve priority after upserting CVEs")
+		} else if updated > 0 {
+			u.log.WithField("rows", updated).Debug("updated cve priorities")
+		}
+	}
+
 	for _, i := range images {
 		if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 			ImageName: i.ImageName,
