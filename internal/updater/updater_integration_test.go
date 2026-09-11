@@ -1163,6 +1163,97 @@ func TestBatchUpdateVulnerabilityData_GitHubFindingPromotion(t *testing.T) {
 	assert.Equal(t, pkg, vulns[0].Package)
 }
 
+func TestBatchUpdateVulnerabilityData_PriorityUpdateIsFilteredToBatchCves(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+
+	const (
+		imageName = "test-image"
+		imageTag  = "v1.0"
+		cveA      = "CVE-2025-00001"
+		cveB      = "CVE-2025-00002"
+	)
+
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+		Name:     imageName,
+		Tag:      imageTag,
+		Metadata: map[string]string{},
+	}))
+	_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name:         "workload-test",
+		WorkloadType: "app",
+		Namespace:    "test-ns",
+		Cluster:      "test-cluster",
+		ImageName:    imageName,
+		ImageTag:     imageTag,
+	})
+	if !errors.Is(err, pgx.ErrNoRows) {
+		require.NoError(t, err)
+	}
+
+	// Below the epss_percentile >= 0.90 threshold, so both CVEs land on
+	// priority 4 regardless of severity.
+	batchFor := func(cveID string, epssPercentile float64) *updater.ImageVulnerabilityData {
+		return &updater.ImageVulnerabilityData{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Source:    "DependencyTrack",
+			Vulnerabilities: []*sources.Vulnerability{
+				{
+					Package: fmt.Sprintf("pkg:generic/%s@1.0.0", cveID),
+					Cve: &sources.Cve{
+						Id:         cveID,
+						Title:      "title",
+						Link:       fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", cveID),
+						Severity:   sources.SeverityLow,
+						References: map[string]string{},
+					},
+					EpssPercentile: &epssPercentile,
+				},
+			},
+		}
+	}
+
+	// Seed both CVEs together with a low EPSS percentile -> priority 4.
+	u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{
+		batchFor(cveA, 0.10),
+		batchFor(cveB, 0.10),
+	})
+
+	cveARow, err := db.GetCve(ctx, cveA)
+	require.NoError(t, err)
+	require.NotNil(t, cveARow.Priority)
+	assert.EqualValues(t, 4, *cveARow.Priority)
+
+	cveBRow, err := db.GetCve(ctx, cveB)
+	require.NoError(t, err)
+	require.NotNil(t, cveBRow.Priority)
+	assert.EqualValues(t, 4, *cveBRow.Priority)
+
+	// Second batch carries only CVE-A, with its EPSS percentile raised above
+	// 0.95 -> priority 2. CVE-B is absent from this batch, so it must stay at
+	// priority 4 even though it would also be promoted if UpdateCvePriority
+	// (unfiltered) ran over the whole table.
+	u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{
+		batchFor(cveA, 0.96),
+	})
+
+	cveARow, err = db.GetCve(ctx, cveA)
+	require.NoError(t, err)
+	require.NotNil(t, cveARow.Priority)
+	assert.EqualValues(t, 2, *cveARow.Priority, "cve referenced by the batch must be recomputed")
+
+	cveBRow, err = db.GetCve(ctx, cveB)
+	require.NoError(t, err)
+	require.NotNil(t, cveBRow.Priority)
+	assert.EqualValues(t, 4, *cveBRow.Priority, "cve not referenced by the batch must be left untouched")
+}
+
 func TestCveAliasCanonicalFkeyStillEnforced(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)

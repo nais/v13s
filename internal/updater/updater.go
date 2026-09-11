@@ -529,7 +529,7 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			cveIDs = append(cveIDs, c.CveID)
 		}
 
-updated, err := u.querier.UpdateCvePriorityForCves(ctx, cveIDs)
+		updated, err := u.querier.UpdateCvePriorityForCves(ctx, cveIDs)
 		if err != nil {
 			return fmt.Errorf("updating cve priority after upserting CVEs: %w", err)
 		}
