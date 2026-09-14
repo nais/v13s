@@ -138,6 +138,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTiers:     riskTiers,
+		HasKev:        request.GetFilter().HasKev,
 	})
 	if err != nil {
 		return nil, err
@@ -203,6 +204,7 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTiers:     riskTiers,
+		HasKev:        request.GetFilter().HasKev,
 		Since:         since,
 	})
 	if err != nil {

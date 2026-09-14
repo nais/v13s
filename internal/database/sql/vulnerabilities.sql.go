@@ -122,6 +122,8 @@ AND ($5::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 AND ($6::INT[] IS NULL
     OR c.priority = ANY ($6::INT[]))
+AND ($7::BOOL IS NULL
+    OR c.has_kev_entry = $7::BOOL)
 `
 
 type CountVulnerabilitiesParams struct {
@@ -131,6 +133,7 @@ type CountVulnerabilitiesParams struct {
 	WorkloadName      *string
 	IncludeSuppressed *bool
 	RiskTiers         []int32
+	HasKev            *bool
 }
 
 func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error) {
@@ -141,6 +144,7 @@ func (q *Queries) CountVulnerabilities(ctx context.Context, arg CountVulnerabili
 		arg.WorkloadName,
 		arg.IncludeSuppressed,
 		arg.RiskTiers,
+		arg.HasKev,
 	)
 	var total int64
 	err := row.Scan(&total)

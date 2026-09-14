@@ -63,6 +63,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
 		RiskTiers:         riskTiers,
+		HasKev:            request.GetFilter().HasKev,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)

@@ -24,3 +24,18 @@ func TestPriorityFilterSinglePriorityUsesExactSetField(t *testing.T) {
 		t.Fatalf("expected exact priority set [HIGH], got %#v", filter.GetPriorities())
 	}
 }
+
+func TestKevFilterPreservesBooleanValue(t *testing.T) {
+	for _, hasKev := range []bool{true, false} {
+		t.Run(map[bool]string{true: "true", false: "false"}[hasKev], func(t *testing.T) {
+			filter := GetFilter(KevFilter(hasKev))
+
+			if filter.HasKev == nil {
+				t.Fatal("expected has_kev to be set")
+			}
+			if filter.GetHasKev() != hasKev {
+				t.Fatalf("expected has_kev=%t, got %t", hasKev, filter.GetHasKev())
+			}
+		})
+	}
+}

@@ -622,7 +622,9 @@ AND (
 AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 AND (sqlc.narg('risk_tiers')::INT[] IS NULL
-    OR c.priority = ANY (sqlc.narg('risk_tiers')::INT[]));
+    OR c.priority = ANY (sqlc.narg('risk_tiers')::INT[]))
+AND (sqlc.narg('has_kev')::BOOL IS NULL
+    OR c.has_kev_entry = sqlc.narg('has_kev')::BOOL);
 
 -- name: ListVulnerabilitiesForImage :many
 WITH image_all_vulns AS (
