@@ -354,7 +354,9 @@ type Filter struct {
 	// Deprecated: Marked as deprecated in vulnerabilities.proto.
 	Priority *Priority `protobuf:"varint,8,opt,name=priority,proto3,enum=v13s.api.protobuf.Priority,oneof" json:"priority,omitempty"`
 	// Exact priority filter. When set, only workloads/findings whose top priority is in this set are returned.
-	Priorities    []Priority `protobuf:"varint,9,rep,packed,name=priorities,proto3,enum=v13s.api.protobuf.Priority" json:"priorities,omitempty"`
+	Priorities []Priority `protobuf:"varint,9,rep,packed,name=priorities,proto3,enum=v13s.api.protobuf.Priority" json:"priorities,omitempty"`
+	// KEV filter. When set, only workloads/findings with a matching KEV status are returned.
+	HasKev        *bool `protobuf:"varint,10,opt,name=has_kev,json=hasKev,proto3,oneof" json:"has_kev,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -451,6 +453,13 @@ func (x *Filter) GetPriorities() []Priority {
 		return x.Priorities
 	}
 	return nil
+}
+
+func (x *Filter) GetHasKev() bool {
+	if x != nil && x.HasKev != nil {
+		return *x.HasKev
+	}
+	return false
 }
 
 type OrderBy struct {
@@ -1969,7 +1978,9 @@ type ListVulnerabilitiesForImageRequest struct {
 	Since             *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=since,proto3,oneof" json:"since,omitempty"`
 	Severity          *Severity              `protobuf:"varint,8,opt,name=severity,proto3,enum=v13s.api.protobuf.Severity,oneof" json:"severity,omitempty"`
 	// Exact priority filter. When set, only findings whose priority is in this set are returned.
-	Priorities    []Priority `protobuf:"varint,9,rep,packed,name=priorities,proto3,enum=v13s.api.protobuf.Priority" json:"priorities,omitempty"`
+	Priorities []Priority `protobuf:"varint,9,rep,packed,name=priorities,proto3,enum=v13s.api.protobuf.Priority" json:"priorities,omitempty"`
+	// KEV filter. When set, only findings with a matching KEV status are returned.
+	HasKev        *bool `protobuf:"varint,10,opt,name=has_kev,json=hasKev,proto3,oneof" json:"has_kev,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2065,6 +2076,13 @@ func (x *ListVulnerabilitiesForImageRequest) GetPriorities() []Priority {
 		return x.Priorities
 	}
 	return nil
+}
+
+func (x *ListVulnerabilitiesForImageRequest) GetHasKev() bool {
+	if x != nil && x.HasKev != nil {
+		return *x.HasKev
+	}
+	return false
 }
 
 type ListVulnerabilitiesForImageResponse struct {
@@ -4400,7 +4418,7 @@ var File_vulnerabilities_proto protoreflect.FileDescriptor
 
 const file_vulnerabilities_proto_rawDesc = "" +
 	"\n" +
-	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\xdd\x03\n" +
+	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\x87\x04\n" +
 	"\x06Filter\x12\x1d\n" +
 	"\acluster\x18\x01 \x01(\tH\x00R\acluster\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x02 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1f\n" +
@@ -4415,7 +4433,9 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\bpriority\x18\b \x01(\x0e2\x1b.v13s.api.protobuf.PriorityB\x02\x18\x01H\x06R\bpriority\x88\x01\x01\x12;\n" +
 	"\n" +
 	"priorities\x18\t \x03(\x0e2\x1b.v13s.api.protobuf.PriorityR\n" +
-	"prioritiesB\n" +
+	"priorities\x12\x1c\n" +
+	"\ahas_kev\x18\n" +
+	" \x01(\bH\aR\x06hasKev\x88\x01\x01B\n" +
 	"\n" +
 	"\b_clusterB\f\n" +
 	"\n" +
@@ -4425,7 +4445,9 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\v_image_nameB\f\n" +
 	"\n" +
 	"_image_tagB\v\n" +
-	"\t_priority\"[\n" +
+	"\t_priorityB\n" +
+	"\n" +
+	"\b_has_kev\"[\n" +
 	"\aOrderBy\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12:\n" +
 	"\tdirection\x18\x02 \x01(\x0e2\x1c.v13s.api.protobuf.DirectionR\tdirection\"\xa6\x01\n" +
@@ -4608,7 +4630,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x1bListVulnerabilitiesResponse\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x120\n" +
 	"\x05nodes\x18\x02 \x03(\v2\x1a.v13s.api.protobuf.FindingR\x05nodes\x128\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xcf\x03\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xf9\x03\n" +
 	"\"ListVulnerabilitiesForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
@@ -4621,10 +4643,14 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\bseverity\x18\b \x01(\x0e2\x1b.v13s.api.protobuf.SeverityH\x02R\bseverity\x88\x01\x01\x12;\n" +
 	"\n" +
 	"priorities\x18\t \x03(\x0e2\x1b.v13s.api.protobuf.PriorityR\n" +
-	"prioritiesB\v\n" +
+	"priorities\x12\x1c\n" +
+	"\ahas_kev\x18\n" +
+	" \x01(\bH\x03R\x06hasKev\x88\x01\x01B\v\n" +
 	"\t_order_byB\b\n" +
 	"\x06_sinceB\v\n" +
-	"\t_severity\"\x97\x01\n" +
+	"\t_severityB\n" +
+	"\n" +
+	"\b_has_kev\"\x97\x01\n" +
 	"#ListVulnerabilitiesForImageResponse\x126\n" +
 	"\x05nodes\x18\x01 \x03(\v2 .v13s.api.protobuf.VulnerabilityR\x05nodes\x128\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\x8e\x02\n" +

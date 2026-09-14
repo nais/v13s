@@ -651,6 +651,9 @@ vulnerability_data AS (
         OR v.image_tag = $10::TEXT)
     AND ($11::INT[] IS NULL
         OR v.top_risk_tier = ANY ($11::INT[]))
+    AND ($12::BOOL IS NULL
+        OR ($12::BOOL AND v.kev_count > 0)
+        OR (NOT $12::BOOL AND v.kev_count = 0))
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),
@@ -848,6 +851,7 @@ type ListVulnerabilitySummariesParams struct {
 	ImageName     *string
 	ImageTag      *string
 	RiskTiers     []int32
+	HasKev        *bool
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -897,6 +901,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.ImageName,
 		arg.ImageTag,
 		arg.RiskTiers,
+		arg.HasKev,
 	)
 	if err != nil {
 		return nil, err

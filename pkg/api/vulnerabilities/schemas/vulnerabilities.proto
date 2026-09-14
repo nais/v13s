@@ -72,6 +72,8 @@ message Filter {
   optional Priority priority = 8 [deprecated = true];
   // Exact priority filter. When set, only workloads/findings whose top priority is in this set are returned.
   repeated Priority priorities = 9;
+  // KEV filter. When set, only workloads/findings with a matching KEV status are returned.
+  optional bool has_kev = 10;
 }
 
 message OrderBy {
@@ -259,6 +261,8 @@ message ListVulnerabilitiesForImageRequest {
   optional Severity severity = 8;
   // Exact priority filter. When set, only findings whose priority is in this set are returned.
   repeated Priority priorities = 9;
+  // KEV filter. When set, only findings with a matching KEV status are returned.
+  optional bool has_kev = 10;
 }
 
 message ListVulnerabilitiesForImageResponse {

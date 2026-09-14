@@ -888,81 +888,83 @@ AND ($7::BOOLEAN IS TRUE
     OR COALESCE(sv.suppressed, FALSE) = FALSE)
 AND ($8::INT[] IS NULL
     OR c.priority = ANY ($8::INT[]))
+AND ($9::BOOL IS NULL
+    OR c.has_kev_entry = $9::BOOL)
 ORDER BY
-    CASE WHEN $9 = 'priority_asc' THEN
+    CASE WHEN $10 = 'priority_asc' THEN
         c.priority
     END ASC NULLS LAST,
-    CASE WHEN $9 = 'priority_desc' THEN
+    CASE WHEN $10 = 'priority_desc' THEN
         c.priority
     END DESC NULLS LAST,
-    CASE WHEN $9 = 'severity_asc' THEN
+    CASE WHEN $10 = 'severity_asc' THEN
         c.severity
     END ASC,
-    CASE WHEN $9 = 'severity_desc' THEN
+    CASE WHEN $10 = 'severity_desc' THEN
         c.severity
     END DESC,
-    CASE WHEN $9 = 'workload_asc' THEN
+    CASE WHEN $10 = 'workload_asc' THEN
         w.name
     END ASC,
-    CASE WHEN $9 = 'workload_desc' THEN
+    CASE WHEN $10 = 'workload_desc' THEN
         w.name
     END DESC,
-    CASE WHEN $9 = 'namespace_asc' THEN
+    CASE WHEN $10 = 'namespace_asc' THEN
         w.namespace
     END ASC,
-    CASE WHEN $9 = 'namespace_desc' THEN
+    CASE WHEN $10 = 'namespace_desc' THEN
         w.namespace
     END DESC,
-    CASE WHEN $9 = 'cluster_asc' THEN
+    CASE WHEN $10 = 'cluster_asc' THEN
         w.cluster
     END ASC,
-    CASE WHEN $9 = 'cluster_desc' THEN
+    CASE WHEN $10 = 'cluster_desc' THEN
         w.cluster
     END DESC,
-    CASE WHEN $9 = 'created_at_asc' THEN
+    CASE WHEN $10 = 'created_at_asc' THEN
         v.created_at
     END ASC,
-    CASE WHEN $9 = 'created_at_desc' THEN
+    CASE WHEN $10 = 'created_at_desc' THEN
         v.created_at
     END DESC,
-    CASE WHEN $9 = 'updated_at_asc' THEN
+    CASE WHEN $10 = 'updated_at_asc' THEN
         v.updated_at
     END ASC,
-    CASE WHEN $9 = 'updated_at_desc' THEN
+    CASE WHEN $10 = 'updated_at_desc' THEN
         v.updated_at
     END DESC,
-    CASE WHEN $9 = 'priority_asc'
-        OR $9 = 'priority_desc'
-        OR $9 IS NULL THEN
+    CASE WHEN $10 = 'priority_asc'
+        OR $10 = 'priority_desc'
+        OR $10 IS NULL THEN
         CASE WHEN v.fix_version IS NULL THEN
             1
         ELSE
             0
         END
     END ASC,
-    CASE WHEN $9 = 'priority_asc'
-        OR $9 = 'priority_desc'
-        OR $9 IS NULL THEN
+    CASE WHEN $10 = 'priority_asc'
+        OR $10 = 'priority_desc'
+        OR $10 IS NULL THEN
         c.epss_score
     END DESC NULLS LAST,
-    CASE WHEN $9 = 'priority_asc'
-        OR $9 = 'priority_desc'
-        OR $9 IS NULL THEN
+    CASE WHEN $10 = 'priority_asc'
+        OR $10 = 'priority_desc'
+        OR $10 IS NULL THEN
         c.cvss_score
     END DESC NULLS LAST,
-    CASE WHEN $9 = 'priority_asc'
-        OR $9 = 'priority_desc'
-        OR $9 IS NULL THEN
+    CASE WHEN $10 = 'priority_asc'
+        OR $10 = 'priority_desc'
+        OR $10 IS NULL THEN
         v.created_at
     END ASC,
-    CASE WHEN $9 = 'priority_asc'
-        OR $9 = 'priority_desc'
-        OR $9 IS NULL THEN
+    CASE WHEN $10 = 'priority_asc'
+        OR $10 = 'priority_desc'
+        OR $10 IS NULL THEN
         v.cve_id
     END ASC,
     v.id ASC
-LIMIT $11
-OFFSET $10
+LIMIT $12
+OFFSET $11
 `
 
 type ListVulnerabilitiesParams struct {
@@ -974,6 +976,7 @@ type ListVulnerabilitiesParams struct {
 	ImageTag          *string
 	IncludeSuppressed *bool
 	RiskTiers         []int32
+	HasKev            *bool
 	OrderBy           interface{}
 	Offset            int32
 	Limit             int32
@@ -1023,6 +1026,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 		arg.ImageTag,
 		arg.IncludeSuppressed,
 		arg.RiskTiers,
+		arg.HasKev,
 		arg.OrderBy,
 		arg.Offset,
 		arg.Limit,
@@ -1141,7 +1145,9 @@ distinct_image_vulnerabilities AS (
     AND ($8::INT IS NULL
         OR v.severity = $8::INT)
     AND ($9::INT[] IS NULL
-        OR v.priority = ANY ($9::INT[])))
+        OR v.priority = ANY ($9::INT[]))
+    AND ($10::BOOL IS NULL
+        OR v.has_kev_entry = $10::BOOL))
 SELECT
     id,
     image_name,
@@ -1274,6 +1280,7 @@ type ListVulnerabilitiesForImageParams struct {
 	Since             pgtype.Timestamptz
 	Severity          *int32
 	RiskTiers         []int32
+	HasKev            *bool
 }
 
 type ListVulnerabilitiesForImageRow struct {
@@ -1319,6 +1326,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 		arg.Since,
 		arg.Severity,
 		arg.RiskTiers,
+		arg.HasKev,
 	)
 	if err != nil {
 		return nil, err

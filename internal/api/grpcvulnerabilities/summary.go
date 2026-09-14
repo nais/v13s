@@ -43,6 +43,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
 		RiskTiers:     riskTiers,
+		HasKev:        request.GetFilter().HasKev,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
 		Offset:        offset,

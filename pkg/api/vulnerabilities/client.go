@@ -80,6 +80,7 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 		Since:             o.Since,
 		Severity:          o.Severity,
 		Priorities:        o.Filter.GetPriorities(),
+		HasKev:            o.Filter.HasKev,
 	}, o.CallOptions...)
 }
 
