@@ -115,10 +115,8 @@ vulnerability_data AS (
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
     AND (sqlc.narg('has_kev')::BOOL IS NULL
-        OR (sqlc.narg('has_kev')::BOOL
-            AND v.kev_count > 0)
-        OR (NOT sqlc.narg('has_kev')::BOOL
-            AND v.kev_count = 0))
+        OR (v.id IS NOT NULL
+            AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
 ),
@@ -339,7 +337,7 @@ WITH filtered_workloads AS (
             WHERE
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
-                AND (v.kev_count > 0) = sqlc.narg('has_kev')::BOOL))
+                AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))
 ),
 joined_data AS (
     SELECT
@@ -480,10 +478,7 @@ WHERE
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
     AND (sqlc.narg('has_kev')::BOOL IS NULL
-        OR (sqlc.narg('has_kev')::BOOL
-            AND kev_count > 0)
-        OR (NOT sqlc.narg('has_kev')::BOOL
-            AND kev_count = 0))
+        OR (COALESCE(kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)
 GROUP BY
     snapshot_date
 ORDER BY

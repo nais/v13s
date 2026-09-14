@@ -172,7 +172,7 @@ WITH filtered_workloads AS (
             WHERE
                 v.image_name = w.image_name
                 AND v.image_tag = w.image_tag
-                AND (v.kev_count > 0) = $6::BOOL))
+                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL))
 ),
 joined_data AS (
     SELECT
@@ -420,10 +420,7 @@ WHERE
     AND ($6::INT[] IS NULL
         OR top_risk_tier = ANY ($6::INT[]))
     AND ($7::BOOL IS NULL
-        OR ($7::BOOL
-            AND kev_count > 0)
-        OR (NOT $7::BOOL
-            AND kev_count = 0))
+        OR (COALESCE(kev_count, 0) > 0) = $7::BOOL)
 GROUP BY
     snapshot_date
 ORDER BY
@@ -671,8 +668,8 @@ vulnerability_data AS (
     AND ($11::INT[] IS NULL
         OR v.top_risk_tier = ANY ($11::INT[]))
     AND ($12::BOOL IS NULL
-        OR ($12::BOOL AND v.kev_count > 0)
-        OR (NOT $12::BOOL AND v.kev_count = 0))
+        OR (v.id IS NOT NULL
+            AND (COALESCE(v.kev_count, 0) > 0) = $12::BOOL))
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),

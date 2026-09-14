@@ -1576,6 +1576,12 @@ func TestServer_KevFilter(t *testing.T) {
 			ImageTag:  fmt.Sprintf("v%d.0", wl),
 		}))
 	}
+	_, err = pool.Exec(ctx, `
+		UPDATE vulnerability_summary
+		SET kev_count = NULL
+		WHERE image_name = $1 AND image_tag = $2
+	`, "image-cluster-1-namespace-1-workload-2", "v2.0")
+	require.NoError(t, err)
 
 	snapshotDate := pgtype.Date{Time: time.Now().UTC().Truncate(24 * time.Hour), Valid: true}
 	require.NoError(t, db.RefreshVulnerabilitySummaryForDate(ctx, snapshotDate))
