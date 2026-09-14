@@ -24,7 +24,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -1656,19 +1658,6 @@ func TestServer_KevFilter(t *testing.T) {
 			assert.Equal(t, tc.wantSummaryKevCount, resp.GetVulnerabilitySummary().GetKevCount())
 		})
 
-		t.Run(tc.name+"/summary-time-series", func(t *testing.T) {
-			resp, err := client.GetVulnerabilitySummaryTimeSeries(
-				ctx,
-				vulnerabilities.KevFilter(tc.hasKev),
-				vulnerabilities.Since(snapshotDate.Time),
-			)
-			require.NoError(t, err)
-			require.Len(t, resp.GetPoints(), 1)
-			assert.Equal(t, tc.wantWorkloads, resp.GetPoints()[0].GetWorkloadCount())
-			assert.Equal(t, tc.wantSummaryFindings, resp.GetPoints()[0].GetTotal())
-			assert.Equal(t, tc.wantSummaryKevCount, resp.GetPoints()[0].GetKevCount())
-		})
-
 		t.Run(tc.name+"/list-summaries", func(t *testing.T) {
 			resp, err := client.ListVulnerabilitySummaries(
 				ctx,
@@ -1680,6 +1669,16 @@ func TestServer_KevFilter(t *testing.T) {
 			assert.Equal(t, int64(tc.wantWorkloads), resp.GetPageInfo().GetTotalCount())
 		})
 	}
+
+	t.Run("summary time series rejects KEV filter", func(t *testing.T) {
+		_, err := client.GetVulnerabilitySummaryTimeSeries(
+			ctx,
+			vulnerabilities.KevFilter(true),
+			vulnerabilities.Since(snapshotDate.Time),
+		)
+		require.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	})
 }
 
 func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {

@@ -477,8 +477,6 @@ WHERE
         OR workload_name = sqlc.narg('workload_name')::TEXT)
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
-    AND (sqlc.narg('has_kev')::BOOL IS NULL
-        OR (COALESCE(kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)
 GROUP BY
     snapshot_date
 ORDER BY

@@ -419,8 +419,6 @@ WHERE
         OR workload_name = $5::TEXT)
     AND ($6::INT[] IS NULL
         OR top_risk_tier = ANY ($6::INT[]))
-    AND ($7::BOOL IS NULL
-        OR (COALESCE(kev_count, 0) > 0) = $7::BOOL)
 GROUP BY
     snapshot_date
 ORDER BY
@@ -434,7 +432,6 @@ type GetVulnerabilitySummaryTimeSeriesParams struct {
 	WorkloadTypes []string
 	WorkloadName  *string
 	RiskTiers     []int32
-	HasKev        *bool
 }
 
 type GetVulnerabilitySummaryTimeSeriesRow struct {
@@ -464,7 +461,6 @@ func (q *Queries) GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg Get
 		arg.WorkloadTypes,
 		arg.WorkloadName,
 		arg.RiskTiers,
-		arg.HasKev,
 	)
 	if err != nil {
 		return nil, err
