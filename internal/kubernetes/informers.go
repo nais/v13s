@@ -20,12 +20,17 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	schemepkg "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
 // discoveryResourceLister lets tests fake discovery.DiscoveryInterface.
 type discoveryResourceLister interface {
 	ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error)
+}
+
+var newDiscoveryClientForConfig = func(cfg *rest.Config) (discoveryResourceLister, error) {
+	return discovery.NewDiscoveryClientForConfig(cfg)
 }
 
 func checkServerResources(disc discoveryResourceLister, gvr schema.GroupVersionResource) (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 		}
 		cfg.UserAgent = "nais.io/v13s"
 
-		discoveryClient, err := discovery.NewDiscoveryClientForConfig(cfg)
+		discoveryClient, err := newDiscoveryClientForConfig(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("creating discovery client: %w", err)
 		}

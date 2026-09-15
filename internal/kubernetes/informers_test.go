@@ -1,14 +1,19 @@
 package kubernetes
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/nais/v13s/internal/config"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
 )
 
 // fakeResourceLister stands in for discovery.DiscoveryInterface in tests.
@@ -94,8 +99,78 @@ func TestCheckServerResources_AuthErrorIsClassifiedAsRetrieveError(t *testing.T)
 	if resList != nil {
 		t.Fatalf("expected nil resource list, got %+v", resList)
 	}
-	var re *oauth2.RetrieveError
-	if !errors.As(err, &re) {
+	if _, ok := errors.AsType[*oauth2.RetrieveError](err); !ok {
 		t.Fatalf("expected *oauth2.RetrieveError, got %v", err)
+	}
+}
+
+func TestNewInformerManager_NotFoundDiscoveryResponseSkipsInformer(t *testing.T) {
+	restoreDiscoveryClient := replaceDiscoveryClient(t, &fakeResourceLister{
+		err: apierrors.NewNotFound(schema.GroupResource{Group: "apps", Resource: "v1"}, ""),
+	})
+	defer restoreDiscoveryClient()
+
+	manager, err := NewInformerManager(
+		context.Background(),
+		"tenant",
+		config.K8sConfig{
+			SelfCluster: "",
+			StaticClusters: []config.StaticCluster{{
+				Name: "test-cluster",
+				Host: "https://unused.example",
+			}},
+		},
+		nil,
+		logrus.New(),
+	)
+	if err != nil {
+		t.Fatalf("expected manager creation to succeed for a missing resource, got %v", err)
+	}
+	t.Cleanup(manager.Stop)
+
+	cluster, ok := manager.clusters["test-cluster"]
+	if !ok {
+		t.Fatal("expected test cluster to be registered")
+	}
+	if len(cluster.informers) != 0 {
+		t.Fatalf("expected no informers for unavailable resources, got %d", len(cluster.informers))
+	}
+}
+
+func TestNewInformerManager_UnknownDiscoveryErrorFails(t *testing.T) {
+	restoreDiscoveryClient := replaceDiscoveryClient(t, &fakeResourceLister{
+		err: fmt.Errorf("discovery unavailable"),
+	})
+	defer restoreDiscoveryClient()
+
+	_, err := NewInformerManager(
+		context.Background(),
+		"tenant",
+		config.K8sConfig{
+			SelfCluster: "",
+			StaticClusters: []config.StaticCluster{{
+				Name: "test-cluster",
+				Host: "https://unused.example",
+			}},
+		},
+		nil,
+		logrus.New(),
+	)
+	if err == nil {
+		t.Fatal("expected manager creation to fail for an unknown discovery error")
+	}
+	if !strings.Contains(err.Error(), "discovery failed") {
+		t.Fatalf("expected a discovery failure, got %v", err)
+	}
+}
+
+func replaceDiscoveryClient(t *testing.T, client discoveryResourceLister) func() {
+	t.Helper()
+	original := newDiscoveryClientForConfig
+	newDiscoveryClientForConfig = func(_ *rest.Config) (discoveryResourceLister, error) {
+		return client, nil
+	}
+	return func() {
+		newDiscoveryClientForConfig = original
 	}
 }
