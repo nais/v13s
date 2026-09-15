@@ -104,6 +104,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		if err := metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-load")); err != nil {
 			log.WithError(err).Error("failed to load metrics from DB")
 		}
+		if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
+			metrics.PushOnce(cfg.Metrics, promReg, log)
+		}
 	}()
 
 	metrics.StartWorkloadMetricsRefresher(
@@ -114,7 +117,6 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	)
 
 	if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
-		go metrics.PushOnce(cfg.Metrics, promReg, log)
 		metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
 	} else {
 		log.Info("Prometheus Pushgateway endpoint not configured, skipping metrics push setup")
