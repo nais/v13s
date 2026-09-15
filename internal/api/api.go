@@ -79,9 +79,32 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}()
 
-	if err = metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-load")); err != nil {
-		log.WithError(err).Error("failed to load metrics from DB")
+	jobCfg := &job.Config{
+		DbUrl: cfg.DatabaseUrl,
 	}
+
+	ready := &atomic.Bool{}
+
+	// Start HTTP server (healthz/readyz) before workload-count-scaled startup work below.
+	httpErrCh := make(chan error, 1)
+	go func() {
+		httpErrCh <- runInternalHTTPServer(
+			ctx,
+			cfg.InternalListenAddr,
+			promReg,
+			pool,
+			ready,
+			log,
+			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+		)
+	}()
+
+	// Load workload metrics in the background so it can't block startup; refresher below keeps it fresh.
+	go func() {
+		if err := metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-load")); err != nil {
+			log.WithError(err).Error("failed to load metrics from DB")
+		}
+	}()
 
 	metrics.StartWorkloadMetricsRefresher(
 		ctx,
@@ -102,26 +125,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create verifier: %v", err)
 	}
 
-	jobCfg := &job.Config{
-		DbUrl: cfg.DatabaseUrl,
+	mgr, err := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
+	if err != nil {
+		return fmt.Errorf("failed to create workload manager: %w", err)
 	}
-
-	ready := &atomic.Bool{}
-
-	httpErrCh := make(chan error, 1)
-	go func() {
-		httpErrCh <- runInternalHTTPServer(
-			ctx,
-			cfg.InternalListenAddr,
-			promReg,
-			pool,
-			ready,
-			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
-		)
-	}()
-
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
 	if cfg.ReconcileDeletionEnabled {
 		log.Info("workload reconciliation: enabled — orphaned workloads will be deleted")
 	} else {

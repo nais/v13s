@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -95,71 +95,52 @@ func newResource() (*resource.Resource, error) {
 		))
 }
 
-func safeIntToInt32(n int) (int32, error) {
-	if n > math.MaxInt32 || n < math.MinInt32 {
-		return 0, fmt.Errorf("integer %d overflows int32", n)
-	}
-	return int32(n), nil
-}
-
 type metricRow struct {
 	workload sql.ListWorkloadsByImageRow
 	summary  sources.VulnerabilitySummary
 }
 
+var loadWorkloadMetricsMu sync.Mutex
+
 func LoadWorkloadMetrics(ctx context.Context, pool *pgxpool.Pool, log logrus.FieldLogger) error {
+	if !loadWorkloadMetricsMu.TryLock() {
+		log.Debug("workload metrics load already in progress, skipping")
+		return nil
+	}
+	defer loadWorkloadMetricsMu.Unlock()
+
 	db := sql.New(pool)
 	wTypes := []string{"app", "job", "deployment", "platform"}
 
-	const pageSize = 300
-	offset := int32(0)
+	summaries, err := db.ListVulnerabilitySummariesForMetrics(ctx, wTypes)
+	if err != nil {
+		return fmt.Errorf("loading vulnerability summaries: %w", err)
+	}
 
-	rows := make([]metricRow, 0, pageSize)
-
-	for {
-		summaries, err := db.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
-			WorkloadTypes: wTypes,
-			Limit:         pageSize,
-			Offset:        offset,
+	rows := make([]metricRow, 0, len(summaries))
+	for _, row := range summaries {
+		rows = append(rows, metricRow{
+			workload: sql.ListWorkloadsByImageRow{
+				Cluster:      row.Cluster,
+				Namespace:    row.Namespace,
+				Name:         row.WorkloadName,
+				WorkloadType: row.WorkloadType,
+				ImageName:    row.CurrentImageName,
+				ImageTag:     row.CurrentImageTag,
+			},
+			summary: sources.VulnerabilitySummary{
+				Critical:     row.Critical,
+				High:         row.High,
+				Medium:       row.Medium,
+				Low:          row.Low,
+				Unassigned:   row.Unassigned,
+				KevCount:     row.KevCount,
+				HighRisk:     row.HighRisk,
+				ElevatedRisk: row.ElevatedRisk,
+				Monitor:      row.Monitor,
+				RiskScore:    row.RiskScore,
+			},
 		})
-		if err != nil {
-			return fmt.Errorf("loading vulnerability summaries: %w", err)
-		}
-
-		if len(summaries) == 0 {
-			break
-		}
-
-		inc, err := safeIntToInt32(len(summaries))
-		if err != nil {
-			return err
-		}
-		offset += inc
-
-		for _, row := range summaries {
-			rows = append(rows, metricRow{
-				workload: sql.ListWorkloadsByImageRow{
-					Cluster:      row.Cluster,
-					Namespace:    row.Namespace,
-					Name:         row.WorkloadName,
-					WorkloadType: row.WorkloadType,
-					ImageName:    row.CurrentImageName,
-					ImageTag:     row.CurrentImageTag,
-				},
-				summary: sources.VulnerabilitySummary{
-					Critical:     row.Critical,
-					High:         row.High,
-					Medium:       row.Medium,
-					Low:          row.Low,
-					Unassigned:   row.Unassigned,
-					KevCount:     row.KevCount,
-					HighRisk:     row.HighRisk,
-					ElevatedRisk: row.ElevatedRisk,
-					Monitor:      row.Monitor,
-					RiskScore:    row.RiskScore,
-				},
-			})
-		}
 	}
 
 	ResetWorkloadMetrics()

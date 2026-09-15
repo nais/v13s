@@ -57,11 +57,17 @@ spec:
               name: docker-credentials
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /healthz
               port: 8000
-            initialDelaySeconds: 20
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 5
@@ -69,7 +75,6 @@ spec:
             httpGet:
               path: /readyz
               port: 8000
-            initialDelaySeconds: 20
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 5

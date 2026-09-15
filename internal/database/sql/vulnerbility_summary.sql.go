@@ -965,6 +965,155 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 	return items, nil
 }
 
+const listVulnerabilitySummariesForMetrics = `-- name: ListVulnerabilitySummariesForMetrics :many
+WITH filtered_workloads AS (
+    SELECT
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    FROM
+        workloads w
+    WHERE ($1::TEXT[] IS NULL
+        OR w.workload_type = ANY ($1::TEXT[]))
+),
+vulnerability_data AS (
+    SELECT
+        w.id,
+        w.name AS workload_name,
+        w.workload_type,
+        w.namespace,
+        w.cluster,
+        w.image_name AS current_image_name,
+        w.image_tag AS current_image_tag,
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+        AND i.state = 'updated' AS is_active,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.kev_count,
+        v.high_risk,
+        v.elevated_risk,
+        v.monitor,
+        v.risk_score
+    FROM
+        filtered_workloads w
+        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
+            AND w.image_tag = v.image_tag
+        LEFT JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
+)
+SELECT
+    id,
+    workload_name,
+    workload_type,
+    namespace,
+    CLUSTER,
+    current_image_name,
+    current_image_tag,
+    COALESCE(
+        CASE WHEN is_active THEN
+            critical
+        END, 0)::INT4 AS critical,
+    COALESCE(
+        CASE WHEN is_active THEN
+            high
+        END, 0)::INT4 AS high,
+    COALESCE(
+        CASE WHEN is_active THEN
+            medium
+        END, 0)::INT4 AS medium,
+    COALESCE(
+        CASE WHEN is_active THEN
+            low
+        END, 0)::INT4 AS low,
+    COALESCE(
+        CASE WHEN is_active THEN
+            unassigned
+        END, 0)::INT4 AS unassigned,
+    COALESCE(
+        CASE WHEN is_active THEN
+            kev_count
+        END, 0)::INT4 AS kev_count,
+    COALESCE(
+        CASE WHEN is_active THEN
+            high_risk
+        END, 0)::INT4 AS high_risk,
+    COALESCE(
+        CASE WHEN is_active THEN
+            elevated_risk
+        END, 0)::INT4 AS elevated_risk,
+    COALESCE(
+        CASE WHEN is_active THEN
+            monitor
+        END, 0)::INT4 AS monitor,
+    COALESCE(
+        CASE WHEN is_active THEN
+            risk_score
+        END, 0)::INT4 AS risk_score
+FROM
+    vulnerability_data
+ORDER BY
+    id ASC
+`
+
+type ListVulnerabilitySummariesForMetricsRow struct {
+	ID               pgtype.UUID
+	WorkloadName     string
+	WorkloadType     string
+	Namespace        string
+	Cluster          string
+	CurrentImageName string
+	CurrentImageTag  string
+	Critical         int32
+	High             int32
+	Medium           int32
+	Low              int32
+	Unassigned       int32
+	KevCount         int32
+	HighRisk         int32
+	ElevatedRisk     int32
+	Monitor          int32
+	RiskScore        int32
+}
+
+func (q *Queries) ListVulnerabilitySummariesForMetrics(ctx context.Context, workloadTypes []string) ([]*ListVulnerabilitySummariesForMetricsRow, error) {
+	rows, err := q.db.Query(ctx, listVulnerabilitySummariesForMetrics, workloadTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListVulnerabilitySummariesForMetricsRow{}
+	for rows.Next() {
+		var i ListVulnerabilitySummariesForMetricsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkloadName,
+			&i.WorkloadType,
+			&i.Namespace,
+			&i.Cluster,
+			&i.CurrentImageName,
+			&i.CurrentImageTag,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.KevCount,
+			&i.HighRisk,
+			&i.ElevatedRisk,
+			&i.Monitor,
+			&i.RiskScore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const refreshVulnerabilitySummaryDailyView = `-- name: RefreshVulnerabilitySummaryDailyView :exec
 REFRESH MATERIALIZED VIEW CONCURRENTLY mv_vuln_summary_daily_by_workload
 `

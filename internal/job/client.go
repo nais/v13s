@@ -150,7 +150,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 			TargetVersion: RiverMigrationVersion,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to migrate: %v", err)
+			return fmt.Errorf("failed to migrate: %w", err)
 		}
 		for _, version := range result.Versions {
 			logrus.Infof("migrated [%s] version %d\n", strings.ToUpper(string(result.Direction)), version.Version)

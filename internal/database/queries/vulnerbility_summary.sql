@@ -301,6 +301,96 @@ ORDER BY
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');
 
+-- name: ListVulnerabilitySummariesForMetrics :many
+WITH filtered_workloads AS (
+    SELECT
+        *
+    FROM
+        workloads w
+    WHERE (sqlc.narg('workload_types')::TEXT[] IS NULL
+        OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
+),
+vulnerability_data AS (
+    SELECT
+        w.id,
+        w.name AS workload_name,
+        w.workload_type,
+        w.namespace,
+        w.cluster,
+        w.image_name AS current_image_name,
+        w.image_tag AS current_image_tag,
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+        AND i.state = 'updated' AS is_active,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.kev_count,
+        v.high_risk,
+        v.elevated_risk,
+        v.monitor,
+        v.risk_score
+    FROM
+        filtered_workloads w
+        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
+            AND w.image_tag = v.image_tag
+        LEFT JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
+)
+SELECT
+    id,
+    workload_name,
+    workload_type,
+    namespace,
+    CLUSTER,
+    current_image_name,
+    current_image_tag,
+    COALESCE(
+        CASE WHEN is_active THEN
+            critical
+        END, 0)::INT4 AS critical,
+    COALESCE(
+        CASE WHEN is_active THEN
+            high
+        END, 0)::INT4 AS high,
+    COALESCE(
+        CASE WHEN is_active THEN
+            medium
+        END, 0)::INT4 AS medium,
+    COALESCE(
+        CASE WHEN is_active THEN
+            low
+        END, 0)::INT4 AS low,
+    COALESCE(
+        CASE WHEN is_active THEN
+            unassigned
+        END, 0)::INT4 AS unassigned,
+    COALESCE(
+        CASE WHEN is_active THEN
+            kev_count
+        END, 0)::INT4 AS kev_count,
+    COALESCE(
+        CASE WHEN is_active THEN
+            high_risk
+        END, 0)::INT4 AS high_risk,
+    COALESCE(
+        CASE WHEN is_active THEN
+            elevated_risk
+        END, 0)::INT4 AS elevated_risk,
+    COALESCE(
+        CASE WHEN is_active THEN
+            monitor
+        END, 0)::INT4 AS monitor,
+    COALESCE(
+        CASE WHEN is_active THEN
+            risk_score
+        END, 0)::INT4 AS risk_score
+FROM
+    vulnerability_data
+ORDER BY
+    id ASC;
+
 -- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT

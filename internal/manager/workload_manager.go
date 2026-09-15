@@ -52,11 +52,11 @@ const (
 	WorkloadEventSubsystemUnknown               = "unknown"
 )
 
-func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, reconcileDeletionEnabled bool, log *logrus.Entry) *WorkloadManager {
+func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Config, verifier attestation.Verifier, source sources.Source, queue *kubernetes.WorkloadEventQueue, reconcileDeletionEnabled bool, log *logrus.Entry) (*WorkloadManager, error) {
 	meter := otel.GetMeterProvider().Meter("nais_v13s_manager")
 	udCounter, err := meter.Int64UpDownCounter("nais_v13s_manager_resources", metric.WithDescription("Number of workloads managed by the manager"))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to create workload counter metric: %w", err)
 	}
 	db := sql.New(pool)
 
@@ -71,7 +71,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
 	if err != nil {
-		log.Fatalf("Failed to create job client: %v", err)
+		return nil, fmt.Errorf("failed to create job client: %w", err)
 	}
 	m := &WorkloadManager{
 		db:                       db,
@@ -88,7 +88,7 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 	// m.addDispatcher.errorHook = m.handleError
 	m.deleteDispatcher = NewDispatcher(workloadWorker(m.DeleteWorkload), queue.Deleted, maxWorkers)
 
-	return m
+	return m, nil
 }
 
 func (m *WorkloadManager) Start(ctx context.Context) error {
