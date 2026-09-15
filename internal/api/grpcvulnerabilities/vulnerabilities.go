@@ -43,6 +43,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		ImageTag:          request.GetFilter().ImageTag,
 		IncludeSuppressed: request.IncludeSuppressed,
 		RiskTiers:         riskTiers,
+		HasKev:            request.GetFilter().HasKev,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
 		Limit:             limit,
 		Offset:            offset,
@@ -62,6 +63,7 @@ func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabiliti
 		WorkloadName:      request.GetFilter().Workload,
 		IncludeSuppressed: request.IncludeSuppressed,
 		RiskTiers:         riskTiers,
+		HasKev:            request.GetFilter().HasKev,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
@@ -95,6 +97,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		Since:             timestamptzFromProto(request.GetSince()),
 		Severity:          toInt32Ptr(request.Severity),
 		RiskTiers:         priorityTiersFromPriorities(request.GetPriorities()),
+		HasKev:            request.HasKev,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)

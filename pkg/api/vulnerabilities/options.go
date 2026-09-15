@@ -242,6 +242,15 @@ func PriorityFilter(priorities ...Priority) Option {
 	})
 }
 
+func KevFilter(hasKev bool) Option {
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.HasKev = &hasKev
+	})
+}
+
 func IncludeSuppressed() Option {
 	return newFuncOption(func(o *Options) {
 		o.IncludeSuppressed = true

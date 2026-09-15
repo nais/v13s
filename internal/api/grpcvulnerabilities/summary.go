@@ -43,6 +43,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		ImageName:     request.GetFilter().ImageName,
 		ImageTag:      request.GetFilter().ImageTag,
 		RiskTiers:     riskTiers,
+		HasKev:        request.GetFilter().HasKev,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
 		Offset:        offset,
@@ -137,6 +138,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTiers:     riskTiers,
+		HasKev:        request.GetFilter().HasKev,
 	})
 	if err != nil {
 		return nil, err
@@ -186,6 +188,9 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
+	}
+	if request.GetFilter().HasKev != nil {
+		return nil, status.Error(codes.InvalidArgument, "has_kev is not supported for vulnerability summary time series")
 	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())

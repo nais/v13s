@@ -24,7 +24,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -1551,6 +1553,132 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_KevFilter(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      2,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	_, err := pool.Exec(ctx, `UPDATE cve SET has_kev_entry = FALSE`)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = TRUE WHERE cve_id = $1`, "CWE-1-1")
+	require.NoError(t, err)
+	require.NoError(t, db.UpdateCvePriority(ctx))
+
+	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
+		require.NoError(t, db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: fmt.Sprintf("image-cluster-1-namespace-1-workload-%d", wl),
+			ImageTag:  fmt.Sprintf("v%d.0", wl),
+		}))
+	}
+	_, err = pool.Exec(ctx, `
+		UPDATE vulnerability_summary
+		SET kev_count = NULL
+		WHERE image_name = $1 AND image_tag = $2
+	`, "image-cluster-1-namespace-1-workload-2", "v2.0")
+	require.NoError(t, err)
+
+	snapshotDate := pgtype.Date{Time: time.Now().UTC().Truncate(24 * time.Hour), Valid: true}
+	require.NoError(t, db.RefreshVulnerabilitySummaryForDate(ctx, snapshotDate))
+	require.NoError(t, db.RefreshVulnerabilitySummaryDailyView(ctx))
+
+	cases := []struct {
+		name                string
+		hasKev              bool
+		wantFindings        int
+		wantImageFindings   int
+		wantWorkloads       int32
+		wantSummaryFindings int32
+		wantSummaryKevCount int32
+	}{
+		{
+			name:                "with KEV",
+			hasKev:              true,
+			wantFindings:        1,
+			wantImageFindings:   1,
+			wantWorkloads:       1,
+			wantSummaryFindings: 2,
+			wantSummaryKevCount: 1,
+		},
+		{
+			name:                "without KEV",
+			hasKev:              false,
+			wantFindings:        3,
+			wantImageFindings:   1,
+			wantWorkloads:       1,
+			wantSummaryFindings: 2,
+			wantSummaryKevCount: 0,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name+"/list-findings-and-pagination", func(t *testing.T) {
+			resp, err := client.ListVulnerabilities(
+				ctx,
+				vulnerabilities.KevFilter(tc.hasKev),
+				vulnerabilities.Limit(1),
+			)
+			require.NoError(t, err)
+			require.Len(t, resp.GetNodes(), 1)
+			assert.Equal(t, int64(tc.wantFindings), resp.GetPageInfo().GetTotalCount())
+			assert.Equal(t, tc.wantFindings > 1, resp.GetPageInfo().GetHasNextPage())
+			for _, node := range resp.GetNodes() {
+				assert.Equal(t, tc.hasKev, node.GetVulnerability().GetCve().GetHasKevEntry())
+			}
+		})
+
+		t.Run(tc.name+"/image-findings", func(t *testing.T) {
+			resp, err := client.ListVulnerabilitiesForImage(
+				ctx,
+				"image-cluster-1-namespace-1-workload-1",
+				"v1.0",
+				vulnerabilities.KevFilter(tc.hasKev),
+				vulnerabilities.Limit(10),
+			)
+			require.NoError(t, err)
+			require.Len(t, resp.GetNodes(), tc.wantImageFindings)
+			for _, node := range resp.GetNodes() {
+				assert.Equal(t, tc.hasKev, node.GetCve().GetHasKevEntry())
+			}
+		})
+
+		t.Run(tc.name+"/aggregate-summary", func(t *testing.T) {
+			resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.KevFilter(tc.hasKev))
+			require.NoError(t, err)
+			require.NotNil(t, resp.GetVulnerabilitySummary())
+			assert.Equal(t, tc.wantWorkloads, resp.GetWorkloadCount())
+			assert.Equal(t, tc.wantSummaryFindings, resp.GetVulnerabilitySummary().GetTotal())
+			assert.Equal(t, tc.wantSummaryKevCount, resp.GetVulnerabilitySummary().GetKevCount())
+		})
+
+		t.Run(tc.name+"/list-summaries", func(t *testing.T) {
+			resp, err := client.ListVulnerabilitySummaries(
+				ctx,
+				vulnerabilities.KevFilter(tc.hasKev),
+				vulnerabilities.Limit(10),
+			)
+			require.NoError(t, err)
+			require.Len(t, resp.GetNodes(), int(tc.wantWorkloads))
+			assert.Equal(t, int64(tc.wantWorkloads), resp.GetPageInfo().GetTotalCount())
+		})
+	}
+
+	t.Run("summary time series rejects KEV filter", func(t *testing.T) {
+		_, err := client.GetVulnerabilitySummaryTimeSeries(
+			ctx,
+			vulnerabilities.KevFilter(true),
+			vulnerabilities.Since(snapshotDate.Time),
+		)
+		require.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	})
 }
 
 func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
