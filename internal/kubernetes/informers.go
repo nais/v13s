@@ -11,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -20,6 +22,15 @@ import (
 	schemepkg "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 )
+
+// discoveryResourceLister lets tests fake discovery.DiscoveryInterface.
+type discoveryResourceLister interface {
+	ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error)
+}
+
+func checkServerResources(disc discoveryResourceLister, gvr schema.GroupVersionResource) (*metav1.APIResourceList, error) {
+	return disc.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
+}
 
 type InformerManager struct {
 	clusters   map[string]*clusterManager
@@ -78,13 +89,20 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 		infs := map[schema.GroupVersionResource]cache.SharedIndexInformer{}
 		for _, gvr := range gvrs {
 			// Check if the resource is available in the cluster.
-			resList, err := discoveryClient.ServerResourcesForGroupVersion(gvr.GroupVersion().String())
+			resList, err := checkServerResources(discoveryClient, gvr)
 			if err != nil {
 				if _, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
 					mgr.Stop()
 					return nil, fmt.Errorf("authentication error for cluster %s: %w", cluster, err)
 				}
-				log.WithError(err).Warnf("group version %s not available in cluster %s", gvr.String(), cluster)
+				if apierrors.IsNotFound(err) {
+					// Resource not registered in this cluster (e.g. CRD not installed) — safe to skip.
+					log.WithError(err).Warnf("group version %s not available in cluster %s", gvr.String(), cluster)
+					continue
+				}
+				// Unknown failure (e.g. network/DNS) — fail fast instead of silently running without this informer.
+				mgr.Stop()
+				return nil, fmt.Errorf("discovery failed for group version %s in cluster %s: %w", gvr.String(), cluster, err)
 			}
 
 			found := false
