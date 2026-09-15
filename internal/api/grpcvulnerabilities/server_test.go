@@ -1571,7 +1571,8 @@ func TestServer_KevFilter(t *testing.T) {
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = TRUE WHERE cve_id = $1`, "CWE-1-1")
 	require.NoError(t, err)
-	require.NoError(t, db.UpdateCvePriority(ctx))
+	_, err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
 
 	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
 		require.NoError(t, db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
