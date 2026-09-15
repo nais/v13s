@@ -58,7 +58,7 @@ func TestUpdater(t *testing.T) {
 
 	sourceMock := sources.NewDependencytrackSource(mockDPTrack, logrus.NewEntry(logrus.StandardLogger()))
 
-	mgr := manager.NewWorkloadManager(
+	mgr, err := manager.NewWorkloadManager(
 		ctx,
 		pool,
 		jobCfg,
@@ -68,6 +68,7 @@ func TestUpdater(t *testing.T) {
 		false, // reconcileDeletionEnabled=false: integration tests never delete
 		logrus.NewEntry(logrus.StandardLogger()),
 	)
+	require.NoError(t, err)
 
 	require.NoError(t, mgr.Start(ctx))
 	defer func() { _ = mgr.Stop(ctx) }()

@@ -79,35 +79,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		}
 	}()
 
-	if err = metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-load")); err != nil {
-		log.WithError(err).Error("failed to load metrics from DB")
-	}
-
-	metrics.StartWorkloadMetricsRefresher(
-		ctx,
-		pool,
-		cfg.Metrics.WorkloadMetricsRefreshDuration,
-		log.WithField("subsystem", "metrics-refresh"),
-	)
-
-	if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
-		go metrics.PushOnce(cfg.Metrics, promReg, log)
-		metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
-	} else {
-		log.Info("Prometheus Pushgateway endpoint not configured, skipping metrics push setup")
-	}
-
-	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
-	if err != nil {
-		log.Fatalf("Failed to create verifier: %v", err)
-	}
-
 	jobCfg := &job.Config{
 		DbUrl: cfg.DatabaseUrl,
 	}
 
 	ready := &atomic.Bool{}
 
+	// Start HTTP server (healthz/readyz) before workload-count-scaled startup work below.
 	httpErrCh := make(chan error, 1)
 	go func() {
 		httpErrCh <- runInternalHTTPServer(
@@ -121,7 +99,38 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		)
 	}()
 
-	mgr := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
+	// Load workload metrics in the background so it can't block startup; refresher below keeps it fresh.
+	go func() {
+		if err := metrics.LoadWorkloadMetrics(ctx, pool, log.WithField("subsystem", "metrics-load")); err != nil {
+			log.WithError(err).Error("failed to load metrics from DB")
+		}
+		if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
+			metrics.PushOnce(cfg.Metrics, promReg, log)
+		}
+	}()
+
+	metrics.StartWorkloadMetricsRefresher(
+		ctx,
+		pool,
+		cfg.Metrics.WorkloadMetricsRefreshDuration,
+		log.WithField("subsystem", "metrics-refresh"),
+	)
+
+	if cfg.Metrics.PrometheusMetricsPushgatewayEndpoint != "" {
+		metrics.StartIntervalPusher(ctx, cfg.Metrics, promReg, log)
+	} else {
+		log.Info("Prometheus Pushgateway endpoint not configured, skipping metrics push setup")
+	}
+
+	verifier, err := attestation.NewVerifier(ctx, log.WithField("subsystem", "verifier"), cfg.GithubOrganizations...)
+	if err != nil {
+		log.Fatalf("Failed to create verifier: %v", err)
+	}
+
+	mgr, err := manager.NewWorkloadManager(ctx, pool, jobCfg, verifier, source, workloadEventQueue, cfg.ReconcileDeletionEnabled, log.WithField("subsystem", "manager"))
+	if err != nil {
+		return fmt.Errorf("failed to create workload manager: %w", err)
+	}
 	if cfg.ReconcileDeletionEnabled {
 		log.Info("workload reconciliation: enabled — orphaned workloads will be deleted")
 	} else {

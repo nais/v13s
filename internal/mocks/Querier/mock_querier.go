@@ -2781,6 +2781,65 @@ func (_c *MockQuerier_ListVulnerabilitySummaries_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// ListVulnerabilitySummariesForMetrics provides a mock function with given fields: ctx, workloadTypes
+func (_m *MockQuerier) ListVulnerabilitySummariesForMetrics(ctx context.Context, workloadTypes []string) ([]*sql.ListVulnerabilitySummariesForMetricsRow, error) {
+	ret := _m.Called(ctx, workloadTypes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListVulnerabilitySummariesForMetrics")
+	}
+
+	var r0 []*sql.ListVulnerabilitySummariesForMetricsRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]*sql.ListVulnerabilitySummariesForMetricsRow, error)); ok {
+		return rf(ctx, workloadTypes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []*sql.ListVulnerabilitySummariesForMetricsRow); ok {
+		r0 = rf(ctx, workloadTypes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListVulnerabilitySummariesForMetricsRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, workloadTypes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListVulnerabilitySummariesForMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListVulnerabilitySummariesForMetrics'
+type MockQuerier_ListVulnerabilitySummariesForMetrics_Call struct {
+	*mock.Call
+}
+
+// ListVulnerabilitySummariesForMetrics is a helper method to define mock.On call
+//   - ctx context.Context
+//   - workloadTypes []string
+func (_e *MockQuerier_Expecter) ListVulnerabilitySummariesForMetrics(ctx interface{}, workloadTypes interface{}) *MockQuerier_ListVulnerabilitySummariesForMetrics_Call {
+	return &MockQuerier_ListVulnerabilitySummariesForMetrics_Call{Call: _e.mock.On("ListVulnerabilitySummariesForMetrics", ctx, workloadTypes)}
+}
+
+func (_c *MockQuerier_ListVulnerabilitySummariesForMetrics_Call) Run(run func(ctx context.Context, workloadTypes []string)) *MockQuerier_ListVulnerabilitySummariesForMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListVulnerabilitySummariesForMetrics_Call) Return(_a0 []*sql.ListVulnerabilitySummariesForMetricsRow, _a1 error) *MockQuerier_ListVulnerabilitySummariesForMetrics_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListVulnerabilitySummariesForMetrics_Call) RunAndReturn(run func(context.Context, []string) ([]*sql.ListVulnerabilitySummariesForMetricsRow, error)) *MockQuerier_ListVulnerabilitySummariesForMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListWorkloadSeverityFixStats provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListWorkloadSeverityFixStats(ctx context.Context, arg sql.ListWorkloadSeverityFixStatsParams) ([]*sql.ListWorkloadSeverityFixStatsRow, error) {
 	ret := _m.Called(ctx, arg)

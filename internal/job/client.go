@@ -63,6 +63,7 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 	}
 
 	if err := migrate(ctx, pool); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
@@ -85,6 +86,7 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 		},
 	})
 	if err != nil {
+		pool.Close()
 		return nil, err
 	}
 	return &client{
@@ -150,7 +152,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 			TargetVersion: RiverMigrationVersion,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to migrate: %v", err)
+			return fmt.Errorf("failed to migrate: %w", err)
 		}
 		for _, version := range result.Versions {
 			logrus.Infof("migrated [%s] version %d\n", strings.ToUpper(string(result.Direction)), version.Version)
