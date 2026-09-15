@@ -81,7 +81,7 @@ func (d *dependencytrackSource) Delete(ctx context.Context, imageName string, im
 
 	err = d.client.DeleteProject(ctx, p.Uuid)
 	if err != nil {
-		return fmt.Errorf("deleting project: %w", err)
+		return fmt.Errorf("deleting project %s for image %s:%s: %w", p.Uuid, imageName, imageTag, err)
 	}
 
 	d.log.Debugf("deleted project %s:%s", imageName, imageTag)

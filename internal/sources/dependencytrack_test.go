@@ -230,3 +230,20 @@ func TestMaintainSuppressedVulnerabilities_EmptyList(t *testing.T) {
 
 	mockClient.AssertExpectations(t)
 }
+
+func TestDeleteErrorIncludesProjectAndImage(t *testing.T) {
+	ctx := context.Background()
+	mockClient := new(dependencytrackMock.MockClient)
+	source := NewDependencytrackSource(mockClient, logrus.NewEntry(logrus.New()))
+
+	mockClient.On("GetProject", ctx, "registry.example/team/app", "sha256:abc").
+		Return(&dependencytrack.Project{Uuid: "00000000-0000-0000-0000-000000000123"}, nil)
+	mockClient.On("DeleteProject", ctx, "00000000-0000-0000-0000-000000000123").
+		Return(errors.New("server error"))
+
+	err := source.Delete(ctx, "registry.example/team/app", "sha256:abc")
+
+	assert.EqualError(t, err,
+		"deleting project 00000000-0000-0000-0000-000000000123 for image registry.example/team/app:sha256:abc: server error",
+	)
+}
