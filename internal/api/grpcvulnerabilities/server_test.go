@@ -3273,8 +3273,9 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = db.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
-		VulnerabilityIds: []pgtype.UUID{vuln.ID},
-		FixVersions:      []string{"1.2.3"},
+		CveIds:      []string{cveID},
+		Packages:    []string{pkgName},
+		FixVersions: []string{"1.2.3"},
 	})
 	require.NoError(t, err)
 

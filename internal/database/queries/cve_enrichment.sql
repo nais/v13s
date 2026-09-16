@@ -15,18 +15,19 @@ WHERE
         OR cve.known_ransomware_use != data.known_ransomware_use);
 
 -- name: GetVulnerabilitiesForOsvEnrichment :many
-SELECT
-    id,
+-- apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
+SELECT DISTINCT
     cve_id,
     package
 FROM
     vulnerabilities
 WHERE
-    package != ''
-    AND (cve_id LIKE 'CVE-%'
-        OR cve_id LIKE 'GHSA-%')
+    cve_id != ''
+    AND package != ''
+    AND package NOT LIKE 'pkg:apk/%'
+    AND package NOT LIKE 'pkg:deb/%'
 ORDER BY
-    id;
+    cve_id, package;
 
 -- name: BulkUpdateFixVersions :execrows
 UPDATE
@@ -36,10 +37,12 @@ SET
     updated_at = NOW()
 FROM (
     SELECT
-        unnest(@vulnerability_ids::UUID[]) AS id,
+        unnest(@cve_ids::TEXT[]) AS cve_id,
+        unnest(@packages::TEXT[]) AS package,
         unnest(@fix_versions::TEXT[]) AS fix_version) AS data
 WHERE
-    vulnerabilities.id = data.id
+    vulnerabilities.cve_id = data.cve_id
+    AND vulnerabilities.package = data.package
     AND vulnerabilities.fix_version IS DISTINCT FROM data.fix_version;
 
 -- name: BulkClearFixVersions :execrows
@@ -48,6 +51,11 @@ UPDATE
 SET
     fix_version = NULL,
     updated_at = NOW()
+FROM (
+    SELECT
+        unnest(@cve_ids::TEXT[]) AS cve_id,
+        unnest(@packages::TEXT[]) AS package) AS data
 WHERE
-    id = ANY (@vulnerability_ids::UUID[])
-    AND fix_version IS NOT NULL;
+    vulnerabilities.cve_id = data.cve_id
+    AND vulnerabilities.package = data.package
+    AND vulnerabilities.fix_version IS NOT NULL;

@@ -53,7 +53,7 @@ func NewClientWithURL(baseURL string) *Client {
 }
 
 // FetchVuln fetches an OSV record by ID. Returns nil when the ID is unknown.
-// On 404, the response body may hint at GHSA aliases — returned as a stub so the caller can follow them.
+// On 404, the response body may hint at aliases — returned as a stub so the caller can follow them.
 func (c *Client) FetchVuln(ctx context.Context, id string) (*VulnRecord, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/vulns/"+url.PathEscape(id), nil)
 	if err != nil {
@@ -76,6 +76,8 @@ func (c *Client) FetchVuln(ctx context.Context, id string) (*VulnRecord, error) 
 	return decodeVulnRecord(id, resp)
 }
 
+// decodeAliasHints parses the "...aliases were: X, Y" hint from a 404 body — the alias may be
+// any id scheme (GHSA-, GO-, ...), not just GHSA.
 func decodeAliasHints(id string, resp *http.Response) (*VulnRecord, error) {
 	var body struct {
 		Message string `json:"message"`
@@ -83,7 +85,16 @@ func decodeAliasHints(id string, resp *http.Response) (*VulnRecord, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || body.Message == "" {
 		return nil, nil
 	}
-	aliases := ghsaPattern.FindAllString(body.Message, -1)
+	_, hint, found := strings.Cut(body.Message, "aliases were: ")
+	if !found {
+		return nil, nil
+	}
+	var aliases []string
+	for _, a := range aliasHintSeparator.Split(strings.TrimSpace(hint), -1) {
+		if a != "" {
+			aliases = append(aliases, a)
+		}
+	}
 	if len(aliases) == 0 {
 		return nil, nil
 	}
@@ -206,10 +217,6 @@ func matchClassifier(fix, installedRaw string) string {
 	return classifierSuffix.ReplaceAllString(fix, "-"+im[1])
 }
 
-func isGHSA(id string) bool {
-	return strings.HasPrefix(id, "GHSA-")
-}
-
 func parseSemver(v string) (semver.Version, bool) {
 	sv, err := semver.ParseTolerant(normalizeVersion(strings.TrimPrefix(v, "v")))
 	return sv, err == nil
@@ -232,7 +239,7 @@ func normalizeVersion(v string) string {
 
 var (
 	classifierSuffix     = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
-	ghsaPattern          = regexp.MustCompile(`GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}`)
 	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
 	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.\d+$`)
+	aliasHintSeparator   = regexp.MustCompile(`[\s,]+`)
 )

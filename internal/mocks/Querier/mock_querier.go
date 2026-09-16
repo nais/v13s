@@ -422,9 +422,9 @@ func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) RunAndReturn(run fun
 	return _c
 }
 
-// BulkClearFixVersions provides a mock function with given fields: ctx, vulnerabilityIds
-func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, vulnerabilityIds []pgtype.UUID) (int64, error) {
-	ret := _m.Called(ctx, vulnerabilityIds)
+// BulkClearFixVersions provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, arg sql.BulkClearFixVersionsParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BulkClearFixVersions")
@@ -432,17 +432,17 @@ func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, vulnerabilityId
 
 	var r0 int64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []pgtype.UUID) (int64, error)); ok {
-		return rf(ctx, vulnerabilityIds)
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkClearFixVersionsParams) (int64, error)); ok {
+		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []pgtype.UUID) int64); ok {
-		r0 = rf(ctx, vulnerabilityIds)
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkClearFixVersionsParams) int64); ok {
+		r0 = rf(ctx, arg)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []pgtype.UUID) error); ok {
-		r1 = rf(ctx, vulnerabilityIds)
+	if rf, ok := ret.Get(1).(func(context.Context, sql.BulkClearFixVersionsParams) error); ok {
+		r1 = rf(ctx, arg)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -457,14 +457,14 @@ type MockQuerier_BulkClearFixVersions_Call struct {
 
 // BulkClearFixVersions is a helper method to define mock.On call
 //   - ctx context.Context
-//   - vulnerabilityIds []pgtype.UUID
-func (_e *MockQuerier_Expecter) BulkClearFixVersions(ctx interface{}, vulnerabilityIds interface{}) *MockQuerier_BulkClearFixVersions_Call {
-	return &MockQuerier_BulkClearFixVersions_Call{Call: _e.mock.On("BulkClearFixVersions", ctx, vulnerabilityIds)}
+//   - arg sql.BulkClearFixVersionsParams
+func (_e *MockQuerier_Expecter) BulkClearFixVersions(ctx interface{}, arg interface{}) *MockQuerier_BulkClearFixVersions_Call {
+	return &MockQuerier_BulkClearFixVersions_Call{Call: _e.mock.On("BulkClearFixVersions", ctx, arg)}
 }
 
-func (_c *MockQuerier_BulkClearFixVersions_Call) Run(run func(ctx context.Context, vulnerabilityIds []pgtype.UUID)) *MockQuerier_BulkClearFixVersions_Call {
+func (_c *MockQuerier_BulkClearFixVersions_Call) Run(run func(ctx context.Context, arg sql.BulkClearFixVersionsParams)) *MockQuerier_BulkClearFixVersions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]pgtype.UUID))
+		run(args[0].(context.Context), args[1].(sql.BulkClearFixVersionsParams))
 	})
 	return _c
 }
@@ -474,7 +474,7 @@ func (_c *MockQuerier_BulkClearFixVersions_Call) Return(_a0 int64, _a1 error) *M
 	return _c
 }
 
-func (_c *MockQuerier_BulkClearFixVersions_Call) RunAndReturn(run func(context.Context, []pgtype.UUID) (int64, error)) *MockQuerier_BulkClearFixVersions_Call {
+func (_c *MockQuerier_BulkClearFixVersions_Call) RunAndReturn(run func(context.Context, sql.BulkClearFixVersionsParams) (int64, error)) *MockQuerier_BulkClearFixVersions_Call {
 	_c.Call.Return(run)
 	return _c
 }

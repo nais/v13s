@@ -17,7 +17,7 @@ type Querier interface {
 	BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
-	BulkClearFixVersions(ctx context.Context, vulnerabilityIds []pgtype.UUID) (int64, error)
+	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
 	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
@@ -38,6 +38,7 @@ type Querier interface {
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
 	GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
+	// apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
 	GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
