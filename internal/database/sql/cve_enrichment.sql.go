@@ -104,7 +104,8 @@ SELECT DISTINCT
 FROM
     vulnerabilities
 WHERE
-    package != ''
+    cve_id != ''
+    AND package != ''
     AND package NOT LIKE 'pkg:apk/%'
     AND package NOT LIKE 'pkg:deb/%'
 ORDER BY

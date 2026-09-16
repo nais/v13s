@@ -412,3 +412,101 @@ func TestUpdateWorkloadStateByImage_RecoverNoAttestation(t *testing.T) {
 	assert.Equal(t, sql.WorkloadStateUpdated, recovered.State,
 		"no_attestation workload should be recovered when image state is updated")
 }
+
+func upsertTestCve(t *testing.T, db sql.Querier, ctx context.Context, cveID string) {
+	t.Helper()
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: cveID, CveTitle: "t", CveDesc: "d", CveLink: "l", Severity: 1, Refs: map[string]string{}},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+}
+
+func TestGetVulnerabilitiesForOsvEnrichment_ExcludesUnsupportedRows(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	createTestdata(t, db, "img-osv", "v1", false)
+
+	for _, cveID := range []string{"CVE-APK-1", "CVE-DEB-1", "CVE-NPM-1", ""} {
+		upsertTestCve(t, db, ctx, cveID)
+	}
+
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: "img-osv", ImageTag: "v1", Package: "pkg:apk/wolfi/openssl@3.0.0", CveID: "CVE-APK-1", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+		{ImageName: "img-osv", ImageTag: "v1", Package: "pkg:deb/debian/openssl@3.0.0", CveID: "CVE-DEB-1", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+		{ImageName: "img-osv", ImageTag: "v1", Package: "pkg:npm/leftpad@1.0.0", CveID: "CVE-NPM-1", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+		{ImageName: "img-osv", ImageTag: "v1", Package: "pkg:npm/broken@1.0.0", CveID: "", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	rows, err := db.GetVulnerabilitiesForOsvEnrichment(ctx)
+	require.NoError(t, err)
+
+	var got []string
+	for _, r := range rows {
+		got = append(got, r.CveID+"|"+r.Package)
+	}
+	assert.ElementsMatch(t, []string{"CVE-NPM-1|pkg:npm/leftpad@1.0.0"}, got,
+		"apk, deb and empty-cve_id rows must be excluded; only the supported npm pair should remain")
+}
+
+func TestBulkUpdateAndClearFixVersions_ScopedToCvePackagePair(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	createTestdata(t, db, "img-a", "v1", false)
+	createTestdata(t, db, "img-b", "v1", false)
+
+	upsertTestCve(t, db, ctx, "CVE-SHARED-1")
+	upsertTestCve(t, db, ctx, "CVE-OTHER-1")
+
+	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+		// Same (cve_id, package) pair, two different images — both must move together.
+		{ImageName: "img-a", ImageTag: "v1", Package: "pkg:npm/shared-lib@1.0.0", CveID: "CVE-SHARED-1", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+		{ImageName: "img-b", ImageTag: "v1", Package: "pkg:npm/shared-lib@1.0.0", CveID: "CVE-SHARED-1", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+		// Unrelated pair that must never be touched by the calls below.
+		{ImageName: "img-a", ImageTag: "v1", Package: "pkg:npm/other-lib@1.0.0", CveID: "CVE-OTHER-1", Source: "test", LastSeverity: 1, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true}},
+	}).Exec(func(i int, err error) {
+		require.NoError(t, err)
+	})
+
+	getFixVersion := func(imageName, cveID, pkg string) *string {
+		v, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: imageName, ImageTag: "v1", CveID: cveID, Package: pkg,
+		})
+		require.NoError(t, err)
+		return v.FixVersion
+	}
+
+	n, err := db.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
+		CveIds:      []string{"CVE-SHARED-1"},
+		Packages:    []string{"pkg:npm/shared-lib@1.0.0"},
+		FixVersions: []string{"2.0.0"},
+	})
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, n, "update must touch both rows sharing the pair")
+
+	require.NotNil(t, getFixVersion("img-a", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
+	assert.Equal(t, "2.0.0", *getFixVersion("img-a", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
+	require.NotNil(t, getFixVersion("img-b", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
+	assert.Equal(t, "2.0.0", *getFixVersion("img-b", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
+	assert.Nil(t, getFixVersion("img-a", "CVE-OTHER-1", "pkg:npm/other-lib@1.0.0"), "unrelated pair must be untouched")
+
+	n, err = db.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
+		CveIds:   []string{"CVE-SHARED-1"},
+		Packages: []string{"pkg:npm/shared-lib@1.0.0"},
+	})
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, n, "clear must touch both rows sharing the pair")
+
+	assert.Nil(t, getFixVersion("img-a", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
+	assert.Nil(t, getFixVersion("img-b", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
+}
