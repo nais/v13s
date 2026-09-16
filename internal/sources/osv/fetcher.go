@@ -3,11 +3,11 @@ package osv
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
@@ -34,13 +34,7 @@ func NewFetcherWithQuerier(client *Client, querier sql.Querier, log *logrus.Entr
 	return &Fetcher{client: client, querier: querier, log: log}
 }
 
-type fixTarget struct {
-	id  pgtype.UUID
-	pkg string
-}
-
 type fixResult struct {
-	id         pgtype.UUID
 	cveID      string
 	pkg        string
 	fixVersion string
@@ -128,7 +122,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]fixTarget) ([]fixResult, int64, int64) {
+func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64, int64) {
 	jobs := make(chan string, len(byCve))
 	out := make(chan fixResult, len(byCve)*2)
 
@@ -160,16 +154,16 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]fixTarget) ([
 	return results, fetchErrors.Load(), fetchMisses.Load()
 }
 
-func (f *Fetcher) processCve(ctx context.Context, cveID string, targets []fixTarget, out chan<- fixResult, errors, misses *atomic.Int64) {
+func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, out chan<- fixResult, errors, misses *atomic.Int64) {
 	record, err := f.client.FetchVuln(ctx, cveID)
 	if err != nil {
 		f.log.WithError(err).Warnf("OSV fetch failed for %s", cveID)
-		errors.Add(int64(len(targets)))
+		errors.Add(int64(len(pkgs)))
 		return
 	}
 	if record == nil {
-		for _, t := range targets {
-			out <- fixResult{id: t.id, cveID: cveID, pkg: t.pkg}
+		for _, pkg := range pkgs {
+			out <- fixResult{cveID: cveID, pkg: pkg}
 			misses.Add(1)
 		}
 		return
@@ -177,23 +171,20 @@ func (f *Fetcher) processCve(ctx context.Context, cveID string, targets []fixTar
 
 	record = f.mergeAliases(ctx, cveID, record)
 
-	fvByPkg := make(map[string]string)
-	for _, t := range targets {
-		fv, seen := fvByPkg[t.pkg]
-		if !seen {
-			fv = FixVersionForPurl(record, t.pkg)
-			fvByPkg[t.pkg] = fv
-		}
-		out <- fixResult{id: t.id, cveID: cveID, pkg: t.pkg, fixVersion: fv}
+	for _, pkg := range pkgs {
+		fv := FixVersionForPurl(record, pkg)
+		out <- fixResult{cveID: cveID, pkg: pkg, fixVersion: fv}
 		if fv == "" {
 			misses.Add(1)
 		}
 	}
 }
 
+// mergeAliases follows non-CVE aliases (GHSA-, GO-, PYSEC-, ...) and merges their Affected data —
+// a CVE-numbered record is often just a stub pointing at the record with real fix-version data.
 func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRecord) *VulnRecord {
 	for _, alias := range record.Aliases {
-		if !isGHSA(alias) {
+		if alias == cveID || strings.HasPrefix(alias, "CVE-") {
 			continue
 		}
 		aliasRecord, err := f.client.FetchVuln(ctx, alias)
@@ -210,26 +201,31 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 
 func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fixResult) error {
 	var (
-		updateIDs   []pgtype.UUID
-		updateFixes []string
-		clearIDs    []pgtype.UUID
+		updateCveIDs   []string
+		updatePackages []string
+		updateFixes    []string
+		clearCveIDs    []string
+		clearPackages  []string
 	)
 	for _, r := range results {
 		if r.fixVersion == "" {
-			clearIDs = append(clearIDs, r.id)
+			clearCveIDs = append(clearCveIDs, r.cveID)
+			clearPackages = append(clearPackages, r.pkg)
 		} else {
-			updateIDs = append(updateIDs, r.id)
+			updateCveIDs = append(updateCveIDs, r.cveID)
+			updatePackages = append(updatePackages, r.pkg)
 			updateFixes = append(updateFixes, r.fixVersion)
 		}
 	}
 
 	var totalUpdated, totalCleared int64
 
-	for i := 0; i < len(updateIDs); i += BatchSize {
-		end := min(i+BatchSize, len(updateIDs))
+	for i := 0; i < len(updateCveIDs); i += BatchSize {
+		end := min(i+BatchSize, len(updateCveIDs))
 		n, err := querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
-			VulnerabilityIds: updateIDs[i:end],
-			FixVersions:      updateFixes[i:end],
+			CveIds:      updateCveIDs[i:end],
+			Packages:    updatePackages[i:end],
+			FixVersions: updateFixes[i:end],
 		})
 		if err != nil {
 			return fmt.Errorf("bulk updating fix versions: %w", err)
@@ -237,9 +233,12 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 		totalUpdated += n
 	}
 
-	for i := 0; i < len(clearIDs); i += BatchSize {
-		end := min(i+BatchSize, len(clearIDs))
-		n, err := querier.BulkClearFixVersions(ctx, clearIDs[i:end])
+	for i := 0; i < len(clearCveIDs); i += BatchSize {
+		end := min(i+BatchSize, len(clearCveIDs))
+		n, err := querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
+			CveIds:   clearCveIDs[i:end],
+			Packages: clearPackages[i:end],
+		})
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
 		}
@@ -250,10 +249,10 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 	return nil
 }
 
-func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]fixTarget {
-	byCve := make(map[string][]fixTarget, len(rows))
+func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]string {
+	byCve := make(map[string][]string, len(rows))
 	for _, r := range rows {
-		byCve[r.CveID] = append(byCve[r.CveID], fixTarget{id: r.ID, pkg: r.Package})
+		byCve[r.CveID] = append(byCve[r.CveID], r.Package)
 	}
 	return byCve
 }

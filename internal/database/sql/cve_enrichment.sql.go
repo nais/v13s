@@ -5,8 +5,6 @@ package sql
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const bulkClearFixVersions = `-- name: BulkClearFixVersions :execrows
@@ -15,13 +13,23 @@ UPDATE
 SET
     fix_version = NULL,
     updated_at = NOW()
+FROM (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::TEXT[]) AS package) AS data
 WHERE
-    id = ANY ($1::UUID[])
-    AND fix_version IS NOT NULL
+    vulnerabilities.cve_id = data.cve_id
+    AND vulnerabilities.package = data.package
+    AND vulnerabilities.fix_version IS NOT NULL
 `
 
-func (q *Queries) BulkClearFixVersions(ctx context.Context, vulnerabilityIds []pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkClearFixVersions, vulnerabilityIds)
+type BulkClearFixVersionsParams struct {
+	CveIds   []string
+	Packages []string
+}
+
+func (q *Queries) BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkClearFixVersions, arg.CveIds, arg.Packages)
 	if err != nil {
 		return 0, err
 	}
@@ -36,20 +44,23 @@ SET
     updated_at = NOW()
 FROM (
     SELECT
-        unnest($1::UUID[]) AS id,
-        unnest($2::TEXT[]) AS fix_version) AS data
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::TEXT[]) AS package,
+        unnest($3::TEXT[]) AS fix_version) AS data
 WHERE
-    vulnerabilities.id = data.id
+    vulnerabilities.cve_id = data.cve_id
+    AND vulnerabilities.package = data.package
     AND vulnerabilities.fix_version IS DISTINCT FROM data.fix_version
 `
 
 type BulkUpdateFixVersionsParams struct {
-	VulnerabilityIds []pgtype.UUID
-	FixVersions      []string
+	CveIds      []string
+	Packages    []string
+	FixVersions []string
 }
 
 func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkUpdateFixVersions, arg.VulnerabilityIds, arg.FixVersions)
+	result, err := q.db.Exec(ctx, bulkUpdateFixVersions, arg.CveIds, arg.Packages, arg.FixVersions)
 	if err != nil {
 		return 0, err
 	}
@@ -87,26 +98,25 @@ func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataPa
 }
 
 const getVulnerabilitiesForOsvEnrichment = `-- name: GetVulnerabilitiesForOsvEnrichment :many
-SELECT
-    id,
+SELECT DISTINCT
     cve_id,
     package
 FROM
     vulnerabilities
 WHERE
     package != ''
-    AND (cve_id LIKE 'CVE-%'
-        OR cve_id LIKE 'GHSA-%')
+    AND package NOT LIKE 'pkg:apk/%'
+    AND package NOT LIKE 'pkg:deb/%'
 ORDER BY
-    id
+    cve_id, package
 `
 
 type GetVulnerabilitiesForOsvEnrichmentRow struct {
-	ID      pgtype.UUID
 	CveID   string
 	Package string
 }
 
+// apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
 func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error) {
 	rows, err := q.db.Query(ctx, getVulnerabilitiesForOsvEnrichment)
 	if err != nil {
@@ -116,7 +126,7 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 	items := []*GetVulnerabilitiesForOsvEnrichmentRow{}
 	for rows.Next() {
 		var i GetVulnerabilitiesForOsvEnrichmentRow
-		if err := rows.Scan(&i.ID, &i.CveID, &i.Package); err != nil {
+		if err := rows.Scan(&i.CveID, &i.Package); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)
