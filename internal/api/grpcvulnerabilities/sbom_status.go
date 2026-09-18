@@ -24,13 +24,13 @@ var sbomStatusNames = map[vulnerabilities.SbomStatus]string{
 	vulnerabilities.SbomStatus_SBOM_STATUS_FAILED:     "failed",
 }
 
-func sbomStatusNamesFromFilter(filter *vulnerabilities.Filter) ([]string, error) {
-	if filter == nil || len(filter.GetSbomStatuses()) == 0 {
+func sbomStatusNamesFromFilter(filter []vulnerabilities.SbomStatus) ([]string, error) {
+	if len(filter) == 0 {
 		return nil, nil
 	}
 
-	statuses := make([]string, 0, len(filter.GetSbomStatuses()))
-	for _, sbomStatus := range filter.GetSbomStatuses() {
+	statuses := make([]string, 0, len(filter))
+	for _, sbomStatus := range filter {
 		name, ok := sbomStatusNames[sbomStatus]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid SBOM status: %s", sbomStatus)

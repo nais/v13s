@@ -34,7 +34,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
-	sbomStatuses, err := sbomStatusNamesFromFilter(request.GetFilter())
+	sbomStatuses, err := sbomStatusNamesFromFilter(request.GetSbomStatuses())
 	if err != nil {
 		return nil, err
 	}

@@ -356,9 +356,7 @@ type Filter struct {
 	// Exact priority filter. When set, only workloads/findings whose top priority is in this set are returned.
 	Priorities []Priority `protobuf:"varint,9,rep,packed,name=priorities,proto3,enum=v13s.api.protobuf.Priority" json:"priorities,omitempty"`
 	// KEV filter. When set, only workloads/findings with a matching KEV status are returned.
-	HasKev *bool `protobuf:"varint,10,opt,name=has_kev,json=hasKev,proto3,oneof" json:"has_kev,omitempty"`
-	// SBOM status filter. Multiple values use OR semantics.
-	SbomStatuses  []SbomStatus `protobuf:"varint,11,rep,packed,name=sbom_statuses,json=sbomStatuses,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_statuses,omitempty"`
+	HasKev        *bool `protobuf:"varint,10,opt,name=has_kev,json=hasKev,proto3,oneof" json:"has_kev,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -462,13 +460,6 @@ func (x *Filter) GetHasKev() bool {
 		return *x.HasKev
 	}
 	return false
-}
-
-func (x *Filter) GetSbomStatuses() []SbomStatus {
-	if x != nil {
-		return x.SbomStatuses
-	}
-	return nil
 }
 
 type OrderBy struct {
@@ -2147,12 +2138,14 @@ func (x *ListVulnerabilitiesForImageResponse) GetPageInfo() *PageInfo {
 }
 
 type ListVulnerabilitySummariesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy       *OrderBy               `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	Since         *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=since,proto3,oneof" json:"since,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Filter  *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	Limit   int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset  int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	OrderBy *OrderBy               `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
+	Since   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=since,proto3,oneof" json:"since,omitempty"`
+	// SBOM status filter. Multiple values use OR semantics.
+	SbomStatuses  []SbomStatus `protobuf:"varint,6,rep,packed,name=sbom_statuses,json=sbomStatuses,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_statuses,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2218,6 +2211,13 @@ func (x *ListVulnerabilitySummariesRequest) GetOrderBy() *OrderBy {
 func (x *ListVulnerabilitySummariesRequest) GetSince() *timestamppb.Timestamp {
 	if x != nil {
 		return x.Since
+	}
+	return nil
+}
+
+func (x *ListVulnerabilitySummariesRequest) GetSbomStatuses() []SbomStatus {
+	if x != nil {
+		return x.SbomStatuses
 	}
 	return nil
 }
@@ -4427,7 +4427,7 @@ var File_vulnerabilities_proto protoreflect.FileDescriptor
 
 const file_vulnerabilities_proto_rawDesc = "" +
 	"\n" +
-	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\xcb\x04\n" +
+	"\x15vulnerabilities.proto\x12\x11v13s.api.protobuf\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15v13s.pagination.proto\"\x87\x04\n" +
 	"\x06Filter\x12\x1d\n" +
 	"\acluster\x18\x01 \x01(\tH\x00R\acluster\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x02 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1f\n" +
@@ -4444,8 +4444,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"priorities\x18\t \x03(\x0e2\x1b.v13s.api.protobuf.PriorityR\n" +
 	"priorities\x12\x1c\n" +
 	"\ahas_kev\x18\n" +
-	" \x01(\bH\aR\x06hasKev\x88\x01\x01\x12B\n" +
-	"\rsbom_statuses\x18\v \x03(\x0e2\x1d.v13s.api.protobuf.SbomStatusR\fsbomStatusesB\n" +
+	" \x01(\bH\aR\x06hasKev\x88\x01\x01B\n" +
 	"\n" +
 	"\b_clusterB\f\n" +
 	"\n" +
@@ -4663,13 +4662,14 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\b_has_kev\"\x97\x01\n" +
 	"#ListVulnerabilitiesForImageResponse\x126\n" +
 	"\x05nodes\x18\x01 \x03(\v2 .v13s.api.protobuf.VulnerabilityR\x05nodes\x128\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\x8e\x02\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xd2\x02\n" +
 	"!ListVulnerabilitySummariesRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12:\n" +
 	"\border_by\x18\x04 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x00R\aorderBy\x88\x01\x01\x125\n" +
-	"\x05since\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x05since\x88\x01\x01B\v\n" +
+	"\x05since\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x05since\x88\x01\x01\x12B\n" +
+	"\rsbom_statuses\x18\x06 \x03(\x0e2\x1d.v13s.api.protobuf.SbomStatusR\fsbomStatusesB\v\n" +
 	"\t_order_byB\b\n" +
 	"\x06_since\"\x98\x01\n" +
 	"\"ListVulnerabilitySummariesResponse\x128\n" +
@@ -4998,61 +4998,61 @@ var file_vulnerabilities_proto_goTypes = []any{
 var file_vulnerabilities_proto_depIdxs = []int32{
 	4,   // 0: v13s.api.protobuf.Filter.priority:type_name -> v13s.api.protobuf.Priority
 	4,   // 1: v13s.api.protobuf.Filter.priorities:type_name -> v13s.api.protobuf.Priority
-	5,   // 2: v13s.api.protobuf.Filter.sbom_statuses:type_name -> v13s.api.protobuf.SbomStatus
-	1,   // 3: v13s.api.protobuf.OrderBy.direction:type_name -> v13s.api.protobuf.Direction
-	63,  // 4: v13s.api.protobuf.Summary.last_updated:type_name -> google.protobuf.Timestamp
-	4,   // 5: v13s.api.protobuf.Summary.top_priority:type_name -> v13s.api.protobuf.Priority
-	2,   // 6: v13s.api.protobuf.Cve.severity:type_name -> v13s.api.protobuf.Severity
-	62,  // 7: v13s.api.protobuf.Cve.references:type_name -> v13s.api.protobuf.Cve.ReferencesEntry
-	63,  // 8: v13s.api.protobuf.Cve.created:type_name -> google.protobuf.Timestamp
-	63,  // 9: v13s.api.protobuf.Cve.last_updated:type_name -> google.protobuf.Timestamp
-	4,   // 10: v13s.api.protobuf.Cve.priority:type_name -> v13s.api.protobuf.Priority
-	0,   // 11: v13s.api.protobuf.Suppression.suppressed_reason:type_name -> v13s.api.protobuf.SuppressState
-	63,  // 12: v13s.api.protobuf.Suppression.last_updated:type_name -> google.protobuf.Timestamp
-	10,  // 13: v13s.api.protobuf.Vulnerability.cve:type_name -> v13s.api.protobuf.Cve
-	11,  // 14: v13s.api.protobuf.Vulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
-	63,  // 15: v13s.api.protobuf.Vulnerability.created:type_name -> google.protobuf.Timestamp
-	63,  // 16: v13s.api.protobuf.Vulnerability.last_updated:type_name -> google.protobuf.Timestamp
-	63,  // 17: v13s.api.protobuf.Vulnerability.severity_since:type_name -> google.protobuf.Timestamp
-	8,   // 18: v13s.api.protobuf.Finding.workload_ref:type_name -> v13s.api.protobuf.Workload
-	12,  // 19: v13s.api.protobuf.Finding.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	63,  // 20: v13s.api.protobuf.Finding.last_updated:type_name -> google.protobuf.Timestamp
-	10,  // 21: v13s.api.protobuf.WorkloadCriticalVulnerability.cve:type_name -> v13s.api.protobuf.Cve
-	11,  // 22: v13s.api.protobuf.WorkloadCriticalVulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
-	63,  // 23: v13s.api.protobuf.WorkloadCriticalVulnerability.created_at:type_name -> google.protobuf.Timestamp
-	63,  // 24: v13s.api.protobuf.WorkloadCriticalVulnerability.became_critical_at:type_name -> google.protobuf.Timestamp
-	63,  // 25: v13s.api.protobuf.WorkloadCriticalVulnerability.resolved_at:type_name -> google.protobuf.Timestamp
-	8,   // 26: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.workload_ref:type_name -> v13s.api.protobuf.Workload
-	14,  // 27: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.vulnerability:type_name -> v13s.api.protobuf.WorkloadCriticalVulnerability
-	8,   // 28: v13s.api.protobuf.WorkloadSummary.workload:type_name -> v13s.api.protobuf.Workload
-	9,   // 29: v13s.api.protobuf.WorkloadSummary.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	17,  // 30: v13s.api.protobuf.WorkloadSummary.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
-	5,   // 31: v13s.api.protobuf.SbomStatusInfo.status:type_name -> v13s.api.protobuf.SbomStatus
-	63,  // 32: v13s.api.protobuf.SbomStatusInfo.processing_started_at:type_name -> google.protobuf.Timestamp
-	2,   // 33: v13s.api.protobuf.WorkloadFix.severity:type_name -> v13s.api.protobuf.Severity
-	63,  // 34: v13s.api.protobuf.WorkloadFix.introduced_at:type_name -> google.protobuf.Timestamp
-	63,  // 35: v13s.api.protobuf.WorkloadFix.fixed_at:type_name -> google.protobuf.Timestamp
-	63,  // 36: v13s.api.protobuf.WorkloadFix.snapshot_date:type_name -> google.protobuf.Timestamp
-	18,  // 37: v13s.api.protobuf.WorkloadWithFixes.fixes:type_name -> v13s.api.protobuf.WorkloadFix
-	2,   // 38: v13s.api.protobuf.MeanTimeToFixTrendPoint.severity:type_name -> v13s.api.protobuf.Severity
-	63,  // 39: v13s.api.protobuf.MeanTimeToFixTrendPoint.snapshot_date:type_name -> google.protobuf.Timestamp
-	63,  // 40: v13s.api.protobuf.MeanTimeToFixTrendPoint.first_fixed_at:type_name -> google.protobuf.Timestamp
-	63,  // 41: v13s.api.protobuf.MeanTimeToFixTrendPoint.last_fixed_at:type_name -> google.protobuf.Timestamp
-	0,   // 42: v13s.api.protobuf.SuppressedVulnerability.state:type_name -> v13s.api.protobuf.SuppressState
-	6,   // 43: v13s.api.protobuf.ListVulnerabilitiesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 44: v13s.api.protobuf.ListVulnerabilitiesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	6,   // 45: v13s.api.protobuf.ListVulnerabilitiesResponse.filter:type_name -> v13s.api.protobuf.Filter
-	13,  // 46: v13s.api.protobuf.ListVulnerabilitiesResponse.nodes:type_name -> v13s.api.protobuf.Finding
-	64,  // 47: v13s.api.protobuf.ListVulnerabilitiesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	7,   // 48: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	63,  // 49: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.since:type_name -> google.protobuf.Timestamp
-	2,   // 50: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.severity:type_name -> v13s.api.protobuf.Severity
-	4,   // 51: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.priorities:type_name -> v13s.api.protobuf.Priority
-	12,  // 52: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.nodes:type_name -> v13s.api.protobuf.Vulnerability
-	64,  // 53: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	6,   // 54: v13s.api.protobuf.ListVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 55: v13s.api.protobuf.ListVulnerabilitySummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	63,  // 56: v13s.api.protobuf.ListVulnerabilitySummariesRequest.since:type_name -> google.protobuf.Timestamp
+	1,   // 2: v13s.api.protobuf.OrderBy.direction:type_name -> v13s.api.protobuf.Direction
+	63,  // 3: v13s.api.protobuf.Summary.last_updated:type_name -> google.protobuf.Timestamp
+	4,   // 4: v13s.api.protobuf.Summary.top_priority:type_name -> v13s.api.protobuf.Priority
+	2,   // 5: v13s.api.protobuf.Cve.severity:type_name -> v13s.api.protobuf.Severity
+	62,  // 6: v13s.api.protobuf.Cve.references:type_name -> v13s.api.protobuf.Cve.ReferencesEntry
+	63,  // 7: v13s.api.protobuf.Cve.created:type_name -> google.protobuf.Timestamp
+	63,  // 8: v13s.api.protobuf.Cve.last_updated:type_name -> google.protobuf.Timestamp
+	4,   // 9: v13s.api.protobuf.Cve.priority:type_name -> v13s.api.protobuf.Priority
+	0,   // 10: v13s.api.protobuf.Suppression.suppressed_reason:type_name -> v13s.api.protobuf.SuppressState
+	63,  // 11: v13s.api.protobuf.Suppression.last_updated:type_name -> google.protobuf.Timestamp
+	10,  // 12: v13s.api.protobuf.Vulnerability.cve:type_name -> v13s.api.protobuf.Cve
+	11,  // 13: v13s.api.protobuf.Vulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
+	63,  // 14: v13s.api.protobuf.Vulnerability.created:type_name -> google.protobuf.Timestamp
+	63,  // 15: v13s.api.protobuf.Vulnerability.last_updated:type_name -> google.protobuf.Timestamp
+	63,  // 16: v13s.api.protobuf.Vulnerability.severity_since:type_name -> google.protobuf.Timestamp
+	8,   // 17: v13s.api.protobuf.Finding.workload_ref:type_name -> v13s.api.protobuf.Workload
+	12,  // 18: v13s.api.protobuf.Finding.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
+	63,  // 19: v13s.api.protobuf.Finding.last_updated:type_name -> google.protobuf.Timestamp
+	10,  // 20: v13s.api.protobuf.WorkloadCriticalVulnerability.cve:type_name -> v13s.api.protobuf.Cve
+	11,  // 21: v13s.api.protobuf.WorkloadCriticalVulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
+	63,  // 22: v13s.api.protobuf.WorkloadCriticalVulnerability.created_at:type_name -> google.protobuf.Timestamp
+	63,  // 23: v13s.api.protobuf.WorkloadCriticalVulnerability.became_critical_at:type_name -> google.protobuf.Timestamp
+	63,  // 24: v13s.api.protobuf.WorkloadCriticalVulnerability.resolved_at:type_name -> google.protobuf.Timestamp
+	8,   // 25: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.workload_ref:type_name -> v13s.api.protobuf.Workload
+	14,  // 26: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.vulnerability:type_name -> v13s.api.protobuf.WorkloadCriticalVulnerability
+	8,   // 27: v13s.api.protobuf.WorkloadSummary.workload:type_name -> v13s.api.protobuf.Workload
+	9,   // 28: v13s.api.protobuf.WorkloadSummary.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
+	17,  // 29: v13s.api.protobuf.WorkloadSummary.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
+	5,   // 30: v13s.api.protobuf.SbomStatusInfo.status:type_name -> v13s.api.protobuf.SbomStatus
+	63,  // 31: v13s.api.protobuf.SbomStatusInfo.processing_started_at:type_name -> google.protobuf.Timestamp
+	2,   // 32: v13s.api.protobuf.WorkloadFix.severity:type_name -> v13s.api.protobuf.Severity
+	63,  // 33: v13s.api.protobuf.WorkloadFix.introduced_at:type_name -> google.protobuf.Timestamp
+	63,  // 34: v13s.api.protobuf.WorkloadFix.fixed_at:type_name -> google.protobuf.Timestamp
+	63,  // 35: v13s.api.protobuf.WorkloadFix.snapshot_date:type_name -> google.protobuf.Timestamp
+	18,  // 36: v13s.api.protobuf.WorkloadWithFixes.fixes:type_name -> v13s.api.protobuf.WorkloadFix
+	2,   // 37: v13s.api.protobuf.MeanTimeToFixTrendPoint.severity:type_name -> v13s.api.protobuf.Severity
+	63,  // 38: v13s.api.protobuf.MeanTimeToFixTrendPoint.snapshot_date:type_name -> google.protobuf.Timestamp
+	63,  // 39: v13s.api.protobuf.MeanTimeToFixTrendPoint.first_fixed_at:type_name -> google.protobuf.Timestamp
+	63,  // 40: v13s.api.protobuf.MeanTimeToFixTrendPoint.last_fixed_at:type_name -> google.protobuf.Timestamp
+	0,   // 41: v13s.api.protobuf.SuppressedVulnerability.state:type_name -> v13s.api.protobuf.SuppressState
+	6,   // 42: v13s.api.protobuf.ListVulnerabilitiesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	7,   // 43: v13s.api.protobuf.ListVulnerabilitiesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	6,   // 44: v13s.api.protobuf.ListVulnerabilitiesResponse.filter:type_name -> v13s.api.protobuf.Filter
+	13,  // 45: v13s.api.protobuf.ListVulnerabilitiesResponse.nodes:type_name -> v13s.api.protobuf.Finding
+	64,  // 46: v13s.api.protobuf.ListVulnerabilitiesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	7,   // 47: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	63,  // 48: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.since:type_name -> google.protobuf.Timestamp
+	2,   // 49: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.severity:type_name -> v13s.api.protobuf.Severity
+	4,   // 50: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.priorities:type_name -> v13s.api.protobuf.Priority
+	12,  // 51: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.nodes:type_name -> v13s.api.protobuf.Vulnerability
+	64,  // 52: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	6,   // 53: v13s.api.protobuf.ListVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	7,   // 54: v13s.api.protobuf.ListVulnerabilitySummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	63,  // 55: v13s.api.protobuf.ListVulnerabilitySummariesRequest.since:type_name -> google.protobuf.Timestamp
+	5,   // 56: v13s.api.protobuf.ListVulnerabilitySummariesRequest.sbom_statuses:type_name -> v13s.api.protobuf.SbomStatus
 	16,  // 57: v13s.api.protobuf.ListVulnerabilitySummariesResponse.nodes:type_name -> v13s.api.protobuf.WorkloadSummary
 	64,  // 58: v13s.api.protobuf.ListVulnerabilitySummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
 	6,   // 59: v13s.api.protobuf.ListSuppressedVulnerabilitiesRequest.filter:type_name -> v13s.api.protobuf.Filter

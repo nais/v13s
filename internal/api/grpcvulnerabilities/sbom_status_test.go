@@ -139,40 +139,39 @@ func TestWorstCase(t *testing.T) {
 func TestSbomStatusNamesFromFilter(t *testing.T) {
 	tests := []struct {
 		name        string
-		filter      *vulnerabilities.Filter
+		filter      []vulnerabilities.SbomStatus
 		want        []string
 		wantErrCode codes.Code
 	}{
 		{
-			name:   "nil filter",
-			filter: nil,
+			name: "nil filter",
 		},
 		{
 			name:   "empty statuses",
-			filter: &vulnerabilities.Filter{},
+			filter: []vulnerabilities.SbomStatus{},
 		},
 		{
 			name: "supported statuses",
-			filter: &vulnerabilities.Filter{SbomStatuses: []vulnerabilities.SbomStatus{
+			filter: []vulnerabilities.SbomStatus{
 				vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
 				vulnerabilities.SbomStatus_SBOM_STATUS_READY,
 				vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
 				vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
-			}},
+			},
 			want: []string{"processing", "ready", "no_sbom", "failed"},
 		},
 		{
 			name: "unspecified status",
-			filter: &vulnerabilities.Filter{SbomStatuses: []vulnerabilities.SbomStatus{
+			filter: []vulnerabilities.SbomStatus{
 				vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED,
-			}},
+			},
 			wantErrCode: codes.InvalidArgument,
 		},
 		{
 			name: "unknown status",
-			filter: &vulnerabilities.Filter{SbomStatuses: []vulnerabilities.SbomStatus{
+			filter: []vulnerabilities.SbomStatus{
 				vulnerabilities.SbomStatus(99),
-			}},
+			},
 			wantErrCode: codes.InvalidArgument,
 		},
 	}

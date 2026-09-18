@@ -670,7 +670,6 @@ vulnerability_data AS (
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),
 sbom_status_data AS (
-
     SELECT
         id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, is_active, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, sbom_processing_started_at,
         CASE
