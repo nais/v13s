@@ -107,6 +107,7 @@ type Options struct {
 	Since             *timestamppb.Timestamp
 	SinceType         *SinceType
 	Severity          *Severity
+	SbomStatuses      []SbomStatus
 	ExcludeNamespaces []string
 	ExcludeClusters   []string
 }
@@ -248,6 +249,12 @@ func KevFilter(hasKev bool) Option {
 			o.Filter = &Filter{}
 		}
 		o.Filter.HasKev = &hasKev
+	})
+}
+
+func SbomStatusFilter(statuses ...SbomStatus) Option {
+	return newFuncOption(func(o *Options) {
+		o.SbomStatuses = append([]SbomStatus(nil), statuses...)
 	})
 }
 

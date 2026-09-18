@@ -97,11 +97,12 @@ func (c *client) ListSuppressedVulnerabilities(ctx context.Context, opts ...Opti
 func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
-		Filter:  o.Filter,
-		Limit:   o.Limit,
-		Offset:  o.Offset,
-		OrderBy: o.OrderBy,
-		Since:   o.Since,
+		Filter:       o.Filter,
+		Limit:        o.Limit,
+		Offset:       o.Offset,
+		OrderBy:      o.OrderBy,
+		Since:        o.Since,
+		SbomStatuses: o.SbomStatuses,
 	}, o.CallOptions...)
 }
 

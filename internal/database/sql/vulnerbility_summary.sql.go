@@ -669,6 +669,21 @@ vulnerability_data AS (
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
 ),
+sbom_status_data AS (
+    SELECT
+        id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, is_active, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, sbom_processing_started_at,
+        CASE
+            WHEN workload_state IN ('failed', 'unrecoverable') THEN 'failed'
+            WHEN workload_state = 'no_attestation' THEN 'no_sbom'
+            WHEN image_state = 'updated' THEN 'ready'
+            WHEN image_state = 'failed' THEN 'failed'
+            WHEN image_state IS NULL
+                OR image_state = 'unused' THEN 'no_sbom'
+            ELSE 'processing'
+        END AS sbom_status
+    FROM
+        vulnerability_data
+),
 summary_data AS (
     SELECT
         id,
@@ -742,7 +757,9 @@ summary_data AS (
         sbom_processing_started_at,
         COUNT(*) OVER () AS total_count
     FROM
-        vulnerability_data
+        sbom_status_data
+    WHERE ($13::TEXT[] IS NULL
+        OR sbom_status = ANY ($13::TEXT[]))
 )
 SELECT
     id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
@@ -864,6 +881,7 @@ type ListVulnerabilitySummariesParams struct {
 	ImageTag      *string
 	RiskTiers     []int32
 	HasKev        *bool
+	SbomStatuses  []string
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -914,6 +932,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.ImageTag,
 		arg.RiskTiers,
 		arg.HasKev,
+		arg.SbomStatuses,
 	)
 	if err != nil {
 		return nil, err

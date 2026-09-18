@@ -276,6 +276,8 @@ message ListVulnerabilitySummariesRequest {
   int32 offset = 3;
   optional OrderBy order_by = 4;
   optional google.protobuf.Timestamp since = 5;
+  // SBOM status filter. Multiple values use OR semantics.
+  repeated SbomStatus sbom_statuses = 6;
 }
 
 message ListVulnerabilitySummariesResponse {

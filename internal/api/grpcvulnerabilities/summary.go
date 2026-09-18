@@ -34,6 +34,10 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
+	sbomStatuses, err := sbomStatusNamesFromFilter(request.GetSbomStatuses())
+	if err != nil {
+		return nil, err
+	}
 
 	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
@@ -44,6 +48,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		ImageTag:      request.GetFilter().ImageTag,
 		RiskTiers:     riskTiers,
 		HasKev:        request.GetFilter().HasKev,
+		SbomStatuses:  sbomStatuses,
 		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
 		Limit:         limit,
 		Offset:        offset,
