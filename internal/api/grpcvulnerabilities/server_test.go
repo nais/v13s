@@ -2537,7 +2537,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 
 	t.Run("returns enriched CVE fields", func(t *testing.T) {
-		const cveID = "CVE-1"
+		const cveID = "CWE-1-1"
 
 		epssScore := 0.75
 		epssPercentile := 0.92
