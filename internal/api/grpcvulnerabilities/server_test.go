@@ -2517,7 +2517,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		vulnsPerWorkload:      2,
 	}
 
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
 	t.Run("list all CVE summaries", func(t *testing.T) {
@@ -2534,6 +2534,45 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			// Each CVE should affect 4 workloads (2 clusters * 2 namespaces * 1 workload per CVE)
 			assert.Equal(t, int32(4), cveSummary.AffectedWorkloads)
 		}
+	})
+
+	t.Run("returns enriched CVE fields", func(t *testing.T) {
+		const cveID = "CWE-1-1"
+
+		epssScore := 0.75
+		epssPercentile := 0.92
+		_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+			CveIds:             []string{cveID},
+			KnownRansomwareUse: []bool{true},
+		})
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, `UPDATE cve SET epss_score = $1, epss_percentile = $2 WHERE cve_id = $3`, epssScore, epssPercentile, cveID)
+		require.NoError(t, err)
+		_, err = db.UpdateCvePriority(ctx)
+		require.NoError(t, err)
+
+		summaries, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		require.NoError(t, err)
+
+		var summaryCve *vulnerabilities.Cve
+		for _, summary := range summaries.Nodes {
+			if summary.GetCve().GetId() == cveID {
+				summaryCve = summary.GetCve()
+				break
+			}
+		}
+		require.NotNil(t, summaryCve)
+
+		details, err := client.GetCve(ctx, cveID)
+		require.NoError(t, err)
+		require.NotNil(t, details.GetCve())
+
+		assert.Equal(t, details.GetCve().GetId(), summaryCve.GetId())
+		assert.Equal(t, details.GetCve().GetPriority(), summaryCve.GetPriority())
+		assert.InDelta(t, details.GetCve().GetEpssScore(), summaryCve.GetEpssScore(), 0.0001)
+		assert.InDelta(t, details.GetCve().GetEpssPercentile(), summaryCve.GetEpssPercentile(), 0.0001)
+		assert.Equal(t, details.GetCve().GetHasKevEntry(), summaryCve.GetHasKevEntry())
+		assert.Equal(t, details.GetCve().GetKnownRansomwareUse(), summaryCve.GetKnownRansomwareUse())
 	})
 
 	t.Run("ordering by affected workloads", func(t *testing.T) {
