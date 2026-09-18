@@ -120,6 +120,21 @@ vulnerability_data AS (
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
 ),
+sbom_status_data AS (
+    SELECT
+        *,
+        CASE
+            WHEN workload_state IN ('failed', 'unrecoverable') THEN 'failed'
+            WHEN workload_state = 'no_attestation' THEN 'no_sbom'
+            WHEN image_state = 'updated' THEN 'ready'
+            WHEN image_state = 'failed' THEN 'failed'
+            WHEN image_state IS NULL
+                OR image_state = 'unused' THEN 'no_sbom'
+            ELSE 'processing'
+        END AS sbom_status
+    FROM
+        vulnerability_data
+),
 summary_data AS (
     SELECT
         id,
@@ -193,7 +208,9 @@ summary_data AS (
         sbom_processing_started_at,
         COUNT(*) OVER () AS total_count
     FROM
-        vulnerability_data
+        sbom_status_data
+    WHERE (sqlc.narg('sbom_statuses')::TEXT[] IS NULL
+        OR sbom_status = ANY (sqlc.narg('sbom_statuses')::TEXT[]))
 )
 SELECT
     *

@@ -74,6 +74,8 @@ message Filter {
   repeated Priority priorities = 9;
   // KEV filter. When set, only workloads/findings with a matching KEV status are returned.
   optional bool has_kev = 10;
+  // SBOM status filter. Multiple values use OR semantics.
+  repeated SbomStatus sbom_statuses = 11;
 }
 
 message OrderBy {

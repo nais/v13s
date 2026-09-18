@@ -39,3 +39,17 @@ func TestKevFilterPreservesBooleanValue(t *testing.T) {
 		})
 	}
 }
+
+func TestSbomStatusFilterAcceptsMultipleStatuses(t *testing.T) {
+	filter := GetFilter(
+		SbomStatusFilter(SbomStatus_SBOM_STATUS_READY, SbomStatus_SBOM_STATUS_PROCESSING),
+	)
+
+	if len(filter.GetSbomStatuses()) != 2 {
+		t.Fatalf("expected 2 SBOM statuses, got %d", len(filter.GetSbomStatuses()))
+	}
+	if filter.GetSbomStatuses()[0] != SbomStatus_SBOM_STATUS_READY ||
+		filter.GetSbomStatuses()[1] != SbomStatus_SBOM_STATUS_PROCESSING {
+		t.Fatalf("unexpected SBOM statuses: %#v", filter.GetSbomStatuses())
+	}
+}

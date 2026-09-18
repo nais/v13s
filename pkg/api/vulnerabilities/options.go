@@ -251,6 +251,15 @@ func KevFilter(hasKev bool) Option {
 	})
 }
 
+func SbomStatusFilter(statuses ...SbomStatus) Option {
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.SbomStatuses = append([]SbomStatus(nil), statuses...)
+	})
+}
+
 func IncludeSuppressed() Option {
 	return newFuncOption(func(o *Options) {
 		o.IncludeSuppressed = true

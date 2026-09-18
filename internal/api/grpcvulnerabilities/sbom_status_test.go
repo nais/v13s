@@ -6,6 +6,9 @@ import (
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestDeriveSbomStatus(t *testing.T) {
@@ -128,6 +131,62 @@ func TestWorstCase(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.a.String()+"_vs_"+tc.b.String(), func(t *testing.T) {
 			got := worstCase(tc.a, tc.b)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestSbomStatusNamesFromFilter(t *testing.T) {
+	tests := []struct {
+		name        string
+		filter      *vulnerabilities.Filter
+		want        []string
+		wantErrCode codes.Code
+	}{
+		{
+			name:   "nil filter",
+			filter: nil,
+		},
+		{
+			name:   "empty statuses",
+			filter: &vulnerabilities.Filter{},
+		},
+		{
+			name: "supported statuses",
+			filter: &vulnerabilities.Filter{SbomStatuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+				vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+				vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+				vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+			}},
+			want: []string{"processing", "ready", "no_sbom", "failed"},
+		},
+		{
+			name: "unspecified status",
+			filter: &vulnerabilities.Filter{SbomStatuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED,
+			}},
+			wantErrCode: codes.InvalidArgument,
+		},
+		{
+			name: "unknown status",
+			filter: &vulnerabilities.Filter{SbomStatuses: []vulnerabilities.SbomStatus{
+				vulnerabilities.SbomStatus(99),
+			}},
+			wantErrCode: codes.InvalidArgument,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := sbomStatusNamesFromFilter(tc.filter)
+			if tc.wantErrCode != codes.OK {
+				require.Error(t, err)
+				assert.Equal(t, tc.wantErrCode, status.Code(err))
+				return
+			}
+
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
 	}

@@ -4,6 +4,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -13,6 +15,29 @@ var sbomStatusPriority = map[vulnerabilities.SbomStatus]int{
 	vulnerabilities.SbomStatus_SBOM_STATUS_READY:       1,
 	vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:     2,
 	vulnerabilities.SbomStatus_SBOM_STATUS_FAILED:      3,
+}
+
+var sbomStatusNames = map[vulnerabilities.SbomStatus]string{
+	vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING: "processing",
+	vulnerabilities.SbomStatus_SBOM_STATUS_READY:      "ready",
+	vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM:    "no_sbom",
+	vulnerabilities.SbomStatus_SBOM_STATUS_FAILED:     "failed",
+}
+
+func sbomStatusNamesFromFilter(filter *vulnerabilities.Filter) ([]string, error) {
+	if filter == nil || len(filter.GetSbomStatuses()) == 0 {
+		return nil, nil
+	}
+
+	statuses := make([]string, 0, len(filter.GetSbomStatuses()))
+	for _, sbomStatus := range filter.GetSbomStatuses() {
+		name, ok := sbomStatusNames[sbomStatus]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid SBOM status: %s", sbomStatus)
+		}
+		statuses = append(statuses, name)
+	}
+	return statuses, nil
 }
 
 func worstCase(a, b vulnerabilities.SbomStatus) vulnerabilities.SbomStatus {

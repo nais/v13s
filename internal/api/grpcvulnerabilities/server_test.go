@@ -778,6 +778,137 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 	})
 }
 
+func TestServer_ListVulnerabilitySummaries_SbomStatusFilter(t *testing.T) {
+	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{}, true)
+	defer cleanup()
+
+	type workloadState struct {
+		name          string
+		workloadState sql.WorkloadState
+		imageState    sql.ImageState
+		status        vulnerabilities.SbomStatus
+	}
+
+	workloads := []workloadState{
+		{
+			name:          "failed",
+			workloadState: sql.WorkloadStateFailed,
+			imageState:    sql.ImageStateUpdated,
+			status:        vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+		},
+		{
+			name:          "no-sbom",
+			workloadState: sql.WorkloadStateNoAttestation,
+			imageState:    sql.ImageStateInitialized,
+			status:        vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM,
+		},
+		{
+			name:          "processing",
+			workloadState: sql.WorkloadStateProcessing,
+			imageState:    sql.ImageStateInitialized,
+			status:        vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+		},
+		{
+			name:          "ready",
+			workloadState: sql.WorkloadStateUpdated,
+			imageState:    sql.ImageStateUpdated,
+			status:        vulnerabilities.SbomStatus_SBOM_STATUS_READY,
+		},
+	}
+
+	for _, workload := range workloads {
+		imageName := "image-" + workload.name
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
+			Name:     imageName,
+			Tag:      "v1",
+			Metadata: map[string]string{},
+		}))
+		id, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name:         workload.name,
+			WorkloadType: "app",
+			Namespace:    "namespace-1",
+			Cluster:      "cluster-1",
+			ImageName:    imageName,
+			ImageTag:     "v1",
+		})
+		require.NoError(t, err)
+		require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{
+			ID:    id,
+			State: workload.workloadState,
+		}))
+		_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+			Name:  imageName,
+			Tag:   "v1",
+			State: workload.imageState,
+		})
+		require.NoError(t, err)
+	}
+
+	t.Run("no filter returns every workload", func(t *testing.T) {
+		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.Limit(10))
+		require.NoError(t, err)
+		assert.Len(t, resp.GetNodes(), len(workloads))
+		assert.Equal(t, int64(len(workloads)), resp.GetPageInfo().GetTotalCount())
+	})
+
+	for _, workload := range workloads {
+		t.Run(workload.status.String(), func(t *testing.T) {
+			resp, err := client.ListVulnerabilitySummaries(
+				ctx,
+				vulnerabilities.SbomStatusFilter(workload.status),
+				vulnerabilities.Limit(10),
+			)
+			require.NoError(t, err)
+			require.Len(t, resp.GetNodes(), 1)
+			assert.Equal(t, int64(1), resp.GetPageInfo().GetTotalCount())
+			assert.Equal(t, workload.name, resp.GetNodes()[0].GetWorkload().GetName())
+			assert.Equal(t, workload.status, resp.GetNodes()[0].GetSbomStatus().GetStatus())
+		})
+	}
+
+	t.Run("multiple statuses filter before pagination", func(t *testing.T) {
+		firstPage, err := client.ListVulnerabilitySummaries(
+			ctx,
+			vulnerabilities.SbomStatusFilter(
+				vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+				vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+			),
+			vulnerabilities.Order(vulnerabilities.OrderByWorkload, vulnerabilities.Direction_ASC),
+			vulnerabilities.Limit(1),
+		)
+		require.NoError(t, err)
+		require.Len(t, firstPage.GetNodes(), 1)
+		assert.Equal(t, int64(2), firstPage.GetPageInfo().GetTotalCount())
+		assert.True(t, firstPage.GetPageInfo().GetHasNextPage())
+		assert.Equal(t, "failed", firstPage.GetNodes()[0].GetWorkload().GetName())
+
+		secondPage, err := client.ListVulnerabilitySummaries(
+			ctx,
+			vulnerabilities.SbomStatusFilter(
+				vulnerabilities.SbomStatus_SBOM_STATUS_FAILED,
+				vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
+			),
+			vulnerabilities.Order(vulnerabilities.OrderByWorkload, vulnerabilities.Direction_ASC),
+			vulnerabilities.Limit(1),
+			vulnerabilities.Offset(1),
+		)
+		require.NoError(t, err)
+		require.Len(t, secondPage.GetNodes(), 1)
+		assert.Equal(t, int64(2), secondPage.GetPageInfo().GetTotalCount())
+		assert.True(t, secondPage.GetPageInfo().GetHasPreviousPage())
+		assert.Equal(t, "processing", secondPage.GetNodes()[0].GetWorkload().GetName())
+	})
+
+	t.Run("unspecified status is rejected", func(t *testing.T) {
+		_, err := client.ListVulnerabilitySummaries(
+			ctx,
+			vulnerabilities.SbomStatusFilter(vulnerabilities.SbomStatus_SBOM_STATUS_UNSPECIFIED),
+		)
+		require.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	})
+}
+
 func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
