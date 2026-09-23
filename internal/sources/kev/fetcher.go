@@ -5,20 +5,27 @@ import (
 	"fmt"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/policy"
 	"github.com/sirupsen/logrus"
 )
 
 type Fetcher struct {
-	client  *Client
-	querier sql.Querier
-	log     *logrus.Entry
+	client        *Client
+	querier       sql.Querier
+	reprioritizer *policy.Reprioritizer
+	log           *logrus.Entry
 }
 
 func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
+	evaluator, err := policy.NewPriorityEvaluator()
+	if err != nil {
+		panic(fmt.Errorf("compiling default priority rules: %w", err))
+	}
 	return &Fetcher{
-		client:  client,
-		querier: querier,
-		log:     log,
+		client:        client,
+		querier:       querier,
+		reprioritizer: policy.NewReprioritizer(querier, evaluator),
+		log:           log,
 	}
 }
 
@@ -65,7 +72,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return fmt.Errorf("bulk updating KEV data: %w", err)
 	}
 
-	prioritiesUpdated, err := f.querier.UpdateCvePriority(ctx)
+	prioritiesUpdated, err := f.reprioritizer.ReprioritizeAll(ctx)
 	if err != nil {
 		return fmt.Errorf("updating cve priority after KEV sync: %w", err)
 	}

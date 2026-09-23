@@ -1160,59 +1160,45 @@ FROM
 WHERE
     alias = @alias;
 
--- name: UpdateCvePriority :execrows
-UPDATE
+-- name: GetCvesForPriorityRecompute :many
+SELECT
+    cve_id,
+    severity,
+    epss_score,
+    epss_percentile,
+    has_kev_entry,
+    known_ransomware_use,
+    priority
+FROM
     cve
-SET
-    priority = CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END
-WHERE
-    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END;
+ORDER BY
+    cve_id;
 
--- name: UpdateCvePriorityForCves :execrows
-UPDATE
+-- name: GetCvesForPriorityRecomputeByIDs :many
+SELECT
+    cve_id,
+    severity,
+    epss_score,
+    epss_percentile,
+    has_kev_entry,
+    known_ransomware_use,
+    priority
+FROM
     cve
-SET
-    priority = CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END
 WHERE
     cve_id = ANY (@cve_ids::TEXT[])
-    AND priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END;
+ORDER BY
+    cve_id;
+
+-- name: BulkUpdateCvePriorities :execrows
+UPDATE
+    cve
+SET
+    priority = data.priority
+FROM (
+    SELECT
+        unnest(@cve_ids::TEXT[]) AS cve_id,
+        unnest(@priorities::INT[]) AS priority) AS data
+WHERE
+    cve.cve_id = data.cve_id
+    AND cve.priority IS DISTINCT FROM data.priority;

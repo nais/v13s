@@ -14,6 +14,7 @@ import (
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/policy"
 	"github.com/nais/v13s/internal/sources/kev"
 	"github.com/nais/v13s/internal/sources/osv"
 	"github.com/sirupsen/logrus"
@@ -36,13 +37,13 @@ type envConfig struct {
 }
 
 type prioritySyncer struct {
-	querier sql.Querier
-	log     *logrus.Entry
+	reprioritizer *policy.Reprioritizer
+	log           *logrus.Entry
 }
 
 func (p prioritySyncer) Sync(ctx context.Context) error {
 	p.log.Info("recomputing CVE priorities from severity, EPSS and KEV data")
-	updated, err := p.querier.UpdateCvePriority(ctx)
+	updated, err := p.reprioritizer.ReprioritizeAll(ctx)
 	if err != nil {
 		return fmt.Errorf("updating cve priority: %w", err)
 	}
@@ -77,9 +78,13 @@ var sources = []source{
 		name:        "priority",
 		description: "recompute CVE priorities from data already in the database",
 		newSyncer: func(cfg *envConfig, pool *pgxpool.Pool, log *logrus.Logger) syncer {
+			evaluator, err := policy.NewPriorityEvaluator()
+			if err != nil {
+				log.WithError(err).Fatal("compiling default priority rules")
+			}
 			return prioritySyncer{
-				querier: sql.New(pool),
-				log:     logrus.NewEntry(log),
+				reprioritizer: policy.NewReprioritizer(sql.New(pool), evaluator),
+				log:           logrus.NewEntry(log),
 			}
 		},
 	},

@@ -10,6 +10,33 @@ import (
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
+const bulkUpdateCvePriorities = `-- name: BulkUpdateCvePriorities :execrows
+UPDATE
+    cve
+SET
+    priority = data.priority
+FROM (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::INT[]) AS priority) AS data
+WHERE
+    cve.cve_id = data.cve_id
+    AND cve.priority IS DISTINCT FROM data.priority
+`
+
+type BulkUpdateCvePrioritiesParams struct {
+	CveIds     []string
+	Priorities []int32
+}
+
+func (q *Queries) BulkUpdateCvePriorities(ctx context.Context, arg BulkUpdateCvePrioritiesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkUpdateCvePriorities, arg.CveIds, arg.Priorities)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countSuppressedVulnerabilities = `-- name: CountSuppressedVulnerabilities :one
 SELECT
     COUNT(*) AS total
@@ -227,6 +254,114 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.Priority,
 	)
 	return &i, err
+}
+
+const getCvesForPriorityRecompute = `-- name: GetCvesForPriorityRecompute :many
+SELECT
+    cve_id,
+    severity,
+    epss_score,
+    epss_percentile,
+    has_kev_entry,
+    known_ransomware_use,
+    priority
+FROM
+    cve
+ORDER BY
+    cve_id
+`
+
+type GetCvesForPriorityRecomputeRow struct {
+	CveID              string
+	Severity           int32
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	Priority           *int32
+}
+
+func (q *Queries) GetCvesForPriorityRecompute(ctx context.Context) ([]*GetCvesForPriorityRecomputeRow, error) {
+	rows, err := q.db.Query(ctx, getCvesForPriorityRecompute)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetCvesForPriorityRecomputeRow{}
+	for rows.Next() {
+		var i GetCvesForPriorityRecomputeRow
+		if err := rows.Scan(
+			&i.CveID,
+			&i.Severity,
+			&i.EpssScore,
+			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
+			&i.Priority,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCvesForPriorityRecomputeByIDs = `-- name: GetCvesForPriorityRecomputeByIDs :many
+SELECT
+    cve_id,
+    severity,
+    epss_score,
+    epss_percentile,
+    has_kev_entry,
+    known_ransomware_use,
+    priority
+FROM
+    cve
+WHERE
+    cve_id = ANY ($1::TEXT[])
+ORDER BY
+    cve_id
+`
+
+type GetCvesForPriorityRecomputeByIDsRow struct {
+	CveID              string
+	Severity           int32
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	Priority           *int32
+}
+
+func (q *Queries) GetCvesForPriorityRecomputeByIDs(ctx context.Context, cveIds []string) ([]*GetCvesForPriorityRecomputeByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getCvesForPriorityRecomputeByIDs, cveIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetCvesForPriorityRecomputeByIDsRow{}
+	for rows.Next() {
+		var i GetCvesForPriorityRecomputeByIDsRow
+		if err := rows.Scan(
+			&i.CveID,
+			&i.Severity,
+			&i.EpssScore,
+			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
+			&i.Priority,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getEarliestSeveritySinceForVulnerability = `-- name: GetEarliestSeveritySinceForVulnerability :one
@@ -1975,79 +2110,4 @@ func (q *Queries) SuppressVulnerability(ctx context.Context, arg SuppressVulnera
 		arg.ReasonText,
 	)
 	return err
-}
-
-const updateCvePriority = `-- name: UpdateCvePriority :execrows
-UPDATE
-    cve
-SET
-    priority = CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END
-WHERE
-    priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END
-`
-
-func (q *Queries) UpdateCvePriority(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, updateCvePriority)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateCvePriorityForCves = `-- name: UpdateCvePriorityForCves :execrows
-UPDATE
-    cve
-SET
-    priority = CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END
-WHERE
-    cve_id = ANY ($1::TEXT[])
-    AND priority IS DISTINCT FROM CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END
-`
-
-func (q *Queries) UpdateCvePriorityForCves(ctx context.Context, cveIds []string) (int64, error) {
-	result, err := q.db.Exec(ctx, updateCvePriorityForCves, cveIds)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }

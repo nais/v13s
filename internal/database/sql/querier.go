@@ -18,6 +18,7 @@ type Querier interface {
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
+	BulkUpdateCvePriorities(ctx context.Context, arg BulkUpdateCvePrioritiesParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
 	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
@@ -31,6 +32,8 @@ type Querier interface {
 	GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID string) ([]string, error)
 	GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
+	GetCvesForPriorityRecompute(ctx context.Context) ([]*GetCvesForPriorityRecomputeRow, error)
+	GetCvesForPriorityRecomputeByIDs(ctx context.Context, cveIds []string) ([]*GetCvesForPriorityRecomputeByIDsRow, error)
 	GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesForCveAndWorkloads(ctx context.Context, arg GetImagesForCveAndWorkloadsParams) ([]*GetImagesForCveAndWorkloadsRow, error)
@@ -79,8 +82,6 @@ type Querier interface {
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	TryAdvisoryLock(ctx context.Context, key int64) (bool, error)
-	UpdateCvePriority(ctx context.Context) (int64, error)
-	UpdateCvePriorityForCves(ctx context.Context, cveIds []string) (int64, error)
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) (int64, error)
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
