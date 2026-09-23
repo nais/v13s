@@ -58,6 +58,15 @@ enum SbomStatus {
   SBOM_STATUS_FAILED = 5;
 }
 
+enum HashVerificationStatus {
+  HASH_VERIFICATION_STATUS_UNSPECIFIED = 0;
+  HASH_VERIFICATION_STATUS_PASSED = 1;
+  HASH_VERIFICATION_STATUS_FAILED = 2;
+  HASH_VERIFICATION_STATUS_UNKNOWN = 3;
+  HASH_VERIFICATION_STATUS_NO_COMPONENT_HASH = 4;
+  HASH_VERIFICATION_STATUS_NO_REGISTRY_HASH = 5;
+}
+
 // -------------------- Core Messages --------------------
 
 message Filter {
@@ -224,6 +233,16 @@ message MeanTimeToFixTrendPoint {
   int32 workload_count = 7;
 }
 
+message ComponentIntegrity {
+  Workload workload_ref = 1;
+  string package = 2;
+  HashVerificationStatus status = 3;
+  map<string, string> component_hashes = 4;
+  map<string, string> registry_hashes = 5;
+  optional string resolver = 6;
+  optional google.protobuf.Timestamp resolved_at = 7;
+}
+
 message SuppressedVulnerability {
   string image_name = 1;
   string cve_id = 2;
@@ -294,6 +313,19 @@ message ListSuppressedVulnerabilitiesRequest {
 
 message ListSuppressedVulnerabilitiesResponse {
   repeated SuppressedVulnerability nodes = 1;
+  PageInfo page_info = 2;
+}
+
+message ListComponentIntegrityRequest {
+  Filter filter = 1;
+  repeated HashVerificationStatus statuses = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+  optional OrderBy order_by = 5;
+}
+
+message ListComponentIntegrityResponse {
+  repeated ComponentIntegrity nodes = 1;
   PageInfo page_info = 2;
 }
 
@@ -521,6 +553,8 @@ service Vulnerabilities {
   rpc ListSuppressedVulnerabilities(ListSuppressedVulnerabilitiesRequest) returns (ListSuppressedVulnerabilitiesResponse);
 
   rpc ListSeverityVulnerabilitiesSince(ListSeverityVulnerabilitiesSinceRequest) returns (ListSeverityVulnerabilitiesSinceResponse);
+
+  rpc ListComponentIntegrity(ListComponentIntegrityRequest) returns (ListComponentIntegrityResponse);
 
   rpc ListWorkloadsForVulnerabilityById(ListWorkloadsForVulnerabilityByIdRequest) returns (ListWorkloadsForVulnerabilityByIdResponse);
 
