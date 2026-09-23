@@ -11,7 +11,12 @@ ORDER BY
     v.package;
 
 -- name: BulkUpsertPackageRegistryHashes :execrows
-INSERT INTO package_registry_hashes(package, registry_hash, hash_algorithm, resolver, resolved_at)
+INSERT INTO package_registry_hashes(
+    package,
+    registry_hash,
+    hash_algorithm,
+    resolver,
+    resolved_at)
 SELECT
     unnest(@packages::TEXT[]),
     unnest(@registry_hashes::TEXT[]),
@@ -35,4 +40,6 @@ SELECT
 FROM
     package_registry_hashes
 WHERE
-    package = ANY (@packages::TEXT[]);
+    package = ANY (@packages::TEXT[])
+ORDER BY
+    package;

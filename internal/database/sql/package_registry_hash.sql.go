@@ -8,7 +8,12 @@ import (
 )
 
 const bulkUpsertPackageRegistryHashes = `-- name: BulkUpsertPackageRegistryHashes :execrows
-INSERT INTO package_registry_hashes(package, registry_hash, hash_algorithm, resolver, resolved_at)
+INSERT INTO package_registry_hashes(
+    package,
+    registry_hash,
+    hash_algorithm,
+    resolver,
+    resolved_at)
 SELECT
     unnest($1::TEXT[]),
     unnest($2::TEXT[]),
@@ -54,6 +59,8 @@ FROM
     package_registry_hashes
 WHERE
     package = ANY ($1::TEXT[])
+ORDER BY
+    package
 `
 
 func (q *Queries) GetPackageRegistryHashes(ctx context.Context, packages []string) ([]*PackageRegistryHash, error) {

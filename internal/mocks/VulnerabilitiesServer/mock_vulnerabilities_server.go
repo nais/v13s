@@ -1180,7 +1180,8 @@ func (_c *MockVulnerabilitiesServer_mustEmbedUnimplementedVulnerabilitiesServer_
 func NewMockVulnerabilitiesServer(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockVulnerabilitiesServer {
+},
+) *MockVulnerabilitiesServer {
 	mock := &MockVulnerabilitiesServer{}
 	mock.Mock.Test(t)
 

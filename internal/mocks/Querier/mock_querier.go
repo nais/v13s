@@ -4515,7 +4515,8 @@ func (_c *MockQuerier_UpsertWorkload_Call) RunAndReturn(run func(context.Context
 func NewMockQuerier(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockQuerier {
+},
+) *MockQuerier {
 	mock := &MockQuerier{}
 	mock.Mock.Test(t)
 
