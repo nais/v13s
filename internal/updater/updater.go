@@ -16,6 +16,7 @@ import (
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
+	"github.com/nais/v13s/internal/policy"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/nais/v13s/internal/sources/kev"
 	"github.com/nais/v13s/internal/sources/osv"
@@ -48,6 +49,7 @@ type Updater struct {
 	runtimeConfig                RuntimeConfig
 	lifecycle                    updaterLifecycle
 	cycle                        updaterCycle
+	priorityEvaluator            *policy.PriorityEvaluator
 }
 
 type updaterLifecycle struct {
@@ -71,6 +73,12 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 	}
 
 	querier := sql.New(pool)
+
+	priorityEvaluator, err := policy.NewPriorityEvaluator()
+	if err != nil {
+		panic(fmt.Errorf("compiling default priority rules: %w", err))
+	}
+
 	u := &Updater{
 		pool:                         pool,
 		querier:                      querier,
@@ -80,6 +88,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		kevFetcher:                   kev.NewFetcherWithClient(kev.NewClientWithURL(kevCfg.CatalogURL), querier, log),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
 		runtimeConfig:                runtimeCfg,
+		priorityEvaluator:            priorityEvaluator,
 	}
 	u.cycle.step = u.runResyncCycle
 	return u
@@ -529,7 +538,7 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			cveIDs = append(cveIDs, c.CveID)
 		}
 
-		updated, err := u.querier.UpdateCvePriorityForCves(ctx, cveIDs)
+		updated, err := u.reprioritizeCves(ctx, cveIDs)
 		if err != nil {
 			return fmt.Errorf("updating cve priority after upserting CVEs: %w", err)
 		}
@@ -566,6 +575,46 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 
 	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
 	return nil
+}
+
+// reprioritizeCves recomputes cve.priority for cveIDs using the CEL policy
+// evaluator instead of the SQL CASE WHEN in UpdateCvePriorityForCves. It
+// returns the number of rows whose priority actually changed.
+func (u *Updater) reprioritizeCves(ctx context.Context, cveIDs []string) (int64, error) {
+	var updated int64
+	for _, cveID := range cveIDs {
+		cve, err := u.querier.GetCve(ctx, cveID)
+		if err != nil {
+			return updated, fmt.Errorf("fetching cve %s: %w", cveID, err)
+		}
+
+		input := policy.PriorityInput{
+			Severity:           cve.Severity,
+			HasKevEntry:        cve.HasKevEntry,
+			KnownRansomwareUse: cve.KnownRansomwareUse,
+		}
+		if cve.EpssScore != nil {
+			input.EpssScore = *cve.EpssScore
+		}
+		if cve.EpssPercentile != nil {
+			input.EpssPercentile = *cve.EpssPercentile
+		}
+
+		tier, err := u.priorityEvaluator.Evaluate(input)
+		if err != nil {
+			return updated, fmt.Errorf("evaluating priority for cve %s: %w", cveID, err)
+		}
+
+		if cve.Priority != nil && *cve.Priority == tier {
+			continue
+		}
+
+		if _, err := u.pool.Exec(ctx, `UPDATE cve SET priority = $1 WHERE cve_id = $2`, tier, cveID); err != nil {
+			return updated, fmt.Errorf("writing priority for cve %s: %w", cveID, err)
+		}
+		updated++
+	}
+	return updated, nil
 }
 
 func (u *Updater) runExec(
