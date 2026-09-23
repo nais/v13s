@@ -327,6 +327,14 @@ type Image struct {
 	SbomProcessingStartedAt pgtype.Timestamptz
 }
 
+type PackageRegistryHash struct {
+	Package       string
+	RegistryHash  string
+	HashAlgorithm string
+	Resolver      string
+	ResolvedAt    pgtype.Timestamptz
+}
+
 type RiverJob struct {
 	ID           int64
 	State        RiverJobState

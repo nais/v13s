@@ -20,6 +20,7 @@ type Querier interface {
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
 	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
+	BulkUpsertPackageRegistryHashes(ctx context.Context, arg BulkUpsertPackageRegistryHashesParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
@@ -37,6 +38,8 @@ type Querier interface {
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
 	GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error)
+	GetPackageRegistryHashes(ctx context.Context, packages []string) ([]*PackageRegistryHash, error)
+	GetPackagesNeedingRegistryHashResolution(ctx context.Context) ([]string, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
 	// apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
 	GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error)

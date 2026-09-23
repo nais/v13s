@@ -27,6 +27,12 @@ type PriorityInput struct {
 	EpssPercentile     float64
 	HasKevEntry        bool
 	KnownRansomwareUse bool
+
+	// DeclaredHash is what the SBOM claims, RegistryHash is what the package
+	// registry actually published. RegistryHash is "" until a resolver fills
+	// it in; the rule below stays dormant until then.
+	DeclaredHash string
+	RegistryHash string
 }
 
 type priorityRule struct {
@@ -39,6 +45,11 @@ type priorityRule struct {
 // defaultPriorityRules mirrors UpdateCvePriorityForCves rule for rule; keep
 // the two in sync, priority_test.go checks them against the same cases.
 var defaultPriorityRules = []*priorityRule{
+	{
+		name:       "component-hash-mismatch",
+		expression: `registry_hash != "" && declared_hash != registry_hash`,
+		tier:       PriorityHigh,
+	},
 	{
 		name:       "kev-or-ransomware-or-high-epss",
 		expression: `has_kev_entry || known_ransomware_use || epss_percentile >= 0.95 || epss_score >= 0.10`,
@@ -68,6 +79,8 @@ func newPriorityEvaluator(rules []*priorityRule) (*PriorityEvaluator, error) {
 		cel.Variable("epss_percentile", cel.DoubleType),
 		cel.Variable("has_kev_entry", cel.BoolType),
 		cel.Variable("known_ransomware_use", cel.BoolType),
+		cel.Variable("declared_hash", cel.StringType),
+		cel.Variable("registry_hash", cel.StringType),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("building cel environment: %w", err)
@@ -103,6 +116,8 @@ func (e *PriorityEvaluator) Evaluate(input PriorityInput) (int32, error) {
 		"epss_percentile":      input.EpssPercentile,
 		"has_kev_entry":        input.HasKevEntry,
 		"known_ransomware_use": input.KnownRansomwareUse,
+		"declared_hash":        input.DeclaredHash,
+		"registry_hash":        input.RegistryHash,
 	}
 
 	for _, rule := range e.rules {

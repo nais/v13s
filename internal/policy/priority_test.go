@@ -78,6 +78,21 @@ func TestPriorityEvaluator_MatchesSQLLogic(t *testing.T) {
 			input: PriorityInput{Severity: 3, EpssPercentile: 0, EpssScore: 0, HasKevEntry: true},
 			want:  PriorityHigh,
 		},
+		{
+			name:  "declared hash alone, no registry hash yet, does not read as a mismatch",
+			input: PriorityInput{Severity: 3, DeclaredHash: "abc123"},
+			want:  PriorityMonitor,
+		},
+		{
+			name:  "matching declared and registry hash is not a mismatch",
+			input: PriorityInput{Severity: 3, DeclaredHash: "abc123", RegistryHash: "abc123"},
+			want:  PriorityMonitor,
+		},
+		{
+			name:  "differing declared and registry hash is high",
+			input: PriorityInput{Severity: 3, DeclaredHash: "abc123", RegistryHash: "def456"},
+			want:  PriorityHigh,
+		},
 	}
 
 	for _, tt := range tests {

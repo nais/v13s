@@ -593,6 +593,63 @@ func (_c *MockQuerier_BulkUpdateKevData_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// BulkUpsertPackageRegistryHashes provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BulkUpsertPackageRegistryHashes(ctx context.Context, arg sql.BulkUpsertPackageRegistryHashesParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkUpsertPackageRegistryHashes")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkUpsertPackageRegistryHashesParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BulkUpsertPackageRegistryHashesParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.BulkUpsertPackageRegistryHashesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_BulkUpsertPackageRegistryHashes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkUpsertPackageRegistryHashes'
+type MockQuerier_BulkUpsertPackageRegistryHashes_Call struct {
+	*mock.Call
+}
+
+// BulkUpsertPackageRegistryHashes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.BulkUpsertPackageRegistryHashesParams
+func (_e *MockQuerier_Expecter) BulkUpsertPackageRegistryHashes(ctx interface{}, arg interface{}) *MockQuerier_BulkUpsertPackageRegistryHashes_Call {
+	return &MockQuerier_BulkUpsertPackageRegistryHashes_Call{Call: _e.mock.On("BulkUpsertPackageRegistryHashes", ctx, arg)}
+}
+
+func (_c *MockQuerier_BulkUpsertPackageRegistryHashes_Call) Run(run func(ctx context.Context, arg sql.BulkUpsertPackageRegistryHashesParams)) *MockQuerier_BulkUpsertPackageRegistryHashes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.BulkUpsertPackageRegistryHashesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BulkUpsertPackageRegistryHashes_Call) Return(_a0 int64, _a1 error) *MockQuerier_BulkUpsertPackageRegistryHashes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_BulkUpsertPackageRegistryHashes_Call) RunAndReturn(run func(context.Context, sql.BulkUpsertPackageRegistryHashesParams) (int64, error)) *MockQuerier_BulkUpsertPackageRegistryHashes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountSuppressedVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) CountSuppressedVulnerabilities(ctx context.Context, arg sql.CountSuppressedVulnerabilitiesParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
@@ -1542,6 +1599,123 @@ func (_c *MockQuerier_GetLatestSummaryForImageName_Call) Return(_a0 *sql.Vulnera
 }
 
 func (_c *MockQuerier_GetLatestSummaryForImageName_Call) RunAndReturn(run func(context.Context, sql.GetLatestSummaryForImageNameParams) (*sql.VulnerabilitySummary, error)) *MockQuerier_GetLatestSummaryForImageName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPackageRegistryHashes provides a mock function with given fields: ctx, packages
+func (_m *MockQuerier) GetPackageRegistryHashes(ctx context.Context, packages []string) ([]*sql.PackageRegistryHash, error) {
+	ret := _m.Called(ctx, packages)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPackageRegistryHashes")
+	}
+
+	var r0 []*sql.PackageRegistryHash
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]*sql.PackageRegistryHash, error)); ok {
+		return rf(ctx, packages)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []*sql.PackageRegistryHash); ok {
+		r0 = rf(ctx, packages)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.PackageRegistryHash)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, packages)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetPackageRegistryHashes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPackageRegistryHashes'
+type MockQuerier_GetPackageRegistryHashes_Call struct {
+	*mock.Call
+}
+
+// GetPackageRegistryHashes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - packages []string
+func (_e *MockQuerier_Expecter) GetPackageRegistryHashes(ctx interface{}, packages interface{}) *MockQuerier_GetPackageRegistryHashes_Call {
+	return &MockQuerier_GetPackageRegistryHashes_Call{Call: _e.mock.On("GetPackageRegistryHashes", ctx, packages)}
+}
+
+func (_c *MockQuerier_GetPackageRegistryHashes_Call) Run(run func(ctx context.Context, packages []string)) *MockQuerier_GetPackageRegistryHashes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetPackageRegistryHashes_Call) Return(_a0 []*sql.PackageRegistryHash, _a1 error) *MockQuerier_GetPackageRegistryHashes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetPackageRegistryHashes_Call) RunAndReturn(run func(context.Context, []string) ([]*sql.PackageRegistryHash, error)) *MockQuerier_GetPackageRegistryHashes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPackagesNeedingRegistryHashResolution provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetPackagesNeedingRegistryHashResolution(ctx context.Context) ([]string, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPackagesNeedingRegistryHashResolution")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]string, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetPackagesNeedingRegistryHashResolution_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPackagesNeedingRegistryHashResolution'
+type MockQuerier_GetPackagesNeedingRegistryHashResolution_Call struct {
+	*mock.Call
+}
+
+// GetPackagesNeedingRegistryHashResolution is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetPackagesNeedingRegistryHashResolution(ctx interface{}) *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call {
+	return &MockQuerier_GetPackagesNeedingRegistryHashResolution_Call{Call: _e.mock.On("GetPackagesNeedingRegistryHashResolution", ctx)}
+}
+
+func (_c *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call) Run(run func(ctx context.Context)) *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call) Return(_a0 []string, _a1 error) *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call) RunAndReturn(run func(context.Context) ([]string, error)) *MockQuerier_GetPackagesNeedingRegistryHashResolution_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4341,8 +4515,7 @@ func (_c *MockQuerier_UpsertWorkload_Call) RunAndReturn(run func(context.Context
 func NewMockQuerier(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockQuerier {
+}) *MockQuerier {
 	mock := &MockQuerier{}
 	mock.Mock.Test(t)
 
