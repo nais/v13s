@@ -6,9 +6,6 @@ import (
 	vulnerabilities "github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
-// hashAlgorithms is checked in this order when looking for a shared
-// algorithm between two hash maps, matching Dependency-Track's own frontend
-// (src/shared/hashVerificationStatus.js: HASH_ALGORITHMS).
 var hashAlgorithms = []string{"md5", "sha1", "sha256", "sha512"}
 
 func normalizeHashes(hashes map[string]string) map[string]string {
