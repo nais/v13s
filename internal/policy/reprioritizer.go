@@ -30,6 +30,11 @@ type cveForPriority struct {
 	updatedAt          pgtype.Timestamptz
 }
 
+type imageRef struct {
+	name string
+	tag  string
+}
+
 // ReprioritizeAll recomputes priority for every CVE in the table.
 func (r *Reprioritizer) ReprioritizeAll(ctx context.Context) (int64, error) {
 	rows, err := r.querier.GetCvesForPriorityRecompute(ctx)
@@ -43,7 +48,14 @@ func (r *Reprioritizer) ReprioritizeAll(ctx context.Context) (int64, error) {
 			row.HasKevEntry, row.KnownRansomwareUse, row.Priority, row.UpdatedAt,
 		}
 	}
-	return r.apply(ctx, cves)
+	updated, err := r.apply(ctx, cves)
+	if err != nil {
+		return 0, err
+	}
+	if err := r.recalculateAllSummaries(ctx); err != nil {
+		return 0, err
+	}
+	return updated, nil
 }
 
 // ReprioritizeCves recomputes priority for the given CVE IDs only.
@@ -62,7 +74,50 @@ func (r *Reprioritizer) ReprioritizeCves(ctx context.Context, cveIDs []string) (
 			row.HasKevEntry, row.KnownRansomwareUse, row.Priority, row.UpdatedAt,
 		}
 	}
-	return r.apply(ctx, cves)
+	updated, err := r.apply(ctx, cves)
+	if err != nil {
+		return 0, err
+	}
+	if err := r.recalculateSummariesForCves(ctx, cveIDs); err != nil {
+		return 0, err
+	}
+	return updated, nil
+}
+
+func (r *Reprioritizer) recalculateAllSummaries(ctx context.Context) error {
+	images, err := r.querier.GetAllImageRefs(ctx)
+	if err != nil {
+		return fmt.Errorf("fetching images for summary recalculation: %w", err)
+	}
+	refs := make([]imageRef, len(images))
+	for i, image := range images {
+		refs[i] = imageRef{name: image.ImageName, tag: image.ImageTag}
+	}
+	return r.recalculateSummaries(ctx, refs)
+}
+
+func (r *Reprioritizer) recalculateSummariesForCves(ctx context.Context, cveIDs []string) error {
+	images, err := r.querier.GetImageRefsForCveIDs(ctx, cveIDs)
+	if err != nil {
+		return fmt.Errorf("fetching images for summary recalculation: %w", err)
+	}
+	refs := make([]imageRef, len(images))
+	for i, image := range images {
+		refs[i] = imageRef{name: image.ImageName, tag: image.ImageTag}
+	}
+	return r.recalculateSummaries(ctx, refs)
+}
+
+func (r *Reprioritizer) recalculateSummaries(ctx context.Context, images []imageRef) error {
+	for _, image := range images {
+		if err := r.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: image.name,
+			ImageTag:  image.tag,
+		}); err != nil {
+			return fmt.Errorf("recalculating vulnerability summary for %s:%s: %w", image.name, image.tag, err)
+		}
+	}
+	return nil
 }
 
 func (r *Reprioritizer) apply(ctx context.Context, cves []cveForPriority) (int64, error) {

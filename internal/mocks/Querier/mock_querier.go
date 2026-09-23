@@ -1139,6 +1139,64 @@ func (_c *MockQuerier_GetAliasesByCanonicalCveId_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetAllImageRefs provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetAllImageRefs(ctx context.Context) ([]*sql.GetAllImageRefsRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllImageRefs")
+	}
+
+	var r0 []*sql.GetAllImageRefsRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*sql.GetAllImageRefsRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*sql.GetAllImageRefsRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.GetAllImageRefsRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetAllImageRefs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllImageRefs'
+type MockQuerier_GetAllImageRefs_Call struct {
+	*mock.Call
+}
+
+// GetAllImageRefs is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetAllImageRefs(ctx interface{}) *MockQuerier_GetAllImageRefs_Call {
+	return &MockQuerier_GetAllImageRefs_Call{Call: _e.mock.On("GetAllImageRefs", ctx)}
+}
+
+func (_c *MockQuerier_GetAllImageRefs_Call) Run(run func(ctx context.Context)) *MockQuerier_GetAllImageRefs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetAllImageRefs_Call) Return(_a0 []*sql.GetAllImageRefsRow, _a1 error) *MockQuerier_GetAllImageRefs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetAllImageRefs_Call) RunAndReturn(run func(context.Context) ([]*sql.GetAllImageRefsRow, error)) *MockQuerier_GetAllImageRefs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCanonicalCveIdByAlias provides a mock function with given fields: ctx, alias
 func (_m *MockQuerier) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error) {
 	ret := _m.Called(ctx, alias)
@@ -1484,6 +1542,65 @@ func (_c *MockQuerier_GetImage_Call) Return(_a0 *sql.Image, _a1 error) *MockQuer
 }
 
 func (_c *MockQuerier_GetImage_Call) RunAndReturn(run func(context.Context, sql.GetImageParams) (*sql.Image, error)) *MockQuerier_GetImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetImageRefsForCveIDs provides a mock function with given fields: ctx, cveIds
+func (_m *MockQuerier) GetImageRefsForCveIDs(ctx context.Context, cveIds []string) ([]*sql.GetImageRefsForCveIDsRow, error) {
+	ret := _m.Called(ctx, cveIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetImageRefsForCveIDs")
+	}
+
+	var r0 []*sql.GetImageRefsForCveIDsRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]*sql.GetImageRefsForCveIDsRow, error)); ok {
+		return rf(ctx, cveIds)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []*sql.GetImageRefsForCveIDsRow); ok {
+		r0 = rf(ctx, cveIds)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.GetImageRefsForCveIDsRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, cveIds)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetImageRefsForCveIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetImageRefsForCveIDs'
+type MockQuerier_GetImageRefsForCveIDs_Call struct {
+	*mock.Call
+}
+
+// GetImageRefsForCveIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cveIds []string
+func (_e *MockQuerier_Expecter) GetImageRefsForCveIDs(ctx interface{}, cveIds interface{}) *MockQuerier_GetImageRefsForCveIDs_Call {
+	return &MockQuerier_GetImageRefsForCveIDs_Call{Call: _e.mock.On("GetImageRefsForCveIDs", ctx, cveIds)}
+}
+
+func (_c *MockQuerier_GetImageRefsForCveIDs_Call) Run(run func(ctx context.Context, cveIds []string)) *MockQuerier_GetImageRefsForCveIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetImageRefsForCveIDs_Call) Return(_a0 []*sql.GetImageRefsForCveIDsRow, _a1 error) *MockQuerier_GetImageRefsForCveIDs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetImageRefsForCveIDs_Call) RunAndReturn(run func(context.Context, []string) ([]*sql.GetImageRefsForCveIDsRow, error)) *MockQuerier_GetImageRefsForCveIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4402,8 +4519,7 @@ func (_c *MockQuerier_UpsertWorkload_Call) RunAndReturn(run func(context.Context
 func NewMockQuerier(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *MockQuerier {
+}) *MockQuerier {
 	mock := &MockQuerier{}
 	mock.Mock.Test(t)
 

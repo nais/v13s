@@ -447,6 +447,29 @@ ORDER BY
     v.image_tag,
     v.package;
 
+-- name: GetImageRefsForCveIDs :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    vulnerabilities v
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+WHERE
+    COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (@cve_ids::TEXT[])
+ORDER BY
+    v.image_name,
+    v.image_tag;
+
+-- name: GetAllImageRefs :many
+SELECT DISTINCT
+    image_name,
+    image_tag
+FROM
+    vulnerabilities
+ORDER BY
+    image_name,
+    image_tag;
+
 -- name: ListSuppressedVulnerabilities :many
 SELECT
     sv.*,

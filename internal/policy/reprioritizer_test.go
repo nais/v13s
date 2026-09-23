@@ -34,6 +34,13 @@ func TestReprioritizer_ReprioritizeAll_OnlyWritesChangedRows(t *testing.T) {
 		Priorities:         []int32{policy.PriorityHigh},
 		ExpectedUpdatedAts: []pgtype.Timestamptz{readAt},
 	}).Return(int64(1), nil)
+	q.EXPECT().GetAllImageRefs(mock.Anything).Return([]*sql.GetAllImageRefsRow{
+		{ImageName: "example/image", ImageTag: "latest"},
+	}, nil)
+	q.EXPECT().RecalculateVulnerabilitySummary(mock.Anything, sql.RecalculateVulnerabilitySummaryParams{
+		ImageName: "example/image",
+		ImageTag:  "latest",
+	}).Return(nil)
 
 	eval, err := policy.NewPriorityEvaluator()
 	require.NoError(t, err)
@@ -49,6 +56,7 @@ func TestReprioritizer_ReprioritizeAll_NoChangesSkipsWrite(t *testing.T) {
 	q.EXPECT().GetCvesForPriorityRecompute(mock.Anything).Return([]*sql.GetCvesForPriorityRecomputeRow{
 		{CveID: "CVE-QUIET", Priority: ptr(policy.PriorityMonitor)},
 	}, nil)
+	q.EXPECT().GetAllImageRefs(mock.Anything).Return(nil, nil)
 	// No BulkUpdateCvePriorities expectation: it must not be called.
 
 	eval, err := policy.NewPriorityEvaluator()
@@ -85,6 +93,13 @@ func TestReprioritizer_ReprioritizeCves_ScopesToGivenIDs(t *testing.T) {
 		Priorities:         []int32{policy.PriorityHigh},
 		ExpectedUpdatedAts: []pgtype.Timestamptz{readAt},
 	}).Return(int64(1), nil)
+	q.EXPECT().GetImageRefsForCveIDs(mock.Anything, []string{"CVE-A"}).Return([]*sql.GetImageRefsForCveIDsRow{
+		{ImageName: "example/image", ImageTag: "latest"},
+	}, nil)
+	q.EXPECT().RecalculateVulnerabilitySummary(mock.Anything, sql.RecalculateVulnerabilitySummaryParams{
+		ImageName: "example/image",
+		ImageTag:  "latest",
+	}).Return(nil)
 
 	eval, err := policy.NewPriorityEvaluator()
 	require.NoError(t, err)

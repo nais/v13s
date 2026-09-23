@@ -110,7 +110,8 @@ func TestFetcher_Sync_AppliesAllCatalogEntries(t *testing.T) {
 		KnownRansomwareUse: []bool{true, false},
 	}).Return(int64(2), nil)
 	updatePriority := q.EXPECT().GetCvesForPriorityRecompute(mock.Anything).Return(nil, nil)
-	mock.InOrder(bulkUpdate.Call, updatePriority.Call)
+	getImages := q.EXPECT().GetAllImageRefs(mock.Anything).Return(nil, nil)
+	mock.InOrder(bulkUpdate.Call, updatePriority.Call, getImages.Call)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
@@ -124,7 +125,8 @@ func TestFetcher_Sync_NoETag_StillApplies(t *testing.T) {
 	q := mockquerier.NewMockQuerier(t)
 	bulkUpdate := q.EXPECT().BulkUpdateKevData(mock.Anything, mock.Anything).Return(int64(0), nil)
 	updatePriority := q.EXPECT().GetCvesForPriorityRecompute(mock.Anything).Return(nil, nil)
-	mock.InOrder(bulkUpdate.Call, updatePriority.Call)
+	getImages := q.EXPECT().GetAllImageRefs(mock.Anything).Return(nil, nil)
+	mock.InOrder(bulkUpdate.Call, updatePriority.Call, getImages.Call)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())
@@ -197,7 +199,8 @@ func TestFetcher_Sync_RealFixture(t *testing.T) {
 		KnownRansomwareUse: expectedRansomware,
 	}).Return(int64(1587), nil)
 	updatePriority := q.EXPECT().GetCvesForPriorityRecompute(mock.Anything).Return(nil, nil)
-	mock.InOrder(bulkUpdate.Call, updatePriority.Call)
+	getImages := q.EXPECT().GetAllImageRefs(mock.Anything).Return(nil, nil)
+	mock.InOrder(bulkUpdate.Call, updatePriority.Call, getImages.Call)
 
 	f := kev.NewFetcherWithClient(kev.NewClientWithURL(srv.URL), q, testLogger())
 	err := f.Sync(context.Background())

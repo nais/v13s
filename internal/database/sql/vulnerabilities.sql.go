@@ -216,6 +216,42 @@ func (q *Queries) GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID
 	return items, nil
 }
 
+const getAllImageRefs = `-- name: GetAllImageRefs :many
+SELECT DISTINCT
+    image_name,
+    image_tag
+FROM
+    vulnerabilities
+ORDER BY
+    image_name,
+    image_tag
+`
+
+type GetAllImageRefsRow struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) GetAllImageRefs(ctx context.Context) ([]*GetAllImageRefsRow, error) {
+	rows, err := q.db.Query(ctx, getAllImageRefs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetAllImageRefsRow{}
+	for rows.Next() {
+		var i GetAllImageRefsRow
+		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCanonicalCveIdByAlias = `-- name: GetCanonicalCveIdByAlias :one
 SELECT
     canonical_cve_id
@@ -416,6 +452,45 @@ func (q *Queries) GetEarliestSeveritySinceForVulnerability(ctx context.Context, 
 	var earliest_severity_since pgtype.Timestamptz
 	err := row.Scan(&earliest_severity_since)
 	return earliest_severity_since, err
+}
+
+const getImageRefsForCveIDs = `-- name: GetImageRefsForCveIDs :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    vulnerabilities v
+    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+WHERE
+    COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
+ORDER BY
+    v.image_name,
+    v.image_tag
+`
+
+type GetImageRefsForCveIDsRow struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) GetImageRefsForCveIDs(ctx context.Context, cveIds []string) ([]*GetImageRefsForCveIDsRow, error) {
+	rows, err := q.db.Query(ctx, getImageRefsForCveIDs, cveIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetImageRefsForCveIDsRow{}
+	for rows.Next() {
+		var i GetImageRefsForCveIDsRow
+		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getImagesForCveAndWorkloads = `-- name: GetImagesForCveAndWorkloads :many
