@@ -18,6 +18,10 @@ type Querier interface {
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
+	// Guarded by the updated_at the caller read the row at: any write to
+	// severity/EPSS/KEV/ransomware bumps it, so if it no longer matches, this
+	// row is left alone rather than written with a now-stale priority. It gets
+	// picked up correctly on the next reprioritization pass instead.
 	BulkUpdateCvePriorities(ctx context.Context, arg BulkUpdateCvePrioritiesParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
 	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
@@ -74,6 +78,10 @@ type Querier interface {
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUntrackedImagesForResync(ctx context.Context) (int64, error)
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
+	// Reads priority tiers from cve.priority (kept current by the CEL policy
+	// evaluator, see internal/policy) rather than re-deriving them from
+	// severity/EPSS/KEV here, so this can't drift from what the evaluator
+	// actually computed.
 	RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error

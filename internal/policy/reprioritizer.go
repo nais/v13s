@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 )
 
@@ -26,6 +27,7 @@ type cveForPriority struct {
 	hasKevEntry        bool
 	knownRansomwareUse bool
 	priority           *int32
+	updatedAt          pgtype.Timestamptz
 }
 
 // ReprioritizeAll recomputes priority for every CVE in the table.
@@ -38,7 +40,7 @@ func (r *Reprioritizer) ReprioritizeAll(ctx context.Context) (int64, error) {
 	for i, row := range rows {
 		cves[i] = cveForPriority{
 			row.CveID, row.Severity, row.EpssScore, row.EpssPercentile,
-			row.HasKevEntry, row.KnownRansomwareUse, row.Priority,
+			row.HasKevEntry, row.KnownRansomwareUse, row.Priority, row.UpdatedAt,
 		}
 	}
 	return r.apply(ctx, cves)
@@ -57,7 +59,7 @@ func (r *Reprioritizer) ReprioritizeCves(ctx context.Context, cveIDs []string) (
 	for i, row := range rows {
 		cves[i] = cveForPriority{
 			row.CveID, row.Severity, row.EpssScore, row.EpssPercentile,
-			row.HasKevEntry, row.KnownRansomwareUse, row.Priority,
+			row.HasKevEntry, row.KnownRansomwareUse, row.Priority, row.UpdatedAt,
 		}
 	}
 	return r.apply(ctx, cves)
@@ -66,6 +68,7 @@ func (r *Reprioritizer) ReprioritizeCves(ctx context.Context, cveIDs []string) (
 func (r *Reprioritizer) apply(ctx context.Context, cves []cveForPriority) (int64, error) {
 	var cveIDs []string
 	var priorities []int32
+	var expectedUpdatedAts []pgtype.Timestamptz
 
 	for _, c := range cves {
 		input := PriorityInput{Severity: c.severity, HasKevEntry: c.hasKevEntry, KnownRansomwareUse: c.knownRansomwareUse}
@@ -86,6 +89,7 @@ func (r *Reprioritizer) apply(ctx context.Context, cves []cveForPriority) (int64
 
 		cveIDs = append(cveIDs, c.cveID)
 		priorities = append(priorities, tier)
+		expectedUpdatedAts = append(expectedUpdatedAts, c.updatedAt)
 	}
 
 	if len(cveIDs) == 0 {
@@ -93,8 +97,9 @@ func (r *Reprioritizer) apply(ctx context.Context, cves []cveForPriority) (int64
 	}
 
 	updated, err := r.querier.BulkUpdateCvePriorities(ctx, sql.BulkUpdateCvePrioritiesParams{
-		CveIds:     cveIDs,
-		Priorities: priorities,
+		CveIds:             cveIDs,
+		Priorities:         priorities,
+		ExpectedUpdatedAts: expectedUpdatedAts,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("writing cve priorities: %w", err)

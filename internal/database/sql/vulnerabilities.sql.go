@@ -18,19 +18,26 @@ SET
 FROM (
     SELECT
         unnest($1::TEXT[]) AS cve_id,
-        unnest($2::INT[]) AS priority) AS data
+        unnest($2::INT[]) AS priority,
+        unnest($3::TIMESTAMPTZ[]) AS expected_updated_at) AS data
 WHERE
     cve.cve_id = data.cve_id
     AND cve.priority IS DISTINCT FROM data.priority
+    AND cve.updated_at = data.expected_updated_at
 `
 
 type BulkUpdateCvePrioritiesParams struct {
-	CveIds     []string
-	Priorities []int32
+	CveIds             []string
+	Priorities         []int32
+	ExpectedUpdatedAts []pgtype.Timestamptz
 }
 
+// Guarded by the updated_at the caller read the row at: any write to
+// severity/EPSS/KEV/ransomware bumps it, so if it no longer matches, this
+// row is left alone rather than written with a now-stale priority. It gets
+// picked up correctly on the next reprioritization pass instead.
 func (q *Queries) BulkUpdateCvePriorities(ctx context.Context, arg BulkUpdateCvePrioritiesParams) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkUpdateCvePriorities, arg.CveIds, arg.Priorities)
+	result, err := q.db.Exec(ctx, bulkUpdateCvePriorities, arg.CveIds, arg.Priorities, arg.ExpectedUpdatedAts)
 	if err != nil {
 		return 0, err
 	}
@@ -264,7 +271,8 @@ SELECT
     epss_percentile,
     has_kev_entry,
     known_ransomware_use,
-    priority
+    priority,
+    updated_at
 FROM
     cve
 ORDER BY
@@ -279,6 +287,7 @@ type GetCvesForPriorityRecomputeRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	Priority           *int32
+	UpdatedAt          pgtype.Timestamptz
 }
 
 func (q *Queries) GetCvesForPriorityRecompute(ctx context.Context) ([]*GetCvesForPriorityRecomputeRow, error) {
@@ -298,6 +307,7 @@ func (q *Queries) GetCvesForPriorityRecompute(ctx context.Context) ([]*GetCvesFo
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.Priority,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -317,7 +327,8 @@ SELECT
     epss_percentile,
     has_kev_entry,
     known_ransomware_use,
-    priority
+    priority,
+    updated_at
 FROM
     cve
 WHERE
@@ -334,6 +345,7 @@ type GetCvesForPriorityRecomputeByIDsRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	Priority           *int32
+	UpdatedAt          pgtype.Timestamptz
 }
 
 func (q *Queries) GetCvesForPriorityRecomputeByIDs(ctx context.Context, cveIds []string) ([]*GetCvesForPriorityRecomputeByIDsRow, error) {
@@ -353,6 +365,7 @@ func (q *Queries) GetCvesForPriorityRecomputeByIDs(ctx context.Context, cveIds [
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.Priority,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1870,10 +1883,10 @@ WITH resolved_vulnerabilities AS (
     SELECT DISTINCT
         c.cve_id AS id,
         c.severity,
-        c.epss_score,
-        c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
+        c.epss_percentile,
+        c.priority,
         v.package,
         v.image_name,
         v.image_tag
@@ -1889,10 +1902,10 @@ unsuppressed_vulnerabilities AS (
     SELECT
         rv.id,
         rv.severity,
-        rv.epss_score,
-        rv.epss_percentile,
         rv.has_kev_entry,
-        rv.known_ransomware_use
+        rv.known_ransomware_use,
+        rv.epss_percentile,
+        rv.priority
     FROM
         resolved_vulnerabilities rv
         LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
@@ -1909,37 +1922,13 @@ counts AS (
     COUNT(*) FILTER (WHERE severity = 3) AS low,
     COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
     COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
-    COUNT(*) FILTER (WHERE has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10) AS high_risk,
-    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10)
-    AND severity IN (0, 1)
-    AND epss_percentile >= 0.90) AS elevated_risk,
-COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-    OR known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.95
-    OR COALESCE(epss_score, 0) >= 0.10)
-AND (severity NOT IN (0, 1)
-    OR epss_percentile IS NULL
-    OR epss_percentile < 0.90)) AS monitor,
-COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-MIN(
-    CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END) AS top_risk_tier
+    COUNT(*) FILTER (WHERE priority = 2) AS high_risk,
+    COUNT(*) FILTER (WHERE priority = 3) AS elevated_risk,
+    COUNT(*) FILTER (WHERE priority = 4
+        OR priority IS NULL) AS monitor,
+    COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
+    COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
+    MIN(COALESCE(priority, 4)) AS top_risk_tier
 FROM
     unsuppressed_vulnerabilities)
 INSERT INTO vulnerability_summary(
@@ -2004,6 +1993,10 @@ type RecalculateVulnerabilitySummaryParams struct {
 	ImageTag  string
 }
 
+// Reads priority tiers from cve.priority (kept current by the CEL policy
+// evaluator, see internal/policy) rather than re-deriving them from
+// severity/EPSS/KEV here, so this can't drift from what the evaluator
+// actually computed.
 func (q *Queries) RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error {
 	_, err := q.db.Exec(ctx, recalculateVulnerabilitySummary, arg.ImageName, arg.ImageTag)
 	return err

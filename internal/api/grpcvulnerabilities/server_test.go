@@ -18,6 +18,7 @@ import (
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/database/typeext"
+	"github.com/nais/v13s/internal/policy"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
@@ -685,8 +686,7 @@ func TestServer_ListVulnerabilitySummaries(t *testing.T) {
 	// seedDb seeds CVEs with no EPSS; we set it here for this specific test.
 	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92, epss_score = 0.95`)
 	require.NoError(t, err)
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 	err = db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 		ImageName: imageName,
 		ImageTag:  imageTag,
@@ -1465,8 +1465,7 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 	// seedDb does not set EPSS by default so without this the tier would be MONITOR.
 	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92, epss_score = 0.95`)
 	require.NoError(t, err)
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
 		imgName := fmt.Sprintf("image-cluster-1-namespace-1-workload-%d", wl)
 		imgTag := fmt.Sprintf("v%d.0", wl)
@@ -1535,8 +1534,7 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 	require.NoError(t, err)
 	// workload-4: untouched -> all MONITOR.
 
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
 		imgName := fmt.Sprintf("image-cluster-1-namespace-1-workload-%d", wl)
 		imgTag := fmt.Sprintf("v%d.0", wl)
@@ -1702,8 +1700,7 @@ func TestServer_KevFilter(t *testing.T) {
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = TRUE WHERE cve_id = $1`, "CWE-1-1")
 	require.NoError(t, err)
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 
 	for wl := 1; wl <= cfg.workloadsPerNamespace; wl++ {
 		require.NoError(t, db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
@@ -1834,8 +1831,7 @@ func TestServer_GetVulnerabilitySummaryForImage(t *testing.T) {
 	// seedDb seeds CVEs with no EPSS; we set it here for this specific test.
 	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.92, epss_score = 0.95`)
 	require.NoError(t, err)
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 	err = db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 		ImageName: imageName,
 		ImageTag:  imageTag,
@@ -2679,8 +2675,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, `UPDATE cve SET epss_score = $1, epss_percentile = $2 WHERE cve_id = $3`, epssScore, epssPercentile, cveID)
 		require.NoError(t, err)
-		_, err = db.UpdateCvePriority(ctx)
-		require.NoError(t, err)
+		mustReprioritizeAll(t, db, ctx)
 
 		summaries, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
 		require.NoError(t, err)
@@ -3090,6 +3085,15 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
+func mustReprioritizeAll(t *testing.T, db sql.Querier, ctx context.Context) int64 {
+	t.Helper()
+	evaluator, err := policy.NewPriorityEvaluator()
+	require.NoError(t, err)
+	updated, err := policy.NewReprioritizer(db, evaluator).ReprioritizeAll(ctx)
+	require.NoError(t, err)
+	return updated
+}
+
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)
@@ -3354,8 +3358,7 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 
 	// Set cve.priority based on KEV/EPSS/severity so priority-based ordering
 	// (order_by=priority_*) can be asserted reliably.
-	_, err := db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 
 	// Recalculate per-image summary (tier counts + severity counts) for every workload.
 	for _, workload := range workloads {
@@ -3414,8 +3417,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 
 	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
 		{
@@ -3903,8 +3905,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	require.NoError(t, err)
 
 	// Priority must be computed before asserting priority-based ordering (order_by=priority_*).
-	_, err = db.UpdateCvePriority(ctx)
-	require.NoError(t, err)
+	mustReprioritizeAll(t, db, ctx)
 
 	// Attach all three CVEs to the existing workload image.
 	db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{

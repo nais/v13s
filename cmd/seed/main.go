@@ -10,6 +10,7 @@ import (
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/policy"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -73,6 +74,12 @@ func seedDependencyTrack(ctx context.Context) error {
 }
 
 func createVulnData(ctx context.Context, db sql.Querier, images []string) {
+	evaluator, err := policy.NewPriorityEvaluator()
+	if err != nil {
+		panic(err)
+	}
+	reprioritizer := policy.NewReprioritizer(db, evaluator)
+
 	chicken := 1
 	for _, image := range images {
 		batch := generateVulnerabilities(chicken, image, "1")
@@ -89,6 +96,14 @@ func createVulnData(ctx context.Context, db sql.Querier, images []string) {
 				panic(err)
 			}
 		})
+
+		cveIDs := make([]string, len(batch.cve))
+		for i, c := range batch.cve {
+			cveIDs[i] = c.CveID
+		}
+		if _, err := reprioritizer.ReprioritizeCves(ctx, cveIDs); err != nil {
+			panic(err)
+		}
 
 		if err := db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 			ImageName: image,

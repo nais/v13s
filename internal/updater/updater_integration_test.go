@@ -1238,8 +1238,8 @@ func TestBatchUpdateVulnerabilityData_PriorityUpdateIsFilteredToBatchCves(t *tes
 
 	// Second batch carries only CVE-A, with its EPSS percentile raised above
 	// 0.95 -> priority 2. CVE-B is absent from this batch, so it must stay at
-	// priority 4 even though it would also be promoted if UpdateCvePriority
-	// (unfiltered) ran over the whole table.
+	// priority 4 even though it would also be promoted if a full-table
+	// reprioritization ran instead of one scoped to this batch.
 	u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{
 		batchFor(cveA, 0.96),
 	})
