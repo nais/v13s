@@ -100,21 +100,51 @@ merged AS (
         data d
         JOIN sources s ON s.cve_id = d.cve_id
         JOIN cve c ON c.cve_id = d.cve_id
+),
+stale AS (
+    SELECT
+        c.cve_id,
+        FALSE AS known_ransomware_use,
+        '{}'::TEXT[] AS kev_sources
+    FROM
+        cve c
+    WHERE
+        $5::BOOLEAN
+        AND (c.has_kev_entry = TRUE
+            OR cardinality(c.kev_sources) > 0)
+        AND NOT c.cve_id = ANY ($1::TEXT[])
+),
+changes AS (
+    SELECT
+        cve_id,
+        TRUE AS has_kev_entry,
+        known_ransomware_use,
+        kev_sources
+    FROM
+        merged
+    UNION ALL
+    SELECT
+        cve_id,
+        FALSE AS has_kev_entry,
+        known_ransomware_use,
+        kev_sources
+    FROM
+        stale
 )
 UPDATE
     cve
 SET
-    has_kev_entry = TRUE,
-    known_ransomware_use = m.known_ransomware_use,
-    kev_sources = m.kev_sources,
+    has_kev_entry = ch.has_kev_entry,
+    known_ransomware_use = ch.known_ransomware_use,
+    kev_sources = ch.kev_sources,
     updated_at = NOW()
 FROM
-    merged m
+    changes ch
 WHERE
-    cve.cve_id = m.cve_id
-    AND (cve.has_kev_entry = FALSE
-        OR cve.known_ransomware_use != m.known_ransomware_use
-        OR cve.kev_sources IS DISTINCT FROM m.kev_sources)
+    cve.cve_id = ch.cve_id
+    AND (cve.has_kev_entry != ch.has_kev_entry
+        OR cve.known_ransomware_use != ch.known_ransomware_use
+        OR cve.kev_sources IS DISTINCT FROM ch.kev_sources)
 `
 
 type BulkUpdateKevDataParams struct {
@@ -126,6 +156,7 @@ type BulkUpdateKevDataParams struct {
 }
 
 // When a source failed (complete = false), only add flags and sources.
+// A complete run also clears CVEs that no source lists any more.
 func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error) {
 	result, err := q.db.Exec(ctx, bulkUpdateKevData,
 		arg.CveIds,

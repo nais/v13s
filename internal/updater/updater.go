@@ -222,7 +222,7 @@ func (u *Updater) buildLegacyJobs() []Job {
 		newScheduledJob("mark untracked images", ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUntrackedCronInterval}, u.log, u.runMarkImagesAsUntracked),
 		newScheduledJob("refresh daily", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshVulnerabilitySummaryCronDailyView}, u.log, u.runRefreshDailySummary),
 		newScheduledJob("refresh workload vulnerability lifetimes", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshWorkloadVulnerabilityLifetimesCronDailyView}, u.log, u.runRefreshWorkloadVulnerabilityLifetimes),
-		newScheduledJob("sync CISA KEV catalog", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, u.log, u.runSyncKevCatalog),
+		newScheduledJob("sync KEV catalogs", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, u.log, u.runSyncKevCatalog),
 		newScheduledJob("sync OSV fix versions", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, u.log, u.runSyncOsvFixVersions),
 		newScheduledJob("rekey suppressed aliases to canonical", ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, u.log, u.runRekeySuppressedAliases),
 	}
@@ -244,7 +244,7 @@ func (u *Updater) buildRuntimeJobs() []Job {
 	add(u.runtimeConfig.MarkUntracked, "mark untracked images", u.runMarkImagesAsUntracked)
 	add(u.runtimeConfig.RefreshDailySummary, "refresh daily", u.runRefreshDailySummary)
 	add(u.runtimeConfig.RefreshWorkloadLifetimes, "refresh workload vulnerability lifetimes", u.runRefreshWorkloadVulnerabilityLifetimes)
-	add(u.runtimeConfig.SyncKev, "sync CISA KEV catalog", u.runSyncKevCatalog)
+	add(u.runtimeConfig.SyncKev, "sync KEV catalogs", u.runSyncKevCatalog)
 	add(u.runtimeConfig.SyncOsv, "sync OSV fix versions", u.runSyncOsvFixVersions)
 	add(u.runtimeConfig.RekeySuppressedAliases, "rekey suppressed aliases to canonical", u.runRekeySuppressedAliases)
 
