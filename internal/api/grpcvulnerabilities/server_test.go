@@ -2675,6 +2675,9 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
 			CveIds:             []string{cveID},
 			KnownRansomwareUse: []bool{true},
+			SourceCveIds:       []string{cveID},
+			SourceNames:        []string{"cisa"},
+			Complete:           true,
 		})
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, `UPDATE cve SET epss_score = $1, epss_percentile = $2 WHERE cve_id = $3`, epssScore, epssPercentile, cveID)
@@ -3411,6 +3414,9 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
 		CveIds:             []string{cveID},
 		KnownRansomwareUse: []bool{true},
+		SourceCveIds:       []string{cveID},
+		SourceNames:        []string{"cisa"},
+		Complete:           true,
 	})
 	require.NoError(t, err)
 
@@ -3899,6 +3905,9 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
 		CveIds:             []string{cveHigh},
 		KnownRansomwareUse: []bool{false},
+		SourceCveIds:       []string{cveHigh},
+		SourceNames:        []string{"cisa"},
+		Complete:           true,
 	})
 	require.NoError(t, err)
 

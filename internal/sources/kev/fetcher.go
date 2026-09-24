@@ -2,6 +2,7 @@ package kev
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/nais/v13s/internal/database/sql"
@@ -9,58 +10,47 @@ import (
 )
 
 type Fetcher struct {
-	client  *Client
+	sources []Source
 	querier sql.Querier
 	log     *logrus.Entry
 }
 
-func NewFetcherWithClient(client *Client, querier sql.Querier, log *logrus.Entry) *Fetcher {
+func NewFetcher(querier sql.Querier, log *logrus.Entry, sources ...Source) *Fetcher {
 	return &Fetcher{
-		client:  client,
+		sources: sources,
 		querier: querier,
 		log:     log,
 	}
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
-	if f.client.catalogURL == "" {
-		f.log.Warn("KEV_CATALOG_URL is not set, skipping KEV sync")
-		return nil
-	}
-	f.log.Info("fetching KEV catalog from CISA")
-	result, err := f.client.FetchCatalog(ctx)
-	if err != nil {
-		return fmt.Errorf("fetching KEV catalog: %w", err)
-	}
-
-	catalog := result.Catalog
-	f.log.Infof("KEV catalog: %d entries, version %s, released %s",
-		catalog.Count, catalog.CatalogVersion, catalog.DateReleased)
-
-	if len(catalog.Vulnerabilities) == 0 {
-		f.log.Warn("KEV catalog is empty, nothing to update")
+	if len(f.sources) == 0 {
+		f.log.Warn("no KEV sources configured, skipping KEV sync")
 		return nil
 	}
 
-	cveIDs := make([]string, 0, len(catalog.Vulnerabilities))
-	ransomware := make([]bool, 0, len(catalog.Vulnerabilities))
-	ransomwareCount := 0
-
-	for _, v := range catalog.Vulnerabilities {
-		cveIDs = append(cveIDs, v.CveID)
-		kr := v.KnownRansomware()
-		ransomware = append(ransomware, kr)
-		if kr {
-			ransomwareCount++
+	bySource := make(map[string][]Assertion, len(f.sources))
+	var failed []error
+	for _, s := range f.sources {
+		assertions, err := s.Fetch(ctx)
+		if err != nil {
+			f.log.WithError(err).Warnf("KEV source %s failed, keeping its previous data", s.Name())
+			failed = append(failed, fmt.Errorf("fetching KEV source %s: %w", s.Name(), err))
+			continue
 		}
+		f.log.Infof("KEV source %s: %d entries", s.Name(), len(assertions))
+		bySource[s.Name()] = assertions
 	}
 
-	f.log.Infof("updating DB: %d CVEs in catalog (%d with known ransomware use)", len(cveIDs), ransomwareCount)
+	params, ransomwareCount := merge(bySource)
+	if len(params.CveIds) == 0 {
+		f.log.Warn("no KEV entries fetched, nothing to update")
+		return errors.Join(failed...)
+	}
+	params.Complete = len(failed) == 0
 
-	updated, err := f.querier.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
-		CveIds:             cveIDs,
-		KnownRansomwareUse: ransomware,
-	})
+	f.log.Infof("updating DB: %d CVEs across KEV sources (%d with known ransomware use)", len(params.CveIds), ransomwareCount)
+	updated, err := f.querier.BulkUpdateKevData(ctx, params)
 	if err != nil {
 		return fmt.Errorf("bulk updating KEV data: %w", err)
 	}
@@ -70,6 +60,6 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return fmt.Errorf("updating cve priority after KEV sync: %w", err)
 	}
 
-	f.log.Infof("KEV sync complete: %d CVEs in catalog, %d rows updated in DB, %d priorities updated", len(cveIDs), updated, prioritiesUpdated)
-	return nil
+	f.log.Infof("KEV sync complete: %d CVEs, %d rows updated in DB, %d priorities updated", len(params.CveIds), updated, prioritiesUpdated)
+	return errors.Join(failed...)
 }

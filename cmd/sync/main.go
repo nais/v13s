@@ -53,12 +53,12 @@ func (p prioritySyncer) Sync(ctx context.Context) error {
 var sources = []source{
 	{
 		name:        "kev",
-		description: "sync the CISA KEV catalog",
+		description: "sync the KEV catalogs (CISA, ENISA and, when enabled, VulnCheck)",
 		newSyncer: func(cfg *envConfig, pool *pgxpool.Pool, log *logrus.Logger) syncer {
-			return kev.NewFetcherWithClient(
-				kev.NewClientWithURL(cfg.Kev.CatalogURL),
+			return kev.NewFetcher(
 				sql.New(pool),
 				logrus.NewEntry(log),
+				kev.SourcesFromConfig(cfg.Kev)...,
 			)
 		},
 	},

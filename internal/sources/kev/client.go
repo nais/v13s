@@ -2,11 +2,11 @@ package kev
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"time"
+
+	"github.com/nais/v13s/internal/httpclient"
 )
+
+const SourceCISA = "cisa"
 
 type Catalog struct {
 	Title           string  `json:"title"`
@@ -33,44 +33,29 @@ func (e Entry) KnownRansomware() bool {
 	return e.KnownRansomwareCampaignUse == "Known"
 }
 
-type FetchResult struct {
-	Catalog *Catalog
+type CisaClient struct {
+	http httpclient.Doer
+	url  string
 }
 
-type Client struct {
-	httpClient *http.Client
-	catalogURL string
-}
-
-func NewClientWithURL(url string) *Client {
-	return &Client{
-		httpClient: &http.Client{Timeout: 60 * time.Second},
-		catalogURL: url,
+func NewCisaClient(url string) *CisaClient {
+	return &CisaClient{
+		http: httpclient.New(feedTimeout),
+		url:  url,
 	}
 }
 
-func (c *Client) FetchCatalog(ctx context.Context) (*FetchResult, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.catalogURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("building KEV request: %w", err)
-	}
+func (c *CisaClient) Name() string { return SourceCISA }
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetching KEV catalog: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("KEV catalog returned HTTP %d", resp.StatusCode)
-	}
-
+func (c *CisaClient) Fetch(ctx context.Context) ([]Assertion, error) {
 	var catalog Catalog
-	if err := json.NewDecoder(resp.Body).Decode(&catalog); err != nil {
-		return nil, fmt.Errorf("decoding KEV catalog: %w", err)
+	if err := httpclient.GetJSON(ctx, c.http, c.url, nil, &catalog); err != nil {
+		return nil, err
 	}
 
-	return &FetchResult{
-		Catalog: &catalog,
-	}, nil
+	assertions := make([]Assertion, 0, len(catalog.Vulnerabilities))
+	for _, v := range catalog.Vulnerabilities {
+		assertions = append(assertions, Assertion{CveID: v.CveID, KnownRansomware: v.KnownRansomware()})
+	}
+	return assertions, nil
 }

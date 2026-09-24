@@ -77,7 +77,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		log:                          log,
-		kevFetcher:                   kev.NewFetcherWithClient(kev.NewClientWithURL(kevCfg.CatalogURL), querier, log),
+		kevFetcher:                   kev.NewFetcher(querier, log, kev.SourcesFromConfig(kevCfg)...),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
 		runtimeConfig:                runtimeCfg,
 	}

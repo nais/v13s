@@ -68,29 +68,72 @@ func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVe
 }
 
 const bulkUpdateKevData = `-- name: BulkUpdateKevData :execrows
+WITH data AS (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::BOOLEAN[]) AS known_ransomware_use
+),
+source_pairs AS (
+    SELECT
+        unnest($3::TEXT[]) AS cve_id,
+        unnest($4::TEXT[]) AS source
+),
+sources AS (
+    SELECT
+        cve_id,
+        array_agg(source ORDER BY source) AS kev_sources
+    FROM
+        source_pairs
+    GROUP BY
+        cve_id
+),
+merged AS (
+    SELECT
+        c.cve_id,
+        CASE WHEN $5::BOOLEAN THEN d.known_ransomware_use
+            ELSE c.known_ransomware_use OR d.known_ransomware_use
+        END AS known_ransomware_use,
+        CASE WHEN $5::BOOLEAN THEN s.kev_sources
+            ELSE ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x)
+        END AS kev_sources
+    FROM
+        data d
+        JOIN sources s ON s.cve_id = d.cve_id
+        JOIN cve c ON c.cve_id = d.cve_id
+)
 UPDATE
     cve
 SET
     has_kev_entry = TRUE,
-    known_ransomware_use = data.known_ransomware_use,
+    known_ransomware_use = m.known_ransomware_use,
+    kev_sources = m.kev_sources,
     updated_at = NOW()
-FROM (
-    SELECT
-        unnest($1::TEXT[]) AS cve_id,
-        unnest($2::BOOLEAN[]) AS known_ransomware_use) AS data
+FROM
+    merged m
 WHERE
-    cve.cve_id = data.cve_id
+    cve.cve_id = m.cve_id
     AND (cve.has_kev_entry = FALSE
-        OR cve.known_ransomware_use != data.known_ransomware_use)
+        OR cve.known_ransomware_use != m.known_ransomware_use
+        OR cve.kev_sources IS DISTINCT FROM m.kev_sources)
 `
 
 type BulkUpdateKevDataParams struct {
 	CveIds             []string
 	KnownRansomwareUse []bool
+	SourceCveIds       []string
+	SourceNames        []string
+	Complete           bool
 }
 
+// When a source failed (complete = false), only add flags and sources.
 func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkUpdateKevData, arg.CveIds, arg.KnownRansomwareUse)
+	result, err := q.db.Exec(ctx, bulkUpdateKevData,
+		arg.CveIds,
+		arg.KnownRansomwareUse,
+		arg.SourceCveIds,
+		arg.SourceNames,
+		arg.Complete,
+	)
 	if err != nil {
 		return 0, err
 	}

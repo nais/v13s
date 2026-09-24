@@ -314,6 +314,7 @@ type Cve struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	Priority           *int32
+	KevSources         []string
 }
 
 type Image struct {
