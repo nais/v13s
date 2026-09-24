@@ -86,6 +86,25 @@ func TestFetcher_Sync_AllSourcesFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "cisa")
 }
 
+func TestFetcher_Sync_EmptySourceTreatedAsFailed(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: "CVE-2021-44228"}}}
+	enisa := staticSource{name: kev.SourceENISA}
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+		CveIds:             []string{"CVE-2021-44228"},
+		KnownRansomwareUse: []bool{false},
+		SourceCveIds:       []string{"CVE-2021-44228"},
+		SourceNames:        []string{"cisa"},
+		Complete:           false,
+	}).Return(int64(1), nil).Once()
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+
+	err := kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "enisa returned no entries")
+}
+
 func TestFetcher_Sync_NoSources(t *testing.T) {
 	q := mockquerier.NewMockQuerier(t)
 	require.NoError(t, kev.NewFetcher(q, testLogger()).Sync(context.Background()))
@@ -194,6 +213,14 @@ func TestVulnCheckClient_Fetch_ChecksumMismatch(t *testing.T) {
 	_, err := kev.NewVulnCheckClient(srv.URL, "token").Fetch(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "checksum mismatch")
+}
+
+func TestVulnCheckClient_Fetch_TruncatedArray(t *testing.T) {
+	archive := zipArchive(t, map[string]string{"kev.json": `[{"cve":["CVE-2024-0001"]}`})
+	srv := newVulnCheckServer(t, archive, sha256Hex(archive))
+
+	_, err := kev.NewVulnCheckClient(srv.URL, "token").Fetch(context.Background())
+	require.Error(t, err)
 }
 
 func TestVulnCheckClient_Fetch_Unauthorized(t *testing.T) {

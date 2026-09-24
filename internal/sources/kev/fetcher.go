@@ -38,6 +38,12 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 			failed = append(failed, fmt.Errorf("fetching KEV source %s: %w", s.Name(), err))
 			continue
 		}
+		if len(assertions) == 0 {
+			// An empty feed is almost certainly broken; treating it as complete would clear the source's entries.
+			f.log.Warnf("KEV source %s returned no entries, keeping its previous data", s.Name())
+			failed = append(failed, fmt.Errorf("KEV source %s returned no entries", s.Name()))
+			continue
+		}
 		f.log.Infof("KEV source %s: %d entries", s.Name(), len(assertions))
 		bySource[s.Name()] = assertions
 	}

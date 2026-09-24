@@ -54,4 +54,31 @@ func TestBulkUpdateKevData(t *testing.T) {
 	cve = update(false, []string{"enisa"}, true)
 	assert.False(t, cve.KnownRansomwareUse)
 	assert.Equal(t, []string{"enisa"}, cve.KevSources)
+
+	const otherCveID = "CVE-2024-0001"
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{CveID: otherCveID, CveTitle: otherCveID, Refs: map[string]string{}}}).Exec(func(_ int, err error) {
+		require.NoError(t, err)
+	})
+	listOther := func(complete bool) *sql.Cve {
+		t.Helper()
+		_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+			CveIds:             []string{otherCveID},
+			KnownRansomwareUse: []bool{false},
+			SourceCveIds:       []string{otherCveID},
+			SourceNames:        []string{"cisa"},
+			Complete:           complete,
+		})
+		require.NoError(t, err)
+		cve, err := db.GetCve(ctx, cveID)
+		require.NoError(t, err)
+		return cve
+	}
+
+	cve = listOther(false)
+	assert.True(t, cve.HasKevEntry, "a partial run must not clear CVEs missing from the fetched data")
+	assert.Equal(t, []string{"enisa"}, cve.KevSources)
+
+	cve = listOther(true)
+	assert.False(t, cve.HasKevEntry, "a complete run clears CVEs no source lists any more")
+	assert.Empty(t, cve.KevSources)
 }

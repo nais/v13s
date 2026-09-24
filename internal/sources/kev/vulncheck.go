@@ -131,6 +131,11 @@ func decodeVulnCheckEntries(r io.Reader) ([]vulnCheckEntry, error) {
 			}
 			entries = append(entries, e)
 		}
+
+		// Consume the closing ] so a truncated array is rejected.
+		if _, err := dec.Token(); err != nil {
+			return nil, err
+		}
 		return entries, nil
 	}
 
