@@ -62,7 +62,11 @@ type DependencyTrackConfig struct {
 }
 
 type KevConfig struct {
-	CatalogURL string `envconfig:"KEV_CATALOG_URL"`
+	CatalogURL       string `envconfig:"KEV_CATALOG_URL"`
+	EnisaURL         string `envconfig:"KEV_ENISA_URL" default:"https://raw.githubusercontent.com/enisaeu/CNW/main/advisories/eukev/eukev.json"`
+	VulnCheckEnabled bool   `envconfig:"KEV_VULNCHECK_ENABLED" default:"false"`
+	VulnCheckURL     string `envconfig:"KEV_VULNCHECK_URL" default:"https://api.vulncheck.com"`
+	VulnCheckToken   string `envconfig:"KEV_VULNCHECK_TOKEN"`
 }
 
 type OsvConfig struct {
