@@ -65,7 +65,6 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 	}
 	config.MaxConns = 16
 	config.ConnConfig.Tracer = otelpgx.NewTracer(
-		otelpgx.WithTrimSQLInSpanName(),
 		otelpgx.WithSpanNameFunc(func(stmt string) string {
 			matches := regParseSQLName.FindStringSubmatch(stmt)
 			if len(matches) > 1 {
