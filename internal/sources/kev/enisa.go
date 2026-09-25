@@ -2,6 +2,8 @@ package kev
 
 import (
 	"context"
+	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/nais/v13s/internal/httpclient"
@@ -10,8 +12,29 @@ import (
 const SourceENISA = "enisa"
 
 type enisaEntry struct {
-	CveID            string `json:"cveID"`
-	ExploitationType string `json:"exploitationType"`
+	CveID            string            `json:"cveID"`
+	ExploitationType exploitationTypes `json:"exploitationType"`
+}
+
+// exploitationTypes accepts a string or an array of strings; the feed is normally a string but has shipped arrays.
+type exploitationTypes []string
+
+func (t *exploitationTypes) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*t = exploitationTypes{s}
+		return nil
+	}
+	var a []string
+	if err := json.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	*t = a
+	return nil
+}
+
+func (t exploitationTypes) ransomware() bool {
+	return slices.ContainsFunc(t, func(v string) bool { return strings.EqualFold(v, "ransomware") })
 }
 
 type EnisaClient struct {
@@ -41,7 +64,7 @@ func (c *EnisaClient) Fetch(ctx context.Context) ([]Assertion, error) {
 		}
 		assertions = append(assertions, Assertion{
 			CveID:           e.CveID,
-			KnownRansomware: strings.EqualFold(e.ExploitationType, "ransomware"),
+			KnownRansomware: e.ExploitationType.ransomware(),
 		})
 	}
 	return assertions, nil

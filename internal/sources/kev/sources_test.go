@@ -134,7 +134,10 @@ func TestEnisaClient_Fetch(t *testing.T) {
 		_, _ = w.Write([]byte(`[
 			{"cveID": "CVE-2015-7501", "euvdID": "EUVD-1", "exploitationType": "unknown"},
 			{"cveID": "CVE-2024-0001", "euvdID": "EUVD-2", "exploitationType": "Ransomware"},
-			{"cveID": null, "euvdID": "EUVD-3", "exploitationType": "APT"}
+			{"cveID": null, "euvdID": "EUVD-3", "exploitationType": "APT"},
+			{"cveID": "CVE-2024-0002", "euvdID": "EUVD-4", "exploitationType": ["unknown"]},
+			{"cveID": "CVE-2024-0003", "euvdID": "EUVD-5", "exploitationType": ["APT", "ransomware"]},
+			{"cveID": "CVE-2024-0004", "euvdID": "EUVD-6"}
 		]`))
 	}))
 	defer srv.Close()
@@ -144,6 +147,9 @@ func TestEnisaClient_Fetch(t *testing.T) {
 	assert.Equal(t, []kev.Assertion{
 		{CveID: "CVE-2015-7501"},
 		{CveID: "CVE-2024-0001", KnownRansomware: true},
+		{CveID: "CVE-2024-0002"},
+		{CveID: "CVE-2024-0003", KnownRansomware: true},
+		{CveID: "CVE-2024-0004"},
 	}, assertions)
 }
 
