@@ -1,5 +1,7 @@
 {{- if contains "nav" .Values.fasit.tenant.name }}
-{{- $kevSources := ternary "CISA, ENISA, VulnCheck" "CISA, ENISA" .Values.kev.vulncheck.enabled }}
+{{- /* Mirrors kev.SourcesFromConfig: VulnCheck only syncs when enabled and a token is set. */}}
+{{- $vulncheck := and .Values.kev.vulncheck.enabled (ne .Values.kev.vulncheck.token "") }}
+{{- $kevSources := ternary "CISA, ENISA, VulnCheck" "CISA, ENISA" $vulncheck }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -68,7 +70,7 @@ spec:
               {{ "`{{ $labels.workload_cluster }}/{{ $labels.workload_name }}`: `{{ $value }}` known exploited (KEV) vulnerabilities — " }}https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: |
               These CVEs are listed in at least one Known Exploited Vulnerabilities catalog ({{ $kevSources }}), meaning exploitation has been observed in the wild. Treat this as the highest remediation priority.
-              {{- if .Values.kev.vulncheck.enabled }}
+              {{- if $vulncheck }}
               KEV data includes VulnCheck KEV, provided by VulnCheck (https://vulncheck.com/kev).
               {{- end }}
             action: |
