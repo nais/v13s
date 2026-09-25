@@ -90,7 +90,7 @@ sources AS (
 merged AS (
     SELECT
         c.cve_id,
-        CASE WHEN $5::BOOLEAN THEN d.known_ransomware_use
+        CASE WHEN $5::BOOLEAN AND c.kev_sources <@ $6::TEXT[] THEN d.known_ransomware_use
             ELSE c.known_ransomware_use OR d.known_ransomware_use
         END AS known_ransomware_use,
         ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x) AS kev_sources
@@ -121,9 +121,10 @@ type BulkUpdateKevDataParams struct {
 	SourceCveIds       []string
 	SourceNames        []string
 	Complete           bool
+	FetchedSources     []string
 }
 
-// Never clears KEV data (see CONTEXT.md); ransomware only resets when complete.
+// Never clears KEV data (see CONTEXT.md); ransomware only resets when complete and all recorded sources were fetched.
 func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error) {
 	result, err := q.db.Exec(ctx, bulkUpdateKevData,
 		arg.CveIds,
@@ -131,6 +132,7 @@ func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataPa
 		arg.SourceCveIds,
 		arg.SourceNames,
 		arg.Complete,
+		arg.FetchedSources,
 	)
 	if err != nil {
 		return 0, err

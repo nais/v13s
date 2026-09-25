@@ -50,6 +50,7 @@ func TestFetcher_Sync_MergesSources(t *testing.T) {
 		KnownRansomwareUse: []bool{false, true, true},
 		SourceCveIds:       []string{"CVE-2015-7501", "CVE-2021-44228", "CVE-2021-44228", "CVE-2023-0001", "CVE-2023-0001"},
 		SourceNames:        []string{"enisa", "cisa", "enisa", "cisa", "enisa"},
+		FetchedSources:     []string{"cisa", "enisa"},
 		Complete:           true,
 	}).Return(int64(3), nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
@@ -67,6 +68,7 @@ func TestFetcher_Sync_FailedSourceKeepsPreviousData(t *testing.T) {
 		KnownRansomwareUse: []bool{false},
 		SourceCveIds:       []string{"CVE-2021-44228"},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           false,
 	}).Return(int64(1), nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
@@ -96,6 +98,7 @@ func TestFetcher_Sync_EmptySourceTreatedAsFailed(t *testing.T) {
 		KnownRansomwareUse: []bool{false},
 		SourceCveIds:       []string{"CVE-2021-44228"},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           false,
 	}).Return(int64(1), nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
@@ -115,6 +118,7 @@ func TestFetcher_Sync_BlankCveSourceTreatedAsFailed(t *testing.T) {
 		KnownRansomwareUse: []bool{false},
 		SourceCveIds:       []string{"CVE-2021-44228"},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           false,
 	}).Return(int64(1), nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
@@ -142,6 +146,7 @@ func TestFetcher_Sync_MixedBlankCves(t *testing.T) {
 		KnownRansomwareUse: []bool{false},
 		SourceCveIds:       []string{"CVE-2021-44228"},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           true,
 	}).Return(int64(1), nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
