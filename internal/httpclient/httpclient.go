@@ -78,8 +78,7 @@ func do(ctx context.Context, doer Doer, rawURL string, header http.Header) (*htt
 }
 
 func redactURLError(err error) error {
-	var urlErr *url.Error
-	if errors.As(err, &urlErr) {
+	if urlErr, ok := errors.AsType[*url.Error](err); ok {
 		safe := *urlErr
 		safe.URL = redact(urlErr.URL)
 		return &safe
