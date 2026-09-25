@@ -200,7 +200,7 @@ func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (s
 
 const getCve = `-- name: GetCve :one
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority, kev_sources
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority
 FROM
     cve
 WHERE
@@ -225,7 +225,6 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.HasKevEntry,
 		&i.KnownRansomwareUse,
 		&i.Priority,
-		&i.KevSources,
 	)
 	return &i, err
 }
@@ -584,7 +583,7 @@ const listSuppressedVulnerabilities = `-- name: ListSuppressedVulnerabilities :m
 SELECT
     sv.id, sv.image_name, sv.package, sv.cve_id, sv.suppressed, sv.reason, sv.reason_text, sv.created_at, sv.updated_at, sv.suppressed_by,
     v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, v.fix_version,
-    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority, c.kev_sources,
+    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
     w.cluster,
     w.namespace
 FROM
@@ -697,7 +696,6 @@ type ListSuppressedVulnerabilitiesRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	Priority           *int32
-	KevSources         []string
 	Cluster            string
 	Namespace          string
 }
@@ -757,7 +755,6 @@ func (q *Queries) ListSuppressedVulnerabilities(ctx context.Context, arg ListSup
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.Priority,
-			&i.KevSources,
 			&i.Cluster,
 			&i.Namespace,
 		); err != nil {

@@ -15,7 +15,6 @@ import (
 	"github.com/nais/v13s/internal/sources/kev"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -105,18 +104,14 @@ func TestFetcher_Sync_AppliesAllCatalogEntries(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	bulkUpdate := q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+	expectLock(q)
+	expectUpdate(q, sqldatabase.UpsertKevSourceEntriesParams{
 		CveIds:             []string{"CVE-2021-44228", "CVE-2023-1234"},
+		Sources:            []string{"cisa", "cisa"},
 		KnownRansomwareUse: []bool{true, false},
-		SourceCveIds:       []string{"CVE-2021-44228", "CVE-2023-1234"},
-		SourceNames:        []string{"cisa", "cisa"},
-		FetchedSources:     []string{"cisa"},
-		Complete:           true,
-	}).Return(int64(2), nil)
-	updatePriority := q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil)
-	mock.InOrder(bulkUpdate.Call, updatePriority.Call)
+	})
 
-	f := kev.NewFetcher(q, testLogger(), kev.NewCisaClient(srv.URL))
+	f := kev.NewFetcherWithQuerier(q, testLogger(), kev.NewCisaClient(srv.URL))
 	require.NoError(t, f.Sync(context.Background()))
 }
 
@@ -168,21 +163,17 @@ func TestFetcher_Sync_RealFixture(t *testing.T) {
 
 	vulns := slices.Clone(catalog.Vulnerabilities)
 	slices.SortFunc(vulns, func(a, b kev.Entry) int { return strings.Compare(a.CveID, b.CveID) })
-	var expected sqldatabase.BulkUpdateKevDataParams
+	var expected sqldatabase.UpsertKevSourceEntriesParams
 	for _, v := range vulns {
 		expected.CveIds = append(expected.CveIds, v.CveID)
+		expected.Sources = append(expected.Sources, kev.SourceCISA)
 		expected.KnownRansomwareUse = append(expected.KnownRansomwareUse, v.KnownRansomware())
-		expected.SourceCveIds = append(expected.SourceCveIds, v.CveID)
-		expected.SourceNames = append(expected.SourceNames, kev.SourceCISA)
 	}
-	expected.FetchedSources = []string{"cisa"}
-	expected.Complete = true
 
 	q := mockquerier.NewMockQuerier(t)
-	bulkUpdate := q.EXPECT().BulkUpdateKevData(mock.Anything, expected).Return(int64(1587), nil)
-	updatePriority := q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil)
-	mock.InOrder(bulkUpdate.Call, updatePriority.Call)
+	expectLock(q)
+	expectUpdate(q, expected)
 
-	f := kev.NewFetcher(q, testLogger(), kev.NewCisaClient(srv.URL))
+	f := kev.NewFetcherWithQuerier(q, testLogger(), kev.NewCisaClient(srv.URL))
 	require.NoError(t, f.Sync(context.Background()))
 }

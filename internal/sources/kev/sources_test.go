@@ -32,7 +32,19 @@ func (s staticSource) Fetch(context.Context) ([]kev.Assertion, error) {
 	return s.assertions, s.err
 }
 
-func TestFetcher_Sync_MergesSources(t *testing.T) {
+func expectLock(q *mockquerier.MockQuerier) {
+	q.EXPECT().TryAdvisoryLock(mock.Anything, kev.KevSyncLockKey).Return(true, nil).Once()
+	q.EXPECT().AdvisoryUnlock(mock.Anything, kev.KevSyncLockKey).Return(true, nil).Once()
+}
+
+func expectUpdate(q *mockquerier.MockQuerier, params sqldatabase.UpsertKevSourceEntriesParams) {
+	upsert := q.EXPECT().UpsertKevSourceEntries(mock.Anything, params).Return(int64(len(params.CveIds)), nil).Once()
+	refresh := q.EXPECT().RefreshCveKevFlags(mock.Anything).Return(int64(0), nil).Once()
+	priority := q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+	mock.InOrder(upsert, refresh, priority)
+}
+
+func TestFetcher_Sync_OneEntryPerSource(t *testing.T) {
 	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{
 		{CveID: "CVE-2021-44228", KnownRansomware: true},
 		{CveID: "CVE-2023-0001"},
@@ -40,22 +52,19 @@ func TestFetcher_Sync_MergesSources(t *testing.T) {
 	enisa := staticSource{name: kev.SourceENISA, assertions: []kev.Assertion{
 		{CveID: "CVE-2021-44228", KnownRansomware: false},
 		{CveID: "CVE-2015-7501"},
-		{CveID: "CVE-2023-0001", KnownRansomware: true},
+		{CveID: "CVE-2023-0001", KnownRansomware: false},
 		{CveID: "CVE-2023-0001", KnownRansomware: true},
 	}}
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
-		CveIds:             []string{"CVE-2015-7501", "CVE-2021-44228", "CVE-2023-0001"},
-		KnownRansomwareUse: []bool{false, true, true},
-		SourceCveIds:       []string{"CVE-2015-7501", "CVE-2021-44228", "CVE-2021-44228", "CVE-2023-0001", "CVE-2023-0001"},
-		SourceNames:        []string{"enisa", "cisa", "enisa", "cisa", "enisa"},
-		FetchedSources:     []string{"cisa", "enisa"},
-		Complete:           true,
-	}).Return(int64(3), nil).Once()
-	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+	expectLock(q)
+	expectUpdate(q, sqldatabase.UpsertKevSourceEntriesParams{
+		CveIds:             []string{"CVE-2015-7501", "CVE-2021-44228", "CVE-2021-44228", "CVE-2023-0001", "CVE-2023-0001"},
+		Sources:            []string{"enisa", "cisa", "enisa", "cisa", "enisa"},
+		KnownRansomwareUse: []bool{false, true, false, false, true},
+	})
 
-	require.NoError(t, kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background()))
+	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background()))
 }
 
 func TestFetcher_Sync_FailedSourceKeepsPreviousData(t *testing.T) {
@@ -63,17 +72,14 @@ func TestFetcher_Sync_FailedSourceKeepsPreviousData(t *testing.T) {
 	enisa := staticSource{name: kev.SourceENISA, err: errors.New("unavailable")}
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+	expectLock(q)
+	expectUpdate(q, sqldatabase.UpsertKevSourceEntriesParams{
 		CveIds:             []string{"CVE-2021-44228"},
+		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
-		SourceCveIds:       []string{"CVE-2021-44228"},
-		SourceNames:        []string{"cisa"},
-		FetchedSources:     []string{"cisa"},
-		Complete:           false,
-	}).Return(int64(1), nil).Once()
-	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+	})
 
-	err := kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background())
+	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "enisa")
 }
@@ -82,8 +88,9 @@ func TestFetcher_Sync_AllSourcesFail(t *testing.T) {
 	cisa := staticSource{name: kev.SourceCISA, err: errors.New("unavailable")}
 
 	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
 
-	err := kev.NewFetcher(q, testLogger(), cisa).Sync(context.Background())
+	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cisa")
 }
@@ -93,17 +100,14 @@ func TestFetcher_Sync_EmptySourceTreatedAsFailed(t *testing.T) {
 	enisa := staticSource{name: kev.SourceENISA}
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+	expectLock(q)
+	expectUpdate(q, sqldatabase.UpsertKevSourceEntriesParams{
 		CveIds:             []string{"CVE-2021-44228"},
+		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
-		SourceCveIds:       []string{"CVE-2021-44228"},
-		SourceNames:        []string{"cisa"},
-		FetchedSources:     []string{"cisa"},
-		Complete:           false,
-	}).Return(int64(1), nil).Once()
-	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+	})
 
-	err := kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background())
+	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "enisa returned no valid CVE entries")
 }
@@ -113,17 +117,14 @@ func TestFetcher_Sync_BlankCveSourceTreatedAsFailed(t *testing.T) {
 	enisa := staticSource{name: kev.SourceENISA, assertions: []kev.Assertion{{CveID: ""}, {CveID: "  "}}}
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+	expectLock(q)
+	expectUpdate(q, sqldatabase.UpsertKevSourceEntriesParams{
 		CveIds:             []string{"CVE-2021-44228"},
+		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
-		SourceCveIds:       []string{"CVE-2021-44228"},
-		SourceNames:        []string{"cisa"},
-		FetchedSources:     []string{"cisa"},
-		Complete:           false,
-	}).Return(int64(1), nil).Once()
-	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+	})
 
-	err := kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background())
+	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background())
 	require.ErrorContains(t, err, "enisa returned no valid CVE entries")
 }
 
@@ -131,7 +132,8 @@ func TestFetcher_Sync_AllBlankCvesDoNotUpdate(t *testing.T) {
 	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: ""}, {CveID: "  "}}}
 
 	q := mockquerier.NewMockQuerier(t)
-	err := kev.NewFetcher(q, testLogger(), cisa).Sync(context.Background())
+	expectLock(q)
+	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background())
 	require.ErrorContains(t, err, "cisa returned no valid CVE entries")
 }
 
@@ -141,22 +143,28 @@ func TestFetcher_Sync_MixedBlankCves(t *testing.T) {
 	}}
 
 	q := mockquerier.NewMockQuerier(t)
-	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+	expectLock(q)
+	expectUpdate(q, sqldatabase.UpsertKevSourceEntriesParams{
 		CveIds:             []string{"CVE-2021-44228"},
+		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
-		SourceCveIds:       []string{"CVE-2021-44228"},
-		SourceNames:        []string{"cisa"},
-		FetchedSources:     []string{"cisa"},
-		Complete:           true,
-	}).Return(int64(1), nil).Once()
-	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+	})
 
-	require.NoError(t, kev.NewFetcher(q, testLogger(), cisa).Sync(context.Background()))
+	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background()))
 }
 
 func TestFetcher_Sync_NoSources(t *testing.T) {
 	q := mockquerier.NewMockQuerier(t)
-	require.NoError(t, kev.NewFetcher(q, testLogger()).Sync(context.Background()))
+	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger()).Sync(context.Background()))
+}
+
+func TestFetcher_Sync_SkipsWhenAnotherPodHoldsLock(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, err: errors.New("must not be fetched")}
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().TryAdvisoryLock(mock.Anything, kev.KevSyncLockKey).Return(false, nil).Once()
+
+	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background()))
 }
 
 func TestSourcesFromConfig(t *testing.T) {

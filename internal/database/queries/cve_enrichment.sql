@@ -1,50 +1,42 @@
--- name: BulkUpdateKevData :execrows
--- Never clears KEV data (see CONTEXT.md); ransomware only resets when complete and all recorded sources were fetched.
-WITH data AS (
+-- name: UpsertKevSourceEntries :execrows
+-- Rows are never deleted (see CONTEXT.md).
+INSERT INTO cve_kev_source (cve_id, source, known_ransomware_use)
+SELECT
+    d.cve_id,
+    d.source,
+    d.known_ransomware_use
+FROM (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@known_ransomware_use::BOOLEAN[]) AS known_ransomware_use
-),
-source_pairs AS (
-    SELECT
-        unnest(@source_cve_ids::TEXT[]) AS cve_id,
-        unnest(@source_names::TEXT[]) AS source
-),
-sources AS (
-    SELECT
-        cve_id,
-        array_agg(source ORDER BY source) AS kev_sources
-    FROM
-        source_pairs
-    GROUP BY
-        cve_id
-),
-merged AS (
-    SELECT
-        c.cve_id,
-        CASE WHEN @complete::BOOLEAN AND c.kev_sources <@ @fetched_sources::TEXT[] THEN d.known_ransomware_use
-            ELSE c.known_ransomware_use OR d.known_ransomware_use
-        END AS known_ransomware_use,
-        ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x) AS kev_sources
-    FROM
-        data d
-        JOIN sources s ON s.cve_id = d.cve_id
-        JOIN cve c ON c.cve_id = d.cve_id
-)
+        unnest(@sources::TEXT[]) AS source,
+        unnest(@known_ransomware_use::BOOLEAN[]) AS known_ransomware_use) AS d
+    JOIN cve c ON c.cve_id = d.cve_id
+ON CONFLICT (cve_id, source)
+    DO UPDATE SET
+        known_ransomware_use = EXCLUDED.known_ransomware_use,
+        last_seen_at = NOW();
+
+-- name: RefreshCveKevFlags :execrows
 UPDATE
     cve
 SET
-    has_kev_entry = TRUE,
-    known_ransomware_use = m.known_ransomware_use,
-    kev_sources = m.kev_sources,
+    has_kev_entry = k.has_kev_entry,
+    known_ransomware_use = k.known_ransomware_use,
     updated_at = NOW()
-FROM
-    merged m
+FROM (
+    SELECT
+        c.cve_id,
+        COUNT(s.source) > 0 AS has_kev_entry,
+        COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
+    FROM
+        cve c
+        LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
+    GROUP BY
+        c.cve_id) AS k
 WHERE
-    cve.cve_id = m.cve_id
-    AND (cve.has_kev_entry = FALSE
-        OR cve.known_ransomware_use != m.known_ransomware_use
-        OR cve.kev_sources IS DISTINCT FROM m.kev_sources);
+    cve.cve_id = k.cve_id
+    AND (cve.has_kev_entry != k.has_kev_entry
+        OR cve.known_ransomware_use != k.known_ransomware_use);
 
 -- name: GetVulnerabilitiesForOsvEnrichment :many
 -- apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
