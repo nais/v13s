@@ -25,6 +25,14 @@ spec:
       - sigstore-tuf-root.storage.googleapis.com
       - tuf-repo-cdn.sigstore.dev
       - europe-north1-docker.pkg.dev
+      {{- with .Values.kev.enisaURL }}
+      - {{ (urlParse .).host }}
+      {{- end }}
+      {{- if .Values.kev.vulncheck.enabled }}
+      - {{ (urlParse .Values.kev.vulncheck.url).host }}
+      # VulnCheck serves backup archives from a separate download host.
+      - serve.vulncheck.com
+      {{- end }}
 {{- $root := . }}
 {{- range split "," .Values.kubernetes.clusters }}
   - ports:
