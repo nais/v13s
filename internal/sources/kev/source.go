@@ -37,39 +37,31 @@ func SourcesFromConfig(cfg config.KevConfig) []Source {
 	return sources
 }
 
-type sourcePair struct {
+type sourceEntry struct {
 	cveID  string
 	source string
 }
 
-// merge marks a CVE as known exploited, or ransomware, when any source says so.
-func merge(bySource map[string][]Assertion) (params sql.BulkUpdateKevDataParams, ransomwareCount int) {
-	ransomware := map[string]bool{}
-	pairs := map[sourcePair]struct{}{}
+func entries(bySource map[string][]Assertion) sql.UpsertKevSourceEntriesParams {
+	ransomware := map[sourceEntry]bool{}
 	for source, assertions := range bySource {
 		for _, a := range assertions {
 			if a.CveID == "" {
 				continue
 			}
-			ransomware[a.CveID] = ransomware[a.CveID] || a.KnownRansomware
-			pairs[sourcePair{cveID: a.CveID, source: source}] = struct{}{}
+			e := sourceEntry{cveID: a.CveID, source: source}
+			ransomware[e] = ransomware[e] || a.KnownRansomware
 		}
 	}
 
-	params.CveIds = slices.Sorted(maps.Keys(ransomware))
-	for _, id := range params.CveIds {
-		params.KnownRansomwareUse = append(params.KnownRansomwareUse, ransomware[id])
-		if ransomware[id] {
-			ransomwareCount++
-		}
-	}
-
-	sorted := slices.SortedFunc(maps.Keys(pairs), func(a, b sourcePair) int {
+	var params sql.UpsertKevSourceEntriesParams
+	sorted := slices.SortedFunc(maps.Keys(ransomware), func(a, b sourceEntry) int {
 		return cmp.Or(cmp.Compare(a.cveID, b.cveID), cmp.Compare(a.source, b.source))
 	})
-	for _, p := range sorted {
-		params.SourceCveIds = append(params.SourceCveIds, p.cveID)
-		params.SourceNames = append(params.SourceNames, p.source)
+	for _, e := range sorted {
+		params.CveIds = append(params.CveIds, e.cveID)
+		params.Sources = append(params.Sources, e.source)
+		params.KnownRansomwareUse = append(params.KnownRansomwareUse, ransomware[e])
 	}
-	return params, ransomwareCount
+	return params
 }

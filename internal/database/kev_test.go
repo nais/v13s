@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBulkUpdateKevData(t *testing.T) {
+func TestKevSourceEntries(t *testing.T) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	defer pool.Close()
@@ -20,61 +20,60 @@ func TestBulkUpdateKevData(t *testing.T) {
 	require.NoError(t, db.ResetDatabase(ctx))
 
 	const cveID = "CVE-2021-44228"
-	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{CveID: cveID, CveTitle: cveID, Refs: map[string]string{}}}).Exec(func(_ int, err error) {
+	const otherCveID = "CVE-2024-0001"
+	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+		{CveID: cveID, CveTitle: cveID, Refs: map[string]string{}},
+		{CveID: otherCveID, CveTitle: otherCveID, Refs: map[string]string{}},
+	}).Exec(func(_ int, err error) {
 		require.NoError(t, err)
 	})
+	_, err := pool.Exec(ctx, `DELETE FROM cve_kev_source`)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = FALSE, known_ransomware_use = FALSE`)
+	require.NoError(t, err)
 
-	update := func(ransomware bool, sources, fetchedSources []string, complete bool) *sql.Cve {
+	sync := func(cveID, source string, ransomware bool) *sql.Cve {
 		t.Helper()
-		params := sql.BulkUpdateKevDataParams{
+		_, err := db.UpsertKevSourceEntries(ctx, sql.UpsertKevSourceEntriesParams{
 			CveIds:             []string{cveID},
+			Sources:            []string{source},
 			KnownRansomwareUse: []bool{ransomware},
-			FetchedSources:     fetchedSources,
-			Complete:           complete,
-		}
-		for _, s := range sources {
-			params.SourceCveIds = append(params.SourceCveIds, cveID)
-			params.SourceNames = append(params.SourceNames, s)
-		}
-		_, err := db.BulkUpdateKevData(ctx, params)
+		})
+		require.NoError(t, err)
+		_, err = db.RefreshCveKevFlags(ctx)
 		require.NoError(t, err)
 		cve, err := db.GetCve(ctx, cveID)
 		require.NoError(t, err)
 		return cve
 	}
 
-	cve := update(true, []string{"cisa"}, []string{"cisa"}, true)
+	cve := sync(cveID, "cisa", true)
 	assert.True(t, cve.HasKevEntry)
 	assert.True(t, cve.KnownRansomwareUse)
-	assert.Equal(t, []string{"cisa"}, cve.KevSources)
 
-	cve = update(false, []string{"enisa"}, []string{"enisa"}, false)
-	assert.True(t, cve.KnownRansomwareUse, "a partial run must not clear the ransomware flag")
-	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources, "a partial run only adds sources")
+	cve = sync(cveID, "enisa", false)
+	assert.True(t, cve.KnownRansomwareUse, "another source saying no ransomware must not clear CISA's claim")
 
-	cve = update(false, []string{"enisa"}, []string{"enisa"}, true)
-	assert.True(t, cve.KnownRansomwareUse, "a disabled CISA source must not clear its ransomware flag")
-	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources, "sources are never removed")
+	cve = sync(cveID, "cisa", false)
+	assert.False(t, cve.KnownRansomwareUse, "CISA withdrawing its claim clears the flag without ENISA being fetched")
 
-	cve = update(false, []string{"enisa"}, []string{"cisa", "enisa"}, true)
-	assert.False(t, cve.KnownRansomwareUse, "a complete run updates the ransomware flag")
-	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources, "sources are never removed")
-
-	const otherCveID = "CVE-2024-0001"
-	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{CveID: otherCveID, CveTitle: otherCveID, Refs: map[string]string{}}}).Exec(func(_ int, err error) {
-		require.NoError(t, err)
-	})
-	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
-		CveIds:             []string{otherCveID},
-		KnownRansomwareUse: []bool{false},
-		SourceCveIds:       []string{otherCveID},
-		SourceNames:        []string{"cisa"},
-		FetchedSources:     []string{"cisa"},
-		Complete:           true,
-	})
-	require.NoError(t, err)
+	sync(otherCveID, "cisa", false)
 	cve, err = db.GetCve(ctx, cveID)
 	require.NoError(t, err)
 	assert.True(t, cve.HasKevEntry, "a CVE missing from the fetched data keeps its KEV entry")
-	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources)
+
+	_, err = db.UpsertKevSourceEntries(ctx, sql.UpsertKevSourceEntriesParams{
+		CveIds:             []string{"CVE-1999-9999"},
+		Sources:            []string{"cisa"},
+		KnownRansomwareUse: []bool{true},
+	})
+	require.NoError(t, err, "KEV CVEs not in the cve table are skipped")
+
+	_, err = pool.Exec(ctx, `DELETE FROM cve_kev_source WHERE cve_id = $1`, cveID)
+	require.NoError(t, err)
+	_, err = db.RefreshCveKevFlags(ctx)
+	require.NoError(t, err)
+	cve, err = db.GetCve(ctx, cveID)
+	require.NoError(t, err)
+	assert.False(t, cve.HasKevEntry, "deleting a CVE's source rows removes its KEV entry")
 }

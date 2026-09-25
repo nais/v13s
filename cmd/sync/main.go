@@ -56,7 +56,7 @@ var sources = []source{
 		description: "sync the KEV catalogs (CISA, ENISA and, when enabled, VulnCheck)",
 		newSyncer: func(cfg *envConfig, pool *pgxpool.Pool, log *logrus.Logger) syncer {
 			return kev.NewFetcher(
-				sql.New(pool),
+				pool,
 				logrus.NewEntry(log),
 				kev.SourcesFromConfig(cfg.Kev)...,
 			)

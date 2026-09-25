@@ -67,79 +67,6 @@ func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVe
 	return result.RowsAffected(), nil
 }
 
-const bulkUpdateKevData = `-- name: BulkUpdateKevData :execrows
-WITH data AS (
-    SELECT
-        unnest($1::TEXT[]) AS cve_id,
-        unnest($2::BOOLEAN[]) AS known_ransomware_use
-),
-source_pairs AS (
-    SELECT
-        unnest($3::TEXT[]) AS cve_id,
-        unnest($4::TEXT[]) AS source
-),
-sources AS (
-    SELECT
-        cve_id,
-        array_agg(source ORDER BY source) AS kev_sources
-    FROM
-        source_pairs
-    GROUP BY
-        cve_id
-),
-merged AS (
-    SELECT
-        c.cve_id,
-        CASE WHEN $5::BOOLEAN AND c.kev_sources <@ $6::TEXT[] THEN d.known_ransomware_use
-            ELSE c.known_ransomware_use OR d.known_ransomware_use
-        END AS known_ransomware_use,
-        ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x) AS kev_sources
-    FROM
-        data d
-        JOIN sources s ON s.cve_id = d.cve_id
-        JOIN cve c ON c.cve_id = d.cve_id
-)
-UPDATE
-    cve
-SET
-    has_kev_entry = TRUE,
-    known_ransomware_use = m.known_ransomware_use,
-    kev_sources = m.kev_sources,
-    updated_at = NOW()
-FROM
-    merged m
-WHERE
-    cve.cve_id = m.cve_id
-    AND (cve.has_kev_entry = FALSE
-        OR cve.known_ransomware_use != m.known_ransomware_use
-        OR cve.kev_sources IS DISTINCT FROM m.kev_sources)
-`
-
-type BulkUpdateKevDataParams struct {
-	CveIds             []string
-	KnownRansomwareUse []bool
-	SourceCveIds       []string
-	SourceNames        []string
-	Complete           bool
-	FetchedSources     []string
-}
-
-// Never clears KEV data (see CONTEXT.md); ransomware only resets when complete and all recorded sources were fetched.
-func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkUpdateKevData,
-		arg.CveIds,
-		arg.KnownRansomwareUse,
-		arg.SourceCveIds,
-		arg.SourceNames,
-		arg.Complete,
-		arg.FetchedSources,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const getVulnerabilitiesForOsvEnrichment = `-- name: GetVulnerabilitiesForOsvEnrichment :many
 SELECT DISTINCT
     cve_id,
@@ -179,4 +106,68 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 		return nil, err
 	}
 	return items, nil
+}
+
+const refreshCveKevFlags = `-- name: RefreshCveKevFlags :execrows
+UPDATE
+    cve
+SET
+    has_kev_entry = k.has_kev_entry,
+    known_ransomware_use = k.known_ransomware_use,
+    updated_at = NOW()
+FROM (
+    SELECT
+        c.cve_id,
+        COUNT(s.source) > 0 AS has_kev_entry,
+        COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
+    FROM
+        cve c
+        LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
+    GROUP BY
+        c.cve_id) AS k
+WHERE
+    cve.cve_id = k.cve_id
+    AND (cve.has_kev_entry != k.has_kev_entry
+        OR cve.known_ransomware_use != k.known_ransomware_use)
+`
+
+func (q *Queries) RefreshCveKevFlags(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, refreshCveKevFlags)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const upsertKevSourceEntries = `-- name: UpsertKevSourceEntries :execrows
+INSERT INTO cve_kev_source (cve_id, source, known_ransomware_use)
+SELECT
+    d.cve_id,
+    d.source,
+    d.known_ransomware_use
+FROM (
+    SELECT
+        unnest($1::TEXT[]) AS cve_id,
+        unnest($2::TEXT[]) AS source,
+        unnest($3::BOOLEAN[]) AS known_ransomware_use) AS d
+    JOIN cve c ON c.cve_id = d.cve_id
+ON CONFLICT (cve_id, source)
+    DO UPDATE SET
+        known_ransomware_use = EXCLUDED.known_ransomware_use,
+        last_seen_at = NOW()
+`
+
+type UpsertKevSourceEntriesParams struct {
+	CveIds             []string
+	Sources            []string
+	KnownRansomwareUse []bool
+}
+
+// Rows are never deleted (see CONTEXT.md).
+func (q *Queries) UpsertKevSourceEntries(ctx context.Context, arg UpsertKevSourceEntriesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertKevSourceEntries, arg.CveIds, arg.Sources, arg.KnownRansomwareUse)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
