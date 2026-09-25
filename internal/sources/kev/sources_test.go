@@ -230,6 +230,21 @@ func TestVulnCheckClient_Fetch_TruncatedArray(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestVulnCheckClient_Fetch_TrailingDataAfterArray(t *testing.T) {
+	for name, content := range map[string]string{
+		"truncated object": `[{"cve":["CVE-2024-0001"]}] {`,
+		"second array":     `[{"cve":["CVE-2024-0001"]}] []`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			archive := zipArchive(t, map[string]string{"kev.json": content})
+			srv := newVulnCheckServer(t, archive, sha256Hex(archive))
+
+			_, err := kev.NewVulnCheckClient(srv.URL, "token").Fetch(context.Background())
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestVulnCheckClient_Fetch_Unauthorized(t *testing.T) {
 	srv := newVulnCheckServer(t, nil, "")
 
