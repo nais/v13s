@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -15,6 +16,14 @@ import (
 
 type payload struct {
 	Name string `json:"name"`
+}
+
+type failingDoer struct {
+	err error
+}
+
+func (d failingDoer) Do(*http.Request) (*http.Response, error) {
+	return nil, d.err
 }
 
 func TestGetJSON(t *testing.T) {
@@ -44,6 +53,17 @@ func TestGet_StatusErrorRedactsQuery(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, statusErr.StatusCode)
 	assert.NotContains(t, err.Error(), "secret")
 	assert.Contains(t, err.Error(), "/file.zip")
+}
+
+func TestGet_RequestErrorRedactsQuery(t *testing.T) {
+	rawURL := "https://serve.vulncheck.com/file.zip?X-Signature=secret"
+	doer := failingDoer{err: &url.Error{Op: "Get", URL: rawURL, Err: context.DeadlineExceeded}}
+
+	_, err := httpclient.Get(context.Background(), doer, rawURL, nil)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "secret")
+	assert.Contains(t, err.Error(), "/file.zip")
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestGetJSON_InvalidBody(t *testing.T) {

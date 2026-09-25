@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -57,7 +58,7 @@ func GetJSON(ctx context.Context, doer Doer, rawURL string, header http.Header, 
 func do(ctx context.Context, doer Doer, rawURL string, header http.Header) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("building request for %s: %w", redact(rawURL), err)
+		return nil, fmt.Errorf("building request for %s: %w", redact(rawURL), redactURLError(err))
 	}
 	for k, vs := range header {
 		for _, v := range vs {
@@ -67,13 +68,23 @@ func do(ctx context.Context, doer Doer, rawURL string, header http.Header) (*htt
 
 	resp, err := doer.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("GET %s: %w", redact(rawURL), err)
+		return nil, fmt.Errorf("GET %s: %w", redact(rawURL), redactURLError(err))
 	}
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
 		return nil, StatusError{URL: redact(rawURL), StatusCode: resp.StatusCode}
 	}
 	return resp, nil
+}
+
+func redactURLError(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		safe := *urlErr
+		safe.URL = redact(urlErr.URL)
+		return &safe
+	}
+	return err
 }
 
 // redact drops the query, which may hold signatures for presigned URLs.
