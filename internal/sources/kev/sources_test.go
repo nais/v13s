@@ -102,7 +102,51 @@ func TestFetcher_Sync_EmptySourceTreatedAsFailed(t *testing.T) {
 
 	err := kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "enisa returned no entries")
+	assert.Contains(t, err.Error(), "enisa returned no valid CVE entries")
+}
+
+func TestFetcher_Sync_BlankCveSourceTreatedAsFailed(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: "CVE-2021-44228"}}}
+	enisa := staticSource{name: kev.SourceENISA, assertions: []kev.Assertion{{CveID: ""}, {CveID: "  "}}}
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+		CveIds:             []string{"CVE-2021-44228"},
+		KnownRansomwareUse: []bool{false},
+		SourceCveIds:       []string{"CVE-2021-44228"},
+		SourceNames:        []string{"cisa"},
+		Complete:           false,
+	}).Return(int64(1), nil).Once()
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+
+	err := kev.NewFetcher(q, testLogger(), cisa, enisa).Sync(context.Background())
+	require.ErrorContains(t, err, "enisa returned no valid CVE entries")
+}
+
+func TestFetcher_Sync_AllBlankCvesDoNotUpdate(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: ""}, {CveID: "  "}}}
+
+	q := mockquerier.NewMockQuerier(t)
+	err := kev.NewFetcher(q, testLogger(), cisa).Sync(context.Background())
+	require.ErrorContains(t, err, "cisa returned no valid CVE entries")
+}
+
+func TestFetcher_Sync_MixedBlankCves(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{
+		{CveID: ""}, {CveID: "  "}, {CveID: "CVE-2021-44228"},
+	}}
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().BulkUpdateKevData(mock.Anything, sqldatabase.BulkUpdateKevDataParams{
+		CveIds:             []string{"CVE-2021-44228"},
+		KnownRansomwareUse: []bool{false},
+		SourceCveIds:       []string{"CVE-2021-44228"},
+		SourceNames:        []string{"cisa"},
+		Complete:           true,
+	}).Return(int64(1), nil).Once()
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
+
+	require.NoError(t, kev.NewFetcher(q, testLogger(), cisa).Sync(context.Background()))
 }
 
 func TestFetcher_Sync_NoSources(t *testing.T) {
