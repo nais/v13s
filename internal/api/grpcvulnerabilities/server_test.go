@@ -2677,6 +2677,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			KnownRansomwareUse: []bool{true},
 			SourceCveIds:       []string{cveID},
 			SourceNames:        []string{"cisa"},
+			FetchedSources:     []string{"cisa"},
 			Complete:           true,
 		})
 		require.NoError(t, err)
@@ -3416,6 +3417,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		KnownRansomwareUse: []bool{true},
 		SourceCveIds:       []string{cveID},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           true,
 	})
 	require.NoError(t, err)
@@ -3907,6 +3909,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		KnownRansomwareUse: []bool{false},
 		SourceCveIds:       []string{cveHigh},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           true,
 	})
 	require.NoError(t, err)

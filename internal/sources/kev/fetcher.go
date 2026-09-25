@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/nais/v13s/internal/database/sql"
@@ -63,6 +65,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		return errors.Join(failed...)
 	}
 	params.Complete = len(failed) == 0
+	params.FetchedSources = slices.Sorted(maps.Keys(bySource))
 
 	f.log.Infof("updating DB: %d CVEs across KEV sources (%d with known ransomware use)", len(params.CveIds), ransomwareCount)
 	updated, err := f.querier.BulkUpdateKevData(ctx, params)

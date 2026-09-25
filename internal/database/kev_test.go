@@ -24,11 +24,12 @@ func TestBulkUpdateKevData(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	update := func(ransomware bool, sources []string, complete bool) *sql.Cve {
+	update := func(ransomware bool, sources, fetchedSources []string, complete bool) *sql.Cve {
 		t.Helper()
 		params := sql.BulkUpdateKevDataParams{
 			CveIds:             []string{cveID},
 			KnownRansomwareUse: []bool{ransomware},
+			FetchedSources:     fetchedSources,
 			Complete:           complete,
 		}
 		for _, s := range sources {
@@ -42,16 +43,20 @@ func TestBulkUpdateKevData(t *testing.T) {
 		return cve
 	}
 
-	cve := update(true, []string{"cisa"}, true)
+	cve := update(true, []string{"cisa"}, []string{"cisa"}, true)
 	assert.True(t, cve.HasKevEntry)
 	assert.True(t, cve.KnownRansomwareUse)
 	assert.Equal(t, []string{"cisa"}, cve.KevSources)
 
-	cve = update(false, []string{"enisa"}, false)
+	cve = update(false, []string{"enisa"}, []string{"enisa"}, false)
 	assert.True(t, cve.KnownRansomwareUse, "a partial run must not clear the ransomware flag")
 	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources, "a partial run only adds sources")
 
-	cve = update(false, []string{"enisa"}, true)
+	cve = update(false, []string{"enisa"}, []string{"enisa"}, true)
+	assert.True(t, cve.KnownRansomwareUse, "a disabled CISA source must not clear its ransomware flag")
+	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources, "sources are never removed")
+
+	cve = update(false, []string{"enisa"}, []string{"cisa", "enisa"}, true)
 	assert.False(t, cve.KnownRansomwareUse, "a complete run updates the ransomware flag")
 	assert.Equal(t, []string{"cisa", "enisa"}, cve.KevSources, "sources are never removed")
 
@@ -64,6 +69,7 @@ func TestBulkUpdateKevData(t *testing.T) {
 		KnownRansomwareUse: []bool{false},
 		SourceCveIds:       []string{otherCveID},
 		SourceNames:        []string{"cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           true,
 	})
 	require.NoError(t, err)

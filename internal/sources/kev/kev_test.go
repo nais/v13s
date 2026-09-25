@@ -110,6 +110,7 @@ func TestFetcher_Sync_AppliesAllCatalogEntries(t *testing.T) {
 		KnownRansomwareUse: []bool{true, false},
 		SourceCveIds:       []string{"CVE-2021-44228", "CVE-2023-1234"},
 		SourceNames:        []string{"cisa", "cisa"},
+		FetchedSources:     []string{"cisa"},
 		Complete:           true,
 	}).Return(int64(2), nil)
 	updatePriority := q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil)
@@ -174,6 +175,7 @@ func TestFetcher_Sync_RealFixture(t *testing.T) {
 		expected.SourceCveIds = append(expected.SourceCveIds, v.CveID)
 		expected.SourceNames = append(expected.SourceNames, kev.SourceCISA)
 	}
+	expected.FetchedSources = []string{"cisa"}
 	expected.Complete = true
 
 	q := mockquerier.NewMockQuerier(t)

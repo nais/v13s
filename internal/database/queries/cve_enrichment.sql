@@ -1,5 +1,5 @@
 -- name: BulkUpdateKevData :execrows
--- Never clears KEV data (see CONTEXT.md); ransomware only resets when complete.
+-- Never clears KEV data (see CONTEXT.md); ransomware only resets when complete and all recorded sources were fetched.
 WITH data AS (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
@@ -22,7 +22,7 @@ sources AS (
 merged AS (
     SELECT
         c.cve_id,
-        CASE WHEN @complete::BOOLEAN THEN d.known_ransomware_use
+        CASE WHEN @complete::BOOLEAN AND c.kev_sources <@ @fetched_sources::TEXT[] THEN d.known_ransomware_use
             ELSE c.known_ransomware_use OR d.known_ransomware_use
         END AS known_ransomware_use,
         ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x) AS kev_sources

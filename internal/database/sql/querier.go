@@ -19,7 +19,7 @@ type Querier interface {
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
-	// Never clears KEV data (see CONTEXT.md); ransomware only resets when complete.
+	// Never clears KEV data (see CONTEXT.md); ransomware only resets when complete and all recorded sources were fetched.
 	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
