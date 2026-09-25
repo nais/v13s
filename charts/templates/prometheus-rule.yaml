@@ -1,7 +1,4 @@
 {{- if contains "nav" .Values.fasit.tenant.name }}
-{{- /* Mirrors kev.SourcesFromConfig: VulnCheck only syncs when enabled and a token is set. */}}
-{{- $vulncheck := and .Values.kev.vulncheck.enabled (ne .Values.kev.vulncheck.token "") }}
-{{- $kevSources := ternary "CISA, ENISA, VulnCheck" "CISA, ENISA" $vulncheck }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -69,10 +66,8 @@ spec:
             description: |
               {{ "`{{ $labels.workload_cluster }}/{{ $labels.workload_name }}`: `{{ $value }}` known exploited (KEV) vulnerabilities — " }}https://salsa.{{ .Values.fasit.tenant.name }}.cloud.nais.io/projects?searchText={{"{{ $labels.workload_name }}"}}
             consequence: |
-              These CVEs are listed in at least one Known Exploited Vulnerabilities catalog ({{ $kevSources }}), meaning exploitation has been observed in the wild. Treat this as the highest remediation priority.
-              {{- if $vulncheck }}
-              KEV data includes VulnCheck KEV, provided by VulnCheck (https://vulncheck.com/kev).
-              {{- end }}
+              These CVEs are listed in at least one Known Exploited Vulnerabilities catalog (CISA, ENISA or, when enabled, VulnCheck), meaning exploitation has been observed in the wild. Treat this as the highest remediation priority.
+              KEV data may include VulnCheck KEV, provided by VulnCheck (https://vulncheck.com/kev). KEV entries are kept after a source is disabled.
             action: |
               1. Open the affected workload in Salsa and identify the packages, CVEs, and running image tag.
               2. Upgrade the affected dependency or use an image with the fix. If no fix is available, remove the affected package or apply the documented mitigation.
