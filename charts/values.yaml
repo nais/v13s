@@ -42,6 +42,7 @@ kev:
   enisaURL: "https://raw.githubusercontent.com/enisaeu/CNW/main/advisories/eukev/eukev.json"
   vulncheck:
     enabled: false
+    url: "https://api.vulncheck.com"
     token: ""
 osv:
   baseURL: "https://api.osv.dev/v1"
