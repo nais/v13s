@@ -136,6 +136,9 @@ func decodeVulnCheckEntries(r io.Reader) ([]vulnCheckEntry, error) {
 		if _, err := dec.Token(); err != nil {
 			return nil, err
 		}
+		if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("unexpected data after JSON array")
+		}
 		return entries, nil
 	}
 
