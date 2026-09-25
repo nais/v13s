@@ -20,7 +20,7 @@ func main() {
 	ctx := context.Background()
 	cfg, err := config.NewConfig()
 	if err != nil {
-		log.WithError(err).Errorf("error when processing configuration")
+		log.WithError(err).Fatal("error when processing configuration")
 	}
 
 	log.Infof("initializing database")
