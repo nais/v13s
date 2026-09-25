@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
@@ -38,14 +39,22 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 			failed = append(failed, fmt.Errorf("fetching KEV source %s: %w", s.Name(), err))
 			continue
 		}
-		if len(assertions) == 0 {
-			// An empty feed is almost certainly broken; treating the run as complete would reset ransomware flags.
-			f.log.Warnf("KEV source %s returned no entries, keeping its previous data", s.Name())
-			failed = append(failed, fmt.Errorf("KEV source %s returned no entries", s.Name()))
+		valid := make([]Assertion, 0, len(assertions))
+		for _, assertion := range assertions {
+			if strings.TrimSpace(assertion.CveID) != "" {
+				valid = append(valid, assertion)
+			}
+		}
+		if len(valid) == 0 {
+			f.log.Warnf("KEV source %s returned no valid CVE entries, keeping its previous data", s.Name())
+			failed = append(failed, fmt.Errorf("KEV source %s returned no valid CVE entries", s.Name()))
 			continue
 		}
-		f.log.Infof("KEV source %s: %d entries", s.Name(), len(assertions))
-		bySource[s.Name()] = assertions
+		if len(valid) != len(assertions) {
+			f.log.Warnf("KEV source %s returned %d entries without a CVE ID, ignoring them", s.Name(), len(assertions)-len(valid))
+		}
+		f.log.Infof("KEV source %s: %d entries", s.Name(), len(valid))
+		bySource[s.Name()] = valid
 	}
 
 	params, ransomwareCount := merge(bySource)
