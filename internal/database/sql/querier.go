@@ -19,7 +19,6 @@ type Querier interface {
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
-	BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error)
 	CountSuppressedVulnerabilities(ctx context.Context, arg CountSuppressedVulnerabilitiesParams) (int64, error)
 	CountVulnerabilities(ctx context.Context, arg CountVulnerabilitiesParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
@@ -72,6 +71,7 @@ type Querier interface {
 	MarkUntrackedImagesForResync(ctx context.Context) (int64, error)
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
 	RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error
+	RefreshCveKevFlags(ctx context.Context) (int64, error)
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	RekeySuppressedAliasesToCanonical(ctx context.Context) (int64, error)
@@ -86,6 +86,8 @@ type Querier interface {
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error
 	UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error
+	// Rows are never deleted (see CONTEXT.md).
+	UpsertKevSourceEntries(ctx context.Context, arg UpsertKevSourceEntriesParams) (int64, error)
 	UpsertVulnerabilityLifetimes(ctx context.Context) error
 	UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error)
 }

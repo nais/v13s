@@ -612,7 +612,7 @@ type Summary struct {
 	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
 	StaleImageTag *string                `protobuf:"bytes,10,opt,name=stale_image_tag,json=staleImageTag,proto3,oneof" json:"stale_image_tag,omitempty"`
 	// Priority distribution (use when breakdown/trend is needed).
-	// Findings in the CISA KEV catalogue (a signal, not a verdict).
+	// Findings in any KEV catalog (a signal, not a verdict).
 	// Field 11 was previously act_now; renamed in place, wire-compatible.
 	KevCount        int32 `protobuf:"varint,11,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	HighRisk        int32 `protobuf:"varint,12,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`
@@ -3605,7 +3605,7 @@ type VulnerabilitySummaryPoint struct {
 	RiskScore     int32                  `protobuf:"varint,7,opt,name=riskScore,proto3" json:"riskScore,omitempty"`
 	WorkloadCount int32                  `protobuf:"varint,8,opt,name=workload_count,json=workloadCount,proto3" json:"workload_count,omitempty"`
 	BucketTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=bucket_time,json=bucketTime,proto3" json:"bucket_time,omitempty"`
-	// Findings in the CISA KEV catalogue (a signal, not a verdict).
+	// Findings in any KEV catalog (a signal, not a verdict).
 	// Field 10 was previously act_now; renamed in place, wire-compatible.
 	KevCount        int32    `protobuf:"varint,10,opt,name=kev_count,json=kevCount,proto3" json:"kev_count,omitempty"`
 	HighRisk        int32    `protobuf:"varint,11,opt,name=high_risk,json=highRisk,proto3" json:"high_risk,omitempty"`

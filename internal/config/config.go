@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -62,7 +63,18 @@ type DependencyTrackConfig struct {
 }
 
 type KevConfig struct {
-	CatalogURL string `envconfig:"KEV_CATALOG_URL"`
+	CatalogURL       string `envconfig:"KEV_CATALOG_URL"`
+	EnisaURL         string `envconfig:"KEV_ENISA_URL" default:"https://raw.githubusercontent.com/enisaeu/CNW/main/advisories/eukev/eukev.json"`
+	VulnCheckEnabled bool   `envconfig:"KEV_VULNCHECK_ENABLED" default:"false"`
+	VulnCheckURL     string `envconfig:"KEV_VULNCHECK_URL" default:"https://api.vulncheck.com"`
+	VulnCheckToken   string `envconfig:"KEV_VULNCHECK_TOKEN"`
+}
+
+func (c KevConfig) Validate() error {
+	if c.VulnCheckEnabled && c.VulnCheckToken == "" {
+		return errors.New("KEV_VULNCHECK_ENABLED is true but KEV_VULNCHECK_TOKEN is not set")
+	}
+	return nil
 }
 
 type OsvConfig struct {
@@ -106,6 +118,9 @@ func NewConfig() (*Config, error) {
 	cfg := &Config{}
 	err = envconfig.Process("", cfg)
 	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Kev.Validate(); err != nil {
 		return nil, err
 	}
 

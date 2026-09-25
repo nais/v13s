@@ -53,12 +53,12 @@ func (p prioritySyncer) Sync(ctx context.Context) error {
 var sources = []source{
 	{
 		name:        "kev",
-		description: "sync the CISA KEV catalog",
+		description: "sync the KEV catalogs (CISA, ENISA and, when enabled, VulnCheck)",
 		newSyncer: func(cfg *envConfig, pool *pgxpool.Pool, log *logrus.Logger) syncer {
-			return kev.NewFetcherWithClient(
-				kev.NewClientWithURL(cfg.Kev.CatalogURL),
-				sql.New(pool),
+			return kev.NewFetcher(
+				pool,
 				logrus.NewEntry(log),
+				kev.SourcesFromConfig(cfg.Kev)...,
 			)
 		},
 	},
@@ -126,6 +126,9 @@ func main() {
 	cfg := &envConfig{}
 	if err := envconfig.Process("", cfg); err != nil {
 		log.WithError(err).Fatal("failed to process config")
+	}
+	if err := cfg.Kev.Validate(); err != nil {
+		log.WithError(err).Fatal("invalid KEV config")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
