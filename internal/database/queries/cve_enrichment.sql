@@ -1,7 +1,5 @@
 -- name: BulkUpdateKevData :execrows
--- KEV flags and sources are only ever added, never cleared: a failed, blocked
--- or disabled source must not remove data. The ransomware flag follows the
--- feeds only when every source succeeded (complete = true).
+-- Never clears KEV data (see CONTEXT.md); ransomware only resets when complete.
 WITH data AS (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,

@@ -123,9 +123,7 @@ type BulkUpdateKevDataParams struct {
 	Complete           bool
 }
 
-// KEV flags and sources are only ever added, never cleared: a failed, blocked
-// or disabled source must not remove data. The ransomware flag follows the
-// feeds only when every source succeeded (complete = true).
+// Never clears KEV data (see CONTEXT.md); ransomware only resets when complete.
 func (q *Queries) BulkUpdateKevData(ctx context.Context, arg BulkUpdateKevDataParams) (int64, error) {
 	result, err := q.db.Exec(ctx, bulkUpdateKevData,
 		arg.CveIds,
