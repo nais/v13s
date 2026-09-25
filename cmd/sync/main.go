@@ -127,6 +127,9 @@ func main() {
 	if err := envconfig.Process("", cfg); err != nil {
 		log.WithError(err).Fatal("failed to process config")
 	}
+	if err := cfg.Kev.Validate(); err != nil {
+		log.WithError(err).Fatal("invalid KEV config")
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

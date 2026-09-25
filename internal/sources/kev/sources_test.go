@@ -124,9 +124,10 @@ func TestSourcesFromConfig(t *testing.T) {
 
 	cfg.VulnCheckEnabled = true
 	assert.Equal(t, []string{"cisa", "enisa", "vulncheck"}, names(kev.SourcesFromConfig(cfg)))
+	require.NoError(t, cfg.Validate())
 
 	cfg.VulnCheckToken = ""
-	assert.Equal(t, []string{"cisa", "enisa"}, names(kev.SourcesFromConfig(cfg)), "VulnCheck needs a token")
+	assert.Error(t, cfg.Validate(), "VulnCheck enabled without a token must be rejected at startup")
 }
 
 func TestEnisaClient_Fetch(t *testing.T) {

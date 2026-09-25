@@ -1,6 +1,7 @@
 -- name: BulkUpdateKevData :execrows
--- When a source failed (complete = false), only add flags and sources.
--- A complete run also clears CVEs that no source lists any more.
+-- KEV flags and sources are only ever added, never cleared: a failed, blocked
+-- or disabled source must not remove data. The ransomware flag follows the
+-- feeds only when every source succeeded (complete = true).
 WITH data AS (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
@@ -26,58 +27,26 @@ merged AS (
         CASE WHEN @complete::BOOLEAN THEN d.known_ransomware_use
             ELSE c.known_ransomware_use OR d.known_ransomware_use
         END AS known_ransomware_use,
-        CASE WHEN @complete::BOOLEAN THEN s.kev_sources
-            ELSE ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x)
-        END AS kev_sources
+        ARRAY(SELECT DISTINCT x FROM unnest(c.kev_sources || s.kev_sources) AS x ORDER BY x) AS kev_sources
     FROM
         data d
         JOIN sources s ON s.cve_id = d.cve_id
         JOIN cve c ON c.cve_id = d.cve_id
-),
-stale AS (
-    SELECT
-        c.cve_id,
-        FALSE AS known_ransomware_use,
-        '{}'::TEXT[] AS kev_sources
-    FROM
-        cve c
-    WHERE
-        @complete::BOOLEAN
-        AND (c.has_kev_entry = TRUE
-            OR cardinality(c.kev_sources) > 0)
-        AND NOT c.cve_id = ANY (@cve_ids::TEXT[])
-),
-changes AS (
-    SELECT
-        cve_id,
-        TRUE AS has_kev_entry,
-        known_ransomware_use,
-        kev_sources
-    FROM
-        merged
-    UNION ALL
-    SELECT
-        cve_id,
-        FALSE AS has_kev_entry,
-        known_ransomware_use,
-        kev_sources
-    FROM
-        stale
 )
 UPDATE
     cve
 SET
-    has_kev_entry = ch.has_kev_entry,
-    known_ransomware_use = ch.known_ransomware_use,
-    kev_sources = ch.kev_sources,
+    has_kev_entry = TRUE,
+    known_ransomware_use = m.known_ransomware_use,
+    kev_sources = m.kev_sources,
     updated_at = NOW()
 FROM
-    changes ch
+    merged m
 WHERE
-    cve.cve_id = ch.cve_id
-    AND (cve.has_kev_entry != ch.has_kev_entry
-        OR cve.known_ransomware_use != ch.known_ransomware_use
-        OR cve.kev_sources IS DISTINCT FROM ch.kev_sources);
+    cve.cve_id = m.cve_id
+    AND (cve.has_kev_entry = FALSE
+        OR cve.known_ransomware_use != m.known_ransomware_use
+        OR cve.kev_sources IS DISTINCT FROM m.kev_sources);
 
 -- name: GetVulnerabilitiesForOsvEnrichment :many
 -- apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.

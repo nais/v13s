@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -69,6 +70,13 @@ type KevConfig struct {
 	VulnCheckToken   string `envconfig:"KEV_VULNCHECK_TOKEN"`
 }
 
+func (c KevConfig) Validate() error {
+	if c.VulnCheckEnabled && c.VulnCheckToken == "" {
+		return errors.New("KEV_VULNCHECK_ENABLED is true but KEV_VULNCHECK_TOKEN is not set")
+	}
+	return nil
+}
+
 type OsvConfig struct {
 	BaseURL string `envconfig:"OSV_BASE_URL"`
 }
@@ -110,6 +118,9 @@ func NewConfig() (*Config, error) {
 	cfg := &Config{}
 	err = envconfig.Process("", cfg)
 	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Kev.Validate(); err != nil {
 		return nil, err
 	}
 
