@@ -31,7 +31,7 @@ func SourcesFromConfig(cfg config.KevConfig) []Source {
 	if cfg.EnisaURL != "" {
 		sources = append(sources, NewEnisaClient(cfg.EnisaURL))
 	}
-	if cfg.VulnCheckEnabled && cfg.VulnCheckToken != "" {
+	if cfg.VulnCheckEnabled {
 		sources = append(sources, NewVulnCheckClient(cfg.VulnCheckURL, cfg.VulnCheckToken))
 	}
 	return sources

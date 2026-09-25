@@ -154,7 +154,7 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 | `KEV_CATALOG_URL` | CISA KEV catalog URL | — |
 | `KEV_ENISA_URL` | ENISA EU KEV catalog URL | `https://raw.githubusercontent.com/enisaeu/CNW/main/advisories/eukev/eukev.json` |
 | `KEV_VULNCHECK_ENABLED` | Add VulnCheck KEV as a source (requires attribution to VulnCheck) | `false` |
-| `KEV_VULNCHECK_TOKEN` | VulnCheck API token | — |
+| `KEV_VULNCHECK_TOKEN` | VulnCheck API token (required when VulnCheck is enabled; startup fails without it) | — |
 | `KEV_VULNCHECK_URL` | VulnCheck API URL | `https://api.vulncheck.com` |
 | `OSV_BASE_URL` | OSV API base URL | — |
 
