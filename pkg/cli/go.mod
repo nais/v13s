@@ -11,7 +11,7 @@ require (
 	github.com/nais/v13s/pkg/api v0.0.0-20260811092310-43ca3d998d55
 	github.com/rodaine/table v1.4.0
 	github.com/sirupsen/logrus v1.10.2
-	github.com/urfave/cli/v3 v3.12.0
+	github.com/urfave/cli/v3 v3.13.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 )
