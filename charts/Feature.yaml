@@ -180,3 +180,15 @@ values:
     description: Set to true to enable actual deletion of workloads no longer present in k8s. Defaults to false (dry-run mode).
     config:
       type: bool
+
+  kev.vulncheck.enabled:
+    displayName: Enable VulnCheck KEV
+    description: Adds VulnCheck KEV as a known exploited vulnerability source. Requires prominent attribution to VulnCheck where KEV data is shown.
+    config:
+      type: bool
+
+  kev.vulncheck.token:
+    displayName: VulnCheck API token
+    config:
+      type: string
+      secret: true

@@ -103,7 +103,7 @@ message Summary {
   optional google.protobuf.Timestamp last_updated = 9;
   optional string stale_image_tag = 10;
   // Priority distribution (use when breakdown/trend is needed).
-  // Findings in the CISA KEV catalogue (a signal, not a verdict).
+  // Findings in any KEV catalog (a signal, not a verdict).
   // Field 11 was previously act_now; renamed in place, wire-compatible.
   int32 kev_count = 11;
   int32 high_risk = 12;
@@ -427,7 +427,7 @@ message VulnerabilitySummaryPoint {
   int32 riskScore = 7;
   int32 workload_count = 8;
   google.protobuf.Timestamp bucket_time = 9;
-  // Findings in the CISA KEV catalogue (a signal, not a verdict).
+  // Findings in any KEV catalog (a signal, not a verdict).
   // Field 10 was previously act_now; renamed in place, wire-compatible.
   int32 kev_count = 10;
   int32 high_risk = 11;

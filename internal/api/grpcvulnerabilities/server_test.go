@@ -2672,10 +2672,13 @@ func TestServer_ListCveSummaries(t *testing.T) {
 
 		epssScore := 0.75
 		epssPercentile := 0.92
-		_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+		_, err := db.UpsertKevSourceEntries(ctx, sql.UpsertKevSourceEntriesParams{
 			CveIds:             []string{cveID},
+			Sources:            []string{"cisa"},
 			KnownRansomwareUse: []bool{true},
 		})
+		require.NoError(t, err)
+		_, err = db.RefreshCveKevFlags(ctx)
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, `UPDATE cve SET epss_score = $1, epss_percentile = $2 WHERE cve_id = $3`, epssScore, epssPercentile, cveID)
 		require.NoError(t, err)
@@ -3408,10 +3411,13 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+	_, err := db.UpsertKevSourceEntries(ctx, sql.UpsertKevSourceEntriesParams{
 		CveIds:             []string{cveID},
+		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{true},
 	})
+	require.NoError(t, err)
+	_, err = db.RefreshCveKevFlags(ctx)
 	require.NoError(t, err)
 
 	_, err = db.UpdateCvePriority(ctx)
@@ -3873,7 +3879,7 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 
 	// Seed CVEs for each priority tier and one CRITICAL finding without EPSS.
 	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
-		// HIGH: has_kev_entry = true (set via BulkUpdateKevData below).
+		// HIGH: has_kev_entry = true (set via UpsertKevSourceEntries below).
 		{
 			CveID: cveHigh, CveTitle: "High", CveDesc: "d", CveLink: "l", Severity: 1, Refs: map[string]string{},
 			EpssScore: new(0.0), EpssPercentile: new(0.10),
@@ -3896,10 +3902,13 @@ func TestServer_EnrichedCveFields_Priority(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err := db.BulkUpdateKevData(ctx, sql.BulkUpdateKevDataParams{
+	_, err := db.UpsertKevSourceEntries(ctx, sql.UpsertKevSourceEntriesParams{
 		CveIds:             []string{cveHigh},
+		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
 	})
+	require.NoError(t, err)
+	_, err = db.RefreshCveKevFlags(ctx)
 	require.NoError(t, err)
 
 	// Priority must be computed before asserting priority-based ordering (order_by=priority_*).
