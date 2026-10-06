@@ -1,10 +1,8 @@
 package updater
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -14,31 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type safeBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (s *safeBuffer) Write(p []byte) (n int, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.buf.Write(p)
-}
-
-func (s *safeBuffer) String() string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.buf.String()
-}
-
-func newBufferedLogger(buf *safeBuffer) *logrus.Entry {
-	logger := logrus.New()
-	logger.SetOutput(buf)
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.SetLevel(logrus.InfoLevel)
-	return logrus.NewEntry(logger)
-}
 
 func TestRunCycleSkipsWhenAlreadyRunning(t *testing.T) {
 	t.Parallel()
@@ -93,7 +66,6 @@ func TestStartStopRunsConfiguredJobs(t *testing.T) {
 
 	var runs atomic.Int32
 	cfg := RuntimeConfig{
-		OrchestrationEnabled: true,
 		Resync: JobRuntimeConfig{
 			Enabled: true,
 			Schedule: ScheduleConfig{
@@ -131,83 +103,11 @@ func TestStartStopRunsConfiguredJobs(t *testing.T) {
 	assert.Equal(t, countSettled, runs.Load())
 }
 
-func TestStartUsesLegacyJobsWhenOrchestrationDisabled(t *testing.T) {
-	t.Parallel()
-
-	var runs atomic.Int32
-	var logs safeBuffer
-	cfg := RuntimeConfig{
-		OrchestrationEnabled: false,
-		Resync: JobRuntimeConfig{
-			// Legacy orchestration always schedules the resync job, even when this flag is false.
-			Enabled: false,
-			Schedule: ScheduleConfig{
-				Type:     SchedulerInterval,
-				Interval: 10 * time.Millisecond,
-			},
-		},
-	}
-
-	u := NewUpdaterWithRuntimeConfig(
-		nil,
-		nil,
-		newBufferedLogger(&logs),
-		config.KevConfig{},
-		config.OsvConfig{},
-		cfg,
-	)
-	u.cycle.step = func(context.Context) error {
-		runs.Add(1)
-		return nil
-	}
-
-	ctx := t.Context()
-
-	u.Start(ctx)
-	assert.Contains(t, logs.String(), "\"mode\":\"legacy\"")
-	require.Eventually(t, func() bool {
-		return runs.Load() > 0
-	}, time.Second, 20*time.Millisecond)
-	require.NoError(t, u.Stop(context.Background()))
-}
-
-func TestStartUsesRuntimeOrchestrationWhenEnabled(t *testing.T) {
-	t.Parallel()
-
-	var logs safeBuffer
-	cfg := RuntimeConfig{
-		OrchestrationEnabled: true,
-		Resync: JobRuntimeConfig{
-			Enabled: false,
-			Schedule: ScheduleConfig{
-				Type:     SchedulerInterval,
-				Interval: 10 * time.Millisecond,
-			},
-		},
-	}
-
-	u := NewUpdaterWithRuntimeConfig(
-		nil,
-		nil,
-		newBufferedLogger(&logs),
-		config.KevConfig{},
-		config.OsvConfig{},
-		cfg,
-	)
-
-	u.Start(t.Context())
-	defer func() { _ = u.Stop(context.Background()) }()
-
-	assert.Contains(t, logs.String(), "starting updater jobs with runtime orchestration")
-	assert.Contains(t, logs.String(), "\"mode\":\"runtime\"")
-}
-
 func TestStartDoesNotStartDisabledResyncJob(t *testing.T) {
 	t.Parallel()
 
 	var runs atomic.Int32
 	cfg := RuntimeConfig{
-		OrchestrationEnabled: true,
 		Resync: JobRuntimeConfig{
 			Enabled: false,
 			Schedule: ScheduleConfig{

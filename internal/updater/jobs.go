@@ -19,7 +19,6 @@ type JobRuntimeConfig struct {
 }
 
 type RuntimeConfig struct {
-	OrchestrationEnabled     bool
 	Resync                   JobRuntimeConfig
 	MarkUnused               JobRuntimeConfig
 	MarkUntracked            JobRuntimeConfig
@@ -33,7 +32,6 @@ type RuntimeConfig struct {
 
 func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {
 	return RuntimeConfig{
-		OrchestrationEnabled: true,
 		Resync: JobRuntimeConfig{
 			Enabled:  true,
 			Schedule: resyncSchedule,
