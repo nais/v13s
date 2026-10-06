@@ -1724,6 +1724,65 @@ func (_c *MockQuerier_GetVulnerabilityById_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetVulnerabilitySummaries provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetVulnerabilitySummaries(ctx context.Context, arg sql.GetVulnerabilitySummariesParams) ([]*sql.GetVulnerabilitySummariesRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerabilitySummaries")
+	}
+
+	var r0 []*sql.GetVulnerabilitySummariesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilitySummariesParams) ([]*sql.GetVulnerabilitySummariesRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetVulnerabilitySummariesParams) []*sql.GetVulnerabilitySummariesRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.GetVulnerabilitySummariesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetVulnerabilitySummariesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetVulnerabilitySummaries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerabilitySummaries'
+type MockQuerier_GetVulnerabilitySummaries_Call struct {
+	*mock.Call
+}
+
+// GetVulnerabilitySummaries is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetVulnerabilitySummariesParams
+func (_e *MockQuerier_Expecter) GetVulnerabilitySummaries(ctx interface{}, arg interface{}) *MockQuerier_GetVulnerabilitySummaries_Call {
+	return &MockQuerier_GetVulnerabilitySummaries_Call{Call: _e.mock.On("GetVulnerabilitySummaries", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetVulnerabilitySummaries_Call) Run(run func(ctx context.Context, arg sql.GetVulnerabilitySummariesParams)) *MockQuerier_GetVulnerabilitySummaries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetVulnerabilitySummariesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitySummaries_Call) Return(_a0 []*sql.GetVulnerabilitySummariesRow, _a1 error) *MockQuerier_GetVulnerabilitySummaries_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitySummaries_Call) RunAndReturn(run func(context.Context, sql.GetVulnerabilitySummariesParams) ([]*sql.GetVulnerabilitySummariesRow, error)) *MockQuerier_GetVulnerabilitySummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVulnerabilitySummary provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetVulnerabilitySummary(ctx context.Context, arg sql.GetVulnerabilitySummaryParams) (*sql.GetVulnerabilitySummaryRow, error) {
 	ret := _m.Called(ctx, arg)

@@ -20,6 +20,7 @@ type Client interface {
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, opts ...Option) (*ListMeanTimeToFixTrendBySeverityResponse, error)
 	ListWorkloadMTTFBySeverity(ctx context.Context, opts ...Option) (*ListWorkloadMTTFBySeverityResponse, error)
 	GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryResponse, error)
+	GetVulnerabilitySummaries(ctx context.Context, namespaces []string, opts ...Option) (*GetVulnerabilitySummariesResponse, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, imageName, imageTag string) (*GetVulnerabilitySummaryForImageResponse, error)
 	GetVulnerability(ctx context.Context, imageName, imageTag, pkg, cveId string) (*GetVulnerabilityResponse, error)
@@ -166,6 +167,14 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 			Filter: o.Filter,
 		},
 	)
+}
+
+func (c *client) GetVulnerabilitySummaries(ctx context.Context, namespaces []string, opts ...Option) (*GetVulnerabilitySummariesResponse, error) {
+	o := applyOptions(opts...)
+	return c.v.GetVulnerabilitySummaries(ctx, &GetVulnerabilitySummariesRequest{
+		Namespaces: namespaces,
+		Filter:     o.Filter,
+	}, o.CallOptions...)
 }
 
 func (c *client) GetVulnerabilitySummaryTimeSeries(ctx context.Context, opts ...Option) (*GetVulnerabilitySummaryTimeSeriesResponse, error) {

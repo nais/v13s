@@ -136,6 +136,174 @@ func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLates
 	return &i, err
 }
 
+const getVulnerabilitySummaries = `-- name: GetVulnerabilitySummaries :many
+WITH filtered_workloads AS (
+    SELECT
+        ns.namespace,
+        w.id,
+        w.image_name,
+        w.image_tag,
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
+    FROM
+        unnest($1::TEXT[]) AS ns(namespace)
+        LEFT JOIN workloads w ON w.namespace = ns.namespace
+            AND ($2::TEXT IS NULL
+                OR w.cluster = $2::TEXT)
+            AND ($3::TEXT[] IS NULL
+                OR w.workload_type = ANY ($3::TEXT[]))
+            AND ($4::TEXT IS NULL
+                OR w.name = $4::TEXT)
+            AND ($5::INT[] IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM vulnerability_summary v
+                    WHERE v.image_name = w.image_name
+                        AND v.image_tag = w.image_tag
+                        AND v.top_risk_tier = ANY ($5::INT[])))
+            AND ($6::BOOL IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM vulnerability_summary v
+                    WHERE v.image_name = w.image_name
+                        AND v.image_tag = w.image_tag
+                        AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL))
+),
+joined_data AS (
+    SELECT
+        fw.namespace,
+        fw.id,
+        fw.workload_ready AND i.state = 'updated' AS is_active,
+        v.id AS summary_id,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.kev_count,
+        v.high_risk,
+        v.elevated_risk,
+        v.monitor,
+        v.ransomware_count,
+        v.high_epss_count,
+        v.top_risk_tier,
+        v.risk_score,
+        v.updated_at
+    FROM
+        filtered_workloads fw
+        LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
+            AND fw.image_tag = v.image_tag
+        LEFT JOIN images i ON i.name = fw.image_name
+            AND i.tag = fw.image_tag
+)
+SELECT
+    namespace::TEXT AS namespace,
+    CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND summary_id IS NOT NULL THEN id END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN critical END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN medium END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN low END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN unassigned END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN kev_count END), 0) AS INT4) AS kev_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_risk END), 0) AS INT4) AS high_risk,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN elevated_risk END), 0) AS INT4) AS elevated_risk,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN monitor END), 0) AS INT4) AS monitor,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN ransomware_count END), 0) AS INT4) AS ransomware_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_epss_count END), 0) AS INT4) AS high_epss_count,
+    MIN(CASE WHEN is_active THEN top_risk_tier END) AS top_risk_tier,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 2 THEN id END) AS INT4) AS high_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 3 THEN id END) AS INT4) AS elevated_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 4 THEN id END) AS INT4) AS monitor_workload_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN risk_score END), 0) AS INT4) AS risk_score,
+    MAX(CASE WHEN is_active AND summary_id IS NOT NULL THEN updated_at END)::TIMESTAMPTZ AS updated_at
+FROM
+    joined_data
+GROUP BY
+    namespace
+ORDER BY
+    namespace
+`
+
+type GetVulnerabilitySummariesParams struct {
+	Namespaces    []string
+	Cluster       *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	RiskTiers     []int32
+	HasKev        *bool
+}
+
+type GetVulnerabilitySummariesRow struct {
+	Namespace                 string
+	WorkloadCount             int32
+	WorkloadWithSbom          int32
+	Critical                  int32
+	High                      int32
+	Medium                    int32
+	Low                       int32
+	Unassigned                int32
+	KevCount                  int32
+	HighRisk                  int32
+	ElevatedRisk              int32
+	Monitor                   int32
+	RansomwareCount           int32
+	HighEpssCount             int32
+	TopRiskTier               interface{}
+	HighRiskWorkloadCount     int32
+	ElevatedRiskWorkloadCount int32
+	MonitorWorkloadCount      int32
+	RiskScore                 int32
+	UpdatedAt                 pgtype.Timestamptz
+}
+
+func (q *Queries) GetVulnerabilitySummaries(ctx context.Context, arg GetVulnerabilitySummariesParams) ([]*GetVulnerabilitySummariesRow, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilitySummaries,
+		arg.Namespaces,
+		arg.Cluster,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+		arg.RiskTiers,
+		arg.HasKev,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetVulnerabilitySummariesRow{}
+	for rows.Next() {
+		var i GetVulnerabilitySummariesRow
+		if err := rows.Scan(
+			&i.Namespace,
+			&i.WorkloadCount,
+			&i.WorkloadWithSbom,
+			&i.Critical,
+			&i.High,
+			&i.Medium,
+			&i.Low,
+			&i.Unassigned,
+			&i.KevCount,
+			&i.HighRisk,
+			&i.ElevatedRisk,
+			&i.Monitor,
+			&i.RansomwareCount,
+			&i.HighEpssCount,
+			&i.TopRiskTier,
+			&i.HighRiskWorkloadCount,
+			&i.ElevatedRiskWorkloadCount,
+			&i.MonitorWorkloadCount,
+			&i.RiskScore,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVulnerabilitySummary = `-- name: GetVulnerabilitySummary :one
 WITH filtered_workloads AS (
     SELECT

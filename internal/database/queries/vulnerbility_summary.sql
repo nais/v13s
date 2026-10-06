@@ -551,6 +551,93 @@ joined_data AS (
     FROM
         joined_data;
 
+-- name: GetVulnerabilitySummaries :many
+WITH filtered_workloads AS (
+    SELECT
+        ns.namespace,
+        w.id,
+        w.image_name,
+        w.image_tag,
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
+    FROM
+        unnest(sqlc.arg('namespaces')::TEXT[]) AS ns(namespace)
+        LEFT JOIN workloads w ON w.namespace = ns.namespace
+            AND (sqlc.narg('cluster')::TEXT IS NULL
+                OR w.cluster = sqlc.narg('cluster')::TEXT)
+            AND (sqlc.narg('workload_types')::TEXT[] IS NULL
+                OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
+            AND (sqlc.narg('workload_name')::TEXT IS NULL
+                OR w.name = sqlc.narg('workload_name')::TEXT)
+            AND (sqlc.narg('risk_tiers')::INT[] IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM vulnerability_summary v
+                    WHERE v.image_name = w.image_name
+                        AND v.image_tag = w.image_tag
+                        AND v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[])))
+            AND (sqlc.narg('has_kev')::BOOL IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM vulnerability_summary v
+                    WHERE v.image_name = w.image_name
+                        AND v.image_tag = w.image_tag
+                        AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))
+),
+joined_data AS (
+    SELECT
+        fw.namespace,
+        fw.id,
+        fw.workload_ready AND i.state = 'updated' AS is_active,
+        v.id AS summary_id,
+        v.critical,
+        v.high,
+        v.medium,
+        v.low,
+        v.unassigned,
+        v.kev_count,
+        v.high_risk,
+        v.elevated_risk,
+        v.monitor,
+        v.ransomware_count,
+        v.high_epss_count,
+        v.top_risk_tier,
+        v.risk_score,
+        v.updated_at
+    FROM
+        filtered_workloads fw
+        LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
+            AND fw.image_tag = v.image_tag
+        LEFT JOIN images i ON i.name = fw.image_name
+            AND i.tag = fw.image_tag
+)
+SELECT
+    namespace::TEXT AS namespace,
+    CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND summary_id IS NOT NULL THEN id END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN critical END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN medium END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN low END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN unassigned END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN kev_count END), 0) AS INT4) AS kev_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_risk END), 0) AS INT4) AS high_risk,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN elevated_risk END), 0) AS INT4) AS elevated_risk,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN monitor END), 0) AS INT4) AS monitor,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN ransomware_count END), 0) AS INT4) AS ransomware_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_epss_count END), 0) AS INT4) AS high_epss_count,
+    MIN(CASE WHEN is_active THEN top_risk_tier END) AS top_risk_tier,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 2 THEN id END) AS INT4) AS high_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 3 THEN id END) AS INT4) AS elevated_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 4 THEN id END) AS INT4) AS monitor_workload_count,
+    CAST(COALESCE(SUM(CASE WHEN is_active THEN risk_score END), 0) AS INT4) AS risk_score,
+    MAX(CASE WHEN is_active AND summary_id IS NOT NULL THEN updated_at END)::TIMESTAMPTZ AS updated_at
+FROM
+    joined_data
+GROUP BY
+    namespace
+ORDER BY
+    namespace;
+
 -- name: GetVulnerabilitySummaryTimeSeries :many
 SELECT
     snapshot_date,

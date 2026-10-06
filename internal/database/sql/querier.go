@@ -41,6 +41,7 @@ type Querier interface {
 	GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)
 	GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*GetVulnerabilityByIdRow, error)
+	GetVulnerabilitySummaries(ctx context.Context, arg GetVulnerabilitySummariesParams) ([]*GetVulnerabilitySummariesRow, error)
 	GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabilitySummaryParams) (*GetVulnerabilitySummaryRow, error)
 	GetVulnerabilitySummaryForImage(ctx context.Context, arg GetVulnerabilitySummaryForImageParams) (*VulnerabilitySummary, error)
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)

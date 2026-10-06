@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/proto"
 )
 
 type testSetupConfig struct {
@@ -1507,6 +1508,94 @@ func TestServer_GetVulnerabilitySummary(t *testing.T) {
 		sum := s.GetHighRiskWorkloadCount() + s.GetElevatedRiskWorkloadCount() + s.GetMonitorWorkloadCount()
 		assert.LessOrEqual(t, sum, resp.GetSbomCount(),
 			"a workload is counted under at most one tier, and only if it has a summary")
+	})
+}
+
+func TestServer_GetVulnerabilitySummaries(t *testing.T) {
+	ctx, db, pool, client, cleanup := setupTest(t, testSetupConfig{
+		clusters:              []string{"cluster-1", "cluster-2"},
+		namespaces:            []string{"namespace-1", "namespace-2"},
+		workloadsPerNamespace: 2,
+		vulnsPerWorkload:      2,
+	}, true)
+	defer cleanup()
+
+	_, err := pool.Exec(ctx, `UPDATE cve SET epss_percentile = 0.96, epss_score = 0.95`)
+	require.NoError(t, err)
+	_, err = db.UpdateCvePriority(ctx)
+	require.NoError(t, err)
+	for _, namespace := range []string{"namespace-1", "namespace-2"} {
+		for wl := 1; wl <= 2; wl++ {
+			for _, cluster := range []string{"cluster-1", "cluster-2"} {
+				require.NoError(t, db.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+					ImageName: fmt.Sprintf("image-%s-%s-workload-%d", cluster, namespace, wl),
+					ImageTag:  fmt.Sprintf("v%d.0", wl),
+				}))
+			}
+		}
+	}
+
+	namespaces := []string{"namespace-2", "missing-team", "namespace-1"}
+	cases := []struct {
+		name string
+		opts []vulnerabilities.Option
+	}{
+		{name: "all environments"},
+		{name: "one cluster", opts: []vulnerabilities.Option{vulnerabilities.ClusterFilter("cluster-1")}},
+		{name: "priority", opts: []vulnerabilities.Option{vulnerabilities.PriorityFilter(vulnerabilities.Priority_PRIORITY_HIGH)}},
+		{name: "KEV", opts: []vulnerabilities.Option{vulnerabilities.KevFilter(true)}},
+		{name: "workload type", opts: []vulnerabilities.Option{vulnerabilities.WorkloadTypeFilter("app")}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bulk, err := client.GetVulnerabilitySummaries(ctx, namespaces, tc.opts...)
+			require.NoError(t, err)
+			require.Len(t, bulk.Summaries, len(namespaces))
+			for _, namespace := range namespaces {
+				opts := append([]vulnerabilities.Option{vulnerabilities.NamespaceFilter(namespace)}, tc.opts...)
+				single, err := client.GetVulnerabilitySummary(ctx, opts...)
+				require.NoError(t, err)
+				assert.True(t, proto.Equal(single, bulk.Summaries[namespace]), "namespace %s: single=%v bulk=%v", namespace, single, bulk.Summaries[namespace])
+			}
+			assert.Zero(t, bulk.Summaries["missing-team"].GetWorkloadCount())
+			assert.Zero(t, bulk.Summaries["missing-team"].GetVulnerabilitySummary().GetHighRisk())
+		})
+	}
+
+	t.Run("workloads without SBOM still count", func(t *testing.T) {
+		_, err := pool.Exec(ctx, `UPDATE workloads SET state = 'no_attestation' WHERE namespace = 'namespace-2'`)
+		require.NoError(t, err)
+		bulk, err := client.GetVulnerabilitySummaries(ctx, namespaces)
+		require.NoError(t, err)
+		single, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter("namespace-2"))
+		require.NoError(t, err)
+		assert.True(t, proto.Equal(single, bulk.Summaries["namespace-2"]))
+		assert.Equal(t, int32(4), bulk.Summaries["namespace-2"].GetWorkloadCount())
+		assert.Zero(t, bulk.Summaries["namespace-2"].GetSbomCount())
+		assert.Zero(t, bulk.Summaries["namespace-2"].GetVulnerabilitySummary().GetHighRisk())
+	})
+
+	t.Run("empty selection", func(t *testing.T) {
+		resp, err := client.GetVulnerabilitySummaries(ctx, nil)
+		require.NoError(t, err)
+		assert.Empty(t, resp.Summaries)
+	})
+	t.Run("maximum batch", func(t *testing.T) {
+		selected := make([]string, 200)
+		for i := range selected {
+			selected[i] = fmt.Sprintf("missing-team-%d", i)
+		}
+		resp, err := client.GetVulnerabilitySummaries(ctx, selected)
+		require.NoError(t, err)
+		assert.Len(t, resp.Summaries, 200)
+	})
+	t.Run("invalid selection", func(t *testing.T) {
+		for _, selected := range [][]string{{"namespace-1", "namespace-1"}, {""}, {" namespace-1"}, make([]string, 201)} {
+			_, err := client.GetVulnerabilitySummaries(ctx, selected)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		}
+		_, err := client.GetVulnerabilitySummaries(ctx, namespaces, vulnerabilities.NamespaceFilter("namespace-1"))
+		assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	})
 }
 
