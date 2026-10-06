@@ -3,6 +3,7 @@
 package database_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/nais/v13s/internal/database"
@@ -13,9 +14,9 @@ import (
 )
 
 func TestRefreshCveWorkloadCountsSkipsWhileAnotherPodHoldsLock(t *testing.T) {
-	const refreshLockKey = int64(7705370002)
+	const refreshLockKey = int64(7705370003)
 
-	ctx := t.Context()
+	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	refresher := database.NewCveWorkloadCountsRefresher(pool, logrus.NewEntry(logrus.StandardLogger()))
 

@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const cveWorkloadCountsRefreshLockKey = int64(7705370002)
+const cveWorkloadCountsRefreshLockKey = int64(7705370003)
 
 type CveWorkloadCountsRefresher struct {
 	pool *pgxpool.Pool
