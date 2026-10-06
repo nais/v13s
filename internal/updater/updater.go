@@ -100,20 +100,8 @@ func (u *Updater) Start(ctx context.Context) {
 		return
 	}
 
-	var jobs []Job
-	if !u.runtimeConfig.OrchestrationEnabled {
-		jobs = u.buildLegacyJobs()
-		u.log.WithFields(logrus.Fields{
-			"mode": "legacy",
-			"jobs": len(jobs),
-		}).Info("starting updater jobs with legacy scheduling; per-job Enabled/cron overrides are ignored in this mode")
-	} else {
-		jobs = u.buildRuntimeJobs()
-		u.log.WithFields(logrus.Fields{
-			"mode": "runtime",
-			"jobs": len(jobs),
-		}).Info("starting updater jobs with runtime orchestration")
-	}
+	jobs := u.buildJobs()
+	u.log.WithField("jobs", len(jobs)).Info("starting updater jobs")
 
 	u.lifecycle.mu.Lock()
 	defer u.lifecycle.mu.Unlock()
@@ -219,21 +207,7 @@ func (u *Updater) runRekeySuppressedAliases(ctx context.Context) error {
 	return nil
 }
 
-func (u *Updater) buildLegacyJobs() []Job {
-	return []Job{
-		newScheduledJob("mark and resync images and sync workload vulnerabilities", u.runtimeConfig.Resync.Schedule, u.log, u.RunCycle),
-		newScheduledJob("mark unused images", ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval}, u.log, u.runMarkUnusedImages),
-		newScheduledJob("mark untracked images", ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUntrackedCronInterval}, u.log, u.runMarkImagesAsUntracked),
-		newScheduledJob("refresh daily", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshVulnerabilitySummaryCronDailyView}, u.log, u.runRefreshDailySummary),
-		newScheduledJob("refresh workload vulnerability lifetimes", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshWorkloadVulnerabilityLifetimesCronDailyView}, u.log, u.runRefreshWorkloadVulnerabilityLifetimes),
-		newScheduledJob("sync KEV catalogs", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, u.log, u.runSyncKevCatalog),
-		newScheduledJob("sync OSV fix versions", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, u.log, u.runSyncOsvFixVersions),
-		newScheduledJob("rekey suppressed aliases to canonical", ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, u.log, u.runRekeySuppressedAliases),
-		newScheduledJob("refresh CVE workload counts", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval}, u.log, u.cveWorkloadCountsRefresher.Refresh),
-	}
-}
-
-func (u *Updater) buildRuntimeJobs() []Job {
+func (u *Updater) buildJobs() []Job {
 	jobs := make([]Job, 0, 9)
 
 	add := func(cfg JobRuntimeConfig, name string, run func(context.Context) error) {
