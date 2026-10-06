@@ -28,6 +28,7 @@ type RuntimeConfig struct {
 	SyncKev                  JobRuntimeConfig
 	SyncOsv                  JobRuntimeConfig
 	RekeySuppressedAliases   JobRuntimeConfig
+	RefreshCveWorkloadCounts JobRuntimeConfig
 }
 
 func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {
@@ -64,6 +65,10 @@ func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {
 		RekeySuppressedAliases: JobRuntimeConfig{
 			Enabled:  true,
 			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval},
+		},
+		RefreshCveWorkloadCounts: JobRuntimeConfig{
+			Enabled:  true,
+			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval},
 		},
 	}
 }

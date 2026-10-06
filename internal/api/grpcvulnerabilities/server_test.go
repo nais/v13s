@@ -2651,8 +2651,15 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
+	listCveSummaries := func(ctx context.Context, opts ...vulnerabilities.Option) (*vulnerabilities.ListCveSummariesResponse, error) {
+		if err := db.RefreshCveWorkloadCounts(ctx); err != nil {
+			return nil, err
+		}
+		return client.ListCveSummaries(ctx, opts...)
+	}
+
 	t.Run("list all CVE summaries", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		resp, err := listCveSummaries(ctx, vulnerabilities.Limit(10))
 		assert.NoError(t, err)
 		assert.NotEmpty(t, resp.Nodes)
 
@@ -2685,7 +2692,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		_, err = db.UpdateCvePriority(ctx)
 		require.NoError(t, err)
 
-		summaries, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10))
+		summaries, err := listCveSummaries(ctx, vulnerabilities.Limit(10))
 		require.NoError(t, err)
 
 		var summaryCve *vulnerabilities.Cve
@@ -2749,7 +2756,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.Order("affected_workloads", vulnerabilities.Direction_DESC),
 		)
@@ -2762,7 +2769,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 
 	t.Run("verify CVE details are present", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(1))
+		resp, err := listCveSummaries(ctx, vulnerabilities.Limit(1))
 		assert.NoError(t, err)
 		assert.Len(t, resp.Nodes, 1)
 
@@ -2814,7 +2821,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-aff-asc-c", ImageTag: "v1.0", Package: "pkg2", CveID: "CVE-AFF-ASC-FEW-NULL", Source: "test"},
 		}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Order(vulnerabilities.OrderByAffectedWorkloads, vulnerabilities.Direction_ASC),
 			vulnerabilities.NamespaceFilter("namespace-aff-asc"),
 			vulnerabilities.Limit(10),
@@ -2863,7 +2870,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-1", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-ZERO", Source: "test"},
 		}).Exec(func(i int, err error) { assert.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_DESC),
 			vulnerabilities.NamespaceFilter("namespace-1"),
 			vulnerabilities.Limit(10),
@@ -2904,7 +2911,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-cvss-asc", ImageTag: "v1.0", Package: "pkg4", CveID: "CVE-ASC-ZERO", Source: "test"},
 		}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Order(vulnerabilities.OrderByCvssScore, vulnerabilities.Direction_ASC),
 			vulnerabilities.NamespaceFilter("namespace-cvss-asc"),
 			vulnerabilities.Limit(10),
@@ -2939,7 +2946,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-sev-asc", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-SEV-CRITICAL", Source: "test"},
 		}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_ASC),
 			vulnerabilities.NamespaceFilter("namespace-sev-asc"),
 			vulnerabilities.Limit(10),
@@ -2974,7 +2981,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-sev-desc", ImageTag: "v1.0", Package: "pkg3", CveID: "CVE-SEVD-CRITICAL", Source: "test"},
 		}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Order(vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC),
 			vulnerabilities.NamespaceFilter("namespace-sev-desc"),
 			vulnerabilities.Limit(10),
@@ -2989,7 +2996,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 
 	t.Run("exclude namespaces reduces affected workloads", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.ExcludeNamespacesFilter("namespace-2"),
 		)
@@ -3019,14 +3026,14 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			{ImageName: "image-excl", ImageTag: "v1.0", Package: "pkg1", CveID: "CVE-EXCL-1", Source: "test"},
 		}).Exec(func(i int, err error) { require.NoError(t, err) })
 
-		present, err := client.ListCveSummaries(ctx,
+		present, err := listCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.NamespaceFilter("namespace-excl"),
 		)
 		require.NoError(t, err)
 		require.NotEmpty(t, present.Nodes, "CVE-EXCL-1 should appear before exclusion")
 
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.ExcludeNamespacesFilter("namespace-excl"),
 		)
@@ -3064,7 +3071,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("suppressed CVE is excluded by default", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.NamespaceFilter("namespace-suppressed"),
 		)
@@ -3078,7 +3085,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 
 	t.Run("suppressed CVE is included when IncludeSuppressed is set", func(t *testing.T) {
-		resp, err := client.ListCveSummaries(ctx,
+		resp, err := listCveSummaries(ctx,
 			vulnerabilities.Limit(10),
 			vulnerabilities.NamespaceFilter("namespace-suppressed"),
 			vulnerabilities.IncludeSuppressed(),
@@ -3090,6 +3097,136 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			cveIDs = append(cveIDs, node.Cve.Id)
 		}
 		assert.Contains(t, cveIDs, "CVE-SUPPRESSED-1", "suppressed CVE should appear when IncludeSuppressed is set")
+	})
+
+	err = db.CreateImage(ctx, sql.CreateImageParams{Name: "image-paged", Tag: "v1.0", Metadata: map[string]string{}})
+	require.NoError(t, err)
+	for _, name := range []string{"workload-paged-1", "workload-paged-2"} {
+		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: name, WorkloadType: "app", Namespace: "namespace-paged",
+			Cluster: "cluster-1", ImageName: "image-paged", ImageTag: "v1.0",
+		})
+		require.NoError(t, err)
+	}
+	pagedCves := []string{"CVE-PAGED-1", "CVE-PAGED-2", "CVE-PAGED-3", "CVE-PAGED-4", "CVE-PAGED-5"}
+	cveParams := make([]sql.BatchUpsertCveParams, 0, len(pagedCves))
+	vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0, len(pagedCves)+1)
+	for _, id := range pagedCves {
+		cveParams = append(cveParams, sql.BatchUpsertCveParams{CveID: id, CveTitle: id, CveDesc: "desc", CveLink: "link", Severity: 1, Refs: map[string]string{"nvd": "link"}})
+		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{ImageName: "image-paged", ImageTag: "v1.0", Package: "pkg-a", CveID: id, Source: "test"})
+	}
+	vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{ImageName: "image-paged", ImageTag: "v1.0", Package: "pkg-b", CveID: "CVE-PAGED-1", Source: "test"})
+	db.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) { require.NoError(t, err) })
+	db.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) { require.NoError(t, err) })
+	err = db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+		ImageName:    "image-paged",
+		Package:      "pkg-a",
+		CveID:        "CVE-PAGED-1",
+		Suppressed:   true,
+		SuppressedBy: "test-user",
+		Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
+		ReasonText:   "test suppression",
+	})
+	require.NoError(t, err)
+
+	listPage := func(t *testing.T, offset, limit int32) *vulnerabilities.ListCveSummariesResponse {
+		resp, err := listCveSummaries(ctx,
+			vulnerabilities.Offset(offset),
+			vulnerabilities.Limit(limit),
+			vulnerabilities.NamespaceFilter("namespace-paged"),
+			vulnerabilities.Order(vulnerabilities.OrderByCveId, vulnerabilities.Direction_ASC),
+		)
+		require.NoError(t, err)
+		return resp
+	}
+
+	t.Run("pages are disjoint and complete with stable totals", func(t *testing.T) {
+		var got []string
+		for _, page := range []struct {
+			offset          int32
+			want            []string
+			hasNext, hasPrv bool
+		}{
+			{0, pagedCves[0:2], true, false},
+			{2, pagedCves[2:4], true, true},
+			{4, pagedCves[4:5], false, true},
+		} {
+			resp := listPage(t, page.offset, 2)
+			ids := make([]string, 0, len(resp.Nodes))
+			for _, node := range resp.Nodes {
+				ids = append(ids, node.Cve.Id)
+				assert.Equal(t, map[string]string{"nvd": "link"}, node.Cve.References)
+			}
+			assert.Equal(t, page.want, ids)
+			assert.Equal(t, int64(len(pagedCves)), resp.PageInfo.TotalCount)
+			assert.Equal(t, page.hasNext, resp.PageInfo.HasNextPage)
+			assert.Equal(t, page.hasPrv, resp.PageInfo.HasPreviousPage)
+			got = append(got, ids...)
+		}
+		assert.Equal(t, pagedCves, got)
+	})
+
+	t.Run("page past the end keeps the total", func(t *testing.T) {
+		resp := listPage(t, 10, 2)
+		assert.Empty(t, resp.Nodes)
+		assert.Equal(t, int64(len(pagedCves)), resp.PageInfo.TotalCount)
+		assert.False(t, resp.PageInfo.HasNextPage)
+		assert.True(t, resp.PageInfo.HasPreviousPage)
+	})
+
+	t.Run("workloads are counted once per CVE across packages and partial suppression", func(t *testing.T) {
+		resp := listPage(t, 0, 10)
+		require.NotEmpty(t, resp.Nodes)
+		for _, node := range resp.Nodes {
+			assert.Equal(t, int32(2), node.AffectedWorkloads, node.Cve.Id)
+		}
+	})
+
+	t.Run("image filter counts live and matches precomputed counts", func(t *testing.T) {
+		resp, err := client.ListCveSummaries(ctx,
+			vulnerabilities.Limit(2),
+			vulnerabilities.Offset(2),
+			vulnerabilities.ImageFilter("image-paged", "v1.0"),
+			vulnerabilities.Order(vulnerabilities.OrderByCveId, vulnerabilities.Direction_ASC),
+		)
+		require.NoError(t, err)
+		summarize := func(nodes []*vulnerabilities.CveSummary) []string {
+			out := make([]string, 0, len(nodes))
+			for _, node := range nodes {
+				out = append(out, fmt.Sprintf("%s:%d", node.Cve.Id, node.AffectedWorkloads))
+			}
+			return out
+		}
+		assert.Equal(t, []string{"CVE-PAGED-3:2", "CVE-PAGED-4:2"}, summarize(resp.Nodes))
+		assert.Equal(t, summarize(listPage(t, 2, 2).Nodes), summarize(resp.Nodes))
+		assert.Equal(t, int64(len(pagedCves)), resp.PageInfo.TotalCount)
+	})
+
+	t.Run("precomputed counts change only after refresh", func(t *testing.T) {
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: "workload-paged-3", WorkloadType: "job", Namespace: "namespace-paged",
+			Cluster: "cluster-2", ImageName: "image-paged", ImageTag: "v1.0",
+		})
+		require.NoError(t, err)
+
+		stale, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(1), vulnerabilities.NamespaceFilter("namespace-paged"))
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), stale.Nodes[0].AffectedWorkloads)
+
+		fresh := listPage(t, 0, 1)
+		assert.Equal(t, int32(3), fresh.Nodes[0].AffectedWorkloads)
+
+		jobs, err := listCveSummaries(ctx,
+			vulnerabilities.Limit(10),
+			vulnerabilities.NamespaceFilter("namespace-paged"),
+			vulnerabilities.WorkloadTypeFilter("job"),
+			vulnerabilities.ExcludeClustersFilter("cluster-1"),
+		)
+		require.NoError(t, err)
+		assert.Len(t, jobs.Nodes, len(pagedCves))
+		for _, node := range jobs.Nodes {
+			assert.Equal(t, int32(1), node.AffectedWorkloads, node.Cve.Id)
+		}
 	})
 }
 

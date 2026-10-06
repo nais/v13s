@@ -235,6 +235,13 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			CronExpr: cfg.Updater.RekeySuppressedCron,
 		},
 	}
+	runtimeCfg.RefreshCveWorkloadCounts = updater.JobRuntimeConfig{
+		Enabled: cfg.Updater.RefreshCveCountsEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.RefreshCveCountsCron,
+		},
+	}
 
 	u := updater.NewUpdaterWithRuntimeConfig(
 		pool,

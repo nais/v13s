@@ -31,6 +31,7 @@ const (
 	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
 	SyncOsvCronInterval                                = "0 7 * * *"    // every day at 9:00 AM CEST
 	RekeySuppressedAliasesCronInterval                 = "0 8 * * *"    // every day at 10:00 AM CEST
+	RefreshCveWorkloadCountsCronInterval               = "*/15 * * * *" // every 15 minutes
 	ResyncCycleLockKey                                 = int64(7705370001)
 	ImageMarkAge                                       = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
@@ -196,6 +197,15 @@ func (u *Updater) runRefreshWorkloadVulnerabilityLifetimes(ctx context.Context) 
 	return nil
 }
 
+func (u *Updater) runRefreshCveWorkloadCounts(ctx context.Context) error {
+	now := time.Now()
+	if err := u.querier.RefreshCveWorkloadCounts(ctx); err != nil {
+		return fmt.Errorf("refreshing CVE workload counts: %w", err)
+	}
+	u.log.Infof("CVE workload counts refreshed, took %f seconds", time.Since(now).Seconds())
+	return nil
+}
+
 func (u *Updater) runSyncKevCatalog(ctx context.Context) error {
 	return u.kevFetcher.Sync(ctx)
 }
@@ -225,11 +235,12 @@ func (u *Updater) buildLegacyJobs() []Job {
 		newScheduledJob("sync KEV catalogs", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, u.log, u.runSyncKevCatalog),
 		newScheduledJob("sync OSV fix versions", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, u.log, u.runSyncOsvFixVersions),
 		newScheduledJob("rekey suppressed aliases to canonical", ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, u.log, u.runRekeySuppressedAliases),
+		newScheduledJob("refresh CVE workload counts", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval}, u.log, u.runRefreshCveWorkloadCounts),
 	}
 }
 
 func (u *Updater) buildRuntimeJobs() []Job {
-	jobs := make([]Job, 0, 8)
+	jobs := make([]Job, 0, 9)
 
 	add := func(cfg JobRuntimeConfig, name string, run func(context.Context) error) {
 		if !cfg.Enabled {
@@ -247,6 +258,7 @@ func (u *Updater) buildRuntimeJobs() []Job {
 	add(u.runtimeConfig.SyncKev, "sync KEV catalogs", u.runSyncKevCatalog)
 	add(u.runtimeConfig.SyncOsv, "sync OSV fix versions", u.runSyncOsvFixVersions)
 	add(u.runtimeConfig.RekeySuppressedAliases, "rekey suppressed aliases to canonical", u.runRekeySuppressedAliases)
+	add(u.runtimeConfig.RefreshCveWorkloadCounts, "refresh CVE workload counts", u.runRefreshCveWorkloadCounts)
 
 	return jobs
 }

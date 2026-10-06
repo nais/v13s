@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 const listCveSummaries = `-- name: ListCveSummaries :many
@@ -204,4 +205,210 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const listCveSummariesFromCounts = `-- name: ListCveSummariesFromCounts :many
+WITH cve_counts AS (
+    SELECT
+        m.cve_id,
+        SUM(
+            CASE WHEN $3::BOOLEAN IS TRUE THEN
+                m.affected_workloads
+            ELSE
+                m.unsuppressed_workloads
+            END)::INT AS affected_workloads
+    FROM
+        mv_cve_workload_counts m
+    WHERE ($4::TEXT IS NULL
+        OR m.cluster = $4::TEXT)
+    AND ($5::TEXT IS NULL
+        OR m.namespace = $5::TEXT)
+    AND (cardinality($6::TEXT[]) = 0
+        OR m.namespace <> ALL ($6::TEXT[]))
+    AND ($7::TEXT[] IS NULL
+        OR m.workload_type = ANY ($7::TEXT[]))
+    AND (cardinality($8::TEXT[]) = 0
+        OR m.cluster <> ALL ($8::TEXT[]))
+GROUP BY
+    m.cve_id
+),
+ranked AS (
+    SELECT
+        cc.cve_id,
+        cc.affected_workloads,
+        ROW_NUMBER() OVER (ORDER BY CASE WHEN $9 = 'cvss_score_desc' THEN
+                CASE WHEN c.cvss_score = 0
+                    OR c.cvss_score IS NULL THEN
+                    1
+                ELSE
+                    0
+                END
+            END ASC,
+            CASE WHEN $9 = 'cvss_score_desc' THEN
+                c.cvss_score
+            END DESC,
+            CASE WHEN $9 = 'cvss_score_asc' THEN
+                CASE WHEN c.cvss_score = 0
+                    OR c.cvss_score IS NULL THEN
+                    1
+                ELSE
+                    0
+                END
+            END ASC,
+            CASE WHEN $9 = 'cvss_score_asc' THEN
+                c.cvss_score
+            END ASC,
+            CASE WHEN $9 = 'affected_workloads_desc' THEN
+                cc.affected_workloads
+            END DESC,
+            CASE WHEN $9 = 'affected_workloads_desc' THEN
+                CASE WHEN c.cvss_score IS NULL
+                    OR c.cvss_score = 0 THEN
+                    1
+                ELSE
+                    0
+                END
+            END ASC,
+            CASE WHEN $9 = 'affected_workloads_desc' THEN
+                c.cvss_score
+            END DESC,
+            CASE WHEN $9 = 'affected_workloads_asc' THEN
+                cc.affected_workloads
+            END ASC,
+            CASE WHEN $9 = 'affected_workloads_asc' THEN
+                CASE WHEN c.cvss_score IS NULL
+                    OR c.cvss_score = 0 THEN
+                    1
+                ELSE
+                    0
+                END
+            END ASC,
+            CASE WHEN $9 = 'affected_workloads_asc' THEN
+                c.cvss_score
+            END ASC,
+            CASE WHEN $9 = 'cve_id_asc' THEN
+                c.cve_id
+            END ASC,
+            CASE WHEN $9 = 'cve_id_desc' THEN
+                c.cve_id
+            END DESC,
+            CASE WHEN $9 = 'severity_asc' THEN
+                c.severity
+            END ASC,
+            CASE WHEN $9 = 'severity_desc' THEN
+                c.severity
+            END DESC,
+            CASE WHEN $9 = 'priority_asc' THEN
+                c.priority
+            END ASC NULLS LAST,
+            CASE WHEN $9 = 'priority_desc' THEN
+                c.priority
+            END DESC NULLS LAST,
+            c.cve_id ASC)::INT AS row_number,
+        COUNT(*) OVER ()::INT AS total_count
+    FROM
+        cve_counts cc
+        JOIN cve c ON c.cve_id = cc.cve_id
+    WHERE
+        cc.affected_workloads > 0
+)
+SELECT
+    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
+    r.affected_workloads,
+    r.total_count
+FROM
+    ranked r
+    JOIN cve c ON c.cve_id = r.cve_id
+WHERE
+    r.row_number > $1::INT
+    AND r.row_number <= $1::INT + $2::INT
+ORDER BY
+    r.row_number
+`
+
+type ListCveSummariesFromCountsParams struct {
+	Offset            int32
+	Limit             int32
+	IncludeSuppressed *bool
+	Cluster           *string
+	Namespace         *string
+	ExcludeNamespaces []string
+	WorkloadTypes     []string
+	ExcludeClusters   []string
+	OrderBy           interface{}
+}
+
+type ListCveSummariesFromCountsRow struct {
+	CveID              string
+	CveTitle           string
+	CveDesc            string
+	CveLink            string
+	Severity           int32
+	Refs               typeext.MapStringString
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	CvssScore          *float64
+	EpssScore          *float64
+	EpssPercentile     *float64
+	HasKevEntry        bool
+	KnownRansomwareUse bool
+	Priority           *int32
+	AffectedWorkloads  int32
+	TotalCount         int32
+}
+
+func (q *Queries) ListCveSummariesFromCounts(ctx context.Context, arg ListCveSummariesFromCountsParams) ([]*ListCveSummariesFromCountsRow, error) {
+	rows, err := q.db.Query(ctx, listCveSummariesFromCounts,
+		arg.Offset,
+		arg.Limit,
+		arg.IncludeSuppressed,
+		arg.Cluster,
+		arg.Namespace,
+		arg.ExcludeNamespaces,
+		arg.WorkloadTypes,
+		arg.ExcludeClusters,
+		arg.OrderBy,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListCveSummariesFromCountsRow{}
+	for rows.Next() {
+		var i ListCveSummariesFromCountsRow
+		if err := rows.Scan(
+			&i.CveID,
+			&i.CveTitle,
+			&i.CveDesc,
+			&i.CveLink,
+			&i.Severity,
+			&i.Refs,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CvssScore,
+			&i.EpssScore,
+			&i.EpssPercentile,
+			&i.HasKevEntry,
+			&i.KnownRansomwareUse,
+			&i.Priority,
+			&i.AffectedWorkloads,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const refreshCveWorkloadCounts = `-- name: RefreshCveWorkloadCounts :exec
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_cve_workload_counts
+`
+
+func (q *Queries) RefreshCveWorkloadCounts(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, refreshCveWorkloadCounts)
+	return err
 }
