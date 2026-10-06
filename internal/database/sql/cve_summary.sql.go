@@ -41,6 +41,8 @@ WITH cve_data AS (
         OR w.cluster <> ALL ($11::TEXT[]))
     AND ($12::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
+    AND ($13::INT[] IS NULL
+        OR c.priority = ANY ($13::INT[]))
 GROUP BY
     c.cve_id
 )
@@ -118,6 +120,9 @@ ORDER BY
     CASE WHEN $1 = 'priority_desc' THEN
         priority
     END DESC NULLS LAST,
+    CASE WHEN $1 IN ('priority_asc', 'priority_desc') THEN
+        severity
+    END ASC,
     cve_id ASC
 LIMIT $3
     OFFSET $2
@@ -136,6 +141,7 @@ type ListCveSummariesParams struct {
 	ImageTag          *string
 	ExcludeClusters   []string
 	IncludeSuppressed *bool
+	Priorities        []int32
 }
 
 type ListCveSummariesRow struct {
@@ -171,6 +177,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.ImageTag,
 		arg.ExcludeClusters,
 		arg.IncludeSuppressed,
+		arg.Priorities,
 	)
 	if err != nil {
 		return nil, err
@@ -304,6 +311,9 @@ ranked AS (
             CASE WHEN $9 = 'priority_desc' THEN
                 c.priority
             END DESC NULLS LAST,
+            CASE WHEN $9 IN ('priority_asc', 'priority_desc') THEN
+                c.severity
+            END ASC,
             c.cve_id ASC)::INT AS row_number,
         COUNT(*) OVER ()::INT AS total_count
     FROM
@@ -311,7 +321,8 @@ ranked AS (
         JOIN cve c ON c.cve_id = cc.cve_id
     WHERE
         cc.affected_workloads > 0
-)
+        AND ($10::INT[] IS NULL
+            OR c.priority = ANY ($10::INT[])))
 SELECT
     c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
     r.affected_workloads,
@@ -336,6 +347,7 @@ type ListCveSummariesFromCountsParams struct {
 	WorkloadTypes     []string
 	ExcludeClusters   []string
 	OrderBy           interface{}
+	Priorities        []int32
 }
 
 type ListCveSummariesFromCountsRow struct {
@@ -368,6 +380,7 @@ func (q *Queries) ListCveSummariesFromCounts(ctx context.Context, arg ListCveSum
 		arg.WorkloadTypes,
 		arg.ExcludeClusters,
 		arg.OrderBy,
+		arg.Priorities,
 	)
 	if err != nil {
 		return nil, err

@@ -3230,6 +3230,175 @@ func TestServer_ListCveSummaries(t *testing.T) {
 	})
 }
 
+func TestServer_ListCveSummariesPriority(t *testing.T) {
+	cfg := testSetupConfig{
+		clusters:              []string{"cluster-1"},
+		namespaces:            []string{"namespace-1"},
+		workloadsPerNamespace: 1,
+		vulnsPerWorkload:      1,
+	}
+
+	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
+	defer cleanup()
+
+	const namespace = "namespace-priority"
+	err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-priority", Tag: "v1.0", Metadata: map[string]string{}})
+	require.NoError(t, err)
+	_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		Name: "workload-priority", WorkloadType: "app", Namespace: namespace,
+		Cluster: "cluster-1", ImageName: "image-priority", ImageTag: "v1.0",
+	})
+	require.NoError(t, err)
+
+	type seeded struct {
+		id       string
+		priority *int32
+		severity int32
+	}
+	tier := func(v int32) *int32 { return &v }
+	var cves []seeded
+	for i := range 25 {
+		cves = append(cves, seeded{id: fmt.Sprintf("CVE-PRIO-HIGH-%02d", i), priority: tier(2), severity: int32(i % 5)})
+	}
+	for i := range 3 {
+		cves = append(cves, seeded{id: fmt.Sprintf("CVE-PRIO-ELEVATED-%02d", i), priority: tier(3), severity: int32(4 - i)})
+	}
+	for i := range 2 {
+		cves = append(cves, seeded{id: fmt.Sprintf("CVE-PRIO-MONITOR-%02d", i), priority: tier(4), severity: int32(i)})
+	}
+	for i := range 2 {
+		cves = append(cves, seeded{id: fmt.Sprintf("CVE-PRIO-NONE-%02d", i), severity: 0})
+	}
+
+	cveParams := make([]sql.BatchUpsertCveParams, 0, len(cves))
+	vulnParams := make([]sql.BatchUpsertVulnerabilitiesParams, 0, len(cves))
+	for _, c := range cves {
+		cveParams = append(cveParams, sql.BatchUpsertCveParams{CveID: c.id, CveTitle: c.id, CveDesc: "desc", CveLink: "link", Severity: c.severity, Refs: map[string]string{}})
+		vulnParams = append(vulnParams, sql.BatchUpsertVulnerabilitiesParams{ImageName: "image-priority", ImageTag: "v1.0", Package: "pkg", CveID: c.id, Source: "test"})
+	}
+	db.BatchUpsertCve(ctx, cveParams).Exec(func(i int, err error) { require.NoError(t, err) })
+	db.BatchUpsertVulnerabilities(ctx, vulnParams).Exec(func(i int, err error) { require.NoError(t, err) })
+	for _, c := range cves {
+		_, err = pool.Exec(ctx, `UPDATE cve SET priority = $1 WHERE cve_id = $2`, c.priority, c.id)
+		require.NoError(t, err)
+	}
+	_, err = pool.Exec(ctx, `UPDATE cve SET has_kev_entry = TRUE WHERE cve_id = 'CVE-PRIO-MONITOR-00'`)
+	require.NoError(t, err)
+	require.NoError(t, db.RefreshCveWorkloadCounts(ctx))
+
+	expected := func(direction vulnerabilities.Direction, priorities ...int32) []string {
+		var selected []seeded
+		for _, c := range cves {
+			if len(priorities) == 0 || (c.priority != nil && collections.AnyMatch(priorities, func(p int32) bool { return p == *c.priority })) {
+				selected = append(selected, c)
+			}
+		}
+		sort.SliceStable(selected, func(i, j int) bool {
+			a, b := selected[i], selected[j]
+			if (a.priority == nil) != (b.priority == nil) {
+				return b.priority == nil
+			}
+			if a.priority != nil && *a.priority != *b.priority {
+				if direction == vulnerabilities.Direction_DESC {
+					return *a.priority > *b.priority
+				}
+				return *a.priority < *b.priority
+			}
+			if a.severity != b.severity {
+				return a.severity < b.severity
+			}
+			return a.id < b.id
+		})
+		ids := make([]string, len(selected))
+		for i, c := range selected {
+			ids[i] = c.id
+		}
+		return ids
+	}
+
+	scopes := map[string]vulnerabilities.Option{
+		"precomputed counts": vulnerabilities.NamespaceFilter(namespace),
+		"live counts":        vulnerabilities.ImageFilter("image-priority", "v1.0"),
+	}
+	for scopeName, scope := range scopes {
+		list := func(t *testing.T, offset, limit int32, direction vulnerabilities.Direction, priorities ...vulnerabilities.Priority) *vulnerabilities.ListCveSummariesResponse {
+			opts := []vulnerabilities.Option{
+				scope,
+				vulnerabilities.Offset(offset),
+				vulnerabilities.Limit(limit),
+				vulnerabilities.Order(vulnerabilities.OrderByPriority, direction),
+			}
+			if len(priorities) > 0 {
+				opts = append(opts, vulnerabilities.PriorityFilter(priorities...))
+			}
+			resp, err := client.ListCveSummaries(ctx, opts...)
+			require.NoError(t, err)
+			return resp
+		}
+		ids := func(resp *vulnerabilities.ListCveSummariesResponse) []string {
+			out := make([]string, 0, len(resp.Nodes))
+			for _, node := range resp.Nodes {
+				out = append(out, node.Cve.Id)
+			}
+			return out
+		}
+
+		t.Run(scopeName+": filtered pages are globally ordered with complete totals", func(t *testing.T) {
+			var got []string
+			for _, offset := range []int32{0, 10, 20} {
+				resp := list(t, offset, 10, vulnerabilities.Direction_ASC, vulnerabilities.Priority_PRIORITY_HIGH)
+				assert.Equal(t, int64(25), resp.PageInfo.TotalCount)
+				assert.Equal(t, offset+10 < 25, resp.PageInfo.HasNextPage)
+				for _, node := range resp.Nodes {
+					assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, node.Cve.Priority)
+					assert.Equal(t, int32(1), node.AffectedWorkloads)
+				}
+				got = append(got, ids(resp)...)
+			}
+			assert.Equal(t, expected(vulnerabilities.Direction_ASC, 2), got)
+		})
+
+		t.Run(scopeName+": empty page past the end keeps the filtered total", func(t *testing.T) {
+			resp := list(t, 30, 10, vulnerabilities.Direction_ASC, vulnerabilities.Priority_PRIORITY_HIGH)
+			assert.Empty(t, resp.Nodes)
+			assert.Equal(t, int64(25), resp.PageInfo.TotalCount)
+			assert.True(t, resp.PageInfo.HasPreviousPage)
+		})
+
+		t.Run(scopeName+": every group has its own total", func(t *testing.T) {
+			for priority, total := range map[vulnerabilities.Priority]int64{
+				vulnerabilities.Priority_PRIORITY_HIGH:     25,
+				vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
+				vulnerabilities.Priority_PRIORITY_MONITOR:  2,
+				vulnerabilities.Priority_PRIORITY_ACT_NOW:  0,
+			} {
+				resp := list(t, 0, 50, vulnerabilities.Direction_ASC, priority)
+				assert.Equal(t, total, resp.PageInfo.TotalCount, priority.String())
+				assert.Len(t, resp.Nodes, int(total), priority.String())
+			}
+		})
+
+		t.Run(scopeName+": KEV does not change the group", func(t *testing.T) {
+			resp := list(t, 0, 50, vulnerabilities.Direction_ASC, vulnerabilities.Priority_PRIORITY_MONITOR)
+			assert.Contains(t, ids(resp), "CVE-PRIO-MONITOR-00")
+			high := list(t, 0, 50, vulnerabilities.Direction_ASC, vulnerabilities.Priority_PRIORITY_HIGH)
+			assert.NotContains(t, ids(high), "CVE-PRIO-MONITOR-00")
+		})
+
+		t.Run(scopeName+": descending reverses only the priority", func(t *testing.T) {
+			resp := list(t, 0, 50, vulnerabilities.Direction_DESC)
+			assert.Equal(t, int64(len(cves)), resp.PageInfo.TotalCount)
+			assert.Equal(t, expected(vulnerabilities.Direction_DESC), ids(resp))
+		})
+
+		t.Run(scopeName+": unfiltered ascending keeps the full selection", func(t *testing.T) {
+			resp := list(t, 0, 50, vulnerabilities.Direction_ASC)
+			assert.Equal(t, int64(len(cves)), resp.PageInfo.TotalCount)
+			assert.Equal(t, expected(vulnerabilities.Direction_ASC), ids(resp))
+		})
+	}
+}
+
 func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.Context, *sql.Queries, *pgxpool.Pool, vulnerabilities.Client, func()) {
 	ctx := context.Background()
 	pool := test.GetPool(ctx, t, testContainers)

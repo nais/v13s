@@ -29,6 +29,8 @@ WITH cve_data AS (
         OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
     AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
+    AND (sqlc.narg('priorities')::INT[] IS NULL
+        OR c.priority = ANY (sqlc.narg('priorities')::INT[]))
 GROUP BY
     c.cve_id
 )
@@ -106,6 +108,9 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
         priority
     END DESC NULLS LAST,
+    CASE WHEN sqlc.narg('order_by') IN ('priority_asc', 'priority_desc') THEN
+        severity
+    END ASC,
     cve_id ASC
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');
@@ -207,6 +212,9 @@ ranked AS (
             CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
                 c.priority
             END DESC NULLS LAST,
+            CASE WHEN sqlc.narg('order_by') IN ('priority_asc', 'priority_desc') THEN
+                c.severity
+            END ASC,
             c.cve_id ASC)::INT AS row_number,
         COUNT(*) OVER ()::INT AS total_count
     FROM
@@ -214,7 +222,8 @@ ranked AS (
         JOIN cve c ON c.cve_id = cc.cve_id
     WHERE
         cc.affected_workloads > 0
-)
+        AND (sqlc.narg('priorities')::INT[] IS NULL
+            OR c.priority = ANY (sqlc.narg('priorities')::INT[])))
 SELECT
     c.*,
     r.affected_workloads,
