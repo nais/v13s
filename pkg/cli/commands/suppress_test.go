@@ -35,6 +35,22 @@ func TestFindVulnerabilityID(t *testing.T) {
 		Package: "pkg-b",
 		Cve:     &vulnerabilities.Cve{Id: "CVE-2024-0002"},
 	}
+	unrelatedRefs := &vulnerabilities.Vulnerability{
+		Id:      "vuln-unrelated-refs",
+		Package: "pkg-a",
+		Cve: &vulnerabilities.Cve{
+			Id:         "CVE-2024-0003",
+			References: map[string]string{"CVE-2024-0004": "GHSA-dddd-eeee-ffff"},
+		},
+	}
+	samePkgTarget := &vulnerabilities.Vulnerability{
+		Id:      "vuln-target",
+		Package: "pkg-a",
+		Cve: &vulnerabilities.Cve{
+			Id:         "CVE-2024-0004",
+			References: map[string]string{"CVE-2024-0004": "GHSA-dddd-eeee-ffff"},
+		},
+	}
 
 	tests := []struct {
 		name    string
@@ -64,6 +80,20 @@ func TestFindVulnerabilityID(t *testing.T) {
 			pkg:    "pkg-a",
 			cveID:  "cve-2024-0001",
 			wantID: "vuln-canonical",
+		},
+		{
+			name:   "ignores reference pair belonging to another cve",
+			pages:  [][]*vulnerabilities.Vulnerability{{unrelatedRefs, samePkgTarget}},
+			pkg:    "pkg-a",
+			cveID:  "GHSA-dddd-eeee-ffff",
+			wantID: "vuln-target",
+		},
+		{
+			name:    "ignores canonical key of another cve",
+			pages:   [][]*vulnerabilities.Vulnerability{{unrelatedRefs}},
+			pkg:     "pkg-a",
+			cveID:   "CVE-2024-0004",
+			wantErr: true,
 		},
 		{
 			name:    "package must match",

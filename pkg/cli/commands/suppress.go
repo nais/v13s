@@ -112,8 +112,8 @@ func matchesCve(cve *vulnerabilities.Cve, id string) bool {
 	if strings.EqualFold(cve.GetId(), id) {
 		return true
 	}
-	for k, v := range cve.GetReferences() {
-		if strings.EqualFold(k, id) || strings.EqualFold(v, id) {
+	for canonical, alias := range cve.GetReferences() {
+		if strings.EqualFold(canonical, cve.GetId()) && strings.EqualFold(alias, id) {
 			return true
 		}
 	}
