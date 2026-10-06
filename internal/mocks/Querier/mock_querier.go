@@ -2606,6 +2606,65 @@ func (_c *MockQuerier_ListUpdatedWorkloadsWithSummaries_Call) RunAndReturn(run f
 	return _c
 }
 
+// ListUsedImagesWithStaleKevSummaries provides a mock function with given fields: ctx, changedCveIds
+func (_m *MockQuerier) ListUsedImagesWithStaleKevSummaries(ctx context.Context, changedCveIds []string) ([]*sql.ListUsedImagesWithStaleKevSummariesRow, error) {
+	ret := _m.Called(ctx, changedCveIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListUsedImagesWithStaleKevSummaries")
+	}
+
+	var r0 []*sql.ListUsedImagesWithStaleKevSummariesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]*sql.ListUsedImagesWithStaleKevSummariesRow, error)); ok {
+		return rf(ctx, changedCveIds)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []*sql.ListUsedImagesWithStaleKevSummariesRow); ok {
+		r0 = rf(ctx, changedCveIds)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListUsedImagesWithStaleKevSummariesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, changedCveIds)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListUsedImagesWithStaleKevSummaries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListUsedImagesWithStaleKevSummaries'
+type MockQuerier_ListUsedImagesWithStaleKevSummaries_Call struct {
+	*mock.Call
+}
+
+// ListUsedImagesWithStaleKevSummaries is a helper method to define mock.On call
+//   - ctx context.Context
+//   - changedCveIds []string
+func (_e *MockQuerier_Expecter) ListUsedImagesWithStaleKevSummaries(ctx interface{}, changedCveIds interface{}) *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call {
+	return &MockQuerier_ListUsedImagesWithStaleKevSummaries_Call{Call: _e.mock.On("ListUsedImagesWithStaleKevSummaries", ctx, changedCveIds)}
+}
+
+func (_c *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call) Run(run func(ctx context.Context, changedCveIds []string)) *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call) Return(_a0 []*sql.ListUsedImagesWithStaleKevSummariesRow, _a1 error) *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call) RunAndReturn(run func(context.Context, []string) ([]*sql.ListUsedImagesWithStaleKevSummariesRow, error)) *MockQuerier_ListUsedImagesWithStaleKevSummaries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListVulnerabilities provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListVulnerabilities(ctx context.Context, arg sql.ListVulnerabilitiesParams) ([]*sql.ListVulnerabilitiesRow, error) {
 	ret := _m.Called(ctx, arg)
@@ -3520,22 +3579,24 @@ func (_c *MockQuerier_RecalculateVulnerabilitySummary_Call) RunAndReturn(run fun
 }
 
 // RefreshCveKevFlags provides a mock function with given fields: ctx
-func (_m *MockQuerier) RefreshCveKevFlags(ctx context.Context) (int64, error) {
+func (_m *MockQuerier) RefreshCveKevFlags(ctx context.Context) ([]string, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RefreshCveKevFlags")
 	}
 
-	var r0 int64
+	var r0 []string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]string, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) int64); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []string); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Get(0).(int64)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
@@ -3565,12 +3626,12 @@ func (_c *MockQuerier_RefreshCveKevFlags_Call) Run(run func(ctx context.Context)
 	return _c
 }
 
-func (_c *MockQuerier_RefreshCveKevFlags_Call) Return(_a0 int64, _a1 error) *MockQuerier_RefreshCveKevFlags_Call {
+func (_c *MockQuerier_RefreshCveKevFlags_Call) Return(_a0 []string, _a1 error) *MockQuerier_RefreshCveKevFlags_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_RefreshCveKevFlags_Call) RunAndReturn(run func(context.Context) (int64, error)) *MockQuerier_RefreshCveKevFlags_Call {
+func (_c *MockQuerier_RefreshCveKevFlags_Call) RunAndReturn(run func(context.Context) ([]string, error)) *MockQuerier_RefreshCveKevFlags_Call {
 	_c.Call.Return(run)
 	return _c
 }

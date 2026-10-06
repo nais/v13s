@@ -108,35 +108,131 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 	return items, nil
 }
 
-const refreshCveKevFlags = `-- name: RefreshCveKevFlags :execrows
-UPDATE
-    cve
-SET
-    has_kev_entry = k.has_kev_entry,
-    known_ransomware_use = k.known_ransomware_use,
-    updated_at = NOW()
-FROM (
+const listUsedImagesWithStaleKevSummaries = `-- name: ListUsedImagesWithStaleKevSummaries :many
+WITH candidate_cves AS (
     SELECT
-        c.cve_id,
-        COUNT(s.source) > 0 AS has_kev_entry,
-        COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
+        cve_id,
+        updated_at
     FROM
-        cve c
-        LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
-    GROUP BY
-        c.cve_id) AS k
+        cve
+    WHERE
+        cve_id = ANY ($1::TEXT[])
+        OR has_kev_entry
+        OR known_ransomware_use
+),
+candidate_ids AS (
+    SELECT
+        cve_id AS vulnerability_cve_id,
+        updated_at
+    FROM
+        candidate_cves
+    UNION ALL
+    SELECT
+        ca.alias,
+        cc.updated_at
+    FROM
+        candidate_cves cc
+        JOIN cve_alias ca ON ca.canonical_cve_id = cc.cve_id
+)
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    candidate_ids ci
+    JOIN vulnerabilities v ON v.cve_id = ci.vulnerability_cve_id
+    JOIN vulnerability_summary vs ON vs.image_name = v.image_name
+        AND vs.image_tag = v.image_tag
 WHERE
-    cve.cve_id = k.cve_id
-    AND (cve.has_kev_entry != k.has_kev_entry
-        OR cve.known_ransomware_use != k.known_ransomware_use)
+    vs.updated_at < ci.updated_at
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads w
+        WHERE
+            w.image_name = v.image_name
+            AND w.image_tag = v.image_tag)
+ORDER BY
+    v.image_name,
+    v.image_tag
 `
 
-func (q *Queries) RefreshCveKevFlags(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, refreshCveKevFlags)
+type ListUsedImagesWithStaleKevSummariesRow struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) ListUsedImagesWithStaleKevSummaries(ctx context.Context, changedCveIds []string) ([]*ListUsedImagesWithStaleKevSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listUsedImagesWithStaleKevSummaries, changedCveIds)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	items := []*ListUsedImagesWithStaleKevSummariesRow{}
+	for rows.Next() {
+		var i ListUsedImagesWithStaleKevSummariesRow
+		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const refreshCveKevFlags = `-- name: RefreshCveKevFlags :many
+WITH changed AS (
+    UPDATE
+        cve
+    SET
+        has_kev_entry = k.has_kev_entry,
+        known_ransomware_use = k.known_ransomware_use,
+        updated_at = NOW()
+    FROM (
+        SELECT
+            c.cve_id,
+            COUNT(s.source) > 0 AS has_kev_entry,
+            COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
+        FROM
+            cve c
+            LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
+        GROUP BY
+            c.cve_id) AS k
+    WHERE
+        cve.cve_id = k.cve_id
+        AND (cve.has_kev_entry != k.has_kev_entry
+            OR cve.known_ransomware_use != k.known_ransomware_use)
+    RETURNING
+        cve.cve_id
+)
+SELECT
+    cve_id
+FROM
+    changed
+ORDER BY
+    cve_id
+`
+
+func (q *Queries) RefreshCveKevFlags(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, refreshCveKevFlags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var cve_id string
+		if err := rows.Scan(&cve_id); err != nil {
+			return nil, err
+		}
+		items = append(items, cve_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const upsertKevSourceEntries = `-- name: UpsertKevSourceEntries :execrows

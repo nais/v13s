@@ -56,6 +56,7 @@ type Querier interface {
 	ListUnusedImages(ctx context.Context, name *string) ([]*ListUnusedImagesRow, error)
 	ListUnusedSourceRefs(ctx context.Context, name *string) ([]*SourceRef, error)
 	ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*ListUpdatedWorkloadsWithSummariesRow, error)
+	ListUsedImagesWithStaleKevSummaries(ctx context.Context, changedCveIds []string) ([]*ListUsedImagesWithStaleKevSummariesRow, error)
 	ListVulnerabilities(ctx context.Context, arg ListVulnerabilitiesParams) ([]*ListVulnerabilitiesRow, error)
 	ListVulnerabilitiesForImage(ctx context.Context, arg ListVulnerabilitiesForImageParams) ([]*ListVulnerabilitiesForImageRow, error)
 	ListVulnerabilitySummaries(ctx context.Context, arg ListVulnerabilitySummariesParams) ([]*ListVulnerabilitySummariesRow, error)
@@ -72,7 +73,7 @@ type Querier interface {
 	MarkUntrackedImagesForResync(ctx context.Context) (int64, error)
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
 	RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error
-	RefreshCveKevFlags(ctx context.Context) (int64, error)
+	RefreshCveKevFlags(ctx context.Context) ([]string, error)
 	RefreshCveWorkloadCounts(ctx context.Context) error
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error

@@ -126,7 +126,7 @@ func (f *Fetcher) sync(ctx context.Context, querier sql.Querier) error {
 		return fmt.Errorf("upserting KEV source entries: %w", err)
 	}
 
-	refreshed, err := querier.RefreshCveKevFlags(ctx)
+	changedCves, err := querier.RefreshCveKevFlags(ctx)
 	if err != nil {
 		return fmt.Errorf("refreshing cve KEV flags: %w", err)
 	}
@@ -136,6 +136,32 @@ func (f *Fetcher) sync(ctx context.Context, querier sql.Querier) error {
 		return fmt.Errorf("updating cve priority after KEV sync: %w", err)
 	}
 
-	f.log.Infof("KEV sync complete: %d source entries upserted, %d CVE KEV flags changed, %d priorities updated", upserted, refreshed, prioritiesUpdated)
+	recalculated, err := recalculateStaleSummaries(ctx, querier, changedCves)
+	if err != nil {
+		failed = append(failed, err)
+	}
+
+	f.log.Infof("KEV sync complete: %d source entries upserted, %d CVE KEV flags changed, %d priorities updated, %d image summaries recalculated", upserted, len(changedCves), prioritiesUpdated, recalculated)
 	return errors.Join(failed...)
+}
+
+func recalculateStaleSummaries(ctx context.Context, querier sql.Querier, changedCveIDs []string) (int, error) {
+	images, err := querier.ListUsedImagesWithStaleKevSummaries(ctx, changedCveIDs)
+	if err != nil {
+		return 0, fmt.Errorf("listing images with stale KEV summaries: %w", err)
+	}
+
+	var errs []error
+	recalculated := 0
+	for _, image := range images {
+		if err := querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+			ImageName: image.ImageName,
+			ImageTag:  image.ImageTag,
+		}); err != nil {
+			errs = append(errs, fmt.Errorf("recalculating vulnerability summary for %s:%s: %w", image.ImageName, image.ImageTag, err))
+			continue
+		}
+		recalculated++
+	}
+	return recalculated, errors.Join(errs...)
 }
