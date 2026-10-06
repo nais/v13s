@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/cli/flag"
@@ -79,7 +80,11 @@ func suppressOne(ctx context.Context, cmd *cli.Command, opts *flag.Options, c vu
 	return nil
 }
 
-func findVulnerabilityID(ctx context.Context, c vulnerabilities.Client, imageName, imageTag, pkg, cveID string) (string, error) {
+type imageVulnerabilityLister interface {
+	ListVulnerabilitiesForImage(ctx context.Context, imageName, imageTag string, opts ...vulnerabilities.Option) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error)
+}
+
+func findVulnerabilityID(ctx context.Context, c imageVulnerabilityLister, imageName, imageTag, pkg, cveID string) (string, error) {
 	const pageSize = int32(100)
 	var offset int32
 	for {
@@ -92,7 +97,7 @@ func findVulnerabilityID(ctx context.Context, c vulnerabilities.Client, imageNam
 			return "", err
 		}
 		for _, v := range resp.GetNodes() {
-			if v.GetPackage() == pkg && v.GetCve().GetId() == cveID {
+			if v.GetPackage() == pkg && matchesCve(v.GetCve(), cveID) {
 				return v.GetId(), nil
 			}
 		}
@@ -101,4 +106,16 @@ func findVulnerabilityID(ctx context.Context, c vulnerabilities.Client, imageNam
 		}
 		offset += pageSize
 	}
+}
+
+func matchesCve(cve *vulnerabilities.Cve, id string) bool {
+	if strings.EqualFold(cve.GetId(), id) {
+		return true
+	}
+	for k, v := range cve.GetReferences() {
+		if strings.EqualFold(k, id) || strings.EqualFold(v, id) {
+			return true
+		}
+	}
+	return false
 }
