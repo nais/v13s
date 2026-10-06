@@ -3317,6 +3317,67 @@ func TestServer_ListCveSummaries(t *testing.T) {
 			assert.Equal(t, int32(1), node.AffectedWorkloads, node.Cve.Id)
 		}
 	})
+
+	t.Run("aliases are counted under their canonical CVE", func(t *testing.T) {
+		// image-alias-a has the canonical id, image-alias-b only the alias and
+		// image-alias-c both, so each workload must be counted once under CVE-ALIAS-1.
+		for _, image := range []string{"image-alias-a", "image-alias-b", "image-alias-c"} {
+			require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: image, Tag: "v1.0", Metadata: map[string]string{}}))
+			_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+				Name: "workload-" + image, WorkloadType: "app", Namespace: "namespace-alias",
+				Cluster: "cluster-1", ImageName: image, ImageTag: "v1.0",
+			})
+			require.NoError(t, err)
+		}
+		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
+			{CveID: "CVE-ALIAS-1", CveTitle: "Canonical", CveDesc: "desc", CveLink: "link", Severity: 1, Refs: map[string]string{}},
+			{CveID: "GHSA-ALIAS-1", CveTitle: "Alias", CveDesc: "desc", CveLink: "link", Severity: 1, Refs: map[string]string{}},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		db.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{
+			{Alias: "GHSA-ALIAS-1", CanonicalCveID: "CVE-ALIAS-1"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{
+			{ImageName: "image-alias-a", ImageTag: "v1.0", Package: "pkg-x", CveID: "CVE-ALIAS-1", Source: "test"},
+			{ImageName: "image-alias-b", ImageTag: "v1.0", Package: "pkg-x", CveID: "GHSA-ALIAS-1", Source: "test"},
+			{ImageName: "image-alias-c", ImageTag: "v1.0", Package: "pkg-x", CveID: "CVE-ALIAS-1", Source: "test"},
+			{ImageName: "image-alias-c", ImageTag: "v1.0", Package: "pkg-x", CveID: "GHSA-ALIAS-1", Source: "test"},
+		}).Exec(func(i int, err error) { require.NoError(t, err) })
+		// Suppressions are keyed on the canonical id, also for alias rows.
+		require.NoError(t, db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
+			ImageName:    "image-alias-b",
+			Package:      "pkg-x",
+			CveID:        "CVE-ALIAS-1",
+			Suppressed:   true,
+			SuppressedBy: "test-user",
+			Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
+			ReasonText:   "test suppression",
+		}))
+
+		summarize := func(resp *vulnerabilities.ListCveSummariesResponse) []string {
+			out := make([]string, 0, len(resp.Nodes))
+			for _, node := range resp.Nodes {
+				out = append(out, fmt.Sprintf("%s:%d", node.Cve.Id, node.AffectedWorkloads))
+			}
+			return out
+		}
+
+		all, err := listCveSummaries(ctx, vulnerabilities.Limit(10), vulnerabilities.NamespaceFilter("namespace-alias"), vulnerabilities.IncludeSuppressed())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"CVE-ALIAS-1:3"}, summarize(all))
+		assert.Equal(t, int64(1), all.PageInfo.TotalCount)
+
+		unsuppressed, err := listCveSummaries(ctx, vulnerabilities.Limit(10), vulnerabilities.NamespaceFilter("namespace-alias"))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"CVE-ALIAS-1:2"}, summarize(unsuppressed))
+
+		aliasOnlyImage, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10), vulnerabilities.ImageFilter("image-alias-b", "v1.0"), vulnerabilities.IncludeSuppressed())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"CVE-ALIAS-1:1"}, summarize(aliasOnlyImage))
+
+		aliasOnlyImageUnsuppressed, err := client.ListCveSummaries(ctx, vulnerabilities.Limit(10), vulnerabilities.ImageFilter("image-alias-b", "v1.0"))
+		require.NoError(t, err)
+		assert.Empty(t, aliasOnlyImageUnsuppressed.Nodes)
+	})
 }
 
 func TestServer_ListCveSummariesPriority(t *testing.T) {
