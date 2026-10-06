@@ -334,6 +334,11 @@ ON CONFLICT (
         ELSE
             vulnerabilities.severity_since
         END
+    WHERE (
+        vulnerabilities.latest_version, vulnerabilities.last_severity, vulnerabilities.cvss_score) IS DISTINCT FROM (
+        EXCLUDED.latest_version,
+        EXCLUDED.last_severity,
+        EXCLUDED.cvss_score)
 `
 
 type BatchUpsertVulnerabilitiesBatchResults struct {

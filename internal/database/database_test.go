@@ -510,3 +510,58 @@ func TestBulkUpdateAndClearFixVersions_ScopedToCvePackagePair(t *testing.T) {
 	assert.Nil(t, getFixVersion("img-a", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
 	assert.Nil(t, getFixVersion("img-b", "CVE-SHARED-1", "pkg:npm/shared-lib@1.0.0"))
 }
+
+func TestBatchUpsertVulnerabilities_SkipsUnchangedRows(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	createTestdata(t, db, "img-upsert", "v1", false)
+	upsertTestCve(t, db, ctx, "CVE-UPSERT-1")
+
+	cvss := 7.5
+	vuln := sql.BatchUpsertVulnerabilitiesParams{
+		ImageName: "img-upsert", ImageTag: "v1", Package: "pkg:npm/lib@1.0.0", CveID: "CVE-UPSERT-1", Source: "test",
+		LatestVersion: "1.0.1", LastSeverity: 1, CvssScore: &cvss, SeveritySince: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	}
+	upsert := func(params sql.BatchUpsertVulnerabilitiesParams) {
+		db.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{params}).Exec(func(i int, err error) {
+			require.NoError(t, err)
+		})
+	}
+	rowVersion := func() (string, time.Time) {
+		var xmin string
+		var updatedAt time.Time
+		err := pool.QueryRow(ctx, `SELECT xmin::TEXT, updated_at FROM vulnerabilities WHERE image_name = $1 AND image_tag = $2 AND package = $3 AND cve_id = $4`,
+			vuln.ImageName, vuln.ImageTag, vuln.Package, vuln.CveID).Scan(&xmin, &updatedAt)
+		require.NoError(t, err)
+		return xmin, updatedAt
+	}
+
+	upsert(vuln)
+	xmin, updatedAt := rowVersion()
+
+	t.Run("unchanged values do not rewrite the row", func(t *testing.T) {
+		upsert(vuln)
+		gotXmin, gotUpdatedAt := rowVersion()
+		assert.Equal(t, xmin, gotXmin)
+		assert.Equal(t, updatedAt, gotUpdatedAt)
+	})
+
+	t.Run("changed values update the row", func(t *testing.T) {
+		for name, change := range map[string]func(*sql.BatchUpsertVulnerabilitiesParams){
+			"latest_version": func(p *sql.BatchUpsertVulnerabilitiesParams) { p.LatestVersion = "1.0.2" },
+			"last_severity":  func(p *sql.BatchUpsertVulnerabilitiesParams) { p.LastSeverity = 0 },
+			"cvss_score":     func(p *sql.BatchUpsertVulnerabilitiesParams) { p.CvssScore = nil },
+		} {
+			change(&vuln)
+			upsert(vuln)
+			gotXmin, gotUpdatedAt := rowVersion()
+			assert.NotEqual(t, xmin, gotXmin, name)
+			assert.True(t, gotUpdatedAt.After(updatedAt), name)
+			xmin, updatedAt = gotXmin, gotUpdatedAt
+		}
+	})
+}
