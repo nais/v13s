@@ -55,11 +55,11 @@ WITH candidates AS (
             WHERE
                 w.image_name = i.name
                 AND w.image_tag = i.tag)
-    ORDER BY
-        i.updated_at
-    LIMIT $2
-    FOR UPDATE
-        SKIP LOCKED
+        ORDER BY
+            i.updated_at
+        LIMIT $2
+        FOR UPDATE
+            SKIP LOCKED
 ),
 vulnerability_count AS (
     SELECT
@@ -71,15 +71,13 @@ vulnerability_count AS (
 ),
 deleted_sync_status AS (
     DELETE FROM image_sync_status s USING candidates c
-    WHERE s.image_name = c.name
-        AND s.image_tag = c.tag
-),
-deleted_images AS (
+WHERE s.image_name = c.name
+    AND s.image_tag = c.tag), deleted_images AS (
     DELETE FROM images i USING candidates c
-    WHERE i.name = c.name
-        AND i.tag = c.tag
-    RETURNING
-        i.name
+WHERE i.name = c.name
+    AND i.tag = c.tag
+RETURNING
+    i.name
 )
 SELECT
     (
@@ -87,11 +85,11 @@ SELECT
             COUNT(*)
         FROM
             deleted_images)::BIGINT AS deleted_images,
-    (
-        SELECT
-            count
-        FROM
-            vulnerability_count)::BIGINT AS deleted_vulnerabilities
+(
+            SELECT
+                count
+            FROM
+                vulnerability_count)::BIGINT AS deleted_vulnerabilities
 `
 
 type DeleteUnusedImagesParams struct {
