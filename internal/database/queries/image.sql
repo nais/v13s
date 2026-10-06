@@ -192,3 +192,57 @@ ON CONFLICT (
         status_code = @status_code,
         reason = @reason,
         updated_at = NOW();
+
+-- name: DeleteUnusedImages :one
+WITH candidates AS (
+    SELECT
+        i.name,
+        i.tag
+    FROM
+        images i
+    WHERE
+        i.state = 'unused'
+        AND i.updated_at < @unused_before
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                workloads w
+            WHERE
+                w.image_name = i.name
+                AND w.image_tag = i.tag)
+        ORDER BY
+            i.updated_at
+        LIMIT @batch_size
+        FOR UPDATE
+            SKIP LOCKED
+),
+vulnerability_count AS (
+    SELECT
+        COUNT(*) AS count
+    FROM
+        vulnerabilities v
+        JOIN candidates c ON v.image_name = c.name
+            AND v.image_tag = c.tag
+),
+deleted_sync_status AS (
+    DELETE FROM image_sync_status s USING candidates c
+WHERE s.image_name = c.name
+    AND s.image_tag = c.tag), deleted_images AS (
+    DELETE FROM images i USING candidates c
+WHERE i.name = c.name
+    AND i.tag = c.tag
+RETURNING
+    i.name
+)
+SELECT
+    (
+        SELECT
+            COUNT(*)
+        FROM
+            deleted_images)::BIGINT AS deleted_images,
+(
+            SELECT
+                count
+            FROM
+                vulnerability_count)::BIGINT AS deleted_vulnerabilities;

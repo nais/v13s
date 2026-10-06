@@ -26,6 +26,7 @@ type Querier interface {
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
 	CreateWorkload(ctx context.Context, arg CreateWorkloadParams) (*Workload, error)
 	DeleteSourceRef(ctx context.Context, arg DeleteSourceRefParams) error
+	DeleteUnusedImages(ctx context.Context, arg DeleteUnusedImagesParams) (*DeleteUnusedImagesRow, error)
 	DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) (pgtype.UUID, error)
 	GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID string) ([]string, error)
 	GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error)

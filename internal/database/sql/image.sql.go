@@ -37,6 +37,80 @@ func (q *Queries) CreateImage(ctx context.Context, arg CreateImageParams) error 
 	return err
 }
 
+const deleteUnusedImages = `-- name: DeleteUnusedImages :one
+WITH candidates AS (
+    SELECT
+        i.name,
+        i.tag
+    FROM
+        images i
+    WHERE
+        i.state = 'unused'
+        AND i.updated_at < $1
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                workloads w
+            WHERE
+                w.image_name = i.name
+                AND w.image_tag = i.tag)
+    ORDER BY
+        i.updated_at
+    LIMIT $2
+    FOR UPDATE
+        SKIP LOCKED
+),
+vulnerability_count AS (
+    SELECT
+        COUNT(*) AS count
+    FROM
+        vulnerabilities v
+        JOIN candidates c ON v.image_name = c.name
+            AND v.image_tag = c.tag
+),
+deleted_sync_status AS (
+    DELETE FROM image_sync_status s USING candidates c
+    WHERE s.image_name = c.name
+        AND s.image_tag = c.tag
+),
+deleted_images AS (
+    DELETE FROM images i USING candidates c
+    WHERE i.name = c.name
+        AND i.tag = c.tag
+    RETURNING
+        i.name
+)
+SELECT
+    (
+        SELECT
+            COUNT(*)
+        FROM
+            deleted_images)::BIGINT AS deleted_images,
+    (
+        SELECT
+            count
+        FROM
+            vulnerability_count)::BIGINT AS deleted_vulnerabilities
+`
+
+type DeleteUnusedImagesParams struct {
+	UnusedBefore pgtype.Timestamptz
+	BatchSize    int32
+}
+
+type DeleteUnusedImagesRow struct {
+	DeletedImages          int64
+	DeletedVulnerabilities int64
+}
+
+func (q *Queries) DeleteUnusedImages(ctx context.Context, arg DeleteUnusedImagesParams) (*DeleteUnusedImagesRow, error) {
+	row := q.db.QueryRow(ctx, deleteUnusedImages, arg.UnusedBefore, arg.BatchSize)
+	var i DeleteUnusedImagesRow
+	err := row.Scan(&i.DeletedImages, &i.DeletedVulnerabilities)
+	return &i, err
+}
+
 const getImage = `-- name: GetImage :one
 SELECT
     name, tag, metadata, state, created_at, updated_at, ready_for_resync_at, sbom_processing_started_at

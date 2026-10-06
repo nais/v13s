@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -28,6 +29,13 @@ type RuntimeConfig struct {
 	SyncOsv                  JobRuntimeConfig
 	RekeySuppressedAliases   JobRuntimeConfig
 	RefreshCveWorkloadCounts JobRuntimeConfig
+	CleanupUnusedImages      CleanupUnusedImagesConfig
+}
+
+type CleanupUnusedImagesConfig struct {
+	JobRuntimeConfig
+	Retention time.Duration
+	BatchSize int32
 }
 
 func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {
@@ -67,6 +75,13 @@ func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {
 		RefreshCveWorkloadCounts: JobRuntimeConfig{
 			Enabled:  true,
 			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval},
+		},
+		CleanupUnusedImages: CleanupUnusedImagesConfig{
+			JobRuntimeConfig: JobRuntimeConfig{
+				Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: "0 3 * * *"},
+			},
+			Retention: 60 * 24 * time.Hour,
+			BatchSize: 1000,
 		},
 	}
 }

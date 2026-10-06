@@ -208,7 +208,7 @@ func (u *Updater) runRekeySuppressedAliases(ctx context.Context) error {
 }
 
 func (u *Updater) buildJobs() []Job {
-	jobs := make([]Job, 0, 9)
+	jobs := make([]Job, 0, 10)
 
 	add := func(cfg JobRuntimeConfig, name string, run func(context.Context) error) {
 		if !cfg.Enabled {
@@ -227,6 +227,7 @@ func (u *Updater) buildJobs() []Job {
 	add(u.runtimeConfig.SyncOsv, "sync OSV fix versions", u.runSyncOsvFixVersions)
 	add(u.runtimeConfig.RekeySuppressedAliases, "rekey suppressed aliases to canonical", u.runRekeySuppressedAliases)
 	add(u.runtimeConfig.RefreshCveWorkloadCounts, "refresh CVE workload counts", u.cveWorkloadCountsRefresher.Refresh)
+	add(u.runtimeConfig.CleanupUnusedImages.JobRuntimeConfig, "clean up unused images", u.CleanupUnusedImages)
 
 	return jobs
 }
@@ -325,6 +326,35 @@ func (u *Updater) MarkUnusedImages(ctx context.Context) error {
 
 	u.log.Debugf("MarkUnusedImages affected %d rows", rowsAffected)
 	return nil
+}
+
+// CleanupUnusedImages deletes images that have been unused for longer than the retention, in batches.
+// Their vulnerabilities and summaries are removed through ON DELETE CASCADE.
+func (u *Updater) CleanupUnusedImages(ctx context.Context) error {
+	cfg := u.runtimeConfig.CleanupUnusedImages
+	start := time.Now()
+	unusedBefore := pgtype.Timestamptz{Time: start.Add(-cfg.Retention), Valid: true}
+	var images, vulnerabilities int64
+	for ctx.Err() == nil {
+		row, err := u.querier.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
+			UnusedBefore: unusedBefore,
+			BatchSize:    cfg.BatchSize,
+		})
+		if err != nil {
+			return fmt.Errorf("deleting unused images: %w", err)
+		}
+		images += row.DeletedImages
+		vulnerabilities += row.DeletedVulnerabilities
+		if row.DeletedImages < int64(cfg.BatchSize) {
+			break
+		}
+	}
+	u.log.WithFields(logrus.Fields{
+		"images":          images,
+		"vulnerabilities": vulnerabilities,
+		"duration":        time.Since(start).String(),
+	}).Info("cleaned up unused images")
+	return ctx.Err()
 }
 
 func (u *Updater) MarkImagesAsUntracked(ctx context.Context) error {

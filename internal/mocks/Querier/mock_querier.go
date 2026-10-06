@@ -909,6 +909,65 @@ func (_c *MockQuerier_DeleteSourceRef_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// DeleteUnusedImages provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) DeleteUnusedImages(ctx context.Context, arg sql.DeleteUnusedImagesParams) (*sql.DeleteUnusedImagesRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUnusedImages")
+	}
+
+	var r0 *sql.DeleteUnusedImagesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DeleteUnusedImagesParams) (*sql.DeleteUnusedImagesRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.DeleteUnusedImagesParams) *sql.DeleteUnusedImagesRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.DeleteUnusedImagesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.DeleteUnusedImagesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_DeleteUnusedImages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUnusedImages'
+type MockQuerier_DeleteUnusedImages_Call struct {
+	*mock.Call
+}
+
+// DeleteUnusedImages is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.DeleteUnusedImagesParams
+func (_e *MockQuerier_Expecter) DeleteUnusedImages(ctx interface{}, arg interface{}) *MockQuerier_DeleteUnusedImages_Call {
+	return &MockQuerier_DeleteUnusedImages_Call{Call: _e.mock.On("DeleteUnusedImages", ctx, arg)}
+}
+
+func (_c *MockQuerier_DeleteUnusedImages_Call) Run(run func(ctx context.Context, arg sql.DeleteUnusedImagesParams)) *MockQuerier_DeleteUnusedImages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.DeleteUnusedImagesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUnusedImages_Call) Return(_a0 *sql.DeleteUnusedImagesRow, _a1 error) *MockQuerier_DeleteUnusedImages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUnusedImages_Call) RunAndReturn(run func(context.Context, sql.DeleteUnusedImagesParams) (*sql.DeleteUnusedImagesRow, error)) *MockQuerier_DeleteUnusedImages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteWorkload provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) DeleteWorkload(ctx context.Context, arg sql.DeleteWorkloadParams) (pgtype.UUID, error) {
 	ret := _m.Called(ctx, arg)

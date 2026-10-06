@@ -241,6 +241,15 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			CronExpr: cfg.Updater.RefreshCveCountsCron,
 		},
 	}
+	runtimeCfg.CleanupUnusedImages = updater.CleanupUnusedImagesConfig{
+		Enabled: cfg.Updater.CleanupUnusedEnabled,
+		Schedule: updater.ScheduleConfig{
+			Type:     updater.SchedulerCron,
+			CronExpr: cfg.Updater.CleanupUnusedCron,
+		},
+		Retention: cfg.Updater.CleanupUnusedRetention,
+		BatchSize: cfg.Updater.CleanupUnusedBatchSize,
+	}
 
 	u := updater.NewUpdaterWithRuntimeConfig(
 		pool,

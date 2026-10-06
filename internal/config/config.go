@@ -38,23 +38,27 @@ type Config struct {
 }
 
 type UpdaterConfig struct {
-	ResyncEnabled           bool   `envconfig:"UPDATER_RESYNC_ENABLED" default:"true"`
-	MarkUnusedEnabled       bool   `envconfig:"UPDATER_MARK_UNUSED_ENABLED" default:"true"`
-	MarkUnusedCron          string `envconfig:"UPDATER_MARK_UNUSED_CRON" default:"*/30 * * * *"`
-	MarkUntrackedEnabled    bool   `envconfig:"UPDATER_MARK_UNTRACKED_ENABLED" default:"true"`
-	MarkUntrackedCron       string `envconfig:"UPDATER_MARK_UNTRACKED_CRON" default:"*/20 * * * *"`
-	RefreshSummaryEnabled   bool   `envconfig:"UPDATER_REFRESH_SUMMARY_ENABLED" default:"true"`
-	RefreshSummaryCron      string `envconfig:"UPDATER_REFRESH_SUMMARY_CRON" default:"30 4 * * *"`
-	RefreshLifetimesEnabled bool   `envconfig:"UPDATER_REFRESH_LIFETIMES_ENABLED" default:"true"`
-	RefreshLifetimesCron    string `envconfig:"UPDATER_REFRESH_LIFETIMES_CRON" default:"0 5 * * *"`
-	SyncKevEnabled          bool   `envconfig:"UPDATER_SYNC_KEV_ENABLED" default:"true"`
-	SyncKevCron             string `envconfig:"UPDATER_SYNC_KEV_CRON" default:"0 6 * * *"`
-	SyncOsvEnabled          bool   `envconfig:"UPDATER_SYNC_OSV_ENABLED" default:"true"`
-	SyncOsvCron             string `envconfig:"UPDATER_SYNC_OSV_CRON" default:"0 7 * * *"`
-	RekeySuppressedEnabled  bool   `envconfig:"UPDATER_REKEY_SUPPRESSED_ENABLED" default:"true"`
-	RekeySuppressedCron     string `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
-	RefreshCveCountsEnabled bool   `envconfig:"UPDATER_REFRESH_CVE_COUNTS_ENABLED" default:"true"`
-	RefreshCveCountsCron    string `envconfig:"UPDATER_REFRESH_CVE_COUNTS_CRON" default:"*/15 * * * *"`
+	ResyncEnabled           bool          `envconfig:"UPDATER_RESYNC_ENABLED" default:"true"`
+	MarkUnusedEnabled       bool          `envconfig:"UPDATER_MARK_UNUSED_ENABLED" default:"true"`
+	MarkUnusedCron          string        `envconfig:"UPDATER_MARK_UNUSED_CRON" default:"*/30 * * * *"`
+	MarkUntrackedEnabled    bool          `envconfig:"UPDATER_MARK_UNTRACKED_ENABLED" default:"true"`
+	MarkUntrackedCron       string        `envconfig:"UPDATER_MARK_UNTRACKED_CRON" default:"*/20 * * * *"`
+	RefreshSummaryEnabled   bool          `envconfig:"UPDATER_REFRESH_SUMMARY_ENABLED" default:"true"`
+	RefreshSummaryCron      string        `envconfig:"UPDATER_REFRESH_SUMMARY_CRON" default:"30 4 * * *"`
+	RefreshLifetimesEnabled bool          `envconfig:"UPDATER_REFRESH_LIFETIMES_ENABLED" default:"true"`
+	RefreshLifetimesCron    string        `envconfig:"UPDATER_REFRESH_LIFETIMES_CRON" default:"0 5 * * *"`
+	SyncKevEnabled          bool          `envconfig:"UPDATER_SYNC_KEV_ENABLED" default:"true"`
+	SyncKevCron             string        `envconfig:"UPDATER_SYNC_KEV_CRON" default:"0 6 * * *"`
+	SyncOsvEnabled          bool          `envconfig:"UPDATER_SYNC_OSV_ENABLED" default:"true"`
+	SyncOsvCron             string        `envconfig:"UPDATER_SYNC_OSV_CRON" default:"0 7 * * *"`
+	RekeySuppressedEnabled  bool          `envconfig:"UPDATER_REKEY_SUPPRESSED_ENABLED" default:"true"`
+	RekeySuppressedCron     string        `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
+	RefreshCveCountsEnabled bool          `envconfig:"UPDATER_REFRESH_CVE_COUNTS_ENABLED" default:"true"`
+	RefreshCveCountsCron    string        `envconfig:"UPDATER_REFRESH_CVE_COUNTS_CRON" default:"*/15 * * * *"`
+	CleanupUnusedEnabled    bool          `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_ENABLED" default:"false"`
+	CleanupUnusedCron       string        `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_CRON" default:"0 3 * * *"`
+	CleanupUnusedRetention  time.Duration `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_RETENTION" default:"1440h"`
+	CleanupUnusedBatchSize  int32         `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_BATCH_SIZE" default:"1000"`
 }
 
 type DependencyTrackConfig struct {
