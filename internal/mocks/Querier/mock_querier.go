@@ -2076,6 +2076,65 @@ func (_c *MockQuerier_ListCveSummaries_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// ListCveSummariesFromCounts provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListCveSummariesFromCounts(ctx context.Context, arg sql.ListCveSummariesFromCountsParams) ([]*sql.ListCveSummariesFromCountsRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListCveSummariesFromCounts")
+	}
+
+	var r0 []*sql.ListCveSummariesFromCountsRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListCveSummariesFromCountsParams) ([]*sql.ListCveSummariesFromCountsRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListCveSummariesFromCountsParams) []*sql.ListCveSummariesFromCountsRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListCveSummariesFromCountsRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListCveSummariesFromCountsParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListCveSummariesFromCounts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCveSummariesFromCounts'
+type MockQuerier_ListCveSummariesFromCounts_Call struct {
+	*mock.Call
+}
+
+// ListCveSummariesFromCounts is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListCveSummariesFromCountsParams
+func (_e *MockQuerier_Expecter) ListCveSummariesFromCounts(ctx interface{}, arg interface{}) *MockQuerier_ListCveSummariesFromCounts_Call {
+	return &MockQuerier_ListCveSummariesFromCounts_Call{Call: _e.mock.On("ListCveSummariesFromCounts", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListCveSummariesFromCounts_Call) Run(run func(ctx context.Context, arg sql.ListCveSummariesFromCountsParams)) *MockQuerier_ListCveSummariesFromCounts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListCveSummariesFromCountsParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListCveSummariesFromCounts_Call) Return(_a0 []*sql.ListCveSummariesFromCountsRow, _a1 error) *MockQuerier_ListCveSummariesFromCounts_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListCveSummariesFromCounts_Call) RunAndReturn(run func(context.Context, sql.ListCveSummariesFromCountsParams) ([]*sql.ListCveSummariesFromCountsRow, error)) *MockQuerier_ListCveSummariesFromCounts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListJobsForWorkload provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListJobsForWorkload(ctx context.Context, arg sql.ListJobsForWorkloadParams) ([]*sql.ListJobsForWorkloadRow, error) {
 	ret := _m.Called(ctx, arg)
@@ -3512,6 +3571,52 @@ func (_c *MockQuerier_RefreshCveKevFlags_Call) Return(_a0 int64, _a1 error) *Moc
 }
 
 func (_c *MockQuerier_RefreshCveKevFlags_Call) RunAndReturn(run func(context.Context) (int64, error)) *MockQuerier_RefreshCveKevFlags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RefreshCveWorkloadCounts provides a mock function with given fields: ctx
+func (_m *MockQuerier) RefreshCveWorkloadCounts(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshCveWorkloadCounts")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_RefreshCveWorkloadCounts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshCveWorkloadCounts'
+type MockQuerier_RefreshCveWorkloadCounts_Call struct {
+	*mock.Call
+}
+
+// RefreshCveWorkloadCounts is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) RefreshCveWorkloadCounts(ctx interface{}) *MockQuerier_RefreshCveWorkloadCounts_Call {
+	return &MockQuerier_RefreshCveWorkloadCounts_Call{Call: _e.mock.On("RefreshCveWorkloadCounts", ctx)}
+}
+
+func (_c *MockQuerier_RefreshCveWorkloadCounts_Call) Run(run func(ctx context.Context)) *MockQuerier_RefreshCveWorkloadCounts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_RefreshCveWorkloadCounts_Call) Return(_a0 error) *MockQuerier_RefreshCveWorkloadCounts_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_RefreshCveWorkloadCounts_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_RefreshCveWorkloadCounts_Call {
 	_c.Call.Return(run)
 	return _c
 }

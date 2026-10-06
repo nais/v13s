@@ -47,6 +47,7 @@ type Querier interface {
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
 	ListCveSummaries(ctx context.Context, arg ListCveSummariesParams) ([]*ListCveSummariesRow, error)
+	ListCveSummariesFromCounts(ctx context.Context, arg ListCveSummariesFromCountsParams) ([]*ListCveSummariesFromCountsRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
@@ -72,6 +73,7 @@ type Querier interface {
 	MarkUnusedImages(ctx context.Context, arg MarkUnusedImagesParams) (int64, error)
 	RecalculateVulnerabilitySummary(ctx context.Context, arg RecalculateVulnerabilitySummaryParams) error
 	RefreshCveKevFlags(ctx context.Context) (int64, error)
+	RefreshCveWorkloadCounts(ctx context.Context) error
 	RefreshVulnerabilitySummaryDailyView(ctx context.Context) error
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	RekeySuppressedAliasesToCanonical(ctx context.Context) (int64, error)

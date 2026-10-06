@@ -474,7 +474,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		excludeClusters = []string{}
 	}
 
-	cveSummaries, err := s.querier.ListCveSummaries(ctx, sql.ListCveSummariesParams{
+	params := sql.ListCveSummariesParams{
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
 		WorkloadName:      request.GetFilter().Workload,
@@ -484,19 +484,85 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
 		IncludeSuppressed: request.IncludeSuppressed,
+		Priorities:        priorityTiersFromFilter(request.GetFilter()),
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByAffectedWorkloads),
 		Limit:             request.Limit,
 		Offset:            request.Offset,
-	})
+	}
+	vulnCveSummaries, total, err := s.listCveSummaries(ctx, params)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to list cve summaries: "+err.Error())
 	}
+	if len(vulnCveSummaries) == 0 && params.Offset > 0 {
+		params.Offset, params.Limit = 0, 1
+		if _, total, err = s.listCveSummaries(ctx, params); err != nil {
+			return nil, status.Error(codes.Internal, "failed to count cve summaries: "+err.Error())
+		}
+	}
 
+	pageInfo, err := grpcpagination.PageInfo(request, total)
+	if err != nil {
+		return nil, err
+	}
+
+	return &vulnerabilities.ListCveSummariesResponse{
+		Nodes:    vulnCveSummaries,
+		PageInfo: pageInfo,
+	}, nil
+}
+
+func (s *Server) listCveSummaries(ctx context.Context, params sql.ListCveSummariesParams) ([]*vulnerabilities.CveSummary, int, error) {
 	total := 0
-	vulnCveSummaries := collections.Map(cveSummaries, func(row *sql.ListCveSummariesRow) *vulnerabilities.CveSummary {
+	if params.WorkloadName != nil || params.ImageName != nil || params.ImageTag != nil {
+		rows, err := s.querier.ListCveSummaries(ctx, params)
+		if err != nil {
+			return nil, 0, err
+		}
+		nodes := collections.Map(rows, func(row *sql.ListCveSummariesRow) *vulnerabilities.CveSummary {
+			total = int(row.TotalCount)
+			refs := map[string]string{}
+			_ = json.Unmarshal(row.Refs, &refs)
+
+			return &vulnerabilities.CveSummary{
+				Cve: toCve(cvePayload{
+					id:                 row.CveID,
+					title:              row.CveTitle,
+					desc:               row.CveDesc,
+					link:               row.CveLink,
+					severity:           row.Severity,
+					refs:               refs,
+					created:            timestamppb.New(row.CreatedAt.Time),
+					lastUpdated:        timestamppb.New(row.UpdatedAt.Time),
+					cvssScore:          row.CvssScore,
+					epssScore:          row.EpssScore,
+					epssPercentile:     row.EpssPercentile,
+					hasKevEntry:        row.HasKevEntry,
+					knownRansomwareUse: row.KnownRansomwareUse,
+					priority:           row.Priority,
+				}),
+				AffectedWorkloads: row.AffectedWorkloads,
+			}
+		})
+		return nodes, total, nil
+	}
+
+	rows, err := s.querier.ListCveSummariesFromCounts(ctx, sql.ListCveSummariesFromCountsParams{
+		Cluster:           params.Cluster,
+		Namespace:         params.Namespace,
+		WorkloadTypes:     params.WorkloadTypes,
+		ExcludeClusters:   params.ExcludeClusters,
+		ExcludeNamespaces: params.ExcludeNamespaces,
+		IncludeSuppressed: params.IncludeSuppressed,
+		Priorities:        params.Priorities,
+		OrderBy:           params.OrderBy,
+		Limit:             params.Limit,
+		Offset:            params.Offset,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	nodes := collections.Map(rows, func(row *sql.ListCveSummariesFromCountsRow) *vulnerabilities.CveSummary {
 		total = int(row.TotalCount)
-		refs := map[string]string{}
-		_ = json.Unmarshal(row.Refs, &refs)
 
 		return &vulnerabilities.CveSummary{
 			Cve: toCve(cvePayload{
@@ -505,7 +571,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 				desc:               row.CveDesc,
 				link:               row.CveLink,
 				severity:           row.Severity,
-				refs:               refs,
+				refs:               row.Refs,
 				created:            timestamppb.New(row.CreatedAt.Time),
 				lastUpdated:        timestamppb.New(row.UpdatedAt.Time),
 				cvssScore:          row.CvssScore,
@@ -518,14 +584,5 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 			AffectedWorkloads: row.AffectedWorkloads,
 		}
 	})
-
-	pageInfo, err := grpcpagination.PageInfo(request, total)
-	if err != nil {
-		return nil, err
-	}
-
-	return &vulnerabilities.ListCveSummariesResponse{
-		Nodes:    vulnCveSummaries,
-		PageInfo: pageInfo,
-	}, nil
+	return nodes, total, nil
 }

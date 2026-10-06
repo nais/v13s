@@ -54,6 +54,8 @@ type UpdaterConfig struct {
 	SyncOsvCron                 string `envconfig:"UPDATER_SYNC_OSV_CRON" default:"0 7 * * *"`
 	RekeySuppressedEnabled      bool   `envconfig:"UPDATER_REKEY_SUPPRESSED_ENABLED" default:"true"`
 	RekeySuppressedCron         string `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
+	RefreshCveCountsEnabled     bool   `envconfig:"UPDATER_REFRESH_CVE_COUNTS_ENABLED" default:"true"`
+	RefreshCveCountsCron        string `envconfig:"UPDATER_REFRESH_CVE_COUNTS_CRON" default:"*/15 * * * *"`
 }
 
 type DependencyTrackConfig struct {
