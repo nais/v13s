@@ -16,27 +16,58 @@ ON CONFLICT (cve_id, source)
         known_ransomware_use = EXCLUDED.known_ransomware_use,
         last_seen_at = NOW();
 
--- name: RefreshCveKevFlags :execrows
-UPDATE
-    cve
-SET
-    has_kev_entry = k.has_kev_entry,
-    known_ransomware_use = k.known_ransomware_use,
-    updated_at = NOW()
-FROM (
-    SELECT
-        c.cve_id,
-        COUNT(s.source) > 0 AS has_kev_entry,
-        COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
-    FROM
-        cve c
-        LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
-    GROUP BY
-        c.cve_id) AS k
+-- name: RefreshCveKevFlags :many
+WITH changed AS (
+    UPDATE
+        cve
+    SET
+        has_kev_entry = k.has_kev_entry,
+        known_ransomware_use = k.known_ransomware_use,
+        updated_at = NOW()
+    FROM (
+        SELECT
+            c.cve_id,
+            COUNT(s.source) > 0 AS has_kev_entry,
+            COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
+        FROM
+            cve c
+            LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
+        GROUP BY
+            c.cve_id) AS k
+    WHERE
+        cve.cve_id = k.cve_id
+        AND (cve.has_kev_entry != k.has_kev_entry
+            OR cve.known_ransomware_use != k.known_ransomware_use)
+    RETURNING
+        cve.cve_id
+)
+SELECT
+    cve_id
+FROM
+    changed
+ORDER BY
+    cve_id;
+
+-- name: ListUsedImagesForCves :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    vulnerabilities v
+    LEFT JOIN cve_alias ca ON ca.alias = v.cve_id
 WHERE
-    cve.cve_id = k.cve_id
-    AND (cve.has_kev_entry != k.has_kev_entry
-        OR cve.known_ransomware_use != k.known_ransomware_use);
+    COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (@cve_ids::TEXT[])
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads w
+        WHERE
+            w.image_name = v.image_name
+            AND w.image_tag = v.image_tag)
+ORDER BY
+    v.image_name,
+    v.image_tag;
 
 -- name: GetVulnerabilitiesForOsvEnrichment :many
 -- apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.

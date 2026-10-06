@@ -39,7 +39,7 @@ func expectLock(q *mockquerier.MockQuerier) {
 
 func expectUpdate(q *mockquerier.MockQuerier, params sqldatabase.UpsertKevSourceEntriesParams) {
 	upsert := q.EXPECT().UpsertKevSourceEntries(mock.Anything, params).Return(int64(len(params.CveIds)), nil).Once()
-	refresh := q.EXPECT().RefreshCveKevFlags(mock.Anything).Return(int64(0), nil).Once()
+	refresh := q.EXPECT().RefreshCveKevFlags(mock.Anything).Return(nil, nil).Once()
 	priority := q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
 	mock.InOrder(upsert, refresh, priority)
 }
@@ -308,4 +308,49 @@ func TestVulnCheckClient_Fetch_Unauthorized(t *testing.T) {
 	_, err := kev.NewVulnCheckClient(srv.URL, "wrong").Fetch(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP 401")
+}
+
+func TestFetcher_Sync_RecalculatesSummariesForChangedCves(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: "CVE-2026-48710", KnownRansomware: true}}}
+	images := []*sqldatabase.ListUsedImagesForCvesRow{
+		{ImageName: "image-a", ImageTag: "v1"},
+		{ImageName: "image-b", ImageTag: "v2"},
+	}
+
+	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
+	q.EXPECT().UpsertKevSourceEntries(mock.Anything, mock.Anything).Return(int64(1), nil).Once()
+	q.EXPECT().RefreshCveKevFlags(mock.Anything).Return([]string{"CVE-2026-48710"}, nil).Once()
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(1), nil).Once()
+	q.EXPECT().ListUsedImagesForCves(mock.Anything, []string{"CVE-2026-48710"}).Return(images, nil).Once()
+	for _, image := range images {
+		q.EXPECT().RecalculateVulnerabilitySummary(mock.Anything, sqldatabase.RecalculateVulnerabilitySummaryParams{
+			ImageName: image.ImageName,
+			ImageTag:  image.ImageTag,
+		}).Return(nil).Once()
+	}
+
+	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background()))
+}
+
+func TestFetcher_Sync_ReportsFailedSummaryRecalculation(t *testing.T) {
+	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: "CVE-2026-48710"}}}
+
+	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
+	q.EXPECT().UpsertKevSourceEntries(mock.Anything, mock.Anything).Return(int64(1), nil).Once()
+	q.EXPECT().RefreshCveKevFlags(mock.Anything).Return([]string{"CVE-2026-48710"}, nil).Once()
+	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(1), nil).Once()
+	q.EXPECT().ListUsedImagesForCves(mock.Anything, []string{"CVE-2026-48710"}).Return([]*sqldatabase.ListUsedImagesForCvesRow{
+		{ImageName: "image-a", ImageTag: "v1"},
+		{ImageName: "image-b", ImageTag: "v2"},
+	}, nil).Once()
+	q.EXPECT().RecalculateVulnerabilitySummary(mock.Anything, sqldatabase.RecalculateVulnerabilitySummaryParams{ImageName: "image-a", ImageTag: "v1"}).
+		Return(errors.New("database unavailable")).Once()
+	q.EXPECT().RecalculateVulnerabilitySummary(mock.Anything, sqldatabase.RecalculateVulnerabilitySummaryParams{ImageName: "image-b", ImageTag: "v2"}).
+		Return(nil).Once()
+
+	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image-a:v1")
 }

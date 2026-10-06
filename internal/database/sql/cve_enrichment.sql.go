@@ -108,35 +108,104 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 	return items, nil
 }
 
-const refreshCveKevFlags = `-- name: RefreshCveKevFlags :execrows
-UPDATE
-    cve
-SET
-    has_kev_entry = k.has_kev_entry,
-    known_ransomware_use = k.known_ransomware_use,
-    updated_at = NOW()
-FROM (
-    SELECT
-        c.cve_id,
-        COUNT(s.source) > 0 AS has_kev_entry,
-        COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
-    FROM
-        cve c
-        LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
-    GROUP BY
-        c.cve_id) AS k
+const listUsedImagesForCves = `-- name: ListUsedImagesForCves :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    vulnerabilities v
+    LEFT JOIN cve_alias ca ON ca.alias = v.cve_id
 WHERE
-    cve.cve_id = k.cve_id
-    AND (cve.has_kev_entry != k.has_kev_entry
-        OR cve.known_ransomware_use != k.known_ransomware_use)
+    COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
+    AND EXISTS (
+        SELECT
+            1
+        FROM
+            workloads w
+        WHERE
+            w.image_name = v.image_name
+            AND w.image_tag = v.image_tag)
+ORDER BY
+    v.image_name,
+    v.image_tag
 `
 
-func (q *Queries) RefreshCveKevFlags(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, refreshCveKevFlags)
+type ListUsedImagesForCvesRow struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) ListUsedImagesForCves(ctx context.Context, cveIds []string) ([]*ListUsedImagesForCvesRow, error) {
+	rows, err := q.db.Query(ctx, listUsedImagesForCves, cveIds)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	items := []*ListUsedImagesForCvesRow{}
+	for rows.Next() {
+		var i ListUsedImagesForCvesRow
+		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const refreshCveKevFlags = `-- name: RefreshCveKevFlags :many
+WITH changed AS (
+    UPDATE
+        cve
+    SET
+        has_kev_entry = k.has_kev_entry,
+        known_ransomware_use = k.known_ransomware_use,
+        updated_at = NOW()
+    FROM (
+        SELECT
+            c.cve_id,
+            COUNT(s.source) > 0 AS has_kev_entry,
+            COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
+        FROM
+            cve c
+            LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
+        GROUP BY
+            c.cve_id) AS k
+    WHERE
+        cve.cve_id = k.cve_id
+        AND (cve.has_kev_entry != k.has_kev_entry
+            OR cve.known_ransomware_use != k.known_ransomware_use)
+    RETURNING
+        cve.cve_id
+)
+SELECT
+    cve_id
+FROM
+    changed
+ORDER BY
+    cve_id
+`
+
+func (q *Queries) RefreshCveKevFlags(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, refreshCveKevFlags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var cve_id string
+		if err := rows.Scan(&cve_id); err != nil {
+			return nil, err
+		}
+		items = append(items, cve_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const upsertKevSourceEntries = `-- name: UpsertKevSourceEntries :execrows
