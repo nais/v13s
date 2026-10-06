@@ -31,14 +31,6 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
-
-		if err := pool.Ping(ctx); err != nil {
-			http.Error(w, "db unavailable", http.StatusServiceUnavailable)
-			return
-		}
-
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("ok")); err != nil {
 			log.WithError(err).Error("failed to write healthz response")
