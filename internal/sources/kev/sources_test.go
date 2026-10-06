@@ -41,7 +41,8 @@ func expectUpdate(q *mockquerier.MockQuerier, params sqldatabase.UpsertKevSource
 	upsert := q.EXPECT().UpsertKevSourceEntries(mock.Anything, params).Return(int64(len(params.CveIds)), nil).Once()
 	refresh := q.EXPECT().RefreshCveKevFlags(mock.Anything).Return(nil, nil).Once()
 	priority := q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(0), nil).Once()
-	mock.InOrder(upsert, refresh, priority)
+	stale := q.EXPECT().ListUsedImagesWithStaleKevSummaries(mock.Anything, []string(nil)).Return(nil, nil).Once()
+	mock.InOrder(upsert, refresh, priority, stale)
 }
 
 func TestFetcher_Sync_OneEntryPerSource(t *testing.T) {
@@ -310,9 +311,9 @@ func TestVulnCheckClient_Fetch_Unauthorized(t *testing.T) {
 	assert.Contains(t, err.Error(), "HTTP 401")
 }
 
-func TestFetcher_Sync_RecalculatesSummariesForChangedCves(t *testing.T) {
+func TestFetcher_Sync_RecalculatesStaleSummaries(t *testing.T) {
 	cisa := staticSource{name: kev.SourceCISA, assertions: []kev.Assertion{{CveID: "CVE-2026-48710", KnownRansomware: true}}}
-	images := []*sqldatabase.ListUsedImagesForCvesRow{
+	images := []*sqldatabase.ListUsedImagesWithStaleKevSummariesRow{
 		{ImageName: "image-a", ImageTag: "v1"},
 		{ImageName: "image-b", ImageTag: "v2"},
 	}
@@ -322,7 +323,7 @@ func TestFetcher_Sync_RecalculatesSummariesForChangedCves(t *testing.T) {
 	q.EXPECT().UpsertKevSourceEntries(mock.Anything, mock.Anything).Return(int64(1), nil).Once()
 	q.EXPECT().RefreshCveKevFlags(mock.Anything).Return([]string{"CVE-2026-48710"}, nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(1), nil).Once()
-	q.EXPECT().ListUsedImagesForCves(mock.Anything, []string{"CVE-2026-48710"}).Return(images, nil).Once()
+	q.EXPECT().ListUsedImagesWithStaleKevSummaries(mock.Anything, []string{"CVE-2026-48710"}).Return(images, nil).Once()
 	for _, image := range images {
 		q.EXPECT().RecalculateVulnerabilitySummary(mock.Anything, sqldatabase.RecalculateVulnerabilitySummaryParams{
 			ImageName: image.ImageName,
@@ -341,7 +342,7 @@ func TestFetcher_Sync_ReportsFailedSummaryRecalculation(t *testing.T) {
 	q.EXPECT().UpsertKevSourceEntries(mock.Anything, mock.Anything).Return(int64(1), nil).Once()
 	q.EXPECT().RefreshCveKevFlags(mock.Anything).Return([]string{"CVE-2026-48710"}, nil).Once()
 	q.EXPECT().UpdateCvePriority(mock.Anything).Return(int64(1), nil).Once()
-	q.EXPECT().ListUsedImagesForCves(mock.Anything, []string{"CVE-2026-48710"}).Return([]*sqldatabase.ListUsedImagesForCvesRow{
+	q.EXPECT().ListUsedImagesWithStaleKevSummaries(mock.Anything, []string{"CVE-2026-48710"}).Return([]*sqldatabase.ListUsedImagesWithStaleKevSummariesRow{
 		{ImageName: "image-a", ImageTag: "v1"},
 		{ImageName: "image-b", ImageTag: "v2"},
 	}, nil).Once()

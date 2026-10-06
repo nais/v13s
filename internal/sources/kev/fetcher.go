@@ -136,7 +136,7 @@ func (f *Fetcher) sync(ctx context.Context, querier sql.Querier) error {
 		return fmt.Errorf("updating cve priority after KEV sync: %w", err)
 	}
 
-	recalculated, err := recalculateSummariesForCves(ctx, querier, changedCves)
+	recalculated, err := recalculateStaleSummaries(ctx, querier, changedCves)
 	if err != nil {
 		failed = append(failed, err)
 	}
@@ -145,14 +145,10 @@ func (f *Fetcher) sync(ctx context.Context, querier sql.Querier) error {
 	return errors.Join(failed...)
 }
 
-func recalculateSummariesForCves(ctx context.Context, querier sql.Querier, cveIDs []string) (int, error) {
-	if len(cveIDs) == 0 {
-		return 0, nil
-	}
-
-	images, err := querier.ListUsedImagesForCves(ctx, cveIDs)
+func recalculateStaleSummaries(ctx context.Context, querier sql.Querier, changedCveIDs []string) (int, error) {
+	images, err := querier.ListUsedImagesWithStaleKevSummaries(ctx, changedCveIDs)
 	if err != nil {
-		return 0, fmt.Errorf("listing images for changed KEV CVEs: %w", err)
+		return 0, fmt.Errorf("listing images with stale KEV summaries: %w", err)
 	}
 
 	var errs []error

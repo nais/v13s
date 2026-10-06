@@ -48,15 +48,42 @@ FROM
 ORDER BY
     cve_id;
 
--- name: ListUsedImagesForCves :many
+-- name: ListUsedImagesWithStaleKevSummaries :many
+WITH candidate_cves AS (
+    SELECT
+        cve_id,
+        updated_at
+    FROM
+        cve
+    WHERE
+        cve_id = ANY (@changed_cve_ids::TEXT[])
+        OR has_kev_entry
+        OR known_ransomware_use
+),
+candidate_ids AS (
+    SELECT
+        cve_id AS vulnerability_cve_id,
+        updated_at
+    FROM
+        candidate_cves
+    UNION ALL
+    SELECT
+        ca.alias,
+        cc.updated_at
+    FROM
+        candidate_cves cc
+        JOIN cve_alias ca ON ca.canonical_cve_id = cc.cve_id
+)
 SELECT DISTINCT
     v.image_name,
     v.image_tag
 FROM
-    vulnerabilities v
-    LEFT JOIN cve_alias ca ON ca.alias = v.cve_id
+    candidate_ids ci
+    JOIN vulnerabilities v ON v.cve_id = ci.vulnerability_cve_id
+    JOIN vulnerability_summary vs ON vs.image_name = v.image_name
+        AND vs.image_tag = v.image_tag
 WHERE
-    COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (@cve_ids::TEXT[])
+    vs.updated_at < ci.updated_at
     AND EXISTS (
         SELECT
             1

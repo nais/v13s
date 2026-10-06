@@ -108,15 +108,42 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 	return items, nil
 }
 
-const listUsedImagesForCves = `-- name: ListUsedImagesForCves :many
+const listUsedImagesWithStaleKevSummaries = `-- name: ListUsedImagesWithStaleKevSummaries :many
+WITH candidate_cves AS (
+    SELECT
+        cve_id,
+        updated_at
+    FROM
+        cve
+    WHERE
+        cve_id = ANY ($1::TEXT[])
+        OR has_kev_entry
+        OR known_ransomware_use
+),
+candidate_ids AS (
+    SELECT
+        cve_id AS vulnerability_cve_id,
+        updated_at
+    FROM
+        candidate_cves
+    UNION ALL
+    SELECT
+        ca.alias,
+        cc.updated_at
+    FROM
+        candidate_cves cc
+        JOIN cve_alias ca ON ca.canonical_cve_id = cc.cve_id
+)
 SELECT DISTINCT
     v.image_name,
     v.image_tag
 FROM
-    vulnerabilities v
-    LEFT JOIN cve_alias ca ON ca.alias = v.cve_id
+    candidate_ids ci
+    JOIN vulnerabilities v ON v.cve_id = ci.vulnerability_cve_id
+    JOIN vulnerability_summary vs ON vs.image_name = v.image_name
+        AND vs.image_tag = v.image_tag
 WHERE
-    COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
+    vs.updated_at < ci.updated_at
     AND EXISTS (
         SELECT
             1
@@ -130,20 +157,20 @@ ORDER BY
     v.image_tag
 `
 
-type ListUsedImagesForCvesRow struct {
+type ListUsedImagesWithStaleKevSummariesRow struct {
 	ImageName string
 	ImageTag  string
 }
 
-func (q *Queries) ListUsedImagesForCves(ctx context.Context, cveIds []string) ([]*ListUsedImagesForCvesRow, error) {
-	rows, err := q.db.Query(ctx, listUsedImagesForCves, cveIds)
+func (q *Queries) ListUsedImagesWithStaleKevSummaries(ctx context.Context, changedCveIds []string) ([]*ListUsedImagesWithStaleKevSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listUsedImagesWithStaleKevSummaries, changedCveIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*ListUsedImagesForCvesRow{}
+	items := []*ListUsedImagesWithStaleKevSummariesRow{}
 	for rows.Next() {
-		var i ListUsedImagesForCvesRow
+		var i ListUsedImagesWithStaleKevSummariesRow
 		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
 			return nil, err
 		}
