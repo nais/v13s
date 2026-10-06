@@ -336,16 +336,23 @@ func (u *Updater) CleanupUnusedImages(ctx context.Context) error {
 	unusedBefore := pgtype.Timestamptz{Time: start.Add(-cfg.Retention), Valid: true}
 	var images, vulnerabilities int64
 	for ctx.Err() == nil {
+		batchSize := int64(cfg.BatchSize)
+		if cfg.MaxPerRun > 0 {
+			batchSize = min(batchSize, cfg.MaxPerRun-images)
+		}
+		if batchSize <= 0 {
+			break
+		}
 		row, err := u.querier.DeleteUnusedImages(ctx, sql.DeleteUnusedImagesParams{
 			UnusedBefore: unusedBefore,
-			BatchSize:    cfg.BatchSize,
+			BatchSize:    int32(batchSize), // #nosec G115 -- at most cfg.BatchSize
 		})
 		if err != nil {
 			return fmt.Errorf("deleting unused images: %w", err)
 		}
 		images += row.DeletedImages
 		vulnerabilities += row.DeletedVulnerabilities
-		if row.DeletedImages < int64(cfg.BatchSize) {
+		if row.DeletedImages < batchSize {
 			break
 		}
 	}

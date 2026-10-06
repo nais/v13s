@@ -78,6 +78,20 @@ func TestCleanupUnusedImages(t *testing.T) {
 	}
 	assert.Equal(t, 1, count(`SELECT COUNT(*) FROM workloads WHERE image_name = $1`, "old-unused-with-workload"))
 
+	t.Run("max per run limits the number of deleted images", func(t *testing.T) {
+		for _, name := range []string{"capped-1", "capped-2", "capped-3"} {
+			createImage(name, "unused", 90*24*time.Hour, false)
+		}
+		capped := runtimeCfg
+		capped.CleanupUnusedImages.BatchSize = 2
+		capped.CleanupUnusedImages.MaxPerRun = 2
+		u := updater.NewUpdaterWithRuntimeConfig(pool, nil, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{}, capped)
+		require.NoError(t, u.CleanupUnusedImages(ctx))
+		assert.Equal(t, 1, count(`SELECT COUNT(*) FROM images WHERE name LIKE $1`, "capped-%"))
+		require.NoError(t, u.CleanupUnusedImages(ctx))
+		assert.Equal(t, 0, count(`SELECT COUNT(*) FROM images WHERE name LIKE $1`, "capped-%"))
+	})
+
 	t.Run("a cleaned up image can be deployed again", func(t *testing.T) {
 		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: "old-unused-1", Tag: "v1", Metadata: map[string]string{}}))
 		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{

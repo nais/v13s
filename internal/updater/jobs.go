@@ -36,6 +36,8 @@ type CleanupUnusedImagesConfig struct {
 	JobRuntimeConfig
 	Retention time.Duration
 	BatchSize int32
+	// MaxPerRun limits the number of images deleted per run. 0 means no limit.
+	MaxPerRun int64
 }
 
 func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {

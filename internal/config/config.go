@@ -59,6 +59,7 @@ type UpdaterConfig struct {
 	CleanupUnusedCron       string        `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_CRON" default:"0 3 * * *"`
 	CleanupUnusedRetention  time.Duration `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_RETENTION" default:"1440h"`
 	CleanupUnusedBatchSize  int32         `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_BATCH_SIZE" default:"1000"`
+	CleanupUnusedMaxPerRun  int64         `envconfig:"UPDATER_CLEANUP_UNUSED_IMAGES_MAX_PER_RUN" default:"0"`
 }
 
 type DependencyTrackConfig struct {

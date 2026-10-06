@@ -249,6 +249,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		},
 		Retention: cfg.Updater.CleanupUnusedRetention,
 		BatchSize: cfg.Updater.CleanupUnusedBatchSize,
+		MaxPerRun: cfg.Updater.CleanupUnusedMaxPerRun,
 	}
 
 	u := updater.NewUpdaterWithRuntimeConfig(
