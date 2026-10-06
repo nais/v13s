@@ -408,6 +408,18 @@ message GetVulnerabilitySummaryResponse {
   float coverage = 5;
 }
 
+message GetVulnerabilitySummariesRequest {
+  // A bounded, explicit selection of team namespaces; at most 200 distinct values.
+  repeated string namespaces = 1;
+  // Shared filters. Namespace, namespaces and image filters are not supported here.
+  Filter filter = 2;
+}
+
+message GetVulnerabilitySummariesResponse {
+  // Contains one entry for every requested namespace, including those with no workloads.
+  map<string, GetVulnerabilitySummaryResponse> summaries = 1;
+}
+
 message GetVulnerabilitySummaryTimeSeriesRequest {
   Filter filter = 1;
   optional google.protobuf.Timestamp since = 2;
@@ -542,6 +554,8 @@ service Vulnerabilities {
   // Only supplying a workload_type will give the summary for all workloads of that type across all clusters and namespaces
   // Supplying all filters will give the summary for that specific workload
   rpc GetVulnerabilitySummary(GetVulnerabilitySummaryRequest) returns (GetVulnerabilitySummaryResponse);
+
+  rpc GetVulnerabilitySummaries(GetVulnerabilitySummariesRequest) returns (GetVulnerabilitySummariesResponse);
 
   rpc GetVulnerabilitySummaryTimeSeries(GetVulnerabilitySummaryTimeSeriesRequest) returns (GetVulnerabilitySummaryTimeSeriesResponse);
 

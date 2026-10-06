@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,8 +15,11 @@ import (
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+const maxSummaryNamespaces = 200
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
@@ -153,6 +157,90 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		row = &sql.GetVulnerabilitySummaryRow{}
 	}
 
+	return vulnerabilitySummaryResponse(request.GetFilter(), row), nil
+}
+
+func (s *Server) GetVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummariesRequest) (*vulnerabilities.GetVulnerabilitySummariesResponse, error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required")
+	}
+	namespaces := request.GetNamespaces()
+	if len(namespaces) > maxSummaryNamespaces {
+		return nil, status.Errorf(codes.InvalidArgument, "at most %d namespaces may be requested", maxSummaryNamespaces)
+	}
+	seen := make(map[string]struct{}, len(namespaces))
+	for _, namespace := range namespaces {
+		if namespace == "" || strings.TrimSpace(namespace) != namespace {
+			return nil, status.Error(codes.InvalidArgument, "namespaces must be nonempty and must not contain surrounding whitespace")
+		}
+		if _, exists := seen[namespace]; exists {
+			return nil, status.Error(codes.InvalidArgument, "duplicate namespaces are not allowed")
+		}
+		seen[namespace] = struct{}{}
+	}
+	filter := request.GetFilter()
+	if filter == nil {
+		filter = &vulnerabilities.Filter{}
+	}
+	if filter.Namespace != nil || len(filter.GetNamespaces()) > 0 || filter.ImageName != nil || filter.ImageTag != nil {
+		return nil, status.Error(codes.InvalidArgument, "namespace and image filters are not supported for bulk summaries")
+	}
+	response := &vulnerabilities.GetVulnerabilitySummariesResponse{
+		Summaries: make(map[string]*vulnerabilities.GetVulnerabilitySummaryResponse, len(namespaces)),
+	}
+	if len(namespaces) == 0 {
+		return response, nil
+	}
+
+	rows, err := s.querier.GetVulnerabilitySummaries(ctx, sql.GetVulnerabilitySummariesParams{
+		Namespaces:    namespaces,
+		Cluster:       filter.Cluster,
+		WorkloadTypes: filter.GetWorkloadTypes(),
+		WorkloadName:  filter.Workload,
+		RiskTiers:     priorityTiersFromFilter(filter),
+		HasKev:        filter.HasKev,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get vulnerability summaries: "+err.Error())
+	}
+	for _, row := range rows {
+		if _, exists := seen[row.Namespace]; !exists {
+			return nil, status.Error(codes.Internal, "unexpected namespace in vulnerability summaries")
+		}
+		if _, exists := response.Summaries[row.Namespace]; exists {
+			return nil, status.Error(codes.Internal, "duplicate namespace in vulnerability summaries")
+		}
+		namespaceFilter := proto.CloneOf(filter)
+		namespaceFilter.Namespace = &row.Namespace
+		response.Summaries[row.Namespace] = vulnerabilitySummaryResponse(namespaceFilter, &sql.GetVulnerabilitySummaryRow{
+			WorkloadCount:             row.WorkloadCount,
+			WorkloadWithSbom:          row.WorkloadWithSbom,
+			Critical:                  row.Critical,
+			High:                      row.High,
+			Medium:                    row.Medium,
+			Low:                       row.Low,
+			Unassigned:                row.Unassigned,
+			KevCount:                  row.KevCount,
+			HighRisk:                  row.HighRisk,
+			ElevatedRisk:              row.ElevatedRisk,
+			Monitor:                   row.Monitor,
+			RansomwareCount:           row.RansomwareCount,
+			HighEpssCount:             row.HighEpssCount,
+			TopRiskTier:               row.TopRiskTier,
+			HighRiskWorkloadCount:     row.HighRiskWorkloadCount,
+			ElevatedRiskWorkloadCount: row.ElevatedRiskWorkloadCount,
+			MonitorWorkloadCount:      row.MonitorWorkloadCount,
+			RiskScore:                 row.RiskScore,
+			UpdatedAt:                 row.UpdatedAt,
+		})
+	}
+	if len(response.Summaries) != len(namespaces) {
+		return nil, status.Error(codes.Internal, "missing namespace in vulnerability summaries")
+	}
+	return response, nil
+}
+
+func vulnerabilitySummaryResponse(filter *vulnerabilities.Filter, row *sql.GetVulnerabilitySummaryRow) *vulnerabilities.GetVulnerabilitySummaryResponse {
 	summary := &vulnerabilities.Summary{
 		Critical:                  row.Critical,
 		High:                      row.High,
@@ -181,13 +269,13 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	}
 
 	response := &vulnerabilities.GetVulnerabilitySummaryResponse{
-		Filter:               request.GetFilter(),
+		Filter:               filter,
 		VulnerabilitySummary: summary,
 		WorkloadCount:        row.WorkloadCount,
 		SbomCount:            row.WorkloadWithSbom,
 		Coverage:             coverage,
 	}
-	return response, nil
+	return response
 }
 
 func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryTimeSeriesRequest) (*vulnerabilities.GetVulnerabilitySummaryTimeSeriesResponse, error) {
