@@ -2783,7 +2783,7 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.NotNil(t, cve.LastUpdated)
 	})
 
-	t.Run("affected_workloads ascending, fewest first, cvss tiebreaker null+zero last", func(t *testing.T) {
+	t.Run("affected_workloads ascending, fewest first, severity then id as tiebreaker", func(t *testing.T) {
 		err := db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-a", Tag: "v1.0", Metadata: map[string]string{}})
 		require.NoError(t, err)
 		err = db.CreateImage(ctx, sql.CreateImageParams{Name: "image-aff-asc-b", Tag: "v1.0", Metadata: map[string]string{}})
@@ -2808,8 +2808,8 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		cvssZero := 0.0
 		db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
 			{CveID: "CVE-AFF-ASC-MANY", CveTitle: "Many", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 1, Refs: map[string]string{}},
-			{CveID: "CVE-AFF-ASC-FEW-HIGH", CveTitle: "FewHigh", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 1, Refs: map[string]string{}},
-			{CveID: "CVE-AFF-ASC-FEW-ZERO", CveTitle: "FewZero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssZero, Severity: 1, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-HIGH", CveTitle: "FewHigh", CveDesc: "desc", CveLink: "link", CvssScore: &cvssHigh, Severity: 2, Refs: map[string]string{}},
+			{CveID: "CVE-AFF-ASC-FEW-ZERO", CveTitle: "FewZero", CveDesc: "desc", CveLink: "link", CvssScore: &cvssZero, Severity: 0, Refs: map[string]string{}},
 			{CveID: "CVE-AFF-ASC-FEW-NULL", CveTitle: "FewNull", CveDesc: "desc", CveLink: "link", CvssScore: nil, Severity: 1, Refs: map[string]string{}},
 		}).Exec(func(i int, err error) { require.NoError(t, err) })
 
@@ -2832,9 +2832,9 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		for _, node := range resp.Nodes {
 			gotIDs = append(gotIDs, node.Cve.Id)
 		}
-		// count=1: FEW-HIGH (9.8) < FEW-ZERO (0, null guard) < FEW-NULL (nil, null guard, cve_id after ZERO)
+		// count=1: FEW-ZERO (critical) < FEW-NULL (high) < FEW-HIGH (medium), regardless of CVSS
 		// count=2: MANY
-		assert.Equal(t, []string{"CVE-AFF-ASC-FEW-HIGH", "CVE-AFF-ASC-FEW-ZERO", "CVE-AFF-ASC-FEW-NULL", "CVE-AFF-ASC-MANY"}, gotIDs)
+		assert.Equal(t, []string{"CVE-AFF-ASC-FEW-ZERO", "CVE-AFF-ASC-FEW-NULL", "CVE-AFF-ASC-FEW-HIGH", "CVE-AFF-ASC-MANY"}, gotIDs)
 	})
 
 	t.Run("cvss_score descending, zero scores last", func(t *testing.T) {
@@ -3287,22 +3287,25 @@ func TestServer_ListCveSummariesPriority(t *testing.T) {
 	require.NoError(t, db.RefreshCveWorkloadCounts(ctx))
 
 	expected := func(direction vulnerabilities.Direction, priorities ...int32) []string {
+		effective := func(c seeded) int32 {
+			if c.priority == nil {
+				return 4
+			}
+			return *c.priority
+		}
 		var selected []seeded
 		for _, c := range cves {
-			if len(priorities) == 0 || (c.priority != nil && collections.AnyMatch(priorities, func(p int32) bool { return p == *c.priority })) {
+			if len(priorities) == 0 || collections.AnyMatch(priorities, func(p int32) bool { return p == effective(c) }) {
 				selected = append(selected, c)
 			}
 		}
 		sort.SliceStable(selected, func(i, j int) bool {
 			a, b := selected[i], selected[j]
-			if (a.priority == nil) != (b.priority == nil) {
-				return b.priority == nil
-			}
-			if a.priority != nil && *a.priority != *b.priority {
+			if effective(a) != effective(b) {
 				if direction == vulnerabilities.Direction_DESC {
-					return *a.priority > *b.priority
+					return effective(a) > effective(b)
 				}
-				return *a.priority < *b.priority
+				return effective(a) < effective(b)
 			}
 			if a.severity != b.severity {
 				return a.severity < b.severity
@@ -3369,7 +3372,7 @@ func TestServer_ListCveSummariesPriority(t *testing.T) {
 			for priority, total := range map[vulnerabilities.Priority]int64{
 				vulnerabilities.Priority_PRIORITY_HIGH:     25,
 				vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
-				vulnerabilities.Priority_PRIORITY_MONITOR:  2,
+				vulnerabilities.Priority_PRIORITY_MONITOR:  4,
 				vulnerabilities.Priority_PRIORITY_ACT_NOW:  0,
 			} {
 				resp := list(t, 0, 50, vulnerabilities.Direction_ASC, priority)
@@ -3389,6 +3392,33 @@ func TestServer_ListCveSummariesPriority(t *testing.T) {
 			resp := list(t, 0, 50, vulnerabilities.Direction_DESC)
 			assert.Equal(t, int64(len(cves)), resp.PageInfo.TotalCount)
 			assert.Equal(t, expected(vulnerabilities.Direction_DESC), ids(resp))
+		})
+
+		t.Run(scopeName+": CVEs without priority are grouped as MONITOR", func(t *testing.T) {
+			resp := list(t, 0, 50, vulnerabilities.Direction_ASC, vulnerabilities.Priority_PRIORITY_MONITOR)
+			assert.Subset(t, ids(resp), []string{"CVE-PRIO-NONE-00", "CVE-PRIO-NONE-01"})
+		})
+
+		t.Run(scopeName+": other sort fields break ties by severity then id", func(t *testing.T) {
+			bySeverity := make([]seeded, len(cves))
+			copy(bySeverity, cves)
+			sort.SliceStable(bySeverity, func(i, j int) bool {
+				if bySeverity[i].severity != bySeverity[j].severity {
+					return bySeverity[i].severity < bySeverity[j].severity
+				}
+				return bySeverity[i].id < bySeverity[j].id
+			})
+			want := make([]string, len(bySeverity))
+			for i, c := range bySeverity {
+				want[i] = c.id
+			}
+			for _, field := range []vulnerabilities.OrderByField{vulnerabilities.OrderByCvssScore, vulnerabilities.OrderByAffectedWorkloads} {
+				for _, direction := range []vulnerabilities.Direction{vulnerabilities.Direction_ASC, vulnerabilities.Direction_DESC} {
+					resp, err := client.ListCveSummaries(ctx, scope, vulnerabilities.Limit(50), vulnerabilities.Order(field, direction))
+					require.NoError(t, err)
+					assert.Equal(t, want, ids(resp), "%s %s", field, direction)
+				}
+			}
 		})
 
 		t.Run(scopeName+": unfiltered ascending keeps the full selection", func(t *testing.T) {

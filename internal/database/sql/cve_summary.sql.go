@@ -42,7 +42,7 @@ WITH cve_data AS (
     AND ($12::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
     AND ($13::INT[] IS NULL
-        OR c.priority = ANY ($13::INT[]))
+        OR COALESCE(c.priority, 4) = ANY ($13::INT[]))
 GROUP BY
     c.cve_id
 )
@@ -77,30 +77,8 @@ ORDER BY
     CASE WHEN $1 = 'affected_workloads_desc' THEN
         affected_workloads
     END DESC,
-    CASE WHEN $1 = 'affected_workloads_desc' THEN
-        CASE WHEN cvss_score IS NULL
-            OR cvss_score = 0 THEN
-            1
-        ELSE
-            0
-        END
-    END ASC,
-    CASE WHEN $1 = 'affected_workloads_desc' THEN
-        cvss_score
-    END DESC,
     CASE WHEN $1 = 'affected_workloads_asc' THEN
         affected_workloads
-    END ASC,
-    CASE WHEN $1 = 'affected_workloads_asc' THEN
-        CASE WHEN cvss_score IS NULL
-            OR cvss_score = 0 THEN
-            1
-        ELSE
-            0
-        END
-    END ASC,
-    CASE WHEN $1 = 'affected_workloads_asc' THEN
-        cvss_score
     END ASC,
     CASE WHEN $1 = 'cve_id_asc' THEN
         cve_id
@@ -115,14 +93,12 @@ ORDER BY
         severity
     END DESC,
     CASE WHEN $1 = 'priority_asc' THEN
-        priority
-    END ASC NULLS LAST,
-    CASE WHEN $1 = 'priority_desc' THEN
-        priority
-    END DESC NULLS LAST,
-    CASE WHEN $1 IN ('priority_asc', 'priority_desc') THEN
-        severity
+        COALESCE(priority, 4)
     END ASC,
+    CASE WHEN $1 = 'priority_desc' THEN
+        COALESCE(priority, 4)
+    END DESC,
+    severity ASC,
     cve_id ASC
 LIMIT $3
     OFFSET $2
@@ -268,30 +244,8 @@ ranked AS (
             CASE WHEN $9 = 'affected_workloads_desc' THEN
                 cc.affected_workloads
             END DESC,
-            CASE WHEN $9 = 'affected_workloads_desc' THEN
-                CASE WHEN c.cvss_score IS NULL
-                    OR c.cvss_score = 0 THEN
-                    1
-                ELSE
-                    0
-                END
-            END ASC,
-            CASE WHEN $9 = 'affected_workloads_desc' THEN
-                c.cvss_score
-            END DESC,
             CASE WHEN $9 = 'affected_workloads_asc' THEN
                 cc.affected_workloads
-            END ASC,
-            CASE WHEN $9 = 'affected_workloads_asc' THEN
-                CASE WHEN c.cvss_score IS NULL
-                    OR c.cvss_score = 0 THEN
-                    1
-                ELSE
-                    0
-                END
-            END ASC,
-            CASE WHEN $9 = 'affected_workloads_asc' THEN
-                c.cvss_score
             END ASC,
             CASE WHEN $9 = 'cve_id_asc' THEN
                 c.cve_id
@@ -306,14 +260,12 @@ ranked AS (
                 c.severity
             END DESC,
             CASE WHEN $9 = 'priority_asc' THEN
-                c.priority
-            END ASC NULLS LAST,
-            CASE WHEN $9 = 'priority_desc' THEN
-                c.priority
-            END DESC NULLS LAST,
-            CASE WHEN $9 IN ('priority_asc', 'priority_desc') THEN
-                c.severity
+                COALESCE(c.priority, 4)
             END ASC,
+            CASE WHEN $9 = 'priority_desc' THEN
+                COALESCE(c.priority, 4)
+            END DESC,
+            c.severity ASC,
             c.cve_id ASC)::INT AS row_number,
         COUNT(*) OVER ()::INT AS total_count
     FROM
@@ -322,7 +274,7 @@ ranked AS (
     WHERE
         cc.affected_workloads > 0
         AND ($10::INT[] IS NULL
-            OR c.priority = ANY ($10::INT[])))
+            OR COALESCE(c.priority, 4) = ANY ($10::INT[])))
 SELECT
     c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
     r.affected_workloads,

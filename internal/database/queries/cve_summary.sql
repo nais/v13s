@@ -30,7 +30,7 @@ WITH cve_data AS (
     AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
     AND (sqlc.narg('priorities')::INT[] IS NULL
-        OR c.priority = ANY (sqlc.narg('priorities')::INT[]))
+        OR COALESCE(c.priority, 4) = ANY (sqlc.narg('priorities')::INT[]))
 GROUP BY
     c.cve_id
 )
@@ -65,30 +65,8 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
         affected_workloads
     END DESC,
-    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
-        CASE WHEN cvss_score IS NULL
-            OR cvss_score = 0 THEN
-            1
-        ELSE
-            0
-        END
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
-        cvss_score
-    END DESC,
     CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
         affected_workloads
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
-        CASE WHEN cvss_score IS NULL
-            OR cvss_score = 0 THEN
-            1
-        ELSE
-            0
-        END
-    END ASC,
-    CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
-        cvss_score
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
         cve_id
@@ -103,14 +81,12 @@ ORDER BY
         severity
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
-        priority
-    END ASC NULLS LAST,
-    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
-        priority
-    END DESC NULLS LAST,
-    CASE WHEN sqlc.narg('order_by') IN ('priority_asc', 'priority_desc') THEN
-        severity
+        COALESCE(priority, 4)
     END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+        COALESCE(priority, 4)
+    END DESC,
+    severity ASC,
     cve_id ASC
 LIMIT sqlc.arg('limit')
     OFFSET sqlc.arg('offset');
@@ -169,30 +145,8 @@ ranked AS (
             CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
                 cc.affected_workloads
             END DESC,
-            CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
-                CASE WHEN c.cvss_score IS NULL
-                    OR c.cvss_score = 0 THEN
-                    1
-                ELSE
-                    0
-                END
-            END ASC,
-            CASE WHEN sqlc.narg('order_by') = 'affected_workloads_desc' THEN
-                c.cvss_score
-            END DESC,
             CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
                 cc.affected_workloads
-            END ASC,
-            CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
-                CASE WHEN c.cvss_score IS NULL
-                    OR c.cvss_score = 0 THEN
-                    1
-                ELSE
-                    0
-                END
-            END ASC,
-            CASE WHEN sqlc.narg('order_by') = 'affected_workloads_asc' THEN
-                c.cvss_score
             END ASC,
             CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
                 c.cve_id
@@ -207,14 +161,12 @@ ranked AS (
                 c.severity
             END DESC,
             CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
-                c.priority
-            END ASC NULLS LAST,
-            CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
-                c.priority
-            END DESC NULLS LAST,
-            CASE WHEN sqlc.narg('order_by') IN ('priority_asc', 'priority_desc') THEN
-                c.severity
+                COALESCE(c.priority, 4)
             END ASC,
+            CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
+                COALESCE(c.priority, 4)
+            END DESC,
+            c.severity ASC,
             c.cve_id ASC)::INT AS row_number,
         COUNT(*) OVER ()::INT AS total_count
     FROM
@@ -223,7 +175,7 @@ ranked AS (
     WHERE
         cc.affected_workloads > 0
         AND (sqlc.narg('priorities')::INT[] IS NULL
-            OR c.priority = ANY (sqlc.narg('priorities')::INT[])))
+            OR COALESCE(c.priority, 4) = ANY (sqlc.narg('priorities')::INT[])))
 SELECT
     c.*,
     r.affected_workloads,
