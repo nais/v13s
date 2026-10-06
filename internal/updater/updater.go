@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/config"
+	v13sdatabase "github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
@@ -46,6 +47,7 @@ type Updater struct {
 	log                          *logrus.Entry
 	kevFetcher                   *kev.Fetcher
 	osvFetcher                   *osv.Fetcher
+	cveWorkloadCountsRefresher   *v13sdatabase.CveWorkloadCountsRefresher
 	runtimeConfig                RuntimeConfig
 	lifecycle                    updaterLifecycle
 	cycle                        updaterCycle
@@ -80,6 +82,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		log:                          log,
 		kevFetcher:                   kev.NewFetcher(pool, log, kev.SourcesFromConfig(kevCfg)...),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
+		cveWorkloadCountsRefresher:   v13sdatabase.NewCveWorkloadCountsRefresher(pool, log),
 		runtimeConfig:                runtimeCfg,
 	}
 	u.cycle.step = u.runResyncCycle
@@ -197,15 +200,6 @@ func (u *Updater) runRefreshWorkloadVulnerabilityLifetimes(ctx context.Context) 
 	return nil
 }
 
-func (u *Updater) runRefreshCveWorkloadCounts(ctx context.Context) error {
-	now := time.Now()
-	if err := u.querier.RefreshCveWorkloadCounts(ctx); err != nil {
-		return fmt.Errorf("refreshing CVE workload counts: %w", err)
-	}
-	u.log.Infof("CVE workload counts refreshed, took %f seconds", time.Since(now).Seconds())
-	return nil
-}
-
 func (u *Updater) runSyncKevCatalog(ctx context.Context) error {
 	return u.kevFetcher.Sync(ctx)
 }
@@ -235,7 +229,7 @@ func (u *Updater) buildLegacyJobs() []Job {
 		newScheduledJob("sync KEV catalogs", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval}, u.log, u.runSyncKevCatalog),
 		newScheduledJob("sync OSV fix versions", ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval}, u.log, u.runSyncOsvFixVersions),
 		newScheduledJob("rekey suppressed aliases to canonical", ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval}, u.log, u.runRekeySuppressedAliases),
-		newScheduledJob("refresh CVE workload counts", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval}, u.log, u.runRefreshCveWorkloadCounts),
+		newScheduledJob("refresh CVE workload counts", ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval}, u.log, u.cveWorkloadCountsRefresher.Refresh),
 	}
 }
 
@@ -258,7 +252,7 @@ func (u *Updater) buildRuntimeJobs() []Job {
 	add(u.runtimeConfig.SyncKev, "sync KEV catalogs", u.runSyncKevCatalog)
 	add(u.runtimeConfig.SyncOsv, "sync OSV fix versions", u.runSyncOsvFixVersions)
 	add(u.runtimeConfig.RekeySuppressedAliases, "rekey suppressed aliases to canonical", u.runRekeySuppressedAliases)
-	add(u.runtimeConfig.RefreshCveWorkloadCounts, "refresh CVE workload counts", u.runRefreshCveWorkloadCounts)
+	add(u.runtimeConfig.RefreshCveWorkloadCounts, "refresh CVE workload counts", u.cveWorkloadCountsRefresher.Refresh)
 
 	return jobs
 }
