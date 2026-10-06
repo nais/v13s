@@ -17,7 +17,6 @@ import (
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
@@ -38,180 +37,6 @@ type testSetupConfig struct {
 	vulnsPerWorkload      int
 }
 
-func TestServer_ListVulnerabilities(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1", "cluster-2"},
-		namespaces:            []string{"namespace-1", "namespace-2", "namespace-3"},
-		workloadsPerNamespace: 4,
-		vulnsPerWorkload:      4,
-	}
-	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	t.Run("list all vulnerabilities for every cluster", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(ctx, vulnerabilities.Limit(100))
-		assert.NoError(t, err)
-		// equals all rows in vulnerabilities table in db
-		// 24 workloads * 4 vulns per workload = 96
-		assert.Equal(t, 96, len(resp.Nodes))
-	})
-
-	t.Run("list vulnerabilities for every cluster with default limit", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(
-			ctx,
-		)
-		assert.NoError(t, err)
-		// equals all rows in vulnerabilities table in db
-		// 24 workloads * 4 vulns per workload = 96
-		// returns first 50 rows because of default limit
-		assert.Equal(t, 50, len(resp.Nodes))
-	})
-
-	t.Run("list all vulnerabilities for cluster-1", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.ClusterFilter("cluster-1"),
-		)
-		assert.NoError(t, err)
-		// 12 workloads * 4 vulns per workload = 48
-		assert.Equal(t, 48, len(resp.Nodes))
-	})
-
-	t.Run("list all vulnerabilities for namespace-1", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.NamespaceFilter("namespace-1"),
-		)
-		assert.NoError(t, err)
-		// 8 workloads * 4 vulns per workload = 32
-		assert.Equal(t, 32, len(resp.Nodes))
-	})
-
-	t.Run("list all vulnerabilities for cluster-1 and namespace-1", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.ClusterFilter("cluster-1"),
-			vulnerabilities.NamespaceFilter("namespace-1"),
-		)
-		assert.NoError(t, err)
-		// 4 workloads * 4 vulns per workload = 16
-		assert.Equal(t, 16, len(resp.Nodes))
-	})
-
-	t.Run("list all vulnerabilities for workload-1", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.WorkloadFilter("workload-1"),
-		)
-		assert.NoError(t, err)
-		assert.Equal(t, len(cfg.clusters)*len(cfg.namespaces)*cfg.vulnsPerWorkload, len(resp.Nodes))
-	})
-
-	t.Run("list all vulnerabilities for cluster-1, namespace-1, and workload-1", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.ClusterFilter("cluster-1"),
-			vulnerabilities.NamespaceFilter("namespace-1"),
-			vulnerabilities.WorkloadFilter("workload-1"),
-		)
-
-		assert.NoError(t, err)
-		assert.Equal(t, cfg.vulnsPerWorkload, len(resp.Nodes))
-
-		for _, v := range resp.Nodes {
-			assert.Equal(t, "workload-1", v.WorkloadRef.Name)
-			assert.Equal(t, "namespace-1", v.WorkloadRef.Namespace)
-			assert.Equal(t, "cluster-1", v.WorkloadRef.Cluster)
-			assert.Equal(t, "app", v.WorkloadRef.Type)
-		}
-	})
-
-	t.Run("list vulnerabilities with limit and pagination", func(t *testing.T) {
-		limit := int32(10)
-		offset := int32(0)
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.Limit(limit),
-			vulnerabilities.Offset(offset),
-		)
-		assert.NoError(t, err)
-		uniqueRows := map[string]bool{}
-		flatten(t, uniqueRows, resp.Nodes)
-
-		for resp.PageInfo.HasNextPage {
-			offset += limit
-			resp, err = client.ListVulnerabilities(
-				ctx,
-				vulnerabilities.Limit(limit),
-				vulnerabilities.Offset(offset),
-			)
-			assert.NoError(t, err)
-			flatten(t, uniqueRows, resp.Nodes)
-		}
-
-		assert.Equal(t, 96, len(uniqueRows))
-	})
-
-	t.Run("list vulnerabilities for workloads using the same image", func(t *testing.T) {
-		w := sql.UpsertWorkloadParams{
-			Name:         "workload-1",
-			WorkloadType: "app",
-			Namespace:    "namespace-1",
-			Cluster:      "cluster-prod",
-			ImageName:    "image-cluster-1-namespace-1-workload-1",
-			ImageTag:     "v1.0",
-		}
-
-		_, err := db.UpsertWorkload(ctx, w)
-		assert.NoError(t, err)
-
-		resp, err := client.ListVulnerabilities(
-			ctx,
-			vulnerabilities.ImageFilter("image-cluster-1-namespace-1-workload-1", "v1.0"),
-		)
-		assert.NoError(t, err)
-
-		assert.Equal(t, 8, len(resp.Nodes))
-		assert.True(t, collections.AnyMatch(resp.Nodes, func(f *vulnerabilities.Finding) bool {
-			return f.WorkloadRef.Name == "workload-1" && f.WorkloadRef.Namespace == "namespace-1" && f.WorkloadRef.Cluster == "cluster-prod"
-		}))
-	})
-
-	t.Run("list suppressed vulnerabilities", func(t *testing.T) {
-		vulns, err := client.ListVulnerabilitiesForImage(ctx, "image-cluster-1-namespace-1-workload-1", "v1.0")
-		assert.NoError(t, err)
-		assert.Len(t, vulns.Nodes, 4)
-
-		err = client.SuppressVulnerability(
-			ctx,
-			vulns.Nodes[0].GetId(),
-			"Marked suppressed in test",
-			"tester",
-			vulnerabilities.SuppressState_IN_TRIAGE,
-			true,
-		)
-		require.NoError(t, err, "suppressing vulnerability should not error")
-
-		resp, err := client.ListVulnerabilities(ctx,
-			vulnerabilities.Limit(100),
-			vulnerabilities.IncludeSuppressed(),
-		)
-		assert.NoError(t, err)
-
-		found := false
-		for _, v := range resp.Nodes {
-			if v.Vulnerability.Suppression != nil && v.Vulnerability.Suppression.Suppressed {
-				found = true
-				assert.Equal(t, vulnerabilities.SuppressState_IN_TRIAGE, v.Vulnerability.Suppression.SuppressedReason)
-				assert.Equal(t, "Marked suppressed in test", v.Vulnerability.Suppression.SuppressedDetails)
-				assert.Equal(t, "tester", v.Vulnerability.Suppression.SuppressedBy)
-				assert.NotZero(t, v.Vulnerability.Suppression.LastUpdated.AsTime())
-			}
-		}
-		assert.True(t, found, "expected at least one suppressed vulnerability")
-	})
-}
-
 func TestServer_ListWorkloadsForVulnerabilityById(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},
@@ -230,16 +55,15 @@ func TestServer_ListWorkloadsForVulnerabilityById(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	vulnResp, err := client.GetVulnerability(ctx,
-		"image-cluster-1-namespace-1-workload-1",
-		"v1.0",
-		"package-CWE-1-1",
-		"CWE-1-1",
-	)
+	vulnResp, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+		ImageName: "image-cluster-1-namespace-1-workload-1",
+		ImageTag:  "v1.0",
+		Package:   "package-CWE-1-1",
+		CveID:     "CWE-1-1",
+	})
 	assert.NoError(t, err)
-	assert.NotNil(t, vulnResp.Vulnerability)
 
-	vulnID := vulnResp.Vulnerability.Id
+	vulnID := vulnResp.ID.String()
 	assert.NotEmpty(t, vulnID)
 
 	resp, err := client.ListWorkloadsForVulnerabilityById(ctx, vulnID)
@@ -274,22 +98,22 @@ func TestServer_ListWorkloadsForVulnerability_ExcludeNamespaces(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	vulnRespNs1, err := client.GetVulnerability(ctx,
-		"image-cluster-1-namespace-1-workload-1",
-		"v1.0",
-		"package-CWE-1-1",
-		"CWE-1-1",
-	)
+	vulnRespNs1, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+		ImageName: "image-cluster-1-namespace-1-workload-1",
+		ImageTag:  "v1.0",
+		Package:   "package-CWE-1-1",
+		CveID:     "CWE-1-1",
+	})
 	require.NoError(t, err)
-	cveID := vulnRespNs1.Vulnerability.Cve.Id
+	cveID := vulnRespNs1.CveID
 	require.NotEmpty(t, cveID)
 
-	_, err = client.GetVulnerability(ctx,
-		"image-cluster-1-namespace-2-workload-1",
-		"v1.0",
-		"package-CWE-1-1",
-		"CWE-1-1",
-	)
+	_, err = db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+		ImageName: "image-cluster-1-namespace-2-workload-1",
+		ImageTag:  "v1.0",
+		Package:   "package-CWE-1-1",
+		CveID:     "CWE-1-1",
+	})
 	require.NoError(t, err)
 
 	t.Run("list workloads for vulnerability without exclude filter", func(t *testing.T) {
@@ -369,28 +193,28 @@ func TestServer_ListWorkloadsForVulnerability_NamespacesFilter(t *testing.T) {
 		vulnsPerWorkload:      1,
 	}
 
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
+	ctx, db, _, client, cleanup := setupTest(t, cfg, true)
 	defer cleanup()
 
-	// Resolve the canonical CVE ID — call GetVulnerability for all three namespaces
+	// Resolve the canonical CVE ID — look up the vulnerability for all three namespaces
 	// so the CVE is linked to every workload in the DB.
-	vulnResp, err := client.GetVulnerability(ctx,
-		"image-cluster-1-namespace-1-workload-1",
-		"v1.0",
-		"package-CWE-1-1",
-		"CWE-1-1",
-	)
+	vulnResp, err := db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+		ImageName: "image-cluster-1-namespace-1-workload-1",
+		ImageTag:  "v1.0",
+		Package:   "package-CWE-1-1",
+		CveID:     "CWE-1-1",
+	})
 	require.NoError(t, err)
-	cveID := vulnResp.Vulnerability.Cve.Id
+	cveID := vulnResp.CveID
 	require.NotEmpty(t, cveID)
 
 	for _, ns := range []string{"namespace-2", "namespace-3"} {
-		_, err = client.GetVulnerability(ctx,
-			fmt.Sprintf("image-cluster-1-%s-workload-1", ns),
-			"v1.0",
-			"package-CWE-1-1",
-			"CWE-1-1",
-		)
+		_, err = db.GetVulnerability(ctx, sql.GetVulnerabilityParams{
+			ImageName: fmt.Sprintf("image-cluster-1-%s-workload-1", ns),
+			ImageTag:  "v1.0",
+			Package:   "package-CWE-1-1",
+			CveID:     "CWE-1-1",
+		})
 		require.NoError(t, err)
 	}
 
@@ -605,64 +429,6 @@ func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 		assert.Equal(t, aliasCVEID, resolved.GetCve().GetReferences()[canonicalCVEID])
 		assert.InDelta(t, canonicalScore, resolved.GetCvssScore(), 0.0001)
 		assert.NotEqual(t, aliasScore, resolved.GetCvssScore())
-	})
-
-	t.Run("ListVulnerabilities returns canonical cvss score for alias-backed vulnerability", func(t *testing.T) {
-		const (
-			canonicalCVEID2 = "CVE-CVSS-CANONICAL-2"
-			aliasCVEID2     = "GHSA-CVSS-ALIAS-2"
-			pkgName2        = "pkg-cvss-list-test"
-		)
-
-		canonicalScore2 := 9.8
-		aliasScore2 := 4.0
-
-		queries.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
-			{
-				CveID:     canonicalCVEID2,
-				CveTitle:  "canonical",
-				Severity:  int32(vulnerabilities.Severity_CRITICAL),
-				CvssScore: &canonicalScore2,
-				Refs:      map[string]string{},
-			},
-			{
-				CveID:     aliasCVEID2,
-				CveTitle:  "alias",
-				Severity:  int32(vulnerabilities.Severity_HIGH),
-				CvssScore: &aliasScore2,
-				Refs:      map[string]string{},
-			},
-		}).Exec(func(_ int, err error) { require.NoError(t, err) })
-
-		queries.BatchUpsertCveAlias(ctx, []sql.BatchUpsertCveAliasParams{{
-			Alias:          aliasCVEID2,
-			CanonicalCveID: canonicalCVEID2,
-		}}).Exec(func(_ int, err error) { require.NoError(t, err) })
-
-		queries.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
-			ImageName: "image-cluster-1-namespace-1-workload-1",
-			ImageTag:  "v1.0",
-			Package:   pkgName2,
-			CveID:     aliasCVEID2,
-			Source:    "test",
-			CvssScore: &aliasScore2,
-		}}).Exec(func(_ int, err error) { require.NoError(t, err) })
-
-		resp, err := client.ListVulnerabilities(ctx, vulnerabilities.Limit(100))
-		require.NoError(t, err)
-
-		var found *vulnerabilities.Finding
-		for _, node := range resp.Nodes {
-			if node.GetVulnerability().GetPackage() == pkgName2 {
-				found = node
-				break
-			}
-		}
-
-		require.NotNil(t, found, "expected alias-backed vulnerability in ListVulnerabilities")
-		assert.InDelta(t, canonicalScore2, found.GetVulnerability().GetCvssScore(), 0.0001,
-			"ListVulnerabilities should return canonical cvss_score, not alias score")
-		assert.NotEqual(t, aliasScore2, found.GetVulnerability().GetCvssScore())
 	})
 }
 
@@ -1014,45 +780,6 @@ func TestServer_ListVulnerabilitiesForImage_WithFilters(t *testing.T) {
 			assert.Equal(t, int32(severity), int32(v.GetCve().GetSeverity()))
 			assert.True(t, v.GetSuppression().GetSuppressed() || !v.GetSuppression().GetSuppressed(), "suppressed field should be present")
 		}
-	})
-}
-
-func TestServer_ListSuppressedVulnerabilities(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1"},
-		namespaces:            []string{"namespace-1"},
-		workloadsPerNamespace: 1,
-		vulnsPerWorkload:      1,
-	}
-
-	ctx, _, _, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	// get vulnerabilities for workload-1
-	vulns, err := client.ListVulnerabilitiesForImage(
-		ctx,
-		"image-cluster-1-namespace-1-workload-1", "v1.0",
-	)
-	assert.NoError(t, err)
-	assert.Len(t, vulns.Nodes, 1)
-
-	// set suppressed vulnerabilities for workload-1
-	err = client.SuppressVulnerability(
-		ctx,
-		vulns.Nodes[0].GetId(),
-		"not affected",
-		"test-user",
-		vulnerabilities.SuppressState_FALSE_POSITIVE,
-		true)
-	assert.NoError(t, err)
-
-	t.Run("list all suppressed vulnerabilities for every cluster", func(t *testing.T) {
-		resp, err := client.ListSuppressedVulnerabilities(ctx)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(resp.Nodes))
-		assert.Equal(t, true, resp.Nodes[0].GetSuppress())
-		assert.Equal(t, "not affected", resp.Nodes[0].GetReason())
-		assert.Equal(t, "test-user", resp.Nodes[0].GetSuppressedBy())
 	})
 }
 
@@ -1656,7 +1383,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 		wantHighRisk      int32
 		wantElevatedRisk  int32
 		wantMonitor       int32
-		wantFindings      int
 	}{
 		{
 			name:              "high only",
@@ -1667,7 +1393,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			wantKevCount:      1,
 			wantHighRisk:      2,
 			wantMonitor:       6,
-			wantFindings:      2,
 		},
 		{
 			name:              "elevated only",
@@ -1677,7 +1402,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			wantTopPriorities: []vulnerabilities.Priority{elevated},
 			wantElevatedRisk:  1,
 			wantMonitor:       3,
-			wantFindings:      1,
 		},
 		{
 			name:              "monitor only",
@@ -1686,7 +1410,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			wantTopPriority:   monitor,
 			wantTopPriorities: []vulnerabilities.Priority{monitor},
 			wantMonitor:       4,
-			wantFindings:      13,
 		},
 		{
 			name:              "high and elevated",
@@ -1698,7 +1421,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			wantHighRisk:      2,
 			wantElevatedRisk:  1,
 			wantMonitor:       9,
-			wantFindings:      3,
 		},
 		{
 			name:              "reserved tier 1 is never produced by v13s",
@@ -1706,7 +1428,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			wantWorkloads:     0,
 			wantTopPriority:   vulnerabilities.Priority_PRIORITY_UNSPECIFIED,
 			wantTopPriorities: []vulnerabilities.Priority{},
-			wantFindings:      0,
 		},
 	}
 
@@ -1758,21 +1479,6 @@ func TestServer_VulnerabilitySummary_ExactPriorityFilter(t *testing.T) {
 			assert.Equal(t, tc.wantTopPriorities, got)
 		})
 
-		t.Run(tc.name+"/list-findings", func(t *testing.T) {
-			resp, err := client.ListVulnerabilities(ctx, vulnerabilities.PriorityFilter(tc.priorities...), vulnerabilities.Limit(100))
-			require.NoError(t, err)
-			assert.Len(t, resp.Nodes, tc.wantFindings)
-
-			wantRanks := map[int]struct{}{}
-			for _, p := range tc.priorities {
-				wantRanks[priorityRank(p)] = struct{}{}
-			}
-			for _, node := range resp.Nodes {
-				got := node.GetVulnerability().GetCve().GetPriority()
-				_, ok := wantRanks[priorityRank(got)]
-				assert.True(t, ok, "finding priority %s outside requested set", got)
-			}
-		})
 	}
 }
 
@@ -1814,7 +1520,6 @@ func TestServer_KevFilter(t *testing.T) {
 	cases := []struct {
 		name                string
 		hasKev              bool
-		wantFindings        int
 		wantImageFindings   int
 		wantWorkloads       int32
 		wantSummaryFindings int32
@@ -1823,7 +1528,6 @@ func TestServer_KevFilter(t *testing.T) {
 		{
 			name:                "with KEV",
 			hasKev:              true,
-			wantFindings:        1,
 			wantImageFindings:   1,
 			wantWorkloads:       1,
 			wantSummaryFindings: 2,
@@ -1832,7 +1536,6 @@ func TestServer_KevFilter(t *testing.T) {
 		{
 			name:                "without KEV",
 			hasKev:              false,
-			wantFindings:        3,
 			wantImageFindings:   1,
 			wantWorkloads:       1,
 			wantSummaryFindings: 2,
@@ -1841,21 +1544,6 @@ func TestServer_KevFilter(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.name+"/list-findings-and-pagination", func(t *testing.T) {
-			resp, err := client.ListVulnerabilities(
-				ctx,
-				vulnerabilities.KevFilter(tc.hasKev),
-				vulnerabilities.Limit(1),
-			)
-			require.NoError(t, err)
-			require.Len(t, resp.GetNodes(), 1)
-			assert.Equal(t, int64(tc.wantFindings), resp.GetPageInfo().GetTotalCount())
-			assert.Equal(t, tc.wantFindings > 1, resp.GetPageInfo().GetHasNextPage())
-			for _, node := range resp.GetNodes() {
-				assert.Equal(t, tc.hasKev, node.GetVulnerability().GetCve().GetHasKevEntry())
-			}
-		})
-
 		t.Run(tc.name+"/image-findings", func(t *testing.T) {
 			resp, err := client.ListVulnerabilitiesForImage(
 				ctx,
@@ -2272,123 +1960,6 @@ func TestSanitizeOrderBy(t *testing.T) {
 	}
 }
 
-func TestServer_ListVulnerabilities_Sorting(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1"},
-		namespaces:            []string{"namespace-1"},
-		workloadsPerNamespace: 1,
-		vulnsPerWorkload:      3,
-	}
-
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{
-		Name:     "image-1",
-		Tag:      "v1.0",
-		Metadata: map[string]string{},
-	}))
-
-	db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{
-		{CveID: "CVE-111", CveTitle: "title-111", CveDesc: "desc", CveLink: "link", Severity: 0, Refs: typeext.MapStringString{}},
-		{CveID: "CVE-222", CveTitle: "title-222", CveDesc: "desc", CveLink: "link", Severity: 1, Refs: typeext.MapStringString{}},
-		{CveID: "CVE-333", CveTitle: "title-333", CveDesc: "desc", CveLink: "link", Severity: 2, Refs: typeext.MapStringString{}},
-	}).Exec(func(i int, err error) {
-		require.NoError(t, err)
-	})
-
-	_, err := pool.Exec(ctx, `
-		UPDATE vulnerabilities
-		SET 
-			severity_since = CASE package
-				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '1 hour'
-				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '2 hour'
-				WHEN 'package-CWE-1-3' THEN NOW() - INTERVAL '3 hour'
-			END,
-			created_at = CASE package
-				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '3 hour'
-				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '2 hour'
-				WHEN 'package-CWE-1-3' THEN NOW() - INTERVAL '1 hour'
-			END,
-			updated_at = CASE package
-				WHEN 'package-CWE-1-1' THEN NOW() - INTERVAL '2 hour'
-				WHEN 'package-CWE-1-2' THEN NOW() - INTERVAL '1 hour'
-				WHEN 'package-CWE-1-3' THEN NOW()
-			END
-		WHERE image_name = 'image-1' AND image_tag = 'v1.0'
-	`)
-	require.NoError(t, err)
-
-	err = db.SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
-		ImageName:    "image-1",
-		Package:      "package-A",
-		CveID:        "CVE-111",
-		Suppressed:   true,
-		SuppressedBy: "tester",
-		Reason:       sql.VulnerabilitySuppressReason(strings.ToLower("resolved")),
-		ReasonText:   "unit test suppression",
-	})
-	require.NoError(t, err)
-
-	tests := []struct {
-		name      string
-		orderBy   vulnerabilities.OrderByField
-		dir       vulnerabilities.Direction
-		extract   func(v *vulnerabilities.Vulnerability) any
-		isNumeric bool
-	}{
-		{"package asc", vulnerabilities.OrderByPackage, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Package }, false},
-		{"package desc", vulnerabilities.OrderByPackage, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Package }, false},
-		{"severity asc", vulnerabilities.OrderBySeverity, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Cve.GetSeverity() }, true},
-		{"severity desc", vulnerabilities.OrderBySeverity, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Cve.GetSeverity() }, true},
-		{"severity_since asc", vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.SeveritySince.AsTime().Unix() }, true},
-		{"severity_since desc", vulnerabilities.OrderBySeveritySince, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.SeveritySince.AsTime().Unix() }, true},
-		{"created_at asc", vulnerabilities.OrderByCreatedAt, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.Created.AsTime().Unix() }, true},
-		{"created_at desc", vulnerabilities.OrderByCreatedAt, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.Created.AsTime().Unix() }, true},
-		{"updated_at asc", vulnerabilities.OrderByUpdatedAt, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any { return v.LastUpdated.AsTime().Unix() }, true},
-		{"updated_at desc", vulnerabilities.OrderByUpdatedAt, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any { return v.LastUpdated.AsTime().Unix() }, true},
-		{"suppressed asc", vulnerabilities.OrderBySuppressed, vulnerabilities.Direction_ASC, func(v *vulnerabilities.Vulnerability) any {
-			if v.Suppression == nil || !v.Suppression.Suppressed {
-				return int32(0)
-			}
-			return int32(1)
-		}, true},
-		{"suppressed desc", vulnerabilities.OrderBySuppressed, vulnerabilities.Direction_DESC, func(v *vulnerabilities.Vulnerability) any {
-			if v.Suppression == nil || !v.Suppression.Suppressed {
-				return int32(0)
-			}
-			return int32(1)
-		}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, err := client.ListVulnerabilities(ctx, vulnerabilities.Order(tt.orderBy, tt.dir), vulnerabilities.IncludeSuppressed())
-			require.NoError(t, err)
-			require.NotEmpty(t, resp.Nodes)
-
-			got := make([]any, len(resp.Nodes))
-			for i, n := range resp.Nodes {
-				got[i] = tt.extract(n.Vulnerability)
-			}
-
-			for i := 1; i < len(got); i++ {
-				if tt.isNumeric {
-					if tt.dir == vulnerabilities.Direction_ASC {
-						assert.LessOrEqual(t, got[i-1], got[i])
-					} else {
-						assert.GreaterOrEqual(t, got[i-1], got[i])
-					}
-				} else {
-					prevID := resp.Nodes[i-1].Vulnerability.Id
-					currID := resp.Nodes[i].Vulnerability.Id
-					assert.Less(t, prevID, currID)
-				}
-			}
-		})
-	}
-}
-
 func TestServer_ListMeanTimeToFixTrend(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1", "cluster-2"},
@@ -2621,112 +2192,6 @@ func TestServer_ListMeanTimeToFixTrend_IsCumulativePerSnapshot(t *testing.T) {
 	assert.Equal(t, laterSnapshot, resp.Points[1].SnapshotDate.AsTime())
 	assert.Equal(t, int32(2), resp.Points[1].FixedCount)
 	assert.Equal(t, int32(3), resp.Points[1].MeanTimeToFixDays)
-}
-
-func TestServer_ListWorkloadSeverityFixStats(t *testing.T) {
-	cfg := testSetupConfig{
-		clusters:              []string{"cluster-1", "cluster-2"},
-		namespaces:            []string{"namespace-1", "namespace-2"},
-		workloadsPerNamespace: 1,
-	}
-
-	ctx, db, pool, client, cleanup := setupTest(t, cfg, true)
-	defer cleanup()
-
-	now := time.Now()
-
-	type vuln struct {
-		Severity     int
-		IntroducedAt time.Time
-		FixedAt      *time.Time
-	}
-
-	type expectedStat struct {
-		FixedCount        int32
-		MeanTimeToFixDays int32
-	}
-	expected := map[string]expectedStat{}
-
-	for _, c := range cfg.clusters {
-		workloads, err := db.ListWorkloadsByCluster(ctx, c)
-		require.NoError(t, err)
-		require.NotEmpty(t, workloads)
-
-		for _, w := range workloads {
-			vulns := []vuln{
-				// Fixed critical and high severities
-				{0, now.Add(-10 * 24 * time.Hour), new(now.Add(-5 * 24 * time.Hour))},
-				{1, now.Add(-7 * 24 * time.Hour), new(now.Add(-2 * 24 * time.Hour))},
-				// Unfixed medium severity
-				{2, now.Add(-3 * 24 * time.Hour), nil},
-			}
-
-			for _, v := range vulns {
-				fixed := v.FixedAt != nil
-				var fixedAt pgtype.Date
-				fixDuration := int32(0)
-				if fixed {
-					fixedAt = pgtype.Date{Time: v.FixedAt.UTC(), Valid: true}
-					fixDuration = int32(v.FixedAt.Sub(v.IntroducedAt).Hours() / 24)
-				}
-
-				_, err := pool.Exec(ctx, `
-					INSERT INTO vuln_fix_summary (
-						workload_id, severity, introduced_at, fixed_at, fix_duration, is_fixed, snapshot_date
-					) VALUES ($1, $2, $3, $4, $5, $6, $7)
-				`, w.ID, v.Severity, v.IntroducedAt, fixedAt, fixDuration, fixed, now)
-				require.NoError(t, err)
-
-				key := fmt.Sprintf("%s-%d", w.ID, v.Severity)
-				expected[key] = expectedStat{
-					FixedCount:        0,
-					MeanTimeToFixDays: 0,
-				}
-				if fixed {
-					expected[key] = expectedStat{
-						FixedCount:        1,
-						MeanTimeToFixDays: fixDuration,
-					}
-				}
-			}
-		}
-	}
-
-	err := db.UpsertVulnerabilityLifetimes(ctx)
-	require.NoError(t, err)
-
-	filterTests := []struct {
-		name   string
-		option vulnerabilities.Option
-	}{
-		{"cluster-1", vulnerabilities.ClusterFilter("cluster-1")},
-		{"namespace-2", vulnerabilities.NamespaceFilter("namespace-2")},
-		{"workload type app", vulnerabilities.WorkloadTypeFilter("app")},
-		{"workload name workload-A", vulnerabilities.WorkloadFilter("workload-1")},
-	}
-
-	for _, tt := range filterTests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, err := client.ListWorkloadMTTFBySeverity(ctx, tt.option)
-			require.NoError(t, err)
-			assert.NotEmpty(t, resp.GetWorkloads())
-
-			for _, n := range resp.GetWorkloads() {
-				for _, f := range n.GetFixes() {
-					key := fmt.Sprintf("%s-%d", n.WorkloadId, f.Severity)
-					exp, ok := expected[key]
-					require.True(t, ok, "unexpected workload/severity combination: %s", key)
-
-					assert.Equal(t, exp.FixedCount, f.FixedCount, "workload=%s severity=%d", n.WorkloadName, f.Severity)
-					assert.Equal(t, exp.MeanTimeToFixDays, f.MeanTimeToFixDays, "workload=%s severity=%d", n.WorkloadName, f.Severity)
-
-					if f.FixedCount == 0 {
-						assert.Equal(t, int32(0), f.MeanTimeToFixDays, "unfixed vuln should have 0 mean duration")
-					}
-				}
-			}
-		})
-	}
 }
 
 func TestServer_ListCveSummaries(t *testing.T) {
@@ -3600,25 +3065,6 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.
 	}
 }
 
-func flatten(t *testing.T, m map[string]bool, nodes []*vulnerabilities.Finding) {
-	for _, v := range nodes {
-		key := fmt.Sprintf(
-			"%s.%s.%s.%s.%s.%s.%s",
-			v.WorkloadRef.Cluster,
-			v.WorkloadRef.Namespace,
-			v.WorkloadRef.Name,
-			v.WorkloadRef.ImageName,
-			v.WorkloadRef.ImageTag,
-			v.Vulnerability.Package,
-			v.Vulnerability.Cve.Id,
-		)
-		if m[key] {
-			t.Fatalf("duplicate key: %s", key)
-		}
-		m[key] = true
-	}
-}
-
 // startGrpcServer initializes an in-memory gRPC server
 func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, func()) {
 	lis := bufconn.Listen(1024 * 1024)
@@ -3980,31 +3426,6 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, v.GetCve().GetPriority())
 	})
 
-	t.Run("ListVulnerabilities returns enriched Cve fields", func(t *testing.T) {
-		resp, err := client.ListVulnerabilities(ctx,
-			vulnerabilities.ImageFilter(imageName, imageTag),
-			vulnerabilities.Limit(100),
-		)
-		require.NoError(t, err)
-
-		var enriched *vulnerabilities.Vulnerability
-		for _, f := range resp.Nodes {
-			if f.GetVulnerability().GetCve().GetId() == cveID {
-				enriched = f.GetVulnerability()
-				break
-			}
-		}
-		require.NotNil(t, enriched, "enriched CVE not found in ListVulnerabilities response")
-
-		assert.InDelta(t, 0.75, enriched.GetCve().GetEpssScore(), 0.0001)
-		assert.InDelta(t, 0.92, enriched.GetCve().GetEpssPercentile(), 0.0001)
-		assert.True(t, enriched.GetCve().GetHasKevEntry())
-		assert.True(t, enriched.GetCve().GetKnownRansomwareUse())
-		assert.Equal(t, "1.2.3", enriched.GetFixVersion())
-		assert.InDelta(t, 8.5, enriched.GetCve().GetCvssScore(), 0.0001)
-		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
-	})
-
 	t.Run("GetCve returns enriched fields", func(t *testing.T) {
 		resp, err := client.GetCve(ctx, cveID)
 		require.NoError(t, err)
@@ -4017,18 +3438,6 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.True(t, cve.GetHasKevEntry())
 		assert.True(t, cve.GetKnownRansomwareUse())
 		assert.InDelta(t, 8.5, cve.GetCvssScore(), 0.0001)
-	})
-
-	t.Run("GetVulnerability returns Cve.CvssScore", func(t *testing.T) {
-		resp, err := client.GetVulnerability(ctx, imageName, imageTag, pkgName, cveID)
-		require.NoError(t, err)
-
-		v := resp.GetVulnerability()
-		require.NotNil(t, v)
-		assert.Equal(t, cveID, v.GetCve().GetId())
-		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
-		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
-		assert.Equal(t, vulnerabilities.Priority_PRIORITY_HIGH, v.GetCve().GetPriority())
 	})
 
 	t.Run("ListWorkloadsForVulnerability returns Cve.CvssScore", func(t *testing.T) {

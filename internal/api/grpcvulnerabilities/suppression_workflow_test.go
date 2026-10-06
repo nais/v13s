@@ -2,7 +2,6 @@ package grpcvulnerabilities
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	mockquerier "github.com/nais/v13s/internal/mocks/Querier"
-	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -75,73 +73,6 @@ func TestSuppressionWorkflowSuppressOne(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, "CVE-2025-9999", result.cveID)
 	assert.True(t, result.suppressed)
-}
-
-func TestSuppressionWorkflowSuppressManySameNamespaceBestEffort(t *testing.T) {
-	ctx := context.Background()
-	q := mockquerier.NewMockQuerier(t)
-	now := time.Date(2026, 8, 21, 11, 0, 0, 0, time.UTC)
-	applyErr := fmt.Errorf("apply failed")
-
-	workloads := []*vulnerabilities.SuppressVulnerabilitiesWorkload{
-		{Cluster: "c", Namespace: "ns", Name: "app", WorkloadType: "Deployment"},
-	}
-
-	q.EXPECT().GetAliasesByCanonicalCveId(ctx, "CVE-2025-9999").Return(nil, nil)
-	q.EXPECT().GetImagesForCveAndWorkloads(ctx, sql.GetImagesForCveAndWorkloadsParams{
-		CveID:         "CVE-2025-9999",
-		Clusters:      []string{"c"},
-		Namespaces:    []string{"ns"},
-		Names:         []string{"app"},
-		WorkloadTypes: []string{"Deployment"},
-	}).Return([]*sql.GetImagesForCveAndWorkloadsRow{
-		{
-			ImageName:         "img",
-			ImageTag:          "v1",
-			Package:           "pkg",
-			WorkloadCluster:   "c",
-			WorkloadNamespace: "ns",
-			WorkloadName:      "app",
-			WorkloadType:      "Deployment",
-		},
-	}, nil)
-	q.EXPECT().SuppressVulnerability(ctx, sql.SuppressVulnerabilityParams{
-		ImageName:    "img",
-		Package:      "pkg",
-		CveID:        "CVE-2025-9999",
-		SuppressedBy: "test-user",
-		Suppressed:   true,
-		Reason:       sql.VulnerabilitySuppressReasonFalsePositive,
-		ReasonText:   "accepted risk",
-	}).Return(applyErr)
-	q.EXPECT().RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
-		ImageName: "img",
-		ImageTag:  "v1",
-	}).Return(nil)
-	q.EXPECT().UpdateImageState(ctx, mock.MatchedBy(func(p sql.UpdateImageStateParams) bool {
-		return p.State == sql.ImageStateResync && p.Name == "img" && p.Tag == "v1" && p.ReadyForResyncAt.Valid && p.ReadyForResyncAt.Time.Equal(now)
-	})).Return(int64(1), nil)
-
-	wf := newSuppressionWorkflow(q, func(context.Context, []string) ([]string, error) {
-		return []string{"CVE-2025-9999"}, nil
-	})
-	wf.now = func() time.Time { return now }
-
-	result, err := wf.SuppressManySameNamespace(ctx, suppressManyInput{
-		requestCveID: "CVE-2025-9999",
-		suppressedBy: "test-user",
-		suppress:     true,
-		reason:       sql.VulnerabilitySuppressReasonFalsePositive,
-		reasonText:   "accepted risk",
-		workloads:    workloads,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Equal(t, "CVE-2025-9999", result.cveID)
-	assert.Equal(t, int32(1), result.workloadCount)
-	assert.Equal(t, int32(1), result.imageCount)
-	assert.Len(t, result.errors, 1)
-	assert.Contains(t, result.errors[0], "img/pkg/CVE-2025-9999")
 }
 
 func TestSuppressionWorkflowSuppressOneNotFound(t *testing.T) {

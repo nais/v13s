@@ -20,67 +20,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// TODO: use status.Errorf(codes.NotFound ...) and such for errors
-func (s *Server) ListVulnerabilities(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesRequest) (*vulnerabilities.ListVulnerabilitiesResponse, error) {
-	// TODO: add input validation for request, especially for filter values
-	limit, offset, err := grpcpagination.Pagination(request)
-	if err != nil {
-		return nil, err
-	}
-
-	if request.GetFilter() == nil {
-		request.Filter = &vulnerabilities.Filter{}
-	}
-
-	riskTiers := priorityTiersFromFilter(request.GetFilter())
-
-	v, err := s.querier.ListVulnerabilities(ctx, sql.ListVulnerabilitiesParams{
-		Cluster:           request.GetFilter().Cluster,
-		Namespace:         request.GetFilter().Namespace,
-		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
-		WorkloadName:      request.GetFilter().Workload,
-		ImageName:         request.GetFilter().ImageName,
-		ImageTag:          request.GetFilter().ImageTag,
-		IncludeSuppressed: request.IncludeSuppressed,
-		RiskTiers:         riskTiers,
-		HasKev:            request.GetFilter().HasKev,
-		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
-		Limit:             limit,
-		Offset:            offset,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list vulnerabilities: %w", err)
-	}
-
-	vulnz := collections.Map(v, func(row *sql.ListVulnerabilitiesRow) *vulnerabilities.Finding {
-		return defaultVulnerabilityProjector.ToFinding(row)
-	})
-
-	total, err := s.querier.CountVulnerabilities(ctx, sql.CountVulnerabilitiesParams{
-		Cluster:           request.GetFilter().Cluster,
-		Namespace:         request.GetFilter().Namespace,
-		WorkloadType:      request.GetFilter().FuzzyWorkloadType(),
-		WorkloadName:      request.GetFilter().Workload,
-		IncludeSuppressed: request.IncludeSuppressed,
-		RiskTiers:         riskTiers,
-		HasKev:            request.GetFilter().HasKev,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to count vulnerabilities: %w", err)
-	}
-
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
-	if err != nil {
-		return nil, err
-	}
-
-	return &vulnerabilities.ListVulnerabilitiesResponse{
-		Filter:   request.GetFilter(),
-		Nodes:    vulnz,
-		PageInfo: pageInfo,
-	}, nil
-}
-
 func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesForImageRequest) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
@@ -115,73 +54,6 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:    nodes,
-		PageInfo: pageInfo,
-	}, nil
-}
-
-func (s *Server) ListSuppressedVulnerabilities(ctx context.Context, request *vulnerabilities.ListSuppressedVulnerabilitiesRequest) (*vulnerabilities.ListSuppressedVulnerabilitiesResponse, error) {
-	limit, offset, err := grpcpagination.Pagination(request)
-	if err != nil {
-		return nil, err
-	}
-
-	filter := request.GetFilter()
-	suppressed, err := s.querier.ListSuppressedVulnerabilities(ctx, sql.ListSuppressedVulnerabilitiesParams{
-		Cluster:   filter.Cluster,
-		Namespace: filter.Namespace,
-		ImageName: filter.ImageName,
-		ImageTag:  filter.ImageTag,
-		Offset:    offset,
-		Limit:     limit,
-		OrderBy:   SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderBySeverity),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list suppressed vulnerabilities: %w", err)
-	}
-
-	total, err := s.querier.CountSuppressedVulnerabilities(ctx, sql.CountSuppressedVulnerabilitiesParams{
-		Cluster:      filter.Cluster,
-		Namespace:    filter.Namespace,
-		WorkloadType: filter.FuzzyWorkloadType(),
-		WorkloadName: filter.Workload,
-		ImageName:    filter.ImageName,
-		ImageTag:     filter.ImageTag,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("count suppressed vulnerabilities: %w", err)
-	}
-
-	pageInfo, err := grpcpagination.PageInfo(request, int(total))
-	if err != nil {
-		return nil, err
-	}
-
-	nodes := collections.Map(suppressed, func(row *sql.ListSuppressedVulnerabilitiesRow) *vulnerabilities.SuppressedVulnerability {
-		state := vulnerabilities.SuppressState_NOT_SET
-		switch row.Reason {
-		case sql.VulnerabilitySuppressReasonFalsePositive:
-			state = vulnerabilities.SuppressState_FALSE_POSITIVE
-		case sql.VulnerabilitySuppressReasonResolved:
-
-			state = vulnerabilities.SuppressState_RESOLVED
-		case sql.VulnerabilitySuppressReasonNotAffected:
-			state = vulnerabilities.SuppressState_NOT_AFFECTED
-		case sql.VulnerabilitySuppressReasonInTriage:
-			state = vulnerabilities.SuppressState_IN_TRIAGE
-		}
-		return &vulnerabilities.SuppressedVulnerability{
-			ImageName:    row.ImageName,
-			CveId:        row.CveID,
-			Package:      row.Package,
-			State:        state,
-			Reason:       &row.ReasonText,
-			SuppressedBy: &row.SuppressedBy,
-			Suppress:     &row.Suppressed,
-		}
-	})
-
-	return &vulnerabilities.ListSuppressedVulnerabilitiesResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
 	}, nil
@@ -302,25 +174,6 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	return response, nil
 }
 
-func (s *Server) GetVulnerability(ctx context.Context, request *vulnerabilities.GetVulnerabilityRequest) (*vulnerabilities.GetVulnerabilityResponse, error) {
-	row, err := s.querier.GetVulnerability(ctx, sql.GetVulnerabilityParams{
-		ImageName: request.ImageName,
-		ImageTag:  request.ImageTag,
-		Package:   request.Package,
-		CveID:     request.CveId,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("vulnerability not found")
-		}
-		return nil, fmt.Errorf("get vulnerability: %w", err)
-	}
-
-	return &vulnerabilities.GetVulnerabilityResponse{
-		Vulnerability: defaultVulnerabilityProjector.ToVulnerabilityFromGetVulnerabilityRow(row),
-	}, nil
-}
-
 func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequest) (*vulnerabilities.GetCveResponse, error) {
 	if err := validateInput(request.GetId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid cve id: %v", err)
@@ -429,22 +282,6 @@ func str(s *string, def string) string {
 	return *s
 }
 
-func validateSingleNamespace(workloads []*vulnerabilities.SuppressVulnerabilitiesWorkload) error {
-	for i, w := range workloads {
-		if w.GetCluster() == "" || w.GetNamespace() == "" || w.GetName() == "" || w.GetWorkloadType() == "" {
-			return status.Errorf(codes.InvalidArgument, "workload[%d]: cluster, namespace, name, and workload_type are required", i)
-		}
-	}
-	cluster := workloads[0].GetCluster()
-	namespace := workloads[0].GetNamespace()
-	for _, w := range workloads[1:] {
-		if w.GetCluster() != cluster || w.GetNamespace() != namespace {
-			return status.Errorf(codes.InvalidArgument, "all workloads must belong to the same cluster and namespace")
-		}
-	}
-	return nil
-}
-
 func timestamptzFromProto(ts *timestamppb.Timestamp) pgtype.Timestamptz {
 	if ts == nil {
 		return pgtype.Timestamptz{}
@@ -460,38 +297,4 @@ func toInt32Ptr(s *vulnerabilities.Severity) *int32 {
 		return nil
 	}
 	return new(int32(*s))
-}
-
-func (s *Server) SuppressVulnerabilities(ctx context.Context, request *vulnerabilities.SuppressVulnerabilitiesRequest) (*vulnerabilities.SuppressVulnerabilitiesResponse, error) {
-	if request.GetCveId() == "" {
-		return nil, fmt.Errorf("cve_id is required")
-	}
-	if len(request.GetWorkloads()) == 0 {
-		return nil, fmt.Errorf("at least one workload must be provided")
-	}
-
-	if err := validateSingleNamespace(request.GetWorkloads()); err != nil {
-		return nil, err
-	}
-
-	workflow := newSuppressionWorkflow(s.querier, s.resolveCanonicalCveIDs)
-	result, err := workflow.SuppressManySameNamespace(ctx, suppressManyInput{
-		requestCveID: request.GetCveId(),
-		suppressedBy: request.GetSuppressedBy(),
-		suppress:     request.GetSuppress(),
-		reason:       sql.VulnerabilitySuppressReason(strings.ToLower(request.GetState().String())),
-		reasonText:   request.GetReason(),
-		workloads:    request.GetWorkloads(),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &vulnerabilities.SuppressVulnerabilitiesResponse{
-		CveId:         result.cveID,
-		WorkloadCount: result.workloadCount,
-		ImageCount:    result.imageCount,
-		Errors:        result.errors,
-		Workloads:     result.workloads,
-	}, nil
 }

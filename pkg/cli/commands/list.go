@@ -31,24 +31,6 @@ func ListCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					},
 				},
 				{
-					Name:    "all",
-					Aliases: []string{"a"},
-					Usage:   "list all vulnerabilities across workloads",
-					Flags:   flag.CommonFlags(opts, "since", "since-type", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return listVulnz(ctx, cmd, c, opts)
-					},
-				},
-				{
-					Name:    "suppressed",
-					Aliases: []string{"sp"},
-					Usage:   "list suppressed vulnerabilities",
-					Flags:   flag.CommonFlags(opts, "since", "since-type", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
-					Action: func(ctx context.Context, cmd *cli.Command) error {
-						return listSuppressedVulnerabilities(ctx, cmd, c, opts)
-					},
-				},
-				{
 					Name:    "summary",
 					Aliases: []string{"s"},
 					Usage:   "list vulnerability summary per workload",
@@ -133,33 +115,6 @@ func listVulnerabilitiesForImage(ctx context.Context, cmd *cli.Command, c vulner
 	return nil
 }
 
-func listSuppressedVulnerabilities(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
-	opts := flag.ParseOptions(cmd, o)
-	start := time.Now()
-	resp, err := c.ListSuppressedVulnerabilities(ctx, opts...)
-	if err != nil {
-		return err
-	}
-
-	tbl := output.New("Package", "CVE", "Reason", "Suppressed", "Suppressed By", "Image")
-
-	for _, n := range resp.GetNodes() {
-		tbl.AddRow(
-			n.GetPackage(),
-			n.CveId,
-			*n.Reason,
-			fmt.Sprint(*n.Suppress),
-			*n.SuppressedBy,
-			n.ImageName,
-		)
-	}
-
-	tbl.Print()
-	fmt.Println("\nFetched vulnerabilities in", time.Since(start).Seconds(), "seconds")
-
-	return nil
-}
-
 func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	err := pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
@@ -214,74 +169,6 @@ func listSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Clie
 	return err
 }
 
-func listVulnz(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
-	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
-		opts := flag.ParseOptions(cmd, o)
-		opts = append(opts, vulnerabilities.Offset(helpers.MustIntToInt32(offset)))
-
-		resp, err := c.ListVulnerabilities(ctx, opts...)
-		if err != nil {
-			return 0, false, fmt.Errorf("failed to list vulnerabilities: %w", err)
-		}
-
-		workloadHeader := output.HeaderFmt
-		workloadDetails := output.ColumnFmt
-
-		// Group vulnerabilities by workload
-		workloadMap := make(map[string][]*vulnerabilities.Finding)
-		for _, n := range resp.GetNodes() {
-			w := n.WorkloadRef
-			key := fmt.Sprintf("%s/%s/%s/%s", w.Name, w.Type, w.Namespace, w.Cluster)
-			workloadMap[key] = append(workloadMap[key], n)
-		}
-
-		fmt.Println(workloadHeader("Total vulnerabilities found: %d", resp.PageInfo.TotalCount))
-		fmt.Println(workloadDetails("Total workloads with vulnerabilities: %d", len(workloadMap)))
-
-		for _, findings := range workloadMap {
-			if len(findings) == 0 {
-				continue
-			}
-			w := findings[0].WorkloadRef
-
-			fmt.Println(workloadHeader("\nWorkload: %s", w.Name))
-			fmt.Println(workloadDetails("Type: %s", w.Type))
-			fmt.Println(workloadDetails("Namespace: %s", w.Namespace))
-			fmt.Println(workloadDetails("Cluster: %s", w.Cluster))
-			fmt.Println(workloadDetails("Image: %s:%s", w.ImageName, w.ImageTag))
-
-			tbl := output.New("Package", "CVE", "Severity", "Priority", "CVSS Score", "CVE Age", "Last Severity", "Severity Since", "Fix Version", "Latest Version", "Suppressed", "Vuln Age")
-
-			for _, n := range findings {
-				v := n.Vulnerability
-				suppressed := "No"
-				if v.GetSuppression() != nil && v.GetSuppression().GetSuppressed() {
-					suppressed = "Yes"
-				}
-
-				tbl.AddRow(
-					v.GetPackage(),
-					v.GetCve().GetId(),
-					v.GetCve().GetSeverity().String(),
-					formatPriority(v.GetCve().GetPriority()),
-					formatCvssScore(v.GetCve().GetCvssScore()),
-					timeSinceCreation(v.GetCve().GetCreated().AsTime(), v.GetCve().GetLastUpdated().AsTime()),
-					fmt.Sprintf("%v", v.GetLastSeverity()),
-					timeSinceCreation(v.SeveritySince.AsTime(), time.Now()),
-					v.GetFixVersion(),
-					v.GetLatestVersion(),
-					suppressed,
-					timeSinceCreation(v.GetCreated().AsTime(), v.GetLastUpdated().AsTime()),
-				)
-			}
-
-			tbl.Print()
-		}
-
-		return int(resp.PageInfo.TotalCount), resp.PageInfo.HasNextPage, nil
-	})
-}
-
 func listCveSummaries(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, o *flag.Options) error {
 	return pagination.Paginate(o.Limit, func(offset int) (int, bool, error) {
 		opts := flag.ParseOptions(cmd, o)
@@ -315,27 +202,6 @@ func formatCvssScore(score float64) string {
 		return "N/A"
 	}
 	return fmt.Sprintf("%g", score)
-}
-
-func timeSinceCreation(created, lastUpdated time.Time) string {
-	if lastUpdated.IsZero() || created.IsZero() {
-		return "unknown"
-	}
-
-	duration := lastUpdated.Sub(created)
-
-	days := int(duration.Hours()) / 24
-	hours := int(duration.Hours()) % 24
-	minutes := int(duration.Minutes()) % 60
-
-	switch {
-	case days > 0:
-		return fmt.Sprintf("%dd %dh", days, hours)
-	case hours > 0:
-		return fmt.Sprintf("%dh %dm", hours, minutes)
-	default:
-		return fmt.Sprintf("%dm", minutes)
-	}
 }
 
 func intOrDash(v int32, hasSbom bool) string {

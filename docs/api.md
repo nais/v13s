@@ -13,7 +13,6 @@ The Vulnerabilities service provides access to vulnerability data.
 
 List operations retrieve collections of vulnerability-related data based on various filters, e.g.:
 
-- `ListVulnerabilities`: List all vulnerabilities for the given filters (cluster, namespace, workload, workload_type)
 - `ListVulnerabilitySummaries`: List all workloads with their vulnerability summaries for the given filters (cluster, namespace, workload, workload_type)
 - `ListVulnerabilitiesForImage`: List vulnerabilities for a specific container image
 - ... and more.
@@ -28,7 +27,6 @@ Get operations retrieve specific vulnerability data, and typically return one it
 - `GetVulnerabilitySummaryTimeSeries`: Get vulnerability summary over time
 - `GetVulnerabilitySummaryForImage`: Get vulnerability summary for a container image
 - `GetVulnerabilityById`: Get a specific vulnerability by ID
-- `GetVulnerability`: Get vulnerability details
 - `GetCve`: Get CVE details
 
 See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
