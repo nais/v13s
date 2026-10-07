@@ -121,6 +121,23 @@ func TestServer_MeanTimeToFix(t *testing.T) {
 		}, got)
 	})
 
+	t.Run("workload fix stats since filter", func(t *testing.T) {
+		severities := func(opts ...vulnerabilities.Option) []int32 {
+			resp, err := client.ListWorkloadMTTFBySeverity(ctx, append(opts, vulnerabilities.WorkloadFilter("mttf-app"))...)
+			require.NoError(t, err)
+			out := []int32{}
+			for _, w := range resp.GetWorkloads() {
+				for _, f := range w.GetFixes() {
+					out = append(out, int32(f.Severity))
+				}
+			}
+			slices.Sort(out)
+			return out
+		}
+		assert.Equal(t, []int32{0, 1}, severities(vulnerabilities.Since(day(-1))))
+		assert.Equal(t, []int32{1}, severities(vulnerabilities.Since(day(-5)), vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED)))
+	})
+
 	t.Run("an open lifetime is updated when it is fixed", func(t *testing.T) {
 		snapshot(app, "mttf-app", "mttf", "app", -1, 0, 0)
 		require.NoError(t, db.UpsertVulnerabilityLifetimes(ctx))

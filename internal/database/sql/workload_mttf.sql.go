@@ -197,7 +197,7 @@ AND ($5::TIMESTAMPTZ IS NULL
         WHEN 'fixed' THEN
             l.fixed_at
         ELSE
-            COALESCE(l.fixed_at, CURRENT_DATE)
+            CURRENT_DATE
         END >= $5::TIMESTAMPTZ))
 GROUP BY
     l.workload_id,
