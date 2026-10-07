@@ -512,6 +512,8 @@ var priorityToRiskTier = map[vulnerabilities.Priority]int32{
 	vulnerabilities.Priority_PRIORITY_HIGH:     2,
 	vulnerabilities.Priority_PRIORITY_ELEVATED: 3,
 	vulnerabilities.Priority_PRIORITY_MONITOR:  4,
+
+	vulnerabilities.Priority_PRIORITY_NONE: 0,
 }
 
 func toProtoPriority(riskTier any) vulnerabilities.Priority {

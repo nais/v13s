@@ -48,6 +48,8 @@ enum Priority {
   PRIORITY_HIGH = 2;
   PRIORITY_ELEVATED = 3;
   PRIORITY_MONITOR = 4;
+  // Workloads with an SBOM and no findings.
+  PRIORITY_NONE = 5;
 }
 
 enum SbomStatus {
