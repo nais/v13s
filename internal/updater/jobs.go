@@ -31,7 +31,6 @@ type RuntimeConfig struct {
 	RefreshCveWorkloadCounts JobRuntimeConfig
 }
 
-// NewRuntimeConfig builds the job configuration from the updater config. The resync job runs on its own schedule.
 func NewRuntimeConfig(cfg config.UpdaterConfig, resync ScheduleConfig) RuntimeConfig {
 	cron := func(enabled bool, expr string) JobRuntimeConfig {
 		return JobRuntimeConfig{Enabled: enabled, Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: expr}}
