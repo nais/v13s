@@ -127,7 +127,12 @@ vulnerability_data AS (
     WHERE (sqlc.narg('image_name')::TEXT IS NULL
         OR v.image_name = sqlc.narg('image_name')::TEXT)
     AND (sqlc.narg('image_tag')::TEXT IS NULL
-        OR v.image_tag = sqlc.narg('image_tag')::TEXT)
+        OR (
+            CASE WHEN sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL THEN
+                w.image_tag
+            ELSE
+                v.image_tag
+            END) = sqlc.narg('image_tag')::TEXT)
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
         OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
     AND (sqlc.narg('has_kev')::BOOL IS NULL
@@ -456,33 +461,24 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
-    AND (sqlc.narg('risk_tiers')::INT[] IS NULL
-        OR EXISTS (
-            SELECT
-                1
-            FROM
-                vulnerability_summary v
-            WHERE
-                v.image_name = w.image_name
-                AND v.image_tag = w.image_tag
-                AND v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[])))
-    AND (sqlc.narg('has_kev')::BOOL IS NULL
-        OR EXISTS (
-            SELECT
-                1
-            FROM
-                vulnerability_summary v
-            WHERE
-                v.image_name = w.image_name
-                AND v.image_tag = w.image_tag
-                AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))
 ),
 joined_data AS (
     SELECT
-        fw.id,
+        CASE WHEN COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
+                OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+            AND (sqlc.narg('has_kev')::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)), FALSE) THEN
+            fw.id
+        END AS id,
         COALESCE(fw.workload_ready
             AND i.state NOT IN ('failed', 'unused')
-            AND v.id IS NOT NULL, FALSE) AS is_active,
+            AND v.id IS NOT NULL, FALSE)
+        AND COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
+                OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+            AND (sqlc.narg('has_kev')::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -614,27 +610,23 @@ WITH filtered_workloads AS (
                 OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
             AND (sqlc.narg('workload_name')::TEXT IS NULL
                 OR w.name = sqlc.narg('workload_name')::TEXT)
-            AND (sqlc.narg('risk_tiers')::INT[] IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM vulnerability_summary v
-                    WHERE v.image_name = w.image_name
-                        AND v.image_tag = w.image_tag
-                        AND v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[])))
-            AND (sqlc.narg('has_kev')::BOOL IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM vulnerability_summary v
-                    WHERE v.image_name = w.image_name
-
-                        AND v.image_tag = w.image_tag
-                        AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))
 ),
 joined_data AS (
     SELECT
         fw.namespace,
-        fw.id,
-        COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE) AS is_active,
+        CASE WHEN COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
+                OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+            AND (sqlc.narg('has_kev')::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)), FALSE) THEN
+            fw.id
+        END AS id,
+        COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE)
+        AND COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
+                OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+            AND (sqlc.narg('has_kev')::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
