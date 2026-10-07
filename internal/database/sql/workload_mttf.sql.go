@@ -10,79 +10,117 @@ import (
 )
 
 const listMeanTimeToFixTrendBySeverity = `-- name: ListMeanTimeToFixTrendBySeverity :many
-WITH filtered AS (
+WITH fixes AS (
     SELECT
-        v.severity,
-        v.snapshot_date,
-        v.fix_duration,
-        v.fixed_at,
-        v.introduced_at,
-        v.workload_id
+        l.workload_id,
+        l.severity,
+        l.fixed_at,
+        l.fixed_at - l.introduced_at AS fix_duration
     FROM
-        vuln_fix_summary v
-        JOIN workloads w ON w.id = v.workload_id
+        vuln_fix_lifetime l
+        JOIN workloads w ON w.id = l.workload_id
     WHERE
-        v.is_fixed = TRUE
-        AND ($1::TEXT IS NULL
-            OR w.cluster = $1::TEXT)
+        l.fixed_at IS NOT NULL
         AND ($2::TEXT IS NULL
-            OR w.namespace = $2::TEXT)
-        AND ($3::TEXT[] IS NULL
-            OR w.workload_type = ANY ($3::TEXT[]))
-        AND ($4::TEXT IS NULL
-            OR w.name = $4::TEXT)
-        AND ($5::TIMESTAMPTZ IS NULL
-            OR (
-                CASE COALESCE($6::TEXT, 'snapshot')
-                WHEN 'snapshot' THEN
-                    v.snapshot_date
-                WHEN 'fixed' THEN
-                    v.fixed_at
-                END >= $5::TIMESTAMPTZ))
+            OR w.cluster = $2::TEXT)
+        AND ($3::TEXT IS NULL
+            OR w.namespace = $3::TEXT)
+        AND ($4::TEXT[] IS NULL
+            OR w.workload_type = ANY ($4::TEXT[]))
+        AND ($5::TEXT IS NULL
+            OR w.name = $5::TEXT)
+        AND ($1::TIMESTAMPTZ IS NULL
+            OR COALESCE($6::TEXT, 'snapshot') <> 'fixed'
+            OR l.fixed_at >= $1::TIMESTAMPTZ)
 ),
-aggregated AS (
+fixes_per_day AS (
     SELECT
-        f.severity,
-        f.snapshot_date,
-        AVG(f.fix_duration)::INT AS mean_time_to_fix_days,
-        COUNT(*)::INT AS fixed_count,
-        MIN(f.fixed_at)::DATE AS first_fixed_at,
-        MAX(f.fixed_at)::DATE AS last_fixed_at,
-        COUNT(DISTINCT f.workload_id)::INT AS registered_workloads
-    FROM ( SELECT DISTINCT
-            severity,
-            workload_id,
-            introduced_at,
-            fix_duration,
-            fixed_at,
-            snapshot_date
-        FROM
-            filtered) f
+        severity,
+        fixed_at,
+        SUM(fix_duration) AS total_days,
+        COUNT(*) AS fixed_count,
+        MIN(fixed_at) AS first_fixed_at
+    FROM
+        fixes
     GROUP BY
-        f.snapshot_date,
-        f.severity
-)
+        severity,
+        fixed_at
+),
+first_fix_per_workload AS (
+    SELECT
+        severity,
+        MIN(fixed_at) AS fixed_at
+    FROM
+        fixes
+    GROUP BY
+        severity,
+        workload_id
+),
+new_workloads_per_day AS (
+    SELECT
+        severity,
+        fixed_at,
+        COUNT(*) AS workload_count
+    FROM
+        first_fix_per_workload
+    GROUP BY
+        severity,
+        fixed_at
+),
+days AS (
+    SELECT
+        s.severity,
+        d::DATE AS snapshot_date
+    FROM (
+        SELECT
+            severity,
+            MIN(fixed_at) AS first_fixed_at
+        FROM
+            fixes_per_day
+        GROUP BY
+            severity) s
+        CROSS JOIN LATERAL generate_series(s.first_fixed_at, CURRENT_DATE, INTERVAL '1 day') d
+),
+running AS (
+    SELECT
+        d.severity,
+        d.snapshot_date,
+        SUM(COALESCE(f.total_days, 0)) OVER w AS total_days,
+            SUM(COALESCE(f.fixed_count, 0)) OVER w AS fixed_count,
+                SUM(COALESCE(n.workload_count, 0)) OVER w AS registered_workloads,
+                    MIN(f.first_fixed_at) OVER w AS first_fixed_at,
+                        MAX(f.fixed_at) OVER w AS last_fixed_at
+                        FROM
+                            days d
+                            LEFT JOIN fixes_per_day f ON f.severity = d.severity
+                                AND f.fixed_at = d.snapshot_date
+                        LEFT JOIN new_workloads_per_day n ON n.severity = d.severity
+                            AND n.fixed_at = d.snapshot_date
+WINDOW w AS (PARTITION BY d.severity ORDER BY d.snapshot_date))
 SELECT
     severity,
     snapshot_date,
-    mean_time_to_fix_days,
-    fixed_count,
-    registered_workloads,
-    first_fixed_at,
-    last_fixed_at
+(total_days::NUMERIC / fixed_count)::INT AS mean_time_to_fix_days,
+    fixed_count::INT AS fixed_count,
+    registered_workloads::INT AS registered_workloads,
+    first_fixed_at::DATE AS first_fixed_at,
+    last_fixed_at::DATE AS last_fixed_at
 FROM
-    aggregated
+    running
+WHERE
+    $1::TIMESTAMPTZ IS NULL
+    OR snapshot_date >= $1::TIMESTAMPTZ
 ORDER BY
     snapshot_date,
     severity
 `
 
 type ListMeanTimeToFixTrendBySeverityParams struct {
+	Since         pgtype.Timestamptz
 	Cluster       *string
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
-	Since         pgtype.Timestamptz
 	SinceType     *string
 }
 
@@ -98,11 +136,11 @@ type ListMeanTimeToFixTrendBySeverityRow struct {
 
 func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error) {
 	rows, err := q.db.Query(ctx, listMeanTimeToFixTrendBySeverity,
+		arg.Since,
 		arg.Cluster,
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
-		arg.Since,
 		arg.SinceType,
 	)
 	if err != nil {
@@ -132,22 +170,18 @@ func (q *Queries) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg List
 }
 
 const upsertVulnerabilityLifetimes = `-- name: UpsertVulnerabilityLifetimes :exec
-INSERT INTO vuln_fix_summary(
+INSERT INTO vuln_fix_lifetime(
     workload_id,
     severity,
     introduced_at,
-    fixed_at,
-    fix_duration,
-    is_fixed,
-    snapshot_date)
+    fixed_at)
 SELECT
     v.workload_id,
     v.severity,
     v.introduced_at,
-    v.fixed_at,
-    v.fix_duration,
-    v.is_fixed,
-    v.snapshot_date
+    CASE WHEN v.is_fixed THEN
+        v.fixed_at
+    END
 FROM
     vuln_upsert_data_for_date(CURRENT_DATE) v
 WHERE
@@ -158,12 +192,11 @@ WHERE
             workloads)
 ON CONFLICT (workload_id,
     severity,
-    introduced_at,
-    snapshot_date)
+    introduced_at)
     DO UPDATE SET
-        fixed_at = EXCLUDED.fixed_at,
-        fix_duration = EXCLUDED.fix_duration,
-        is_fixed = EXCLUDED.is_fixed
+        fixed_at = EXCLUDED.fixed_at
+    WHERE
+        vuln_fix_lifetime.fixed_at IS DISTINCT FROM EXCLUDED.fixed_at
 `
 
 func (q *Queries) UpsertVulnerabilityLifetimes(ctx context.Context) error {
