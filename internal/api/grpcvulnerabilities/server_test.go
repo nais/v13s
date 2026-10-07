@@ -3303,7 +3303,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		assert.Nil(t, resp.GetVulnerabilitySummary(), "unknown image has no SBOM so VulnerabilitySummary must be nil")
 	})
 
-	t.Run("image in PROCESSING with existing summary but no workload record returns nil summary and PROCESSING status", func(t *testing.T) {
+	t.Run("image in PROCESSING with its own summary returns that summary and PROCESSING status", func(t *testing.T) {
 		const (
 			processingImage = "image-processing-no-workload"
 			processingTag   = "v3.0"
@@ -3322,7 +3322,9 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, processingImage, processingTag)
 		require.NoError(t, err)
 
-		assert.Nil(t, resp.GetVulnerabilitySummary(), "PROCESSING with no stale tag must return nil VulnerabilitySummary")
+		require.NotNil(t, resp.GetVulnerabilitySummary())
+		assert.Equal(t, int32(5), resp.GetVulnerabilitySummary().GetHigh())
+		assert.Nil(t, resp.GetVulnerabilitySummary().StaleImageTag)
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
@@ -3422,7 +3424,7 @@ func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
 			name:          "processing-workload",
 			workloadState: sql.WorkloadStateUpdated,
 			imageState:    sql.ImageStateInitialized,
-			wantNil:       true,
+			wantNil:       false,
 			wantStatus:    vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING,
 		},
 	}
@@ -3488,7 +3490,7 @@ func TestServer_VulnerabilitySummary_NilForTerminalStates(t *testing.T) {
 						"workload %q in state %s must have nil VulnerabilitySummary", tc.name, tc.workloadState)
 				} else {
 					require.NotNil(t, node.GetVulnerabilitySummary(),
-						"workload %q in READY state must have non-nil VulnerabilitySummary", tc.name)
+						"workload %q with data must have non-nil VulnerabilitySummary", tc.name)
 					assert.Equal(t, int32(10), node.GetVulnerabilitySummary().GetCritical())
 				}
 			})

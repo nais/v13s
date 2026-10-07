@@ -172,7 +172,7 @@ joined_data AS (
     SELECT
         fw.namespace,
         fw.id,
-        fw.workload_ready AND i.state = 'updated' AS is_active,
+        COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -190,10 +190,24 @@ joined_data AS (
         v.updated_at
     FROM
         filtered_workloads fw
-        LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
-            AND fw.image_tag = v.image_tag
+        LEFT JOIN vulnerability_summary cur ON fw.image_name = cur.image_name
+            AND fw.image_tag = cur.image_tag
         LEFT JOIN images i ON i.name = fw.image_name
             AND i.tag = fw.image_tag
+        LEFT JOIN LATERAL (
+            SELECT
+                ps.id
+            FROM
+                vulnerability_summary ps
+            WHERE
+                cur.id IS NULL
+                AND i.state NOT IN ('updated', 'failed', 'unused')
+                AND ps.image_name = fw.image_name
+                AND ps.image_tag <> fw.image_tag
+            ORDER BY
+                ps.updated_at DESC
+            LIMIT 1) prev ON TRUE
+        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
 )
 SELECT
     namespace::TEXT AS namespace,
@@ -345,8 +359,9 @@ WITH filtered_workloads AS (
 joined_data AS (
     SELECT
         fw.id,
-        fw.workload_ready
-        AND i.state = 'updated' AS is_active,
+        COALESCE(fw.workload_ready
+            AND i.state NOT IN ('failed', 'unused')
+            AND v.id IS NOT NULL, FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -364,10 +379,24 @@ joined_data AS (
         v.updated_at
     FROM
         filtered_workloads fw
-        LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
-            AND fw.image_tag = v.image_tag
+        LEFT JOIN vulnerability_summary cur ON fw.image_name = cur.image_name
+            AND fw.image_tag = cur.image_tag
         LEFT JOIN images i ON i.name = fw.image_name
             AND i.tag = fw.image_tag
+        LEFT JOIN LATERAL (
+            SELECT
+                ps.id
+            FROM
+                vulnerability_summary ps
+            WHERE
+                cur.id IS NULL
+                AND i.state NOT IN ('updated', 'failed', 'unused')
+                AND ps.image_name = fw.image_name
+                AND ps.image_tag <> fw.image_tag
+            ORDER BY
+                ps.updated_at DESC
+            LIMIT 1) prev ON TRUE
+        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
 )
     SELECT
         CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
@@ -792,8 +821,9 @@ vulnerability_data AS (
         w.image_tag AS current_image_tag,
         v.image_name,
         v.image_tag,
-        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-        AND i.state = 'updated' AS is_active,
+        COALESCE(w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state NOT IN ('failed', 'unused')
+            AND v.id IS NOT NULL, FALSE) AS is_active,
         v.critical,
         v.high,
         v.medium,
@@ -816,15 +846,30 @@ vulnerability_data AS (
         i.sbom_processing_started_at
     FROM
         filtered_workloads w
-        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
+        LEFT JOIN vulnerability_summary cur ON w.image_name = cur.image_name
             AND (
                 CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN
-                    w.image_tag = v.image_tag
+                    w.image_tag = cur.image_tag
                 ELSE
                     TRUE
                 END)
         LEFT JOIN images i ON i.name = w.image_name
             AND i.tag = w.image_tag
+        LEFT JOIN LATERAL (
+            SELECT
+                ps.id
+            FROM
+                vulnerability_summary ps
+            WHERE
+                cur.id IS NULL
+                AND i.state NOT IN ('updated', 'failed', 'unused')
+                AND $8::TIMESTAMP WITH TIME ZONE IS NULL
+                AND ps.image_name = w.image_name
+                AND ps.image_tag <> w.image_tag
+            ORDER BY
+                ps.updated_at DESC
+            LIMIT 1) prev ON TRUE
+        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
     WHERE ($9::TEXT IS NULL
         OR v.image_name = $9::TEXT)
     AND ($10::TEXT IS NULL
@@ -1170,8 +1215,9 @@ vulnerability_data AS (
         w.cluster,
         w.image_name AS current_image_name,
         w.image_tag AS current_image_tag,
-        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-        AND i.state = 'updated' AS is_active,
+        COALESCE(w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state NOT IN ('failed', 'unused')
+            AND v.id IS NOT NULL, FALSE) AS is_active,
         v.critical,
         v.high,
         v.medium,
@@ -1184,10 +1230,24 @@ vulnerability_data AS (
         v.risk_score
     FROM
         filtered_workloads w
-        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
-            AND w.image_tag = v.image_tag
+        LEFT JOIN vulnerability_summary cur ON w.image_name = cur.image_name
+            AND w.image_tag = cur.image_tag
         LEFT JOIN images i ON i.name = w.image_name
             AND i.tag = w.image_tag
+        LEFT JOIN LATERAL (
+            SELECT
+                ps.id
+            FROM
+                vulnerability_summary ps
+            WHERE
+                cur.id IS NULL
+                AND i.state NOT IN ('updated', 'failed', 'unused')
+                AND ps.image_name = w.image_name
+                AND ps.image_tag <> w.image_tag
+            ORDER BY
+                ps.updated_at DESC
+            LIMIT 1) prev ON TRUE
+        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
 )
 SELECT
     id,
