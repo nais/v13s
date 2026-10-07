@@ -147,3 +147,39 @@ func TestStartDoesNotStartDisabledResyncJob(t *testing.T) {
 	require.Len(t, u.lifecycle.jobs, 1)
 	assert.Equal(t, "mark unused images", u.lifecycle.jobs[0].Name())
 }
+
+func TestNewRuntimeConfigUsesUpdaterConfig(t *testing.T) {
+	resync := ScheduleConfig{Type: SchedulerInterval, Interval: time.Minute}
+	cfg := NewRuntimeConfig(config.UpdaterConfig{
+		ResyncEnabled:           true,
+		MarkUnusedEnabled:       true,
+		MarkUnusedCron:          "1 * * * *",
+		MarkUntrackedCron:       "2 * * * *",
+		RefreshSummaryCron:      "3 * * * *",
+		RefreshLifetimesCron:    "4 * * * *",
+		SyncKevEnabled:          true,
+		SyncKevCron:             "5 * * * *",
+		SyncOsvCron:             "6 * * * *",
+		RekeySuppressedCron:     "7 * * * *",
+		RefreshCveCountsEnabled: true,
+		RefreshCveCountsCron:    "8 * * * *",
+	}, resync)
+
+	assert.Equal(t, JobRuntimeConfig{Enabled: true, Schedule: resync}, cfg.Resync)
+	for name, test := range map[string]struct {
+		job     JobRuntimeConfig
+		enabled bool
+		cron    string
+	}{
+		"MarkUnused":               {cfg.MarkUnused, true, "1 * * * *"},
+		"MarkUntracked":            {cfg.MarkUntracked, false, "2 * * * *"},
+		"RefreshDailySummary":      {cfg.RefreshDailySummary, false, "3 * * * *"},
+		"RefreshWorkloadLifetimes": {cfg.RefreshWorkloadLifetimes, false, "4 * * * *"},
+		"SyncKev":                  {cfg.SyncKev, true, "5 * * * *"},
+		"SyncOsv":                  {cfg.SyncOsv, false, "6 * * * *"},
+		"RekeySuppressedAliases":   {cfg.RekeySuppressedAliases, false, "7 * * * *"},
+		"RefreshCveWorkloadCounts": {cfg.RefreshCveWorkloadCounts, true, "8 * * * *"},
+	} {
+		assert.Equal(t, JobRuntimeConfig{Enabled: test.enabled, Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: test.cron}}, test.job, name)
+	}
+}

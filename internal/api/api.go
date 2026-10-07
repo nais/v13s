@@ -180,67 +180,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	log.Info("reconciling workloads against k8s state")
 	mgr.ReconcileWorkloads(ctx, informerMgr.ListWorkloadsByCluster())
 
-	runtimeCfg := updater.DefaultRuntimeConfig(updater.ScheduleConfig{
+	runtimeCfg := updater.NewRuntimeConfig(cfg.Updater, updater.ScheduleConfig{
 		Type:     updater.SchedulerInterval,
 		Interval: cfg.UpdateInterval,
 	})
-	runtimeCfg.Resync.Enabled = cfg.Updater.ResyncEnabled
-	runtimeCfg.MarkUnused = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.MarkUnusedEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.MarkUnusedCron,
-		},
-	}
-	runtimeCfg.MarkUntracked = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.MarkUntrackedEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.MarkUntrackedCron,
-		},
-	}
-	runtimeCfg.RefreshDailySummary = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.RefreshSummaryEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.RefreshSummaryCron,
-		},
-	}
-	runtimeCfg.RefreshWorkloadLifetimes = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.RefreshLifetimesEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.RefreshLifetimesCron,
-		},
-	}
-	runtimeCfg.SyncKev = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.SyncKevEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.SyncKevCron,
-		},
-	}
-	runtimeCfg.SyncOsv = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.SyncOsvEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.SyncOsvCron,
-		},
-	}
-	runtimeCfg.RekeySuppressedAliases = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.RekeySuppressedEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.RekeySuppressedCron,
-		},
-	}
-	runtimeCfg.RefreshCveWorkloadCounts = updater.JobRuntimeConfig{
-		Enabled: cfg.Updater.RefreshCveCountsEnabled,
-		Schedule: updater.ScheduleConfig{
-			Type:     updater.SchedulerCron,
-			CronExpr: cfg.Updater.RefreshCveCountsCron,
-		},
-	}
 
 	u := updater.NewUpdaterWithRuntimeConfig(
 		pool,

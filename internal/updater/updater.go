@@ -24,17 +24,9 @@ import (
 )
 
 const (
-	FetchVulnerabilityDataForImagesDefaultLimit        = 10
-	MarkUntrackedCronInterval                          = "*/20 * * * *" // every 20 minutes
-	MarkUnusedCronInterval                             = "*/30 * * * *" // every 30 minutes
-	RefreshVulnerabilitySummaryCronDailyView           = "30 4 * * *"   // every day at 4:30 AM CEST
-	RefreshWorkloadVulnerabilityLifetimesCronDailyView = "0 5 * * *"    // every day at 5:00 AM CEST (30 min later)
-	SyncKevCronInterval                                = "0 6 * * *"    // every day at 8:00 AM CEST
-	SyncOsvCronInterval                                = "0 7 * * *"    // every day at 9:00 AM CEST
-	RekeySuppressedAliasesCronInterval                 = "0 8 * * *"    // every day at 10:00 AM CEST
-	RefreshCveWorkloadCountsCronInterval               = "*/15 * * * *" // every 15 minutes
-	ResyncCycleLockKey                                 = int64(7705370001)
-	ImageMarkAge                                       = 30 * time.Minute
+	FetchVulnerabilityDataForImagesDefaultLimit = 10
+	ResyncCycleLockKey                          = int64(7705370001)
+	ImageMarkAge                                = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
 )
@@ -65,7 +57,7 @@ type updaterCycle struct {
 }
 
 func NewUpdater(pool *pgxpool.Pool, source sources.Source, schedule ScheduleConfig, log *log.Entry, kevCfg config.KevConfig, osvCfg config.OsvConfig) *Updater {
-	return NewUpdaterWithRuntimeConfig(pool, source, log, kevCfg, osvCfg, DefaultRuntimeConfig(schedule))
+	return NewUpdaterWithRuntimeConfig(pool, source, log, kevCfg, osvCfg, RuntimeConfig{Resync: JobRuntimeConfig{Enabled: true, Schedule: schedule}})
 }
 
 func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log *log.Entry, kevCfg config.KevConfig, osvCfg config.OsvConfig, runtimeCfg RuntimeConfig) *Updater {
