@@ -65,7 +65,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		return toWorkloadSummary(row)
+		return toWorkloadSummary(row, since.Valid)
 	})
 
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
@@ -79,19 +79,26 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	return response, nil
 }
 
-func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
+func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow, history bool) *vulnerabilities.WorkloadSummary {
 	imageName := row.CurrentImageName
 	if row.ImageName != nil {
 		imageName = *row.ImageName
 	}
 	imageTag := row.CurrentImageTag
+	var staleImageTag *string
 	if row.ImageTag != nil {
-		imageTag = *row.ImageTag
+		if history || *row.ImageTag == row.CurrentImageTag {
+			imageTag = *row.ImageTag
+		} else {
+			staleImageTag = row.ImageTag
+		}
 	}
 
 	sbomStatus := sbomStatusInfo(row.WorkloadState, row.ImageState, row.SbomProcessingStartedAt)
+	showCounts := sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY ||
+		sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING
 	var vulnSummary *vulnerabilities.Summary
-	if sbomStatus.GetStatus() == vulnerabilities.SbomStatus_SBOM_STATUS_READY && row.HasSbom && row.SummaryUpdatedAt.Valid {
+	if showCounts && row.HasSbom && row.SummaryUpdatedAt.Valid {
 		critical := row.Critical
 		high := row.High
 		medium := row.Medium
@@ -116,6 +123,7 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.
 			RansomwareCount: row.RansomwareCount,
 			HighEpssCount:   row.HighEpssCount,
 			TopPriority:     toProtoPriority(row.TopRiskTier),
+			StaleImageTag:   staleImageTag,
 		}
 	}
 	return &vulnerabilities.WorkloadSummary{
@@ -417,7 +425,7 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 
 	var vulnSummary *vulnerabilities.Summary
 	showCounts := worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_READY ||
-		(worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING && staleTag != "")
+		(worstStatus == vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING && summary != nil)
 	if showCounts && summary != nil {
 		critical := summary.Critical
 		high := summary.High
