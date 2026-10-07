@@ -89,15 +89,6 @@ func GetCommands(c vulnerabilities.Client, opts *flag.Options) []*cli.Command {
 					Usage:   "get mean time to fix data",
 					Commands: []*cli.Command{
 						{
-							Name:    "workloads",
-							Aliases: []string{"w"},
-							Usage:   "MTTF per workload and severity",
-							Flags:   flag.CommonFlags(opts, "limit", "order", "suppressed", "severity", "cve-ids", "cvss-score", "exclude-clusters", "exclude-namespaces"),
-							Action: func(ctx context.Context, cmd *cli.Command) error {
-								return listWorkloadMTTFBySeverity(ctx, cmd, c, opts)
-							},
-						},
-						{
 							Name:    "trend",
 							Aliases: []string{"t"},
 							Usage:   "MTTF per severity trend over time",
@@ -342,42 +333,6 @@ func getWorkloadJobStatus(ctx context.Context, opts *flag.Options, c vulnerabili
 		tbl.Print()
 		return int(s.TotalCount), s.HasNextPage, nil
 	})
-}
-
-func listWorkloadMTTFBySeverity(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, opts *flag.Options) error {
-	resp, err := c.ListWorkloadMTTFBySeverity(ctx, flag.ParseOptions(cmd, opts)...)
-	if err != nil {
-		return fmt.Errorf("failed to list workload severities with MTTF: %w", err)
-	}
-
-	tbl := output.New("Workload", "Namespace", "Severity", "Introduced At", "Fixed At", "Fixed", "Fix Duration (days)", "Fix Count", "Snapshot Date")
-
-	for _, workload := range resp.GetWorkloads() {
-		for _, fix := range workload.GetFixes() {
-			lastFixed := "N/A"
-			if fix.FixedAt != nil && !fix.FixedAt.AsTime().IsZero() {
-				lastFixed = fix.FixedAt.AsTime().Format("2006-01-02")
-			}
-			introduced := "N/A"
-			if fix.IntroducedAt != nil && !fix.IntroducedAt.AsTime().IsZero() {
-				introduced = fix.IntroducedAt.AsTime().Format("2006-01-02")
-			}
-			tbl.AddRow(
-				workload.WorkloadName,
-				workload.WorkloadNamespace,
-				fix.Severity.String(),
-				introduced,
-				lastFixed,
-				strconv.FormatBool(fix.FixedAt != nil && !fix.FixedAt.AsTime().IsZero()),
-				fmt.Sprintf("%v", fix.MeanTimeToFixDays),
-				fmt.Sprint(fix.FixedCount),
-				fix.SnapshotDate.AsTime().Format("2006-01-02"),
-			)
-		}
-	}
-
-	tbl.Print()
-	return nil
 }
 
 func listMeanTimeToFixTrendBySeverity(ctx context.Context, cmd *cli.Command, c vulnerabilities.Client, opts *flag.Options) error {

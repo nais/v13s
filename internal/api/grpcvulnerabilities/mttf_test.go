@@ -106,38 +106,6 @@ func TestServer_MeanTimeToFix(t *testing.T) {
 		assert.Equal(t, points(-4, 1, 4, 1, 1), trend(vulnerabilities.Since(day(-5)), vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED)))
 	})
 
-	t.Run("workload fix stats count each lifetime once", func(t *testing.T) {
-		resp, err := client.ListWorkloadMTTFBySeverity(ctx, vulnerabilities.WorkloadFilter("mttf-app"))
-		require.NoError(t, err)
-		require.Len(t, resp.GetWorkloads(), 1)
-		got := map[int32]string{}
-		for _, f := range resp.GetWorkloads()[0].GetFixes() {
-			got[int32(f.Severity)] = fmt.Sprintf("introduced=%s fixed=%d mean=%d",
-				f.IntroducedAt.AsTime().Format(time.DateOnly), f.FixedCount, f.MeanTimeToFixDays)
-		}
-		assert.Equal(t, map[int32]string{
-			0: "introduced=" + date(-10) + " fixed=1 mean=4",
-			1: "introduced=" + date(-8) + " fixed=1 mean=4",
-		}, got)
-	})
-
-	t.Run("workload fix stats since filter", func(t *testing.T) {
-		severities := func(opts ...vulnerabilities.Option) []int32 {
-			resp, err := client.ListWorkloadMTTFBySeverity(ctx, append(opts, vulnerabilities.WorkloadFilter("mttf-app"))...)
-			require.NoError(t, err)
-			out := []int32{}
-			for _, w := range resp.GetWorkloads() {
-				for _, f := range w.GetFixes() {
-					out = append(out, int32(f.Severity))
-				}
-			}
-			slices.Sort(out)
-			return out
-		}
-		assert.Equal(t, []int32{0, 1}, severities(vulnerabilities.Since(day(-1))))
-		assert.Equal(t, []int32{1}, severities(vulnerabilities.Since(day(-5)), vulnerabilities.SinceTypeFilter(vulnerabilities.SinceType_FIXED)))
-	})
-
 	t.Run("an open lifetime is updated when it is fixed", func(t *testing.T) {
 		snapshot(app, "mttf-app", "mttf", "app", -1, 0, 0)
 		require.NoError(t, db.UpsertVulnerabilityLifetimes(ctx))

@@ -1163,66 +1163,6 @@ func (x *Vulnerability) GetFixVersion() string {
 	return ""
 }
 
-type Finding struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkloadRef   *Workload              `protobuf:"bytes,1,opt,name=workload_ref,json=workloadRef,proto3" json:"workload_ref,omitempty"`
-	Vulnerability *Vulnerability         `protobuf:"bytes,2,opt,name=vulnerability,proto3" json:"vulnerability,omitempty"`
-	LastUpdated   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated,proto3,oneof" json:"last_updated,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Finding) Reset() {
-	*x = Finding{}
-	mi := &file_vulnerabilities_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Finding) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Finding) ProtoMessage() {}
-
-func (x *Finding) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Finding.ProtoReflect.Descriptor instead.
-func (*Finding) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *Finding) GetWorkloadRef() *Workload {
-	if x != nil {
-		return x.WorkloadRef
-	}
-	return nil
-}
-
-func (x *Finding) GetVulnerability() *Vulnerability {
-	if x != nil {
-		return x.Vulnerability
-	}
-	return nil
-}
-
-func (x *Finding) GetLastUpdated() *timestamppb.Timestamp {
-	if x != nil {
-		return x.LastUpdated
-	}
-	return nil
-}
-
 type WorkloadCriticalVulnerability struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1238,7 +1178,7 @@ type WorkloadCriticalVulnerability struct {
 
 func (x *WorkloadCriticalVulnerability) Reset() {
 	*x = WorkloadCriticalVulnerability{}
-	mi := &file_vulnerabilities_proto_msgTypes[8]
+	mi := &file_vulnerabilities_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1250,7 +1190,7 @@ func (x *WorkloadCriticalVulnerability) String() string {
 func (*WorkloadCriticalVulnerability) ProtoMessage() {}
 
 func (x *WorkloadCriticalVulnerability) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[8]
+	mi := &file_vulnerabilities_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1263,7 +1203,7 @@ func (x *WorkloadCriticalVulnerability) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadCriticalVulnerability.ProtoReflect.Descriptor instead.
 func (*WorkloadCriticalVulnerability) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{8}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *WorkloadCriticalVulnerability) GetId() string {
@@ -1325,7 +1265,7 @@ type WorkloadCriticalVulnerabilityFinding struct {
 
 func (x *WorkloadCriticalVulnerabilityFinding) Reset() {
 	*x = WorkloadCriticalVulnerabilityFinding{}
-	mi := &file_vulnerabilities_proto_msgTypes[9]
+	mi := &file_vulnerabilities_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1337,7 +1277,7 @@ func (x *WorkloadCriticalVulnerabilityFinding) String() string {
 func (*WorkloadCriticalVulnerabilityFinding) ProtoMessage() {}
 
 func (x *WorkloadCriticalVulnerabilityFinding) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[9]
+	mi := &file_vulnerabilities_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1350,7 +1290,7 @@ func (x *WorkloadCriticalVulnerabilityFinding) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use WorkloadCriticalVulnerabilityFinding.ProtoReflect.Descriptor instead.
 func (*WorkloadCriticalVulnerabilityFinding) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{9}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *WorkloadCriticalVulnerabilityFinding) GetWorkloadRef() *Workload {
@@ -1379,7 +1319,7 @@ type WorkloadSummary struct {
 
 func (x *WorkloadSummary) Reset() {
 	*x = WorkloadSummary{}
-	mi := &file_vulnerabilities_proto_msgTypes[10]
+	mi := &file_vulnerabilities_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1391,7 +1331,7 @@ func (x *WorkloadSummary) String() string {
 func (*WorkloadSummary) ProtoMessage() {}
 
 func (x *WorkloadSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[10]
+	mi := &file_vulnerabilities_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1404,7 +1344,7 @@ func (x *WorkloadSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadSummary.ProtoReflect.Descriptor instead.
 func (*WorkloadSummary) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{10}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *WorkloadSummary) GetId() string {
@@ -1445,7 +1385,7 @@ type SbomStatusInfo struct {
 
 func (x *SbomStatusInfo) Reset() {
 	*x = SbomStatusInfo{}
-	mi := &file_vulnerabilities_proto_msgTypes[11]
+	mi := &file_vulnerabilities_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1457,7 +1397,7 @@ func (x *SbomStatusInfo) String() string {
 func (*SbomStatusInfo) ProtoMessage() {}
 
 func (x *SbomStatusInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[11]
+	mi := &file_vulnerabilities_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1470,7 +1410,7 @@ func (x *SbomStatusInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SbomStatusInfo.ProtoReflect.Descriptor instead.
 func (*SbomStatusInfo) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{11}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SbomStatusInfo) GetStatus() SbomStatus {
@@ -1483,166 +1423,6 @@ func (x *SbomStatusInfo) GetStatus() SbomStatus {
 func (x *SbomStatusInfo) GetProcessingStartedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ProcessingStartedAt
-	}
-	return nil
-}
-
-type WorkloadFix struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Severity          Severity               `protobuf:"varint,1,opt,name=severity,proto3,enum=v13s.api.protobuf.Severity" json:"severity,omitempty"`
-	IntroducedAt      *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=introduced_at,json=introducedAt,proto3,oneof" json:"introduced_at,omitempty"`
-	FixedAt           *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=fixed_at,json=fixedAt,proto3,oneof" json:"fixed_at,omitempty"`
-	FixDurationDays   *int32                 `protobuf:"varint,4,opt,name=fix_duration_days,json=fixDurationDays,proto3,oneof" json:"fix_duration_days,omitempty"`
-	MeanTimeToFixDays int32                  `protobuf:"varint,5,opt,name=mean_time_to_fix_days,json=meanTimeToFixDays,proto3" json:"mean_time_to_fix_days,omitempty"`
-	FixedCount        int32                  `protobuf:"varint,6,opt,name=fixed_count,json=fixedCount,proto3" json:"fixed_count,omitempty"`
-	SnapshotDate      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=snapshot_date,json=snapshotDate,proto3,oneof" json:"snapshot_date,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *WorkloadFix) Reset() {
-	*x = WorkloadFix{}
-	mi := &file_vulnerabilities_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *WorkloadFix) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkloadFix) ProtoMessage() {}
-
-func (x *WorkloadFix) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkloadFix.ProtoReflect.Descriptor instead.
-func (*WorkloadFix) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *WorkloadFix) GetSeverity() Severity {
-	if x != nil {
-		return x.Severity
-	}
-	return Severity_CRITICAL
-}
-
-func (x *WorkloadFix) GetIntroducedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.IntroducedAt
-	}
-	return nil
-}
-
-func (x *WorkloadFix) GetFixedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.FixedAt
-	}
-	return nil
-}
-
-func (x *WorkloadFix) GetFixDurationDays() int32 {
-	if x != nil && x.FixDurationDays != nil {
-		return *x.FixDurationDays
-	}
-	return 0
-}
-
-func (x *WorkloadFix) GetMeanTimeToFixDays() int32 {
-	if x != nil {
-		return x.MeanTimeToFixDays
-	}
-	return 0
-}
-
-func (x *WorkloadFix) GetFixedCount() int32 {
-	if x != nil {
-		return x.FixedCount
-	}
-	return 0
-}
-
-func (x *WorkloadFix) GetSnapshotDate() *timestamppb.Timestamp {
-	if x != nil {
-		return x.SnapshotDate
-	}
-	return nil
-}
-
-type WorkloadWithFixes struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	WorkloadId        string                 `protobuf:"bytes,1,opt,name=workload_id,json=workloadId,proto3" json:"workload_id,omitempty"`
-	WorkloadNamespace string                 `protobuf:"bytes,3,opt,name=workload_namespace,json=workloadNamespace,proto3" json:"workload_namespace,omitempty"`
-	WorkloadName      string                 `protobuf:"bytes,4,opt,name=workload_name,json=workloadName,proto3" json:"workload_name,omitempty"`
-	Fixes             []*WorkloadFix         `protobuf:"bytes,5,rep,name=fixes,proto3" json:"fixes,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *WorkloadWithFixes) Reset() {
-	*x = WorkloadWithFixes{}
-	mi := &file_vulnerabilities_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *WorkloadWithFixes) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkloadWithFixes) ProtoMessage() {}
-
-func (x *WorkloadWithFixes) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkloadWithFixes.ProtoReflect.Descriptor instead.
-func (*WorkloadWithFixes) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *WorkloadWithFixes) GetWorkloadId() string {
-	if x != nil {
-		return x.WorkloadId
-	}
-	return ""
-}
-
-func (x *WorkloadWithFixes) GetWorkloadNamespace() string {
-	if x != nil {
-		return x.WorkloadNamespace
-	}
-	return ""
-}
-
-func (x *WorkloadWithFixes) GetWorkloadName() string {
-	if x != nil {
-		return x.WorkloadName
-	}
-	return ""
-}
-
-func (x *WorkloadWithFixes) GetFixes() []*WorkloadFix {
-	if x != nil {
-		return x.Fixes
 	}
 	return nil
 }
@@ -1662,7 +1442,7 @@ type MeanTimeToFixTrendPoint struct {
 
 func (x *MeanTimeToFixTrendPoint) Reset() {
 	*x = MeanTimeToFixTrendPoint{}
-	mi := &file_vulnerabilities_proto_msgTypes[14]
+	mi := &file_vulnerabilities_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1674,7 +1454,7 @@ func (x *MeanTimeToFixTrendPoint) String() string {
 func (*MeanTimeToFixTrendPoint) ProtoMessage() {}
 
 func (x *MeanTimeToFixTrendPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[14]
+	mi := &file_vulnerabilities_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1687,7 +1467,7 @@ func (x *MeanTimeToFixTrendPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MeanTimeToFixTrendPoint.ProtoReflect.Descriptor instead.
 func (*MeanTimeToFixTrendPoint) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{14}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MeanTimeToFixTrendPoint) GetSeverity() Severity {
@@ -1739,234 +1519,6 @@ func (x *MeanTimeToFixTrendPoint) GetWorkloadCount() int32 {
 	return 0
 }
 
-type SuppressedVulnerability struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ImageName     string                 `protobuf:"bytes,1,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
-	CveId         string                 `protobuf:"bytes,2,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
-	Package       string                 `protobuf:"bytes,3,opt,name=package,proto3" json:"package,omitempty"`
-	State         SuppressState          `protobuf:"varint,4,opt,name=state,proto3,enum=v13s.api.protobuf.SuppressState" json:"state,omitempty"`
-	Reason        *string                `protobuf:"bytes,5,opt,name=reason,proto3,oneof" json:"reason,omitempty"`
-	SuppressedBy  *string                `protobuf:"bytes,6,opt,name=suppressed_by,json=suppressedBy,proto3,oneof" json:"suppressed_by,omitempty"`
-	Suppress      *bool                  `protobuf:"varint,7,opt,name=suppress,proto3,oneof" json:"suppress,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SuppressedVulnerability) Reset() {
-	*x = SuppressedVulnerability{}
-	mi := &file_vulnerabilities_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SuppressedVulnerability) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SuppressedVulnerability) ProtoMessage() {}
-
-func (x *SuppressedVulnerability) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SuppressedVulnerability.ProtoReflect.Descriptor instead.
-func (*SuppressedVulnerability) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *SuppressedVulnerability) GetImageName() string {
-	if x != nil {
-		return x.ImageName
-	}
-	return ""
-}
-
-func (x *SuppressedVulnerability) GetCveId() string {
-	if x != nil {
-		return x.CveId
-	}
-	return ""
-}
-
-func (x *SuppressedVulnerability) GetPackage() string {
-	if x != nil {
-		return x.Package
-	}
-	return ""
-}
-
-func (x *SuppressedVulnerability) GetState() SuppressState {
-	if x != nil {
-		return x.State
-	}
-	return SuppressState_FALSE_POSITIVE
-}
-
-func (x *SuppressedVulnerability) GetReason() string {
-	if x != nil && x.Reason != nil {
-		return *x.Reason
-	}
-	return ""
-}
-
-func (x *SuppressedVulnerability) GetSuppressedBy() string {
-	if x != nil && x.SuppressedBy != nil {
-		return *x.SuppressedBy
-	}
-	return ""
-}
-
-func (x *SuppressedVulnerability) GetSuppress() bool {
-	if x != nil && x.Suppress != nil {
-		return *x.Suppress
-	}
-	return false
-}
-
-type ListVulnerabilitiesRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Filter            *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	IncludeSuppressed *bool                  `protobuf:"varint,2,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
-	Limit             int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset            int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy           *OrderBy               `protobuf:"bytes,5,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *ListVulnerabilitiesRequest) Reset() {
-	*x = ListVulnerabilitiesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListVulnerabilitiesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListVulnerabilitiesRequest) ProtoMessage() {}
-
-func (x *ListVulnerabilitiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListVulnerabilitiesRequest.ProtoReflect.Descriptor instead.
-func (*ListVulnerabilitiesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *ListVulnerabilitiesRequest) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListVulnerabilitiesRequest) GetIncludeSuppressed() bool {
-	if x != nil && x.IncludeSuppressed != nil {
-		return *x.IncludeSuppressed
-	}
-	return false
-}
-
-func (x *ListVulnerabilitiesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-func (x *ListVulnerabilitiesRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-func (x *ListVulnerabilitiesRequest) GetOrderBy() *OrderBy {
-	if x != nil {
-		return x.OrderBy
-	}
-	return nil
-}
-
-type ListVulnerabilitiesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Nodes         []*Finding             `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	PageInfo      *PageInfo              `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListVulnerabilitiesResponse) Reset() {
-	*x = ListVulnerabilitiesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListVulnerabilitiesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListVulnerabilitiesResponse) ProtoMessage() {}
-
-func (x *ListVulnerabilitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListVulnerabilitiesResponse.ProtoReflect.Descriptor instead.
-func (*ListVulnerabilitiesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *ListVulnerabilitiesResponse) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListVulnerabilitiesResponse) GetNodes() []*Finding {
-	if x != nil {
-		return x.Nodes
-	}
-	return nil
-}
-
-func (x *ListVulnerabilitiesResponse) GetPageInfo() *PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
 type ListVulnerabilitiesForImageRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ImageName         string                 `protobuf:"bytes,1,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
@@ -1987,7 +1539,7 @@ type ListVulnerabilitiesForImageRequest struct {
 
 func (x *ListVulnerabilitiesForImageRequest) Reset() {
 	*x = ListVulnerabilitiesForImageRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[18]
+	mi := &file_vulnerabilities_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1999,7 +1551,7 @@ func (x *ListVulnerabilitiesForImageRequest) String() string {
 func (*ListVulnerabilitiesForImageRequest) ProtoMessage() {}
 
 func (x *ListVulnerabilitiesForImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[18]
+	mi := &file_vulnerabilities_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2012,7 +1564,7 @@ func (x *ListVulnerabilitiesForImageRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListVulnerabilitiesForImageRequest.ProtoReflect.Descriptor instead.
 func (*ListVulnerabilitiesForImageRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{18}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListVulnerabilitiesForImageRequest) GetImageName() string {
@@ -2095,7 +1647,7 @@ type ListVulnerabilitiesForImageResponse struct {
 
 func (x *ListVulnerabilitiesForImageResponse) Reset() {
 	*x = ListVulnerabilitiesForImageResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[19]
+	mi := &file_vulnerabilities_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2107,7 +1659,7 @@ func (x *ListVulnerabilitiesForImageResponse) String() string {
 func (*ListVulnerabilitiesForImageResponse) ProtoMessage() {}
 
 func (x *ListVulnerabilitiesForImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[19]
+	mi := &file_vulnerabilities_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2120,7 +1672,7 @@ func (x *ListVulnerabilitiesForImageResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use ListVulnerabilitiesForImageResponse.ProtoReflect.Descriptor instead.
 func (*ListVulnerabilitiesForImageResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{19}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListVulnerabilitiesForImageResponse) GetNodes() []*Vulnerability {
@@ -2152,7 +1704,7 @@ type ListVulnerabilitySummariesRequest struct {
 
 func (x *ListVulnerabilitySummariesRequest) Reset() {
 	*x = ListVulnerabilitySummariesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[20]
+	mi := &file_vulnerabilities_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2164,7 +1716,7 @@ func (x *ListVulnerabilitySummariesRequest) String() string {
 func (*ListVulnerabilitySummariesRequest) ProtoMessage() {}
 
 func (x *ListVulnerabilitySummariesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[20]
+	mi := &file_vulnerabilities_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2177,7 +1729,7 @@ func (x *ListVulnerabilitySummariesRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ListVulnerabilitySummariesRequest.ProtoReflect.Descriptor instead.
 func (*ListVulnerabilitySummariesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{20}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListVulnerabilitySummariesRequest) GetFilter() *Filter {
@@ -2232,7 +1784,7 @@ type ListVulnerabilitySummariesResponse struct {
 
 func (x *ListVulnerabilitySummariesResponse) Reset() {
 	*x = ListVulnerabilitySummariesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[21]
+	mi := &file_vulnerabilities_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2244,7 +1796,7 @@ func (x *ListVulnerabilitySummariesResponse) String() string {
 func (*ListVulnerabilitySummariesResponse) ProtoMessage() {}
 
 func (x *ListVulnerabilitySummariesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[21]
+	mi := &file_vulnerabilities_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2257,7 +1809,7 @@ func (x *ListVulnerabilitySummariesResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListVulnerabilitySummariesResponse.ProtoReflect.Descriptor instead.
 func (*ListVulnerabilitySummariesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{21}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListVulnerabilitySummariesResponse) GetNodes() []*WorkloadSummary {
@@ -2274,270 +1826,6 @@ func (x *ListVulnerabilitySummariesResponse) GetPageInfo() *PageInfo {
 	return nil
 }
 
-type ListSuppressedVulnerabilitiesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy       *OrderBy               `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSuppressedVulnerabilitiesRequest) Reset() {
-	*x = ListSuppressedVulnerabilitiesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[22]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSuppressedVulnerabilitiesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSuppressedVulnerabilitiesRequest) ProtoMessage() {}
-
-func (x *ListSuppressedVulnerabilitiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[22]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSuppressedVulnerabilitiesRequest.ProtoReflect.Descriptor instead.
-func (*ListSuppressedVulnerabilitiesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *ListSuppressedVulnerabilitiesRequest) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListSuppressedVulnerabilitiesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-func (x *ListSuppressedVulnerabilitiesRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-func (x *ListSuppressedVulnerabilitiesRequest) GetOrderBy() *OrderBy {
-	if x != nil {
-		return x.OrderBy
-	}
-	return nil
-}
-
-type ListSuppressedVulnerabilitiesResponse struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Nodes         []*SuppressedVulnerability `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	PageInfo      *PageInfo                  `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSuppressedVulnerabilitiesResponse) Reset() {
-	*x = ListSuppressedVulnerabilitiesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[23]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSuppressedVulnerabilitiesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSuppressedVulnerabilitiesResponse) ProtoMessage() {}
-
-func (x *ListSuppressedVulnerabilitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[23]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSuppressedVulnerabilitiesResponse.ProtoReflect.Descriptor instead.
-func (*ListSuppressedVulnerabilitiesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{23}
-}
-
-func (x *ListSuppressedVulnerabilitiesResponse) GetNodes() []*SuppressedVulnerability {
-	if x != nil {
-		return x.Nodes
-	}
-	return nil
-}
-
-func (x *ListSuppressedVulnerabilitiesResponse) GetPageInfo() *PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
-type ListSeverityVulnerabilitiesSinceRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Filter            *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	IncludeSuppressed *bool                  `protobuf:"varint,3,opt,name=include_suppressed,json=includeSuppressed,proto3,oneof" json:"include_suppressed,omitempty"`
-	Limit             int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset            int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
-	OrderBy           *OrderBy               `protobuf:"bytes,6,opt,name=order_by,json=orderBy,proto3,oneof" json:"order_by,omitempty"`
-	Since             *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=since,proto3,oneof" json:"since,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) Reset() {
-	*x = ListSeverityVulnerabilitiesSinceRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[24]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSeverityVulnerabilitiesSinceRequest) ProtoMessage() {}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[24]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSeverityVulnerabilitiesSinceRequest.ProtoReflect.Descriptor instead.
-func (*ListSeverityVulnerabilitiesSinceRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) GetIncludeSuppressed() bool {
-	if x != nil && x.IncludeSuppressed != nil {
-		return *x.IncludeSuppressed
-	}
-	return false
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) GetOrderBy() *OrderBy {
-	if x != nil {
-		return x.OrderBy
-	}
-	return nil
-}
-
-func (x *ListSeverityVulnerabilitiesSinceRequest) GetSince() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Since
-	}
-	return nil
-}
-
-type ListSeverityVulnerabilitiesSinceResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Nodes         []*Finding             `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	PageInfo      *PageInfo              `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSeverityVulnerabilitiesSinceResponse) Reset() {
-	*x = ListSeverityVulnerabilitiesSinceResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSeverityVulnerabilitiesSinceResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSeverityVulnerabilitiesSinceResponse) ProtoMessage() {}
-
-func (x *ListSeverityVulnerabilitiesSinceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSeverityVulnerabilitiesSinceResponse.ProtoReflect.Descriptor instead.
-func (*ListSeverityVulnerabilitiesSinceResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *ListSeverityVulnerabilitiesSinceResponse) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListSeverityVulnerabilitiesSinceResponse) GetNodes() []*Finding {
-	if x != nil {
-		return x.Nodes
-	}
-	return nil
-}
-
-func (x *ListSeverityVulnerabilitiesSinceResponse) GetPageInfo() *PageInfo {
-	if x != nil {
-		return x.PageInfo
-	}
-	return nil
-}
-
 type ListWorkloadsForVulnerabilityByIdRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -2547,7 +1835,7 @@ type ListWorkloadsForVulnerabilityByIdRequest struct {
 
 func (x *ListWorkloadsForVulnerabilityByIdRequest) Reset() {
 	*x = ListWorkloadsForVulnerabilityByIdRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[26]
+	mi := &file_vulnerabilities_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2559,7 +1847,7 @@ func (x *ListWorkloadsForVulnerabilityByIdRequest) String() string {
 func (*ListWorkloadsForVulnerabilityByIdRequest) ProtoMessage() {}
 
 func (x *ListWorkloadsForVulnerabilityByIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[26]
+	mi := &file_vulnerabilities_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2572,7 +1860,7 @@ func (x *ListWorkloadsForVulnerabilityByIdRequest) ProtoReflect() protoreflect.M
 
 // Deprecated: Use ListWorkloadsForVulnerabilityByIdRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkloadsForVulnerabilityByIdRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{26}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListWorkloadsForVulnerabilityByIdRequest) GetId() string {
@@ -2592,7 +1880,7 @@ type ListWorkloadsForVulnerabilityByIdResponse struct {
 
 func (x *ListWorkloadsForVulnerabilityByIdResponse) Reset() {
 	*x = ListWorkloadsForVulnerabilityByIdResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[27]
+	mi := &file_vulnerabilities_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2604,7 +1892,7 @@ func (x *ListWorkloadsForVulnerabilityByIdResponse) String() string {
 func (*ListWorkloadsForVulnerabilityByIdResponse) ProtoMessage() {}
 
 func (x *ListWorkloadsForVulnerabilityByIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[27]
+	mi := &file_vulnerabilities_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2617,7 +1905,7 @@ func (x *ListWorkloadsForVulnerabilityByIdResponse) ProtoReflect() protoreflect.
 
 // Deprecated: Use ListWorkloadsForVulnerabilityByIdResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkloadsForVulnerabilityByIdResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{27}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListWorkloadsForVulnerabilityByIdResponse) GetId() string {
@@ -2651,7 +1939,7 @@ type ListWorkloadsForVulnerabilityRequest struct {
 
 func (x *ListWorkloadsForVulnerabilityRequest) Reset() {
 	*x = ListWorkloadsForVulnerabilityRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[28]
+	mi := &file_vulnerabilities_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2663,7 +1951,7 @@ func (x *ListWorkloadsForVulnerabilityRequest) String() string {
 func (*ListWorkloadsForVulnerabilityRequest) ProtoMessage() {}
 
 func (x *ListWorkloadsForVulnerabilityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[28]
+	mi := &file_vulnerabilities_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2676,7 +1964,7 @@ func (x *ListWorkloadsForVulnerabilityRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ListWorkloadsForVulnerabilityRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkloadsForVulnerabilityRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{28}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListWorkloadsForVulnerabilityRequest) GetFilter() *Filter {
@@ -2752,7 +2040,7 @@ type ListWorkloadsForVulnerabilityResponse struct {
 
 func (x *ListWorkloadsForVulnerabilityResponse) Reset() {
 	*x = ListWorkloadsForVulnerabilityResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[29]
+	mi := &file_vulnerabilities_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2764,7 +2052,7 @@ func (x *ListWorkloadsForVulnerabilityResponse) String() string {
 func (*ListWorkloadsForVulnerabilityResponse) ProtoMessage() {}
 
 func (x *ListWorkloadsForVulnerabilityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[29]
+	mi := &file_vulnerabilities_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2777,7 +2065,7 @@ func (x *ListWorkloadsForVulnerabilityResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use ListWorkloadsForVulnerabilityResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkloadsForVulnerabilityResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{29}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListWorkloadsForVulnerabilityResponse) GetNodes() []*WorkloadForVulnerability {
@@ -2804,7 +2092,7 @@ type WorkloadForVulnerability struct {
 
 func (x *WorkloadForVulnerability) Reset() {
 	*x = WorkloadForVulnerability{}
-	mi := &file_vulnerabilities_proto_msgTypes[30]
+	mi := &file_vulnerabilities_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2816,7 +2104,7 @@ func (x *WorkloadForVulnerability) String() string {
 func (*WorkloadForVulnerability) ProtoMessage() {}
 
 func (x *WorkloadForVulnerability) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[30]
+	mi := &file_vulnerabilities_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2829,7 +2117,7 @@ func (x *WorkloadForVulnerability) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadForVulnerability.ProtoReflect.Descriptor instead.
 func (*WorkloadForVulnerability) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{30}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *WorkloadForVulnerability) GetWorkloadRef() *Workload {
@@ -2861,7 +2149,7 @@ type ListCveSummariesRequest struct {
 
 func (x *ListCveSummariesRequest) Reset() {
 	*x = ListCveSummariesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[31]
+	mi := &file_vulnerabilities_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2873,7 +2161,7 @@ func (x *ListCveSummariesRequest) String() string {
 func (*ListCveSummariesRequest) ProtoMessage() {}
 
 func (x *ListCveSummariesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[31]
+	mi := &file_vulnerabilities_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2886,7 +2174,7 @@ func (x *ListCveSummariesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCveSummariesRequest.ProtoReflect.Descriptor instead.
 func (*ListCveSummariesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{31}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListCveSummariesRequest) GetFilter() *Filter {
@@ -2948,7 +2236,7 @@ type ListCveSummariesResponse struct {
 
 func (x *ListCveSummariesResponse) Reset() {
 	*x = ListCveSummariesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[32]
+	mi := &file_vulnerabilities_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2960,7 +2248,7 @@ func (x *ListCveSummariesResponse) String() string {
 func (*ListCveSummariesResponse) ProtoMessage() {}
 
 func (x *ListCveSummariesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[32]
+	mi := &file_vulnerabilities_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2973,7 +2261,7 @@ func (x *ListCveSummariesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCveSummariesResponse.ProtoReflect.Descriptor instead.
 func (*ListCveSummariesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{32}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListCveSummariesResponse) GetNodes() []*CveSummary {
@@ -3000,7 +2288,7 @@ type CveSummary struct {
 
 func (x *CveSummary) Reset() {
 	*x = CveSummary{}
-	mi := &file_vulnerabilities_proto_msgTypes[33]
+	mi := &file_vulnerabilities_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3012,7 +2300,7 @@ func (x *CveSummary) String() string {
 func (*CveSummary) ProtoMessage() {}
 
 func (x *CveSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[33]
+	mi := &file_vulnerabilities_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3025,7 +2313,7 @@ func (x *CveSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CveSummary.ProtoReflect.Descriptor instead.
 func (*CveSummary) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{33}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CveSummary) GetCve() *Cve {
@@ -3053,7 +2341,7 @@ type ListMeanTimeToFixTrendBySeverityRequest struct {
 
 func (x *ListMeanTimeToFixTrendBySeverityRequest) Reset() {
 	*x = ListMeanTimeToFixTrendBySeverityRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[34]
+	mi := &file_vulnerabilities_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3065,7 +2353,7 @@ func (x *ListMeanTimeToFixTrendBySeverityRequest) String() string {
 func (*ListMeanTimeToFixTrendBySeverityRequest) ProtoMessage() {}
 
 func (x *ListMeanTimeToFixTrendBySeverityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[34]
+	mi := &file_vulnerabilities_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3078,7 +2366,7 @@ func (x *ListMeanTimeToFixTrendBySeverityRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use ListMeanTimeToFixTrendBySeverityRequest.ProtoReflect.Descriptor instead.
 func (*ListMeanTimeToFixTrendBySeverityRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{34}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListMeanTimeToFixTrendBySeverityRequest) GetFilter() *Filter {
@@ -3112,7 +2400,7 @@ type ListMeanTimeToFixTrendBySeverityResponse struct {
 
 func (x *ListMeanTimeToFixTrendBySeverityResponse) Reset() {
 	*x = ListMeanTimeToFixTrendBySeverityResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[35]
+	mi := &file_vulnerabilities_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3124,7 +2412,7 @@ func (x *ListMeanTimeToFixTrendBySeverityResponse) String() string {
 func (*ListMeanTimeToFixTrendBySeverityResponse) ProtoMessage() {}
 
 func (x *ListMeanTimeToFixTrendBySeverityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[35]
+	mi := &file_vulnerabilities_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3137,7 +2425,7 @@ func (x *ListMeanTimeToFixTrendBySeverityResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use ListMeanTimeToFixTrendBySeverityResponse.ProtoReflect.Descriptor instead.
 func (*ListMeanTimeToFixTrendBySeverityResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{35}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListMeanTimeToFixTrendBySeverityResponse) GetFilter() *Filter {
@@ -3154,118 +2442,6 @@ func (x *ListMeanTimeToFixTrendBySeverityResponse) GetPoints() []*MeanTimeToFixT
 	return nil
 }
 
-type ListWorkloadMTTFBySeverityRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Since         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=since,proto3,oneof" json:"since,omitempty"`
-	SinceType     *SinceType             `protobuf:"varint,3,opt,name=since_type,json=sinceType,proto3,enum=v13s.api.protobuf.SinceType,oneof" json:"since_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListWorkloadMTTFBySeverityRequest) Reset() {
-	*x = ListWorkloadMTTFBySeverityRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[36]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListWorkloadMTTFBySeverityRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListWorkloadMTTFBySeverityRequest) ProtoMessage() {}
-
-func (x *ListWorkloadMTTFBySeverityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[36]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListWorkloadMTTFBySeverityRequest.ProtoReflect.Descriptor instead.
-func (*ListWorkloadMTTFBySeverityRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{36}
-}
-
-func (x *ListWorkloadMTTFBySeverityRequest) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListWorkloadMTTFBySeverityRequest) GetSince() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Since
-	}
-	return nil
-}
-
-func (x *ListWorkloadMTTFBySeverityRequest) GetSinceType() SinceType {
-	if x != nil && x.SinceType != nil {
-		return *x.SinceType
-	}
-	return SinceType_SNAPSHOT
-}
-
-type ListWorkloadMTTFBySeverityResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filter        *Filter                `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
-	Workloads     []*WorkloadWithFixes   `protobuf:"bytes,2,rep,name=workloads,proto3" json:"workloads,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListWorkloadMTTFBySeverityResponse) Reset() {
-	*x = ListWorkloadMTTFBySeverityResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[37]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListWorkloadMTTFBySeverityResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListWorkloadMTTFBySeverityResponse) ProtoMessage() {}
-
-func (x *ListWorkloadMTTFBySeverityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[37]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListWorkloadMTTFBySeverityResponse.ProtoReflect.Descriptor instead.
-func (*ListWorkloadMTTFBySeverityResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{37}
-}
-
-func (x *ListWorkloadMTTFBySeverityResponse) GetFilter() *Filter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *ListWorkloadMTTFBySeverityResponse) GetWorkloads() []*WorkloadWithFixes {
-	if x != nil {
-		return x.Workloads
-	}
-	return nil
-}
-
 type GetVulnerabilitySummaryForImageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ImageName     string                 `protobuf:"bytes,1,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
@@ -3276,7 +2452,7 @@ type GetVulnerabilitySummaryForImageRequest struct {
 
 func (x *GetVulnerabilitySummaryForImageRequest) Reset() {
 	*x = GetVulnerabilitySummaryForImageRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[38]
+	mi := &file_vulnerabilities_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3288,7 +2464,7 @@ func (x *GetVulnerabilitySummaryForImageRequest) String() string {
 func (*GetVulnerabilitySummaryForImageRequest) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummaryForImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[38]
+	mi := &file_vulnerabilities_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3301,7 +2477,7 @@ func (x *GetVulnerabilitySummaryForImageRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GetVulnerabilitySummaryForImageRequest.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummaryForImageRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{38}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetVulnerabilitySummaryForImageRequest) GetImageName() string {
@@ -3329,7 +2505,7 @@ type GetVulnerabilitySummaryForImageResponse struct {
 
 func (x *GetVulnerabilitySummaryForImageResponse) Reset() {
 	*x = GetVulnerabilitySummaryForImageResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[39]
+	mi := &file_vulnerabilities_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3341,7 +2517,7 @@ func (x *GetVulnerabilitySummaryForImageResponse) String() string {
 func (*GetVulnerabilitySummaryForImageResponse) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummaryForImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[39]
+	mi := &file_vulnerabilities_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3354,7 +2530,7 @@ func (x *GetVulnerabilitySummaryForImageResponse) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use GetVulnerabilitySummaryForImageResponse.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummaryForImageResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{39}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetVulnerabilitySummaryForImageResponse) GetVulnerabilitySummary() *Summary {
@@ -3387,7 +2563,7 @@ type GetVulnerabilitySummaryRequest struct {
 
 func (x *GetVulnerabilitySummaryRequest) Reset() {
 	*x = GetVulnerabilitySummaryRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[40]
+	mi := &file_vulnerabilities_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3399,7 +2575,7 @@ func (x *GetVulnerabilitySummaryRequest) String() string {
 func (*GetVulnerabilitySummaryRequest) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[40]
+	mi := &file_vulnerabilities_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3412,7 +2588,7 @@ func (x *GetVulnerabilitySummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVulnerabilitySummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummaryRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{40}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetVulnerabilitySummaryRequest) GetFilter() *Filter {
@@ -3435,7 +2611,7 @@ type GetVulnerabilitySummaryResponse struct {
 
 func (x *GetVulnerabilitySummaryResponse) Reset() {
 	*x = GetVulnerabilitySummaryResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[41]
+	mi := &file_vulnerabilities_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3447,7 +2623,7 @@ func (x *GetVulnerabilitySummaryResponse) String() string {
 func (*GetVulnerabilitySummaryResponse) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[41]
+	mi := &file_vulnerabilities_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3460,7 +2636,7 @@ func (x *GetVulnerabilitySummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVulnerabilitySummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummaryResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{41}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetVulnerabilitySummaryResponse) GetFilter() *Filter {
@@ -3510,7 +2686,7 @@ type GetVulnerabilitySummariesRequest struct {
 
 func (x *GetVulnerabilitySummariesRequest) Reset() {
 	*x = GetVulnerabilitySummariesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[42]
+	mi := &file_vulnerabilities_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3522,7 +2698,7 @@ func (x *GetVulnerabilitySummariesRequest) String() string {
 func (*GetVulnerabilitySummariesRequest) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummariesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[42]
+	mi := &file_vulnerabilities_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3535,7 +2711,7 @@ func (x *GetVulnerabilitySummariesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVulnerabilitySummariesRequest.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummariesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{42}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetVulnerabilitySummariesRequest) GetNamespaces() []string {
@@ -3562,7 +2738,7 @@ type GetVulnerabilitySummariesResponse struct {
 
 func (x *GetVulnerabilitySummariesResponse) Reset() {
 	*x = GetVulnerabilitySummariesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[43]
+	mi := &file_vulnerabilities_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3574,7 +2750,7 @@ func (x *GetVulnerabilitySummariesResponse) String() string {
 func (*GetVulnerabilitySummariesResponse) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummariesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[43]
+	mi := &file_vulnerabilities_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3587,7 +2763,7 @@ func (x *GetVulnerabilitySummariesResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetVulnerabilitySummariesResponse.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummariesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{43}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetVulnerabilitySummariesResponse) GetSummaries() map[string]*GetVulnerabilitySummaryResponse {
@@ -3607,7 +2783,7 @@ type GetVulnerabilitySummaryTimeSeriesRequest struct {
 
 func (x *GetVulnerabilitySummaryTimeSeriesRequest) Reset() {
 	*x = GetVulnerabilitySummaryTimeSeriesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[44]
+	mi := &file_vulnerabilities_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3619,7 +2795,7 @@ func (x *GetVulnerabilitySummaryTimeSeriesRequest) String() string {
 func (*GetVulnerabilitySummaryTimeSeriesRequest) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummaryTimeSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[44]
+	mi := &file_vulnerabilities_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3632,7 +2808,7 @@ func (x *GetVulnerabilitySummaryTimeSeriesRequest) ProtoReflect() protoreflect.M
 
 // Deprecated: Use GetVulnerabilitySummaryTimeSeriesRequest.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummaryTimeSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{44}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetVulnerabilitySummaryTimeSeriesRequest) GetFilter() *Filter {
@@ -3658,7 +2834,7 @@ type GetVulnerabilitySummaryTimeSeriesResponse struct {
 
 func (x *GetVulnerabilitySummaryTimeSeriesResponse) Reset() {
 	*x = GetVulnerabilitySummaryTimeSeriesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[45]
+	mi := &file_vulnerabilities_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3670,7 +2846,7 @@ func (x *GetVulnerabilitySummaryTimeSeriesResponse) String() string {
 func (*GetVulnerabilitySummaryTimeSeriesResponse) ProtoMessage() {}
 
 func (x *GetVulnerabilitySummaryTimeSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[45]
+	mi := &file_vulnerabilities_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3683,7 +2859,7 @@ func (x *GetVulnerabilitySummaryTimeSeriesResponse) ProtoReflect() protoreflect.
 
 // Deprecated: Use GetVulnerabilitySummaryTimeSeriesResponse.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilitySummaryTimeSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{45}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetVulnerabilitySummaryTimeSeriesResponse) GetPoints() []*VulnerabilitySummaryPoint {
@@ -3719,7 +2895,7 @@ type VulnerabilitySummaryPoint struct {
 
 func (x *VulnerabilitySummaryPoint) Reset() {
 	*x = VulnerabilitySummaryPoint{}
-	mi := &file_vulnerabilities_proto_msgTypes[46]
+	mi := &file_vulnerabilities_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3731,7 +2907,7 @@ func (x *VulnerabilitySummaryPoint) String() string {
 func (*VulnerabilitySummaryPoint) ProtoMessage() {}
 
 func (x *VulnerabilitySummaryPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[46]
+	mi := &file_vulnerabilities_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3744,7 +2920,7 @@ func (x *VulnerabilitySummaryPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VulnerabilitySummaryPoint.ProtoReflect.Descriptor instead.
 func (*VulnerabilitySummaryPoint) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{46}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *VulnerabilitySummaryPoint) GetCritical() int32 {
@@ -3868,7 +3044,7 @@ type GetVulnerabilityByIdRequest struct {
 
 func (x *GetVulnerabilityByIdRequest) Reset() {
 	*x = GetVulnerabilityByIdRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[47]
+	mi := &file_vulnerabilities_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3880,7 +3056,7 @@ func (x *GetVulnerabilityByIdRequest) String() string {
 func (*GetVulnerabilityByIdRequest) ProtoMessage() {}
 
 func (x *GetVulnerabilityByIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[47]
+	mi := &file_vulnerabilities_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3893,7 +3069,7 @@ func (x *GetVulnerabilityByIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVulnerabilityByIdRequest.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilityByIdRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{47}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetVulnerabilityByIdRequest) GetId() string {
@@ -3912,7 +3088,7 @@ type GetVulnerabilityByIdResponse struct {
 
 func (x *GetVulnerabilityByIdResponse) Reset() {
 	*x = GetVulnerabilityByIdResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[48]
+	mi := &file_vulnerabilities_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3924,7 +3100,7 @@ func (x *GetVulnerabilityByIdResponse) String() string {
 func (*GetVulnerabilityByIdResponse) ProtoMessage() {}
 
 func (x *GetVulnerabilityByIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[48]
+	mi := &file_vulnerabilities_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3937,122 +3113,10 @@ func (x *GetVulnerabilityByIdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVulnerabilityByIdResponse.ProtoReflect.Descriptor instead.
 func (*GetVulnerabilityByIdResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{48}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GetVulnerabilityByIdResponse) GetVulnerability() *Vulnerability {
-	if x != nil {
-		return x.Vulnerability
-	}
-	return nil
-}
-
-type GetVulnerabilityRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ImageName     string                 `protobuf:"bytes,1,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
-	ImageTag      string                 `protobuf:"bytes,2,opt,name=image_tag,json=imageTag,proto3" json:"image_tag,omitempty"`
-	Package       string                 `protobuf:"bytes,3,opt,name=package,proto3" json:"package,omitempty"`
-	CveId         string                 `protobuf:"bytes,4,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetVulnerabilityRequest) Reset() {
-	*x = GetVulnerabilityRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[49]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetVulnerabilityRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetVulnerabilityRequest) ProtoMessage() {}
-
-func (x *GetVulnerabilityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[49]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetVulnerabilityRequest.ProtoReflect.Descriptor instead.
-func (*GetVulnerabilityRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{49}
-}
-
-func (x *GetVulnerabilityRequest) GetImageName() string {
-	if x != nil {
-		return x.ImageName
-	}
-	return ""
-}
-
-func (x *GetVulnerabilityRequest) GetImageTag() string {
-	if x != nil {
-		return x.ImageTag
-	}
-	return ""
-}
-
-func (x *GetVulnerabilityRequest) GetPackage() string {
-	if x != nil {
-		return x.Package
-	}
-	return ""
-}
-
-func (x *GetVulnerabilityRequest) GetCveId() string {
-	if x != nil {
-		return x.CveId
-	}
-	return ""
-}
-
-type GetVulnerabilityResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Vulnerability *Vulnerability         `protobuf:"bytes,1,opt,name=vulnerability,proto3" json:"vulnerability,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetVulnerabilityResponse) Reset() {
-	*x = GetVulnerabilityResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[50]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetVulnerabilityResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetVulnerabilityResponse) ProtoMessage() {}
-
-func (x *GetVulnerabilityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[50]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetVulnerabilityResponse.ProtoReflect.Descriptor instead.
-func (*GetVulnerabilityResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{50}
-}
-
-func (x *GetVulnerabilityResponse) GetVulnerability() *Vulnerability {
 	if x != nil {
 		return x.Vulnerability
 	}
@@ -4068,7 +3132,7 @@ type GetCveRequest struct {
 
 func (x *GetCveRequest) Reset() {
 	*x = GetCveRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[51]
+	mi := &file_vulnerabilities_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4080,7 +3144,7 @@ func (x *GetCveRequest) String() string {
 func (*GetCveRequest) ProtoMessage() {}
 
 func (x *GetCveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[51]
+	mi := &file_vulnerabilities_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4093,7 +3157,7 @@ func (x *GetCveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCveRequest.ProtoReflect.Descriptor instead.
 func (*GetCveRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{51}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *GetCveRequest) GetId() string {
@@ -4112,7 +3176,7 @@ type GetCveResponse struct {
 
 func (x *GetCveResponse) Reset() {
 	*x = GetCveResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[52]
+	mi := &file_vulnerabilities_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4124,7 +3188,7 @@ func (x *GetCveResponse) String() string {
 func (*GetCveResponse) ProtoMessage() {}
 
 func (x *GetCveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[52]
+	mi := &file_vulnerabilities_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4137,7 +3201,7 @@ func (x *GetCveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCveResponse.ProtoReflect.Descriptor instead.
 func (*GetCveResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{52}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *GetCveResponse) GetCve() *Cve {
@@ -4160,7 +3224,7 @@ type SuppressVulnerabilityRequest struct {
 
 func (x *SuppressVulnerabilityRequest) Reset() {
 	*x = SuppressVulnerabilityRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[53]
+	mi := &file_vulnerabilities_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4172,7 +3236,7 @@ func (x *SuppressVulnerabilityRequest) String() string {
 func (*SuppressVulnerabilityRequest) ProtoMessage() {}
 
 func (x *SuppressVulnerabilityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[53]
+	mi := &file_vulnerabilities_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4185,7 +3249,7 @@ func (x *SuppressVulnerabilityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuppressVulnerabilityRequest.ProtoReflect.Descriptor instead.
 func (*SuppressVulnerabilityRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{53}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SuppressVulnerabilityRequest) GetId() string {
@@ -4233,7 +3297,7 @@ type SuppressVulnerabilityResponse struct {
 
 func (x *SuppressVulnerabilityResponse) Reset() {
 	*x = SuppressVulnerabilityResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[54]
+	mi := &file_vulnerabilities_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4245,7 +3309,7 @@ func (x *SuppressVulnerabilityResponse) String() string {
 func (*SuppressVulnerabilityResponse) ProtoMessage() {}
 
 func (x *SuppressVulnerabilityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[54]
+	mi := &file_vulnerabilities_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4258,7 +3322,7 @@ func (x *SuppressVulnerabilityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuppressVulnerabilityResponse.ProtoReflect.Descriptor instead.
 func (*SuppressVulnerabilityResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{54}
+	return file_vulnerabilities_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SuppressVulnerabilityResponse) GetCveId() string {
@@ -4273,253 +3337,6 @@ func (x *SuppressVulnerabilityResponse) GetSuppressed() bool {
 		return x.Suppressed
 	}
 	return false
-}
-
-type SuppressVulnerabilitiesWorkload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cluster       string                 `protobuf:"bytes,1,opt,name=cluster,proto3" json:"cluster,omitempty"`
-	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	WorkloadType  string                 `protobuf:"bytes,4,opt,name=workload_type,json=workloadType,proto3" json:"workload_type,omitempty"`
-	ImageName     string                 `protobuf:"bytes,5,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
-	ImageTag      string                 `protobuf:"bytes,6,opt,name=image_tag,json=imageTag,proto3" json:"image_tag,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SuppressVulnerabilitiesWorkload) Reset() {
-	*x = SuppressVulnerabilitiesWorkload{}
-	mi := &file_vulnerabilities_proto_msgTypes[55]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SuppressVulnerabilitiesWorkload) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SuppressVulnerabilitiesWorkload) ProtoMessage() {}
-
-func (x *SuppressVulnerabilitiesWorkload) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[55]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SuppressVulnerabilitiesWorkload.ProtoReflect.Descriptor instead.
-func (*SuppressVulnerabilitiesWorkload) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{55}
-}
-
-func (x *SuppressVulnerabilitiesWorkload) GetCluster() string {
-	if x != nil {
-		return x.Cluster
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesWorkload) GetNamespace() string {
-	if x != nil {
-		return x.Namespace
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesWorkload) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesWorkload) GetWorkloadType() string {
-	if x != nil {
-		return x.WorkloadType
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesWorkload) GetImageName() string {
-	if x != nil {
-		return x.ImageName
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesWorkload) GetImageTag() string {
-	if x != nil {
-		return x.ImageTag
-	}
-	return ""
-}
-
-// SuppressVulnerabilitiesRequest suppresses a CVE across one or more workloads.
-// All workloads in a single request must belong to the same cluster and namespace;
-// the server returns an error if this constraint is violated.
-type SuppressVulnerabilitiesRequest struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	CveId         string                             `protobuf:"bytes,1,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
-	Workloads     []*SuppressVulnerabilitiesWorkload `protobuf:"bytes,2,rep,name=workloads,proto3" json:"workloads,omitempty"`
-	State         SuppressState                      `protobuf:"varint,3,opt,name=state,proto3,enum=v13s.api.protobuf.SuppressState" json:"state,omitempty"`
-	Reason        *string                            `protobuf:"bytes,4,opt,name=reason,proto3,oneof" json:"reason,omitempty"`
-	SuppressedBy  *string                            `protobuf:"bytes,5,opt,name=suppressed_by,json=suppressedBy,proto3,oneof" json:"suppressed_by,omitempty"`
-	Suppress      *bool                              `protobuf:"varint,6,opt,name=suppress,proto3,oneof" json:"suppress,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SuppressVulnerabilitiesRequest) Reset() {
-	*x = SuppressVulnerabilitiesRequest{}
-	mi := &file_vulnerabilities_proto_msgTypes[56]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SuppressVulnerabilitiesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SuppressVulnerabilitiesRequest) ProtoMessage() {}
-
-func (x *SuppressVulnerabilitiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[56]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SuppressVulnerabilitiesRequest.ProtoReflect.Descriptor instead.
-func (*SuppressVulnerabilitiesRequest) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{56}
-}
-
-func (x *SuppressVulnerabilitiesRequest) GetCveId() string {
-	if x != nil {
-		return x.CveId
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesRequest) GetWorkloads() []*SuppressVulnerabilitiesWorkload {
-	if x != nil {
-		return x.Workloads
-	}
-	return nil
-}
-
-func (x *SuppressVulnerabilitiesRequest) GetState() SuppressState {
-	if x != nil {
-		return x.State
-	}
-	return SuppressState_FALSE_POSITIVE
-}
-
-func (x *SuppressVulnerabilitiesRequest) GetReason() string {
-	if x != nil && x.Reason != nil {
-		return *x.Reason
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesRequest) GetSuppressedBy() string {
-	if x != nil && x.SuppressedBy != nil {
-		return *x.SuppressedBy
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesRequest) GetSuppress() bool {
-	if x != nil && x.Suppress != nil {
-		return *x.Suppress
-	}
-	return false
-}
-
-type SuppressVulnerabilitiesResponse struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	CveId         string                             `protobuf:"bytes,1,opt,name=cve_id,json=cveId,proto3" json:"cve_id,omitempty"`
-	WorkloadCount int32                              `protobuf:"varint,3,opt,name=workload_count,json=workloadCount,proto3" json:"workload_count,omitempty"`
-	ImageCount    int32                              `protobuf:"varint,4,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
-	Errors        []string                           `protobuf:"bytes,5,rep,name=errors,proto3" json:"errors,omitempty"`
-	Workloads     []*SuppressVulnerabilitiesWorkload `protobuf:"bytes,6,rep,name=workloads,proto3" json:"workloads,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SuppressVulnerabilitiesResponse) Reset() {
-	*x = SuppressVulnerabilitiesResponse{}
-	mi := &file_vulnerabilities_proto_msgTypes[57]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SuppressVulnerabilitiesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SuppressVulnerabilitiesResponse) ProtoMessage() {}
-
-func (x *SuppressVulnerabilitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vulnerabilities_proto_msgTypes[57]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SuppressVulnerabilitiesResponse.ProtoReflect.Descriptor instead.
-func (*SuppressVulnerabilitiesResponse) Descriptor() ([]byte, []int) {
-	return file_vulnerabilities_proto_rawDescGZIP(), []int{57}
-}
-
-func (x *SuppressVulnerabilitiesResponse) GetCveId() string {
-	if x != nil {
-		return x.CveId
-	}
-	return ""
-}
-
-func (x *SuppressVulnerabilitiesResponse) GetWorkloadCount() int32 {
-	if x != nil {
-		return x.WorkloadCount
-	}
-	return 0
-}
-
-func (x *SuppressVulnerabilitiesResponse) GetImageCount() int32 {
-	if x != nil {
-		return x.ImageCount
-	}
-	return 0
-}
-
-func (x *SuppressVulnerabilitiesResponse) GetErrors() []string {
-	if x != nil {
-		return x.Errors
-	}
-	return nil
-}
-
-func (x *SuppressVulnerabilitiesResponse) GetWorkloads() []*SuppressVulnerabilitiesWorkload {
-	if x != nil {
-		return x.Workloads
-	}
-	return nil
 }
 
 var File_vulnerabilities_proto protoreflect.FileDescriptor
@@ -4654,12 +3471,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\r_last_updatedB\x11\n" +
 	"\x0f_severity_sinceB\r\n" +
 	"\v_cvss_scoreB\x0e\n" +
-	"\f_fix_version\"\xe6\x01\n" +
-	"\aFinding\x12>\n" +
-	"\fworkload_ref\x18\x01 \x01(\v2\x1b.v13s.api.protobuf.WorkloadR\vworkloadRef\x12F\n" +
-	"\rvulnerability\x18\x02 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\x12B\n" +
-	"\flast_updated\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vlastUpdated\x88\x01\x01B\x0f\n" +
-	"\r_last_updated\"\xd1\x03\n" +
+	"\f_fix_version\"\xd1\x03\n" +
 	"\x1dWorkloadCriticalVulnerability\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\apackage\x18\x02 \x01(\tR\apackage\x12(\n" +
@@ -4686,26 +3498,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x0eSbomStatusInfo\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.v13s.api.protobuf.SbomStatusR\x06status\x12S\n" +
 	"\x15processing_started_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x13processingStartedAt\x88\x01\x01B\x18\n" +
-	"\x16_processing_started_at\"\xd9\x03\n" +
-	"\vWorkloadFix\x127\n" +
-	"\bseverity\x18\x01 \x01(\x0e2\x1b.v13s.api.protobuf.SeverityR\bseverity\x12D\n" +
-	"\rintroduced_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\fintroducedAt\x88\x01\x01\x12:\n" +
-	"\bfixed_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\afixedAt\x88\x01\x01\x12/\n" +
-	"\x11fix_duration_days\x18\x04 \x01(\x05H\x02R\x0ffixDurationDays\x88\x01\x01\x120\n" +
-	"\x15mean_time_to_fix_days\x18\x05 \x01(\x05R\x11meanTimeToFixDays\x12\x1f\n" +
-	"\vfixed_count\x18\x06 \x01(\x05R\n" +
-	"fixedCount\x12D\n" +
-	"\rsnapshot_date\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x03R\fsnapshotDate\x88\x01\x01B\x10\n" +
-	"\x0e_introduced_atB\v\n" +
-	"\t_fixed_atB\x14\n" +
-	"\x12_fix_duration_daysB\x10\n" +
-	"\x0e_snapshot_date\"\xbe\x01\n" +
-	"\x11WorkloadWithFixes\x12\x1f\n" +
-	"\vworkload_id\x18\x01 \x01(\tR\n" +
-	"workloadId\x12-\n" +
-	"\x12workload_namespace\x18\x03 \x01(\tR\x11workloadNamespace\x12#\n" +
-	"\rworkload_name\x18\x04 \x01(\tR\fworkloadName\x124\n" +
-	"\x05fixes\x18\x05 \x03(\v2\x1e.v13s.api.protobuf.WorkloadFixR\x05fixes\"\x8f\x03\n" +
+	"\x16_processing_started_at\"\x8f\x03\n" +
 	"\x17MeanTimeToFixTrendPoint\x127\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x1b.v13s.api.protobuf.SeverityR\bseverity\x120\n" +
 	"\x15mean_time_to_fix_days\x18\x02 \x01(\x05R\x11meanTimeToFixDays\x12\x1f\n" +
@@ -4714,31 +3507,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\rsnapshot_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fsnapshotDate\x12@\n" +
 	"\x0efirst_fixed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ffirstFixedAt\x12>\n" +
 	"\rlast_fixed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vlastFixedAt\x12%\n" +
-	"\x0eworkload_count\x18\a \x01(\x05R\rworkloadCount\"\xb3\x02\n" +
-	"\x17SuppressedVulnerability\x12\x1d\n" +
-	"\n" +
-	"image_name\x18\x01 \x01(\tR\timageName\x12\x15\n" +
-	"\x06cve_id\x18\x02 \x01(\tR\x05cveId\x12\x18\n" +
-	"\apackage\x18\x03 \x01(\tR\apackage\x126\n" +
-	"\x05state\x18\x04 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x05state\x12\x1b\n" +
-	"\x06reason\x18\x05 \x01(\tH\x00R\x06reason\x88\x01\x01\x12(\n" +
-	"\rsuppressed_by\x18\x06 \x01(\tH\x01R\fsuppressedBy\x88\x01\x01\x12\x1f\n" +
-	"\bsuppress\x18\a \x01(\bH\x02R\bsuppress\x88\x01\x01B\t\n" +
-	"\a_reasonB\x10\n" +
-	"\x0e_suppressed_byB\v\n" +
-	"\t_suppress\"\x91\x02\n" +
-	"\x1aListVulnerabilitiesRequest\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x122\n" +
-	"\x12include_suppressed\x18\x02 \x01(\bH\x00R\x11includeSuppressed\x88\x01\x01\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x04 \x01(\x05R\x06offset\x12:\n" +
-	"\border_by\x18\x05 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01B\x15\n" +
-	"\x13_include_suppressedB\v\n" +
-	"\t_order_by\"\xbc\x01\n" +
-	"\x1bListVulnerabilitiesResponse\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x120\n" +
-	"\x05nodes\x18\x02 \x03(\v2\x1a.v13s.api.protobuf.FindingR\x05nodes\x128\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xf9\x03\n" +
+	"\x0eworkload_count\x18\a \x01(\x05R\rworkloadCount\"\xf9\x03\n" +
 	"\"ListVulnerabilitiesForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
@@ -4773,30 +3542,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x06_since\"\x98\x01\n" +
 	"\"ListVulnerabilitySummariesResponse\x128\n" +
 	"\x05nodes\x18\x01 \x03(\v2\".v13s.api.protobuf.WorkloadSummaryR\x05nodes\x128\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xd0\x01\n" +
-	"$ListSuppressedVulnerabilitiesRequest\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12:\n" +
-	"\border_by\x18\x04 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x00R\aorderBy\x88\x01\x01B\v\n" +
-	"\t_order_by\"\xa3\x01\n" +
-	"%ListSuppressedVulnerabilitiesResponse\x12@\n" +
-	"\x05nodes\x18\x01 \x03(\v2*.v13s.api.protobuf.SuppressedVulnerabilityR\x05nodes\x128\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xdf\x02\n" +
-	"'ListSeverityVulnerabilitiesSinceRequest\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x122\n" +
-	"\x12include_suppressed\x18\x03 \x01(\bH\x00R\x11includeSuppressed\x88\x01\x01\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x05 \x01(\x05R\x06offset\x12:\n" +
-	"\border_by\x18\x06 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x01R\aorderBy\x88\x01\x01\x125\n" +
-	"\x05since\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x02R\x05since\x88\x01\x01B\x15\n" +
-	"\x13_include_suppressedB\v\n" +
-	"\t_order_byB\b\n" +
-	"\x06_since\"\xc9\x01\n" +
-	"(ListSeverityVulnerabilitiesSinceResponse\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x120\n" +
-	"\x05nodes\x18\x02 \x03(\v2\x1a.v13s.api.protobuf.FindingR\x05nodes\x128\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\":\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\":\n" +
 	"(ListWorkloadsForVulnerabilityByIdRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"z\n" +
 	")ListWorkloadsForVulnerabilityByIdResponse\x12\x0e\n" +
@@ -4848,17 +3594,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\v_since_type\"\xa1\x01\n" +
 	"(ListMeanTimeToFixTrendBySeverityResponse\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12B\n" +
-	"\x06points\x18\x02 \x03(\v2*.v13s.api.protobuf.MeanTimeToFixTrendPointR\x06points\"\xe8\x01\n" +
-	"!ListWorkloadMTTFBySeverityRequest\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x125\n" +
-	"\x05since\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05since\x88\x01\x01\x12@\n" +
-	"\n" +
-	"since_type\x18\x03 \x01(\x0e2\x1c.v13s.api.protobuf.SinceTypeH\x01R\tsinceType\x88\x01\x01B\b\n" +
-	"\x06_sinceB\r\n" +
-	"\v_since_type\"\x9b\x01\n" +
-	"\"ListWorkloadMTTFBySeverityResponse\x121\n" +
-	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12B\n" +
-	"\tworkloads\x18\x02 \x03(\v2$.v13s.api.protobuf.WorkloadWithFixesR\tworkloads\"d\n" +
+	"\x06points\x18\x02 \x03(\v2*.v13s.api.protobuf.MeanTimeToFixTrendPointR\x06points\"d\n" +
 	"&GetVulnerabilitySummaryForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
@@ -4918,14 +3654,6 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x1bGetVulnerabilityByIdRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"f\n" +
 	"\x1cGetVulnerabilityByIdResponse\x12F\n" +
-	"\rvulnerability\x18\x01 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\"\x86\x01\n" +
-	"\x17GetVulnerabilityRequest\x12\x1d\n" +
-	"\n" +
-	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x02 \x01(\tR\bimageTag\x12\x18\n" +
-	"\apackage\x18\x03 \x01(\tR\apackage\x12\x15\n" +
-	"\x06cve_id\x18\x04 \x01(\tR\x05cveId\"b\n" +
-	"\x18GetVulnerabilityResponse\x12F\n" +
 	"\rvulnerability\x18\x01 \x01(\v2 .v13s.api.protobuf.VulnerabilityR\rvulnerability\"\x1f\n" +
 	"\rGetCveRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\":\n" +
@@ -4944,32 +3672,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x06cve_id\x18\x01 \x01(\tR\x05cveId\x12\x1e\n" +
 	"\n" +
 	"suppressed\x18\x02 \x01(\bR\n" +
-	"suppressed\"\xce\x01\n" +
-	"\x1fSuppressVulnerabilitiesWorkload\x12\x18\n" +
-	"\acluster\x18\x01 \x01(\tR\acluster\x12\x1c\n" +
-	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12#\n" +
-	"\rworkload_type\x18\x04 \x01(\tR\fworkloadType\x12\x1d\n" +
-	"\n" +
-	"image_name\x18\x05 \x01(\tR\timageName\x12\x1b\n" +
-	"\timage_tag\x18\x06 \x01(\tR\bimageTag\"\xd3\x02\n" +
-	"\x1eSuppressVulnerabilitiesRequest\x12\x15\n" +
-	"\x06cve_id\x18\x01 \x01(\tR\x05cveId\x12P\n" +
-	"\tworkloads\x18\x02 \x03(\v22.v13s.api.protobuf.SuppressVulnerabilitiesWorkloadR\tworkloads\x126\n" +
-	"\x05state\x18\x03 \x01(\x0e2 .v13s.api.protobuf.SuppressStateR\x05state\x12\x1b\n" +
-	"\x06reason\x18\x04 \x01(\tH\x00R\x06reason\x88\x01\x01\x12(\n" +
-	"\rsuppressed_by\x18\x05 \x01(\tH\x01R\fsuppressedBy\x88\x01\x01\x12\x1f\n" +
-	"\bsuppress\x18\x06 \x01(\bH\x02R\bsuppress\x88\x01\x01B\t\n" +
-	"\a_reasonB\x10\n" +
-	"\x0e_suppressed_byB\v\n" +
-	"\t_suppress\"\xea\x01\n" +
-	"\x1fSuppressVulnerabilitiesResponse\x12\x15\n" +
-	"\x06cve_id\x18\x01 \x01(\tR\x05cveId\x12%\n" +
-	"\x0eworkload_count\x18\x03 \x01(\x05R\rworkloadCount\x12\x1f\n" +
-	"\vimage_count\x18\x04 \x01(\x05R\n" +
-	"imageCount\x12\x16\n" +
-	"\x06errors\x18\x05 \x03(\tR\x06errors\x12P\n" +
-	"\tworkloads\x18\x06 \x03(\v22.v13s.api.protobuf.SuppressVulnerabilitiesWorkloadR\tworkloads*_\n" +
+	"suppressed*_\n" +
 	"\rSuppressState\x12\x12\n" +
 	"\x0eFALSE_POSITIVE\x10\x00\x12\r\n" +
 	"\tIN_TRIAGE\x10\x01\x12\f\n" +
@@ -5002,27 +3705,21 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x16SBOM_STATUS_PROCESSING\x10\x02\x12\x15\n" +
 	"\x11SBOM_STATUS_READY\x10\x03\x12\x17\n" +
 	"\x13SBOM_STATUS_NO_SBOM\x10\x04\x12\x16\n" +
-	"\x12SBOM_STATUS_FAILED\x10\x052\x9e\x14\n" +
-	"\x0fVulnerabilities\x12t\n" +
-	"\x13ListVulnerabilities\x12-.v13s.api.protobuf.ListVulnerabilitiesRequest\x1a..v13s.api.protobuf.ListVulnerabilitiesResponse\x12\x89\x01\n" +
+	"\x12SBOM_STATUS_FAILED\x10\x052\xf9\r\n" +
+	"\x0fVulnerabilities\x12\x89\x01\n" +
 	"\x1aListVulnerabilitySummaries\x124.v13s.api.protobuf.ListVulnerabilitySummariesRequest\x1a5.v13s.api.protobuf.ListVulnerabilitySummariesResponse\x12\x8c\x01\n" +
-	"\x1bListVulnerabilitiesForImage\x125.v13s.api.protobuf.ListVulnerabilitiesForImageRequest\x1a6.v13s.api.protobuf.ListVulnerabilitiesForImageResponse\x12\x92\x01\n" +
-	"\x1dListSuppressedVulnerabilities\x127.v13s.api.protobuf.ListSuppressedVulnerabilitiesRequest\x1a8.v13s.api.protobuf.ListSuppressedVulnerabilitiesResponse\x12\x9b\x01\n" +
-	" ListSeverityVulnerabilitiesSince\x12:.v13s.api.protobuf.ListSeverityVulnerabilitiesSinceRequest\x1a;.v13s.api.protobuf.ListSeverityVulnerabilitiesSinceResponse\x12\x9e\x01\n" +
+	"\x1bListVulnerabilitiesForImage\x125.v13s.api.protobuf.ListVulnerabilitiesForImageRequest\x1a6.v13s.api.protobuf.ListVulnerabilitiesForImageResponse\x12\x9e\x01\n" +
 	"!ListWorkloadsForVulnerabilityById\x12;.v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest\x1a<.v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse\x12\x92\x01\n" +
 	"\x1dListWorkloadsForVulnerability\x127.v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest\x1a8.v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse\x12k\n" +
 	"\x10ListCveSummaries\x12*.v13s.api.protobuf.ListCveSummariesRequest\x1a+.v13s.api.protobuf.ListCveSummariesResponse\x12\x9b\x01\n" +
-	" ListMeanTimeToFixTrendBySeverity\x12:.v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest\x1a;.v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse\x12\x89\x01\n" +
-	"\x1aListWorkloadMTTFBySeverity\x124.v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest\x1a5.v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse\x12\x80\x01\n" +
+	" ListMeanTimeToFixTrendBySeverity\x12:.v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest\x1a;.v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse\x12\x80\x01\n" +
 	"\x17GetVulnerabilitySummary\x121.v13s.api.protobuf.GetVulnerabilitySummaryRequest\x1a2.v13s.api.protobuf.GetVulnerabilitySummaryResponse\x12\x86\x01\n" +
 	"\x19GetVulnerabilitySummaries\x123.v13s.api.protobuf.GetVulnerabilitySummariesRequest\x1a4.v13s.api.protobuf.GetVulnerabilitySummariesResponse\x12\x9e\x01\n" +
 	"!GetVulnerabilitySummaryTimeSeries\x12;.v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest\x1a<.v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse\x12\x98\x01\n" +
 	"\x1fGetVulnerabilitySummaryForImage\x129.v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest\x1a:.v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse\x12w\n" +
-	"\x14GetVulnerabilityById\x12..v13s.api.protobuf.GetVulnerabilityByIdRequest\x1a/.v13s.api.protobuf.GetVulnerabilityByIdResponse\x12k\n" +
-	"\x10GetVulnerability\x12*.v13s.api.protobuf.GetVulnerabilityRequest\x1a+.v13s.api.protobuf.GetVulnerabilityResponse\x12M\n" +
+	"\x14GetVulnerabilityById\x12..v13s.api.protobuf.GetVulnerabilityByIdRequest\x1a/.v13s.api.protobuf.GetVulnerabilityByIdResponse\x12M\n" +
 	"\x06GetCve\x12 .v13s.api.protobuf.GetCveRequest\x1a!.v13s.api.protobuf.GetCveResponse\x12z\n" +
-	"\x15SuppressVulnerability\x12/.v13s.api.protobuf.SuppressVulnerabilityRequest\x1a0.v13s.api.protobuf.SuppressVulnerabilityResponse\x12\x80\x01\n" +
-	"\x17SuppressVulnerabilities\x121.v13s.api.protobuf.SuppressVulnerabilitiesRequest\x1a2.v13s.api.protobuf.SuppressVulnerabilitiesResponseB\x1bZ\x19./pkg/api/vulnerabilitiesb\x06proto3"
+	"\x15SuppressVulnerability\x12/.v13s.api.protobuf.SuppressVulnerabilityRequest\x1a0.v13s.api.protobuf.SuppressVulnerabilityResponseB\x1bZ\x19./pkg/api/vulnerabilitiesb\x06proto3"
 
 var (
 	file_vulnerabilities_proto_rawDescOnce sync.Once
@@ -5037,7 +3734,7 @@ func file_vulnerabilities_proto_rawDescGZIP() []byte {
 }
 
 var file_vulnerabilities_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_vulnerabilities_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
+var file_vulnerabilities_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_vulnerabilities_proto_goTypes = []any{
 	(SuppressState)(0),                    // 0: v13s.api.protobuf.SuppressState
 	(Direction)(0),                        // 1: v13s.api.protobuf.Direction
@@ -5052,218 +3749,156 @@ var file_vulnerabilities_proto_goTypes = []any{
 	(*Cve)(nil),                           // 10: v13s.api.protobuf.Cve
 	(*Suppression)(nil),                   // 11: v13s.api.protobuf.Suppression
 	(*Vulnerability)(nil),                 // 12: v13s.api.protobuf.Vulnerability
-	(*Finding)(nil),                       // 13: v13s.api.protobuf.Finding
-	(*WorkloadCriticalVulnerability)(nil), // 14: v13s.api.protobuf.WorkloadCriticalVulnerability
-	(*WorkloadCriticalVulnerabilityFinding)(nil),      // 15: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding
-	(*WorkloadSummary)(nil),                           // 16: v13s.api.protobuf.WorkloadSummary
-	(*SbomStatusInfo)(nil),                            // 17: v13s.api.protobuf.SbomStatusInfo
-	(*WorkloadFix)(nil),                               // 18: v13s.api.protobuf.WorkloadFix
-	(*WorkloadWithFixes)(nil),                         // 19: v13s.api.protobuf.WorkloadWithFixes
-	(*MeanTimeToFixTrendPoint)(nil),                   // 20: v13s.api.protobuf.MeanTimeToFixTrendPoint
-	(*SuppressedVulnerability)(nil),                   // 21: v13s.api.protobuf.SuppressedVulnerability
-	(*ListVulnerabilitiesRequest)(nil),                // 22: v13s.api.protobuf.ListVulnerabilitiesRequest
-	(*ListVulnerabilitiesResponse)(nil),               // 23: v13s.api.protobuf.ListVulnerabilitiesResponse
-	(*ListVulnerabilitiesForImageRequest)(nil),        // 24: v13s.api.protobuf.ListVulnerabilitiesForImageRequest
-	(*ListVulnerabilitiesForImageResponse)(nil),       // 25: v13s.api.protobuf.ListVulnerabilitiesForImageResponse
-	(*ListVulnerabilitySummariesRequest)(nil),         // 26: v13s.api.protobuf.ListVulnerabilitySummariesRequest
-	(*ListVulnerabilitySummariesResponse)(nil),        // 27: v13s.api.protobuf.ListVulnerabilitySummariesResponse
-	(*ListSuppressedVulnerabilitiesRequest)(nil),      // 28: v13s.api.protobuf.ListSuppressedVulnerabilitiesRequest
-	(*ListSuppressedVulnerabilitiesResponse)(nil),     // 29: v13s.api.protobuf.ListSuppressedVulnerabilitiesResponse
-	(*ListSeverityVulnerabilitiesSinceRequest)(nil),   // 30: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceRequest
-	(*ListSeverityVulnerabilitiesSinceResponse)(nil),  // 31: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceResponse
-	(*ListWorkloadsForVulnerabilityByIdRequest)(nil),  // 32: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest
-	(*ListWorkloadsForVulnerabilityByIdResponse)(nil), // 33: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse
-	(*ListWorkloadsForVulnerabilityRequest)(nil),      // 34: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest
-	(*ListWorkloadsForVulnerabilityResponse)(nil),     // 35: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse
-	(*WorkloadForVulnerability)(nil),                  // 36: v13s.api.protobuf.WorkloadForVulnerability
-	(*ListCveSummariesRequest)(nil),                   // 37: v13s.api.protobuf.ListCveSummariesRequest
-	(*ListCveSummariesResponse)(nil),                  // 38: v13s.api.protobuf.ListCveSummariesResponse
-	(*CveSummary)(nil),                                // 39: v13s.api.protobuf.CveSummary
-	(*ListMeanTimeToFixTrendBySeverityRequest)(nil),   // 40: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest
-	(*ListMeanTimeToFixTrendBySeverityResponse)(nil),  // 41: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse
-	(*ListWorkloadMTTFBySeverityRequest)(nil),         // 42: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest
-	(*ListWorkloadMTTFBySeverityResponse)(nil),        // 43: v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse
-	(*GetVulnerabilitySummaryForImageRequest)(nil),    // 44: v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest
-	(*GetVulnerabilitySummaryForImageResponse)(nil),   // 45: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse
-	(*GetVulnerabilitySummaryRequest)(nil),            // 46: v13s.api.protobuf.GetVulnerabilitySummaryRequest
-	(*GetVulnerabilitySummaryResponse)(nil),           // 47: v13s.api.protobuf.GetVulnerabilitySummaryResponse
-	(*GetVulnerabilitySummariesRequest)(nil),          // 48: v13s.api.protobuf.GetVulnerabilitySummariesRequest
-	(*GetVulnerabilitySummariesResponse)(nil),         // 49: v13s.api.protobuf.GetVulnerabilitySummariesResponse
-	(*GetVulnerabilitySummaryTimeSeriesRequest)(nil),  // 50: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest
-	(*GetVulnerabilitySummaryTimeSeriesResponse)(nil), // 51: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse
-	(*VulnerabilitySummaryPoint)(nil),                 // 52: v13s.api.protobuf.VulnerabilitySummaryPoint
-	(*GetVulnerabilityByIdRequest)(nil),               // 53: v13s.api.protobuf.GetVulnerabilityByIdRequest
-	(*GetVulnerabilityByIdResponse)(nil),              // 54: v13s.api.protobuf.GetVulnerabilityByIdResponse
-	(*GetVulnerabilityRequest)(nil),                   // 55: v13s.api.protobuf.GetVulnerabilityRequest
-	(*GetVulnerabilityResponse)(nil),                  // 56: v13s.api.protobuf.GetVulnerabilityResponse
-	(*GetCveRequest)(nil),                             // 57: v13s.api.protobuf.GetCveRequest
-	(*GetCveResponse)(nil),                            // 58: v13s.api.protobuf.GetCveResponse
-	(*SuppressVulnerabilityRequest)(nil),              // 59: v13s.api.protobuf.SuppressVulnerabilityRequest
-	(*SuppressVulnerabilityResponse)(nil),             // 60: v13s.api.protobuf.SuppressVulnerabilityResponse
-	(*SuppressVulnerabilitiesWorkload)(nil),           // 61: v13s.api.protobuf.SuppressVulnerabilitiesWorkload
-	(*SuppressVulnerabilitiesRequest)(nil),            // 62: v13s.api.protobuf.SuppressVulnerabilitiesRequest
-	(*SuppressVulnerabilitiesResponse)(nil),           // 63: v13s.api.protobuf.SuppressVulnerabilitiesResponse
-	nil,                                               // 64: v13s.api.protobuf.Cve.ReferencesEntry
-	nil,                                               // 65: v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry
-	(*timestamppb.Timestamp)(nil),                     // 66: google.protobuf.Timestamp
-	(*PageInfo)(nil),                                  // 67: v13s.api.protobuf.PageInfo
+	(*WorkloadCriticalVulnerability)(nil), // 13: v13s.api.protobuf.WorkloadCriticalVulnerability
+	(*WorkloadCriticalVulnerabilityFinding)(nil),      // 14: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding
+	(*WorkloadSummary)(nil),                           // 15: v13s.api.protobuf.WorkloadSummary
+	(*SbomStatusInfo)(nil),                            // 16: v13s.api.protobuf.SbomStatusInfo
+	(*MeanTimeToFixTrendPoint)(nil),                   // 17: v13s.api.protobuf.MeanTimeToFixTrendPoint
+	(*ListVulnerabilitiesForImageRequest)(nil),        // 18: v13s.api.protobuf.ListVulnerabilitiesForImageRequest
+	(*ListVulnerabilitiesForImageResponse)(nil),       // 19: v13s.api.protobuf.ListVulnerabilitiesForImageResponse
+	(*ListVulnerabilitySummariesRequest)(nil),         // 20: v13s.api.protobuf.ListVulnerabilitySummariesRequest
+	(*ListVulnerabilitySummariesResponse)(nil),        // 21: v13s.api.protobuf.ListVulnerabilitySummariesResponse
+	(*ListWorkloadsForVulnerabilityByIdRequest)(nil),  // 22: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest
+	(*ListWorkloadsForVulnerabilityByIdResponse)(nil), // 23: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse
+	(*ListWorkloadsForVulnerabilityRequest)(nil),      // 24: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest
+	(*ListWorkloadsForVulnerabilityResponse)(nil),     // 25: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse
+	(*WorkloadForVulnerability)(nil),                  // 26: v13s.api.protobuf.WorkloadForVulnerability
+	(*ListCveSummariesRequest)(nil),                   // 27: v13s.api.protobuf.ListCveSummariesRequest
+	(*ListCveSummariesResponse)(nil),                  // 28: v13s.api.protobuf.ListCveSummariesResponse
+	(*CveSummary)(nil),                                // 29: v13s.api.protobuf.CveSummary
+	(*ListMeanTimeToFixTrendBySeverityRequest)(nil),   // 30: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest
+	(*ListMeanTimeToFixTrendBySeverityResponse)(nil),  // 31: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse
+	(*GetVulnerabilitySummaryForImageRequest)(nil),    // 32: v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest
+	(*GetVulnerabilitySummaryForImageResponse)(nil),   // 33: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse
+	(*GetVulnerabilitySummaryRequest)(nil),            // 34: v13s.api.protobuf.GetVulnerabilitySummaryRequest
+	(*GetVulnerabilitySummaryResponse)(nil),           // 35: v13s.api.protobuf.GetVulnerabilitySummaryResponse
+	(*GetVulnerabilitySummariesRequest)(nil),          // 36: v13s.api.protobuf.GetVulnerabilitySummariesRequest
+	(*GetVulnerabilitySummariesResponse)(nil),         // 37: v13s.api.protobuf.GetVulnerabilitySummariesResponse
+	(*GetVulnerabilitySummaryTimeSeriesRequest)(nil),  // 38: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest
+	(*GetVulnerabilitySummaryTimeSeriesResponse)(nil), // 39: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse
+	(*VulnerabilitySummaryPoint)(nil),                 // 40: v13s.api.protobuf.VulnerabilitySummaryPoint
+	(*GetVulnerabilityByIdRequest)(nil),               // 41: v13s.api.protobuf.GetVulnerabilityByIdRequest
+	(*GetVulnerabilityByIdResponse)(nil),              // 42: v13s.api.protobuf.GetVulnerabilityByIdResponse
+	(*GetCveRequest)(nil),                             // 43: v13s.api.protobuf.GetCveRequest
+	(*GetCveResponse)(nil),                            // 44: v13s.api.protobuf.GetCveResponse
+	(*SuppressVulnerabilityRequest)(nil),              // 45: v13s.api.protobuf.SuppressVulnerabilityRequest
+	(*SuppressVulnerabilityResponse)(nil),             // 46: v13s.api.protobuf.SuppressVulnerabilityResponse
+	nil,                                               // 47: v13s.api.protobuf.Cve.ReferencesEntry
+	nil,                                               // 48: v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry
+	(*timestamppb.Timestamp)(nil),                     // 49: google.protobuf.Timestamp
+	(*PageInfo)(nil),                                  // 50: v13s.api.protobuf.PageInfo
 }
 var file_vulnerabilities_proto_depIdxs = []int32{
-	4,   // 0: v13s.api.protobuf.Filter.priority:type_name -> v13s.api.protobuf.Priority
-	4,   // 1: v13s.api.protobuf.Filter.priorities:type_name -> v13s.api.protobuf.Priority
-	1,   // 2: v13s.api.protobuf.OrderBy.direction:type_name -> v13s.api.protobuf.Direction
-	66,  // 3: v13s.api.protobuf.Summary.last_updated:type_name -> google.protobuf.Timestamp
-	4,   // 4: v13s.api.protobuf.Summary.top_priority:type_name -> v13s.api.protobuf.Priority
-	2,   // 5: v13s.api.protobuf.Cve.severity:type_name -> v13s.api.protobuf.Severity
-	64,  // 6: v13s.api.protobuf.Cve.references:type_name -> v13s.api.protobuf.Cve.ReferencesEntry
-	66,  // 7: v13s.api.protobuf.Cve.created:type_name -> google.protobuf.Timestamp
-	66,  // 8: v13s.api.protobuf.Cve.last_updated:type_name -> google.protobuf.Timestamp
-	4,   // 9: v13s.api.protobuf.Cve.priority:type_name -> v13s.api.protobuf.Priority
-	0,   // 10: v13s.api.protobuf.Suppression.suppressed_reason:type_name -> v13s.api.protobuf.SuppressState
-	66,  // 11: v13s.api.protobuf.Suppression.last_updated:type_name -> google.protobuf.Timestamp
-	10,  // 12: v13s.api.protobuf.Vulnerability.cve:type_name -> v13s.api.protobuf.Cve
-	11,  // 13: v13s.api.protobuf.Vulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
-	66,  // 14: v13s.api.protobuf.Vulnerability.created:type_name -> google.protobuf.Timestamp
-	66,  // 15: v13s.api.protobuf.Vulnerability.last_updated:type_name -> google.protobuf.Timestamp
-	66,  // 16: v13s.api.protobuf.Vulnerability.severity_since:type_name -> google.protobuf.Timestamp
-	8,   // 17: v13s.api.protobuf.Finding.workload_ref:type_name -> v13s.api.protobuf.Workload
-	12,  // 18: v13s.api.protobuf.Finding.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	66,  // 19: v13s.api.protobuf.Finding.last_updated:type_name -> google.protobuf.Timestamp
-	10,  // 20: v13s.api.protobuf.WorkloadCriticalVulnerability.cve:type_name -> v13s.api.protobuf.Cve
-	11,  // 21: v13s.api.protobuf.WorkloadCriticalVulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
-	66,  // 22: v13s.api.protobuf.WorkloadCriticalVulnerability.created_at:type_name -> google.protobuf.Timestamp
-	66,  // 23: v13s.api.protobuf.WorkloadCriticalVulnerability.became_critical_at:type_name -> google.protobuf.Timestamp
-	66,  // 24: v13s.api.protobuf.WorkloadCriticalVulnerability.resolved_at:type_name -> google.protobuf.Timestamp
-	8,   // 25: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.workload_ref:type_name -> v13s.api.protobuf.Workload
-	14,  // 26: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.vulnerability:type_name -> v13s.api.protobuf.WorkloadCriticalVulnerability
-	8,   // 27: v13s.api.protobuf.WorkloadSummary.workload:type_name -> v13s.api.protobuf.Workload
-	9,   // 28: v13s.api.protobuf.WorkloadSummary.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	17,  // 29: v13s.api.protobuf.WorkloadSummary.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
-	5,   // 30: v13s.api.protobuf.SbomStatusInfo.status:type_name -> v13s.api.protobuf.SbomStatus
-	66,  // 31: v13s.api.protobuf.SbomStatusInfo.processing_started_at:type_name -> google.protobuf.Timestamp
-	2,   // 32: v13s.api.protobuf.WorkloadFix.severity:type_name -> v13s.api.protobuf.Severity
-	66,  // 33: v13s.api.protobuf.WorkloadFix.introduced_at:type_name -> google.protobuf.Timestamp
-	66,  // 34: v13s.api.protobuf.WorkloadFix.fixed_at:type_name -> google.protobuf.Timestamp
-	66,  // 35: v13s.api.protobuf.WorkloadFix.snapshot_date:type_name -> google.protobuf.Timestamp
-	18,  // 36: v13s.api.protobuf.WorkloadWithFixes.fixes:type_name -> v13s.api.protobuf.WorkloadFix
-	2,   // 37: v13s.api.protobuf.MeanTimeToFixTrendPoint.severity:type_name -> v13s.api.protobuf.Severity
-	66,  // 38: v13s.api.protobuf.MeanTimeToFixTrendPoint.snapshot_date:type_name -> google.protobuf.Timestamp
-	66,  // 39: v13s.api.protobuf.MeanTimeToFixTrendPoint.first_fixed_at:type_name -> google.protobuf.Timestamp
-	66,  // 40: v13s.api.protobuf.MeanTimeToFixTrendPoint.last_fixed_at:type_name -> google.protobuf.Timestamp
-	0,   // 41: v13s.api.protobuf.SuppressedVulnerability.state:type_name -> v13s.api.protobuf.SuppressState
-	6,   // 42: v13s.api.protobuf.ListVulnerabilitiesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 43: v13s.api.protobuf.ListVulnerabilitiesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	6,   // 44: v13s.api.protobuf.ListVulnerabilitiesResponse.filter:type_name -> v13s.api.protobuf.Filter
-	13,  // 45: v13s.api.protobuf.ListVulnerabilitiesResponse.nodes:type_name -> v13s.api.protobuf.Finding
-	67,  // 46: v13s.api.protobuf.ListVulnerabilitiesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	7,   // 47: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	66,  // 48: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.since:type_name -> google.protobuf.Timestamp
-	2,   // 49: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.severity:type_name -> v13s.api.protobuf.Severity
-	4,   // 50: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.priorities:type_name -> v13s.api.protobuf.Priority
-	12,  // 51: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.nodes:type_name -> v13s.api.protobuf.Vulnerability
-	67,  // 52: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	6,   // 53: v13s.api.protobuf.ListVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 54: v13s.api.protobuf.ListVulnerabilitySummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	66,  // 55: v13s.api.protobuf.ListVulnerabilitySummariesRequest.since:type_name -> google.protobuf.Timestamp
-	5,   // 56: v13s.api.protobuf.ListVulnerabilitySummariesRequest.sbom_statuses:type_name -> v13s.api.protobuf.SbomStatus
-	16,  // 57: v13s.api.protobuf.ListVulnerabilitySummariesResponse.nodes:type_name -> v13s.api.protobuf.WorkloadSummary
-	67,  // 58: v13s.api.protobuf.ListVulnerabilitySummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	6,   // 59: v13s.api.protobuf.ListSuppressedVulnerabilitiesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 60: v13s.api.protobuf.ListSuppressedVulnerabilitiesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	21,  // 61: v13s.api.protobuf.ListSuppressedVulnerabilitiesResponse.nodes:type_name -> v13s.api.protobuf.SuppressedVulnerability
-	67,  // 62: v13s.api.protobuf.ListSuppressedVulnerabilitiesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	6,   // 63: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 64: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	66,  // 65: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceRequest.since:type_name -> google.protobuf.Timestamp
-	6,   // 66: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceResponse.filter:type_name -> v13s.api.protobuf.Filter
-	13,  // 67: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceResponse.nodes:type_name -> v13s.api.protobuf.Finding
-	67,  // 68: v13s.api.protobuf.ListSeverityVulnerabilitiesSinceResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	8,   // 69: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse.workloadRef:type_name -> v13s.api.protobuf.Workload
-	6,   // 70: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 71: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	36,  // 72: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.nodes:type_name -> v13s.api.protobuf.WorkloadForVulnerability
-	67,  // 73: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	8,   // 74: v13s.api.protobuf.WorkloadForVulnerability.workload_ref:type_name -> v13s.api.protobuf.Workload
-	12,  // 75: v13s.api.protobuf.WorkloadForVulnerability.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	6,   // 76: v13s.api.protobuf.ListCveSummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	7,   // 77: v13s.api.protobuf.ListCveSummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	39,  // 78: v13s.api.protobuf.ListCveSummariesResponse.nodes:type_name -> v13s.api.protobuf.CveSummary
-	67,  // 79: v13s.api.protobuf.ListCveSummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	10,  // 80: v13s.api.protobuf.CveSummary.cve:type_name -> v13s.api.protobuf.Cve
-	6,   // 81: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.filter:type_name -> v13s.api.protobuf.Filter
-	66,  // 82: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since:type_name -> google.protobuf.Timestamp
-	3,   // 83: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType
-	6,   // 84: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
-	20,  // 85: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.points:type_name -> v13s.api.protobuf.MeanTimeToFixTrendPoint
-	6,   // 86: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest.filter:type_name -> v13s.api.protobuf.Filter
-	66,  // 87: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest.since:type_name -> google.protobuf.Timestamp
-	3,   // 88: v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType
-	6,   // 89: v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
-	19,  // 90: v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse.workloads:type_name -> v13s.api.protobuf.WorkloadWithFixes
-	9,   // 91: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	8,   // 92: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.workload_ref:type_name -> v13s.api.protobuf.Workload
-	17,  // 93: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
-	6,   // 94: v13s.api.protobuf.GetVulnerabilitySummaryRequest.filter:type_name -> v13s.api.protobuf.Filter
-	6,   // 95: v13s.api.protobuf.GetVulnerabilitySummaryResponse.filter:type_name -> v13s.api.protobuf.Filter
-	9,   // 96: v13s.api.protobuf.GetVulnerabilitySummaryResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	6,   // 97: v13s.api.protobuf.GetVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	65,  // 98: v13s.api.protobuf.GetVulnerabilitySummariesResponse.summaries:type_name -> v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry
-	6,   // 99: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	66,  // 100: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.since:type_name -> google.protobuf.Timestamp
-	52,  // 101: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse.points:type_name -> v13s.api.protobuf.VulnerabilitySummaryPoint
-	66,  // 102: v13s.api.protobuf.VulnerabilitySummaryPoint.bucket_time:type_name -> google.protobuf.Timestamp
-	4,   // 103: v13s.api.protobuf.VulnerabilitySummaryPoint.top_priority:type_name -> v13s.api.protobuf.Priority
-	12,  // 104: v13s.api.protobuf.GetVulnerabilityByIdResponse.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	12,  // 105: v13s.api.protobuf.GetVulnerabilityResponse.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	10,  // 106: v13s.api.protobuf.GetCveResponse.cve:type_name -> v13s.api.protobuf.Cve
-	0,   // 107: v13s.api.protobuf.SuppressVulnerabilityRequest.state:type_name -> v13s.api.protobuf.SuppressState
-	61,  // 108: v13s.api.protobuf.SuppressVulnerabilitiesRequest.workloads:type_name -> v13s.api.protobuf.SuppressVulnerabilitiesWorkload
-	0,   // 109: v13s.api.protobuf.SuppressVulnerabilitiesRequest.state:type_name -> v13s.api.protobuf.SuppressState
-	61,  // 110: v13s.api.protobuf.SuppressVulnerabilitiesResponse.workloads:type_name -> v13s.api.protobuf.SuppressVulnerabilitiesWorkload
-	47,  // 111: v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry.value:type_name -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
-	22,  // 112: v13s.api.protobuf.Vulnerabilities.ListVulnerabilities:input_type -> v13s.api.protobuf.ListVulnerabilitiesRequest
-	26,  // 113: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:input_type -> v13s.api.protobuf.ListVulnerabilitySummariesRequest
-	24,  // 114: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:input_type -> v13s.api.protobuf.ListVulnerabilitiesForImageRequest
-	28,  // 115: v13s.api.protobuf.Vulnerabilities.ListSuppressedVulnerabilities:input_type -> v13s.api.protobuf.ListSuppressedVulnerabilitiesRequest
-	30,  // 116: v13s.api.protobuf.Vulnerabilities.ListSeverityVulnerabilitiesSince:input_type -> v13s.api.protobuf.ListSeverityVulnerabilitiesSinceRequest
-	32,  // 117: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest
-	34,  // 118: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest
-	37,  // 119: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:input_type -> v13s.api.protobuf.ListCveSummariesRequest
-	40,  // 120: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:input_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest
-	42,  // 121: v13s.api.protobuf.Vulnerabilities.ListWorkloadMTTFBySeverity:input_type -> v13s.api.protobuf.ListWorkloadMTTFBySeverityRequest
-	46,  // 122: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryRequest
-	48,  // 123: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:input_type -> v13s.api.protobuf.GetVulnerabilitySummariesRequest
-	50,  // 124: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest
-	44,  // 125: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest
-	53,  // 126: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:input_type -> v13s.api.protobuf.GetVulnerabilityByIdRequest
-	55,  // 127: v13s.api.protobuf.Vulnerabilities.GetVulnerability:input_type -> v13s.api.protobuf.GetVulnerabilityRequest
-	57,  // 128: v13s.api.protobuf.Vulnerabilities.GetCve:input_type -> v13s.api.protobuf.GetCveRequest
-	59,  // 129: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:input_type -> v13s.api.protobuf.SuppressVulnerabilityRequest
-	62,  // 130: v13s.api.protobuf.Vulnerabilities.SuppressVulnerabilities:input_type -> v13s.api.protobuf.SuppressVulnerabilitiesRequest
-	23,  // 131: v13s.api.protobuf.Vulnerabilities.ListVulnerabilities:output_type -> v13s.api.protobuf.ListVulnerabilitiesResponse
-	27,  // 132: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:output_type -> v13s.api.protobuf.ListVulnerabilitySummariesResponse
-	25,  // 133: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:output_type -> v13s.api.protobuf.ListVulnerabilitiesForImageResponse
-	29,  // 134: v13s.api.protobuf.Vulnerabilities.ListSuppressedVulnerabilities:output_type -> v13s.api.protobuf.ListSuppressedVulnerabilitiesResponse
-	31,  // 135: v13s.api.protobuf.Vulnerabilities.ListSeverityVulnerabilitiesSince:output_type -> v13s.api.protobuf.ListSeverityVulnerabilitiesSinceResponse
-	33,  // 136: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse
-	35,  // 137: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse
-	38,  // 138: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:output_type -> v13s.api.protobuf.ListCveSummariesResponse
-	41,  // 139: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:output_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse
-	43,  // 140: v13s.api.protobuf.Vulnerabilities.ListWorkloadMTTFBySeverity:output_type -> v13s.api.protobuf.ListWorkloadMTTFBySeverityResponse
-	47,  // 141: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
-	49,  // 142: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:output_type -> v13s.api.protobuf.GetVulnerabilitySummariesResponse
-	51,  // 143: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse
-	45,  // 144: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse
-	54,  // 145: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:output_type -> v13s.api.protobuf.GetVulnerabilityByIdResponse
-	56,  // 146: v13s.api.protobuf.Vulnerabilities.GetVulnerability:output_type -> v13s.api.protobuf.GetVulnerabilityResponse
-	58,  // 147: v13s.api.protobuf.Vulnerabilities.GetCve:output_type -> v13s.api.protobuf.GetCveResponse
-	60,  // 148: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:output_type -> v13s.api.protobuf.SuppressVulnerabilityResponse
-	63,  // 149: v13s.api.protobuf.Vulnerabilities.SuppressVulnerabilities:output_type -> v13s.api.protobuf.SuppressVulnerabilitiesResponse
-	131, // [131:150] is the sub-list for method output_type
-	112, // [112:131] is the sub-list for method input_type
-	112, // [112:112] is the sub-list for extension type_name
-	112, // [112:112] is the sub-list for extension extendee
-	0,   // [0:112] is the sub-list for field type_name
+	4,  // 0: v13s.api.protobuf.Filter.priority:type_name -> v13s.api.protobuf.Priority
+	4,  // 1: v13s.api.protobuf.Filter.priorities:type_name -> v13s.api.protobuf.Priority
+	1,  // 2: v13s.api.protobuf.OrderBy.direction:type_name -> v13s.api.protobuf.Direction
+	49, // 3: v13s.api.protobuf.Summary.last_updated:type_name -> google.protobuf.Timestamp
+	4,  // 4: v13s.api.protobuf.Summary.top_priority:type_name -> v13s.api.protobuf.Priority
+	2,  // 5: v13s.api.protobuf.Cve.severity:type_name -> v13s.api.protobuf.Severity
+	47, // 6: v13s.api.protobuf.Cve.references:type_name -> v13s.api.protobuf.Cve.ReferencesEntry
+	49, // 7: v13s.api.protobuf.Cve.created:type_name -> google.protobuf.Timestamp
+	49, // 8: v13s.api.protobuf.Cve.last_updated:type_name -> google.protobuf.Timestamp
+	4,  // 9: v13s.api.protobuf.Cve.priority:type_name -> v13s.api.protobuf.Priority
+	0,  // 10: v13s.api.protobuf.Suppression.suppressed_reason:type_name -> v13s.api.protobuf.SuppressState
+	49, // 11: v13s.api.protobuf.Suppression.last_updated:type_name -> google.protobuf.Timestamp
+	10, // 12: v13s.api.protobuf.Vulnerability.cve:type_name -> v13s.api.protobuf.Cve
+	11, // 13: v13s.api.protobuf.Vulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
+	49, // 14: v13s.api.protobuf.Vulnerability.created:type_name -> google.protobuf.Timestamp
+	49, // 15: v13s.api.protobuf.Vulnerability.last_updated:type_name -> google.protobuf.Timestamp
+	49, // 16: v13s.api.protobuf.Vulnerability.severity_since:type_name -> google.protobuf.Timestamp
+	10, // 17: v13s.api.protobuf.WorkloadCriticalVulnerability.cve:type_name -> v13s.api.protobuf.Cve
+	11, // 18: v13s.api.protobuf.WorkloadCriticalVulnerability.suppression:type_name -> v13s.api.protobuf.Suppression
+	49, // 19: v13s.api.protobuf.WorkloadCriticalVulnerability.created_at:type_name -> google.protobuf.Timestamp
+	49, // 20: v13s.api.protobuf.WorkloadCriticalVulnerability.became_critical_at:type_name -> google.protobuf.Timestamp
+	49, // 21: v13s.api.protobuf.WorkloadCriticalVulnerability.resolved_at:type_name -> google.protobuf.Timestamp
+	8,  // 22: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.workload_ref:type_name -> v13s.api.protobuf.Workload
+	13, // 23: v13s.api.protobuf.WorkloadCriticalVulnerabilityFinding.vulnerability:type_name -> v13s.api.protobuf.WorkloadCriticalVulnerability
+	8,  // 24: v13s.api.protobuf.WorkloadSummary.workload:type_name -> v13s.api.protobuf.Workload
+	9,  // 25: v13s.api.protobuf.WorkloadSummary.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
+	16, // 26: v13s.api.protobuf.WorkloadSummary.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
+	5,  // 27: v13s.api.protobuf.SbomStatusInfo.status:type_name -> v13s.api.protobuf.SbomStatus
+	49, // 28: v13s.api.protobuf.SbomStatusInfo.processing_started_at:type_name -> google.protobuf.Timestamp
+	2,  // 29: v13s.api.protobuf.MeanTimeToFixTrendPoint.severity:type_name -> v13s.api.protobuf.Severity
+	49, // 30: v13s.api.protobuf.MeanTimeToFixTrendPoint.snapshot_date:type_name -> google.protobuf.Timestamp
+	49, // 31: v13s.api.protobuf.MeanTimeToFixTrendPoint.first_fixed_at:type_name -> google.protobuf.Timestamp
+	49, // 32: v13s.api.protobuf.MeanTimeToFixTrendPoint.last_fixed_at:type_name -> google.protobuf.Timestamp
+	7,  // 33: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	49, // 34: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.since:type_name -> google.protobuf.Timestamp
+	2,  // 35: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.severity:type_name -> v13s.api.protobuf.Severity
+	4,  // 36: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.priorities:type_name -> v13s.api.protobuf.Priority
+	12, // 37: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.nodes:type_name -> v13s.api.protobuf.Vulnerability
+	50, // 38: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	6,  // 39: v13s.api.protobuf.ListVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	7,  // 40: v13s.api.protobuf.ListVulnerabilitySummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	49, // 41: v13s.api.protobuf.ListVulnerabilitySummariesRequest.since:type_name -> google.protobuf.Timestamp
+	5,  // 42: v13s.api.protobuf.ListVulnerabilitySummariesRequest.sbom_statuses:type_name -> v13s.api.protobuf.SbomStatus
+	15, // 43: v13s.api.protobuf.ListVulnerabilitySummariesResponse.nodes:type_name -> v13s.api.protobuf.WorkloadSummary
+	50, // 44: v13s.api.protobuf.ListVulnerabilitySummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	8,  // 45: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse.workloadRef:type_name -> v13s.api.protobuf.Workload
+	6,  // 46: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.filter:type_name -> v13s.api.protobuf.Filter
+	7,  // 47: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	26, // 48: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.nodes:type_name -> v13s.api.protobuf.WorkloadForVulnerability
+	50, // 49: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	8,  // 50: v13s.api.protobuf.WorkloadForVulnerability.workload_ref:type_name -> v13s.api.protobuf.Workload
+	12, // 51: v13s.api.protobuf.WorkloadForVulnerability.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
+	6,  // 52: v13s.api.protobuf.ListCveSummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	7,  // 53: v13s.api.protobuf.ListCveSummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	29, // 54: v13s.api.protobuf.ListCveSummariesResponse.nodes:type_name -> v13s.api.protobuf.CveSummary
+	50, // 55: v13s.api.protobuf.ListCveSummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	10, // 56: v13s.api.protobuf.CveSummary.cve:type_name -> v13s.api.protobuf.Cve
+	6,  // 57: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.filter:type_name -> v13s.api.protobuf.Filter
+	49, // 58: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since:type_name -> google.protobuf.Timestamp
+	3,  // 59: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType
+	6,  // 60: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
+	17, // 61: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.points:type_name -> v13s.api.protobuf.MeanTimeToFixTrendPoint
+	9,  // 62: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
+	8,  // 63: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.workload_ref:type_name -> v13s.api.protobuf.Workload
+	16, // 64: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
+	6,  // 65: v13s.api.protobuf.GetVulnerabilitySummaryRequest.filter:type_name -> v13s.api.protobuf.Filter
+	6,  // 66: v13s.api.protobuf.GetVulnerabilitySummaryResponse.filter:type_name -> v13s.api.protobuf.Filter
+	9,  // 67: v13s.api.protobuf.GetVulnerabilitySummaryResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
+	6,  // 68: v13s.api.protobuf.GetVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	48, // 69: v13s.api.protobuf.GetVulnerabilitySummariesResponse.summaries:type_name -> v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry
+	6,  // 70: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	49, // 71: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.since:type_name -> google.protobuf.Timestamp
+	40, // 72: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse.points:type_name -> v13s.api.protobuf.VulnerabilitySummaryPoint
+	49, // 73: v13s.api.protobuf.VulnerabilitySummaryPoint.bucket_time:type_name -> google.protobuf.Timestamp
+	4,  // 74: v13s.api.protobuf.VulnerabilitySummaryPoint.top_priority:type_name -> v13s.api.protobuf.Priority
+	12, // 75: v13s.api.protobuf.GetVulnerabilityByIdResponse.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
+	10, // 76: v13s.api.protobuf.GetCveResponse.cve:type_name -> v13s.api.protobuf.Cve
+	0,  // 77: v13s.api.protobuf.SuppressVulnerabilityRequest.state:type_name -> v13s.api.protobuf.SuppressState
+	35, // 78: v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry.value:type_name -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
+	20, // 79: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:input_type -> v13s.api.protobuf.ListVulnerabilitySummariesRequest
+	18, // 80: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:input_type -> v13s.api.protobuf.ListVulnerabilitiesForImageRequest
+	22, // 81: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest
+	24, // 82: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest
+	27, // 83: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:input_type -> v13s.api.protobuf.ListCveSummariesRequest
+	30, // 84: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:input_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest
+	34, // 85: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryRequest
+	36, // 86: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:input_type -> v13s.api.protobuf.GetVulnerabilitySummariesRequest
+	38, // 87: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest
+	32, // 88: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest
+	41, // 89: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:input_type -> v13s.api.protobuf.GetVulnerabilityByIdRequest
+	43, // 90: v13s.api.protobuf.Vulnerabilities.GetCve:input_type -> v13s.api.protobuf.GetCveRequest
+	45, // 91: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:input_type -> v13s.api.protobuf.SuppressVulnerabilityRequest
+	21, // 92: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:output_type -> v13s.api.protobuf.ListVulnerabilitySummariesResponse
+	19, // 93: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:output_type -> v13s.api.protobuf.ListVulnerabilitiesForImageResponse
+	23, // 94: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse
+	25, // 95: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse
+	28, // 96: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:output_type -> v13s.api.protobuf.ListCveSummariesResponse
+	31, // 97: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:output_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse
+	35, // 98: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
+	37, // 99: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:output_type -> v13s.api.protobuf.GetVulnerabilitySummariesResponse
+	39, // 100: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse
+	33, // 101: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse
+	42, // 102: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:output_type -> v13s.api.protobuf.GetVulnerabilityByIdResponse
+	44, // 103: v13s.api.protobuf.Vulnerabilities.GetCve:output_type -> v13s.api.protobuf.GetCveResponse
+	46, // 104: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:output_type -> v13s.api.protobuf.SuppressVulnerabilityResponse
+	92, // [92:105] is the sub-list for method output_type
+	79, // [79:92] is the sub-list for method input_type
+	79, // [79:79] is the sub-list for extension type_name
+	79, // [79:79] is the sub-list for extension extendee
+	0,  // [0:79] is the sub-list for field type_name
 }
 
 func init() { file_vulnerabilities_proto_init() }
@@ -5277,30 +3912,22 @@ func file_vulnerabilities_proto_init() {
 	file_vulnerabilities_proto_msgTypes[4].OneofWrappers = []any{}
 	file_vulnerabilities_proto_msgTypes[6].OneofWrappers = []any{}
 	file_vulnerabilities_proto_msgTypes[7].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[8].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[11].OneofWrappers = []any{}
+	file_vulnerabilities_proto_msgTypes[10].OneofWrappers = []any{}
 	file_vulnerabilities_proto_msgTypes[12].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[15].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[16].OneofWrappers = []any{}
+	file_vulnerabilities_proto_msgTypes[14].OneofWrappers = []any{}
 	file_vulnerabilities_proto_msgTypes[18].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[20].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[22].OneofWrappers = []any{}
+	file_vulnerabilities_proto_msgTypes[21].OneofWrappers = []any{}
 	file_vulnerabilities_proto_msgTypes[24].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[28].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[31].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[34].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[36].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[41].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[44].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[53].OneofWrappers = []any{}
-	file_vulnerabilities_proto_msgTypes[56].OneofWrappers = []any{}
+	file_vulnerabilities_proto_msgTypes[29].OneofWrappers = []any{}
+	file_vulnerabilities_proto_msgTypes[32].OneofWrappers = []any{}
+	file_vulnerabilities_proto_msgTypes[39].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vulnerabilities_proto_rawDesc), len(file_vulnerabilities_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   60,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
