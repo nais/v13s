@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/nais/v13s/internal/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,44 +31,20 @@ type RuntimeConfig struct {
 	RefreshCveWorkloadCounts JobRuntimeConfig
 }
 
-func DefaultRuntimeConfig(resyncSchedule ScheduleConfig) RuntimeConfig {
+func NewRuntimeConfig(cfg config.UpdaterConfig, resync ScheduleConfig) RuntimeConfig {
+	cron := func(enabled bool, expr string) JobRuntimeConfig {
+		return JobRuntimeConfig{Enabled: enabled, Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: expr}}
+	}
 	return RuntimeConfig{
-		Resync: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: resyncSchedule,
-		},
-		MarkUnused: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUnusedCronInterval},
-		},
-		MarkUntracked: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: MarkUntrackedCronInterval},
-		},
-		RefreshDailySummary: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshVulnerabilitySummaryCronDailyView},
-		},
-		RefreshWorkloadLifetimes: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshWorkloadVulnerabilityLifetimesCronDailyView},
-		},
-		SyncKev: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: SyncKevCronInterval},
-		},
-		SyncOsv: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: SyncOsvCronInterval},
-		},
-		RekeySuppressedAliases: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RekeySuppressedAliasesCronInterval},
-		},
-		RefreshCveWorkloadCounts: JobRuntimeConfig{
-			Enabled:  true,
-			Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: RefreshCveWorkloadCountsCronInterval},
-		},
+		Resync:                   JobRuntimeConfig{Enabled: cfg.ResyncEnabled, Schedule: resync},
+		MarkUnused:               cron(cfg.MarkUnusedEnabled, cfg.MarkUnusedCron),
+		MarkUntracked:            cron(cfg.MarkUntrackedEnabled, cfg.MarkUntrackedCron),
+		RefreshDailySummary:      cron(cfg.RefreshSummaryEnabled, cfg.RefreshSummaryCron),
+		RefreshWorkloadLifetimes: cron(cfg.RefreshLifetimesEnabled, cfg.RefreshLifetimesCron),
+		SyncKev:                  cron(cfg.SyncKevEnabled, cfg.SyncKevCron),
+		SyncOsv:                  cron(cfg.SyncOsvEnabled, cfg.SyncOsvCron),
+		RekeySuppressedAliases:   cron(cfg.RekeySuppressedEnabled, cfg.RekeySuppressedCron),
+		RefreshCveWorkloadCounts: cron(cfg.RefreshCveCountsEnabled, cfg.RefreshCveCountsCron),
 	}
 }
 
