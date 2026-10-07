@@ -153,26 +153,23 @@ WITH filtered_workloads AS (
                 OR w.workload_type = ANY ($3::TEXT[]))
             AND ($4::TEXT IS NULL
                 OR w.name = $4::TEXT)
-            AND ($5::INT[] IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM vulnerability_summary v
-                    WHERE v.image_name = w.image_name
-                        AND v.image_tag = w.image_tag
-                        AND v.top_risk_tier = ANY ($5::INT[])))
-            AND ($6::BOOL IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM vulnerability_summary v
-                    WHERE v.image_name = w.image_name
-                        AND v.image_tag = w.image_tag
-                        AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL))
 ),
 joined_data AS (
     SELECT
         fw.namespace,
-        fw.id,
-        COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE) AS is_active,
+        CASE WHEN COALESCE(($5::INT[] IS NULL
+                OR v.top_risk_tier = ANY ($5::INT[]))
+            AND ($6::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) THEN
+            fw.id
+        END AS id,
+        COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE)
+        AND COALESCE(($5::INT[] IS NULL
+                OR v.top_risk_tier = ANY ($5::INT[]))
+            AND ($6::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -335,33 +332,24 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($3::TEXT[]))
     AND ($4::TEXT IS NULL
         OR w.name = $4::TEXT)
-    AND ($5::INT[] IS NULL
-        OR EXISTS (
-            SELECT
-                1
-            FROM
-                vulnerability_summary v
-            WHERE
-                v.image_name = w.image_name
-                AND v.image_tag = w.image_tag
-                AND v.top_risk_tier = ANY ($5::INT[])))
-    AND ($6::BOOL IS NULL
-        OR EXISTS (
-            SELECT
-                1
-            FROM
-                vulnerability_summary v
-            WHERE
-                v.image_name = w.image_name
-                AND v.image_tag = w.image_tag
-                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL))
 ),
 joined_data AS (
     SELECT
-        fw.id,
+        CASE WHEN COALESCE(($5::INT[] IS NULL
+                OR v.top_risk_tier = ANY ($5::INT[]))
+            AND ($6::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) THEN
+            fw.id
+        END AS id,
         COALESCE(fw.workload_ready
             AND i.state NOT IN ('failed', 'unused')
-            AND v.id IS NOT NULL, FALSE) AS is_active,
+            AND v.id IS NOT NULL, FALSE)
+        AND COALESCE(($5::INT[] IS NULL
+                OR v.top_risk_tier = ANY ($5::INT[]))
+            AND ($6::BOOL IS NULL
+                OR (v.id IS NOT NULL
+                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -873,7 +861,12 @@ vulnerability_data AS (
     WHERE ($9::TEXT IS NULL
         OR v.image_name = $9::TEXT)
     AND ($10::TEXT IS NULL
-        OR v.image_tag = $10::TEXT)
+        OR (
+            CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN
+                w.image_tag
+            ELSE
+                v.image_tag
+            END) = $10::TEXT)
     AND ($11::INT[] IS NULL
         OR v.top_risk_tier = ANY ($11::INT[]))
     AND ($12::BOOL IS NULL

@@ -92,6 +92,36 @@ func TestServer_SummariesUsePreviousTagWhileProcessing(t *testing.T) {
 		}, byName)
 	})
 
+	t.Run("image filter matches the workload tag, not the previous tag", func(t *testing.T) {
+		names := func(tag string) []string {
+			resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.NamespaceFilter(namespace), vulnerabilities.ImageFilter("fallback-image", tag))
+			require.NoError(t, err)
+			out := []string{}
+			for _, n := range resp.GetNodes() {
+				out = append(out, n.GetWorkload().GetName())
+			}
+			return out
+		}
+		assert.Equal(t, []string{"w-fallback"}, names("v2"))
+		assert.Empty(t, names("v1"))
+	})
+
+	t.Run("KEV filter uses previous tag data while processing", func(t *testing.T) {
+		_, err := pool.Exec(ctx, `UPDATE vulnerability_summary SET kev_count = 1 WHERE image_name = 'fallback-image' AND image_tag = 'v1'`)
+		require.NoError(t, err)
+
+		resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter(namespace), vulnerabilities.KevFilter(true))
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), resp.GetWorkloadCount())
+		assert.Equal(t, int32(2), resp.GetVulnerabilitySummary().GetCritical())
+
+		batch, err := client.GetVulnerabilitySummaries(ctx, []string{namespace, "empty-namespace"}, vulnerabilities.KevFilter(true))
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), batch.GetSummaries()[namespace].GetWorkloadCount())
+		assert.Equal(t, int32(2), batch.GetSummaries()[namespace].GetVulnerabilitySummary().GetCritical())
+		assert.Equal(t, int32(0), batch.GetSummaries()["empty-namespace"].GetWorkloadCount())
+	})
+
 	t.Run("metrics use previous tag data while processing", func(t *testing.T) {
 		rows, err := db.ListVulnerabilitySummariesForMetrics(ctx, nil)
 		require.NoError(t, err)
