@@ -35,7 +35,7 @@ spec:
             severity: warning
             channel: nais-alerts-info
             alert_type: custom
-            repeat_interval: 1d
+            repeat_interval: 2d
           annotations:
             summary: |
               {{ ":warning: CRITICAL-severity vulnerabilities found in workloads deployed to namespace `{{ $labels.workload_namespace }}`" }}
