@@ -224,7 +224,12 @@ ON CONFLICT (
             COALESCE(EXCLUDED.severity_since, NOW())
         ELSE
             vulnerabilities.severity_since
-        END;
+        END
+    WHERE (
+        vulnerabilities.latest_version, vulnerabilities.last_severity, vulnerabilities.cvss_score) IS DISTINCT FROM (
+        EXCLUDED.latest_version,
+        EXCLUDED.last_severity,
+        EXCLUDED.cvss_score);
 
 -- name: GetEarliestSeveritySinceForVulnerability :one
 SELECT
