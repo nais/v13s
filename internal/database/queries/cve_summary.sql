@@ -18,27 +18,27 @@ WITH cve_data AS (
         w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
         AND i.state NOT IN ('failed', 'unused')
         AND (sqlc.narg('cluster')::TEXT IS NULL
-        OR w.cluster = sqlc.narg('cluster')::TEXT)
-    AND (sqlc.narg('namespace')::TEXT IS NULL
-        OR w.namespace = sqlc.narg('namespace')::TEXT)
-    AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
-        OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
-    AND (sqlc.narg('workload_types')::TEXT[] IS NULL
-        OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
-    AND (sqlc.narg('workload_name')::TEXT IS NULL
-        OR w.name = sqlc.narg('workload_name')::TEXT)
-    AND (sqlc.narg('image_name')::TEXT IS NULL
-        OR v.image_name = sqlc.narg('image_name')::TEXT)
-    AND (sqlc.narg('image_tag')::TEXT IS NULL
-        OR v.image_tag = sqlc.narg('image_tag')::TEXT)
-    AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
-        OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
-    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
-        OR COALESCE(sv.suppressed, FALSE) = FALSE)
-    AND (sqlc.narg('priorities')::INT[] IS NULL
-        OR COALESCE(c.priority, 4) = ANY (sqlc.narg('priorities')::INT[]))
-GROUP BY
-    c.cve_id
+            OR w.cluster = sqlc.narg('cluster')::TEXT)
+        AND (sqlc.narg('namespace')::TEXT IS NULL
+            OR w.namespace = sqlc.narg('namespace')::TEXT)
+        AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
+            OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
+        AND (sqlc.narg('workload_types')::TEXT[] IS NULL
+            OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
+        AND (sqlc.narg('workload_name')::TEXT IS NULL
+            OR w.name = sqlc.narg('workload_name')::TEXT)
+        AND (sqlc.narg('image_name')::TEXT IS NULL
+            OR v.image_name = sqlc.narg('image_name')::TEXT)
+        AND (sqlc.narg('image_tag')::TEXT IS NULL
+            OR v.image_tag = sqlc.narg('image_tag')::TEXT)
+        AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
+            OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
+        AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
+            OR COALESCE(sv.suppressed, FALSE) = FALSE)
+        AND (sqlc.narg('priorities')::INT[] IS NULL
+            OR COALESCE(c.priority, 4) = ANY (sqlc.narg('priorities')::INT[]))
+    GROUP BY
+        c.cve_id
 )
 SELECT
     *,
