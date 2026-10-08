@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestSuppressVulnerability_AliasLookupError(t *testing.T) {
@@ -69,6 +71,13 @@ func TestListWorkloadsForVulnerability_ResolvesAlias(t *testing.T) {
 	assert.Empty(t, resp.GetNodes())
 }
 
+func TestListWorkloadsForVulnerability_RequiresCveIds(t *testing.T) {
+	srv := &Server{querier: mockquerier.NewMockQuerier(t), log: logrus.NewEntry(logrus.New())}
+
+	_, err := srv.ListWorkloadsForVulnerability(context.Background(), &vulnerabilities.ListWorkloadsForVulnerabilityRequest{})
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
 func TestListWorkloadsForVulnerability_AliasLookupError(t *testing.T) {
 	ctx := context.Background()
 	q := mockquerier.NewMockQuerier(t)
@@ -118,12 +127,14 @@ func TestListWorkloadsForVulnerability_NamespacesMerge(t *testing.T) {
 			q := mockquerier.NewMockQuerier(t)
 			srv := &Server{querier: q, log: logrus.NewEntry(logrus.New())}
 
+			q.EXPECT().GetCanonicalCveIdByAlias(ctx, "CVE-2025-1234").Return("", pgx.ErrNoRows)
 			q.On("ListWorkloadsForVulnerabilities", mock.Anything, mock.MatchedBy(func(p sql.ListWorkloadsForVulnerabilitiesParams) bool {
 				return assert.ElementsMatch(t, tt.expectedNamespaces, p.Namespaces)
 			})).Return([]*sql.ListWorkloadsForVulnerabilitiesRow{}, nil)
 
 			_, err := srv.ListWorkloadsForVulnerability(ctx, &vulnerabilities.ListWorkloadsForVulnerabilityRequest{
 				Filter: tt.filter,
+				CveIds: []string{"CVE-2025-1234"},
 			})
 			require.NoError(t, err)
 		})

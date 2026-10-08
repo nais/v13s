@@ -800,6 +800,23 @@ ORDER BY
     updated_at DESC;
 
 -- name: ListWorkloadsForVulnerabilities :many
+WITH matched AS MATERIALIZED (
+    SELECT
+        *
+    FROM
+        vulnerabilities
+    WHERE
+        cve_id = ANY (ARRAY (
+                SELECT
+                    unnest(sqlc.arg('cve_ids')::TEXT[])
+                UNION
+                SELECT
+                    alias
+                FROM
+                    cve_alias
+                WHERE
+                    canonical_cve_id = ANY (sqlc.arg('cve_ids')::TEXT[])))
+)
 SELECT
     v.id,
     w.name AS workload_name,
@@ -835,7 +852,7 @@ SELECT
     c.priority,
     COUNT(v.id) OVER () AS total_count
 FROM
-    vulnerabilities v
+    matched v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
     JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON v.image_name = w.image_name
@@ -850,8 +867,7 @@ FROM
         AND v_canonical.cve_id = ca.canonical_cve_id
 WHERE
     v_canonical.id IS NULL
-    AND (sqlc.narg('cve_ids')::TEXT[] IS NULL
-        OR COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.narg('cve_ids')::TEXT[]))
+    AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.arg('cve_ids')::TEXT[])
     AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
         OR (c.cvss_score IS NOT NULL
             AND c.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
