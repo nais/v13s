@@ -238,8 +238,6 @@ const (
 	Priority_PRIORITY_HIGH     Priority = 2
 	Priority_PRIORITY_ELEVATED Priority = 3
 	Priority_PRIORITY_MONITOR  Priority = 4
-	// Workloads with an SBOM and no findings.
-	Priority_PRIORITY_NONE Priority = 5
 )
 
 // Enum value maps for Priority.
@@ -250,7 +248,6 @@ var (
 		2: "PRIORITY_HIGH",
 		3: "PRIORITY_ELEVATED",
 		4: "PRIORITY_MONITOR",
-		5: "PRIORITY_NONE",
 	}
 	Priority_value = map[string]int32{
 		"PRIORITY_UNSPECIFIED": 0,
@@ -258,7 +255,6 @@ var (
 		"PRIORITY_HIGH":        2,
 		"PRIORITY_ELEVATED":    3,
 		"PRIORITY_MONITOR":     4,
-		"PRIORITY_NONE":        5,
 	}
 )
 
@@ -3696,14 +3692,13 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"UNASSIGNED\x10\x04*$\n" +
 	"\tSinceType\x12\f\n" +
 	"\bSNAPSHOT\x10\x00\x12\t\n" +
-	"\x05FIXED\x10\x01*\x91\x01\n" +
+	"\x05FIXED\x10\x01*~\n" +
 	"\bPriority\x12\x18\n" +
 	"\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x10PRIORITY_ACT_NOW\x10\x01\x1a\x02\b\x01\x12\x11\n" +
 	"\rPRIORITY_HIGH\x10\x02\x12\x15\n" +
 	"\x11PRIORITY_ELEVATED\x10\x03\x12\x14\n" +
-	"\x10PRIORITY_MONITOR\x10\x04\x12\x11\n" +
-	"\rPRIORITY_NONE\x10\x05*\x8d\x01\n" +
+	"\x10PRIORITY_MONITOR\x10\x04*\x8d\x01\n" +
 	"\n" +
 	"SbomStatus\x12\x1b\n" +
 	"\x17SBOM_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
