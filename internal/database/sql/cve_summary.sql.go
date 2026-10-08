@@ -21,31 +21,36 @@ WITH cve_data AS (
         JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
         JOIN workloads w ON w.image_name = v.image_name
             AND w.image_tag = v.image_tag
+        JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
         LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
             AND v.package = sv.package
             AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-    WHERE ($4::TEXT IS NULL
-        OR w.cluster = $4::TEXT)
-    AND ($5::TEXT IS NULL
-        OR w.namespace = $5::TEXT)
-    AND (cardinality($6::TEXT[]) = 0
-        OR w.namespace <> ALL ($6::TEXT[]))
-    AND ($7::TEXT[] IS NULL
-        OR w.workload_type = ANY ($7::TEXT[]))
-    AND ($8::TEXT IS NULL
-        OR w.name = $8::TEXT)
-    AND ($9::TEXT IS NULL
-        OR v.image_name = $9::TEXT)
-    AND ($10::TEXT IS NULL
-        OR v.image_tag = $10::TEXT)
-    AND (cardinality($11::TEXT[]) = 0
-        OR w.cluster <> ALL ($11::TEXT[]))
-    AND ($12::BOOLEAN IS TRUE
-        OR COALESCE(sv.suppressed, FALSE) = FALSE)
-    AND ($13::INT[] IS NULL
-        OR COALESCE(c.priority, 4) = ANY ($13::INT[]))
-GROUP BY
-    c.cve_id
+    WHERE
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+        AND i.state NOT IN ('failed', 'unused')
+        AND ($4::TEXT IS NULL
+            OR w.cluster = $4::TEXT)
+        AND ($5::TEXT IS NULL
+            OR w.namespace = $5::TEXT)
+        AND (cardinality($6::TEXT[]) = 0
+            OR w.namespace <> ALL ($6::TEXT[]))
+        AND ($7::TEXT[] IS NULL
+            OR w.workload_type = ANY ($7::TEXT[]))
+        AND ($8::TEXT IS NULL
+            OR w.name = $8::TEXT)
+        AND ($9::TEXT IS NULL
+            OR v.image_name = $9::TEXT)
+        AND ($10::TEXT IS NULL
+            OR v.image_tag = $10::TEXT)
+        AND (cardinality($11::TEXT[]) = 0
+            OR w.cluster <> ALL ($11::TEXT[]))
+        AND ($12::BOOLEAN IS TRUE
+            OR COALESCE(sv.suppressed, FALSE) = FALSE)
+        AND ($13::INT[] IS NULL
+            OR COALESCE(c.priority, 4) = ANY ($13::INT[]))
+    GROUP BY
+        c.cve_id
 )
 SELECT
     cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority, affected_workloads,
