@@ -22,17 +22,15 @@ SERVICE_ACCOUNT_AUDIENCE=vulnz
 
 v13s assigns each finding an operational priority: `high`, `elevated`, or `monitor`
 (see the glossary in `CONTEXT.md`). `--priority` filters `list` and `get` commands
-to an exact tier. For `list summary`, `none` selects workloads with an SBOM but
-no findings:
+to an exact tier:
 
 ```bash
 vulnz list vulns --priority high
 vulnz list summary --priority elevated
-vulnz list summary --priority none
 ```
 
-Other commands accept `none` but return no matches for it. Passing `--priority`
-with a value other than `high`, `elevated`, `monitor`, or `none` is rejected.
+Passing `--priority` with a value other than `high`, `elevated`, or `monitor` is
+rejected.
 The materialized `KEV` column in `list summary` output is the per-workload
 count of findings listed in a KEV catalogue (CISA, ENISA, and optionally VulnCheck), a signal rather than a priority tier.
 KEV entries are never cleared, so the count also includes findings from a catalogue that has since been disabled.

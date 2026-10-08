@@ -134,12 +134,7 @@ vulnerability_data AS (
                 v.image_tag
             END) = sqlc.narg('image_tag')::TEXT)
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
-        OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[])
-        OR (0 = ANY (sqlc.narg('risk_tiers')::INT[])
-            AND v.id IS NOT NULL
-            AND v.top_risk_tier IS NULL
-            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state NOT IN ('failed', 'unused')))
+        OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
     AND (sqlc.narg('has_kev')::BOOL IS NULL
         OR (v.id IS NOT NULL
             AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))

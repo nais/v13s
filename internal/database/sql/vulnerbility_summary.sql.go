@@ -868,12 +868,7 @@ vulnerability_data AS (
                 v.image_tag
             END) = $10::TEXT)
     AND ($11::INT[] IS NULL
-        OR v.top_risk_tier = ANY ($11::INT[])
-        OR (0 = ANY ($11::INT[])
-            AND v.id IS NOT NULL
-            AND v.top_risk_tier IS NULL
-            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state NOT IN ('failed', 'unused')))
+        OR v.top_risk_tier = ANY ($11::INT[]))
     AND ($12::BOOL IS NULL
         OR (v.id IS NOT NULL
             AND (COALESCE(v.kev_count, 0) > 0) = $12::BOOL))
