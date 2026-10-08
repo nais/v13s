@@ -21,10 +21,15 @@ WITH cve_data AS (
         JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
         JOIN workloads w ON w.image_name = v.image_name
             AND w.image_tag = v.image_tag
+        JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
         LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
             AND v.package = sv.package
             AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-    WHERE ($4::TEXT IS NULL
+    WHERE
+        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+        AND i.state NOT IN ('failed', 'unused')
+        AND ($4::TEXT IS NULL
         OR w.cluster = $4::TEXT)
     AND ($5::TEXT IS NULL
         OR w.namespace = $5::TEXT)

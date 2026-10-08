@@ -1024,6 +1024,8 @@ FROM
     JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON v.image_name = w.image_name
         AND v.image_tag = w.image_tag
+    JOIN images i ON i.name = w.image_name
+        AND i.tag = w.image_tag
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
         AND v.package = sv.package
         AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
@@ -1034,6 +1036,8 @@ FROM
         AND v_canonical.cve_id = ca.canonical_cve_id
 WHERE
     v_canonical.id IS NULL
+    AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+    AND i.state NOT IN ('failed', 'unused')
     AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
     AND ($2::FLOAT8 IS NULL
         OR (c.cvss_score IS NOT NULL
