@@ -967,6 +967,23 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 }
 
 const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilities :many
+WITH matched AS MATERIALIZED (
+    SELECT
+        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version
+    FROM
+        vulnerabilities
+    WHERE
+        cve_id = ANY (ARRAY (
+                SELECT
+                    unnest($1::TEXT[])
+                UNION
+                SELECT
+                    alias
+                FROM
+                    cve_alias
+                WHERE
+                    canonical_cve_id = ANY ($1::TEXT[])))
+)
 SELECT
     v.id,
     w.name AS workload_name,
@@ -1002,7 +1019,7 @@ SELECT
     c.priority,
     COUNT(v.id) OVER () AS total_count
 FROM
-    vulnerabilities v
+    matched v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
     JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON v.image_name = w.image_name
@@ -1017,8 +1034,7 @@ FROM
         AND v_canonical.cve_id = ca.canonical_cve_id
 WHERE
     v_canonical.id IS NULL
-    AND ($1::TEXT[] IS NULL
-        OR COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[]))
+    AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
     AND ($2::FLOAT8 IS NULL
         OR (c.cvss_score IS NOT NULL
             AND c.cvss_score >= $2::FLOAT8))

@@ -123,12 +123,12 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		excludeClusters = []string{}
 	}
 
-	cveIDs := request.CveIds
-	if len(cveIDs) > 0 {
-		cveIDs, err = s.resolveCanonicalCveIDs(ctx, cveIDs)
-		if err != nil {
-			return nil, err
-		}
+	if len(request.CveIds) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "cve_ids is required")
+	}
+	cveIDs, err := s.resolveCanonicalCveIDs(ctx, request.CveIds)
+	if err != nil {
+		return nil, err
 	}
 
 	namespaces := filter.GetNamespaces()
