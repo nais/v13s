@@ -90,18 +90,21 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		}
 	}
 
-	// TODO: postgresriver job to maintain suppressed vulnerabilities
-	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
-	if err != nil {
-		return nil, err
-	}
+	// Only sync and refetch when a suppression differs; otherwise the first fetch is already current.
+	if len(filteredVulnerabilities) > 0 {
+		// TODO: postgresriver job to maintain suppressed vulnerabilities
+		err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
+		if err != nil {
+			return nil, err
+		}
 
-	// refetch vulnerabilities to get updated suppression states
-	// this is just a quick fix, not sure if it will handle all cases
-	// timing issue, if source is ready with new data, then we need to refactor the way we do suppressing
-	vulnerabilities, err = u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
-	if err != nil {
-		return nil, err
+		// refetch vulnerabilities to get updated suppression states
+		// this is just a quick fix, not sure if it will handle all cases
+		// timing issue, if source is ready with new data, then we need to refactor the way we do suppressing
+		vulnerabilities, err = u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// return updated vulnerabilities
