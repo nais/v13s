@@ -1322,3 +1322,44 @@ func addFinding(findings map[string][]*dependencytrack.Vulnerability, projectUUI
 		Package: fmt.Sprintf("pkg:component-%s", cveID),
 	})
 }
+
+type instantSource struct{ sources.Source }
+
+func (instantSource) Name() string { return "instant" }
+func (instantSource) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
+	return nil, nil
+}
+func (instantSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
+	return nil
+}
+
+func TestFetchVulnerabilityDataForImages_ReturnsWhenReceiverStops(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, instantSource{}, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+
+	images := make([]*sql.Image, 0, 20)
+	for i := range 20 {
+		images = append(images, &sql.Image{Name: fmt.Sprintf("image-%d", i), Tag: "v1"})
+	}
+
+	fetchCtx, cancel := context.WithTimeout(updater.NewDbContext(ctx, db, logrus.NewEntry(logrus.StandardLogger())), 200*time.Millisecond)
+	defer cancel()
+	unread := make(chan *updater.ImageVulnerabilityData)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = u.FetchVulnerabilityDataForImages(fetchCtx, images, 10, unread)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("FetchVulnerabilityDataForImages kept blocking on the channel after its context was done")
+	}
+}
