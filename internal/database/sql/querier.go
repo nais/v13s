@@ -85,6 +85,7 @@ type Querier interface {
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
 	UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error
 	UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error
+	UpdateWorkloadStateForImage(ctx context.Context, arg UpdateWorkloadStateForImageParams) error
 	// Rows are never deleted (see CONTEXT.md).
 	UpsertKevSourceEntries(ctx context.Context, arg UpsertKevSourceEntriesParams) (int64, error)
 	UpsertVulnerabilityLifetimes(ctx context.Context) error

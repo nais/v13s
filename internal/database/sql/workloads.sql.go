@@ -504,6 +504,34 @@ func (q *Queries) UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWork
 	return err
 }
 
+const updateWorkloadStateForImage = `-- name: UpdateWorkloadStateForImage :exec
+UPDATE
+    workloads
+SET
+    state = $1
+WHERE
+    id = $2
+    AND image_name = $3
+    AND image_tag = $4
+`
+
+type UpdateWorkloadStateForImageParams struct {
+	State     WorkloadState
+	ID        pgtype.UUID
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) UpdateWorkloadStateForImage(ctx context.Context, arg UpdateWorkloadStateForImageParams) error {
+	_, err := q.db.Exec(ctx, updateWorkloadStateForImage,
+		arg.State,
+		arg.ID,
+		arg.ImageName,
+		arg.ImageTag,
+	)
+	return err
+}
+
 const upsertWorkload = `-- name: UpsertWorkload :one
 INSERT INTO workloads(
     name,

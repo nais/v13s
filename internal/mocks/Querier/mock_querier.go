@@ -4168,6 +4168,53 @@ func (_c *MockQuerier_UpdateWorkloadStateByImage_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// UpdateWorkloadStateForImage provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) UpdateWorkloadStateForImage(ctx context.Context, arg sql.UpdateWorkloadStateForImageParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateWorkloadStateForImage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateWorkloadStateForImageParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpdateWorkloadStateForImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWorkloadStateForImage'
+type MockQuerier_UpdateWorkloadStateForImage_Call struct {
+	*mock.Call
+}
+
+// UpdateWorkloadStateForImage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.UpdateWorkloadStateForImageParams
+func (_e *MockQuerier_Expecter) UpdateWorkloadStateForImage(ctx interface{}, arg interface{}) *MockQuerier_UpdateWorkloadStateForImage_Call {
+	return &MockQuerier_UpdateWorkloadStateForImage_Call{Call: _e.mock.On("UpdateWorkloadStateForImage", ctx, arg)}
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateForImage_Call) Run(run func(ctx context.Context, arg sql.UpdateWorkloadStateForImageParams)) *MockQuerier_UpdateWorkloadStateForImage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.UpdateWorkloadStateForImageParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateForImage_Call) Return(_a0 error) *MockQuerier_UpdateWorkloadStateForImage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadStateForImage_Call) RunAndReturn(run func(context.Context, sql.UpdateWorkloadStateForImageParams) error) *MockQuerier_UpdateWorkloadStateForImage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertKevSourceEntries provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) UpsertKevSourceEntries(ctx context.Context, arg sql.UpsertKevSourceEntriesParams) (int64, error) {
 	ret := _m.Called(ctx, arg)

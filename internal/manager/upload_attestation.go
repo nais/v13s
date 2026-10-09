@@ -150,9 +150,11 @@ func (u *UploadAttestationWorker) Work(ctx context.Context, job *river.Job[Uploa
 		defer cancel()
 
 		if decision.WorkloadState != nil {
-			if dbErr := u.db.UpdateWorkloadState(dbCtx, sql.UpdateWorkloadStateParams{
-				State: *decision.WorkloadState,
-				ID:    job.Args.WorkloadId,
+			if dbErr := u.db.UpdateWorkloadStateForImage(dbCtx, sql.UpdateWorkloadStateForImageParams{
+				State:     *decision.WorkloadState,
+				ID:        job.Args.WorkloadId,
+				ImageName: imageName,
+				ImageTag:  imageTag,
 			}); dbErr != nil {
 				return fmt.Errorf("failed to set workload state: %w", dbErr)
 			}
