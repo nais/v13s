@@ -1079,8 +1079,7 @@ FROM
         AND v_canonical.cve_id = ca.canonical_cve_id
 WHERE
     v_canonical.id IS NULL
-    AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-    AND i.state NOT IN ('failed', 'unused')
+    AND workload_has_usable_sbom(w.state, i.state)
     AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
     AND ($2::FLOAT8 IS NULL
         OR (c.cvss_score IS NOT NULL
