@@ -1027,63 +1027,6 @@ func (_c *MockQuerier_GetCve_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
-// GetEarliestSeveritySinceForVulnerability provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg sql.GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error) {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetEarliestSeveritySinceForVulnerability")
-	}
-
-	var r0 pgtype.Timestamptz
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error)); ok {
-		return rf(ctx, arg)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.GetEarliestSeveritySinceForVulnerabilityParams) pgtype.Timestamptz); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		r0 = ret.Get(0).(pgtype.Timestamptz)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, sql.GetEarliestSeveritySinceForVulnerabilityParams) error); ok {
-		r1 = rf(ctx, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerier_GetEarliestSeveritySinceForVulnerability_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetEarliestSeveritySinceForVulnerability'
-type MockQuerier_GetEarliestSeveritySinceForVulnerability_Call struct {
-	*mock.Call
-}
-
-// GetEarliestSeveritySinceForVulnerability is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg sql.GetEarliestSeveritySinceForVulnerabilityParams
-func (_e *MockQuerier_Expecter) GetEarliestSeveritySinceForVulnerability(ctx interface{}, arg interface{}) *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call {
-	return &MockQuerier_GetEarliestSeveritySinceForVulnerability_Call{Call: _e.mock.On("GetEarliestSeveritySinceForVulnerability", ctx, arg)}
-}
-
-func (_c *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call) Run(run func(ctx context.Context, arg sql.GetEarliestSeveritySinceForVulnerabilityParams)) *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(sql.GetEarliestSeveritySinceForVulnerabilityParams))
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call) Return(_a0 pgtype.Timestamptz, _a1 error) *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call) RunAndReturn(run func(context.Context, sql.GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error)) *MockQuerier_GetEarliestSeveritySinceForVulnerability_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetImage provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) GetImage(ctx context.Context, arg sql.GetImageParams) (*sql.Image, error) {
 	ret := _m.Called(ctx, arg)
@@ -2017,6 +1960,65 @@ func (_c *MockQuerier_ListCveSummariesFromCounts_Call) Return(_a0 []*sql.ListCve
 }
 
 func (_c *MockQuerier_ListCveSummariesFromCounts_Call) RunAndReturn(run func(context.Context, sql.ListCveSummariesFromCountsParams) ([]*sql.ListCveSummariesFromCountsRow, error)) *MockQuerier_ListCveSummariesFromCounts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListEarliestSeveritySince provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListEarliestSeveritySince(ctx context.Context, arg sql.ListEarliestSeveritySinceParams) ([]*sql.ListEarliestSeveritySinceRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListEarliestSeveritySince")
+	}
+
+	var r0 []*sql.ListEarliestSeveritySinceRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListEarliestSeveritySinceParams) ([]*sql.ListEarliestSeveritySinceRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListEarliestSeveritySinceParams) []*sql.ListEarliestSeveritySinceRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListEarliestSeveritySinceRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListEarliestSeveritySinceParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListEarliestSeveritySince_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListEarliestSeveritySince'
+type MockQuerier_ListEarliestSeveritySince_Call struct {
+	*mock.Call
+}
+
+// ListEarliestSeveritySince is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListEarliestSeveritySinceParams
+func (_e *MockQuerier_Expecter) ListEarliestSeveritySince(ctx interface{}, arg interface{}) *MockQuerier_ListEarliestSeveritySince_Call {
+	return &MockQuerier_ListEarliestSeveritySince_Call{Call: _e.mock.On("ListEarliestSeveritySince", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListEarliestSeveritySince_Call) Run(run func(ctx context.Context, arg sql.ListEarliestSeveritySinceParams)) *MockQuerier_ListEarliestSeveritySince_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListEarliestSeveritySinceParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListEarliestSeveritySince_Call) Return(_a0 []*sql.ListEarliestSeveritySinceRow, _a1 error) *MockQuerier_ListEarliestSeveritySince_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListEarliestSeveritySince_Call) RunAndReturn(run func(context.Context, sql.ListEarliestSeveritySinceParams) ([]*sql.ListEarliestSeveritySinceRow, error)) *MockQuerier_ListEarliestSeveritySince_Call {
 	_c.Call.Return(run)
 	return _c
 }

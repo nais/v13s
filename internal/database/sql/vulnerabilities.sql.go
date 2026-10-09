@@ -88,47 +88,6 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 	return &i, err
 }
 
-const getEarliestSeveritySinceForVulnerability = `-- name: GetEarliestSeveritySinceForVulnerability :one
-SELECT
-    (COALESCE((
-            SELECT
-                MIN(v1.severity_since)
-            FROM vulnerabilities v1
-            WHERE
-                v1.image_name = $1
-                AND v1.package = $2
-                AND v1.cve_id = $3
-                AND v1.last_severity = $4
-                AND v1.severity_since IS NOT NULL),(
-                SELECT
-                    MIN(v2.created_at)
-                FROM vulnerabilities v2
-                WHERE
-                    v2.image_name = $1
-                    AND v2.package = $2
-                    AND v2.cve_id = $3
-                    AND v2.last_severity = $4))::TIMESTAMPTZ) AS earliest_severity_since
-`
-
-type GetEarliestSeveritySinceForVulnerabilityParams struct {
-	ImageName    string
-	Package      string
-	CveID        string
-	LastSeverity int32
-}
-
-func (q *Queries) GetEarliestSeveritySinceForVulnerability(ctx context.Context, arg GetEarliestSeveritySinceForVulnerabilityParams) (pgtype.Timestamptz, error) {
-	row := q.db.QueryRow(ctx, getEarliestSeveritySinceForVulnerability,
-		arg.ImageName,
-		arg.Package,
-		arg.CveID,
-		arg.LastSeverity,
-	)
-	var earliest_severity_since pgtype.Timestamptz
-	err := row.Scan(&earliest_severity_since)
-	return earliest_severity_since, err
-}
-
 const getVulnerability = `-- name: GetVulnerability :one
 SELECT
     v.id,
@@ -352,6 +311,90 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.Priority,
 	)
 	return &i, err
+}
+
+const listEarliestSeveritySince = `-- name: ListEarliestSeveritySince :many
+WITH requested AS (
+    SELECT
+        unnest($1::TEXT[]) AS image_name,
+        unnest($2::TEXT[]) AS package,
+        unnest($3::TEXT[]) AS cve_id,
+        unnest($4::INT[]) AS last_severity
+),
+input AS (
+    SELECT DISTINCT
+        image_name, package, cve_id, last_severity
+    FROM
+        requested
+)
+SELECT
+    i.image_name::TEXT AS image_name,
+    i.package::TEXT AS package,
+    i.cve_id::TEXT AS cve_id,
+    i.last_severity::INT AS last_severity,
+    COALESCE(MIN(v.severity_since), MIN(v.created_at))::TIMESTAMPTZ AS earliest_severity_since
+FROM
+    input i
+    LEFT JOIN vulnerabilities v ON v.image_name = i.image_name
+        AND v.package = i.package
+        AND v.cve_id = i.cve_id
+        AND v.last_severity = i.last_severity
+GROUP BY
+    i.image_name,
+    i.package,
+    i.cve_id,
+    i.last_severity
+ORDER BY
+    i.image_name,
+    i.package,
+    i.cve_id,
+    i.last_severity
+`
+
+type ListEarliestSeveritySinceParams struct {
+	ImageNames     []string
+	Packages       []string
+	CveIds         []string
+	LastSeverities []int32
+}
+
+type ListEarliestSeveritySinceRow struct {
+	ImageName             string
+	Package               string
+	CveID                 string
+	LastSeverity          int32
+	EarliestSeveritySince pgtype.Timestamptz
+}
+
+func (q *Queries) ListEarliestSeveritySince(ctx context.Context, arg ListEarliestSeveritySinceParams) ([]*ListEarliestSeveritySinceRow, error) {
+	rows, err := q.db.Query(ctx, listEarliestSeveritySince,
+		arg.ImageNames,
+		arg.Packages,
+		arg.CveIds,
+		arg.LastSeverities,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListEarliestSeveritySinceRow{}
+	for rows.Next() {
+		var i ListEarliestSeveritySinceRow
+		if err := rows.Scan(
+			&i.ImageName,
+			&i.Package,
+			&i.CveID,
+			&i.LastSeverity,
+			&i.EarliestSeveritySince,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSuppressedVulnerabilitiesForImage = `-- name: ListSuppressedVulnerabilitiesForImage :many

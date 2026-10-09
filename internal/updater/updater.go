@@ -462,9 +462,14 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
 
+	since, err := u.DetermineSeveritySince(ctx, images)
+	if err != nil {
+		u.log.Errorf("determine severitySince: %v", err)
+	}
+
 	for _, i := range images {
 		cves = append(cves, i.ToCveSqlParams()...)
-		vulns = append(vulns, u.ToVulnerabilitySqlParams(ctx, i)...)
+		vulns = append(vulns, i.ToVulnerabilitySqlParams(since)...)
 		cveAliases = append(cveAliases, i.ToCveAliasSqlParams()...)
 		imageStates = append(imageStates, sql.BatchUpdateImageStateParams{
 			State: sql.ImageStateUpdated,

@@ -231,26 +231,42 @@ ON CONFLICT (
         EXCLUDED.last_severity,
         EXCLUDED.cvss_score);
 
--- name: GetEarliestSeveritySinceForVulnerability :one
+-- name: ListEarliestSeveritySince :many
+WITH requested AS (
+    SELECT
+        unnest(@image_names::TEXT[]) AS image_name,
+        unnest(@packages::TEXT[]) AS package,
+        unnest(@cve_ids::TEXT[]) AS cve_id,
+        unnest(@last_severities::INT[]) AS last_severity
+),
+input AS (
+    SELECT DISTINCT
+        *
+    FROM
+        requested
+)
 SELECT
-    (COALESCE((
-            SELECT
-                MIN(v1.severity_since)
-            FROM vulnerabilities v1
-            WHERE
-                v1.image_name = $1
-                AND v1.package = $2
-                AND v1.cve_id = $3
-                AND v1.last_severity = $4
-                AND v1.severity_since IS NOT NULL),(
-                SELECT
-                    MIN(v2.created_at)
-                FROM vulnerabilities v2
-                WHERE
-                    v2.image_name = $1
-                    AND v2.package = $2
-                    AND v2.cve_id = $3
-                    AND v2.last_severity = $4))::TIMESTAMPTZ) AS earliest_severity_since;
+    i.image_name::TEXT AS image_name,
+    i.package::TEXT AS package,
+    i.cve_id::TEXT AS cve_id,
+    i.last_severity::INT AS last_severity,
+    COALESCE(MIN(v.severity_since), MIN(v.created_at))::TIMESTAMPTZ AS earliest_severity_since
+FROM
+    input i
+    LEFT JOIN vulnerabilities v ON v.image_name = i.image_name
+        AND v.package = i.package
+        AND v.cve_id = i.cve_id
+        AND v.last_severity = i.last_severity
+GROUP BY
+    i.image_name,
+    i.package,
+    i.cve_id,
+    i.last_severity
+ORDER BY
+    i.image_name,
+    i.package,
+    i.cve_id,
+    i.last_severity;
 
 -- name: GetCve :one
 SELECT

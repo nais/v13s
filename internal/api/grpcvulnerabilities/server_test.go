@@ -1124,15 +1124,16 @@ func TestVulnerabilitySeveritySince(t *testing.T) {
 	})
 
 	t.Run("returns nil if severity not present", func(t *testing.T) {
-		got, err := db.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
-			ImageName:    "my-image",
-			Package:      "mypkg",
-			CveID:        "CVE-unknown",
-			LastSeverity: 5,
+		rows, err := db.ListEarliestSeveritySince(ctx, sql.ListEarliestSeveritySinceParams{
+			ImageNames:     []string{"my-image"},
+			Packages:       []string{"mypkg"},
+			CveIds:         []string{"CVE-unknown"},
+			LastSeverities: []int32{5},
 		})
 		assert.NoError(t, err)
 
-		assert.False(t, got.Valid, "expected severity_since to be null (invalid)")
+		require.Len(t, rows, 1)
+		assert.False(t, rows[0].EarliestSeveritySince.Valid, "expected severity_since to be null (invalid)")
 	})
 
 	t.Run("does not overwrite existing severity_since", func(t *testing.T) {
