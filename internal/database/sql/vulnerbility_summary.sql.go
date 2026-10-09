@@ -143,7 +143,7 @@ WITH filtered_workloads AS (
         w.id,
         w.image_name,
         w.image_tag,
-        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
+        w.state
     FROM
         unnest($1::TEXT[]) AS ns(namespace)
         LEFT JOIN workloads w ON w.namespace = ns.namespace
@@ -159,8 +159,7 @@ joined_data AS (
         fw.namespace,
         CASE WHEN ($5::INT[] IS NULL
                 AND $6::BOOL IS NULL)
-            OR (COALESCE(fw.workload_ready
-                    AND i.state NOT IN ('failed', 'unused')
+            OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
                 AND COALESCE(($5::INT[] IS NULL
                         OR v.top_risk_tier = ANY ($5::INT[]))
@@ -168,7 +167,7 @@ joined_data AS (
                         OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
             fw.id
         END AS id,
-        COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE)
+        COALESCE(workload_has_usable_sbom(fw.state, i.state) AND v.id IS NOT NULL, FALSE)
         AND COALESCE(($5::INT[] IS NULL
                 OR v.top_risk_tier = ANY ($5::INT[]))
             AND ($6::BOOL IS NULL
@@ -325,7 +324,7 @@ WITH filtered_workloads AS (
         w.id,
         w.image_name,
         w.image_tag,
-        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable') AS workload_ready
+        w.state
     FROM
         workloads w
     WHERE ($1::TEXT IS NULL
@@ -341,8 +340,7 @@ joined_data AS (
     SELECT
         CASE WHEN ($5::INT[] IS NULL
                 AND $6::BOOL IS NULL)
-            OR (COALESCE(fw.workload_ready
-                    AND i.state NOT IN ('failed', 'unused')
+            OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
                 AND COALESCE(($5::INT[] IS NULL
                         OR v.top_risk_tier = ANY ($5::INT[]))
@@ -350,8 +348,7 @@ joined_data AS (
                         OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
             fw.id
         END AS id,
-        COALESCE(fw.workload_ready
-            AND i.state NOT IN ('failed', 'unused')
+        COALESCE(workload_has_usable_sbom(fw.state, i.state)
             AND v.id IS NOT NULL, FALSE)
         AND COALESCE(($5::INT[] IS NULL
                 OR v.top_risk_tier = ANY ($5::INT[]))
@@ -817,8 +814,7 @@ vulnerability_data AS (
         w.image_tag AS current_image_tag,
         v.image_name,
         v.image_tag,
-        COALESCE(w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state NOT IN ('failed', 'unused')
+        COALESCE(workload_has_usable_sbom(w.state, i.state)
             AND v.id IS NOT NULL, FALSE) AS is_active,
         v.critical,
         v.high,
@@ -877,12 +873,10 @@ vulnerability_data AS (
             END) = $10::TEXT)
     AND ($11::INT[] IS NULL
         OR (v.top_risk_tier = ANY ($11::INT[])
-            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state NOT IN ('failed', 'unused')))
+            AND workload_has_usable_sbom(w.state, i.state)))
     AND ($12::BOOL IS NULL
         OR (v.id IS NOT NULL
-            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state NOT IN ('failed', 'unused')
+            AND workload_has_usable_sbom(w.state, i.state)
             AND (COALESCE(v.kev_count, 0) > 0) = $12::BOOL))
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
@@ -1220,8 +1214,7 @@ vulnerability_data AS (
         w.cluster,
         w.image_name AS current_image_name,
         w.image_tag AS current_image_tag,
-        COALESCE(w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i.state NOT IN ('failed', 'unused')
+        COALESCE(workload_has_usable_sbom(w.state, i.state)
             AND v.id IS NOT NULL, FALSE) AS is_active,
         v.critical,
         v.high,

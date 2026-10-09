@@ -15,8 +15,7 @@ WITH cve_data AS (
             AND v.package = sv.package
             AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
     WHERE
-        w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-        AND i.state NOT IN ('failed', 'unused')
+        workload_has_usable_sbom(w.state, i.state)
         AND (sqlc.narg('cluster')::TEXT IS NULL
             OR w.cluster = sqlc.narg('cluster')::TEXT)
         AND (sqlc.narg('namespace')::TEXT IS NULL
