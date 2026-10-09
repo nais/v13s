@@ -1035,6 +1035,21 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	lookup := func(t *testing.T, severity sources.Severity) time.Time {
+		images := []*updater.ImageVulnerabilityData{{
+			ImageName: imageName,
+			ImageTag:  imageTag,
+			Vulnerabilities: []*sources.Vulnerability{
+				{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: severity}},
+			},
+		}}
+		since, err := u.DetermineSeveritySince(ctx, images)
+		require.NoError(t, err)
+		got, ok := since[updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: cveID, LastSeverity: severity.ToInt32()}]
+		require.True(t, ok)
+		return got
+	}
+
 	t.Run("returns earliest severity_since if set", func(t *testing.T) {
 		ts := time.Now().Add(-1 * time.Hour)
 		_, err := pool.Exec(ctx, `
@@ -1044,16 +1059,11 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
         `, ts, 2, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
-		require.NoError(t, err)
-		assert.NotNil(t, got)
-		assert.WithinDuration(t, ts, *got, time.Second)
+		assert.WithinDuration(t, ts, lookup(t, sources.SeverityMedium), time.Second)
 	})
 
-	t.Run("returns timestamp if severity not present", func(t *testing.T) {
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 5)
-		require.NoError(t, err)
-		assert.NotNil(t, got)
+	t.Run("returns now if severity not present", func(t *testing.T) {
+		assert.WithinDuration(t, time.Now(), lookup(t, sources.SeverityLow), 5*time.Second)
 	})
 
 	t.Run("does not overwrite existing severity_since", func(t *testing.T) {
@@ -1065,11 +1075,27 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
     `, ts, imageName, pkg, cveID)
 		require.NoError(t, err)
 
-		got, err := u.DetermineSeveritySince(ctx, imageName, pkg, cveID, 2)
-		require.NoError(t, err)
-		require.NotNil(t, got)
+		assert.WithinDuration(t, ts, lookup(t, sources.SeverityMedium).UTC(), 1*time.Second)
+	})
 
-		assert.WithinDuration(t, ts, (*got).UTC(), 1*time.Second)
+	t.Run("looks up every finding of a batch in one call", func(t *testing.T) {
+		ts := time.Now().UTC().Add(-2 * time.Hour)
+		_, err := pool.Exec(ctx, `UPDATE vulnerabilities SET severity_since = $1, last_severity = 2 WHERE image_name = $2`, ts, imageName)
+		require.NoError(t, err)
+
+		finding := func(cve string, severity sources.Severity) *sources.Vulnerability {
+			return &sources.Vulnerability{Package: pkg, Cve: &sources.Cve{Id: cve, Severity: severity}}
+		}
+		images := []*updater.ImageVulnerabilityData{
+			{ImageName: imageName, ImageTag: imageTag, Vulnerabilities: []*sources.Vulnerability{finding(cveID, sources.SeverityMedium), finding("CVE-unknown", sources.SeverityHigh)}},
+			{ImageName: imageName, ImageTag: "v2", Vulnerabilities: []*sources.Vulnerability{finding(cveID, sources.SeverityMedium)}},
+		}
+		since, err := u.DetermineSeveritySince(ctx, images)
+		require.NoError(t, err)
+
+		require.Len(t, since, 2)
+		assert.WithinDuration(t, ts, since[updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: cveID, LastSeverity: 2}], time.Second)
+		assert.WithinDuration(t, time.Now(), since[updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: "CVE-unknown", LastSeverity: 1}], 5*time.Second)
 	})
 }
 

@@ -128,14 +128,50 @@ func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) 
 	}
 }
 
-func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerabilityData) []sql.BatchUpsertVulnerabilitiesParams {
-	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
+// SeveritySinceKey identifies a finding across the tags of an image.
+type SeveritySinceKey struct {
+	ImageName    string
+	Package      string
+	CveID        string
+	LastSeverity int32
+}
+
+// DetermineSeveritySince returns, for every finding in images, when it reached
+// its current severity, looked up in one query for the whole batch.
+func (u *Updater) DetermineSeveritySince(ctx context.Context, images []*ImageVulnerabilityData) (map[SeveritySinceKey]time.Time, error) {
+	params := sql.ListEarliestSeveritySinceParams{}
+	for _, i := range images {
+		for _, v := range i.Vulnerabilities {
+			params.ImageNames = append(params.ImageNames, i.ImageName)
+			params.Packages = append(params.Packages, v.Package)
+			params.CveIds = append(params.CveIds, v.Cve.Id)
+			params.LastSeverities = append(params.LastSeverities, v.Cve.Severity.ToInt32())
+		}
+	}
+	since := make(map[SeveritySinceKey]time.Time, len(params.ImageNames))
+	if len(params.ImageNames) == 0 {
+		return since, nil
+	}
+
+	rows, err := u.querier.ListEarliestSeveritySince(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	for _, row := range rows {
+		key := SeveritySinceKey{ImageName: row.ImageName, Package: row.Package, CveID: row.CveID, LastSeverity: row.LastSeverity}
+		since[key] = now
+		if row.EarliestSeveritySince.Valid {
+			since[key] = row.EarliestSeveritySince.Time.UTC()
+		}
+	}
+	return since, nil
+}
+
+func (i *ImageVulnerabilityData) ToVulnerabilitySqlParams(since map[SeveritySinceKey]time.Time) []sql.BatchUpsertVulnerabilitiesParams {
+	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0, len(i.Vulnerabilities))
 	for _, v := range i.Vulnerabilities {
 		severity := v.Cve.Severity.ToInt32()
-		severitySince, err := u.DetermineSeveritySince(ctx, i.ImageName, v.Package, v.Cve.Id, severity)
-		if err != nil {
-			u.log.Errorf("determine severitySince: %v", err)
-		}
 		batch := sql.BatchUpsertVulnerabilitiesParams{
 			ImageName:     i.ImageName,
 			ImageTag:      i.ImageTag,
@@ -146,38 +182,12 @@ func (u *Updater) ToVulnerabilitySqlParams(ctx context.Context, i *ImageVulnerab
 			LastSeverity:  severity,
 			CvssScore:     v.CvssScore,
 		}
-
-		if severitySince != nil {
-			batch.SeveritySince = pgtype.Timestamptz{
-				Time:  *severitySince,
-				Valid: true,
-			}
+		if ts, ok := since[SeveritySinceKey{ImageName: i.ImageName, Package: v.Package, CveID: v.Cve.Id, LastSeverity: severity}]; ok {
+			batch.SeveritySince = pgtype.Timestamptz{Time: ts, Valid: true}
 		}
 		params = append(params, batch)
 	}
 	return params
-}
-
-func (u *Updater) DetermineSeveritySince(
-	ctx context.Context,
-	imageName, pkg, cveID string,
-	lastSeverity int32,
-) (*time.Time, error) {
-	earliest, err := u.querier.GetEarliestSeveritySinceForVulnerability(ctx, sql.GetEarliestSeveritySinceForVulnerabilityParams{
-		ImageName:    imageName,
-		Package:      pkg,
-		CveID:        cveID,
-		LastSeverity: lastSeverity,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if earliest.Valid {
-		return new(earliest.Time.UTC()), nil
-	}
-
-	return new(time.Now().UTC()), nil
 }
 
 func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
