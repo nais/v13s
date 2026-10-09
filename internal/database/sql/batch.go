@@ -26,6 +26,7 @@ SET
 WHERE
     name = $2
     AND tag = $3
+    AND state <> 'failed'
 `
 
 type BatchUpdateImageStateBatchResults struct {
@@ -85,6 +86,15 @@ WHERE
     image_name = $2
     AND image_tag = $3
     AND state NOT IN ('failed', 'unrecoverable')
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            images
+        WHERE
+            name = $2
+            AND tag = $3
+            AND state = 'failed')
 `
 
 type BatchUpdateWorkloadStateByImageBatchResults struct {

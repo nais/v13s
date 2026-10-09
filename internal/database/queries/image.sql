@@ -75,7 +75,8 @@ SET
     updated_at = NOW()
 WHERE
     name = @name
-    AND tag = @tag;
+    AND tag = @tag
+    AND state <> 'failed';
 
 -- name: MarkImagesAsUntracked :execrows
 UPDATE
@@ -150,7 +151,7 @@ WHERE
     AND images.tag = w.image_tag
     AND images.updated_at < @threshold_time
     AND images.state != 'resync'
-    AND images.state != ANY (@excluded_states::image_state[])
+    AND images.state <> ALL (@excluded_states::image_state[])
     AND w.state != 'unrecoverable';
 
 -- name: MarkUntrackedImagesForResync :execrows

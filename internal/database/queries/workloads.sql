@@ -107,6 +107,16 @@ SET
 WHERE
     id = @id;
 
+-- name: UpdateWorkloadStateForImage :exec
+UPDATE
+    workloads
+SET
+    state = @state
+WHERE
+    id = @id
+    AND image_name = @image_name
+    AND image_tag = @image_tag;
+
 -- name: CreateWorkload :one
 INSERT INTO workloads(
     name,
@@ -224,4 +234,13 @@ SET
 WHERE
     image_name = @image_name
     AND image_tag = @image_tag
-    AND state NOT IN ('failed', 'unrecoverable');
+    AND state NOT IN ('failed', 'unrecoverable')
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            images
+        WHERE
+            name = @image_name
+            AND tag = @image_tag
+            AND state = 'failed');
