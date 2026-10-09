@@ -36,7 +36,12 @@ func TestServer_SummaryFiltersExcludeInactiveWorkloads(t *testing.T) {
 		}))
 	}
 	workload("active", sql.WorkloadStateUpdated, "updated")
-	workload("no-attestation", sql.WorkloadStateNoAttestation, "failed")
+	// Each inactive workload fails exactly one of the two guards.
+	workload("wl-no-attestation", sql.WorkloadStateNoAttestation, "updated")
+	workload("wl-failed", sql.WorkloadStateFailed, "updated")
+	workload("wl-unrecoverable", sql.WorkloadStateUnrecoverable, "updated")
+	workload("img-failed", sql.WorkloadStateUpdated, "failed")
+	workload("img-unused", sql.WorkloadStateUpdated, "unused")
 
 	names := func(t *testing.T, opts ...vulnerabilities.Option) []string {
 		resp, err := client.ListVulnerabilitySummaries(ctx, append(opts, vulnerabilities.NamespaceFilter(namespace), vulnerabilities.Limit(10))...)
@@ -58,7 +63,7 @@ func TestServer_SummaryFiltersExcludeInactiveWorkloads(t *testing.T) {
 	})
 
 	t.Run("unfiltered list still includes inactive workloads", func(t *testing.T) {
-		assert.Equal(t, []string{"active", "no-attestation"}, names(t))
+		assert.Equal(t, []string{"active", "img-failed", "img-unused", "wl-failed", "wl-no-attestation", "wl-unrecoverable"}, names(t))
 	})
 
 	t.Run("team summary counts only active workloads when filtered", func(t *testing.T) {
@@ -79,6 +84,6 @@ func TestServer_SummaryFiltersExcludeInactiveWorkloads(t *testing.T) {
 	t.Run("team summary counts every workload when unfiltered", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter(namespace))
 		require.NoError(t, err)
-		assert.Equal(t, int32(2), resp.GetWorkloadCount())
+		assert.Equal(t, int32(6), resp.GetWorkloadCount())
 	})
 }
