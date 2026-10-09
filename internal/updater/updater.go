@@ -283,7 +283,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 	}()
 
 	// TODO: riverjob worker to fetch vulnerability data for images
-	err = u.FetchVulnerabilityDataForImages(ctx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
+	err = u.FetchVulnerabilityDataForImages(batchCtx, images, FetchVulnerabilityDataForImagesDefaultLimit, ch)
 	close(ch)
 
 	updateSuccess := <-done

@@ -22,6 +22,9 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 	g.SetLimit(limit) // limit concurrent goroutines
 
 	for _, img := range images {
+		if ctx.Err() != nil {
+			break
+		}
 		image := img
 		g.Go(func() error {
 			ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
@@ -36,8 +39,12 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 					return err
 				}
 
-				ch <- imageData
-				return nil
+				select {
+				case ch <- imageData:
+					return nil
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 			})
 		})
 	}
