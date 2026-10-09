@@ -157,11 +157,15 @@ WITH filtered_workloads AS (
 joined_data AS (
     SELECT
         fw.namespace,
-        CASE WHEN COALESCE(($5::INT[] IS NULL
-                OR v.top_risk_tier = ANY ($5::INT[]))
-            AND ($6::BOOL IS NULL
-                OR (v.id IS NOT NULL
-                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) THEN
+        CASE WHEN ($5::INT[] IS NULL
+                AND $6::BOOL IS NULL)
+            OR (COALESCE(fw.workload_ready
+                    AND i.state NOT IN ('failed', 'unused')
+                    AND v.id IS NOT NULL, FALSE)
+                AND COALESCE(($5::INT[] IS NULL
+                        OR v.top_risk_tier = ANY ($5::INT[]))
+                    AND ($6::BOOL IS NULL
+                        OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE)
@@ -335,11 +339,15 @@ WITH filtered_workloads AS (
 ),
 joined_data AS (
     SELECT
-        CASE WHEN COALESCE(($5::INT[] IS NULL
-                OR v.top_risk_tier = ANY ($5::INT[]))
-            AND ($6::BOOL IS NULL
-                OR (v.id IS NOT NULL
-                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) THEN
+        CASE WHEN ($5::INT[] IS NULL
+                AND $6::BOOL IS NULL)
+            OR (COALESCE(fw.workload_ready
+                    AND i.state NOT IN ('failed', 'unused')
+                    AND v.id IS NOT NULL, FALSE)
+                AND COALESCE(($5::INT[] IS NULL
+                        OR v.top_risk_tier = ANY ($5::INT[]))
+                    AND ($6::BOOL IS NULL
+                        OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(fw.workload_ready
@@ -868,9 +876,13 @@ vulnerability_data AS (
                 v.image_tag
             END) = $10::TEXT)
     AND ($11::INT[] IS NULL
-        OR v.top_risk_tier = ANY ($11::INT[]))
+        OR (v.top_risk_tier = ANY ($11::INT[])
+            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state NOT IN ('failed', 'unused')))
     AND ($12::BOOL IS NULL
         OR (v.id IS NOT NULL
+            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state NOT IN ('failed', 'unused')
             AND (COALESCE(v.kev_count, 0) > 0) = $12::BOOL))
     AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
