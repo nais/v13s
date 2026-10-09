@@ -27,6 +27,10 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 		}
 		image := img
 		g.Go(func() error {
+			// g.Go may have waited for a free slot, so the batch can have ended since the check above.
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			ctxTimeout, cancel := context.WithTimeout(ctx, 4*time.Minute)
 			defer cancel()
 

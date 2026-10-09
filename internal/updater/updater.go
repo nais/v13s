@@ -29,6 +29,7 @@ const (
 	ImageMarkAge                                = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
+	ResyncBatchTimeoutDefault           = 15 * time.Minute
 )
 
 type Updater struct {
@@ -36,6 +37,7 @@ type Updater struct {
 	querier                      *sql.Queries
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
+	resyncBatchTimeout           time.Duration
 	log                          *logrus.Entry
 	kevFetcher                   *kev.Fetcher
 	osvFetcher                   *osv.Fetcher
@@ -71,6 +73,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		querier:                      querier,
 		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
+		resyncBatchTimeout:           ResyncBatchTimeoutDefault,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcher(pool, log, kev.SourcesFromConfig(kevCfg)...),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
@@ -267,7 +270,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 	ctx = NewDbContext(ctx, u.querier, u.log)
 
 	done := make(chan bool)
-	batchCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+	batchCtx, cancel := context.WithTimeout(ctx, u.resyncBatchTimeout)
 	defer cancel()
 
 	ch := make(chan *ImageVulnerabilityData, 100)
