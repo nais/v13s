@@ -204,7 +204,7 @@ WHERE
     AND images.tag = w.image_tag
     AND images.updated_at < $1
     AND images.state != 'resync'
-    AND images.state != ANY ($2::image_state[])
+    AND images.state <> ALL ($2::image_state[])
     AND w.state != 'unrecoverable'
 `
 
