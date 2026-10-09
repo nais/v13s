@@ -134,9 +134,13 @@ vulnerability_data AS (
                 v.image_tag
             END) = sqlc.narg('image_tag')::TEXT)
     AND (sqlc.narg('risk_tiers')::INT[] IS NULL
-        OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+        OR (v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[])
+            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state NOT IN ('failed', 'unused')))
     AND (sqlc.narg('has_kev')::BOOL IS NULL
         OR (v.id IS NOT NULL
+            AND w.state NOT IN ('no_attestation', 'failed', 'unrecoverable')
+            AND i.state NOT IN ('failed', 'unused')
             AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL))
     AND (sqlc.narg('since')::TIMESTAMP WITH TIME ZONE IS NULL
         OR v.updated_at > sqlc.narg('since')::TIMESTAMP WITH TIME ZONE)
@@ -464,11 +468,15 @@ WITH filtered_workloads AS (
 ),
 joined_data AS (
     SELECT
-        CASE WHEN COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
-                OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
-            AND (sqlc.narg('has_kev')::BOOL IS NULL
-                OR (v.id IS NOT NULL
-                    AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)), FALSE) THEN
+        CASE WHEN (sqlc.narg('risk_tiers')::INT[] IS NULL
+                AND sqlc.narg('has_kev')::BOOL IS NULL)
+            OR (COALESCE(fw.workload_ready
+                    AND i.state NOT IN ('failed', 'unused')
+                    AND v.id IS NOT NULL, FALSE)
+                AND COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
+                        OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+                    AND (sqlc.narg('has_kev')::BOOL IS NULL
+                        OR (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(fw.workload_ready
@@ -614,11 +622,15 @@ WITH filtered_workloads AS (
 joined_data AS (
     SELECT
         fw.namespace,
-        CASE WHEN COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
-                OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
-            AND (sqlc.narg('has_kev')::BOOL IS NULL
-                OR (v.id IS NOT NULL
-                    AND (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL)), FALSE) THEN
+        CASE WHEN (sqlc.narg('risk_tiers')::INT[] IS NULL
+                AND sqlc.narg('has_kev')::BOOL IS NULL)
+            OR (COALESCE(fw.workload_ready
+                    AND i.state NOT IN ('failed', 'unused')
+                    AND v.id IS NOT NULL, FALSE)
+                AND COALESCE((sqlc.narg('risk_tiers')::INT[] IS NULL
+                        OR v.top_risk_tier = ANY (sqlc.narg('risk_tiers')::INT[]))
+                    AND (sqlc.narg('has_kev')::BOOL IS NULL
+                        OR (COALESCE(v.kev_count, 0) > 0) = sqlc.narg('has_kev')::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(fw.workload_ready AND i.state NOT IN ('failed', 'unused') AND v.id IS NOT NULL, FALSE)
