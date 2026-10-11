@@ -1389,3 +1389,52 @@ func TestFetchVulnerabilityDataForImages_ReturnsWhenReceiverStops(t *testing.T) 
 		t.Fatal("FetchVulnerabilityDataForImages kept blocking on the channel after its context was done")
 	}
 }
+
+func TestBatchUpdateVulnerabilityData_KeepsImageFailedDuringUpdate(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+
+	const (
+		imageName = "image-failed-during-update"
+		imageTag  = "latest"
+	)
+	require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: imageTag, Metadata: map[string]string{}}))
+	for _, name := range []string{"wl-no-attestation", "wl-unrecoverable"} {
+		_, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+			Name: name, WorkloadType: "app", Namespace: "ns", Cluster: "cluster", ImageName: imageName, ImageTag: imageTag,
+		})
+		if !errors.Is(err, pgx.ErrNoRows) {
+			require.NoError(t, err)
+		}
+	}
+	_, err := pool.Exec(ctx, `UPDATE workloads SET state = CASE name WHEN 'wl-no-attestation' THEN 'no_attestation'::workload_state ELSE 'unrecoverable'::workload_state END WHERE image_name = $1`, imageName)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE images SET state = 'failed' WHERE name = $1`, imageName)
+	require.NoError(t, err)
+
+	require.NoError(t, u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{{
+		ImageName: imageName,
+		ImageTag:  imageTag,
+		Source:    "DependencyTrack",
+	}}))
+
+	image, err := db.GetImage(ctx, sql.GetImageParams{Name: imageName, Tag: imageTag})
+	require.NoError(t, err)
+	assert.Equal(t, sql.ImageStateFailed, image.State)
+
+	got := map[string]string{}
+	rows, err := pool.Query(ctx, `SELECT name, state FROM workloads WHERE image_name = $1`, imageName)
+	require.NoError(t, err)
+	for rows.Next() {
+		var name, state string
+		require.NoError(t, rows.Scan(&name, &state))
+		got[name] = state
+	}
+	require.NoError(t, rows.Err())
+	assert.Equal(t, map[string]string{"wl-no-attestation": "no_attestation", "wl-unrecoverable": "unrecoverable"}, got)
+}

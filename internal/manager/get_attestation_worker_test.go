@@ -70,8 +70,8 @@ func TestGetAttestationWorker_ImageStateFailed_OnlyOnFinalAttempt(t *testing.T) 
 
 		verifier.EXPECT().GetAttestation(mock.Anything, "myimage:v1").Return(nil, model.ToUnrecoverableError(errors.New("permanent"), "attestation"))
 
-		db.EXPECT().UpdateWorkloadState(mock.Anything, mock.MatchedBy(func(p sql.UpdateWorkloadStateParams) bool {
-			return p.State == sql.WorkloadStateUnrecoverable
+		db.EXPECT().UpdateWorkloadStateForImage(mock.Anything, mock.MatchedBy(func(p sql.UpdateWorkloadStateForImageParams) bool {
+			return p.State == sql.WorkloadStateUnrecoverable && p.ImageName == "myimage" && p.ImageTag == "v1"
 		})).Return(nil)
 
 		worker := newGetAttestationWorker(t, db, verifier)
@@ -88,8 +88,8 @@ func TestGetAttestationWorker_ImageStateFailed_OnlyOnFinalAttempt(t *testing.T) 
 
 		verifier.EXPECT().GetAttestation(mock.Anything, "myimage:v1").Return(nil, model.ToUnrecoverableError(errors.New("permanent"), "attestation"))
 
-		db.EXPECT().UpdateWorkloadState(mock.Anything, mock.MatchedBy(func(p sql.UpdateWorkloadStateParams) bool {
-			return p.State == sql.WorkloadStateUnrecoverable
+		db.EXPECT().UpdateWorkloadStateForImage(mock.Anything, mock.MatchedBy(func(p sql.UpdateWorkloadStateForImageParams) bool {
+			return p.State == sql.WorkloadStateUnrecoverable && p.ImageName == "myimage" && p.ImageTag == "v1"
 		})).Return(nil)
 
 		db.EXPECT().UpdateImageState(mock.Anything, mock.MatchedBy(func(p sql.UpdateImageStateParams) bool {
