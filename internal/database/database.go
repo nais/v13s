@@ -44,14 +44,14 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 			}
 			log.Errorf("database migration attempt %d/%d failed: %v", i+1, maxRetries, migErr)
 
-			wait := retryBaseWait * time.Duration(i+1)
 			if i+1 == maxRetries {
 				log.WithError(migErr).Errorf("Database migration failed after %d attempts", maxRetries)
-			} else {
-				log.Warnf("Database migration retry %d/%d; waiting %s...",
-					i+1, maxRetries, wait)
+				break
 			}
 
+			wait := retryBaseWait * time.Duration(i+1)
+			log.Warnf("Database migration retry %d/%d; waiting %s...",
+				i+1, maxRetries, wait)
 			if err := sleep(ctx, wait); err != nil {
 				return nil, fmt.Errorf("migration aborted: %w", err)
 			}
@@ -105,14 +105,14 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 			return nil, fmt.Errorf("connecting to database aborted: %w (last error: %v)", ctxErr, err)
 		}
 
-		wait := retryBaseWait * time.Duration(i+1)
 		if i+1 == maxRetries {
 			log.WithError(err).Errorf("Database connection failed after %d attempts", maxRetries)
-		} else {
-			log.WithError(err).Warnf("Database connection retry %d/%d; waiting %s...",
-				i+1, maxRetries, wait)
+			break
 		}
 
+		wait := retryBaseWait * time.Duration(i+1)
+		log.WithError(err).Warnf("Database connection retry %d/%d; waiting %s...",
+			i+1, maxRetries, wait)
 		if sleepErr := sleep(ctx, wait); sleepErr != nil {
 			return nil, fmt.Errorf("connecting to database aborted: %w (last error: %v)", sleepErr, err)
 		}
