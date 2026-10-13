@@ -44,15 +44,17 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 			}
 			log.Errorf("database migration attempt %d/%d failed: %v", i+1, maxRetries, migErr)
 
-			wait := retryBaseWait * time.Duration(i+1)
 			if i+1 == maxRetries {
 				log.WithError(migErr).Errorf("Database migration failed after %d attempts", maxRetries)
-			} else {
-				log.Warnf("Database migration retry %d/%d; waiting %s...",
-					i+1, maxRetries, wait)
+				break
 			}
 
-			time.Sleep(wait)
+			wait := retryBaseWait * time.Duration(i+1)
+			log.Warnf("Database migration retry %d/%d; waiting %s...",
+				i+1, maxRetries, wait)
+			if err := sleep(ctx, wait); err != nil {
+				return nil, fmt.Errorf("migration aborted: %w", err)
+			}
 		}
 		if migErr != nil {
 			return nil, fmt.Errorf("migration failed after %d attempts: %w", maxRetries, migErr)
@@ -95,21 +97,39 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 				log.Infof("connected to database on attempt %d of max retry %d", i+1, maxRetries)
 				return pool, nil
 			}
+			pool.Close()
 			err = pingErr
 		}
 
-		wait := retryBaseWait * time.Duration(i+1)
-		if i+1 == maxRetries {
-			log.WithError(err).Errorf("Database connection failed after %d attempts", maxRetries)
-		} else {
-			log.Warnf("Database connection retry %d/%d; waiting %s...",
-				i+1, maxRetries, wait)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("connecting to database aborted: %w (last error: %v)", ctxErr, err)
 		}
 
-		time.Sleep(wait)
+		if i+1 == maxRetries {
+			log.WithError(err).Errorf("Database connection failed after %d attempts", maxRetries)
+			break
+		}
+
+		wait := retryBaseWait * time.Duration(i+1)
+		log.WithError(err).Warnf("Database connection retry %d/%d; waiting %s...",
+			i+1, maxRetries, wait)
+		if sleepErr := sleep(ctx, wait); sleepErr != nil {
+			return nil, fmt.Errorf("connecting to database aborted: %w (last error: %v)", sleepErr, err)
+		}
 	}
 
 	return nil, fmt.Errorf("giving up after %d attempts: %w", maxRetries, err)
+}
+
+func sleep(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
 }
 
 // migrateDatabaseSchema runs database migrations

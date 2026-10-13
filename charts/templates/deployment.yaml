@@ -63,7 +63,8 @@ spec:
               port: 8000
             periodSeconds: 5
             timeoutSeconds: 5
-            failureThreshold: 30
+            # Migrations run before /healthz is served.
+            failureThreshold: 120
           livenessProbe:
             httpGet:
               path: /healthz
