@@ -101,8 +101,8 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 			err = pingErr
 		}
 
-		if ctx.Err() != nil {
-			return nil, fmt.Errorf("connecting to database aborted: %w", err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("connecting to database aborted: %w (last error: %v)", ctxErr, err)
 		}
 
 		wait := retryBaseWait * time.Duration(i+1)
@@ -114,7 +114,7 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 		}
 
 		if sleepErr := sleep(ctx, wait); sleepErr != nil {
-			return nil, fmt.Errorf("connecting to database aborted: %w", err)
+			return nil, fmt.Errorf("connecting to database aborted: %w (last error: %v)", sleepErr, err)
 		}
 	}
 
