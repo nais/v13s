@@ -36,8 +36,8 @@ jobs:
           - test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
-      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # ratchet:jdx/mise-action@v5.0.1
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.0.1
       - run: mise run ${{ matrix.mise-task }}
 
   integration_test:
@@ -45,8 +45,8 @@ jobs:
       contents: "read"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
-      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # ratchet:jdx/mise-action@v5.0.1
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.0.1
       - run: mise run test-integration
 
   build_and_push:
@@ -62,7 +62,7 @@ jobs:
     name: build and push
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+      - uses: actions/checkout@v7.0.1
 
       - name: Build push v13s image
         uses: nais/platform-build-push-sign@main # ratchet:exclude
@@ -77,7 +77,7 @@ jobs:
         run: |-
           yq e '.image.tag = "${{ steps.build-push-sign.outputs.version }}"' -i ./charts/values.yaml
 
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # ratchet:azure/setup-helm@v5.0.1
+      - uses: azure/setup-helm@v5.0.1
         name: "Setup Helm"
         with:
           version: "v3.15.1"
@@ -99,7 +99,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: nais/fasit-deploy@53e433b1bdd08fc622e03a78584c0832c9083bd3 # ratchet:nais/fasit-deploy@v4.1.1
+      - uses: nais/fasit-deploy@v4.1.1
         with:
           chart: ${{ env.FEATURE_REPOSITORY }}/${{ env.NAME }}
           version: ${{ needs.build_and_push.outputs.version }}
