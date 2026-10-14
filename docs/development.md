@@ -108,6 +108,18 @@ make goimport      # Goimports
 make helm-lint     # Helm chart linting
 ```
 
+## Workflow dependencies
+
+Install the [GitHub Actions lockfile extension](https://github.com/github/gh-actions-lock) and regenerate the lockfile after changing a workflow's action dependencies:
+
+```bash
+gh extension install github/gh-actions-lock --pin v0.2.0
+gh actions-lock
+mise run actions-lock:verify
+```
+
+Commit `.github/workflows/actions.lock` alongside any workflow changes. A pull request check runs `mise run actions-lock:verify` when workflow files change. Review the generated lockfile and any rewritten workflow references before committing.
+
 ## Database Management
 
 ```bash
