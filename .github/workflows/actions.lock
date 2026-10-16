@@ -6,12 +6,12 @@ workflows:
     '.github/workflows/main.yml':
         - 'actions/checkout@v7.0.1'
         - 'azure/setup-helm@v5.0.1'
-        - 'jdx/mise-action@v5.0.1'
+        - 'jdx/mise-action@v5.1.1'
         - 'nais/fasit-deploy@v4.1.1'
         - 'nais/platform-build-push-sign@main'
     '.github/workflows/verify-actions-lock.yml':
         - 'actions/checkout@v7.0.1'
-        - 'jdx/mise-action@v5.0.1'
+        - 'jdx/mise-action@v5.1.1'
 dependencies:
     'actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae':
         ref: 'v5.0.5'
@@ -89,9 +89,9 @@ dependencies:
         commit: 'sha1-7c6bc770dae815cd3e89ee6cdf493a5fab2cc093'
         owner_id: 71461757
         repo_id: 407242578
-    'jdx/mise-action@v5.0.1':
-        ref: 'v5.0.1'
-        commit: 'sha1-7a4e45a543138629540c9a1616d08632b893e492'
+    'jdx/mise-action@v5.1.1':
+        ref: 'v5.1.1'
+        commit: 'sha1-2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca'
         owner_id: 216188
         repo_id: 738284564
     'nais/attest-sign@v2':
