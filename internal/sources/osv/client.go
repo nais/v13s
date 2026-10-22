@@ -1,6 +1,7 @@
 package osv
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 type VulnRecord struct {
 	ID       string     `json:"id"`
 	Aliases  []string   `json:"aliases"`
+	Upstream []string   `json:"upstream"`
 	Affected []Affected `json:"affected"`
 }
 
@@ -74,6 +76,96 @@ func (c *Client) FetchVuln(ctx context.Context, id string) (*VulnRecord, error) 
 	}
 
 	return decodeVulnRecord(id, resp)
+}
+
+const queryBatchSize = 1000
+
+type batchQuery struct {
+	Package   batchPackage `json:"package"`
+	PageToken string       `json:"page_token,omitempty"`
+}
+
+type batchPackage struct {
+	Purl string `json:"purl"`
+}
+
+type batchResponse struct {
+	Results []batchResult `json:"results"`
+}
+
+type batchResult struct {
+	Vulns         []batchVuln `json:"vulns"`
+	NextPageToken string      `json:"next_page_token"`
+}
+
+type batchVuln struct {
+	ID string `json:"id"`
+}
+
+type pendingQuery struct {
+	purl  string
+	token string
+}
+
+func (c *Client) QueryBatch(ctx context.Context, purls []string) (map[string][]string, error) {
+	queue := make([]pendingQuery, 0, len(purls))
+	for _, p := range purls {
+		queue = append(queue, pendingQuery{purl: p})
+	}
+
+	ids := make(map[string][]string, len(purls))
+	for len(queue) > 0 {
+		chunk := queue[:min(queryBatchSize, len(queue))]
+		queue = queue[len(chunk):]
+
+		queries := make([]batchQuery, len(chunk))
+		for i, q := range chunk {
+			queries[i] = batchQuery{Package: batchPackage{Purl: q.purl}, PageToken: q.token}
+		}
+		resp, err := c.postQueryBatch(ctx, queries)
+		if err != nil {
+			return nil, err
+		}
+		if len(resp.Results) != len(chunk) {
+			return nil, fmt.Errorf("OSV querybatch returned %d results for %d queries", len(resp.Results), len(chunk))
+		}
+		for i, r := range resp.Results {
+			for _, v := range r.Vulns {
+				ids[chunk[i].purl] = append(ids[chunk[i].purl], v.ID)
+			}
+			if r.NextPageToken != "" {
+				queue = append(queue, pendingQuery{purl: chunk[i].purl, token: r.NextPageToken})
+			}
+		}
+	}
+	return ids, nil
+}
+
+func (c *Client) postQueryBatch(ctx context.Context, queries []batchQuery) (*batchResponse, error) {
+	body, err := json.Marshal(map[string]any{"queries": queries})
+	if err != nil {
+		return nil, fmt.Errorf("encoding OSV querybatch: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/querybatch", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("building OSV querybatch request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("OSV querybatch: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("OSV querybatch returned HTTP %d", resp.StatusCode)
+	}
+
+	var out batchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("decoding OSV querybatch response: %w", err)
+	}
+	return &out, nil
 }
 
 // decodeAliasHints parses the "...aliases were: X, Y" hint from a 404 body — the alias may be

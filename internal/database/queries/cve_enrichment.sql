@@ -97,7 +97,6 @@ ORDER BY
     v.image_tag;
 
 -- name: GetVulnerabilitiesForOsvEnrichment :many
--- apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
 SELECT DISTINCT
     cve_id,
     package
@@ -108,6 +107,19 @@ WHERE
     AND package != ''
     AND package NOT LIKE 'pkg:apk/%'
     AND package NOT LIKE 'pkg:deb/%'
+ORDER BY
+    cve_id, package;
+
+-- name: GetChainguardVulnerabilitiesForOsvEnrichment :many
+SELECT DISTINCT
+    cve_id,
+    package
+FROM
+    vulnerabilities
+WHERE
+    cve_id != ''
+    AND (package LIKE 'pkg:apk/wolfi/%'
+        OR package LIKE 'pkg:apk/chainguard/%')
 ORDER BY
     cve_id, package;
 

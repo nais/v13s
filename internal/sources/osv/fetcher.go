@@ -3,6 +3,8 @@ package osv
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -101,19 +103,30 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("loading vulnerabilities for OSV enrichment: %w", err)
 	}
-	if len(rows) == 0 {
+	cgRows, err := querier.GetChainguardVulnerabilitiesForOsvEnrichment(ctx)
+	if err != nil {
+		return fmt.Errorf("loading Chainguard vulnerabilities for OSV enrichment: %w", err)
+	}
+	if len(rows) == 0 && len(cgRows) == 0 {
 		f.log.Info("no vulnerabilities to enrich with OSV fix versions")
 		return nil
 	}
 
-	byCve := groupByCve(rows)
-	f.log.Infof("OSV sync: %d distinct CVE IDs to query (%d cve/package pairs)", len(byCve), len(rows))
+	var results []fixResult
+	if len(rows) > 0 {
+		byCve := groupByCve(rows)
+		f.log.Infof("OSV sync: %d distinct CVE IDs to query (%d cve/package pairs)", len(byCve), len(rows))
 
-	fetchStart := time.Now()
-	results, errors, misses := f.fetchAll(ctx, byCve)
-	hits := int64(len(results)) - misses
-	f.log.Infof("OSV sync: fetched %d CVEs in %s (%d hits, %d misses, %d fetch errors)",
-		len(byCve), time.Since(fetchStart).Round(time.Millisecond), hits, misses, errors)
+		fetchStart := time.Now()
+		var errors, misses int64
+		results, errors, misses = f.fetchAll(ctx, byCve)
+		hits := int64(len(results)) - misses
+		f.log.Infof("OSV sync: fetched %d CVEs in %s (%d hits, %d misses, %d fetch errors)",
+			len(byCve), time.Since(fetchStart).Round(time.Millisecond), hits, misses, errors)
+	}
+	if len(cgRows) > 0 {
+		results = append(results, f.fetchChainguard(ctx, cgRows)...)
+	}
 
 	if err := f.persist(ctx, querier, results); err != nil {
 		return err
@@ -197,6 +210,93 @@ func (f *Fetcher) mergeAliases(ctx context.Context, cveID string, record *VulnRe
 		}
 	}
 	return record
+}
+
+func (f *Fetcher) fetchChainguard(ctx context.Context, rows []*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow) []fixResult {
+	start := time.Now()
+	queryPurl := func(pkg string) string { return purlBase(pkg) + "@" + purlVersion(pkg) }
+
+	purlSet := map[string]struct{}{}
+	for _, r := range rows {
+		purlSet[queryPurl(r.Package)] = struct{}{}
+	}
+	idsByPurl, err := f.client.QueryBatch(ctx, slices.Collect(maps.Keys(purlSet)))
+	if err != nil {
+		f.log.WithError(err).Warn("OSV Chainguard querybatch failed, skipping Chainguard/Wolfi packages")
+		return nil
+	}
+
+	records, failed := f.fetchRecords(ctx, idsByPurl)
+
+	var results []fixResult
+	var hits, misses, skipped int
+	for _, r := range rows {
+		q := queryPurl(r.Package)
+		var matched []*VulnRecord
+		incomplete := false
+		for _, id := range idsByPurl[q] {
+			if _, ok := failed[id]; ok {
+				incomplete = true
+				continue
+			}
+			rec := records[id]
+			if rec != nil && (rec.ID == r.CveID || slices.Contains(rec.Upstream, r.CveID) || slices.Contains(rec.Aliases, r.CveID)) {
+				matched = append(matched, rec)
+			}
+		}
+		fv := ApkFixVersion(matched, r.Package)
+		if fv == "" && incomplete {
+			skipped++
+			continue
+		}
+		if fv == "" {
+			misses++
+		} else {
+			hits++
+		}
+		results = append(results, fixResult{cveID: r.CveID, pkg: r.Package, fixVersion: fv})
+	}
+
+	f.log.Infof("OSV sync: Chainguard/Wolfi %d pairs over %d purls in %s (%d hits, %d misses, %d skipped, %d fetch errors)",
+		len(rows), len(purlSet), time.Since(start).Round(time.Millisecond), hits, misses, skipped, len(failed))
+	return results
+}
+
+func (f *Fetcher) fetchRecords(ctx context.Context, idsByPurl map[string][]string) (map[string]*VulnRecord, map[string]struct{}) {
+	idSet := map[string]struct{}{}
+	for _, ids := range idsByPurl {
+		for _, id := range ids {
+			idSet[id] = struct{}{}
+		}
+	}
+
+	jobs := make(chan string, len(idSet))
+	for id := range idSet {
+		jobs <- id
+	}
+	close(jobs)
+
+	var mu sync.Mutex
+	records := make(map[string]*VulnRecord, len(idSet))
+	failed := map[string]struct{}{}
+	var wg sync.WaitGroup
+	for range workerCount {
+		wg.Go(func() {
+			for id := range jobs {
+				rec, err := f.client.FetchVuln(ctx, id)
+				mu.Lock()
+				if err != nil {
+					f.log.WithError(err).Warnf("OSV fetch failed for %s", id)
+					failed[id] = struct{}{}
+				} else {
+					records[id] = rec
+				}
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	return records, failed
 }
 
 func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fixResult) error {

@@ -67,6 +67,45 @@ func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVe
 	return result.RowsAffected(), nil
 }
 
+const getChainguardVulnerabilitiesForOsvEnrichment = `-- name: GetChainguardVulnerabilitiesForOsvEnrichment :many
+SELECT DISTINCT
+    cve_id,
+    package
+FROM
+    vulnerabilities
+WHERE
+    cve_id != ''
+    AND (package LIKE 'pkg:apk/wolfi/%'
+        OR package LIKE 'pkg:apk/chainguard/%')
+ORDER BY
+    cve_id, package
+`
+
+type GetChainguardVulnerabilitiesForOsvEnrichmentRow struct {
+	CveID   string
+	Package string
+}
+
+func (q *Queries) GetChainguardVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetChainguardVulnerabilitiesForOsvEnrichmentRow, error) {
+	rows, err := q.db.Query(ctx, getChainguardVulnerabilitiesForOsvEnrichment)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetChainguardVulnerabilitiesForOsvEnrichmentRow{}
+	for rows.Next() {
+		var i GetChainguardVulnerabilitiesForOsvEnrichmentRow
+		if err := rows.Scan(&i.CveID, &i.Package); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVulnerabilitiesForOsvEnrichment = `-- name: GetVulnerabilitiesForOsvEnrichment :many
 SELECT DISTINCT
     cve_id,
@@ -87,7 +126,6 @@ type GetVulnerabilitiesForOsvEnrichmentRow struct {
 	Package string
 }
 
-// apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
 func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error) {
 	rows, err := q.db.Query(ctx, getVulnerabilitiesForOsvEnrichment)
 	if err != nil {

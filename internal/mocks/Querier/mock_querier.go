@@ -968,6 +968,64 @@ func (_c *MockQuerier_GetCanonicalCveIdByAlias_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetChainguardVulnerabilitiesForOsvEnrichment provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetChainguardVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetChainguardVulnerabilitiesForOsvEnrichment")
+	}
+
+	var r0 []*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetChainguardVulnerabilitiesForOsvEnrichment'
+type MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call struct {
+	*mock.Call
+}
+
+// GetChainguardVulnerabilitiesForOsvEnrichment is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetChainguardVulnerabilitiesForOsvEnrichment(ctx interface{}) *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call {
+	return &MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call{Call: _e.mock.On("GetChainguardVulnerabilitiesForOsvEnrichment", ctx)}
+}
+
+func (_c *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call) Run(run func(ctx context.Context)) *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call) Return(_a0 []*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow, _a1 error) *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call) RunAndReturn(run func(context.Context) ([]*sql.GetChainguardVulnerabilitiesForOsvEnrichmentRow, error)) *MockQuerier_GetChainguardVulnerabilitiesForOsvEnrichment_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCve provides a mock function with given fields: ctx, cveID
 func (_m *MockQuerier) GetCve(ctx context.Context, cveID string) (*sql.Cve, error) {
 	ret := _m.Called(ctx, cveID)

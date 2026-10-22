@@ -636,10 +636,10 @@ func TestFixVersionForPurl(t *testing.T) {
 	}
 }
 
-// expectLock sets up the advisory lock/unlock expectations that every successful sync needs.
-func expectLock(q *mockquerier.MockQuerier) {
+func expectSyncSetup(q *mockquerier.MockQuerier) {
 	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
 	q.EXPECT().AdvisoryUnlock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+	q.EXPECT().GetChainguardVulnerabilitiesForOsvEnrichment(mock.Anything).Return(nil, nil).Maybe()
 }
 
 func TestFetcher_Sync_WritesFixVersions(t *testing.T) {
@@ -647,7 +647,7 @@ func TestFetcher_Sync_WritesFixVersions(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -677,7 +677,7 @@ func TestFetcher_Sync_FetchesGHSAAlias(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -732,7 +732,7 @@ func TestFetcher_Sync_404WithAliasHint(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -787,7 +787,7 @@ func TestFetcher_Sync_404WithNativeAliasHint(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -839,7 +839,7 @@ func TestFetcher_Sync_404WithMultipleSpaceSeparatedAliasHints(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -859,7 +859,7 @@ func TestFetcher_Sync_404WithMultipleSpaceSeparatedAliasHints(t *testing.T) {
 
 func TestFetcher_Sync_EmptyDB(t *testing.T) {
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{}, nil)
@@ -882,7 +882,7 @@ func TestFetcher_Sync_NoFixVersionsFound(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -906,7 +906,7 @@ func TestFetcher_Sync_ClientError_Warns_Continues(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -935,7 +935,7 @@ func TestFetcher_Sync_WorkerPoolConcurrency(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().
 		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
 		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
@@ -986,7 +986,7 @@ func TestFetcher_Persist_BatchesUpdates(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(rows, nil)
 
 	var batchSizes []int
@@ -1018,7 +1018,7 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 	defer srv.Close()
 
 	q := mockquerier.NewMockQuerier(t)
-	expectLock(q)
+	expectSyncSetup(q)
 	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(rows, nil)
 
 	var batchSizes []int
@@ -1034,4 +1034,118 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])
+}
+
+func TestApkFixVersion(t *testing.T) {
+	record := func(fixes ...string) *osv.VulnRecord {
+		var events []osv.Event
+		for _, f := range fixes {
+			events = append(events, osv.Event{Fixed: f})
+		}
+		return &osv.VulnRecord{Affected: []osv.Affected{{
+			Package: osv.AffectedPackage{Purl: "pkg:apk/wolfi/busybox?arch=x86_64"},
+			Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: append([]osv.Event{{Introduced: "0"}}, events...)}},
+		}}}
+	}
+
+	tests := []struct {
+		name     string
+		records  []*osv.VulnRecord
+		purl     string
+		expected string
+	}{
+		{"release compared numerically", []*osv.VulnRecord{record("1.37.0-r10")}, "pkg:apk/wolfi/busybox@1.37.0-r9?arch=x86_64", "1.37.0-r10"},
+		{"smallest fix above installed", []*osv.VulnRecord{record("1.38.0-r0"), record("1.37.0-r58")}, "pkg:apk/wolfi/busybox@1.37.0-r50", "1.37.0-r58"},
+		{"upstream segment compared numerically", []*osv.VulnRecord{record("1.10.0-r0")}, "pkg:apk/wolfi/busybox@1.9.5-r3", "1.10.0-r0"},
+		{"installed at fix", []*osv.VulnRecord{record("1.37.0-r58")}, "pkg:apk/wolfi/busybox@1.37.0-r58", ""},
+		{"other package", []*osv.VulnRecord{record("1.37.0-r58")}, "pkg:apk/wolfi/curl@8.0.0-r0", ""},
+		{"no records", nil, "pkg:apk/wolfi/busybox@1.37.0-r50", ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, osv.ApkFixVersion(tc.records, tc.purl))
+		})
+	}
+}
+
+func TestFetcher_Sync_Chainguard(t *testing.T) {
+	const pkg = "pkg:apk/chainguard/busybox@1.37.0-r50?arch=x86_64&distro=20230214"
+	cga := &osv.VulnRecord{
+		ID:       "CGA-499w-m9q3-62x4",
+		Upstream: []string{"CVE-2026-26158"},
+		Affected: []osv.Affected{{
+			Package: osv.AffectedPackage{Ecosystem: "Chainguard", Name: "busybox", Purl: "pkg:apk/chainguard/busybox?arch=x86_64"},
+			Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.37.0-r58"}}}},
+		}},
+	}
+
+	var queried []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/querybatch":
+			var body map[string][]map[string]map[string]string
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			results := make([]map[string]any, len(body["queries"]))
+			for i, q := range body["queries"] {
+				queried = append(queried, q["package"]["purl"])
+				results[i] = map[string]any{"vulns": []map[string]string{{"id": cga.ID}}}
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"results": results})
+		case r.URL.Path == "/vulns/"+cga.ID:
+			_ = json.NewEncoder(w).Encode(cga)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+	q.EXPECT().AdvisoryUnlock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(nil, nil)
+	q.EXPECT().
+		GetChainguardVulnerabilitiesForOsvEnrichment(mock.Anything).
+		Return([]*sqldatabase.GetChainguardVulnerabilitiesForOsvEnrichmentRow{
+			{CveID: "CVE-2026-26158", Package: pkg},
+			{CveID: "CVE-2026-00001", Package: pkg},
+		}, nil)
+	q.EXPECT().
+		BulkUpdateFixVersions(mock.Anything, sqldatabase.BulkUpdateFixVersionsParams{
+			CveIds:      []string{"CVE-2026-26158"},
+			Packages:    []string{pkg},
+			FixVersions: []string{"1.37.0-r58"},
+		}).
+		Return(int64(1), nil)
+	q.EXPECT().
+		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
+			CveIds:   []string{"CVE-2026-00001"},
+			Packages: []string{pkg},
+		}).
+		Return(int64(0), nil)
+
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
+	assert.Equal(t, []string{"pkg:apk/chainguard/busybox@1.37.0-r50"}, queried)
+}
+
+func TestFetcher_Sync_Chainguard_QueryBatchError_SkipsWithoutClearing(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	q := mockquerier.NewMockQuerier(t)
+	q.EXPECT().TryAdvisoryLock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+	q.EXPECT().AdvisoryUnlock(mock.Anything, osv.OsvSyncLockKey).Return(true, nil)
+	q.EXPECT().GetVulnerabilitiesForOsvEnrichment(mock.Anything).Return(nil, nil)
+	q.EXPECT().
+		GetChainguardVulnerabilitiesForOsvEnrichment(mock.Anything).
+		Return([]*sqldatabase.GetChainguardVulnerabilitiesForOsvEnrichmentRow{
+			{CveID: "CVE-2026-26158", Package: "pkg:apk/wolfi/busybox@1.37.0-r50"},
+		}, nil)
+
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
