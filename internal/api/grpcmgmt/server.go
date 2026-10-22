@@ -263,6 +263,10 @@ func (s *Server) Reanalyze(ctx context.Context, req *management.ReanalyzeRequest
 		s.log.WithError(err).Error("failed to queue vulnerability reanalysis")
 		return nil, status.Error(codes.Internal, "failed to queue vulnerability reanalysis")
 	}
+	if n < 0 || n > manager.MaxReanalysisImages {
+		s.log.WithField("num_images", n).Error("reanalysis returned an invalid image count")
+		return nil, status.Error(codes.Internal, "invalid reanalysis image count")
+	}
 	if n == 0 && req.Workload != nil {
 		return nil, status.Error(codes.NotFound, "no analyzed image for workload")
 	}
