@@ -15,7 +15,23 @@ const (
 	purlTypeGem    = "gem"
 )
 
-var mavenPreReleasePattern = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
+var (
+	mavenPreReleasePattern = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
+	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
+)
+
+// normalizedPurlBase is purlBase with PEP 503 name normalisation for PyPI (jaraco.context == jaraco-context).
+func normalizedPurlBase(purl, typ string) string {
+	base := purlBase(purl)
+	if typ != purlTypePypi {
+		return base
+	}
+	prefix, name, ok := strings.Cut(strings.ToLower(base), "pypi/")
+	if !ok {
+		return base
+	}
+	return prefix + "pypi/" + pypiNameSeparators.ReplaceAllString(name, "-")
+}
 
 func isMavenPreRelease(version string) bool {
 	return mavenPreReleasePattern.MatchString(version)
