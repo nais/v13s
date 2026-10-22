@@ -199,6 +199,65 @@ func (_c *MockManagementServer_GetWorkloadStatus_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// Reanalyze provides a mock function with given fields: _a0, _a1
+func (_m *MockManagementServer) Reanalyze(_a0 context.Context, _a1 *management.ReanalyzeRequest) (*management.ReanalyzeResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Reanalyze")
+	}
+
+	var r0 *management.ReanalyzeResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *management.ReanalyzeRequest) (*management.ReanalyzeResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *management.ReanalyzeRequest) *management.ReanalyzeResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*management.ReanalyzeResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *management.ReanalyzeRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockManagementServer_Reanalyze_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Reanalyze'
+type MockManagementServer_Reanalyze_Call struct {
+	*mock.Call
+}
+
+// Reanalyze is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *management.ReanalyzeRequest
+func (_e *MockManagementServer_Expecter) Reanalyze(_a0 interface{}, _a1 interface{}) *MockManagementServer_Reanalyze_Call {
+	return &MockManagementServer_Reanalyze_Call{Call: _e.mock.On("Reanalyze", _a0, _a1)}
+}
+
+func (_c *MockManagementServer_Reanalyze_Call) Run(run func(_a0 context.Context, _a1 *management.ReanalyzeRequest)) *MockManagementServer_Reanalyze_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*management.ReanalyzeRequest))
+	})
+	return _c
+}
+
+func (_c *MockManagementServer_Reanalyze_Call) Return(_a0 *management.ReanalyzeResponse, _a1 error) *MockManagementServer_Reanalyze_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockManagementServer_Reanalyze_Call) RunAndReturn(run func(context.Context, *management.ReanalyzeRequest) (*management.ReanalyzeResponse, error)) *MockManagementServer_Reanalyze_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterWorkload provides a mock function with given fields: _a0, _a1
 func (_m *MockManagementServer) RegisterWorkload(_a0 context.Context, _a1 *management.RegisterWorkloadRequest) (*management.RegisterWorkloadResponse, error) {
 	ret := _m.Called(_a0, _a1)

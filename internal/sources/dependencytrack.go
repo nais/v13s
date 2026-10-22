@@ -103,6 +103,17 @@ func (d *dependencytrackSource) ProjectExists(ctx context.Context, imageName, im
 	return true, nil
 }
 
+func (d *dependencytrackSource) TriggerAnalysis(ctx context.Context, imageName, imageTag string) (string, error) {
+	project, err := d.client.GetProject(ctx, imageName, imageTag)
+	if err != nil {
+		return "", fmt.Errorf("getting project: %w", err)
+	}
+	if project == nil {
+		return "", ErrNoProject
+	}
+	return d.client.TriggerAnalysisToken(ctx, project.Uuid)
+}
+
 func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageName, imageTag string, includeSuppressed bool) ([]*Vulnerability, error) {
 	p, err := d.client.GetProject(ctx, imageName, imageTag)
 	if err != nil {

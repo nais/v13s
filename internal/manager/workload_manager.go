@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/attestation"
@@ -67,6 +68,8 @@ func NewWorkloadManager(ctx context.Context, pool *pgxpool.Pool, jobCfg *job.Con
 		KindDeleteWorkload:          {MaxWorkers: 3},
 		KindRemoveFromSource:        {MaxWorkers: 3},
 		KindFinalizeAttestation:     {MaxWorkers: 10},
+		KindReanalyzeImage:          {MaxWorkers: 2},
+		KindFinishReanalysis:        {MaxWorkers: 4},
 	}
 
 	jobClient, err := job.NewClient(ctx, jobCfg, queues)
@@ -125,6 +128,29 @@ func (m *WorkloadManager) registerWorkers() {
 	job.AddWorker(m.jobClient, &RemoveFromSourceWorker{db: m.db, source: m.src, log: m.log.WithField("subsystem", "remove_from_source")})
 	job.AddWorker(m.jobClient, &DeleteWorkloadWorker{db: m.db, jobClient: m.jobClient, log: m.log.WithField("subsystem", "delete_workload")})
 	job.AddWorker(m.jobClient, &FinalizeAttestationWorker{db: m.db, source: m.src, jobClient: m.jobClient, log: m.log.WithField("subsystem", "finalize_attestation")})
+	job.AddWorker(m.jobClient, &ReanalyzeImageWorker{db: m.db, source: m.src, jobClient: m.jobClient})
+	job.AddWorker(m.jobClient, &FinishReanalysisWorker{db: m.db, source: m.src})
+}
+
+func (m *WorkloadManager) Reanalyze(ctx context.Context, params sql.ListImagesForReanalysisParams) (int, error) {
+	params.MaxImages = MaxReanalysisImages + 1
+	images, err := m.db.ListImagesForReanalysis(ctx, params)
+	if err != nil {
+		return 0, fmt.Errorf("listing images for reanalysis: %w", err)
+	}
+	if len(images) > MaxReanalysisImages {
+		return 0, ErrReanalysisLimit
+	}
+	start := time.Now()
+	for count, image := range images {
+		if err := m.jobClient.AddJob(ctx, &ReanalyzeImageJob{
+			ImageName: image.ImageName, ImageTag: image.ImageTag,
+			ScheduledAt: start.Add(time.Duration(count) * 2 * time.Second),
+		}); err != nil {
+			return count, fmt.Errorf("enqueueing image reanalysis: %w", err)
+		}
+	}
+	return len(images), nil
 }
 
 func workloadWorker(fn func(ctx context.Context, w *model.Workload) error) Worker[*model.Workload] {
