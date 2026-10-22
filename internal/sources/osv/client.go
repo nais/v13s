@@ -160,12 +160,11 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		if hasFixedEvent(a.Ranges) {
 			sawFixed = true
 		}
-		candidate, candidateSemver, ok := minFixFromRanges(a.Ranges, installed, installedOk)
-		if !ok {
-			continue
-		}
-		if isMaven && isMavenPreRelease(candidate) {
+		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, installed, installedOk, isMaven)
+		if skippedPreRelease {
 			sawPreRelease = true
+		}
+		if !ok {
 			continue
 		}
 		if installedOk {
@@ -210,19 +209,22 @@ func hasFixedEvent(ranges []Range) bool {
 }
 
 // minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM > GIT.
-func minFixFromRanges(ranges []Range, installed version, installedOk bool) (string, version, bool) {
+func minFixFromRanges(ranges []Range, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
+	var skippedPreRelease bool
 	for _, rangeType := range []string{"SEMVER", "ECOSYSTEM", "GIT"} {
-		best, bestSemver, found := minFixFromRangeType(ranges, rangeType, installed, installedOk)
+		best, bestSemver, found, skipped := minFixFromRangeType(ranges, rangeType, installed, installedOk, skipPreRelease)
+		skippedPreRelease = skippedPreRelease || skipped
 		if found {
-			return best, bestSemver, true
+			return best, bestSemver, true, skippedPreRelease
 		}
 	}
-	return "", version{}, false
+	return "", version{}, false, skippedPreRelease
 }
 
-func minFixFromRangeType(ranges []Range, rangeType string, installed version, installedOk bool) (string, version, bool) {
+func minFixFromRangeType(ranges []Range, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
 	var best string
 	var bestSemver version
+	var skippedPreRelease bool
 
 	for _, r := range ranges {
 		if r.Type != rangeType {
@@ -233,10 +235,14 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed version, in
 				continue
 			}
 			fixed, fixedOk := parseSemver(e.Fixed)
+			if installedOk && fixedOk && !fixed.GT(installed) {
+				continue
+			}
+			if skipPreRelease && isMavenPreRelease(e.Fixed) {
+				skippedPreRelease = true
+				continue
+			}
 			if installedOk && fixedOk {
-				if !fixed.GT(installed) {
-					continue
-				}
 				if best == "" || fixed.LT(bestSemver) {
 					best = e.Fixed
 					bestSemver = fixed
@@ -246,7 +252,7 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed version, in
 			}
 		}
 	}
-	return best, bestSemver, best != ""
+	return best, bestSemver, best != "", skippedPreRelease
 }
 
 // matchClassifier replaces the fix version's classifier with the installed version's (e.g. -android → -jre).

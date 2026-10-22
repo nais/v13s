@@ -750,6 +750,12 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			purl:     "pkg:maven/io.debezium/debezium-core@0.6.2",
 			expected: osv.MissPreReleaseOnly,
 		},
+		{
+			name:     "maven stable fix next to pre-release in same entry",
+			record:   affected("pkg:maven/org.example/lib", osv.Event{Introduced: "1.0.0"}, osv.Event{Fixed: "2.0.0.M2"}, osv.Event{Fixed: "2.0.1"}),
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: osv.MissNone,
+		},
 	}
 
 	for _, tc := range tests {
@@ -758,6 +764,19 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			assert.Equal(t, tc.expected, got)
 		})
 	}
+}
+
+func TestFixVersionForPurl_MavenPreReleaseSkippedWithinEntry(t *testing.T) {
+	record := &osv.VulnRecord{Affected: []osv.Affected{{
+		Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+		Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{
+			{Introduced: "1.0.0"}, {Fixed: "2.0.0.M2"}, {Fixed: "2.0.1"},
+		}}},
+	}}}
+
+	got, miss := osv.FixVersionForPurl(record, "pkg:maven/org.example/lib@1.5.0")
+	assert.Equal(t, "2.0.1", got)
+	assert.Equal(t, osv.MissNone, miss)
 }
 
 func TestFixVersionForPurl_PypiNameNormalisation(t *testing.T) {
