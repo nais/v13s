@@ -1,12 +1,14 @@
 package osv
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -120,31 +122,47 @@ func decodeVulnRecord(id string, resp *http.Response) (*VulnRecord, error) {
 	return &record, nil
 }
 
+type MissReason string
+
+const (
+	MissNone             MissReason = ""
+	MissNotInOsv         MissReason = "not_in_osv"
+	MissPackageNotListed MissReason = "package_not_listed"
+	MissNoFixUpstream    MissReason = "no_fix_upstream"
+	MissInstalledPastFix MissReason = "installed_past_fix"
+	MissPreReleaseOnly   MissReason = "prerelease_only"
+)
+
 // FixVersionForPurl returns the minimum fix version strictly greater than the installed version.
 // OSV may have multiple Affected entries per release branch; all are scanned and the smallest qualifying fix is chosen.
-func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
+func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReason) {
 	if record == nil {
-		return ""
+		return "", MissNotInOsv
 	}
-	base := purlBase(storedPurl)
+	typ := purlType(storedPurl)
+	base := normalizedPurlBase(storedPurl, typ)
 	installedRaw := purlVersion(storedPurl)
 	installed, installedOk := parseSemver(installedRaw)
 
 	var best string
-	var bestSemver semver.Version
+	var bestSemver version
+	var matched, sawFixed, sawPreRelease bool
 
-	typ := purlType(storedPurl)
 	isMaven := typ == purlTypeMaven
 
 	for _, a := range record.Affected {
-		if a.Package.Purl == "" || !strings.EqualFold(purlBase(a.Package.Purl), base) {
+		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
 			continue
 		}
-		candidate, candidateSemver, ok := minFixFromRanges(a.Ranges, installed, installedOk)
+		matched = true
+		if hasFixedEvent(a.Ranges) {
+			sawFixed = true
+		}
+		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, installed, installedOk, isMaven)
+		if skippedPreRelease {
+			sawPreRelease = true
+		}
 		if !ok {
-			continue
-		}
-		if isMaven && isMavenPreRelease(candidate) {
 			continue
 		}
 		if installedOk {
@@ -157,27 +175,54 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) string {
 		}
 	}
 
+	if best == "" {
+		switch {
+		case !matched:
+			return "", MissPackageNotListed
+		case sawPreRelease:
+			return "", MissPreReleaseOnly
+		case !sawFixed:
+			return "", MissNoFixUpstream
+		default:
+			return "", MissInstalledPastFix
+		}
+	}
+
 	best = matchClassifier(best, installedRaw)
-	if best != "" && typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+	if typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
-	return best
+	return best, MissNone
+}
+
+func hasFixedEvent(ranges []Range) bool {
+	for _, r := range ranges {
+		for _, e := range r.Events {
+			if e.Fixed != "" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM > GIT.
-func minFixFromRanges(ranges []Range, installed semver.Version, installedOk bool) (string, semver.Version, bool) {
+func minFixFromRanges(ranges []Range, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
+	var skippedPreRelease bool
 	for _, rangeType := range []string{"SEMVER", "ECOSYSTEM", "GIT"} {
-		best, bestSemver, found := minFixFromRangeType(ranges, rangeType, installed, installedOk)
+		best, bestSemver, found, skipped := minFixFromRangeType(ranges, rangeType, installed, installedOk, skipPreRelease)
+		skippedPreRelease = skippedPreRelease || skipped
 		if found {
-			return best, bestSemver, true
+			return best, bestSemver, true, skippedPreRelease
 		}
 	}
-	return "", semver.Version{}, false
+	return "", version{}, false, skippedPreRelease
 }
 
-func minFixFromRangeType(ranges []Range, rangeType string, installed semver.Version, installedOk bool) (string, semver.Version, bool) {
+func minFixFromRangeType(ranges []Range, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
 	var best string
-	var bestSemver semver.Version
+	var bestSemver version
+	var skippedPreRelease bool
 
 	for _, r := range ranges {
 		if r.Type != rangeType {
@@ -188,10 +233,14 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed semver.Vers
 				continue
 			}
 			fixed, fixedOk := parseSemver(e.Fixed)
+			if installedOk && fixedOk && !fixed.GT(installed) {
+				continue
+			}
+			if skipPreRelease && isMavenPreRelease(e.Fixed) {
+				skippedPreRelease = true
+				continue
+			}
 			if installedOk && fixedOk {
-				if !fixed.GT(installed) {
-					continue
-				}
 				if best == "" || fixed.LT(bestSemver) {
 					best = e.Fixed
 					bestSemver = fixed
@@ -201,7 +250,7 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed semver.Vers
 			}
 		}
 	}
-	return best, bestSemver, best != ""
+	return best, bestSemver, best != "", skippedPreRelease
 }
 
 // matchClassifier replaces the fix version's classifier with the installed version's (e.g. -android → -jre).
@@ -217,13 +266,29 @@ func matchClassifier(fix, installedRaw string) string {
 	return classifierSuffix.ReplaceAllString(fix, "-"+im[1])
 }
 
-func parseSemver(v string) (semver.Version, bool) {
-	sv, err := semver.ParseTolerant(normalizeVersion(strings.TrimPrefix(v, "v")))
-	return sv, err == nil
+type version struct {
+	semver semver.Version
+	fourth uint64
 }
 
-// normalizeVersion strips suffixes blang/semver cannot parse (.Final, .jre11, .Alpha1) and drops a 4th numeric segment.
-func normalizeVersion(v string) string {
+func (v version) compare(o version) int {
+	if c := v.semver.Compare(o.semver); c != 0 {
+		return c
+	}
+	return cmp.Compare(v.fourth, o.fourth)
+}
+
+func (v version) GT(o version) bool { return v.compare(o) > 0 }
+func (v version) LT(o version) bool { return v.compare(o) < 0 }
+
+func parseSemver(v string) (version, bool) {
+	base, fourth := normalizeVersion(strings.TrimPrefix(v, "v"))
+	sv, err := semver.ParseTolerant(base)
+	return version{semver: sv, fourth: fourth}, err == nil
+}
+
+// normalizeVersion strips suffixes blang/semver cannot parse (.Final, .jre11, .Alpha1) and splits off a 4th numeric segment.
+func normalizeVersion(v string) (string, uint64) {
 	for {
 		s := nonSemverSuffix.ReplaceAllString(v, "")
 		if s == v {
@@ -232,14 +297,15 @@ func normalizeVersion(v string) string {
 		v = s
 	}
 	if m := fourthNumericSegment.FindStringSubmatch(v); m != nil {
-		return m[1]
+		fourth, _ := strconv.ParseUint(m[2], 10, 64)
+		return m[1], fourth
 	}
-	return v
+	return v, 0
 }
 
 var (
 	classifierSuffix     = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
 	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
-	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.\d+$`)
+	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.(\d+)$`)
 	aliasHintSeparator   = regexp.MustCompile(`[\s,]+`)
 )

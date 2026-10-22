@@ -340,6 +340,69 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "1.1.10.1",
 		},
 		{
+			name: "four-part fix on same patch as installed",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.mozilla/rhino"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.7.14.1"}}},
+						},
+					},
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.mozilla/rhino"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.7.15"}, {Fixed: "1.7.15.1"}}},
+						},
+					},
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.mozilla/rhino"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.8.0"}, {Fixed: "1.8.1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.mozilla/rhino@1.7.14",
+			expected: "1.7.14.1",
+		},
+		{
+			name: "four-part fix above installed three-part on next patch",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.mozilla/rhino"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.7.14.1"}}},
+						},
+					},
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.mozilla/rhino"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "1.7.15"}, {Fixed: "1.7.15.1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.mozilla/rhino@1.7.15",
+			expected: "1.7.15.1",
+		},
+		{
+			name: "four-part installed already at four-part fix",
+			record: &osv.VulnRecord{
+				Affected: []osv.Affected{
+					{
+						Package: osv.AffectedPackage{Purl: "pkg:maven/org.mozilla/rhino"},
+						Ranges: []osv.Range{
+							{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.7.14.1"}}},
+						},
+					},
+				},
+			},
+			purl:     "pkg:maven/org.mozilla/rhino@1.7.14.1",
+			expected: "",
+		},
+		{
 			// mssql plain version (no jre suffix) against jre-only ranges:
 			// 13.2.1 plain is not in range [13.2.0.jre11, 13.2.1.jre11) — no fix match.
 			name: "jre11 suffix: plain installed version does not match jre-only range",
@@ -630,9 +693,101 @@ func TestFixVersionForPurl(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := osv.FixVersionForPurl(tc.record, tc.purl)
+			got, _ := osv.FixVersionForPurl(tc.record, tc.purl)
 			assert.Equal(t, tc.expected, got)
 		})
+	}
+}
+
+func TestFixVersionForPurl_MissReason(t *testing.T) {
+	affected := func(purl string, events ...osv.Event) *osv.VulnRecord {
+		return &osv.VulnRecord{Affected: []osv.Affected{{
+			Package: osv.AffectedPackage{Purl: purl},
+			Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: events}},
+		}}}
+	}
+
+	tests := []struct {
+		name     string
+		record   *osv.VulnRecord
+		purl     string
+		expected osv.MissReason
+	}{
+		{
+			name:     "fix found",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0"}),
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "nil record",
+			record:   nil,
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: osv.MissNotInOsv,
+		},
+		{
+			name:     "package not listed",
+			record:   affected("pkg:npm/bar", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0"}),
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: osv.MissPackageNotListed,
+		},
+		{
+			name:     "no fixed event",
+			record:   affected("pkg:npm/xlsx", osv.Event{Introduced: "0"}),
+			purl:     "pkg:npm/xlsx@0.18.5",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name:     "installed already at fix",
+			record:   affected("pkg:maven/com.microsoft.sqlserver/mssql-jdbc", osv.Event{Introduced: "13.2.0.jre11"}, osv.Event{Fixed: "13.2.1.jre11"}),
+			purl:     "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@13.2.1",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "maven pre-release fix only",
+			record:   affected("pkg:maven/io.debezium/debezium-core", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.3.0.Alpha1"}),
+			purl:     "pkg:maven/io.debezium/debezium-core@0.6.2",
+			expected: osv.MissPreReleaseOnly,
+		},
+		{
+			name:     "maven stable fix next to pre-release in same entry",
+			record:   affected("pkg:maven/org.example/lib", osv.Event{Introduced: "1.0.0"}, osv.Event{Fixed: "2.0.0.M2"}, osv.Event{Fixed: "2.0.1"}),
+			purl:     "pkg:maven/org.example/lib@1.5.0",
+			expected: osv.MissNone,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, got := osv.FixVersionForPurl(tc.record, tc.purl)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestFixVersionForPurl_MavenPreReleaseSkippedWithinEntry(t *testing.T) {
+	record := &osv.VulnRecord{Affected: []osv.Affected{{
+		Package: osv.AffectedPackage{Purl: "pkg:maven/org.example/lib"},
+		Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{
+			{Introduced: "1.0.0"}, {Fixed: "2.0.0.M2"}, {Fixed: "2.0.1"},
+		}}},
+	}}}
+
+	got, miss := osv.FixVersionForPurl(record, "pkg:maven/org.example/lib@1.5.0")
+	assert.Equal(t, "2.0.1", got)
+	assert.Equal(t, osv.MissNone, miss)
+}
+
+func TestFixVersionForPurl_PypiNameNormalisation(t *testing.T) {
+	record := &osv.VulnRecord{Affected: []osv.Affected{{
+		Package: osv.AffectedPackage{Purl: "pkg:pypi/jaraco-context"},
+		Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "5.2.0"}, {Fixed: "6.1.0"}}}},
+	}}}
+
+	for _, purl := range []string{"pkg:pypi/jaraco.context@5.3.0", "pkg:pypi/Jaraco_Context@5.3.0"} {
+		got, miss := osv.FixVersionForPurl(record, purl)
+		assert.Equal(t, "6.1.0", got, purl)
+		assert.Equal(t, osv.MissNone, miss, purl)
 	}
 }
 

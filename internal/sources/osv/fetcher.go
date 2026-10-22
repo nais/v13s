@@ -3,6 +3,8 @@ package osv
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -38,6 +40,7 @@ type fixResult struct {
 	cveID      string
 	pkg        string
 	fixVersion string
+	miss       MissReason
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
@@ -110,8 +113,9 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	f.log.Infof("OSV sync: %d distinct CVE IDs to query (%d cve/package pairs)", len(byCve), len(rows))
 
 	fetchStart := time.Now()
-	results, errors, misses := f.fetchAll(ctx, byCve)
-	hits := int64(len(results)) - misses
+	results, errors := f.fetchAll(ctx, byCve)
+	misses := f.logMisses(results)
+	hits := len(results) - misses
 	f.log.Infof("OSV sync: fetched %d CVEs in %s (%d hits, %d misses, %d fetch errors)",
 		len(byCve), time.Since(fetchStart).Round(time.Millisecond), hits, misses, errors)
 
@@ -122,17 +126,17 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64, int64) {
+func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64) {
 	jobs := make(chan string, len(byCve))
 	out := make(chan fixResult, len(byCve)*2)
 
-	var fetchErrors, fetchMisses atomic.Int64
+	var fetchErrors atomic.Int64
 	var wg sync.WaitGroup
 
 	for range workerCount {
 		wg.Go(func() {
 			for cveID := range jobs {
-				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors, &fetchMisses)
+				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors)
 			}
 		})
 	}
@@ -151,32 +155,47 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fi
 	for r := range out {
 		results = append(results, r)
 	}
-	return results, fetchErrors.Load(), fetchMisses.Load()
+	return results, fetchErrors.Load()
 }
 
-func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, out chan<- fixResult, errors, misses *atomic.Int64) {
+func (f *Fetcher) logMisses(results []fixResult) int {
+	byReason := map[MissReason]int{}
+	for _, r := range results {
+		if r.miss == MissNone {
+			continue
+		}
+		byReason[r.miss]++
+		f.log.WithFields(logrus.Fields{"cve": r.cveID, "package": r.pkg, "reason": r.miss}).Debug("OSV sync: no fix version")
+	}
+	if len(byReason) == 0 {
+		return 0
+	}
+
+	reasons := slices.Sorted(maps.Keys(byReason))
+	parts := make([]string, 0, len(reasons))
+	total := 0
+	for _, reason := range reasons {
+		parts = append(parts, fmt.Sprintf("%s=%d", reason, byReason[reason]))
+		total += byReason[reason]
+	}
+	f.log.Infof("OSV sync: misses by reason: %s", strings.Join(parts, ", "))
+	return total
+}
+
+func (f *Fetcher) processCve(ctx context.Context, cveID string, pkgs []string, out chan<- fixResult, errors *atomic.Int64) {
 	record, err := f.client.FetchVuln(ctx, cveID)
 	if err != nil {
 		f.log.WithError(err).Warnf("OSV fetch failed for %s", cveID)
 		errors.Add(int64(len(pkgs)))
 		return
 	}
-	if record == nil {
-		for _, pkg := range pkgs {
-			out <- fixResult{cveID: cveID, pkg: pkg}
-			misses.Add(1)
-		}
-		return
+	if record != nil {
+		record = f.mergeAliases(ctx, cveID, record)
 	}
 
-	record = f.mergeAliases(ctx, cveID, record)
-
 	for _, pkg := range pkgs {
-		fv := FixVersionForPurl(record, pkg)
-		out <- fixResult{cveID: cveID, pkg: pkg, fixVersion: fv}
-		if fv == "" {
-			misses.Add(1)
-		}
+		fv, miss := FixVersionForPurl(record, pkg)
+		out <- fixResult{cveID: cveID, pkg: pkg, fixVersion: fv, miss: miss}
 	}
 }
 
