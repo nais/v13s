@@ -111,9 +111,7 @@ func (c *client) AddJob(ctx context.Context, args river.JobArgs) error {
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		if err = tx.Rollback(ctx); err != nil {
-			return fmt.Errorf("failed to rollback transaction: %w", err)
-		}
+		return fmt.Errorf("failed to commit job: %w", err)
 	}
 	return nil
 }

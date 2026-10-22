@@ -193,6 +193,10 @@ func (c *client) Resync(ctx context.Context, in *management.ResyncRequest, opts 
 	return c.m.Resync(ctx, in, opts...)
 }
 
+func (c *client) Reanalyze(ctx context.Context, in *management.ReanalyzeRequest, opts ...grpc.CallOption) (*management.ReanalyzeResponse, error) {
+	return c.m.Reanalyze(ctx, in, opts...)
+}
+
 func (c *client) DeleteWorkload(ctx context.Context, in *management.DeleteWorkloadRequest, opts ...grpc.CallOption) (*management.DeleteWorkloadResponse, error) {
 	return c.m.DeleteWorkload(ctx, in, opts...)
 }
