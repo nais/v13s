@@ -20,7 +20,6 @@ var (
 	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
 )
 
-// normalizedPurlBase is purlBase with PEP 503 name normalisation for PyPI (jaraco.context == jaraco-context).
 func normalizedPurlBase(purl, typ string) string {
 	base := purlBase(purl)
 	if typ != purlTypePypi {

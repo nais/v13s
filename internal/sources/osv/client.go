@@ -122,7 +122,6 @@ func decodeVulnRecord(id string, resp *http.Response) (*VulnRecord, error) {
 	return &record, nil
 }
 
-// MissReason explains why no fix version was found for a CVE/package pair.
 type MissReason string
 
 const (
@@ -134,8 +133,7 @@ const (
 	MissPreReleaseOnly   MissReason = "prerelease_only"
 )
 
-// FixVersionForPurl returns the minimum fix version strictly greater than the installed version,
-// or the reason none was found.
+// FixVersionForPurl returns the minimum fix version strictly greater than the installed version.
 // OSV may have multiple Affected entries per release branch; all are scanned and the smallest qualifying fix is chosen.
 func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReason) {
 	if record == nil {
@@ -268,7 +266,6 @@ func matchClassifier(fix, installedRaw string) string {
 	return classifierSuffix.ReplaceAllString(fix, "-"+im[1])
 }
 
-// version is a semver plus an optional 4th numeric segment (1.7.14.1), which blang/semver cannot hold.
 type version struct {
 	semver semver.Version
 	fourth uint64

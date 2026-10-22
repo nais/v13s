@@ -340,7 +340,6 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "1.1.10.1",
 		},
 		{
-			// rhino: 1.7.14.1 is the fix for 1.7.14; the 4th segment must not be dropped.
 			name: "four-part fix on same patch as installed",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{

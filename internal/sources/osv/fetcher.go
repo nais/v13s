@@ -158,7 +158,6 @@ func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fi
 	return results, fetchErrors.Load()
 }
 
-// logMisses logs each miss at debug level and a per-reason summary, returning the total miss count.
 func (f *Fetcher) logMisses(results []fixResult) int {
 	byReason := map[MissReason]int{}
 	for _, r := range results {
