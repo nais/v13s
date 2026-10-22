@@ -3,6 +3,7 @@ environmentKinds:
 
 dependencies:
   - allOf:
+      - fqdn-policy-crds
       - dependencytrack
 
 values:
