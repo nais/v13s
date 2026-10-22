@@ -81,6 +81,28 @@ func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
+func TestTriggerAnalysisUsesExistingProject(t *testing.T) {
+	ctx := context.Background()
+	client := dependencytrackMock.NewMockClient(t)
+	source := NewDependencytrackSource(client, logrus.NewEntry(logrus.New()))
+	client.EXPECT().GetProject(ctx, "image", "tag").Return(&dependencytrack.Project{Uuid: "project-id"}, nil)
+	client.EXPECT().TriggerAnalysisToken(ctx, "project-id").Return("process-token", nil)
+
+	token, err := source.TriggerAnalysis(ctx, "image", "tag")
+	assert.NoError(t, err)
+	assert.Equal(t, "process-token", token)
+}
+
+func TestTriggerAnalysisRejectsMissingProject(t *testing.T) {
+	ctx := context.Background()
+	client := dependencytrackMock.NewMockClient(t)
+	source := NewDependencytrackSource(client, logrus.NewEntry(logrus.New()))
+	client.EXPECT().GetProject(ctx, "image", "tag").Return(nil, nil)
+
+	_, err := source.TriggerAnalysis(ctx, "image", "tag")
+	assert.ErrorIs(t, err, ErrNoProject)
+}
+
 func TestMaintainSuppressedVulnerabilities(t *testing.T) {
 	ctx := context.Background()
 	log := logrus.NewEntry(logrus.New())
