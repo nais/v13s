@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/resync"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -64,6 +65,17 @@ func TestReanalyzeNoEligibleImagesHasNoRequestedAt(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, response.NumImages)
 	require.Nil(t, response.RequestedAt)
+}
+
+func TestReanalyzeRejectsInvalidManagerCount(t *testing.T) {
+	for _, count := range []int{-1, manager.MaxReanalysisImages + 1} {
+		server := &Server{mgr: &fakeReanalysisManager{count: count}, log: logrus.NewEntry(logrus.New())}
+		response, err := server.Reanalyze(context.Background(), &management.ReanalyzeRequest{
+			Cluster: "dev", Namespace: "my-team",
+		})
+		require.Nil(t, response)
+		require.Equal(t, codes.Internal, status.Code(err))
+	}
 }
 
 func TestReanalyzeRejectsUnscopedRequests(t *testing.T) {
