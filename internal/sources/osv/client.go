@@ -144,13 +144,38 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 	installedRaw := purlVersion(storedPurl)
 	installed, installedOk := parseSemver(installedRaw)
 
+	best, matched, sawFixed, sawPreRelease := minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, typ == purlTypeMaven)
+
+	reason := MissNone
+	if best == "" {
+		switch {
+		case !matched:
+			return "", MissPackageNotListed
+		case sawPreRelease:
+			best, _, _, _ = minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, false)
+			reason = MissPreReleaseOnly
+		case !sawFixed:
+			return "", MissNoFixUpstream
+		default:
+			return "", MissInstalledPastFix
+		}
+	}
+
+	if reason == MissNone {
+		best = matchClassifier(best, installedRaw)
+	}
+	if typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+		best = "v" + best
+	}
+	return best, reason
+}
+
+func minFixAcrossAffected(affected []Affected, typ, base string, installed version, installedOk, skipPreRelease bool) (string, bool, bool, bool) {
 	var best string
 	var bestSemver version
 	var matched, sawFixed, sawPreRelease bool
 
-	isMaven := typ == purlTypeMaven
-
-	for _, a := range record.Affected {
+	for _, a := range affected {
 		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
 			continue
 		}
@@ -158,7 +183,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		if hasFixedEvent(a.Ranges) {
 			sawFixed = true
 		}
-		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, installed, installedOk, isMaven)
+		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, installed, installedOk, skipPreRelease)
 		if skippedPreRelease {
 			sawPreRelease = true
 		}
@@ -174,25 +199,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 			best = candidate
 		}
 	}
-
-	if best == "" {
-		switch {
-		case !matched:
-			return "", MissPackageNotListed
-		case sawPreRelease:
-			return "", MissPreReleaseOnly
-		case !sawFixed:
-			return "", MissNoFixUpstream
-		default:
-			return "", MissInstalledPastFix
-		}
-	}
-
-	best = matchClassifier(best, installedRaw)
-	if typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
-		best = "v" + best
-	}
-	return best, MissNone
+	return best, matched, sawFixed, sawPreRelease
 }
 
 func hasFixedEvent(ranges []Range) bool {

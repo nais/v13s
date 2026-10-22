@@ -310,6 +310,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     v.fix_version,
+    v.fix_status,
     c.cvss_score,
     c.epss_score,
     c.epss_percentile,
@@ -351,6 +352,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     v.fix_version,
+    v.fix_status,
     c.cvss_score,
     c.epss_score,
     c.epss_percentile,
@@ -492,7 +494,8 @@ resolved_vulnerabilities AS (
         c.has_kev_entry,
         c.known_ransomware_use,
         c.priority,
-        v.fix_version
+        v.fix_version,
+        v.fix_status
     FROM
         image_all_vulns v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -552,6 +555,7 @@ SELECT
     suppressed_by,
     suppressed_at,
     fix_version,
+    fix_status,
     priority,
     COUNT(id) OVER () AS total_count
 FROM
@@ -677,6 +681,7 @@ SELECT
     c.has_kev_entry,
     c.known_ransomware_use,
     v.fix_version,
+    v.fix_status,
     c.priority
 FROM
     vulnerabilities v
@@ -865,6 +870,7 @@ SELECT
     c.has_kev_entry,
     c.known_ransomware_use,
     v.fix_version,
+    v.fix_status,
     c.priority,
     COUNT(v.id) OVER () AS total_count
 FROM

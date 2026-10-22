@@ -116,28 +116,34 @@ UPDATE
     vulnerabilities
 SET
     fix_version = data.fix_version,
+    fix_status = data.fix_status,
     updated_at = NOW()
 FROM (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
         unnest(@packages::TEXT[]) AS package,
-        unnest(@fix_versions::TEXT[]) AS fix_version) AS data
+        unnest(@fix_versions::TEXT[]) AS fix_version,
+        unnest(@fix_statuses::TEXT[])::fix_status AS fix_status) AS data
 WHERE
     vulnerabilities.cve_id = data.cve_id
     AND vulnerabilities.package = data.package
-    AND vulnerabilities.fix_version IS DISTINCT FROM data.fix_version;
+    AND (vulnerabilities.fix_version IS DISTINCT FROM data.fix_version
+        OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status);
 
 -- name: BulkClearFixVersions :execrows
 UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
+    fix_status = data.fix_status,
     updated_at = NOW()
 FROM (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@packages::TEXT[]) AS package) AS data
+        unnest(@packages::TEXT[]) AS package,
+        unnest(@fix_statuses::TEXT[])::fix_status AS fix_status) AS data
 WHERE
     vulnerabilities.cve_id = data.cve_id
     AND vulnerabilities.package = data.package
-    AND vulnerabilities.fix_version IS NOT NULL;
+    AND (vulnerabilities.fix_version IS NOT NULL
+        OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status);

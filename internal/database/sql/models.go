@@ -10,6 +10,73 @@ import (
 	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
+type FixStatus string
+
+const (
+	FixStatusFixAvailable          FixStatus = "fix_available"
+	FixStatusFixPrereleaseOnly     FixStatus = "fix_prerelease_only"
+	FixStatusNoFixAvailable        FixStatus = "no_fix_available"
+	FixStatusInstalledVersionFixed FixStatus = "installed_version_fixed"
+	FixStatusUnknown               FixStatus = "unknown"
+)
+
+func (e *FixStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FixStatus(s)
+	case string:
+		*e = FixStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FixStatus: %T", src)
+	}
+	return nil
+}
+
+type NullFixStatus struct {
+	FixStatus FixStatus
+	Valid     bool // Valid is true if FixStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFixStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.FixStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FixStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFixStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FixStatus), nil
+}
+
+func (e FixStatus) Valid() bool {
+	switch e {
+	case FixStatusFixAvailable,
+		FixStatusFixPrereleaseOnly,
+		FixStatusNoFixAvailable,
+		FixStatusInstalledVersionFixed,
+		FixStatusUnknown:
+		return true
+	}
+	return false
+}
+
+func AllFixStatusValues() []FixStatus {
+	return []FixStatus{
+		FixStatusFixAvailable,
+		FixStatusFixPrereleaseOnly,
+		FixStatusNoFixAvailable,
+		FixStatusInstalledVersionFixed,
+		FixStatusUnknown,
+	}
+}
+
 type ImageState string
 
 const (

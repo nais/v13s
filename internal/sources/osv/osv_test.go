@@ -491,7 +491,7 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "8.0.26",
 		},
 		{
-			name: "maven M1 pre-release fix ignored",
+			name: "maven M1 pre-release fix returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -503,10 +503,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.apache.commons/commons-fileupload2-core@1.5.0",
-			expected: "",
+			expected: "2.0.0.M2",
 		},
 		{
-			name: "maven RC pre-release fix ignored",
+			name: "maven RC pre-release fix returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -518,7 +518,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@2.9.0",
-			expected: "",
+			expected: "3.0.0.RC2",
 		},
 		{
 			name: "maven hyphen RC pre-release fix not smuggled through classifier rewrite",
@@ -533,10 +533,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@10.1.0-jre",
-			expected: "",
+			expected: "11.0.0-RC2",
 		},
 		{
-			name: "maven SNAPSHOT fix ignored",
+			name: "maven SNAPSHOT fix returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -548,7 +548,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "2.0.0.SNAPSHOT",
 		},
 		{
 			name: "golang v-prefix: mixed-case purl type still gets v prefix",
@@ -615,7 +615,7 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "2.0.0",
 		},
 		{
-			name: "maven M1 hyphen separator ignored",
+			name: "maven M1 hyphen separator returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -627,10 +627,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "11.0.0-M1",
 		},
 		{
-			name: "maven RC hyphen separator ignored",
+			name: "maven RC hyphen separator returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -642,10 +642,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "3.0.0-RC2",
 		},
 		{
-			name: "maven SNAPSHOT hyphen separator ignored",
+			name: "maven SNAPSHOT hyphen separator returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -657,7 +657,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "2.0.0-SNAPSHOT",
 		},
 		{
 			name: "non-maven RC not filtered",
@@ -687,7 +687,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:Maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "2.0.0.M1",
 		},
 	}
 
@@ -814,12 +814,14 @@ func TestFetcher_Sync_WritesFixVersions(t *testing.T) {
 			CveIds:      []string{"CVE-2021-44228"},
 			Packages:    []string{"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
 			FixVersions: []string{"2.15.0"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 	q.EXPECT().
 		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
-			CveIds:   []string{"CVE-9999-9999"},
-			Packages: []string{"pkg:npm/unknown@1.0.0"},
+			CveIds:      []string{"CVE-9999-9999"},
+			Packages:    []string{"pkg:npm/unknown@1.0.0"},
+			FixStatuses: []string{string(sqldatabase.FixStatusUnknown)},
 		}).
 		Return(int64(0), nil)
 
@@ -843,6 +845,7 @@ func TestFetcher_Sync_FetchesGHSAAlias(t *testing.T) {
 			CveIds:      []string{"CVE-2021-44228"},
 			Packages:    []string{"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
 			FixVersions: []string{"2.15.0"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -898,6 +901,7 @@ func TestFetcher_Sync_404WithAliasHint(t *testing.T) {
 			CveIds:      []string{"CVE-2026-26130"},
 			Packages:    []string{"pkg:nuget/Microsoft.AspNetCore.App.Runtime.linux-musl-x64@8.0.24"},
 			FixVersions: []string{"8.0.25"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -953,6 +957,7 @@ func TestFetcher_Sync_404WithNativeAliasHint(t *testing.T) {
 			CveIds:      []string{"CVE-2026-56852"},
 			Packages:    []string{"pkg:golang/golang.org/x/text@v0.37.0"},
 			FixVersions: []string{"v0.38.0"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -1005,6 +1010,7 @@ func TestFetcher_Sync_404WithMultipleSpaceSeparatedAliasHints(t *testing.T) {
 			CveIds:      []string{"CVE-2025-58183"},
 			Packages:    []string{"pkg:golang/stdlib@v1.20.12"},
 			FixVersions: []string{"v1.24.8"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -1045,8 +1051,9 @@ func TestFetcher_Sync_NoFixVersionsFound(t *testing.T) {
 		}, nil)
 	q.EXPECT().
 		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
-			CveIds:   []string{"CVE-9999-9999"},
-			Packages: []string{"pkg:npm/foo@1.0.0"},
+			CveIds:      []string{"CVE-9999-9999"},
+			Packages:    []string{"pkg:npm/foo@1.0.0"},
+			FixStatuses: []string{string(sqldatabase.FixStatusUnknown)},
 		}).
 		Return(int64(0), nil)
 
@@ -1189,4 +1196,65 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])
+}
+
+func TestFetcher_Sync_WritesFixStatuses(t *testing.T) {
+	srv := newVulnServer(t, map[string]*osv.VulnRecord{
+		"CVE-2023-30533": {
+			ID: "CVE-2023-30533",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/xlsx"},
+				Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}}}},
+			}},
+		},
+		"CVE-2023-1419": {
+			ID: "CVE-2023-1419",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:maven/io.debezium/debezium-core"},
+				Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.3.0.Alpha1"}}}},
+			}},
+		},
+		"CVE-2025-59250": {
+			ID: "CVE-2025-59250",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:maven/com.microsoft.sqlserver/mssql-jdbc"},
+				Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "13.2.0.jre11"}, {Fixed: "13.2.1.jre11"}}}},
+			}},
+		},
+	})
+	defer srv.Close()
+
+	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
+	q.EXPECT().
+		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
+		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
+			{CveID: "CVE-2023-30533", Package: "pkg:npm/xlsx@0.18.5"},
+			{CveID: "CVE-2025-59250", Package: "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@13.2.1"},
+			{CveID: "CVE-2023-1419", Package: "pkg:maven/io.debezium/debezium-core@0.6.2"},
+		}, nil)
+	q.EXPECT().
+		BulkUpdateFixVersions(mock.Anything, sqldatabase.BulkUpdateFixVersionsParams{
+			CveIds:      []string{"CVE-2023-1419"},
+			Packages:    []string{"pkg:maven/io.debezium/debezium-core@0.6.2"},
+			FixVersions: []string{"2.3.0.Alpha1"},
+			FixStatuses: []string{string(sqldatabase.FixStatusFixPrereleaseOnly)},
+		}).
+		Return(int64(1), nil)
+	q.EXPECT().
+		BulkClearFixVersions(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, p sqldatabase.BulkClearFixVersionsParams) (int64, error) {
+			got := map[string]sqldatabase.FixStatus{}
+			for i, cve := range p.CveIds {
+				got[cve] = sqldatabase.FixStatus(p.FixStatuses[i])
+			}
+			assert.Equal(t, map[string]sqldatabase.FixStatus{
+				"CVE-2023-30533": sqldatabase.FixStatusNoFixAvailable,
+				"CVE-2025-59250": sqldatabase.FixStatusInstalledVersionFixed,
+			}, got)
+			return int64(len(p.CveIds)), nil
+		})
+
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }

@@ -112,6 +112,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     v.fix_version,
+    v.fix_status,
     c.cvss_score,
     c.epss_score,
     c.epss_percentile,
@@ -162,6 +163,7 @@ type GetVulnerabilityRow struct {
 	SuppressedBy       *string
 	SuppressedAt       pgtype.Timestamptz
 	FixVersion         *string
+	FixStatus          *FixStatus
 	CvssScore          *float64
 	EpssScore          *float64
 	EpssPercentile     *float64
@@ -201,6 +203,7 @@ func (q *Queries) GetVulnerability(ctx context.Context, arg GetVulnerabilityPara
 		&i.SuppressedBy,
 		&i.SuppressedAt,
 		&i.FixVersion,
+		&i.FixStatus,
 		&i.CvssScore,
 		&i.EpssScore,
 		&i.EpssPercentile,
@@ -233,6 +236,7 @@ SELECT
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
     v.fix_version,
+    v.fix_status,
     c.cvss_score,
     c.epss_score,
     c.epss_percentile,
@@ -271,6 +275,7 @@ type GetVulnerabilityByIdRow struct {
 	SuppressedBy       *string
 	SuppressedAt       pgtype.Timestamptz
 	FixVersion         *string
+	FixStatus          *FixStatus
 	CvssScore          *float64
 	EpssScore          *float64
 	EpssPercentile     *float64
@@ -303,6 +308,7 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 		&i.SuppressedBy,
 		&i.SuppressedAt,
 		&i.FixVersion,
+		&i.FixStatus,
 		&i.CvssScore,
 		&i.EpssScore,
 		&i.EpssPercentile,
@@ -471,6 +477,7 @@ SELECT
     c.has_kev_entry,
     c.known_ransomware_use,
     v.fix_version,
+    v.fix_status,
     c.priority
 FROM
     vulnerabilities v
@@ -646,6 +653,7 @@ type ListVulnerabilitiesRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	FixVersion         *string
+	FixStatus          *FixStatus
 	Priority           *int32
 }
 
@@ -702,6 +710,7 @@ func (q *Queries) ListVulnerabilities(ctx context.Context, arg ListVulnerabiliti
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.FixVersion,
+			&i.FixStatus,
 			&i.Priority,
 		); err != nil {
 			return nil, err
@@ -718,7 +727,7 @@ const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
 WITH image_all_vulns AS (
     -- Only the vulnerabilities for this image/tag
     SELECT
-        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version
+        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version, fix_status
     FROM
         vulnerabilities v
     WHERE
@@ -749,7 +758,8 @@ resolved_vulnerabilities AS (
         c.has_kev_entry,
         c.known_ransomware_use,
         c.priority,
-        v.fix_version
+        v.fix_version,
+        v.fix_status
     FROM
         image_all_vulns v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -760,7 +770,7 @@ distinct_image_vulnerabilities AS (
         v.image_tag,
         v.package,
         v.cve_id)
-        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.epss_score, v.epss_percentile, v.has_kev_entry, v.known_ransomware_use, v.priority, v.fix_version,
+        v.cve_id, v.cve_title, v.cve_desc, v.cve_link, v.severity, v.cve_refs, v.cve_created_at, v.cve_updated_at, v.id, v.image_name, v.image_tag, v.package, v.latest_version, v.created_at, v.updated_at, v.severity_since, v.cvss_score, v.epss_score, v.epss_percentile, v.has_kev_entry, v.known_ransomware_use, v.priority, v.fix_version, v.fix_status,
         COALESCE(sv.suppressed, FALSE) AS suppressed,
         sv.reason,
         sv.reason_text,
@@ -809,6 +819,7 @@ SELECT
     suppressed_by,
     suppressed_at,
     fix_version,
+    fix_status,
     priority,
     COUNT(id) OVER () AS total_count
 FROM
@@ -944,6 +955,7 @@ type ListVulnerabilitiesForImageRow struct {
 	SuppressedBy       *string
 	SuppressedAt       pgtype.Timestamptz
 	FixVersion         *string
+	FixStatus          *FixStatus
 	Priority           *int32
 	TotalCount         int64
 }
@@ -996,6 +1008,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 			&i.SuppressedBy,
 			&i.SuppressedAt,
 			&i.FixVersion,
+			&i.FixStatus,
 			&i.Priority,
 			&i.TotalCount,
 		); err != nil {
@@ -1012,7 +1025,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilities :many
 WITH matched AS MATERIALIZED (
     SELECT
-        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version
+        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version, fix_status
     FROM
         vulnerabilities
     WHERE
@@ -1059,6 +1072,7 @@ SELECT
     c.has_kev_entry,
     c.known_ransomware_use,
     v.fix_version,
+    v.fix_status,
     c.priority,
     COUNT(v.id) OVER () AS total_count
 FROM
@@ -1246,6 +1260,7 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	HasKevEntry        bool
 	KnownRansomwareUse bool
 	FixVersion         *string
+	FixStatus          *FixStatus
 	Priority           *int32
 	TotalCount         int64
 }
@@ -1306,6 +1321,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 			&i.HasKevEntry,
 			&i.KnownRansomwareUse,
 			&i.FixVersion,
+			&i.FixStatus,
 			&i.Priority,
 			&i.TotalCount,
 		); err != nil {
