@@ -35,7 +35,7 @@ func (j ReanalyzeImageJob) InsertOpts() river.InsertOpts {
 		ScheduledAt: j.ScheduledAt,
 		UniqueOpts: river.UniqueOpts{
 			ByArgs:   true,
-			ByPeriod: time.Hour,
+			ByPeriod: 10 * time.Minute,
 		},
 		MaxAttempts: 5,
 	}
