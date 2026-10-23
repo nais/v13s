@@ -1416,6 +1416,46 @@ func TestReanalysisKeepsTransientWorkloads(t *testing.T) {
 	}
 }
 
+func TestReanalysisDoesNotPromoteFailedImage(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+	insertWorkloads(ctx, t, db, []string{"image-a"})
+
+	_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		Name: "image-a", Tag: "v1", State: sql.ImageStateFailed,
+	})
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, "UPDATE workloads SET state = 'no_attestation' WHERE image_name = $1 AND image_tag = $2", "image-a", "v1")
+	require.NoError(t, err)
+
+	active, err := db.ImageHasWorkload(ctx, sql.ImageHasWorkloadParams{ImageName: "image-a", ImageTag: "v1"})
+	require.NoError(t, err)
+	require.True(t, active)
+	updated, err := db.MarkImageForReanalysisResync(ctx, sql.MarkImageForReanalysisResyncParams{Name: "image-a", Tag: "v1"})
+	require.NoError(t, err)
+	require.Zero(t, updated)
+
+	image, err := db.GetImage(ctx, sql.GetImageParams{Name: "image-a", Tag: "v1"})
+	require.NoError(t, err)
+	require.Equal(t, sql.ImageStateFailed, image.State)
+	require.False(t, image.ReadyForResyncAt.Valid)
+	var workloadState sql.WorkloadState
+	require.NoError(t, pool.QueryRow(ctx, "SELECT state FROM workloads WHERE image_name = $1 AND image_tag = $2", "image-a", "v1").Scan(&workloadState))
+	require.Equal(t, sql.WorkloadStateNoAttestation, workloadState)
+
+	_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{Name: "image-a", Tag: "v1", State: sql.ImageStateUpdated})
+	require.NoError(t, err)
+	updated, err = db.MarkImageForReanalysisResync(ctx, sql.MarkImageForReanalysisResyncParams{Name: "image-a", Tag: "v1"})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, updated)
+	image, err = db.GetImage(ctx, sql.GetImageParams{Name: "image-a", Tag: "v1"})
+	require.NoError(t, err)
+	require.Equal(t, sql.ImageStateResync, image.State)
+	require.True(t, image.ReadyForResyncAt.Valid)
+}
+
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {
 	for _, p := range projectNames {
 		err := db.CreateImage(ctx, sql.CreateImageParams{
