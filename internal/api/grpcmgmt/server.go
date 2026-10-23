@@ -3,11 +3,14 @@ package grpcmgmt
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/resync"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -22,6 +25,7 @@ var _ management.ManagementServer = (*Server)(nil)
 type workloadManager interface {
 	AddWorkload(ctx context.Context, workload *model.Workload) error
 	DeleteWorkload(ctx context.Context, workload *model.Workload) error
+	Reanalyze(ctx context.Context, params sql.ListImagesForReanalysisParams) (int, error)
 }
 
 type Server struct {
@@ -230,6 +234,48 @@ func (s *Server) Resync(ctx context.Context, request *management.ResyncRequest) 
 		NumFailures:  result.NumFailures,
 		Failures:     toProtoFailures(result.Failures),
 	}, nil
+}
+
+func (s *Server) Reanalyze(ctx context.Context, req *management.ReanalyzeRequest) (*management.ReanalyzeResponse, error) {
+	if req.Cluster == "" || req.Namespace == "" ||
+		strings.TrimSpace(req.Cluster) != req.Cluster ||
+		strings.TrimSpace(req.Namespace) != req.Namespace {
+		return nil, status.Error(codes.InvalidArgument, "cluster and namespace are required")
+	}
+	if req.Workload != nil && (*req.Workload == "" || strings.TrimSpace(*req.Workload) != *req.Workload) {
+		return nil, status.Error(codes.InvalidArgument, "workload must be nonempty")
+	}
+	if req.Workload != nil && req.WorkloadType == nil {
+		return nil, status.Error(codes.InvalidArgument, "workload_type is required when workload is specified")
+	}
+	if req.WorkloadType != nil && *req.WorkloadType != string(model.WorkloadTypeApp) &&
+		*req.WorkloadType != string(model.WorkloadTypeJob) && *req.WorkloadType != string(model.WorkloadTypeDeployment) {
+		return nil, status.Error(codes.InvalidArgument, "workload_type must be app, job or deployment")
+	}
+
+	n, err := s.mgr.Reanalyze(ctx, sql.ListImagesForReanalysisParams{
+		Cluster: req.Cluster, Namespace: req.Namespace,
+		WorkloadName: req.Workload, WorkloadType: req.WorkloadType,
+	})
+	if err != nil {
+		if errors.Is(err, manager.ErrReanalysisLimit) {
+			return nil, status.Errorf(codes.ResourceExhausted, "more than %d image tags in scope", manager.MaxReanalysisImages)
+		}
+		s.log.WithError(err).Error("failed to queue vulnerability reanalysis")
+		return nil, status.Error(codes.Internal, "failed to queue vulnerability reanalysis")
+	}
+	if n < 0 || n > manager.MaxReanalysisImages {
+		s.log.WithField("num_images", n).Error("reanalysis returned an invalid image count")
+		return nil, status.Error(codes.Internal, "invalid reanalysis image count")
+	}
+	if n == 0 && req.Workload != nil {
+		return nil, status.Error(codes.NotFound, "no analyzed image for workload")
+	}
+	response := &management.ReanalyzeResponse{NumImages: int32(n)}
+	if n > 0 {
+		response.RequestedAt = timestamppb.New(time.Now())
+	}
+	return response, nil
 }
 
 func workloadTypePtr(value *string) *model.WorkloadType {

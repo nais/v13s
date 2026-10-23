@@ -11,10 +11,11 @@ import (
 )
 
 type ImageVulnerabilityData struct {
-	ImageName       string
-	ImageTag        string
-	Source          string
-	Vulnerabilities []*sources.Vulnerability
+	ImageName        string
+	ImageTag         string
+	Source           string
+	ReadyForResyncAt pgtype.Timestamptz
+	Vulnerabilities  []*sources.Vulnerability
 }
 
 func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []*sql.Image, limit int, ch chan<- *ImageVulnerabilityData) error {
@@ -42,6 +43,7 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 				if err != nil {
 					return err
 				}
+				imageData.ReadyForResyncAt = image.ReadyForResyncAt
 
 				select {
 				case ch <- imageData:

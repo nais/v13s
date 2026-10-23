@@ -398,6 +398,64 @@ func (_c *MockSource_ProjectExists_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
+// TriggerAnalysis provides a mock function with given fields: ctx, imageName, imageTag
+func (_m *MockSource) TriggerAnalysis(ctx context.Context, imageName string, imageTag string) (string, error) {
+	ret := _m.Called(ctx, imageName, imageTag)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TriggerAnalysis")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
+		return rf(ctx, imageName, imageTag)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = rf(ctx, imageName, imageTag)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, imageName, imageTag)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSource_TriggerAnalysis_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TriggerAnalysis'
+type MockSource_TriggerAnalysis_Call struct {
+	*mock.Call
+}
+
+// TriggerAnalysis is a helper method to define mock.On call
+//   - ctx context.Context
+//   - imageName string
+//   - imageTag string
+func (_e *MockSource_Expecter) TriggerAnalysis(ctx interface{}, imageName interface{}, imageTag interface{}) *MockSource_TriggerAnalysis_Call {
+	return &MockSource_TriggerAnalysis_Call{Call: _e.mock.On("TriggerAnalysis", ctx, imageName, imageTag)}
+}
+
+func (_c *MockSource_TriggerAnalysis_Call) Run(run func(ctx context.Context, imageName string, imageTag string)) *MockSource_TriggerAnalysis_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockSource_TriggerAnalysis_Call) Return(_a0 string, _a1 error) *MockSource_TriggerAnalysis_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSource_TriggerAnalysis_Call) RunAndReturn(run func(context.Context, string, string) (string, error)) *MockSource_TriggerAnalysis_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UploadAttestation provides a mock function with given fields: ctx, imageName, imageTag, att
 func (_m *MockSource) UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (*sources.UploadAttestationResponse, error) {
 	ret := _m.Called(ctx, imageName, imageTag, att)

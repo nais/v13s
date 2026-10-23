@@ -35,6 +35,7 @@ type Source interface {
 	MaintainSuppressedVulnerabilities(ctx context.Context, suppressed []*SuppressedVulnerability) error
 	Name() string
 	ProjectExists(ctx context.Context, imageName, imageTag string) (bool, error)
+	TriggerAnalysis(ctx context.Context, imageName, imageTag string) (string, error)
 	UploadAttestation(ctx context.Context, imageName string, imageTag string, att []byte) (*UploadAttestationResponse, error)
 }
 

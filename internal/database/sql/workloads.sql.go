@@ -177,6 +177,27 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 	return &i, err
 }
 
+const imageHasWorkload = `-- name: ImageHasWorkload :one
+SELECT EXISTS (
+    SELECT 1
+    FROM workloads
+    WHERE image_name = $1 AND image_tag = $2
+        AND state NOT IN ('failed', 'unrecoverable')
+)
+`
+
+type ImageHasWorkloadParams struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) ImageHasWorkload(ctx context.Context, arg ImageHasWorkloadParams) (bool, error) {
+	row := q.db.QueryRow(ctx, imageHasWorkload, arg.ImageName, arg.ImageTag)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const initializeWorkload = `-- name: InitializeWorkload :one
 WITH upserted AS (
     INSERT INTO workloads(
@@ -245,6 +266,59 @@ func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkload
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listImagesForReanalysis = `-- name: ListImagesForReanalysis :many
+SELECT DISTINCT w.image_name, w.image_tag
+FROM workloads w
+JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
+WHERE w.cluster = $1
+    AND w.namespace = $2
+    AND ($3::TEXT IS NULL OR w.name = $3::TEXT)
+    AND ($4::TEXT IS NULL OR w.workload_type = $4::TEXT)
+    AND i.state = 'updated'
+    AND w.state = 'updated'
+ORDER BY w.image_name, w.image_tag
+LIMIT $5
+`
+
+type ListImagesForReanalysisParams struct {
+	Cluster      string
+	Namespace    string
+	WorkloadName *string
+	WorkloadType *string
+	MaxImages    int32
+}
+
+type ListImagesForReanalysisRow struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) ListImagesForReanalysis(ctx context.Context, arg ListImagesForReanalysisParams) ([]*ListImagesForReanalysisRow, error) {
+	rows, err := q.db.Query(ctx, listImagesForReanalysis,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadName,
+		arg.WorkloadType,
+		arg.MaxImages,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListImagesForReanalysisRow{}
+	for rows.Next() {
+		var i ListImagesForReanalysisRow
+		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
