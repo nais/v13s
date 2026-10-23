@@ -708,6 +708,15 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "2.0.0",
 		},
 		{
+			name: "GIT fix with numeric-leading commit hash",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges:  []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1abcdef0123456789abcdef0123456789abcdef0123"}}}},
+			}}},
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: "1abcdef0123456789abcdef0123456789abcdef0123",
+		},
+		{
 			name: "duplicate GIT-only entries",
 			record: &osv.VulnRecord{Affected: []osv.Affected{
 				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
@@ -826,6 +835,35 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}, osv.Event{Introduced: "2.0.0"}, osv.Event{Fixed: "2.2.0"}),
 			purl:     "pkg:npm/foo@1.5.0",
 			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name: "explicit affected version in the same entry as a fixed range",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package:  osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges:   []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}}},
+				Versions: []string{"2.0.0"},
+			}}},
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "explicit affected version in a separate entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Versions: []string{"2.0.0"}},
+			}},
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "explicit affected Go version matches without v prefix",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package:  osv.AffectedPackage{Purl: "pkg:golang/example.com/foo"},
+				Ranges:   []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}}},
+				Versions: []string{"2.0.0"},
+			}}},
+			purl:     "pkg:golang/example.com/foo@v2.0.0",
+			expected: osv.MissNoFixUpstream,
 		},
 		{
 			name: "affected range wins over a not yet introduced range listed first",

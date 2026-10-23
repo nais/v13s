@@ -21,8 +21,9 @@ type VulnRecord struct {
 }
 
 type Affected struct {
-	Package AffectedPackage `json:"package"`
-	Ranges  []Range         `json:"ranges"`
+	Package  AffectedPackage `json:"package"`
+	Ranges   []Range         `json:"ranges"`
+	Versions []string        `json:"versions"`
 }
 
 type AffectedPackage struct {
@@ -145,7 +146,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		return "", MissUnknown
 	}
 	installed, installedOk := parseVersion(pkg.typ, pkg.version)
-	if installedOk && installedMembership(packageRanges(record.Affected, pkg), pkg.typ, installed) == rangeUnaffected {
+	if installedState(record.Affected, pkg, installed, installedOk) == rangeUnaffected {
 		return "", MissInstalledPastFix
 	}
 
@@ -214,17 +215,32 @@ func minFixAcrossAffected(affected []Affected, pkg purl, installed version, inst
 // minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM, and GIT only when neither is present.
 func minFixFromRanges(ranges []Range, typ string, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool) {
 	var skippedPreRelease bool
-	for _, rangeType := range []string{rangeTypeSemver, rangeTypeEcosystem, rangeTypeGit} {
-		if rangeType == rangeTypeGit && slices.ContainsFunc(ranges, isComparable) {
-			break
-		}
+	for _, rangeType := range []string{rangeTypeSemver, rangeTypeEcosystem} {
 		best, skipped := minFixFromRangeType(ranges, typ, rangeType, installed, installedOk, skipPreRelease)
 		skippedPreRelease = skippedPreRelease || skipped
 		if best.found() {
 			return best, skippedPreRelease
 		}
 	}
-	return fixCandidate{}, skippedPreRelease
+	if slices.ContainsFunc(ranges, isComparable) {
+		return fixCandidate{}, skippedPreRelease
+	}
+	return firstGitFix(ranges), skippedPreRelease
+}
+
+// firstGitFix returns a GIT fixed commit unparsed: commit hashes have no release order, even when they start with a digit.
+func firstGitFix(ranges []Range) fixCandidate {
+	for _, r := range ranges {
+		if r.Type != rangeTypeGit {
+			continue
+		}
+		for _, e := range r.Events {
+			if e.Fixed != "" {
+				return fixCandidate{raw: e.Fixed}
+			}
+		}
+	}
+	return fixCandidate{}
 }
 
 func minFixFromRangeType(ranges []Range, typ, rangeType string, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool) {
@@ -290,10 +306,7 @@ func installedFixStatus(affected []Affected, pkg purl, installed version, instal
 	if !slices.ContainsFunc(ranges, hasFixBound) {
 		return MissNoFixUpstream
 	}
-	if !installedOk {
-		return MissUnknown
-	}
-	switch installedMembership(ranges, pkg.typ, installed) {
+	switch installedState(affected, pkg, installed, installedOk) {
 	case rangeAffected:
 		return MissNoFixUpstream
 	case rangeUnaffected:
@@ -301,6 +314,35 @@ func installedFixStatus(affected []Affected, pkg purl, installed version, instal
 	default:
 		return MissUnknown
 	}
+}
+
+// installedState treats an installed version listed in affected.versions as affected before consulting the ranges.
+func installedState(affected []Affected, pkg purl, installed version, installedOk bool) membership {
+	if explicitlyAffected(affected, pkg, installed, installedOk) {
+		return rangeAffected
+	}
+	if !installedOk {
+		return rangeUnknown
+	}
+	return installedMembership(packageRanges(affected, pkg), pkg.typ, installed)
+}
+
+func explicitlyAffected(affected []Affected, pkg purl, installed version, installedOk bool) bool {
+	for _, a := range affected {
+		if !matchesPackage(a, pkg) {
+			continue
+		}
+		for _, raw := range a.Versions {
+			if raw == pkg.version {
+				return true
+			}
+			listed, ok := parseVersion(pkg.typ, raw)
+			if ok && installedOk && listed.compare(installed) == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type membership uint8
