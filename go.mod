@@ -16,13 +16,14 @@ tool (
 
 require (
 	cloud.google.com/go/auth v0.24.1
-	github.com/blang/semver v3.5.1+incompatible
+	deps.dev/util/semver v0.0.0-20260529052642-cf1e78d92744
 	github.com/bombsimon/logrusr/v4 v4.2.0
 	github.com/containerd/log v0.2.0
 	github.com/emicklei/pgtalk v1.14.2
 	github.com/exaring/otelpgx v0.13.0
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/google/go-containerregistry v0.22.1
+	github.com/google/osv-scalibr v0.5.3
 	github.com/google/uuid v1.6.0
 	github.com/in-toto/in-toto-golang v0.11.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
@@ -32,6 +33,7 @@ require (
 	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260811105727-d6cf79df3a0b
 	github.com/nais/liberator v0.0.0-20260814130931-bc9d09eb389e
 	github.com/nais/v13s/pkg/api v0.0.0-20260811092310-43ca3d998d55
+	github.com/package-url/packageurl-go v0.1.5
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/common v0.72.1
@@ -91,7 +93,7 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
+	github.com/containerd/platforms v1.0.0-rc.1 // indirect
 	github.com/coreos/go-oidc/v3 v3.20.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect

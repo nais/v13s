@@ -693,6 +693,30 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "v2.0.0-rc.1",
 		},
 		{
+			name:     "npm scoped package matches percent-encoded namespace",
+			record:   affected("pkg:npm/@scope/name", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.2.0"}),
+			purl:     "pkg:npm/%40scope/name@1.0.0",
+			expected: "1.2.0",
+		},
+		{
+			name:     "Alpine release suffix is not swapped like a Maven classifier",
+			record:   affected("pkg:apk/alpine/musl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.2.5-r0"}),
+			purl:     "pkg:apk/alpine/musl@1.2.4-r2?arch=x86_64",
+			expected: "1.2.5-r0",
+		},
+		{
+			name:     "Debian versions compare with epoch and tilde",
+			record:   affected("pkg:deb/debian/openssl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1:3.0.11-1~deb12u3"}),
+			purl:     "pkg:deb/debian/openssl@1:3.0.11-1~deb12u2?arch=amd64",
+			expected: "1:3.0.11-1~deb12u3",
+		},
+		{
+			name:     "RPM release compares numerically",
+			record:   affected("pkg:rpm/redhat/openssl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "3.0.7-28.el9"}),
+			purl:     "pkg:rpm/redhat/openssl@3.0.7-9.el9?arch=x86_64",
+			expected: "3.0.7-28.el9",
+		},
+		{
 			name: "maven pre-release filter applies with mixed-case purl type",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
@@ -717,14 +741,14 @@ func TestFixVersionForPurl(t *testing.T) {
 	}
 }
 
-func TestFixVersionForPurl_MissReason(t *testing.T) {
-	affected := func(purl string, events ...osv.Event) *osv.VulnRecord {
-		return &osv.VulnRecord{Affected: []osv.Affected{{
-			Package: osv.AffectedPackage{Purl: purl},
-			Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: events}},
-		}}}
-	}
+func affected(purl string, events ...osv.Event) *osv.VulnRecord {
+	return &osv.VulnRecord{Affected: []osv.Affected{{
+		Package: osv.AffectedPackage{Purl: purl},
+		Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: events}},
+	}}}
+}
 
+func TestFixVersionForPurl_MissReason(t *testing.T) {
 	tests := []struct {
 		name     string
 		record   *osv.VulnRecord
@@ -862,6 +886,72 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.preview1"}),
 			purl:     "pkg:pypi/foo@1.5.0",
 			expected: osv.MissPreReleaseOnly,
+		},
+		{
+			name:     "PyPI numeric post release is stable",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI numeric post release fixes installed release",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-1"}),
+			purl:     "pkg:pypi/foo@2.0.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI dev release fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.dev1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissPreReleaseOnly,
+		},
+		{
+			name:     "maven CR fix only",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.CR1"}),
+			purl:     "pkg:maven/org.example/foo@1.5.0",
+			expected: osv.MissPreReleaseOnly,
+		},
+		{
+			name:     "Debian epoch puts installed past fix",
+			record:   affected("pkg:deb/debian/openssl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "3.0.13-1"}),
+			purl:     "pkg:deb/debian/openssl@1:3.0.11-1",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "unparseable stored purl",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}),
+			purl:     "npm/foo@1.0.0",
+			expected: osv.MissUnknown,
+		},
+		{
+			name:     "PyPI prerelease with local segment fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-rc1+local"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissPreReleaseOnly,
+		},
+		{
+			name:     "maven milestone fix above installed milestone",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.M2"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.M1",
+			expected: osv.MissPreReleaseOnly,
+		},
+		{
+			name:     "maven final fix above installed alpha",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.Final"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.Alpha1",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "maven installed milestone before reintroduction",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.0.0"}, osv.Event{Introduced: "2.0.0.M2"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.M1",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "maven installed milestone after reintroduction",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.0.0"}, osv.Event{Introduced: "2.0.0.M2"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.M3",
+			expected: osv.MissNoFixUpstream,
 		},
 		{
 			name:     "PyPI post release is stable",

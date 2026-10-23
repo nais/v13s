@@ -1,18 +1,17 @@
 package osv
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/google/osv-scalibr/semantic"
 )
 
 type VulnRecord struct {
@@ -142,12 +141,13 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 	if record == nil {
 		return "", MissNotInOsv
 	}
-	typ := purlType(storedPurl)
-	base := normalizedPurlBase(storedPurl, typ)
-	installedRaw := purlVersion(storedPurl)
-	installed, installedOk := parseSemver(installedRaw)
+	pkg, ok := parsePurl(storedPurl)
+	if !ok {
+		return "", MissUnknown
+	}
+	installed, installedOk := parseVersion(pkg.typ, pkg.version)
 
-	best, matched, sawPreRelease := minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, true)
+	best, matched, sawPreRelease := minFixAcrossAffected(record.Affected, pkg, installed, installedOk, true)
 
 	reason := MissNone
 	if best == "" {
@@ -155,33 +155,33 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		case !matched:
 			return "", MissPackageNotListed
 		case sawPreRelease:
-			best, _, _ = minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, false)
+			best, _, _ = minFixAcrossAffected(record.Affected, pkg, installed, installedOk, false)
 			reason = MissPreReleaseOnly
 		default:
-			return "", installedFixStatus(record.Affected, typ, base, installed, installedOk)
+			return "", installedFixStatus(record.Affected, pkg, installed, installedOk)
 		}
 	}
 
-	if reason == MissNone {
-		best = matchClassifier(best, installedRaw)
+	if reason == MissNone && pkg.typ == purlTypeMaven {
+		best = matchClassifier(best, pkg.version)
 	}
-	if typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+	if pkg.typ == purlTypeGolang && strings.HasPrefix(pkg.version, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
 	return best, reason
 }
 
-func minFixAcrossAffected(affected []Affected, typ, base string, installed version, installedOk, skipPreRelease bool) (string, bool, bool) {
+func minFixAcrossAffected(affected []Affected, pkg purl, installed version, installedOk, skipPreRelease bool) (string, bool, bool) {
 	var best string
 	var bestSemver version
 	var matched, sawPreRelease bool
 
 	for _, a := range affected {
-		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
+		if !matchesPackage(a, pkg) {
 			continue
 		}
 		matched = true
-		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, typ, installed, installedOk, skipPreRelease)
+		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, pkg.typ, installed, installedOk, skipPreRelease)
 		if skippedPreRelease {
 			sawPreRelease = true
 		}
@@ -203,8 +203,8 @@ func minFixAcrossAffected(affected []Affected, typ, base string, installed versi
 // minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM, and GIT only when neither is present.
 func minFixFromRanges(ranges []Range, typ string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
 	var skippedPreRelease bool
-	for _, rangeType := range []string{"SEMVER", "ECOSYSTEM", "GIT"} {
-		if rangeType == "GIT" && hasComparableRange(ranges) {
+	for _, rangeType := range []string{rangeTypeSemver, rangeTypeEcosystem, rangeTypeGit} {
+		if rangeType == rangeTypeGit && slices.ContainsFunc(ranges, isComparable) {
 			break
 		}
 		best, bestSemver, found, skipped := minFixFromRangeType(ranges, typ, rangeType, installed, installedOk, skipPreRelease)
@@ -214,15 +214,6 @@ func minFixFromRanges(ranges []Range, typ string, installed version, installedOk
 		}
 	}
 	return "", version{}, false, skippedPreRelease
-}
-
-func hasComparableRange(ranges []Range) bool {
-	for _, r := range ranges {
-		if r.Type == "SEMVER" || r.Type == "ECOSYSTEM" {
-			return true
-		}
-	}
-	return false
 }
 
 func minFixFromRangeType(ranges []Range, typ, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
@@ -238,7 +229,7 @@ func minFixFromRangeType(ranges []Range, typ, rangeType string, installed versio
 			if e.Fixed == "" {
 				continue
 			}
-			fixed, fixedOk := parseSemver(e.Fixed)
+			fixed, fixedOk := parseVersion(typ, e.Fixed)
 			if installedOk && fixedOk && !fixed.GT(installed) {
 				continue
 			}
@@ -259,30 +250,48 @@ func minFixFromRangeType(ranges []Range, typ, rangeType string, installed versio
 	return best, bestSemver, best != "", skippedPreRelease
 }
 
-func installedFixStatus(affected []Affected, typ, base string, installed version, installedOk bool) MissReason {
-	var comparable []Range
-	var bounded bool
+const (
+	rangeTypeSemver    = "SEMVER"
+	rangeTypeEcosystem = "ECOSYSTEM"
+	rangeTypeGit       = "GIT"
+)
+
+func matchesPackage(a Affected, pkg purl) bool {
+	other, ok := parsePurl(a.Package.Purl)
+	return ok && other.samePackage(pkg)
+}
+
+func isComparable(r Range) bool {
+	return r.Type == rangeTypeSemver || r.Type == rangeTypeEcosystem
+}
+
+func hasFixBound(r Range) bool {
+	return slices.ContainsFunc(r.Events, hasEnd)
+}
+
+func packageRanges(affected []Affected, pkg purl) []Range {
+	var ranges []Range
 	for _, a := range affected {
-		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
-			continue
-		}
-		for _, r := range a.Ranges {
-			if hasFixBound(r.Events) {
-				bounded = true
-			}
-			if r.Type == "SEMVER" || r.Type == "ECOSYSTEM" {
-				comparable = append(comparable, r)
-			}
+		if matchesPackage(a, pkg) {
+			ranges = append(ranges, a.Ranges...)
 		}
 	}
-	if !bounded {
+	return ranges
+}
+
+func installedFixStatus(affected []Affected, pkg purl, installed version, installedOk bool) MissReason {
+	ranges := packageRanges(affected, pkg)
+	if !slices.ContainsFunc(ranges, hasFixBound) {
 		return MissNoFixUpstream
 	}
-	if !installedOk || len(comparable) == 0 {
+	if !installedOk || !slices.ContainsFunc(ranges, isComparable) {
 		return MissUnknown
 	}
-	for _, r := range comparable {
-		switch rangeMembership(r.Events, installed) {
+	for _, r := range ranges {
+		if !isComparable(r) {
+			continue
+		}
+		switch rangeMembership(r.Events, pkg.typ, installed) {
 		case rangeAffected:
 			return MissNoFixUpstream
 		case rangeUnknown:
@@ -290,15 +299,6 @@ func installedFixStatus(affected []Affected, typ, base string, installed version
 		}
 	}
 	return MissInstalledPastFix
-}
-
-func hasFixBound(events []Event) bool {
-	for _, e := range events {
-		if e.Fixed != "" || e.LastAffected != "" {
-			return true
-		}
-	}
-	return false
 }
 
 type membership uint8
@@ -309,59 +309,112 @@ const (
 	rangeAffected
 )
 
-func rangeMembership(events []Event, installed version) membership {
-	var open, inRange, closed bool
-	for _, event := range events {
-		if event.Limit != "" {
-			return rangeUnknown
+func rangeMembership(events []Event, typ string, installed version) membership {
+	intervals, ok := parseIntervals(events, typ)
+	if !ok {
+		return rangeUnknown
+	}
+	pastFix := false
+	for _, i := range intervals {
+		if i.contains(installed) {
+			return rangeAffected
 		}
-		if event.Introduced != "" {
-			if open || event.Fixed != "" || event.LastAffected != "" {
-				return rangeUnknown
-			}
-			open = true
-			if event.Introduced == "0" {
-				inRange = true
-			} else {
-				start, ok := parseSemver(event.Introduced)
-				if !ok {
-					return rangeUnknown
-				}
-				inRange = !installed.LT(start)
-			}
-		}
-		if event.Fixed != "" || event.LastAffected != "" {
-			if !open || (event.Fixed != "" && event.LastAffected != "") {
-				return rangeUnknown
-			}
-			raw, inclusive := event.Fixed, false
-			if raw == "" {
-				raw, inclusive = event.LastAffected, true
-			}
-			end, ok := parseSemver(raw)
-			if !ok {
-				return rangeUnknown
-			}
-			past := !installed.LT(end)
-			if inclusive {
-				past = installed.GT(end)
-			}
-			if inRange && !past {
-				return rangeAffected
-			}
-			if past {
-				closed = true
-			}
-			open = false
+		if i.endsBefore(installed) {
+			pastFix = true
 		}
 	}
-	if open && inRange {
-		return rangeAffected
-	}
-	if closed {
+	if pastFix {
 		return rangeUnaffected
 	}
 	return rangeUnknown
+}
+
+type interval struct {
+	start         version
+	fromBeginning bool
+	end           version
+	open          bool
+	endInclusive  bool
+}
+
+func (i interval) contains(v version) bool {
+	if !i.fromBeginning && v.LT(i.start) {
+		return false
+	}
+	return i.open || !i.endsBefore(v)
+}
+
+func (i interval) endsBefore(v version) bool {
+	switch {
+	case i.open:
+		return false
+	case i.endInclusive:
+		return v.GT(i.end)
+	default:
+		return !v.LT(i.end)
+	}
+}
+
+func parseIntervals(events []Event, typ string) ([]interval, bool) {
+	var intervals []interval
+	var current *interval
+	for _, e := range events {
+		switch {
+		case isAmbiguous(e):
+			return nil, false
+		case e.Introduced != "":
+			if current != nil {
+				return nil, false
+			}
+			start, ok := parseIntroduced(typ, e.Introduced)
+			if !ok {
+				return nil, false
+			}
+			current = &start
+		case hasEnd(e):
+			if current == nil {
+				return nil, false
+			}
+			if !current.close(typ, e) {
+				return nil, false
+			}
+			intervals = append(intervals, *current)
+			current = nil
+		}
+	}
+	if current != nil {
+		intervals = append(intervals, *current)
+	}
+	return intervals, true
+}
+
+func (i *interval) close(typ string, e Event) bool {
+	raw, inclusive := e.Fixed, false
+	if e.LastAffected != "" {
+		raw, inclusive = e.LastAffected, true
+	}
+	end, ok := parseVersion(typ, raw)
+	if !ok {
+		return false
+	}
+	i.end, i.open, i.endInclusive = end, false, inclusive
+	return true
+}
+
+func hasEnd(e Event) bool {
+	return e.Fixed != "" || e.LastAffected != ""
+}
+
+func isAmbiguous(e Event) bool {
+	return e.Limit != "" || (e.Introduced != "" && hasEnd(e)) || (e.Fixed != "" && e.LastAffected != "")
+}
+
+func parseIntroduced(typ, raw string) (interval, bool) {
+	if raw == "0" {
+		return interval{fromBeginning: true, open: true}, true
+	}
+	start, ok := parseVersion(typ, raw)
+	return interval{start: start, open: true}, ok
 }
 
 // matchClassifier replaces the fix version's classifier with the installed version's (e.g. -android → -jre).
@@ -378,45 +431,32 @@ func matchClassifier(fix, installedRaw string) string {
 }
 
 type version struct {
-	semver semver.Version
-	fourth uint64
+	semantic.Version
 }
 
 func (v version) compare(o version) int {
-	if c := v.semver.Compare(o.semver); c != 0 {
-		return c
-	}
-	return cmp.Compare(v.fourth, o.fourth)
+	c, _ := v.Compare(o.Version)
+	return c
 }
 
 func (v version) GT(o version) bool { return v.compare(o) > 0 }
 func (v version) LT(o version) bool { return v.compare(o) < 0 }
 
-func parseSemver(v string) (version, bool) {
-	base, fourth := normalizeVersion(strings.TrimPrefix(v, "v"))
-	sv, err := semver.ParseTolerant(base)
-	return version{semver: sv, fourth: fourth}, err == nil
-}
-
-// normalizeVersion strips suffixes blang/semver cannot parse (.Final, .jre11, .Alpha1) and splits off a 4th numeric segment.
-func normalizeVersion(v string) (string, uint64) {
-	for {
-		s := nonSemverSuffix.ReplaceAllString(v, "")
-		if s == v {
-			break
-		}
-		v = s
+// parseVersion orders versions by the purl type's OSV ecosystem rules.
+func parseVersion(typ, raw string) (version, bool) {
+	if !startsWithDigit.MatchString(raw) {
+		return version{}, false
 	}
-	if m := fourthNumericSegment.FindStringSubmatch(v); m != nil {
-		fourth, _ := strconv.ParseUint(m[2], 10, 64)
-		return m[1], fourth
+	eco, known := ecosystems[typ]
+	if !known {
+		return version{semantic.ParseSemverVersion(raw)}, true
 	}
-	return v, 0
+	v, err := semantic.Parse(canonicalVersion(typ, raw), eco.osvName)
+	return version{v}, err == nil
 }
 
 var (
-	classifierSuffix     = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
-	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
-	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.(\d+)$`)
-	aliasHintSeparator   = regexp.MustCompile(`[\s,]+`)
+	startsWithDigit    = regexp.MustCompile(`^v?\d`)
+	classifierSuffix   = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
+	aliasHintSeparator = regexp.MustCompile(`[\s,]+`)
 )

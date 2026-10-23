@@ -3,6 +3,9 @@ package osv
 import (
 	"regexp"
 	"strings"
+
+	"deps.dev/util/semver"
+	"github.com/package-url/packageurl-go"
 )
 
 const (
@@ -13,82 +16,79 @@ const (
 	purlTypeCargo  = "cargo"
 	purlTypeNuget  = "nuget"
 	purlTypeGem    = "gem"
+	purlTypeDeb    = "deb"
+	purlTypeApk    = "apk"
+	purlTypeRpm    = "rpm"
 )
 
+type ecosystem struct {
+	osvName string
+	system  semver.System
+}
+
+var ecosystems = map[string]ecosystem{
+	purlTypeMaven:  {"Maven", semver.Maven},
+	purlTypeGolang: {"Go", semver.Go},
+	purlTypeNpm:    {"npm", semver.NPM},
+	purlTypePypi:   {"PyPI", semver.PyPI},
+	purlTypeCargo:  {"crates.io", semver.Cargo},
+	purlTypeNuget:  {"NuGet", semver.NuGet},
+	purlTypeGem:    {"RubyGems", semver.RubyGems},
+	purlTypeDeb:    {"Debian", semver.DefaultSystem},
+	purlTypeApk:    {"Alpine", semver.DefaultSystem},
+	purlTypeRpm:    {"Red Hat", semver.DefaultSystem},
+}
+
 var (
-	mavenPreReleasePattern = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
-	pypiPreReleasePattern  = regexp.MustCompile(`(?i)(?:\d|[._\-])(?:a|b|c|rc|alpha|beta|pre|preview|dev)[._\-]?\d*$`)
-	gemPreReleasePattern   = regexp.MustCompile(`[A-Za-z]`)
+	mavenRuntimeClassifier = regexp.MustCompile(`(?i)[.\-](jre|jdk|android)\d*$`)
+	pypiDevRelease         = regexp.MustCompile(`(?i)\d[._\-]?dev[._\-]?\d*(?:\+.*)?$`)
 	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
 )
 
-func normalizedPurlBase(purl, typ string) string {
-	base := purlBase(purl)
-	if typ != purlTypePypi {
-		return base
-	}
-	prefix, name, ok := strings.Cut(strings.ToLower(base), "pypi/")
-	if !ok {
-		return base
-	}
-	return prefix + "pypi/" + pypiNameSeparators.ReplaceAllString(name, "-")
+type purl struct {
+	typ       string
+	namespace string
+	name      string
+	version   string
 }
 
-func isMavenPreRelease(version string) bool {
-	return mavenPreReleasePattern.MatchString(version)
+func parsePurl(raw string) (purl, bool) {
+	p, err := packageurl.FromString(raw)
+	if err != nil {
+		return purl{}, false
+	}
+	typ := strings.ToLower(p.Type)
+	name := p.Name
+	if typ == purlTypePypi {
+		name = pypiNameSeparators.ReplaceAllString(strings.ToLower(name), "-")
+	}
+	return purl{typ: typ, namespace: p.Namespace, name: name, version: p.Version}, true
+}
+
+func (p purl) samePackage(o purl) bool {
+	return p.typ == o.typ && strings.EqualFold(p.namespace, o.namespace) && strings.EqualFold(p.name, o.name)
+}
+
+// canonicalVersion drops Maven runtime classifiers (.jre11, -android) and adds Go's v prefix before versions are parsed.
+func canonicalVersion(typ, raw string) string {
+	switch {
+	case typ == purlTypeMaven:
+		return mavenRuntimeClassifier.ReplaceAllString(raw, "")
+	case typ == purlTypeGolang && !strings.HasPrefix(raw, "v"):
+		return "v" + raw
+	default:
+		return raw
+	}
 }
 
 func isPreReleaseFix(typ, raw string) bool {
-	switch typ {
-	case purlTypeMaven:
-		return isMavenPreRelease(raw)
-	case purlTypePypi:
-		if pypiPreReleasePattern.MatchString(raw) {
-			return true
-		}
-	case purlTypeGem:
-		if gemPreReleasePattern.MatchString(raw) {
-			return true
-		}
-	case purlTypeNpm, purlTypeGolang, purlTypeCargo, purlTypeNuget:
-	default:
+	eco, known := ecosystems[typ]
+	if !known || eco.system == semver.DefaultSystem {
 		return false
 	}
-	v, ok := parseSemver(raw)
-	return ok && len(v.semver.Pre) > 0
-}
-
-func purlType(purl string) string {
-	s := strings.ToLower(purl)
-	s = strings.TrimPrefix(s, "pkg:")
-	if before, _, ok := strings.Cut(s, "/"); ok {
-		return before
+	if typ == purlTypePypi && pypiDevRelease.MatchString(raw) {
+		return true
 	}
-	return s
-}
-
-func purlBase(purl string) string {
-	if i := strings.IndexByte(purl, '?'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '#'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '@'); i >= 0 {
-		purl = purl[:i]
-	}
-	return purl
-}
-
-func purlVersion(purl string) string {
-	if i := strings.IndexByte(purl, '?'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '#'); i >= 0 {
-		purl = purl[:i]
-	}
-	if _, after, ok := strings.Cut(purl, "@"); ok {
-		return after
-	}
-	return ""
+	v, err := eco.system.Parse(canonicalVersion(typ, raw))
+	return err == nil && v.IsPrerelease()
 }
