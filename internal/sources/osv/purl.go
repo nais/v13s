@@ -17,6 +17,8 @@ const (
 
 var (
 	mavenPreReleasePattern = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
+	pypiPreReleasePattern  = regexp.MustCompile(`(?i)(?:\d|[._\-])(?:a|b|c|rc|alpha|beta|pre|preview|dev)[._\-]?\d*$`)
+	gemPreReleasePattern   = regexp.MustCompile(`[A-Za-z]`)
 	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
 )
 
@@ -34,6 +36,26 @@ func normalizedPurlBase(purl, typ string) string {
 
 func isMavenPreRelease(version string) bool {
 	return mavenPreReleasePattern.MatchString(version)
+}
+
+func isPreReleaseFix(typ, raw string) bool {
+	switch typ {
+	case purlTypeMaven:
+		return isMavenPreRelease(raw)
+	case purlTypePypi:
+		if pypiPreReleasePattern.MatchString(raw) {
+			return true
+		}
+	case purlTypeGem:
+		if gemPreReleasePattern.MatchString(raw) {
+			return true
+		}
+	case purlTypeNpm, purlTypeGolang, purlTypeCargo, purlTypeNuget:
+	default:
+		return false
+	}
+	v, ok := parseSemver(raw)
+	return ok && len(v.semver.Pre) > 0
 }
 
 func purlType(purl string) string {

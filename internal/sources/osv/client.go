@@ -38,8 +38,10 @@ type Range struct {
 }
 
 type Event struct {
-	Introduced string `json:"introduced,omitempty"`
-	Fixed      string `json:"fixed,omitempty"`
+	Introduced   string `json:"introduced,omitempty"`
+	Fixed        string `json:"fixed,omitempty"`
+	LastAffected string `json:"last_affected,omitempty"`
+	Limit        string `json:"limit,omitempty"`
 }
 
 type Client struct {
@@ -131,6 +133,7 @@ const (
 	MissNoFixUpstream    MissReason = "no_fix_upstream"
 	MissInstalledPastFix MissReason = "installed_past_fix"
 	MissPreReleaseOnly   MissReason = "prerelease_only"
+	MissUnknown          MissReason = "unknown"
 )
 
 // FixVersionForPurl returns the minimum fix version strictly greater than the installed version.
@@ -144,7 +147,7 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 	installedRaw := purlVersion(storedPurl)
 	installed, installedOk := parseSemver(installedRaw)
 
-	best, matched, sawFixed, sawPreRelease := minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, typ == purlTypeMaven)
+	best, matched, sawPreRelease := minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, true)
 
 	reason := MissNone
 	if best == "" {
@@ -152,12 +155,10 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		case !matched:
 			return "", MissPackageNotListed
 		case sawPreRelease:
-			best, _, _, _ = minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, false)
+			best, _, _ = minFixAcrossAffected(record.Affected, typ, base, installed, installedOk, false)
 			reason = MissPreReleaseOnly
-		case !sawFixed:
-			return "", MissNoFixUpstream
 		default:
-			return "", MissInstalledPastFix
+			return "", installedFixStatus(record.Affected, typ, base, installed, installedOk)
 		}
 	}
 
@@ -170,20 +171,17 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 	return best, reason
 }
 
-func minFixAcrossAffected(affected []Affected, typ, base string, installed version, installedOk, skipPreRelease bool) (string, bool, bool, bool) {
+func minFixAcrossAffected(affected []Affected, typ, base string, installed version, installedOk, skipPreRelease bool) (string, bool, bool) {
 	var best string
 	var bestSemver version
-	var matched, sawFixed, sawPreRelease bool
+	var matched, sawPreRelease bool
 
 	for _, a := range affected {
 		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
 			continue
 		}
 		matched = true
-		if hasFixedEvent(a.Ranges) {
-			sawFixed = true
-		}
-		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, installed, installedOk, skipPreRelease)
+		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, typ, installed, installedOk, skipPreRelease)
 		if skippedPreRelease {
 			sawPreRelease = true
 		}
@@ -199,25 +197,17 @@ func minFixAcrossAffected(affected []Affected, typ, base string, installed versi
 			best = candidate
 		}
 	}
-	return best, matched, sawFixed, sawPreRelease
+	return best, matched, sawPreRelease
 }
 
-func hasFixedEvent(ranges []Range) bool {
-	for _, r := range ranges {
-		for _, e := range r.Events {
-			if e.Fixed != "" {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM > GIT.
-func minFixFromRanges(ranges []Range, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
+// minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM, and GIT only when neither is present.
+func minFixFromRanges(ranges []Range, typ string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
 	var skippedPreRelease bool
 	for _, rangeType := range []string{"SEMVER", "ECOSYSTEM", "GIT"} {
-		best, bestSemver, found, skipped := minFixFromRangeType(ranges, rangeType, installed, installedOk, skipPreRelease)
+		if rangeType == "GIT" && hasComparableRange(ranges) {
+			break
+		}
+		best, bestSemver, found, skipped := minFixFromRangeType(ranges, typ, rangeType, installed, installedOk, skipPreRelease)
 		skippedPreRelease = skippedPreRelease || skipped
 		if found {
 			return best, bestSemver, true, skippedPreRelease
@@ -226,7 +216,16 @@ func minFixFromRanges(ranges []Range, installed version, installedOk, skipPreRel
 	return "", version{}, false, skippedPreRelease
 }
 
-func minFixFromRangeType(ranges []Range, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
+func hasComparableRange(ranges []Range) bool {
+	for _, r := range ranges {
+		if r.Type == "SEMVER" || r.Type == "ECOSYSTEM" {
+			return true
+		}
+	}
+	return false
+}
+
+func minFixFromRangeType(ranges []Range, typ, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
 	var best string
 	var bestSemver version
 	var skippedPreRelease bool
@@ -243,7 +242,7 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed version, in
 			if installedOk && fixedOk && !fixed.GT(installed) {
 				continue
 			}
-			if skipPreRelease && isMavenPreRelease(e.Fixed) {
+			if skipPreRelease && isPreReleaseFix(typ, e.Fixed) {
 				skippedPreRelease = true
 				continue
 			}
@@ -258,6 +257,111 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed version, in
 		}
 	}
 	return best, bestSemver, best != "", skippedPreRelease
+}
+
+func installedFixStatus(affected []Affected, typ, base string, installed version, installedOk bool) MissReason {
+	var comparable []Range
+	var bounded bool
+	for _, a := range affected {
+		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
+			continue
+		}
+		for _, r := range a.Ranges {
+			if hasFixBound(r.Events) {
+				bounded = true
+			}
+			if r.Type == "SEMVER" || r.Type == "ECOSYSTEM" {
+				comparable = append(comparable, r)
+			}
+		}
+	}
+	if !bounded {
+		return MissNoFixUpstream
+	}
+	if !installedOk || len(comparable) == 0 {
+		return MissUnknown
+	}
+	for _, r := range comparable {
+		switch rangeMembership(r.Events, installed) {
+		case rangeAffected:
+			return MissNoFixUpstream
+		case rangeUnknown:
+			return MissUnknown
+		}
+	}
+	return MissInstalledPastFix
+}
+
+func hasFixBound(events []Event) bool {
+	for _, e := range events {
+		if e.Fixed != "" || e.LastAffected != "" {
+			return true
+		}
+	}
+	return false
+}
+
+type membership uint8
+
+const (
+	rangeUnknown membership = iota
+	rangeUnaffected
+	rangeAffected
+)
+
+func rangeMembership(events []Event, installed version) membership {
+	var open, inRange, closed bool
+	for _, event := range events {
+		if event.Limit != "" {
+			return rangeUnknown
+		}
+		if event.Introduced != "" {
+			if open || event.Fixed != "" || event.LastAffected != "" {
+				return rangeUnknown
+			}
+			open = true
+			if event.Introduced == "0" {
+				inRange = true
+			} else {
+				start, ok := parseSemver(event.Introduced)
+				if !ok {
+					return rangeUnknown
+				}
+				inRange = !installed.LT(start)
+			}
+		}
+		if event.Fixed != "" || event.LastAffected != "" {
+			if !open || (event.Fixed != "" && event.LastAffected != "") {
+				return rangeUnknown
+			}
+			raw, inclusive := event.Fixed, false
+			if raw == "" {
+				raw, inclusive = event.LastAffected, true
+			}
+			end, ok := parseSemver(raw)
+			if !ok {
+				return rangeUnknown
+			}
+			past := !installed.LT(end)
+			if inclusive {
+				past = installed.GT(end)
+			}
+			if inRange && !past {
+				return rangeAffected
+			}
+			if past {
+				closed = true
+			}
+			open = false
+		}
+	}
+	if open && inRange {
+		return rangeAffected
+	}
+	if closed {
+		return rangeUnaffected
+	}
+	return rangeUnknown
 }
 
 // matchClassifier replaces the fix version's classifier with the installed version's (e.g. -android → -jre).
