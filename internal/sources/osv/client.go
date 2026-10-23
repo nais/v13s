@@ -145,6 +145,9 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		return "", MissUnknown
 	}
 	installed, installedOk := parseVersion(pkg.typ, pkg.version)
+	if installedOk && installedMembership(packageRanges(record.Affected, pkg), pkg.typ, installed) == rangeUnaffected {
+		return "", MissInstalledPastFix
+	}
 
 	best, matched, sawPreRelease := minFixAcrossAffected(record.Affected, pkg, installed, installedOk, true)
 
@@ -170,9 +173,28 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 	return best, MissNone
 }
 
+type fixCandidate struct {
+	raw     string
+	version version
+	parsed  bool
+}
+
+func (c fixCandidate) found() bool { return c.raw != "" }
+
+// replaces compares parsed fixes by version and prefers them over unparseable ones such as GIT commits.
+func (c fixCandidate) replaces(best fixCandidate) bool {
+	switch {
+	case !best.found():
+		return true
+	case c.parsed && best.parsed:
+		return c.version.LT(best.version)
+	default:
+		return c.parsed && !best.parsed
+	}
+}
+
 func minFixAcrossAffected(affected []Affected, pkg purl, installed version, installedOk, skipPreRelease bool) (string, bool, bool) {
-	var best string
-	var bestSemver version
+	var best fixCandidate
 	var matched, sawPreRelease bool
 
 	for _, a := range affected {
@@ -180,44 +202,33 @@ func minFixAcrossAffected(affected []Affected, pkg purl, installed version, inst
 			continue
 		}
 		matched = true
-		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, pkg.typ, installed, installedOk, skipPreRelease)
-		if skippedPreRelease {
-			sawPreRelease = true
-		}
-		if !ok {
-			continue
-		}
-		if installedOk {
-			if best == "" || candidateSemver.LT(bestSemver) {
-				best = candidate
-				bestSemver = candidateSemver
-			}
-		} else if best == "" {
+		candidate, skippedPreRelease := minFixFromRanges(a.Ranges, pkg.typ, installed, installedOk, skipPreRelease)
+		sawPreRelease = sawPreRelease || skippedPreRelease
+		if candidate.found() && candidate.replaces(best) {
 			best = candidate
 		}
 	}
-	return best, matched, sawPreRelease
+	return best.raw, matched, sawPreRelease
 }
 
 // minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM, and GIT only when neither is present.
-func minFixFromRanges(ranges []Range, typ string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
+func minFixFromRanges(ranges []Range, typ string, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool) {
 	var skippedPreRelease bool
 	for _, rangeType := range []string{rangeTypeSemver, rangeTypeEcosystem, rangeTypeGit} {
 		if rangeType == rangeTypeGit && slices.ContainsFunc(ranges, isComparable) {
 			break
 		}
-		best, bestSemver, found, skipped := minFixFromRangeType(ranges, typ, rangeType, installed, installedOk, skipPreRelease)
+		best, skipped := minFixFromRangeType(ranges, typ, rangeType, installed, installedOk, skipPreRelease)
 		skippedPreRelease = skippedPreRelease || skipped
-		if found {
-			return best, bestSemver, true, skippedPreRelease
+		if best.found() {
+			return best, skippedPreRelease
 		}
 	}
-	return "", version{}, false, skippedPreRelease
+	return fixCandidate{}, skippedPreRelease
 }
 
-func minFixFromRangeType(ranges []Range, typ, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
-	var best string
-	var bestSemver version
+func minFixFromRangeType(ranges []Range, typ, rangeType string, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool) {
+	var best fixCandidate
 	var skippedPreRelease bool
 
 	for _, r := range ranges {
@@ -236,17 +247,13 @@ func minFixFromRangeType(ranges []Range, typ, rangeType string, installed versio
 				skippedPreRelease = true
 				continue
 			}
-			if installedOk && fixedOk {
-				if best == "" || fixed.LT(bestSemver) {
-					best = e.Fixed
-					bestSemver = fixed
-				}
-			} else if best == "" {
-				best = e.Fixed
+			candidate := fixCandidate{raw: e.Fixed, version: fixed, parsed: fixedOk}
+			if candidate.replaces(best) {
+				best = candidate
 			}
 		}
 	}
-	return best, bestSemver, best != "", skippedPreRelease
+	return best, skippedPreRelease
 }
 
 const (
@@ -283,30 +290,49 @@ func installedFixStatus(affected []Affected, pkg purl, installed version, instal
 	if !slices.ContainsFunc(ranges, hasFixBound) {
 		return MissNoFixUpstream
 	}
-	if !installedOk || !slices.ContainsFunc(ranges, isComparable) {
+	if !installedOk {
 		return MissUnknown
 	}
-	for _, r := range ranges {
-		if !isComparable(r) {
-			continue
-		}
-		switch rangeMembership(r.Events, pkg.typ, installed) {
-		case rangeAffected:
-			return MissNoFixUpstream
-		case rangeUnknown:
-			return MissUnknown
-		}
+	switch installedMembership(ranges, pkg.typ, installed) {
+	case rangeAffected:
+		return MissNoFixUpstream
+	case rangeUnaffected:
+		return MissInstalledPastFix
+	default:
+		return MissUnknown
 	}
-	return MissInstalledPastFix
 }
 
 type membership uint8
 
 const (
 	rangeUnknown membership = iota
+	rangeNotIntroduced
 	rangeUnaffected
 	rangeAffected
 )
+
+// installedMembership combines all comparable ranges: affected anywhere wins, then unknown, and past a fix counts only when no range is unknown.
+func installedMembership(ranges []Range, typ string, installed version) membership {
+	var sawUnknown, sawPastFix bool
+	for _, r := range ranges {
+		if !isComparable(r) {
+			continue
+		}
+		switch rangeMembership(r.Events, typ, installed) {
+		case rangeAffected:
+			return rangeAffected
+		case rangeUnknown:
+			sawUnknown = true
+		case rangeUnaffected:
+			sawPastFix = true
+		}
+	}
+	if sawPastFix && !sawUnknown {
+		return rangeUnaffected
+	}
+	return rangeUnknown
+}
 
 func rangeMembership(events []Event, typ string, installed version) membership {
 	intervals, ok := parseIntervals(events, typ)
@@ -325,7 +351,7 @@ func rangeMembership(events []Event, typ string, installed version) membership {
 	if pastFix {
 		return rangeUnaffected
 	}
-	return rangeUnknown
+	return rangeNotIntroduced
 }
 
 type interval struct {

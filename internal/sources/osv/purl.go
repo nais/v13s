@@ -31,6 +31,7 @@ var osvEcosystems = map[string]string{
 var (
 	mavenRuntimeClassifier = regexp.MustCompile(`(?i)[.\-](jre|jdk|android)\d*$`)
 	numericRelease         = regexp.MustCompile(`^v?\d+(?:\.\d+)*`)
+	pep440Version          = regexp.MustCompile(`(?i)^v?(?:\d+!)?\d+(?:\.\d+)*([-_.]?(?:a|b|c|rc|alpha|beta|pre|preview)[-_.]?\d*)?(?:-\d+|[-_.]?(?:post|rev|r)[-_.]?\d*)?([-_.]?dev[-_.]?\d*)?(?:\+[a-z0-9]+(?:[-_.][a-z0-9]+)*)?$`)
 	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
 )
 
@@ -68,8 +69,13 @@ func withoutRuntimeClassifier(typ, raw string) string {
 
 // isPreReleaseFix reports whether a version sorts below its own numeric release (2.0.0-rc1 < 2.0.0), so .Final, .v20201120 and post-releases stay stable.
 func isPreReleaseFix(typ, raw string) bool {
-	if typ == purlTypeGolang && module.IsPseudoVersion(goVersion(raw)) {
-		return false
+	switch typ {
+	case purlTypePypi:
+		return isPyPIPreRelease(raw)
+	case purlTypeGolang:
+		if module.IsPseudoVersion(goVersion(raw)) {
+			return false
+		}
 	}
 	release := numericRelease.FindString(raw)
 	if release == "" || release == raw {
@@ -78,6 +84,12 @@ func isPreReleaseFix(typ, raw string) bool {
 	v, ok := parseVersion(typ, raw)
 	r, releaseOk := parseVersion(typ, release)
 	return ok && releaseOk && v.LT(r)
+}
+
+// isPyPIPreRelease follows PEP 440: a pre-release segment (a, b, rc, ...) or a dev segment marks a pre-release, epochs and post-releases included.
+func isPyPIPreRelease(raw string) bool {
+	m := pep440Version.FindStringSubmatch(raw)
+	return m != nil && (m[1] != "" || m[2] != "")
 }
 
 func goVersion(raw string) string {

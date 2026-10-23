@@ -247,10 +247,10 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "9.0.99",
 		},
 		{
-			name:     "multi-branch: installed already past branch fix — picks next branch fix",
+			name:     "multi-branch: installed already past its branch fix — no upgrade",
 			record:   sampleRecords()["GHSA-tomcat-multibranch"],
 			purl:     "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.36",
-			expected: "11.0.3",
+			expected: "",
 		},
 		{
 			// vite 5.x: installed=5.2.12, OSV fixes: 4.5.10, 5.4.15, 6.0.12, 6.1.2, 6.2.3
@@ -699,6 +699,36 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "1.2.0",
 		},
 		{
+			name: "parsed fix wins over GIT commit from another affected entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "2.0.0",
+		},
+		{
+			name: "duplicate GIT-only entries",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "def456"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "abc123",
+		},
+		{
+			name:     "PyPI epoch prefers stable over release candidate",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1!2.0rc1"}, osv.Event{Fixed: "1!2.0"}),
+			purl:     "pkg:pypi/foo@1!1.5",
+			expected: "1!2.0",
+		},
+		{
+			name:     "PyPI post-release dev build is a prerelease",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.post1.dev1"}, osv.Event{Fixed: "2.0.post1"}),
+			purl:     "pkg:pypi/foo@1.5",
+			expected: "2.0.post1",
+		},
+		{
 			name:     "maven date-stamped release is stable",
 			record:   affected("pkg:maven/org.eclipse.jetty/jetty-server", osv.Event{Introduced: "0"}, osv.Event{Fixed: "9.4.35.v20201120"}, osv.Event{Fixed: "9.4.40"}),
 			purl:     "pkg:maven/org.eclipse.jetty/jetty-server@9.4.34.v20201102",
@@ -789,6 +819,45 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			name:     "between fixed and reintroduced intervals",
 			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}, osv.Event{Introduced: "2.0.0"}),
 			purl:     "pkg:npm/foo@1.5.0",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "installed in fixed gap before a later interval",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}, osv.Event{Introduced: "2.0.0"}, osv.Event{Fixed: "2.2.0"}),
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name: "affected range wins over a not yet introduced range listed first",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges: []osv.Range{
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "3.0.0"}}},
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.0.0"}, {Introduced: "2.0.0"}}},
+				},
+			}}},
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "affected range wins over a not yet introduced range listed last",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges: []osv.Range{
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.0.0"}, {Introduced: "2.0.0"}}},
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "3.0.0"}}},
+				},
+			}}},
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "past fix on one branch and not yet on a later branch",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "10.1.0"}, {Fixed: "10.1.25"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "11.0.0"}, {Fixed: "11.0.1"}}}}},
+			}},
+			purl:     "pkg:npm/foo@10.1.30",
 			expected: osv.MissInstalledPastFix,
 		},
 		{
