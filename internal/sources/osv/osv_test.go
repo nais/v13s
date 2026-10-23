@@ -726,6 +726,24 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "abc123",
 		},
 		{
+			name: "prerelease fix wins over GIT commit from another affected entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "2.0.0-RC1",
+		},
+		{
+			name: "prerelease fix wins over earlier GIT-only entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "2.0.0-RC1",
+		},
+		{
 			name:     "PyPI epoch prefers stable over release candidate",
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1!2.0rc1"}, osv.Event{Fixed: "1!2.0"}),
 			purl:     "pkg:pypi/foo@1!1.5",

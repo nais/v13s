@@ -150,21 +150,20 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 		return "", MissInstalledPastFix
 	}
 
-	best, matched, sawPreRelease := minFixAcrossAffected(record.Affected, pkg, installed, installedOk, true)
+	candidate, matched, sawPreRelease := minFixAcrossAffected(record.Affected, pkg, installed, installedOk, true)
 
 	preRelease := false
-	if best == "" {
-		switch {
-		case !matched:
-			return "", MissPackageNotListed
-		case sawPreRelease:
-			best, _, _ = minFixAcrossAffected(record.Affected, pkg, installed, installedOk, false)
-			preRelease = true
-		default:
-			return "", installedFixStatus(record.Affected, pkg, installed, installedOk)
-		}
+	switch {
+	case !matched:
+		return "", MissPackageNotListed
+	case sawPreRelease && (!candidate.found() || candidate.git):
+		candidate, _, _ = minFixAcrossAffected(record.Affected, pkg, installed, installedOk, false)
+		preRelease = !candidate.git
+	case !candidate.found():
+		return "", installedFixStatus(record.Affected, pkg, installed, installedOk)
 	}
 
+	best := candidate.raw
 	if pkg.typ == purlTypeMaven && !preRelease {
 		best = matchClassifier(best, pkg.version)
 	}
@@ -178,11 +177,12 @@ type fixCandidate struct {
 	raw     string
 	version version
 	parsed  bool
+	git     bool
 }
 
 func (c fixCandidate) found() bool { return c.raw != "" }
 
-// replaces compares parsed fixes by version and prefers them over unparseable ones such as GIT commits.
+// replaces compares parsed fixes by version and prefers them over unparseable package fixes, and those over GIT commits.
 func (c fixCandidate) replaces(best fixCandidate) bool {
 	switch {
 	case !best.found():
@@ -190,11 +190,22 @@ func (c fixCandidate) replaces(best fixCandidate) bool {
 	case c.parsed && best.parsed:
 		return c.version.LT(best.version)
 	default:
-		return c.parsed && !best.parsed
+		return c.rank() > best.rank()
 	}
 }
 
-func minFixAcrossAffected(affected []Affected, pkg purl, installed version, installedOk, skipPreRelease bool) (string, bool, bool) {
+func (c fixCandidate) rank() int {
+	switch {
+	case c.parsed:
+		return 2
+	case !c.git:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func minFixAcrossAffected(affected []Affected, pkg purl, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool, bool) {
 	var best fixCandidate
 	var matched, sawPreRelease bool
 
@@ -209,7 +220,7 @@ func minFixAcrossAffected(affected []Affected, pkg purl, installed version, inst
 			best = candidate
 		}
 	}
-	return best.raw, matched, sawPreRelease
+	return best, matched, sawPreRelease
 }
 
 // minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM, and GIT only when neither is present.
@@ -236,7 +247,7 @@ func firstGitFix(ranges []Range) fixCandidate {
 		}
 		for _, e := range r.Events {
 			if e.Fixed != "" {
-				return fixCandidate{raw: e.Fixed}
+				return fixCandidate{raw: e.Fixed, git: true}
 			}
 		}
 	}
