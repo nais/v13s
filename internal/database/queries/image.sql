@@ -76,7 +76,8 @@ SET
 WHERE
     name = @name
     AND tag = @tag
-    AND state <> 'failed';
+    AND state <> 'failed'
+    AND ready_for_resync_at IS NOT DISTINCT FROM sqlc.arg('expected_ready_for_resync_at')::TIMESTAMPTZ;
 
 -- name: MarkImagesAsUntracked :execrows
 UPDATE

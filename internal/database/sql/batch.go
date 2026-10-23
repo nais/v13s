@@ -27,6 +27,7 @@ WHERE
     name = $2
     AND tag = $3
     AND state <> 'failed'
+    AND ready_for_resync_at IS NOT DISTINCT FROM $4::TIMESTAMPTZ
 `
 
 type BatchUpdateImageStateBatchResults struct {
@@ -36,9 +37,10 @@ type BatchUpdateImageStateBatchResults struct {
 }
 
 type BatchUpdateImageStateParams struct {
-	State ImageState
-	Name  string
-	Tag   string
+	State                    ImageState
+	Name                     string
+	Tag                      string
+	ExpectedReadyForResyncAt pgtype.Timestamptz
 }
 
 func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateImageStateParams) *BatchUpdateImageStateBatchResults {
@@ -48,6 +50,7 @@ func (q *Queries) BatchUpdateImageState(ctx context.Context, arg []BatchUpdateIm
 			a.State,
 			a.Name,
 			a.Tag,
+			a.ExpectedReadyForResyncAt,
 		}
 		batch.Queue(batchUpdateImageState, vals...)
 	}
