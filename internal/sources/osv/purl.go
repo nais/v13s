@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"deps.dev/util/semver"
 	"github.com/package-url/packageurl-go"
+	"golang.org/x/mod/module"
 )
 
 const (
@@ -16,32 +16,21 @@ const (
 	purlTypeCargo  = "cargo"
 	purlTypeNuget  = "nuget"
 	purlTypeGem    = "gem"
-	purlTypeDeb    = "deb"
-	purlTypeApk    = "apk"
-	purlTypeRpm    = "rpm"
 )
 
-type ecosystem struct {
-	osvName string
-	system  semver.System
-}
-
-var ecosystems = map[string]ecosystem{
-	purlTypeMaven:  {"Maven", semver.Maven},
-	purlTypeGolang: {"Go", semver.Go},
-	purlTypeNpm:    {"npm", semver.NPM},
-	purlTypePypi:   {"PyPI", semver.PyPI},
-	purlTypeCargo:  {"crates.io", semver.Cargo},
-	purlTypeNuget:  {"NuGet", semver.NuGet},
-	purlTypeGem:    {"RubyGems", semver.RubyGems},
-	purlTypeDeb:    {"Debian", semver.DefaultSystem},
-	purlTypeApk:    {"Alpine", semver.DefaultSystem},
-	purlTypeRpm:    {"Red Hat", semver.DefaultSystem},
+var osvEcosystems = map[string]string{
+	purlTypeMaven:  "Maven",
+	purlTypeGolang: "Go",
+	purlTypeNpm:    "npm",
+	purlTypePypi:   "PyPI",
+	purlTypeCargo:  "crates.io",
+	purlTypeNuget:  "NuGet",
+	purlTypeGem:    "RubyGems",
 }
 
 var (
 	mavenRuntimeClassifier = regexp.MustCompile(`(?i)[.\-](jre|jdk|android)\d*$`)
-	pypiDevRelease         = regexp.MustCompile(`(?i)\d[._\-]?dev[._\-]?\d*(?:\+.*)?$`)
+	numericRelease         = regexp.MustCompile(`^v?\d+(?:\.\d+)*`)
 	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
 )
 
@@ -69,26 +58,31 @@ func (p purl) samePackage(o purl) bool {
 	return p.typ == o.typ && strings.EqualFold(p.namespace, o.namespace) && strings.EqualFold(p.name, o.name)
 }
 
-// canonicalVersion drops Maven runtime classifiers (.jre11, -android) and adds Go's v prefix before versions are parsed.
-func canonicalVersion(typ, raw string) string {
-	switch {
-	case typ == purlTypeMaven:
-		return mavenRuntimeClassifier.ReplaceAllString(raw, "")
-	case typ == purlTypeGolang && !strings.HasPrefix(raw, "v"):
-		return "v" + raw
-	default:
+// withoutRuntimeClassifier drops Maven runtime classifiers (.jre11, -android) so they do not affect ordering.
+func withoutRuntimeClassifier(typ, raw string) string {
+	if typ != purlTypeMaven {
 		return raw
 	}
+	return mavenRuntimeClassifier.ReplaceAllString(raw, "")
 }
 
+// isPreReleaseFix reports whether a version sorts below its own numeric release (2.0.0-rc1 < 2.0.0), so .Final, .v20201120 and post-releases stay stable.
 func isPreReleaseFix(typ, raw string) bool {
-	eco, known := ecosystems[typ]
-	if !known || eco.system == semver.DefaultSystem {
+	if typ == purlTypeGolang && module.IsPseudoVersion(goVersion(raw)) {
 		return false
 	}
-	if typ == purlTypePypi && pypiDevRelease.MatchString(raw) {
-		return true
+	release := numericRelease.FindString(raw)
+	if release == "" || release == raw {
+		return false
 	}
-	v, err := eco.system.Parse(canonicalVersion(typ, raw))
-	return err == nil && v.IsPrerelease()
+	v, ok := parseVersion(typ, raw)
+	r, releaseOk := parseVersion(typ, release)
+	return ok && releaseOk && v.LT(r)
+}
+
+func goVersion(raw string) string {
+	if strings.HasPrefix(raw, "v") {
+		return raw
+	}
+	return "v" + raw
 }

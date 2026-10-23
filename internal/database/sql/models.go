@@ -14,7 +14,6 @@ type FixStatus string
 
 const (
 	FixStatusFixAvailable          FixStatus = "fix_available"
-	FixStatusFixPrereleaseOnly     FixStatus = "fix_prerelease_only"
 	FixStatusNoFixAvailable        FixStatus = "no_fix_available"
 	FixStatusInstalledVersionFixed FixStatus = "installed_version_fixed"
 	FixStatusUnknown               FixStatus = "unknown"
@@ -58,7 +57,6 @@ func (ns NullFixStatus) Value() (driver.Value, error) {
 func (e FixStatus) Valid() bool {
 	switch e {
 	case FixStatusFixAvailable,
-		FixStatusFixPrereleaseOnly,
 		FixStatusNoFixAvailable,
 		FixStatusInstalledVersionFixed,
 		FixStatusUnknown:
@@ -70,7 +68,6 @@ func (e FixStatus) Valid() bool {
 func AllFixStatusValues() []FixStatus {
 	return []FixStatus{
 		FixStatusFixAvailable,
-		FixStatusFixPrereleaseOnly,
 		FixStatusNoFixAvailable,
 		FixStatusInstalledVersionFixed,
 		FixStatusUnknown,

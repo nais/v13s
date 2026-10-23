@@ -131,7 +131,6 @@ const (
 	MissPackageNotListed MissReason = "package_not_listed"
 	MissNoFixUpstream    MissReason = "no_fix_upstream"
 	MissInstalledPastFix MissReason = "installed_past_fix"
-	MissPreReleaseOnly   MissReason = "prerelease_only"
 	MissUnknown          MissReason = "unknown"
 )
 
@@ -149,26 +148,26 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 
 	best, matched, sawPreRelease := minFixAcrossAffected(record.Affected, pkg, installed, installedOk, true)
 
-	reason := MissNone
+	preRelease := false
 	if best == "" {
 		switch {
 		case !matched:
 			return "", MissPackageNotListed
 		case sawPreRelease:
 			best, _, _ = minFixAcrossAffected(record.Affected, pkg, installed, installedOk, false)
-			reason = MissPreReleaseOnly
+			preRelease = true
 		default:
 			return "", installedFixStatus(record.Affected, pkg, installed, installedOk)
 		}
 	}
 
-	if reason == MissNone && pkg.typ == purlTypeMaven {
+	if pkg.typ == purlTypeMaven && !preRelease {
 		best = matchClassifier(best, pkg.version)
 	}
 	if pkg.typ == purlTypeGolang && strings.HasPrefix(pkg.version, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
-	return best, reason
+	return best, MissNone
 }
 
 func minFixAcrossAffected(affected []Affected, pkg purl, installed version, installedOk, skipPreRelease bool) (string, bool, bool) {
@@ -447,11 +446,11 @@ func parseVersion(typ, raw string) (version, bool) {
 	if !startsWithDigit.MatchString(raw) {
 		return version{}, false
 	}
-	eco, known := ecosystems[typ]
+	ecosystem, known := osvEcosystems[typ]
 	if !known {
 		return version{semantic.ParseSemverVersion(raw)}, true
 	}
-	v, err := semantic.Parse(canonicalVersion(typ, raw), eco.osvName)
+	v, err := semantic.Parse(withoutRuntimeClassifier(typ, raw), ecosystem)
 	return version{v}, err == nil
 }
 

@@ -699,22 +699,16 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "1.2.0",
 		},
 		{
-			name:     "Alpine release suffix is not swapped like a Maven classifier",
-			record:   affected("pkg:apk/alpine/musl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.2.5-r0"}),
-			purl:     "pkg:apk/alpine/musl@1.2.4-r2?arch=x86_64",
-			expected: "1.2.5-r0",
+			name:     "maven date-stamped release is stable",
+			record:   affected("pkg:maven/org.eclipse.jetty/jetty-server", osv.Event{Introduced: "0"}, osv.Event{Fixed: "9.4.35.v20201120"}, osv.Event{Fixed: "9.4.40"}),
+			purl:     "pkg:maven/org.eclipse.jetty/jetty-server@9.4.34.v20201102",
+			expected: "9.4.35.v20201120",
 		},
 		{
-			name:     "Debian versions compare with epoch and tilde",
-			record:   affected("pkg:deb/debian/openssl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1:3.0.11-1~deb12u3"}),
-			purl:     "pkg:deb/debian/openssl@1:3.0.11-1~deb12u2?arch=amd64",
-			expected: "1:3.0.11-1~deb12u3",
-		},
-		{
-			name:     "RPM release compares numerically",
-			record:   affected("pkg:rpm/redhat/openssl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "3.0.7-28.el9"}),
-			purl:     "pkg:rpm/redhat/openssl@3.0.7-9.el9?arch=x86_64",
-			expected: "3.0.7-28.el9",
+			name:     "Go pseudo-version fix is stable",
+			record:   affected("pkg:golang/github.com/gomarkdown/markdown", osv.Event{Introduced: "0"}, osv.Event{Fixed: "0.0.0-20260724235538-61af6e1e6971"}, osv.Event{Fixed: "1.0.0"}),
+			purl:     "pkg:golang/github.com/gomarkdown/markdown@v0.0.0-20260614204949-e08cff860f76",
+			expected: "v0.0.0-20260724235538-61af6e1e6971",
 		},
 		{
 			name: "maven pre-release filter applies with mixed-case purl type",
@@ -843,49 +837,49 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			name:     "npm prerelease fix only",
 			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-RC1"}),
 			purl:     "pkg:npm/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "Go prerelease fix only",
 			record:   affected("pkg:golang/example.com/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-rc.1"}),
 			purl:     "pkg:golang/example.com/foo@v1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "Cargo prerelease fix only",
 			record:   affected("pkg:cargo/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-beta.1"}),
 			purl:     "pkg:cargo/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "NuGet prerelease fix only",
 			record:   affected("pkg:nuget/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-preview.1"}),
 			purl:     "pkg:nuget/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "PyPI prerelease fix only",
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0rc1"}),
 			purl:     "pkg:pypi/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "RubyGems prerelease fix only",
 			record:   affected("pkg:gem/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.pre.1"}),
 			purl:     "pkg:gem/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "PyPI c prerelease fix only",
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0c1"}),
 			purl:     "pkg:pypi/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "PyPI preview fix only",
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.preview1"}),
 			purl:     "pkg:pypi/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "PyPI numeric post release is stable",
@@ -903,19 +897,13 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			name:     "PyPI dev release fix only",
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.dev1"}),
 			purl:     "pkg:pypi/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "maven CR fix only",
 			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.CR1"}),
 			purl:     "pkg:maven/org.example/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
-		},
-		{
-			name:     "Debian epoch puts installed past fix",
-			record:   affected("pkg:deb/debian/openssl", osv.Event{Introduced: "0"}, osv.Event{Fixed: "3.0.13-1"}),
-			purl:     "pkg:deb/debian/openssl@1:3.0.11-1",
-			expected: osv.MissInstalledPastFix,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "unparseable stored purl",
@@ -927,13 +915,13 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			name:     "PyPI prerelease with local segment fix only",
 			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-rc1+local"}),
 			purl:     "pkg:pypi/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "maven milestone fix above installed milestone",
 			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.M2"}),
 			purl:     "pkg:maven/org.example/foo@2.0.0.M1",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "maven final fix above installed alpha",
@@ -963,7 +951,7 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			name:     "RubyGems letter segment fix only",
 			record:   affected("pkg:gem/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.a"}),
 			purl:     "pkg:gem/foo@1.5.0",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "npm stable fix alongside prerelease",
@@ -975,7 +963,7 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			name:     "maven pre-release fix only",
 			record:   affected("pkg:maven/io.debezium/debezium-core", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.3.0.Alpha1"}),
 			purl:     "pkg:maven/io.debezium/debezium-core@0.6.2",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "maven stable fix next to pre-release in same entry",
@@ -1498,8 +1486,8 @@ func TestFetcher_Sync_WritesFixStatuses(t *testing.T) {
 				got[cve] = storedFix{p.FixVersions[i], sqldatabase.FixStatus(p.FixStatuses[i])}
 			}
 			assert.Equal(t, map[string]storedFix{
-				"CVE-2023-1419":  {"2.3.0.Alpha1", sqldatabase.FixStatusFixPrereleaseOnly},
-				"CVE-2026-10001": {"2.0.0-RC1", sqldatabase.FixStatusFixPrereleaseOnly},
+				"CVE-2023-1419":  {"2.3.0.Alpha1", sqldatabase.FixStatusFixAvailable},
+				"CVE-2026-10001": {"2.0.0-RC1", sqldatabase.FixStatusFixAvailable},
 				"CVE-2026-10002": {"2.0.1", sqldatabase.FixStatusFixAvailable},
 			}, got)
 			return int64(len(p.CveIds)), nil

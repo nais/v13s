@@ -64,7 +64,6 @@ enum FixStatus {
   FIX_STATUS_NO_FIX_AVAILABLE = 2;
   FIX_STATUS_INSTALLED_VERSION_FIXED = 3;
   FIX_STATUS_UNKNOWN = 4;
-  FIX_STATUS_FIX_PRERELEASE_ONLY = 5;
 }
 
 // -------------------- Core Messages --------------------

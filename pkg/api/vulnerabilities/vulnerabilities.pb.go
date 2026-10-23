@@ -348,7 +348,6 @@ const (
 	FixStatus_FIX_STATUS_NO_FIX_AVAILABLE        FixStatus = 2
 	FixStatus_FIX_STATUS_INSTALLED_VERSION_FIXED FixStatus = 3
 	FixStatus_FIX_STATUS_UNKNOWN                 FixStatus = 4
-	FixStatus_FIX_STATUS_FIX_PRERELEASE_ONLY     FixStatus = 5
 )
 
 // Enum value maps for FixStatus.
@@ -359,7 +358,6 @@ var (
 		2: "FIX_STATUS_NO_FIX_AVAILABLE",
 		3: "FIX_STATUS_INSTALLED_VERSION_FIXED",
 		4: "FIX_STATUS_UNKNOWN",
-		5: "FIX_STATUS_FIX_PRERELEASE_ONLY",
 	}
 	FixStatus_value = map[string]int32{
 		"FIX_STATUS_UNSPECIFIED":             0,
@@ -367,7 +365,6 @@ var (
 		"FIX_STATUS_NO_FIX_AVAILABLE":        2,
 		"FIX_STATUS_INSTALLED_VERSION_FIXED": 3,
 		"FIX_STATUS_UNKNOWN":                 4,
-		"FIX_STATUS_FIX_PRERELEASE_ONLY":     5,
 	}
 )
 
@@ -3773,14 +3770,13 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x16SBOM_STATUS_PROCESSING\x10\x02\x12\x15\n" +
 	"\x11SBOM_STATUS_READY\x10\x03\x12\x17\n" +
 	"\x13SBOM_STATUS_NO_SBOM\x10\x04\x12\x16\n" +
-	"\x12SBOM_STATUS_FAILED\x10\x05*\xca\x01\n" +
+	"\x12SBOM_STATUS_FAILED\x10\x05*\xa6\x01\n" +
 	"\tFixStatus\x12\x1a\n" +
 	"\x16FIX_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18FIX_STATUS_FIX_AVAILABLE\x10\x01\x12\x1f\n" +
 	"\x1bFIX_STATUS_NO_FIX_AVAILABLE\x10\x02\x12&\n" +
 	"\"FIX_STATUS_INSTALLED_VERSION_FIXED\x10\x03\x12\x16\n" +
-	"\x12FIX_STATUS_UNKNOWN\x10\x04\x12\"\n" +
-	"\x1eFIX_STATUS_FIX_PRERELEASE_ONLY\x10\x052\xf9\r\n" +
+	"\x12FIX_STATUS_UNKNOWN\x10\x042\xf9\r\n" +
 	"\x0fVulnerabilities\x12\x89\x01\n" +
 	"\x1aListVulnerabilitySummaries\x124.v13s.api.protobuf.ListVulnerabilitySummariesRequest\x1a5.v13s.api.protobuf.ListVulnerabilitySummariesResponse\x12\x8c\x01\n" +
 	"\x1bListVulnerabilitiesForImage\x125.v13s.api.protobuf.ListVulnerabilitiesForImageRequest\x1a6.v13s.api.protobuf.ListVulnerabilitiesForImageResponse\x12\x9e\x01\n" +

@@ -286,8 +286,6 @@ func fixStatusFor(miss MissReason) sql.FixStatus {
 	switch miss {
 	case MissNone:
 		return sql.FixStatusFixAvailable
-	case MissPreReleaseOnly:
-		return sql.FixStatusFixPrereleaseOnly
 	case MissNoFixUpstream:
 		return sql.FixStatusNoFixAvailable
 	case MissInstalledPastFix:

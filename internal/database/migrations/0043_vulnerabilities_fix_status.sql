@@ -1,7 +1,6 @@
 -- +goose Up
 CREATE TYPE fix_status AS ENUM(
     'fix_available',
-    'fix_prerelease_only',
     'no_fix_available',
     'installed_version_fixed',
     'unknown'

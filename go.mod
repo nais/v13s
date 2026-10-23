@@ -16,7 +16,6 @@ tool (
 
 require (
 	cloud.google.com/go/auth v0.24.1
-	deps.dev/util/semver v0.0.0-20260529052642-cf1e78d92744
 	github.com/bombsimon/logrusr/v4 v4.2.0
 	github.com/containerd/log v0.2.0
 	github.com/emicklei/pgtalk v1.14.2
@@ -57,6 +56,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0
+	golang.org/x/mod v0.42.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.24.0
 	google.golang.org/grpc v1.86.0-dev
@@ -285,7 +285,6 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20261011100332-faecfb24eb49 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
-	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/telemetry v0.0.0-20261009151841-97e8ea77aa2a // indirect
