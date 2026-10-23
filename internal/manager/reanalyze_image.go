@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/sources"
@@ -140,16 +139,14 @@ func (w *FinishReanalysisWorker) Work(ctx context.Context, j *river.Job[FinishRe
 	if !active {
 		return river.JobCancel(fmt.Errorf("image no longer belongs to an active workload"))
 	}
-	updated, err := w.db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+	updated, err := w.db.MarkImageForReanalysisResync(ctx, sql.MarkImageForReanalysisResyncParams{
 		Name: j.Args.ImageName, Tag: j.Args.ImageTag,
-		State:            sql.ImageStateResync,
-		ReadyForResyncAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("marking analyzed image for resync: %w", err)
 	}
 	if updated == 0 {
-		return river.JobCancel(fmt.Errorf("image no longer exists"))
+		return river.JobCancel(fmt.Errorf("image no longer exists or has failed"))
 	}
 	recordStructuredOutput(ctx, JobOutput{
 		Status:   "reanalysis_ready_for_resync",
