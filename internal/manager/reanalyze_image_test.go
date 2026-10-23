@@ -130,28 +130,40 @@ func TestFinishReanalysisRetriesErrorsAfterOneMinute(t *testing.T) {
 }
 
 func TestFinishReanalysisResyncsOnlyCurrentImage(t *testing.T) {
-	for _, active := range []bool{false, true} {
-		t.Run(map[bool]string{false: "unused", true: "active"}[active], func(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		active  bool
+		updated int64
+	}{
+		{name: "unused"},
+		{name: "active", active: true, updated: 1},
+		{name: "failed image with workload", active: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			db := sqmock.NewMockQuerier(t)
 			source := srcmock.NewMockSource(t)
 			source.EXPECT().IsTaskInProgress(mock.Anything, "token").Return(false, nil)
 			db.EXPECT().ImageHasWorkload(mock.Anything, sql.ImageHasWorkloadParams{
 				ImageName: "image-a", ImageTag: "v1",
-			}).Return(active, nil)
-			if active {
-				db.EXPECT().UpdateImageState(mock.Anything, mock.MatchedBy(func(p sql.UpdateImageStateParams) bool {
-					return p.Name == "image-a" && p.Tag == "v1" && p.State == sql.ImageStateResync && p.ReadyForResyncAt.Valid
-				})).Return(int64(1), nil)
+			}).Return(tt.active, nil)
+			if tt.active {
+				db.EXPECT().MarkImageForReanalysisResync(mock.Anything, sql.MarkImageForReanalysisResyncParams{
+					Name: "image-a", Tag: "v1",
+				}).Return(tt.updated, nil)
 			}
 			worker := &FinishReanalysisWorker{db: db, source: source}
 			err := worker.Work(context.Background(), &river.Job[FinishReanalysisJob]{
 				Args: FinishReanalysisJob{ImageName: "image-a", ImageTag: "v1", ProcessToken: "token"},
 			})
-			if active {
+			if tt.updated > 0 {
 				require.NoError(t, err)
 			} else {
 				require.Error(t, err)
-				db.AssertNotCalled(t, "UpdateImageState", mock.Anything, mock.Anything)
+				if tt.active {
+					require.ErrorContains(t, err, "has failed")
+				} else {
+					db.AssertNotCalled(t, "MarkImageForReanalysisResync", mock.Anything, mock.Anything)
+				}
 			}
 		})
 	}

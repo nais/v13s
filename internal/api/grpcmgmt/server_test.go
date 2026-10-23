@@ -38,6 +38,7 @@ func TestReanalyzeScopesRequestsToNamespaceOrWorkload(t *testing.T) {
 	}{
 		{name: "whole namespace"},
 		{name: "one job", workload: ptrString("my-job"), workloadType: ptrString("job")},
+		{name: "one deployment", workload: ptrString("my-deployment"), workloadType: ptrString("deployment")},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			mgr := &fakeReanalysisManager{count: 2}

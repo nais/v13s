@@ -248,8 +248,9 @@ func (s *Server) Reanalyze(ctx context.Context, req *management.ReanalyzeRequest
 	if req.Workload != nil && req.WorkloadType == nil {
 		return nil, status.Error(codes.InvalidArgument, "workload_type is required when workload is specified")
 	}
-	if req.WorkloadType != nil && *req.WorkloadType != "app" && *req.WorkloadType != "job" {
-		return nil, status.Error(codes.InvalidArgument, "workload_type must be app or job")
+	if req.WorkloadType != nil && *req.WorkloadType != string(model.WorkloadTypeApp) &&
+		*req.WorkloadType != string(model.WorkloadTypeJob) && *req.WorkloadType != string(model.WorkloadTypeDeployment) {
+		return nil, status.Error(codes.InvalidArgument, "workload_type must be app, job or deployment")
 	}
 
 	n, err := s.mgr.Reanalyze(ctx, sql.ListImagesForReanalysisParams{
