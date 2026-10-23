@@ -164,7 +164,7 @@ SELECT EXISTS (
     SELECT 1
     FROM workloads
     WHERE image_name = @image_name AND image_tag = @image_tag
-        AND state = 'updated'
+        AND state NOT IN ('failed', 'unrecoverable')
 );
 
 -- name: DeleteWorkload :one

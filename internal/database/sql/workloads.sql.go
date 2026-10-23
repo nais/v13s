@@ -182,7 +182,7 @@ SELECT EXISTS (
     SELECT 1
     FROM workloads
     WHERE image_name = $1 AND image_tag = $2
-        AND state = 'updated'
+        AND state NOT IN ('failed', 'unrecoverable')
 )
 `
 
