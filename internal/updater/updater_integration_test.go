@@ -1346,6 +1346,76 @@ func TestCveAliasCanonicalFkeyStillEnforced(t *testing.T) {
 	assert.Equal(t, "cve_alias_canonical_fkey", pgErr.ConstraintName)
 }
 
+func TestReanalysisResyncSurvivesEarlierUpdaterBatch(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+	insertWorkloads(ctx, t, db, []string{"image-a"})
+
+	firstReady := time.Now().Add(-time.Minute)
+	_, err := db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		Name: "image-a", Tag: "v1", State: sql.ImageStateResync,
+		ReadyForResyncAt: pgtype.Timestamptz{Time: firstReady, Valid: true},
+	})
+	require.NoError(t, err)
+	images, err := db.GetImagesScheduledForSync(ctx)
+	require.NoError(t, err)
+	require.Len(t, images, 1)
+
+	secondReady := time.Now()
+	_, err = db.UpdateImageState(ctx, sql.UpdateImageStateParams{
+		Name: "image-a", Tag: "v1", State: sql.ImageStateResync,
+		ReadyForResyncAt: pgtype.Timestamptz{Time: secondReady, Valid: true},
+	})
+	require.NoError(t, err)
+
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, logrus.NewEntry(logrus.StandardLogger()), config.KevConfig{}, config.OsvConfig{})
+	batch := &updater.ImageVulnerabilityData{
+		ImageName: "image-a", ImageTag: "v1", ReadyForResyncAt: images[0].ReadyForResyncAt,
+	}
+	require.NoError(t, u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{batch}))
+	image, err := db.GetImage(ctx, sql.GetImageParams{Name: "image-a", Tag: "v1"})
+	require.NoError(t, err)
+	require.Equal(t, sql.ImageStateResync, image.State)
+	require.True(t, image.ReadyForResyncAt.Valid)
+	require.WithinDuration(t, secondReady, image.ReadyForResyncAt.Time, time.Microsecond)
+
+	batch.ReadyForResyncAt = image.ReadyForResyncAt
+	require.NoError(t, u.BatchUpdateVulnerabilityData(ctx, []*updater.ImageVulnerabilityData{batch}))
+	image, err = db.GetImage(ctx, sql.GetImageParams{Name: "image-a", Tag: "v1"})
+	require.NoError(t, err)
+	require.Equal(t, sql.ImageStateUpdated, image.State)
+	require.False(t, image.ReadyForResyncAt.Valid)
+}
+
+func TestReanalysisKeepsTransientWorkloads(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+	insertWorkloads(ctx, t, db, []string{"image-a"})
+
+	for _, tt := range []struct {
+		state  sql.WorkloadState
+		active bool
+	}{
+		{sql.WorkloadStateUpdated, true},
+		{sql.WorkloadStateResync, true},
+		{sql.WorkloadStateProcessing, true},
+		{sql.WorkloadStateFailed, false},
+		{sql.WorkloadStateUnrecoverable, false},
+	} {
+		t.Run(string(tt.state), func(t *testing.T) {
+			_, err := pool.Exec(ctx, "UPDATE workloads SET state = $1 WHERE image_name = $2 AND image_tag = $3", tt.state, "image-a", "v1")
+			require.NoError(t, err)
+			active, err := db.ImageHasWorkload(ctx, sql.ImageHasWorkloadParams{ImageName: "image-a", ImageTag: "v1"})
+			require.NoError(t, err)
+			require.Equal(t, tt.active, active)
+		})
+	}
+}
+
 func insertWorkloads(ctx context.Context, t *testing.T, db *sql.Queries, projectNames []string) {
 	for _, p := range projectNames {
 		err := db.CreateImage(ctx, sql.CreateImageParams{
