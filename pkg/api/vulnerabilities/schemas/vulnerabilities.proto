@@ -58,6 +58,14 @@ enum SbomStatus {
   SBOM_STATUS_FAILED = 5;
 }
 
+enum FixStatus {
+  FIX_STATUS_UNSPECIFIED = 0;
+  FIX_STATUS_FIX_AVAILABLE = 1;
+  FIX_STATUS_NO_FIX_AVAILABLE = 2;
+  FIX_STATUS_INSTALLED_VERSION_FIXED = 3;
+  FIX_STATUS_UNKNOWN = 4;
+}
+
 // -------------------- Core Messages --------------------
 
 message Filter {
@@ -162,6 +170,7 @@ message Vulnerability {
   string image_name = 10;
   optional double cvss_score = 11 [deprecated = true];
   optional string fix_version = 12;
+  FixStatus fix_status = 13;
 }
 
 message WorkloadCriticalVulnerability {

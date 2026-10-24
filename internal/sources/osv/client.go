@@ -1,18 +1,17 @@
 package osv
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/google/osv-scalibr/semantic"
 )
 
 type VulnRecord struct {
@@ -22,8 +21,9 @@ type VulnRecord struct {
 }
 
 type Affected struct {
-	Package AffectedPackage `json:"package"`
-	Ranges  []Range         `json:"ranges"`
+	Package  AffectedPackage `json:"package"`
+	Ranges   []Range         `json:"ranges"`
+	Versions []string        `json:"versions"`
 }
 
 type AffectedPackage struct {
@@ -38,8 +38,10 @@ type Range struct {
 }
 
 type Event struct {
-	Introduced string `json:"introduced,omitempty"`
-	Fixed      string `json:"fixed,omitempty"`
+	Introduced   string `json:"introduced,omitempty"`
+	Fixed        string `json:"fixed,omitempty"`
+	LastAffected string `json:"last_affected,omitempty"`
+	Limit        string `json:"limit,omitempty"`
 }
 
 type Client struct {
@@ -130,7 +132,7 @@ const (
 	MissPackageNotListed MissReason = "package_not_listed"
 	MissNoFixUpstream    MissReason = "no_fix_upstream"
 	MissInstalledPastFix MissReason = "installed_past_fix"
-	MissPreReleaseOnly   MissReason = "prerelease_only"
+	MissUnknown          MissReason = "unknown"
 )
 
 // FixVersionForPurl returns the minimum fix version strictly greater than the installed version.
@@ -139,89 +141,121 @@ func FixVersionForPurl(record *VulnRecord, storedPurl string) (string, MissReaso
 	if record == nil {
 		return "", MissNotInOsv
 	}
-	typ := purlType(storedPurl)
-	base := normalizedPurlBase(storedPurl, typ)
-	installedRaw := purlVersion(storedPurl)
-	installed, installedOk := parseSemver(installedRaw)
-
-	var best string
-	var bestSemver version
-	var matched, sawFixed, sawPreRelease bool
-
-	isMaven := typ == purlTypeMaven
-
-	for _, a := range record.Affected {
-		if a.Package.Purl == "" || !strings.EqualFold(normalizedPurlBase(a.Package.Purl, typ), base) {
-			continue
-		}
-		matched = true
-		if hasFixedEvent(a.Ranges) {
-			sawFixed = true
-		}
-		candidate, candidateSemver, ok, skippedPreRelease := minFixFromRanges(a.Ranges, installed, installedOk, isMaven)
-		if skippedPreRelease {
-			sawPreRelease = true
-		}
-		if !ok {
-			continue
-		}
-		if installedOk {
-			if best == "" || candidateSemver.LT(bestSemver) {
-				best = candidate
-				bestSemver = candidateSemver
-			}
-		} else if best == "" {
-			best = candidate
-		}
+	pkg, ok := parsePurl(storedPurl)
+	if !ok {
+		return "", MissUnknown
+	}
+	installed, installedOk := parseVersion(pkg.typ, pkg.version)
+	if installedState(record.Affected, pkg, installed, installedOk) == rangeUnaffected {
+		return "", MissInstalledPastFix
 	}
 
-	if best == "" {
-		switch {
-		case !matched:
-			return "", MissPackageNotListed
-		case sawPreRelease:
-			return "", MissPreReleaseOnly
-		case !sawFixed:
-			return "", MissNoFixUpstream
-		default:
-			return "", MissInstalledPastFix
-		}
+	candidate, matched, sawPreRelease := minFixAcrossAffected(record.Affected, pkg, installed, installedOk, true)
+
+	preRelease := false
+	switch {
+	case !matched:
+		return "", MissPackageNotListed
+	case sawPreRelease && (!candidate.found() || candidate.git):
+		candidate, _, _ = minFixAcrossAffected(record.Affected, pkg, installed, installedOk, false)
+		preRelease = !candidate.git
+	case !candidate.found():
+		return "", installedFixStatus(record.Affected, pkg, installed, installedOk)
 	}
 
-	best = matchClassifier(best, installedRaw)
-	if typ == purlTypeGolang && strings.HasPrefix(installedRaw, "v") && !strings.HasPrefix(best, "v") {
+	best := candidate.raw
+	if pkg.typ == purlTypeMaven && !preRelease {
+		best = matchClassifier(best, pkg.version)
+	}
+	if pkg.typ == purlTypeGolang && strings.HasPrefix(pkg.version, "v") && !strings.HasPrefix(best, "v") {
 		best = "v" + best
 	}
 	return best, MissNone
 }
 
-func hasFixedEvent(ranges []Range) bool {
+type fixCandidate struct {
+	raw     string
+	version version
+	parsed  bool
+	git     bool
+}
+
+func (c fixCandidate) found() bool { return c.raw != "" }
+
+// replaces compares parsed fixes by version and prefers them over unparseable package fixes, and those over GIT commits.
+func (c fixCandidate) replaces(best fixCandidate) bool {
+	switch {
+	case !best.found():
+		return true
+	case c.parsed && best.parsed:
+		return c.version.LT(best.version)
+	default:
+		return c.rank() > best.rank()
+	}
+}
+
+func (c fixCandidate) rank() int {
+	switch {
+	case c.parsed:
+		return 2
+	case !c.git:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func minFixAcrossAffected(affected []Affected, pkg purl, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool, bool) {
+	var best fixCandidate
+	var matched, sawPreRelease bool
+
+	for _, a := range affected {
+		if !matchesPackage(a, pkg) {
+			continue
+		}
+		matched = true
+		candidate, skippedPreRelease := minFixFromRanges(a.Ranges, pkg.typ, installed, installedOk, skipPreRelease)
+		sawPreRelease = sawPreRelease || skippedPreRelease
+		if candidate.found() && candidate.replaces(best) {
+			best = candidate
+		}
+	}
+	return best, matched, sawPreRelease
+}
+
+// minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM, and GIT only when neither is present.
+func minFixFromRanges(ranges []Range, typ string, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool) {
+	var skippedPreRelease bool
+	for _, rangeType := range []string{rangeTypeSemver, rangeTypeEcosystem} {
+		best, skipped := minFixFromRangeType(ranges, typ, rangeType, installed, installedOk, skipPreRelease)
+		skippedPreRelease = skippedPreRelease || skipped
+		if best.found() {
+			return best, skippedPreRelease
+		}
+	}
+	if slices.ContainsFunc(ranges, isComparable) {
+		return fixCandidate{}, skippedPreRelease
+	}
+	return firstGitFix(ranges), skippedPreRelease
+}
+
+// firstGitFix returns a GIT fixed commit unparsed: commit hashes have no release order, even when they start with a digit.
+func firstGitFix(ranges []Range) fixCandidate {
 	for _, r := range ranges {
+		if r.Type != rangeTypeGit {
+			continue
+		}
 		for _, e := range r.Events {
 			if e.Fixed != "" {
-				return true
+				return fixCandidate{raw: e.Fixed, git: true}
 			}
 		}
 	}
-	return false
+	return fixCandidate{}
 }
 
-// minFixFromRanges returns the smallest fix version strictly greater than installed, preferring SEMVER > ECOSYSTEM > GIT.
-func minFixFromRanges(ranges []Range, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
-	var skippedPreRelease bool
-	for _, rangeType := range []string{"SEMVER", "ECOSYSTEM", "GIT"} {
-		best, bestSemver, found, skipped := minFixFromRangeType(ranges, rangeType, installed, installedOk, skipPreRelease)
-		skippedPreRelease = skippedPreRelease || skipped
-		if found {
-			return best, bestSemver, true, skippedPreRelease
-		}
-	}
-	return "", version{}, false, skippedPreRelease
-}
-
-func minFixFromRangeType(ranges []Range, rangeType string, installed version, installedOk, skipPreRelease bool) (string, version, bool, bool) {
-	var best string
-	var bestSemver version
+func minFixFromRangeType(ranges []Range, typ, rangeType string, installed version, installedOk, skipPreRelease bool) (fixCandidate, bool) {
+	var best fixCandidate
 	var skippedPreRelease bool
 
 	for _, r := range ranges {
@@ -232,25 +266,233 @@ func minFixFromRangeType(ranges []Range, rangeType string, installed version, in
 			if e.Fixed == "" {
 				continue
 			}
-			fixed, fixedOk := parseSemver(e.Fixed)
+			fixed, fixedOk := parseVersion(typ, e.Fixed)
 			if installedOk && fixedOk && !fixed.GT(installed) {
 				continue
 			}
-			if skipPreRelease && isMavenPreRelease(e.Fixed) {
+			if skipPreRelease && isPreReleaseFix(typ, e.Fixed) {
 				skippedPreRelease = true
 				continue
 			}
-			if installedOk && fixedOk {
-				if best == "" || fixed.LT(bestSemver) {
-					best = e.Fixed
-					bestSemver = fixed
-				}
-			} else if best == "" {
-				best = e.Fixed
+			candidate := fixCandidate{raw: e.Fixed, version: fixed, parsed: fixedOk}
+			if candidate.replaces(best) {
+				best = candidate
 			}
 		}
 	}
-	return best, bestSemver, best != "", skippedPreRelease
+	return best, skippedPreRelease
+}
+
+const (
+	rangeTypeSemver    = "SEMVER"
+	rangeTypeEcosystem = "ECOSYSTEM"
+	rangeTypeGit       = "GIT"
+)
+
+func matchesPackage(a Affected, pkg purl) bool {
+	other, ok := parsePurl(a.Package.Purl)
+	return ok && other.samePackage(pkg)
+}
+
+func isComparable(r Range) bool {
+	return r.Type == rangeTypeSemver || r.Type == rangeTypeEcosystem
+}
+
+func hasFixBound(r Range) bool {
+	return slices.ContainsFunc(r.Events, hasEnd)
+}
+
+func packageRanges(affected []Affected, pkg purl) []Range {
+	var ranges []Range
+	for _, a := range affected {
+		if matchesPackage(a, pkg) {
+			ranges = append(ranges, a.Ranges...)
+		}
+	}
+	return ranges
+}
+
+func installedFixStatus(affected []Affected, pkg purl, installed version, installedOk bool) MissReason {
+	ranges := packageRanges(affected, pkg)
+	if !slices.ContainsFunc(ranges, hasFixBound) {
+		return MissNoFixUpstream
+	}
+	switch installedState(affected, pkg, installed, installedOk) {
+	case rangeAffected:
+		return MissNoFixUpstream
+	case rangeUnaffected:
+		return MissInstalledPastFix
+	default:
+		return MissUnknown
+	}
+}
+
+// installedState treats an installed version listed in affected.versions as affected before consulting the ranges.
+func installedState(affected []Affected, pkg purl, installed version, installedOk bool) membership {
+	if explicitlyAffected(affected, pkg, installed, installedOk) {
+		return rangeAffected
+	}
+	if !installedOk {
+		return rangeUnknown
+	}
+	return installedMembership(packageRanges(affected, pkg), pkg.typ, installed)
+}
+
+func explicitlyAffected(affected []Affected, pkg purl, installed version, installedOk bool) bool {
+	for _, a := range affected {
+		if !matchesPackage(a, pkg) {
+			continue
+		}
+		for _, raw := range a.Versions {
+			if raw == pkg.version {
+				return true
+			}
+			listed, ok := parseVersion(pkg.typ, raw)
+			if ok && installedOk && listed.compare(installed) == 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+type membership uint8
+
+const (
+	rangeUnknown membership = iota
+	rangeNotIntroduced
+	rangeUnaffected
+	rangeAffected
+)
+
+// installedMembership combines all comparable ranges: affected anywhere wins, then unknown, and past a fix counts only when no range is unknown.
+func installedMembership(ranges []Range, typ string, installed version) membership {
+	var sawUnknown, sawPastFix bool
+	for _, r := range ranges {
+		if !isComparable(r) {
+			continue
+		}
+		switch rangeMembership(r.Events, typ, installed) {
+		case rangeAffected:
+			return rangeAffected
+		case rangeUnknown:
+			sawUnknown = true
+		case rangeUnaffected:
+			sawPastFix = true
+		}
+	}
+	if sawPastFix && !sawUnknown {
+		return rangeUnaffected
+	}
+	return rangeUnknown
+}
+
+func rangeMembership(events []Event, typ string, installed version) membership {
+	intervals, ok := parseIntervals(events, typ)
+	if !ok {
+		return rangeUnknown
+	}
+	pastFix := false
+	for _, i := range intervals {
+		if i.contains(installed) {
+			return rangeAffected
+		}
+		if i.endsBefore(installed) {
+			pastFix = true
+		}
+	}
+	if pastFix {
+		return rangeUnaffected
+	}
+	return rangeNotIntroduced
+}
+
+type interval struct {
+	start         version
+	fromBeginning bool
+	end           version
+	open          bool
+	endInclusive  bool
+}
+
+func (i interval) contains(v version) bool {
+	if !i.fromBeginning && v.LT(i.start) {
+		return false
+	}
+	return i.open || !i.endsBefore(v)
+}
+
+func (i interval) endsBefore(v version) bool {
+	switch {
+	case i.open:
+		return false
+	case i.endInclusive:
+		return v.GT(i.end)
+	default:
+		return !v.LT(i.end)
+	}
+}
+
+func parseIntervals(events []Event, typ string) ([]interval, bool) {
+	var intervals []interval
+	var current *interval
+	for _, e := range events {
+		switch {
+		case isAmbiguous(e):
+			return nil, false
+		case e.Introduced != "":
+			if current != nil {
+				return nil, false
+			}
+			start, ok := parseIntroduced(typ, e.Introduced)
+			if !ok {
+				return nil, false
+			}
+			current = &start
+		case hasEnd(e):
+			if current == nil {
+				return nil, false
+			}
+			if !current.close(typ, e) {
+				return nil, false
+			}
+			intervals = append(intervals, *current)
+			current = nil
+		}
+	}
+	if current != nil {
+		intervals = append(intervals, *current)
+	}
+	return intervals, true
+}
+
+func (i *interval) close(typ string, e Event) bool {
+	raw, inclusive := e.Fixed, false
+	if e.LastAffected != "" {
+		raw, inclusive = e.LastAffected, true
+	}
+	end, ok := parseVersion(typ, raw)
+	if !ok {
+		return false
+	}
+	i.end, i.open, i.endInclusive = end, false, inclusive
+	return true
+}
+
+func hasEnd(e Event) bool {
+	return e.Fixed != "" || e.LastAffected != ""
+}
+
+func isAmbiguous(e Event) bool {
+	return e.Limit != "" || (e.Introduced != "" && hasEnd(e)) || (e.Fixed != "" && e.LastAffected != "")
+}
+
+func parseIntroduced(typ, raw string) (interval, bool) {
+	if raw == "0" {
+		return interval{fromBeginning: true, open: true}, true
+	}
+	start, ok := parseVersion(typ, raw)
+	return interval{start: start, open: true}, ok
 }
 
 // matchClassifier replaces the fix version's classifier with the installed version's (e.g. -android → -jre).
@@ -267,45 +509,32 @@ func matchClassifier(fix, installedRaw string) string {
 }
 
 type version struct {
-	semver semver.Version
-	fourth uint64
+	semantic.Version
 }
 
 func (v version) compare(o version) int {
-	if c := v.semver.Compare(o.semver); c != 0 {
-		return c
-	}
-	return cmp.Compare(v.fourth, o.fourth)
+	c, _ := v.Compare(o.Version)
+	return c
 }
 
 func (v version) GT(o version) bool { return v.compare(o) > 0 }
 func (v version) LT(o version) bool { return v.compare(o) < 0 }
 
-func parseSemver(v string) (version, bool) {
-	base, fourth := normalizeVersion(strings.TrimPrefix(v, "v"))
-	sv, err := semver.ParseTolerant(base)
-	return version{semver: sv, fourth: fourth}, err == nil
-}
-
-// normalizeVersion strips suffixes blang/semver cannot parse (.Final, .jre11, .Alpha1) and splits off a 4th numeric segment.
-func normalizeVersion(v string) (string, uint64) {
-	for {
-		s := nonSemverSuffix.ReplaceAllString(v, "")
-		if s == v {
-			break
-		}
-		v = s
+// parseVersion orders versions by the purl type's OSV ecosystem rules.
+func parseVersion(typ, raw string) (version, bool) {
+	if !startsWithDigit.MatchString(raw) {
+		return version{}, false
 	}
-	if m := fourthNumericSegment.FindStringSubmatch(v); m != nil {
-		fourth, _ := strconv.ParseUint(m[2], 10, 64)
-		return m[1], fourth
+	ecosystem, known := osvEcosystems[typ]
+	if !known {
+		return version{semantic.ParseSemverVersion(raw)}, true
 	}
-	return v, 0
+	v, err := semantic.Parse(withoutRuntimeClassifier(typ, raw), ecosystem)
+	return version{v}, err == nil
 }
 
 var (
-	classifierSuffix     = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
-	nonSemverSuffix      = regexp.MustCompile(`\.[A-Za-z][A-Za-z0-9]*$`)
-	fourthNumericSegment = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.(\d+)$`)
-	aliasHintSeparator   = regexp.MustCompile(`[\s,]+`)
+	startsWithDigit    = regexp.MustCompile(`^v?\d`)
+	classifierSuffix   = regexp.MustCompile(`-([A-Za-z][A-Za-z0-9]*)$`)
+	aliasHintSeparator = regexp.MustCompile(`[\s,]+`)
 )

@@ -12,24 +12,28 @@ UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
+    fix_status = data.fix_status,
     updated_at = NOW()
 FROM (
     SELECT
         unnest($1::TEXT[]) AS cve_id,
-        unnest($2::TEXT[]) AS package) AS data
+        unnest($2::TEXT[]) AS package,
+        unnest($3::TEXT[])::fix_status AS fix_status) AS data
 WHERE
     vulnerabilities.cve_id = data.cve_id
     AND vulnerabilities.package = data.package
-    AND vulnerabilities.fix_version IS NOT NULL
+    AND (vulnerabilities.fix_version IS NOT NULL
+        OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status)
 `
 
 type BulkClearFixVersionsParams struct {
-	CveIds   []string
-	Packages []string
+	CveIds      []string
+	Packages    []string
+	FixStatuses []string
 }
 
 func (q *Queries) BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkClearFixVersions, arg.CveIds, arg.Packages)
+	result, err := q.db.Exec(ctx, bulkClearFixVersions, arg.CveIds, arg.Packages, arg.FixStatuses)
 	if err != nil {
 		return 0, err
 	}
@@ -41,26 +45,35 @@ UPDATE
     vulnerabilities
 SET
     fix_version = data.fix_version,
+    fix_status = data.fix_status,
     updated_at = NOW()
 FROM (
     SELECT
         unnest($1::TEXT[]) AS cve_id,
         unnest($2::TEXT[]) AS package,
-        unnest($3::TEXT[]) AS fix_version) AS data
+        unnest($3::TEXT[]) AS fix_version,
+        unnest($4::TEXT[])::fix_status AS fix_status) AS data
 WHERE
     vulnerabilities.cve_id = data.cve_id
     AND vulnerabilities.package = data.package
-    AND vulnerabilities.fix_version IS DISTINCT FROM data.fix_version
+    AND (vulnerabilities.fix_version IS DISTINCT FROM data.fix_version
+        OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status)
 `
 
 type BulkUpdateFixVersionsParams struct {
 	CveIds      []string
 	Packages    []string
 	FixVersions []string
+	FixStatuses []string
 }
 
 func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, bulkUpdateFixVersions, arg.CveIds, arg.Packages, arg.FixVersions)
+	result, err := q.db.Exec(ctx, bulkUpdateFixVersions,
+		arg.CveIds,
+		arg.Packages,
+		arg.FixVersions,
+		arg.FixStatuses,
+	)
 	if err != nil {
 		return 0, err
 	}

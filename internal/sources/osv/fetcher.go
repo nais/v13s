@@ -223,17 +223,21 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 		updateCveIDs   []string
 		updatePackages []string
 		updateFixes    []string
+		updateStatuses []string
 		clearCveIDs    []string
 		clearPackages  []string
+		clearStatuses  []string
 	)
 	for _, r := range results {
 		if r.fixVersion == "" {
 			clearCveIDs = append(clearCveIDs, r.cveID)
 			clearPackages = append(clearPackages, r.pkg)
+			clearStatuses = append(clearStatuses, string(fixStatusFor(r.miss)))
 		} else {
 			updateCveIDs = append(updateCveIDs, r.cveID)
 			updatePackages = append(updatePackages, r.pkg)
 			updateFixes = append(updateFixes, r.fixVersion)
+			updateStatuses = append(updateStatuses, string(fixStatusFor(r.miss)))
 		}
 	}
 
@@ -245,6 +249,7 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 			CveIds:      updateCveIDs[i:end],
 			Packages:    updatePackages[i:end],
 			FixVersions: updateFixes[i:end],
+			FixStatuses: updateStatuses[i:end],
 		})
 		if err != nil {
 			return fmt.Errorf("bulk updating fix versions: %w", err)
@@ -255,8 +260,9 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 	for i := 0; i < len(clearCveIDs); i += BatchSize {
 		end := min(i+BatchSize, len(clearCveIDs))
 		n, err := querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
-			CveIds:   clearCveIDs[i:end],
-			Packages: clearPackages[i:end],
+			CveIds:      clearCveIDs[i:end],
+			Packages:    clearPackages[i:end],
+			FixStatuses: clearStatuses[i:end],
 		})
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
@@ -274,4 +280,17 @@ func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]
 		byCve[r.CveID] = append(byCve[r.CveID], r.Package)
 	}
 	return byCve
+}
+
+func fixStatusFor(miss MissReason) sql.FixStatus {
+	switch miss {
+	case MissNone:
+		return sql.FixStatusFixAvailable
+	case MissNoFixUpstream:
+		return sql.FixStatusNoFixAvailable
+	case MissInstalledPastFix:
+		return sql.FixStatusInstalledVersionFixed
+	default:
+		return sql.FixStatusUnknown
+	}
 }

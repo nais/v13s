@@ -3,6 +3,9 @@ package osv
 import (
 	"regexp"
 	"strings"
+
+	"github.com/package-url/packageurl-go"
+	"golang.org/x/mod/module"
 )
 
 const (
@@ -15,58 +18,83 @@ const (
 	purlTypeGem    = "gem"
 )
 
+var osvEcosystems = map[string]string{
+	purlTypeMaven:  "Maven",
+	purlTypeGolang: "Go",
+	purlTypeNpm:    "npm",
+	purlTypePypi:   "PyPI",
+	purlTypeCargo:  "crates.io",
+	purlTypeNuget:  "NuGet",
+	purlTypeGem:    "RubyGems",
+}
+
 var (
-	mavenPreReleasePattern = regexp.MustCompile(`(?i)[.\-](M[0-9]+|RC[0-9]+|alpha[0-9]*|beta[0-9]*|SNAPSHOT)$`)
+	mavenRuntimeClassifier = regexp.MustCompile(`(?i)[.\-](jre|jdk|android)\d*$`)
+	numericRelease         = regexp.MustCompile(`^v?\d+(?:\.\d+)*`)
+	pep440Version          = regexp.MustCompile(`(?i)^v?(?:\d+!)?\d+(?:\.\d+)*([-_.]?(?:a|b|c|rc|alpha|beta|pre|preview)[-_.]?\d*)?(?:-\d+|[-_.]?(?:post|rev|r)[-_.]?\d*)?([-_.]?dev[-_.]?\d*)?(?:\+[a-z0-9]+(?:[-_.][a-z0-9]+)*)?$`)
 	pypiNameSeparators     = regexp.MustCompile(`[-_.]+`)
 )
 
-func normalizedPurlBase(purl, typ string) string {
-	base := purlBase(purl)
-	if typ != purlTypePypi {
-		return base
-	}
-	prefix, name, ok := strings.Cut(strings.ToLower(base), "pypi/")
-	if !ok {
-		return base
-	}
-	return prefix + "pypi/" + pypiNameSeparators.ReplaceAllString(name, "-")
+type purl struct {
+	typ       string
+	namespace string
+	name      string
+	version   string
 }
 
-func isMavenPreRelease(version string) bool {
-	return mavenPreReleasePattern.MatchString(version)
+func parsePurl(raw string) (purl, bool) {
+	p, err := packageurl.FromString(raw)
+	if err != nil {
+		return purl{}, false
+	}
+	typ := strings.ToLower(p.Type)
+	name := p.Name
+	if typ == purlTypePypi {
+		name = pypiNameSeparators.ReplaceAllString(strings.ToLower(name), "-")
+	}
+	return purl{typ: typ, namespace: p.Namespace, name: name, version: p.Version}, true
 }
 
-func purlType(purl string) string {
-	s := strings.ToLower(purl)
-	s = strings.TrimPrefix(s, "pkg:")
-	if before, _, ok := strings.Cut(s, "/"); ok {
-		return before
-	}
-	return s
+func (p purl) samePackage(o purl) bool {
+	return p.typ == o.typ && strings.EqualFold(p.namespace, o.namespace) && strings.EqualFold(p.name, o.name)
 }
 
-func purlBase(purl string) string {
-	if i := strings.IndexByte(purl, '?'); i >= 0 {
-		purl = purl[:i]
+// withoutRuntimeClassifier drops Maven runtime classifiers (.jre11, -android) so they do not affect ordering.
+func withoutRuntimeClassifier(typ, raw string) string {
+	if typ != purlTypeMaven {
+		return raw
 	}
-	if i := strings.IndexByte(purl, '#'); i >= 0 {
-		purl = purl[:i]
-	}
-	if i := strings.IndexByte(purl, '@'); i >= 0 {
-		purl = purl[:i]
-	}
-	return purl
+	return mavenRuntimeClassifier.ReplaceAllString(raw, "")
 }
 
-func purlVersion(purl string) string {
-	if i := strings.IndexByte(purl, '?'); i >= 0 {
-		purl = purl[:i]
+// isPreReleaseFix reports whether a version sorts below its own numeric release (2.0.0-rc1 < 2.0.0), so .Final, .v20201120 and post-releases stay stable.
+func isPreReleaseFix(typ, raw string) bool {
+	switch typ {
+	case purlTypePypi:
+		return isPyPIPreRelease(raw)
+	case purlTypeGolang:
+		if module.IsPseudoVersion(goVersion(raw)) {
+			return false
+		}
 	}
-	if i := strings.IndexByte(purl, '#'); i >= 0 {
-		purl = purl[:i]
+	release := numericRelease.FindString(raw)
+	if release == "" || release == raw {
+		return false
 	}
-	if _, after, ok := strings.Cut(purl, "@"); ok {
-		return after
+	v, ok := parseVersion(typ, raw)
+	r, releaseOk := parseVersion(typ, release)
+	return ok && releaseOk && v.LT(r)
+}
+
+// isPyPIPreRelease follows PEP 440: a pre-release segment (a, b, rc, ...) or a dev segment marks a pre-release, epochs and post-releases included.
+func isPyPIPreRelease(raw string) bool {
+	m := pep440Version.FindStringSubmatch(raw)
+	return m != nil && (m[1] != "" || m[2] != "")
+}
+
+func goVersion(raw string) string {
+	if strings.HasPrefix(raw, "v") {
+		return raw
 	}
-	return ""
+	return "v" + raw
 }

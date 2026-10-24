@@ -247,10 +247,10 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "9.0.99",
 		},
 		{
-			name:     "multi-branch: installed already past branch fix — picks next branch fix",
+			name:     "multi-branch: installed already past its branch fix — no upgrade",
 			record:   sampleRecords()["GHSA-tomcat-multibranch"],
 			purl:     "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.36",
-			expected: "11.0.3",
+			expected: "",
 		},
 		{
 			// vite 5.x: installed=5.2.12, OSV fixes: 4.5.10, 5.4.15, 6.0.12, 6.1.2, 6.2.3
@@ -491,7 +491,7 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "8.0.26",
 		},
 		{
-			name: "maven M1 pre-release fix ignored",
+			name: "maven M1 pre-release fix returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -503,10 +503,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.apache.commons/commons-fileupload2-core@1.5.0",
-			expected: "",
+			expected: "2.0.0.M2",
 		},
 		{
-			name: "maven RC pre-release fix ignored",
+			name: "maven RC pre-release fix returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -518,7 +518,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@2.9.0",
-			expected: "",
+			expected: "3.0.0.RC2",
 		},
 		{
 			name: "maven hyphen RC pre-release fix not smuggled through classifier rewrite",
@@ -533,10 +533,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@10.1.0-jre",
-			expected: "",
+			expected: "11.0.0-RC2",
 		},
 		{
-			name: "maven SNAPSHOT fix ignored",
+			name: "maven SNAPSHOT fix returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -548,7 +548,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "2.0.0.SNAPSHOT",
 		},
 		{
 			name: "golang v-prefix: mixed-case purl type still gets v prefix",
@@ -615,7 +615,7 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "2.0.0",
 		},
 		{
-			name: "maven M1 hyphen separator ignored",
+			name: "maven M1 hyphen separator returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -627,10 +627,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "11.0.0-M1",
 		},
 		{
-			name: "maven RC hyphen separator ignored",
+			name: "maven RC hyphen separator returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -642,10 +642,10 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "3.0.0-RC2",
 		},
 		{
-			name: "maven SNAPSHOT hyphen separator ignored",
+			name: "maven SNAPSHOT hyphen separator returned when no stable fix",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
 					{
@@ -657,7 +657,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "2.0.0-SNAPSHOT",
 		},
 		{
 			name: "non-maven RC not filtered",
@@ -675,6 +675,99 @@ func TestFixVersionForPurl(t *testing.T) {
 			expected: "2.0.0-RC1",
 		},
 		{
+			name: "npm prefers stable fix over prerelease",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges:  []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}, {Fixed: "2.0.1"}}}},
+			}}},
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: "2.0.1",
+		},
+		{
+			name: "Go prerelease fallback retains v prefix",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:golang/example.com/foo"},
+				Ranges:  []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-rc.1"}}}},
+			}}},
+			purl:     "pkg:golang/example.com/foo@v1.5.0",
+			expected: "v2.0.0-rc.1",
+		},
+		{
+			name:     "npm scoped package matches percent-encoded namespace",
+			record:   affected("pkg:npm/@scope/name", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.2.0"}),
+			purl:     "pkg:npm/%40scope/name@1.0.0",
+			expected: "1.2.0",
+		},
+		{
+			name: "parsed fix wins over GIT commit from another affected entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "2.0.0",
+		},
+		{
+			name: "GIT fix with numeric-leading commit hash",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges:  []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1abcdef0123456789abcdef0123456789abcdef0123"}}}},
+			}}},
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: "1abcdef0123456789abcdef0123456789abcdef0123",
+		},
+		{
+			name: "duplicate GIT-only entries",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "def456"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "abc123",
+		},
+		{
+			name: "prerelease fix wins over GIT commit from another affected entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "2.0.0-RC1",
+		},
+		{
+			name: "prerelease fix wins over earlier GIT-only entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}}}}},
+			}},
+			purl:     "pkg:npm/foo@1.0.0",
+			expected: "2.0.0-RC1",
+		},
+		{
+			name:     "PyPI epoch prefers stable over release candidate",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1!2.0rc1"}, osv.Event{Fixed: "1!2.0"}),
+			purl:     "pkg:pypi/foo@1!1.5",
+			expected: "1!2.0",
+		},
+		{
+			name:     "PyPI post-release dev build is a prerelease",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.post1.dev1"}, osv.Event{Fixed: "2.0.post1"}),
+			purl:     "pkg:pypi/foo@1.5",
+			expected: "2.0.post1",
+		},
+		{
+			name:     "maven date-stamped release is stable",
+			record:   affected("pkg:maven/org.eclipse.jetty/jetty-server", osv.Event{Introduced: "0"}, osv.Event{Fixed: "9.4.35.v20201120"}, osv.Event{Fixed: "9.4.40"}),
+			purl:     "pkg:maven/org.eclipse.jetty/jetty-server@9.4.34.v20201102",
+			expected: "9.4.35.v20201120",
+		},
+		{
+			name:     "Go pseudo-version fix is stable",
+			record:   affected("pkg:golang/github.com/gomarkdown/markdown", osv.Event{Introduced: "0"}, osv.Event{Fixed: "0.0.0-20260724235538-61af6e1e6971"}, osv.Event{Fixed: "1.0.0"}),
+			purl:     "pkg:golang/github.com/gomarkdown/markdown@v0.0.0-20260614204949-e08cff860f76",
+			expected: "v0.0.0-20260724235538-61af6e1e6971",
+		},
+		{
 			name: "maven pre-release filter applies with mixed-case purl type",
 			record: &osv.VulnRecord{
 				Affected: []osv.Affected{
@@ -687,7 +780,7 @@ func TestFixVersionForPurl(t *testing.T) {
 				},
 			},
 			purl:     "pkg:Maven/org.example/lib@1.5.0",
-			expected: "",
+			expected: "2.0.0.M1",
 		},
 	}
 
@@ -699,14 +792,14 @@ func TestFixVersionForPurl(t *testing.T) {
 	}
 }
 
-func TestFixVersionForPurl_MissReason(t *testing.T) {
-	affected := func(purl string, events ...osv.Event) *osv.VulnRecord {
-		return &osv.VulnRecord{Affected: []osv.Affected{{
-			Package: osv.AffectedPackage{Purl: purl},
-			Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: events}},
-		}}}
-	}
+func affected(purl string, events ...osv.Event) *osv.VulnRecord {
+	return &osv.VulnRecord{Affected: []osv.Affected{{
+		Package: osv.AffectedPackage{Purl: purl},
+		Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: events}},
+	}}}
+}
 
+func TestFixVersionForPurl_MissReason(t *testing.T) {
 	tests := []struct {
 		name     string
 		record   *osv.VulnRecord
@@ -744,10 +837,258 @@ func TestFixVersionForPurl_MissReason(t *testing.T) {
 			expected: osv.MissInstalledPastFix,
 		},
 		{
+			name:     "reintroduced after earlier fix",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}, osv.Event{Introduced: "2.0.0"}),
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name:     "between fixed and reintroduced intervals",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}, osv.Event{Introduced: "2.0.0"}),
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "installed in fixed gap before a later interval",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}, osv.Event{Introduced: "2.0.0"}, osv.Event{Fixed: "2.2.0"}),
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name: "explicit affected version in the same entry as a fixed range",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package:  osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges:   []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}}},
+				Versions: []string{"2.0.0"},
+			}}},
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "explicit affected version in a separate entry",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Versions: []string{"2.0.0"}},
+			}},
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "explicit affected Go version matches without v prefix",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package:  osv.AffectedPackage{Purl: "pkg:golang/example.com/foo"},
+				Ranges:   []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}}},
+				Versions: []string{"2.0.0"},
+			}}},
+			purl:     "pkg:golang/example.com/foo@v2.0.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "affected range wins over a not yet introduced range listed first",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges: []osv.Range{
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "3.0.0"}}},
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.0.0"}, {Introduced: "2.0.0"}}},
+				},
+			}}},
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "affected range wins over a not yet introduced range listed last",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/foo"},
+				Ranges: []osv.Range{
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.0.0"}, {Introduced: "2.0.0"}}},
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "3.0.0"}}},
+				},
+			}}},
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "past fix on one branch and not yet on a later branch",
+			record: &osv.VulnRecord{Affected: []osv.Affected{
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "10.1.0"}, {Fixed: "10.1.25"}}}}},
+				{Package: osv.AffectedPackage{Purl: "pkg:npm/foo"}, Ranges: []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "11.0.0"}, {Fixed: "11.0.1"}}}}},
+			}},
+			purl:     "pkg:npm/foo@10.1.30",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "uncomparable introduced event",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "unknown"}, osv.Event{Fixed: "1.1.0"}),
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissUnknown,
+		},
+		{
+			name:     "not yet introduced without a fix",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "3.0.0"}),
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name:     "unparseable installed version without a fix",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}),
+			purl:     "pkg:npm/foo@not-a-version",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name:     "installed past last affected",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{LastAffected: "2.0.0"}),
+			purl:     "pkg:npm/foo@2.1.0",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "installed equals last affected",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{LastAffected: "2.0.0"}),
+			purl:     "pkg:npm/foo@2.0.0",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name: "git range alongside ecosystem range past fix",
+			record: &osv.VulnRecord{Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:pypi/foo"},
+				Ranges: []osv.Range{
+					{Type: "GIT", Events: []osv.Event{{Introduced: "0"}, {Fixed: "abc123"}}},
+					{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}}},
+				},
+			}}},
+			purl:     "pkg:pypi/foo@2.1.0",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "npm prerelease fix only",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-RC1"}),
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "Go prerelease fix only",
+			record:   affected("pkg:golang/example.com/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-rc.1"}),
+			purl:     "pkg:golang/example.com/foo@v1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "Cargo prerelease fix only",
+			record:   affected("pkg:cargo/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-beta.1"}),
+			purl:     "pkg:cargo/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "NuGet prerelease fix only",
+			record:   affected("pkg:nuget/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-preview.1"}),
+			purl:     "pkg:nuget/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI prerelease fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0rc1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "RubyGems prerelease fix only",
+			record:   affected("pkg:gem/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.pre.1"}),
+			purl:     "pkg:gem/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI c prerelease fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0c1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI preview fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.preview1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI numeric post release is stable",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI numeric post release fixes installed release",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-1"}),
+			purl:     "pkg:pypi/foo@2.0.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "PyPI dev release fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.dev1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "maven CR fix only",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.CR1"}),
+			purl:     "pkg:maven/org.example/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "unparseable stored purl",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.1.0"}),
+			purl:     "npm/foo@1.0.0",
+			expected: osv.MissUnknown,
+		},
+		{
+			name:     "PyPI prerelease with local segment fix only",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-rc1+local"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "maven milestone fix above installed milestone",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.M2"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.M1",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "maven final fix above installed alpha",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.Final"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.Alpha1",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "maven installed milestone before reintroduction",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.0.0"}, osv.Event{Introduced: "2.0.0.M2"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.M1",
+			expected: osv.MissInstalledPastFix,
+		},
+		{
+			name:     "maven installed milestone after reintroduction",
+			record:   affected("pkg:maven/org.example/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "1.0.0"}, osv.Event{Introduced: "2.0.0.M2"}),
+			purl:     "pkg:maven/org.example/foo@2.0.0.M3",
+			expected: osv.MissNoFixUpstream,
+		},
+		{
+			name:     "PyPI post release is stable",
+			record:   affected("pkg:pypi/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.post1"}),
+			purl:     "pkg:pypi/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "RubyGems letter segment fix only",
+			record:   affected("pkg:gem/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0.a"}),
+			purl:     "pkg:gem/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
+			name:     "npm stable fix alongside prerelease",
+			record:   affected("pkg:npm/foo", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.0.0-RC1"}, osv.Event{Fixed: "2.0.1"}),
+			purl:     "pkg:npm/foo@1.5.0",
+			expected: osv.MissNone,
+		},
+		{
 			name:     "maven pre-release fix only",
 			record:   affected("pkg:maven/io.debezium/debezium-core", osv.Event{Introduced: "0"}, osv.Event{Fixed: "2.3.0.Alpha1"}),
 			purl:     "pkg:maven/io.debezium/debezium-core@0.6.2",
-			expected: osv.MissPreReleaseOnly,
+			expected: osv.MissNone,
 		},
 		{
 			name:     "maven stable fix next to pre-release in same entry",
@@ -814,12 +1155,14 @@ func TestFetcher_Sync_WritesFixVersions(t *testing.T) {
 			CveIds:      []string{"CVE-2021-44228"},
 			Packages:    []string{"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
 			FixVersions: []string{"2.15.0"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 	q.EXPECT().
 		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
-			CveIds:   []string{"CVE-9999-9999"},
-			Packages: []string{"pkg:npm/unknown@1.0.0"},
+			CveIds:      []string{"CVE-9999-9999"},
+			Packages:    []string{"pkg:npm/unknown@1.0.0"},
+			FixStatuses: []string{string(sqldatabase.FixStatusUnknown)},
 		}).
 		Return(int64(0), nil)
 
@@ -843,6 +1186,7 @@ func TestFetcher_Sync_FetchesGHSAAlias(t *testing.T) {
 			CveIds:      []string{"CVE-2021-44228"},
 			Packages:    []string{"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.0"},
 			FixVersions: []string{"2.15.0"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -898,6 +1242,7 @@ func TestFetcher_Sync_404WithAliasHint(t *testing.T) {
 			CveIds:      []string{"CVE-2026-26130"},
 			Packages:    []string{"pkg:nuget/Microsoft.AspNetCore.App.Runtime.linux-musl-x64@8.0.24"},
 			FixVersions: []string{"8.0.25"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -953,6 +1298,7 @@ func TestFetcher_Sync_404WithNativeAliasHint(t *testing.T) {
 			CveIds:      []string{"CVE-2026-56852"},
 			Packages:    []string{"pkg:golang/golang.org/x/text@v0.37.0"},
 			FixVersions: []string{"v0.38.0"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -1005,6 +1351,7 @@ func TestFetcher_Sync_404WithMultipleSpaceSeparatedAliasHints(t *testing.T) {
 			CveIds:      []string{"CVE-2025-58183"},
 			Packages:    []string{"pkg:golang/stdlib@v1.20.12"},
 			FixVersions: []string{"v1.24.8"},
+			FixStatuses: []string{"fix_available"},
 		}).
 		Return(int64(1), nil)
 
@@ -1045,8 +1392,9 @@ func TestFetcher_Sync_NoFixVersionsFound(t *testing.T) {
 		}, nil)
 	q.EXPECT().
 		BulkClearFixVersions(mock.Anything, sqldatabase.BulkClearFixVersionsParams{
-			CveIds:   []string{"CVE-9999-9999"},
-			Packages: []string{"pkg:npm/foo@1.0.0"},
+			CveIds:      []string{"CVE-9999-9999"},
+			Packages:    []string{"pkg:npm/foo@1.0.0"},
+			FixStatuses: []string{string(sqldatabase.FixStatusUnknown)},
 		}).
 		Return(int64(0), nil)
 
@@ -1189,4 +1537,101 @@ func TestFetcher_Persist_BatchesClears(t *testing.T) {
 	require.Len(t, batchSizes, 2)
 	assert.Equal(t, osv.BatchSize, batchSizes[0])
 	assert.Equal(t, 1, batchSizes[1])
+}
+
+type storedFix struct {
+	version string
+	status  sqldatabase.FixStatus
+}
+
+func TestFetcher_Sync_WritesFixStatuses(t *testing.T) {
+	srv := newVulnServer(t, map[string]*osv.VulnRecord{
+		"CVE-2023-30533": {
+			ID: "CVE-2023-30533",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/xlsx"},
+				Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}}}},
+			}},
+		},
+		"CVE-2023-1419": {
+			ID: "CVE-2023-1419",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:maven/io.debezium/debezium-core"},
+				Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.3.0.Alpha1"}}}},
+			}},
+		},
+		"CVE-2025-59250": {
+			ID: "CVE-2025-59250",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:maven/com.microsoft.sqlserver/mssql-jdbc"},
+				Ranges:  []osv.Range{{Type: "ECOSYSTEM", Events: []osv.Event{{Introduced: "13.2.0.jre11"}, {Fixed: "13.2.1.jre11"}}}},
+			}},
+		},
+		"CVE-2026-10001": {
+			ID: "CVE-2026-10001",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/rc-only"},
+				Ranges:  []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}}}},
+			}},
+		},
+		"CVE-2026-10002": {
+			ID: "CVE-2026-10002",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/mixed"},
+				Ranges:  []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "2.0.0-RC1"}, {Fixed: "2.0.1"}}}},
+			}},
+		},
+		"CVE-2026-10003": {
+			ID: "CVE-2026-10003",
+			Affected: []osv.Affected{{
+				Package: osv.AffectedPackage{Purl: "pkg:npm/reintroduced"},
+				Ranges:  []osv.Range{{Type: "SEMVER", Events: []osv.Event{{Introduced: "0"}, {Fixed: "1.1.0"}, {Introduced: "2.0.0"}}}},
+			}},
+		},
+	})
+	defer srv.Close()
+
+	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
+	q.EXPECT().
+		GetVulnerabilitiesForOsvEnrichment(mock.Anything).
+		Return([]*sqldatabase.GetVulnerabilitiesForOsvEnrichmentRow{
+			{CveID: "CVE-2023-30533", Package: "pkg:npm/xlsx@0.18.5"},
+			{CveID: "CVE-2025-59250", Package: "pkg:maven/com.microsoft.sqlserver/mssql-jdbc@13.2.1"},
+			{CveID: "CVE-2023-1419", Package: "pkg:maven/io.debezium/debezium-core@0.6.2"},
+			{CveID: "CVE-2026-10001", Package: "pkg:npm/rc-only@1.5.0"},
+			{CveID: "CVE-2026-10002", Package: "pkg:npm/mixed@1.5.0"},
+			{CveID: "CVE-2026-10003", Package: "pkg:npm/reintroduced@2.1.0"},
+		}, nil)
+	q.EXPECT().
+		BulkUpdateFixVersions(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, p sqldatabase.BulkUpdateFixVersionsParams) (int64, error) {
+			got := map[string]storedFix{}
+			for i, cve := range p.CveIds {
+				got[cve] = storedFix{p.FixVersions[i], sqldatabase.FixStatus(p.FixStatuses[i])}
+			}
+			assert.Equal(t, map[string]storedFix{
+				"CVE-2023-1419":  {"2.3.0.Alpha1", sqldatabase.FixStatusFixAvailable},
+				"CVE-2026-10001": {"2.0.0-RC1", sqldatabase.FixStatusFixAvailable},
+				"CVE-2026-10002": {"2.0.1", sqldatabase.FixStatusFixAvailable},
+			}, got)
+			return int64(len(p.CveIds)), nil
+		})
+	q.EXPECT().
+		BulkClearFixVersions(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, p sqldatabase.BulkClearFixVersionsParams) (int64, error) {
+			got := map[string]sqldatabase.FixStatus{}
+			for i, cve := range p.CveIds {
+				got[cve] = sqldatabase.FixStatus(p.FixStatuses[i])
+			}
+			assert.Equal(t, map[string]sqldatabase.FixStatus{
+				"CVE-2023-30533": sqldatabase.FixStatusNoFixAvailable,
+				"CVE-2025-59250": sqldatabase.FixStatusInstalledVersionFixed,
+				"CVE-2026-10003": sqldatabase.FixStatusNoFixAvailable,
+			}, got)
+			return int64(len(p.CveIds)), nil
+		})
+
+	f := osv.NewFetcherWithQuerier(osv.NewClientWithURL(srv.URL), q, testLogger())
+	require.NoError(t, f.Sync(context.Background()))
 }
