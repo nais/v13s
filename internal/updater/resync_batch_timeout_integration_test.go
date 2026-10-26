@@ -37,6 +37,7 @@ func (s partlyBlockingSource) GetVulnerabilities(ctx context.Context, imageName,
 	}
 	return []*sources.Vulnerability{}, nil
 }
+
 func (partlyBlockingSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
 	return nil
 }

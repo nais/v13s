@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,54 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+type priorityUpdateFailingDB struct {
+	sql.DBTX
+	err error
+}
+
+func (db priorityUpdateFailingDB) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
+	if strings.HasPrefix(query, "-- name: UpdateCvePriorityForCves ") {
+		return pgconn.CommandTag{}, db.err
+	}
+	return db.DBTX.Exec(ctx, query, args...)
+}
+
+func TestUpdateContinuesAfterBatchWriteFailure(t *testing.T) {
+	ctx := context.Background()
+	pool := test.GetPool(ctx, t, true)
+	defer pool.Close()
+	db := sql.New(pool)
+	require.NoError(t, db.ResetDatabase(ctx))
+
+	ch := make(chan *updater.ImageVulnerabilityData, 101)
+	for i := range 101 {
+		name := fmt.Sprintf("image-%03d", i)
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: name, Tag: "v1", Metadata: map[string]string{}}))
+		image := &updater.ImageVulnerabilityData{ImageName: name, ImageTag: "v1"}
+		if i == 0 {
+			image.Vulnerabilities = []*sources.Vulnerability{{
+				Cve:     &sources.Cve{Id: "CVE-2026-1234", Severity: sources.SeverityHigh},
+				Package: "pkg:generic/test@1",
+			}}
+		}
+		ch <- image
+	}
+	close(ch)
+
+	writeErr := errors.New("batch write failed")
+	u := updater.NewUpdater(pool, nil, updater.ScheduleConfig{}, nil, config.KevConfig{}, config.OsvConfig{})
+	updater.SetQuerierForTest(u, priorityUpdateFailingDB{DBTX: pool, err: writeErr})
+
+	require.ErrorIs(t, u.Update(ctx, ch), writeErr)
+
+	first, err := db.GetImage(ctx, sql.GetImageParams{Name: "image-000", Tag: "v1"})
+	require.NoError(t, err)
+	require.Equal(t, sql.ImageStateInitialized, first.State)
+	last, err := db.GetImage(ctx, sql.GetImageParams{Name: "image-100", Tag: "v1"})
+	require.NoError(t, err)
+	require.Equal(t, sql.ImageStateUpdated, last.State)
+}
 
 func TestUpdater(t *testing.T) {
 	ctx := context.Background()
@@ -1089,6 +1138,36 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 		assert.Empty(t, since)
 	})
 
+	t.Run("looks up changed severity for the same tag", func(t *testing.T) {
+		ts := time.Now().UTC().Add(-3 * time.Hour)
+		require.NoError(t, querier.CreateImage(ctx, sql.CreateImageParams{
+			Name: imageName, Tag: "v3", Metadata: map[string]string{},
+		}))
+		querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+			ImageName:     imageName,
+			ImageTag:      "v3",
+			Package:       pkg,
+			CveID:         cveID,
+			Source:        "source",
+			LastSeverity:  sources.SeverityHigh.ToInt32(),
+			SeveritySince: pgtype.Timestamptz{Time: ts, Valid: true},
+		}}).Exec(func(_ int, err error) {
+			require.NoError(t, err)
+		})
+
+		images := []*updater.ImageVulnerabilityData{{
+			ImageName:       imageName,
+			ImageTag:        imageTag,
+			Vulnerabilities: []*sources.Vulnerability{{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: sources.SeverityHigh}}},
+		}}
+		since, err := u.DetermineSeveritySince(ctx, images)
+		require.NoError(t, err)
+		key := updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: cveID, LastSeverity: sources.SeverityHigh.ToInt32()}
+		got, ok := since[key]
+		require.True(t, ok)
+		assert.WithinDuration(t, ts, got, time.Second)
+	})
+
 	t.Run("looks up every finding of a batch in one call", func(t *testing.T) {
 		ts := time.Now().UTC().Add(-2 * time.Hour)
 		_, err := pool.Exec(ctx, `UPDATE vulnerabilities SET severity_since = $1, last_severity = 2 WHERE image_name = $2`, ts, imageName)
@@ -1366,6 +1445,7 @@ func (instantSource) Name() string { return "instant" }
 func (instantSource) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
 	return nil, nil
 }
+
 func (instantSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
 	return nil
 }

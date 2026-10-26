@@ -7,11 +7,77 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func SetQuerierForTest(u *Updater, db sql.DBTX) {
+	u.querier = sql.New(db)
+}
+
+type firstExecBlockingDB struct {
+	sql.DBTX
+	contexts []context.Context
+}
+
+func (db *firstExecBlockingDB) Exec(ctx context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+	db.contexts = append(db.contexts, ctx)
+	if len(db.contexts) == 1 {
+		if _, ok := ctx.Deadline(); ok {
+			<-ctx.Done()
+		}
+	}
+	return pgconn.CommandTag{}, ctx.Err()
+}
+
+func (*firstExecBlockingDB) SendBatch(ctx context.Context, _ *pgx.Batch) pgx.BatchResults {
+	return &contextBatchResults{ctx: ctx}
+}
+
+type contextBatchResults struct {
+	pgx.BatchResults
+	ctx context.Context
+}
+
+func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, r.ctx.Err()
+}
+
+func (*contextBatchResults) Close() error { return nil }
+
+func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
+	t.Parallel()
+
+	db := &firstExecBlockingDB{}
+	u := NewUpdater(nil, nil, ScheduleConfig{}, nil, config.KevConfig{}, config.OsvConfig{})
+	u.querier = sql.New(db)
+	u.resyncBatchTimeout = time.Nanosecond
+	u.batchWriteTimeout = 100 * time.Millisecond
+
+	ch := make(chan *ImageVulnerabilityData, 101)
+	for range 101 {
+		ch <- &ImageVulnerabilityData{ImageName: "image", ImageTag: "v1"}
+	}
+	close(ch)
+
+	ctx := t.Context()
+	err := u.Update(ctx, ch)
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.NoError(t, ctx.Err())
+	require.Len(t, db.contexts, 101)
+	firstDeadline, ok := db.contexts[0].Deadline()
+	require.True(t, ok)
+	nextDeadline, ok := db.contexts[100].Deadline()
+	require.True(t, ok)
+	require.True(t, nextDeadline.After(firstDeadline))
+	require.ErrorIs(t, db.contexts[100].Err(), context.Canceled)
+}
 
 func TestRunCycleSkipsWhenAlreadyRunning(t *testing.T) {
 	t.Parallel()

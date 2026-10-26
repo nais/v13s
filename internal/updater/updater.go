@@ -30,6 +30,7 @@ const (
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
 	ResyncBatchTimeoutDefault           = 15 * time.Minute
+	BatchWriteTimeoutDefault            = 15 * time.Minute
 )
 
 type Updater struct {
@@ -38,6 +39,7 @@ type Updater struct {
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	resyncBatchTimeout           time.Duration
+	batchWriteTimeout            time.Duration
 	log                          *logrus.Entry
 	kevFetcher                   *kev.Fetcher
 	osvFetcher                   *osv.Fetcher
@@ -74,6 +76,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		resyncBatchTimeout:           ResyncBatchTimeoutDefault,
+		batchWriteTimeout:            BatchWriteTimeoutDefault,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcher(pool, log, kev.SourcesFromConfig(kevCfg)...),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
@@ -445,7 +448,11 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 			break
 		}
 
-		if err := u.BatchUpdateVulnerabilityData(ctx, batch); err != nil {
+		writeCtx, cancel := context.WithTimeout(ctx, u.batchWriteTimeout)
+		err = u.BatchUpdateVulnerabilityData(writeCtx, batch)
+		err = errors.Join(err, writeCtx.Err())
+		cancel()
+		if err != nil {
 			u.log.WithError(err).WithField("images", len(batch)).Error("failed to update batch, continuing with next batch")
 			batchErrs = append(batchErrs, err)
 		}
