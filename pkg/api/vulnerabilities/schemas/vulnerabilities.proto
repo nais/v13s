@@ -82,6 +82,12 @@ message Filter {
   repeated Priority priorities = 9;
   // KEV filter. When set, only workloads/findings with a matching KEV status are returned.
   optional bool has_kev = 10;
+  repeated LabelFilter labels = 11;
+}
+
+message LabelFilter {
+  string key = 1;
+  optional string value = 2;
 }
 
 message OrderBy {
@@ -96,6 +102,7 @@ message Workload {
   string type = 4;
   string image_name = 5;
   string image_tag = 6;
+  map<string, string> labels = 7;
 }
 
 message Summary {

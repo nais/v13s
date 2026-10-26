@@ -124,12 +124,14 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 			wType := getWorkloadType(deployment, c)
 
 			ret = append(ret, &model.Workload{
-				Name:      setWorkloadName(c.Name, deployment.GetName()),
-				Namespace: deployment.GetNamespace(),
-				Cluster:   cluster,
-				Type:      wType,
-				ImageName: name,
-				ImageTag:  tag,
+				Name:            setWorkloadName(c.Name, deployment.GetName()),
+				Namespace:       deployment.GetNamespace(),
+				Cluster:         cluster,
+				Type:            wType,
+				ImageName:       name,
+				ImageTag:        tag,
+				Labels:          model.UserLabels(deployment.GetLabels()),
+				ResourceVersion: deployment.GetResourceVersion(),
 			})
 		}
 	case "Naisjob":
@@ -144,12 +146,14 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 		}
 		name, tag := imageNameTag(image)
 		w := &model.Workload{
-			Cluster:   cluster,
-			Name:      jobName(job),
-			Namespace: job.GetNamespace(),
-			Type:      model.WorkloadTypeJob,
-			ImageName: name,
-			ImageTag:  tag,
+			Cluster:         cluster,
+			Name:            jobName(job),
+			Namespace:       job.GetNamespace(),
+			Type:            model.WorkloadTypeJob,
+			ImageName:       name,
+			ImageTag:        tag,
+			Labels:          model.UserLabels(job.GetLabels()),
+			ResourceVersion: job.GetResourceVersion(),
 		}
 		if job.Status.DeploymentRolloutStatus == "complete" {
 			w.Status.LastSuccessful = true

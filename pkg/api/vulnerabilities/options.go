@@ -258,6 +258,15 @@ func SbomStatusFilter(statuses ...SbomStatus) Option {
 	})
 }
 
+func LabelsFilter(labels ...*LabelFilter) Option {
+	return newFuncOption(func(o *Options) {
+		if o.Filter == nil {
+			o.Filter = &Filter{}
+		}
+		o.Filter.Labels = append(o.Filter.Labels, labels...)
+	})
+}
+
 func IncludeSuppressed() Option {
 	return newFuncOption(func(o *Options) {
 		o.IncludeSuppressed = true

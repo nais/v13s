@@ -13,7 +13,7 @@ The Vulnerabilities service provides access to vulnerability data.
 
 List operations retrieve collections of vulnerability-related data based on various filters, e.g.:
 
-- `ListVulnerabilitySummaries`: List all workloads with their vulnerability summaries for the given filters (cluster, namespace, workload, workload_type)
+- `ListVulnerabilitySummaries`: List all workloads with their vulnerability summaries for the given filters (cluster, namespace, workload, workload_type, labels). Label filters match user labels only; a filter without a value matches any workload that has the key. Other operations reject label filters.
 - `ListVulnerabilitiesForImage`: List vulnerabilities for a specific container image
 - ... and more.
 

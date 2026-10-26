@@ -158,6 +158,20 @@ func TestWorkloadResyncModule_ResyncNoOp(t *testing.T) {
 	require.Zero(t, updater.calls.Load())
 }
 
+func TestWorkloadResyncModule_DoesNotReplayLabelSnapshots(t *testing.T) {
+	labels := map[string]string{"owner": "team", "empty": ""}
+	querier := newInMemoryQuerier(&sql.SetWorkloadStateRow{
+		Name: "app", WorkloadType: "app", Namespace: "ns", Cluster: "dev",
+		ImageName: "image", ImageTag: "v1", Labels: labels,
+	})
+	enqueuer := &inMemoryEnqueuer{}
+	module := NewWorkloadResyncModule(context.Background(), querier, enqueuer, &inMemoryUpdater{}, logrus.New())
+	_, err := module.Resync(context.Background(), Input{WorkloadState: WorkloadState(sql.WorkloadStateUpdated)})
+	require.NoError(t, err)
+	require.Len(t, enqueuer.Calls(), 1)
+	require.Nil(t, enqueuer.Calls()[0].Labels)
+}
+
 func TestWorkloadResyncModule_ResyncContinuesAfterRowFailure(t *testing.T) {
 	t.Parallel()
 

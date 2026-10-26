@@ -1,6 +1,65 @@
 package kubernetes
 
-import "testing"
+import (
+	"maps"
+	"testing"
+
+	"github.com/nais/v13s/internal/model"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+func TestWorkloadLabelEvents(t *testing.T) {
+	for _, kind := range []string{"Deployment", "Naisjob"} {
+		t.Run(kind, func(t *testing.T) {
+			obj := &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "nais.io/v1", "kind": kind,
+				"metadata": map[string]any{
+					"name": "demo", "namespace": "ns",
+					"labels": map[string]any{"owner": "original", "app": "demo", "team": "ns"},
+				},
+				"spec": map[string]any{
+					"image": "image:v1",
+					"template": map[string]any{
+						"metadata": map[string]any{"labels": map[string]any{"owner": "pod-template"}},
+						"spec":     map[string]any{"containers": []any{map[string]any{"name": "demo", "image": "image:v1"}}},
+					},
+				},
+			}}
+			obj.SetResourceVersion("9")
+			queue := &WorkloadEventQueue{Updated: make(chan *model.Workload, 1)}
+			handler := newEventHandler("cluster", queue, logrus.New())
+			handler.OnAdd(obj, true)
+			if got := (<-queue.Updated).Labels; !maps.Equal(got, map[string]string{"owner": "original"}) {
+				t.Fatalf("initial labels = %v, want Deployment/Naisjob metadata labels", got)
+			}
+			updated := obj.DeepCopy()
+			updated.SetLabels(map[string]string{"owner": "changed"})
+			updated.SetResourceVersion("10")
+			handler.OnUpdate(obj, updated)
+			select {
+			case got := <-queue.Updated:
+				if got.Labels["owner"] != "changed" || got.ImageTag != "v1" || got.ResourceVersion != "10" {
+					t.Fatalf("label-only event = %+v", got)
+				}
+			default:
+				t.Fatal("label-only change must enqueue an update")
+			}
+			removed := updated.DeepCopy()
+			removed.SetLabels(nil)
+			removed.SetResourceVersion("11")
+			handler.OnUpdate(updated, removed)
+			select {
+			case got := <-queue.Updated:
+				if got.Labels == nil || len(got.Labels) != 0 || got.ResourceVersion != "11" {
+					t.Fatalf("removed labels = %v, want empty", got.Labels)
+				}
+			default:
+				t.Fatal("removing labels must enqueue an update")
+			}
+		})
+	}
+}
 
 func TestImageNameTag(t *testing.T) {
 	tests := []struct {

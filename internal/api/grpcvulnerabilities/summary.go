@@ -31,6 +31,10 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	labelFilters, err := summaryLabelParameters(request.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
 		since.Time = request.GetSince().AsTime()
@@ -57,6 +61,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		Limit:         limit,
 		Offset:        offset,
 		Since:         since,
+		LabelFilters:  labelFilters,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
@@ -135,6 +140,7 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow, history bool) *vu
 			Type:      row.WorkloadType,
 			ImageName: imageName,
 			ImageTag:  imageTag,
+			Labels:    row.Labels,
 		},
 		VulnerabilitySummary: vulnSummary,
 		SbomStatus:           sbomStatus,
@@ -145,6 +151,9 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow, history bool) *vu
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
+	}
+	if err := rejectLabelFilters(request.GetFilter()); err != nil {
+		return nil, err
 	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
@@ -192,6 +201,9 @@ func (s *Server) GetVulnerabilitySummaries(ctx context.Context, request *vulnera
 	}
 	if filter.Namespace != nil || len(filter.GetNamespaces()) > 0 || filter.ImageName != nil || filter.ImageTag != nil {
 		return nil, status.Error(codes.InvalidArgument, "namespace and image filters are not supported for bulk summaries")
+	}
+	if err := rejectLabelFilters(filter); err != nil {
+		return nil, err
 	}
 	response := &vulnerabilities.GetVulnerabilitySummariesResponse{
 		Summaries: make(map[string]*vulnerabilities.GetVulnerabilitySummaryResponse, len(namespaces)),
@@ -292,6 +304,9 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 	}
 	if request.GetFilter().HasKev != nil {
 		return nil, status.Error(codes.InvalidArgument, "has_kev is not supported for vulnerability summary time series")
+	}
+	if err := rejectLabelFilters(request.GetFilter()); err != nil {
+		return nil, err
 	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
@@ -558,6 +573,9 @@ func mapIntPriority(v int32) vulnerabilities.Priority {
 func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
+	}
+	if err := rejectLabelFilters(request.GetFilter()); err != nil {
+		return nil, err
 	}
 
 	excludeNamespaces := request.GetExcludeNamespaces()
