@@ -30,6 +30,7 @@ const (
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
 	ResyncImagesOlderThanMinutesDefault = 6 * time.Hour
 	ResyncBatchTimeoutDefault           = 15 * time.Minute
+	BatchWriteTimeoutDefault            = 15 * time.Minute
 )
 
 type Updater struct {
@@ -38,6 +39,7 @@ type Updater struct {
 	source                       sources.Source
 	resyncImagesOlderThanMinutes time.Duration
 	resyncBatchTimeout           time.Duration
+	batchWriteTimeout            time.Duration
 	log                          *logrus.Entry
 	kevFetcher                   *kev.Fetcher
 	osvFetcher                   *osv.Fetcher
@@ -74,6 +76,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		source:                       source,
 		resyncImagesOlderThanMinutes: ResyncImagesOlderThanMinutesDefault,
 		resyncBatchTimeout:           ResyncBatchTimeoutDefault,
+		batchWriteTimeout:            BatchWriteTimeoutDefault,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcher(pool, log, kev.SourcesFromConfig(kevCfg)...),
 		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
@@ -277,7 +280,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	go func() {
 		defer close(done)
-		if err := u.Update(batchCtx, ch); err != nil {
+		if err := u.Update(ctx, ch); err != nil {
 			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
 			done <- false
 		} else {
@@ -434,18 +437,24 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) error {
 	start := time.Now()
 
+	var batchErrs []error
 	for {
 		batch, err := collections.ReadChannel(ctx, ch, 100)
 		if err != nil {
-			return err
+			return errors.Join(append(batchErrs, err)...)
 		}
 
 		if len(batch) == 0 {
 			break
 		}
 
-		if err := u.BatchUpdateVulnerabilityData(ctx, batch); err != nil {
-			return err
+		writeCtx, cancel := context.WithTimeout(ctx, u.batchWriteTimeout)
+		err = u.BatchUpdateVulnerabilityData(writeCtx, batch)
+		err = errors.Join(err, writeCtx.Err())
+		cancel()
+		if err != nil {
+			u.log.WithError(err).WithField("images", len(batch)).Error("failed to update batch, continuing with next batch")
+			batchErrs = append(batchErrs, err)
 		}
 	}
 
@@ -453,7 +462,7 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		"duration": fmt.Sprintf("%fs", time.Since(start).Seconds()),
 	}).Infof("vulnerability data has been updated")
 
-	return nil
+	return errors.Join(batchErrs...)
 }
 
 func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) error {

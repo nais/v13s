@@ -7,11 +7,64 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type firstExecBlockingDB struct {
+	sql.DBTX
+	contexts []context.Context
+}
+
+func (db *firstExecBlockingDB) Exec(ctx context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+	db.contexts = append(db.contexts, ctx)
+	if len(db.contexts) == 1 {
+		if _, ok := ctx.Deadline(); ok {
+			<-ctx.Done()
+		}
+	}
+	return pgconn.CommandTag{}, ctx.Err()
+}
+
+func (*firstExecBlockingDB) SendBatch(ctx context.Context, _ *pgx.Batch) pgx.BatchResults {
+	return &contextBatchResults{ctx: ctx}
+}
+
+type contextBatchResults struct {
+	pgx.BatchResults
+	ctx context.Context
+}
+
+func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, r.ctx.Err()
+}
+
+func (*contextBatchResults) Close() error { return nil }
+
+func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
+	t.Parallel()
+
+	db := &firstExecBlockingDB{}
+	u := NewUpdater(nil, nil, ScheduleConfig{}, nil, config.KevConfig{}, config.OsvConfig{})
+	u.querier = sql.New(db)
+	u.batchWriteTimeout = 100 * time.Millisecond
+
+	ch := make(chan *ImageVulnerabilityData, 101)
+	for range 101 {
+		ch <- &ImageVulnerabilityData{ImageName: "image", ImageTag: "v1"}
+	}
+	close(ch)
+
+	require.ErrorIs(t, u.Update(t.Context(), ch), context.DeadlineExceeded)
+	firstDeadline, _ := db.contexts[0].Deadline()
+	lastDeadline, _ := db.contexts[len(db.contexts)-1].Deadline()
+	require.True(t, lastDeadline.After(firstDeadline))
+}
 
 func TestRunCycleSkipsWhenAlreadyRunning(t *testing.T) {
 	t.Parallel()

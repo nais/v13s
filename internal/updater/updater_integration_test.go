@@ -1038,7 +1038,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	lookup := func(t *testing.T, severity sources.Severity) time.Time {
 		images := []*updater.ImageVulnerabilityData{{
 			ImageName: imageName,
-			ImageTag:  imageTag,
+			ImageTag:  "v2",
 			Vulnerabilities: []*sources.Vulnerability{
 				{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: severity}},
 			},
@@ -1076,6 +1076,47 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.WithinDuration(t, ts, lookup(t, sources.SeverityMedium).UTC(), 1*time.Second)
+	})
+
+	t.Run("skips findings already stored at the same severity for the same tag", func(t *testing.T) {
+		images := []*updater.ImageVulnerabilityData{{
+			ImageName:       imageName,
+			ImageTag:        imageTag,
+			Vulnerabilities: []*sources.Vulnerability{{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: sources.SeverityMedium}}},
+		}}
+		since, err := u.DetermineSeveritySince(ctx, images)
+		require.NoError(t, err)
+		assert.Empty(t, since)
+	})
+
+	t.Run("looks up changed severity for the same tag", func(t *testing.T) {
+		ts := time.Now().UTC().Add(-3 * time.Hour)
+		require.NoError(t, querier.CreateImage(ctx, sql.CreateImageParams{
+			Name: imageName, Tag: "v3", Metadata: map[string]string{},
+		}))
+		querier.BatchUpsertVulnerabilities(ctx, []sql.BatchUpsertVulnerabilitiesParams{{
+			ImageName:     imageName,
+			ImageTag:      "v3",
+			Package:       pkg,
+			CveID:         cveID,
+			Source:        "source",
+			LastSeverity:  sources.SeverityHigh.ToInt32(),
+			SeveritySince: pgtype.Timestamptz{Time: ts, Valid: true},
+		}}).Exec(func(_ int, err error) {
+			require.NoError(t, err)
+		})
+
+		images := []*updater.ImageVulnerabilityData{{
+			ImageName:       imageName,
+			ImageTag:        imageTag,
+			Vulnerabilities: []*sources.Vulnerability{{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: sources.SeverityHigh}}},
+		}}
+		since, err := u.DetermineSeveritySince(ctx, images)
+		require.NoError(t, err)
+		key := updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: cveID, LastSeverity: sources.SeverityHigh.ToInt32()}
+		got, ok := since[key]
+		require.True(t, ok)
+		assert.WithinDuration(t, ts, got, time.Second)
 	})
 
 	t.Run("looks up every finding of a batch in one call", func(t *testing.T) {
@@ -1355,6 +1396,7 @@ func (instantSource) Name() string { return "instant" }
 func (instantSource) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
 	return nil, nil
 }
+
 func (instantSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
 	return nil
 }
