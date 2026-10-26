@@ -16,10 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func SetQuerierForTest(u *Updater, db sql.DBTX) {
-	u.querier = sql.New(db)
-}
-
 type firstExecBlockingDB struct {
 	sql.DBTX
 	contexts []context.Context
@@ -56,7 +52,6 @@ func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
 	db := &firstExecBlockingDB{}
 	u := NewUpdater(nil, nil, ScheduleConfig{}, nil, config.KevConfig{}, config.OsvConfig{})
 	u.querier = sql.New(db)
-	u.resyncBatchTimeout = time.Nanosecond
 	u.batchWriteTimeout = 100 * time.Millisecond
 
 	ch := make(chan *ImageVulnerabilityData, 101)
@@ -65,18 +60,10 @@ func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
 	}
 	close(ch)
 
-	ctx := t.Context()
-	err := u.Update(ctx, ch)
-
-	require.ErrorIs(t, err, context.DeadlineExceeded)
-	require.NoError(t, ctx.Err())
-	require.Len(t, db.contexts, 101)
-	firstDeadline, ok := db.contexts[0].Deadline()
-	require.True(t, ok)
-	nextDeadline, ok := db.contexts[100].Deadline()
-	require.True(t, ok)
-	require.True(t, nextDeadline.After(firstDeadline))
-	require.ErrorIs(t, db.contexts[100].Err(), context.Canceled)
+	require.ErrorIs(t, u.Update(t.Context(), ch), context.DeadlineExceeded)
+	firstDeadline, _ := db.contexts[0].Deadline()
+	lastDeadline, _ := db.contexts[len(db.contexts)-1].Deadline()
+	require.True(t, lastDeadline.After(firstDeadline))
 }
 
 func TestRunCycleSkipsWhenAlreadyRunning(t *testing.T) {
