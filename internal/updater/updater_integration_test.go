@@ -1038,7 +1038,7 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 	lookup := func(t *testing.T, severity sources.Severity) time.Time {
 		images := []*updater.ImageVulnerabilityData{{
 			ImageName: imageName,
-			ImageTag:  imageTag,
+			ImageTag:  "v2",
 			Vulnerabilities: []*sources.Vulnerability{
 				{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: severity}},
 			},
@@ -1076,6 +1076,17 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.WithinDuration(t, ts, lookup(t, sources.SeverityMedium).UTC(), 1*time.Second)
+	})
+
+	t.Run("skips findings already stored at the same severity for the same tag", func(t *testing.T) {
+		images := []*updater.ImageVulnerabilityData{{
+			ImageName:       imageName,
+			ImageTag:        imageTag,
+			Vulnerabilities: []*sources.Vulnerability{{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: sources.SeverityMedium}}},
+		}}
+		since, err := u.DetermineSeveritySince(ctx, images)
+		require.NoError(t, err)
+		assert.Empty(t, since)
 	})
 
 	t.Run("looks up every finding of a batch in one call", func(t *testing.T) {

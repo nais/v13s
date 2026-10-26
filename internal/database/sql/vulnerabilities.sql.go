@@ -323,15 +323,31 @@ const listEarliestSeveritySince = `-- name: ListEarliestSeveritySince :many
 WITH requested AS (
     SELECT
         unnest($1::TEXT[]) AS image_name,
-        unnest($2::TEXT[]) AS package,
-        unnest($3::TEXT[]) AS cve_id,
-        unnest($4::INT[]) AS last_severity
+        unnest($2::TEXT[]) AS image_tag,
+        unnest($3::TEXT[]) AS package,
+        unnest($4::TEXT[]) AS cve_id,
+        unnest($5::INT[]) AS last_severity
 ),
 input AS (
     SELECT DISTINCT
-        image_name, package, cve_id, last_severity
+        r.image_name,
+        r.package,
+        r.cve_id,
+        r.last_severity
     FROM
-        requested
+        requested r
+    WHERE
+        NOT EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerabilities e
+            WHERE
+                e.image_name = r.image_name
+                AND e.image_tag = r.image_tag
+                AND e.cve_id = r.cve_id
+                AND e.package = r.package
+                AND e.last_severity = r.last_severity)
 )
 SELECT
     i.image_name::TEXT AS image_name,
@@ -359,6 +375,7 @@ ORDER BY
 
 type ListEarliestSeveritySinceParams struct {
 	ImageNames     []string
+	ImageTags      []string
 	Packages       []string
 	CveIds         []string
 	LastSeverities []int32
@@ -375,6 +392,7 @@ type ListEarliestSeveritySinceRow struct {
 func (q *Queries) ListEarliestSeveritySince(ctx context.Context, arg ListEarliestSeveritySinceParams) ([]*ListEarliestSeveritySinceRow, error) {
 	rows, err := q.db.Query(ctx, listEarliestSeveritySince,
 		arg.ImageNames,
+		arg.ImageTags,
 		arg.Packages,
 		arg.CveIds,
 		arg.LastSeverities,
