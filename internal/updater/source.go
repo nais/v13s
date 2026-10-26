@@ -128,13 +128,15 @@ type SeveritySinceKey struct {
 	LastSeverity int32
 }
 
-// DetermineSeveritySince returns, for every finding in images, when it reached
-// its current severity, looked up in one query for the whole batch.
+// DetermineSeveritySince returns, for every finding in images not already stored
+// at its current severity for the same tag, when it reached that severity,
+// looked up in one query for the whole batch.
 func (u *Updater) DetermineSeveritySince(ctx context.Context, images []*ImageVulnerabilityData) (map[SeveritySinceKey]time.Time, error) {
 	params := sql.ListEarliestSeveritySinceParams{}
 	for _, i := range images {
 		for _, v := range i.Vulnerabilities {
 			params.ImageNames = append(params.ImageNames, i.ImageName)
+			params.ImageTags = append(params.ImageTags, i.ImageTag)
 			params.Packages = append(params.Packages, v.Package)
 			params.CveIds = append(params.CveIds, v.Cve.Id)
 			params.LastSeverities = append(params.LastSeverities, v.Cve.Severity.ToInt32())

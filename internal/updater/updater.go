@@ -277,7 +277,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 
 	go func() {
 		defer close(done)
-		if err := u.Update(batchCtx, ch); err != nil {
+		if err := u.Update(ctx, ch); err != nil {
 			u.log.WithError(err).Error("Failed to batch insert image vulnerability data")
 			done <- false
 		} else {
@@ -434,10 +434,11 @@ func (u *Updater) MarkForResync(ctx context.Context) error {
 func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) error {
 	start := time.Now()
 
+	var batchErrs []error
 	for {
 		batch, err := collections.ReadChannel(ctx, ch, 100)
 		if err != nil {
-			return err
+			return errors.Join(append(batchErrs, err)...)
 		}
 
 		if len(batch) == 0 {
@@ -445,7 +446,8 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		}
 
 		if err := u.BatchUpdateVulnerabilityData(ctx, batch); err != nil {
-			return err
+			u.log.WithError(err).WithField("images", len(batch)).Error("failed to update batch, continuing with next batch")
+			batchErrs = append(batchErrs, err)
 		}
 	}
 
@@ -453,7 +455,7 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		"duration": fmt.Sprintf("%fs", time.Since(start).Seconds()),
 	}).Infof("vulnerability data has been updated")
 
-	return nil
+	return errors.Join(batchErrs...)
 }
 
 func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) error {

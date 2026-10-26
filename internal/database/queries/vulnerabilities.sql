@@ -235,15 +235,31 @@ ON CONFLICT (
 WITH requested AS (
     SELECT
         unnest(@image_names::TEXT[]) AS image_name,
+        unnest(@image_tags::TEXT[]) AS image_tag,
         unnest(@packages::TEXT[]) AS package,
         unnest(@cve_ids::TEXT[]) AS cve_id,
         unnest(@last_severities::INT[]) AS last_severity
 ),
 input AS (
     SELECT DISTINCT
-        *
+        r.image_name,
+        r.package,
+        r.cve_id,
+        r.last_severity
     FROM
-        requested
+        requested r
+    WHERE
+        NOT EXISTS (
+            SELECT
+                1
+            FROM
+                vulnerabilities e
+            WHERE
+                e.image_name = r.image_name
+                AND e.image_tag = r.image_tag
+                AND e.cve_id = r.cve_id
+                AND e.package = r.package
+                AND e.last_severity = r.last_severity)
 )
 SELECT
     i.image_name::TEXT AS image_name,
