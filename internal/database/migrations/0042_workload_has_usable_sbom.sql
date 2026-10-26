@@ -7,11 +7,11 @@ CREATE FUNCTION workload_has_usable_sbom(w_state workload_state, i_state image_s
     IMMUTABLE PARALLEL SAFE
     AS $$
     SELECT
-        COALESCE(w_state NOT IN ('no_attestation', 'failed', 'unrecoverable')
-            AND i_state NOT IN ('failed', 'unused'), FALSE)
+        COALESCE(w_state NOT IN('no_attestation', 'failed', 'unrecoverable')
+            AND i_state NOT IN('failed', 'unused'), FALSE)
 $$;
--- +goose StatementEnd
 
+-- +goose StatementEnd
 CREATE MATERIALIZED VIEW mv_cve_workload_counts_new AS
 WITH active_workloads AS (
     SELECT
