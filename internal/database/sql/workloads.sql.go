@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 const addWorkloadEvent = `-- name: AddWorkloadEvent :exec
@@ -69,7 +70,7 @@ VALUES (
     $5,
     $6)
 RETURNING
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
 `
 
 type CreateWorkloadParams struct {
@@ -102,6 +103,7 @@ func (q *Queries) CreateWorkload(ctx context.Context, arg CreateWorkloadParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.State,
+		&i.Labels,
 	)
 	return &i, err
 }
@@ -137,7 +139,7 @@ func (q *Queries) DeleteWorkload(ctx context.Context, arg DeleteWorkloadParams) 
 
 const getWorkload = `-- name: GetWorkload :one
 SELECT
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
 FROM
     workloads
 WHERE
@@ -173,6 +175,7 @@ func (q *Queries) GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Work
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.State,
+		&i.Labels,
 	)
 	return &i, err
 }
@@ -186,6 +189,7 @@ WITH upserted AS (
         cluster,
         image_name,
         image_tag,
+        labels,
         state)
     VALUES (
         $1,
@@ -194,13 +198,16 @@ WITH upserted AS (
         $4,
         $5,
         $6,
+        COALESCE(
+            $7, '{}' ::JSONB),
         'processing')
 ON CONFLICT ON CONSTRAINT workload_id
     DO UPDATE SET
         state = 'processing',
         updated_at = NOW(),
         image_name = $5,
-        image_tag = $6
+        image_tag = $6,
+        labels = COALESCE($7, workloads.labels)
     WHERE
         workloads.state = 'resync'
         OR (
@@ -231,6 +238,7 @@ type InitializeWorkloadParams struct {
 	Cluster      string
 	ImageName    string
 	ImageTag     string
+	Labels       interface{}
 }
 
 func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error) {
@@ -241,6 +249,7 @@ func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkload
 		arg.Cluster,
 		arg.ImageName,
 		arg.ImageTag,
+		arg.Labels,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -249,7 +258,7 @@ func (q *Queries) InitializeWorkload(ctx context.Context, arg InitializeWorkload
 
 const listWorkloadsByCluster = `-- name: ListWorkloadsByCluster :many
 SELECT
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
 FROM
     workloads
 WHERE
@@ -281,6 +290,7 @@ func (q *Queries) ListWorkloadsByCluster(ctx context.Context, cluster string) ([
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.State,
+			&i.Labels,
 		); err != nil {
 			return nil, err
 		}
@@ -389,10 +399,10 @@ WITH updated AS (
             OR name = $5::TEXT))
     AND state = $6
 RETURNING
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
 )
 SELECT
-    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+    id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
 FROM
     updated
 ORDER BY
@@ -422,6 +432,7 @@ type SetWorkloadStateRow struct {
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 	State        WorkloadState
+	Labels       typeext.MapStringString
 }
 
 func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error) {
@@ -451,6 +462,7 @@ func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStatePara
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.State,
+			&i.Labels,
 		); err != nil {
 			return nil, err
 		}
@@ -460,6 +472,45 @@ func (q *Queries) SetWorkloadState(ctx context.Context, arg SetWorkloadStatePara
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateWorkloadLabels = `-- name: UpdateWorkloadLabels :exec
+UPDATE
+    workloads
+SET
+    labels = COALESCE($1, '{}'::JSONB),
+    updated_at = NOW()
+WHERE
+    name = $2
+    AND workload_type = $3
+    AND namespace = $4
+    AND CLUSTER = $5
+    AND image_name = $6
+    AND image_tag = $7
+    AND labels IS DISTINCT FROM COALESCE($1, '{}'::JSONB)
+`
+
+type UpdateWorkloadLabelsParams struct {
+	Labels       typeext.MapStringString
+	Name         string
+	WorkloadType string
+	Namespace    string
+	Cluster      string
+	ImageName    string
+	ImageTag     string
+}
+
+func (q *Queries) UpdateWorkloadLabels(ctx context.Context, arg UpdateWorkloadLabelsParams) error {
+	_, err := q.db.Exec(ctx, updateWorkloadLabels,
+		arg.Labels,
+		arg.Name,
+		arg.WorkloadType,
+		arg.Namespace,
+		arg.Cluster,
+		arg.ImageName,
+		arg.ImageTag,
+	)
+	return err
 }
 
 const updateWorkloadState = `-- name: UpdateWorkloadState :exec
@@ -540,6 +591,7 @@ INSERT INTO workloads(
     cluster,
     image_name,
     image_tag,
+    labels,
     state)
 VALUES (
     $1,
@@ -548,11 +600,14 @@ VALUES (
     $4,
     $5,
     $6,
+    COALESCE(
+        $7, '{}' ::JSONB),
     'initialized')
 ON CONFLICT ON CONSTRAINT workload_id
     DO UPDATE SET
         image_name = $5,
         image_tag = $6,
+        labels = COALESCE($7, workloads.labels),
         state = 'initialized',
         updated_at = NOW()
     RETURNING
@@ -566,6 +621,7 @@ type UpsertWorkloadParams struct {
 	Cluster      string
 	ImageName    string
 	ImageTag     string
+	Labels       interface{}
 }
 
 func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) (pgtype.UUID, error) {
@@ -576,6 +632,7 @@ func (q *Queries) UpsertWorkload(ctx context.Context, arg UpsertWorkloadParams) 
 		arg.Cluster,
 		arg.ImageName,
 		arg.ImageTag,
+		arg.Labels,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

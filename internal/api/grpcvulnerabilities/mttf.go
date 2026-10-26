@@ -15,6 +15,9 @@ func (s *Server) ListMeanTimeToFixTrendBySeverity(ctx context.Context, request *
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
+	if err := rejectLabelFilters(request.GetFilter()); err != nil {
+		return nil, err
+	}
 
 	params := sql.ListMeanTimeToFixTrendBySeverityParams{
 		Cluster:       request.GetFilter().Cluster,

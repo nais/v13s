@@ -219,7 +219,7 @@ func (q *Queries) ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([
 const listWorkloadStatus = `-- name: ListWorkloadStatus :many
 WITH filtered_workloads AS (
     SELECT
-        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
     FROM
         workloads
     WHERE (
@@ -255,7 +255,7 @@ total_count AS (
 ),
 paged_workloads AS (
     SELECT
-        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
     FROM
         filtered_workloads
     ORDER BY
@@ -351,7 +351,7 @@ func (q *Queries) ListWorkloadStatus(ctx context.Context, arg ListWorkloadStatus
 const listWorkloadStatusWithJobs = `-- name: ListWorkloadStatusWithJobs :many
 WITH filtered_workloads AS (
     SELECT
-        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
     FROM
         workloads
     WHERE ($1::TEXT IS NULL
@@ -371,7 +371,7 @@ total_count AS (
 ),
 paged_workloads AS (
     SELECT
-        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
     FROM
         filtered_workloads
     ORDER BY
