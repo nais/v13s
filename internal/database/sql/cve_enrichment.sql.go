@@ -92,7 +92,8 @@ WHERE
     AND package NOT LIKE 'pkg:apk/%'
     AND package NOT LIKE 'pkg:deb/%'
 ORDER BY
-    cve_id, package
+    cve_id,
+    package
 `
 
 type GetVulnerabilitiesForOsvEnrichmentRow struct {
@@ -210,9 +211,9 @@ WITH changed AS (
             COALESCE(bool_or(s.known_ransomware_use), FALSE) AS known_ransomware_use
         FROM
             cve c
-            LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
-        GROUP BY
-            c.cve_id) AS k
+        LEFT JOIN cve_kev_source s ON s.cve_id = c.cve_id
+    GROUP BY
+        c.cve_id) AS k
     WHERE
         cve.cve_id = k.cve_id
         AND (cve.has_kev_entry != k.has_kev_entry
@@ -249,7 +250,10 @@ func (q *Queries) RefreshCveKevFlags(ctx context.Context) ([]string, error) {
 }
 
 const upsertKevSourceEntries = `-- name: UpsertKevSourceEntries :execrows
-INSERT INTO cve_kev_source (cve_id, source, known_ransomware_use)
+INSERT INTO cve_kev_source(
+    cve_id,
+    source,
+    known_ransomware_use)
 SELECT
     d.cve_id,
     d.source,
@@ -260,7 +264,8 @@ FROM (
         unnest($2::TEXT[]) AS source,
         unnest($3::BOOLEAN[]) AS known_ransomware_use) AS d
     JOIN cve c ON c.cve_id = d.cve_id
-ON CONFLICT (cve_id, source)
+ON CONFLICT (cve_id,
+    source)
     DO UPDATE SET
         known_ransomware_use = EXCLUDED.known_ransomware_use,
         last_seen_at = NOW()

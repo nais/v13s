@@ -158,21 +158,22 @@ joined_data AS (
     SELECT
         fw.namespace,
         CASE WHEN ($5::INT[] IS NULL
-                AND $6::BOOL IS NULL)
+            AND $6::BOOL IS NULL)
             OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
                 AND COALESCE(($5::INT[] IS NULL
-                        OR v.top_risk_tier = ANY ($5::INT[]))
-                    AND ($6::BOOL IS NULL
-                        OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
+                    OR v.top_risk_tier = ANY ($5::INT[]))
+                AND ($6::BOOL IS NULL
+                    OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
             fw.id
         END AS id,
-        COALESCE(workload_has_usable_sbom(fw.state, i.state) AND v.id IS NOT NULL, FALSE)
+        COALESCE(workload_has_usable_sbom(fw.state, i.state)
+            AND v.id IS NOT NULL, FALSE)
         AND COALESCE(($5::INT[] IS NULL
-                OR v.top_risk_tier = ANY ($5::INT[]))
-            AND ($6::BOOL IS NULL
-                OR (v.id IS NOT NULL
-                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
+            OR v.top_risk_tier = ANY ($5::INT[]))
+        AND ($6::BOOL IS NULL
+            OR (v.id IS NOT NULL
+                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -190,46 +191,100 @@ joined_data AS (
         v.updated_at
     FROM
         filtered_workloads fw
-        LEFT JOIN vulnerability_summary cur ON fw.image_name = cur.image_name
-            AND fw.image_tag = cur.image_tag
-        LEFT JOIN images i ON i.name = fw.image_name
-            AND i.tag = fw.image_tag
-        LEFT JOIN LATERAL (
-            SELECT
-                ps.id
-            FROM
-                vulnerability_summary ps
-            WHERE
-                cur.id IS NULL
-                AND i.state NOT IN ('updated', 'failed', 'unused')
-                AND ps.image_name = fw.image_name
-                AND ps.image_tag <> fw.image_tag
-            ORDER BY
-                ps.updated_at DESC
-            LIMIT 1) prev ON TRUE
-        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
-)
+    LEFT JOIN vulnerability_summary cur ON fw.image_name = cur.image_name
+        AND fw.image_tag = cur.image_tag
+    LEFT JOIN images i ON i.name = fw.image_name
+        AND i.tag = fw.image_tag
+    LEFT JOIN LATERAL (
+        SELECT
+            ps.id
+        FROM
+            vulnerability_summary ps
+        WHERE
+            cur.id IS NULL
+            AND i.state NOT IN ('updated', 'failed', 'unused')
+            AND ps.image_name = fw.image_name
+            AND ps.image_tag <> fw.image_tag
+        ORDER BY
+            ps.updated_at DESC
+        LIMIT 1) prev ON TRUE
+    LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id))
 SELECT
     namespace::TEXT AS namespace,
     CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN is_active AND summary_id IS NOT NULL THEN id END) AS INT4) AS workload_with_sbom,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN critical END), 0) AS INT4) AS critical,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN high END), 0) AS INT4) AS high,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN medium END), 0) AS INT4) AS medium,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN low END), 0) AS INT4) AS low,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN unassigned END), 0) AS INT4) AS unassigned,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN kev_count END), 0) AS INT4) AS kev_count,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_risk END), 0) AS INT4) AS high_risk,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN elevated_risk END), 0) AS INT4) AS elevated_risk,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN monitor END), 0) AS INT4) AS monitor,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN ransomware_count END), 0) AS INT4) AS ransomware_count,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN high_epss_count END), 0) AS INT4) AS high_epss_count,
-    MIN(CASE WHEN is_active THEN top_risk_tier END) AS top_risk_tier,
-    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 2 THEN id END) AS INT4) AS high_risk_workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 3 THEN id END) AS INT4) AS elevated_risk_workload_count,
-    CAST(COUNT(DISTINCT CASE WHEN is_active AND top_risk_tier = 4 THEN id END) AS INT4) AS monitor_workload_count,
-    CAST(COALESCE(SUM(CASE WHEN is_active THEN risk_score END), 0) AS INT4) AS risk_score,
-    MAX(CASE WHEN is_active AND summary_id IS NOT NULL THEN updated_at END)::TIMESTAMPTZ AS updated_at
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND summary_id IS NOT NULL THEN
+                id
+            END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    critical
+                END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    high
+                END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    medium
+                END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    low
+                END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    unassigned
+                END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    kev_count
+                END), 0) AS INT4) AS kev_count,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    high_risk
+                END), 0) AS INT4) AS high_risk,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    elevated_risk
+                END), 0) AS INT4) AS elevated_risk,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    monitor
+                END), 0) AS INT4) AS monitor,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    ransomware_count
+                END), 0) AS INT4) AS ransomware_count,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    high_epss_count
+                END), 0) AS INT4) AS high_epss_count,
+    MIN(
+        CASE WHEN is_active THEN
+            top_risk_tier
+        END) AS top_risk_tier,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND top_risk_tier = 2 THEN
+                id
+            END) AS INT4) AS high_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND top_risk_tier = 3 THEN
+                id
+            END) AS INT4) AS elevated_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND top_risk_tier = 4 THEN
+                id
+            END) AS INT4) AS monitor_workload_count,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    risk_score
+                END), 0) AS INT4) AS risk_score,
+    MAX(
+        CASE WHEN is_active
+            AND summary_id IS NOT NULL THEN
+            updated_at
+        END)::TIMESTAMPTZ AS updated_at
 FROM
     joined_data
 GROUP BY
@@ -339,22 +394,22 @@ WITH filtered_workloads AS (
 joined_data AS (
     SELECT
         CASE WHEN ($5::INT[] IS NULL
-                AND $6::BOOL IS NULL)
+            AND $6::BOOL IS NULL)
             OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
                 AND COALESCE(($5::INT[] IS NULL
-                        OR v.top_risk_tier = ANY ($5::INT[]))
-                    AND ($6::BOOL IS NULL
-                        OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
+                    OR v.top_risk_tier = ANY ($5::INT[]))
+                AND ($6::BOOL IS NULL
+                    OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(workload_has_usable_sbom(fw.state, i.state)
             AND v.id IS NOT NULL, FALSE)
         AND COALESCE(($5::INT[] IS NULL
-                OR v.top_risk_tier = ANY ($5::INT[]))
-            AND ($6::BOOL IS NULL
-                OR (v.id IS NOT NULL
-                    AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
+            OR v.top_risk_tier = ANY ($5::INT[]))
+        AND ($6::BOOL IS NULL
+            OR (v.id IS NOT NULL
+                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -389,85 +444,84 @@ joined_data AS (
             ORDER BY
                 ps.updated_at DESC
             LIMIT 1) prev ON TRUE
-        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
-)
-    SELECT
-        CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
-        CAST(COUNT(DISTINCT CASE WHEN is_active
-                    AND summary_id IS NOT NULL THEN
-                    id
-                END) AS INT4) AS workload_with_sbom,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        critical
-                    END), 0) AS INT4) AS critical,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        high
-                    END), 0) AS INT4) AS high,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        medium
-                    END), 0) AS INT4) AS medium,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        low
-                    END), 0) AS INT4) AS low,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        unassigned
-                    END), 0) AS INT4) AS unassigned,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        kev_count
-                    END), 0) AS INT4) AS kev_count,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        high_risk
-                    END), 0) AS INT4) AS high_risk,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        elevated_risk
-                    END), 0) AS INT4) AS elevated_risk,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        monitor
-                    END), 0) AS INT4) AS monitor,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        ransomware_count
-                    END), 0) AS INT4) AS ransomware_count,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        high_epss_count
-                    END), 0) AS INT4) AS high_epss_count,
-        MIN(
-            CASE WHEN is_active THEN
-                top_risk_tier
-            END) AS top_risk_tier,
-        CAST(COUNT(DISTINCT CASE WHEN is_active
-                    AND top_risk_tier = 2 THEN
-                    id
-                END) AS INT4) AS high_risk_workload_count,
-        CAST(COUNT(DISTINCT CASE WHEN is_active
-                    AND top_risk_tier = 3 THEN
-                    id
-                END) AS INT4) AS elevated_risk_workload_count,
-        CAST(COUNT(DISTINCT CASE WHEN is_active
-                    AND top_risk_tier = 4 THEN
-                    id
-                END) AS INT4) AS monitor_workload_count,
-        CAST(COALESCE(SUM(
-                    CASE WHEN is_active THEN
-                        risk_score
-                    END), 0) AS INT4) AS risk_score,
-        MAX(
-            CASE WHEN is_active
+        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id))
+SELECT
+    CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
                 AND summary_id IS NOT NULL THEN
-                updated_at
-            END)::TIMESTAMPTZ AS updated_at
-    FROM
-        joined_data
+                id
+            END) AS INT4) AS workload_with_sbom,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    critical
+                END), 0) AS INT4) AS critical,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    high
+                END), 0) AS INT4) AS high,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    medium
+                END), 0) AS INT4) AS medium,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    low
+                END), 0) AS INT4) AS low,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    unassigned
+                END), 0) AS INT4) AS unassigned,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    kev_count
+                END), 0) AS INT4) AS kev_count,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    high_risk
+                END), 0) AS INT4) AS high_risk,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    elevated_risk
+                END), 0) AS INT4) AS elevated_risk,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    monitor
+                END), 0) AS INT4) AS monitor,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    ransomware_count
+                END), 0) AS INT4) AS ransomware_count,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    high_epss_count
+                END), 0) AS INT4) AS high_epss_count,
+    MIN(
+        CASE WHEN is_active THEN
+            top_risk_tier
+        END) AS top_risk_tier,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND top_risk_tier = 2 THEN
+                id
+            END) AS INT4) AS high_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND top_risk_tier = 3 THEN
+                id
+            END) AS INT4) AS elevated_risk_workload_count,
+    CAST(COUNT(DISTINCT CASE WHEN is_active
+                AND top_risk_tier = 4 THEN
+                id
+            END) AS INT4) AS monitor_workload_count,
+    CAST(COALESCE(SUM(
+                CASE WHEN is_active THEN
+                    risk_score
+                END), 0) AS INT4) AS risk_score,
+    MAX(
+        CASE WHEN is_active
+            AND summary_id IS NOT NULL THEN
+            updated_at
+        END)::TIMESTAMPTZ AS updated_at
+FROM
+    joined_data
 `
 
 type GetVulnerabilitySummaryParams struct {
@@ -884,14 +938,19 @@ vulnerability_data AS (
 sbom_status_data AS (
     SELECT
         id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, is_active, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, sbom_processing_started_at,
-        CASE
-            WHEN workload_state IN ('failed', 'unrecoverable') THEN 'failed'
-            WHEN workload_state = 'no_attestation' THEN 'no_sbom'
-            WHEN image_state = 'updated' THEN 'ready'
-            WHEN image_state = 'failed' THEN 'failed'
-            WHEN image_state IS NULL
-                OR image_state = 'unused' THEN 'no_sbom'
-            ELSE 'processing'
+        CASE WHEN workload_state IN ('failed', 'unrecoverable') THEN
+            'failed'
+        WHEN workload_state = 'no_attestation' THEN
+            'no_sbom'
+        WHEN image_state = 'updated' THEN
+            'ready'
+        WHEN image_state = 'failed' THEN
+            'failed'
+        WHEN image_state IS NULL
+            OR image_state = 'unused' THEN
+            'no_sbom'
+        ELSE
+            'processing'
         END AS sbom_status
     FROM
         vulnerability_data
@@ -968,11 +1027,10 @@ summary_data AS (
         image_state,
         sbom_processing_started_at,
         COUNT(*) OVER () AS total_count
-    FROM
-        sbom_status_data
+FROM
+    sbom_status_data
     WHERE ($13::TEXT[] IS NULL
-        OR sbom_status = ANY ($13::TEXT[]))
-)
+        OR sbom_status = ANY ($13::TEXT[])))
 SELECT
     id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
 FROM
@@ -1245,8 +1303,7 @@ vulnerability_data AS (
             ORDER BY
                 ps.updated_at DESC
             LIMIT 1) prev ON TRUE
-        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
-)
+        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id))
 SELECT
     id,
     workload_name,

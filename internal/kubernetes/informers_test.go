@@ -39,7 +39,6 @@ func TestCheckServerResources_Success(t *testing.T) {
 	lister := &fakeResourceLister{resList: want}
 
 	got, err := checkServerResources(lister, testGVR)
-
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
