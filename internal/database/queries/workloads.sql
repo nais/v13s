@@ -146,6 +146,27 @@ WHERE
     AND namespace = @namespace
     AND CLUSTER = @cluster;
 
+-- name: ListImagesForReanalysis :many
+SELECT DISTINCT w.image_name, w.image_tag
+FROM workloads w
+JOIN images i ON i.name = w.image_name AND i.tag = w.image_tag
+WHERE w.cluster = @cluster
+    AND w.namespace = @namespace
+    AND (sqlc.narg('workload_name')::TEXT IS NULL OR w.name = sqlc.narg('workload_name')::TEXT)
+    AND (sqlc.narg('workload_type')::TEXT IS NULL OR w.workload_type = sqlc.narg('workload_type')::TEXT)
+    AND i.state = 'updated'
+    AND w.state = 'updated'
+ORDER BY w.image_name, w.image_tag
+LIMIT sqlc.arg('max_images');
+
+-- name: ImageHasWorkload :one
+SELECT EXISTS (
+    SELECT 1
+    FROM workloads
+    WHERE image_name = @image_name AND image_tag = @image_tag
+        AND state NOT IN ('failed', 'unrecoverable')
+);
+
 -- name: DeleteWorkload :one
 DELETE FROM workloads
 WHERE name = @name

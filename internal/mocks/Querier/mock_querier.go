@@ -1789,6 +1789,63 @@ func (_c *MockQuerier_GetWorkload_Call) RunAndReturn(run func(context.Context, s
 	return _c
 }
 
+// ImageHasWorkload provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ImageHasWorkload(ctx context.Context, arg sql.ImageHasWorkloadParams) (bool, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ImageHasWorkload")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ImageHasWorkloadParams) (bool, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ImageHasWorkloadParams) bool); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ImageHasWorkloadParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ImageHasWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ImageHasWorkload'
+type MockQuerier_ImageHasWorkload_Call struct {
+	*mock.Call
+}
+
+// ImageHasWorkload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ImageHasWorkloadParams
+func (_e *MockQuerier_Expecter) ImageHasWorkload(ctx interface{}, arg interface{}) *MockQuerier_ImageHasWorkload_Call {
+	return &MockQuerier_ImageHasWorkload_Call{Call: _e.mock.On("ImageHasWorkload", ctx, arg)}
+}
+
+func (_c *MockQuerier_ImageHasWorkload_Call) Run(run func(ctx context.Context, arg sql.ImageHasWorkloadParams)) *MockQuerier_ImageHasWorkload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ImageHasWorkloadParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ImageHasWorkload_Call) Return(_a0 bool, _a1 error) *MockQuerier_ImageHasWorkload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ImageHasWorkload_Call) RunAndReturn(run func(context.Context, sql.ImageHasWorkloadParams) (bool, error)) *MockQuerier_ImageHasWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InitializeWorkload provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) InitializeWorkload(ctx context.Context, arg sql.InitializeWorkloadParams) (pgtype.UUID, error) {
 	ret := _m.Called(ctx, arg)
@@ -2019,6 +2076,65 @@ func (_c *MockQuerier_ListEarliestSeveritySince_Call) Return(_a0 []*sql.ListEarl
 }
 
 func (_c *MockQuerier_ListEarliestSeveritySince_Call) RunAndReturn(run func(context.Context, sql.ListEarliestSeveritySinceParams) ([]*sql.ListEarliestSeveritySinceRow, error)) *MockQuerier_ListEarliestSeveritySince_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListImagesForReanalysis provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListImagesForReanalysis(ctx context.Context, arg sql.ListImagesForReanalysisParams) ([]*sql.ListImagesForReanalysisRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListImagesForReanalysis")
+	}
+
+	var r0 []*sql.ListImagesForReanalysisRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagesForReanalysisParams) ([]*sql.ListImagesForReanalysisRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagesForReanalysisParams) []*sql.ListImagesForReanalysisRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListImagesForReanalysisRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListImagesForReanalysisParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListImagesForReanalysis_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListImagesForReanalysis'
+type MockQuerier_ListImagesForReanalysis_Call struct {
+	*mock.Call
+}
+
+// ListImagesForReanalysis is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListImagesForReanalysisParams
+func (_e *MockQuerier_Expecter) ListImagesForReanalysis(ctx interface{}, arg interface{}) *MockQuerier_ListImagesForReanalysis_Call {
+	return &MockQuerier_ListImagesForReanalysis_Call{Call: _e.mock.On("ListImagesForReanalysis", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListImagesForReanalysis_Call) Run(run func(ctx context.Context, arg sql.ListImagesForReanalysisParams)) *MockQuerier_ListImagesForReanalysis_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListImagesForReanalysisParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListImagesForReanalysis_Call) Return(_a0 []*sql.ListImagesForReanalysisRow, _a1 error) *MockQuerier_ListImagesForReanalysis_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListImagesForReanalysis_Call) RunAndReturn(run func(context.Context, sql.ListImagesForReanalysisParams) ([]*sql.ListImagesForReanalysisRow, error)) *MockQuerier_ListImagesForReanalysis_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3080,6 +3196,63 @@ func (_c *MockQuerier_ListWorkloadsForVulnerabilityById_Call) Return(_a0 []*sql.
 }
 
 func (_c *MockQuerier_ListWorkloadsForVulnerabilityById_Call) RunAndReturn(run func(context.Context, pgtype.UUID) ([]*sql.ListWorkloadsForVulnerabilityByIdRow, error)) *MockQuerier_ListWorkloadsForVulnerabilityById_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkImageForReanalysisResync provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) MarkImageForReanalysisResync(ctx context.Context, arg sql.MarkImageForReanalysisResyncParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkImageForReanalysisResync")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.MarkImageForReanalysisResyncParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.MarkImageForReanalysisResyncParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.MarkImageForReanalysisResyncParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_MarkImageForReanalysisResync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkImageForReanalysisResync'
+type MockQuerier_MarkImageForReanalysisResync_Call struct {
+	*mock.Call
+}
+
+// MarkImageForReanalysisResync is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.MarkImageForReanalysisResyncParams
+func (_e *MockQuerier_Expecter) MarkImageForReanalysisResync(ctx interface{}, arg interface{}) *MockQuerier_MarkImageForReanalysisResync_Call {
+	return &MockQuerier_MarkImageForReanalysisResync_Call{Call: _e.mock.On("MarkImageForReanalysisResync", ctx, arg)}
+}
+
+func (_c *MockQuerier_MarkImageForReanalysisResync_Call) Run(run func(ctx context.Context, arg sql.MarkImageForReanalysisResyncParams)) *MockQuerier_MarkImageForReanalysisResync_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.MarkImageForReanalysisResyncParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_MarkImageForReanalysisResync_Call) Return(_a0 int64, _a1 error) *MockQuerier_MarkImageForReanalysisResync_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_MarkImageForReanalysisResync_Call) RunAndReturn(run func(context.Context, sql.MarkImageForReanalysisResyncParams) (int64, error)) *MockQuerier_MarkImageForReanalysisResync_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -156,6 +156,38 @@ func (q *Queries) ListUnusedImages(ctx context.Context, name *string) ([]*ListUn
 	return items, nil
 }
 
+const markImageForReanalysisResync = `-- name: MarkImageForReanalysisResync :execrows
+UPDATE
+    images
+SET
+    state = 'resync',
+    ready_for_resync_at = NOW(),
+    sbom_processing_started_at = CASE WHEN state IN ('resync', 'initialized')
+        AND sbom_processing_started_at IS NOT NULL THEN
+        sbom_processing_started_at
+    ELSE
+        NOW()
+    END,
+    updated_at = NOW()
+WHERE
+    name = $1
+    AND tag = $2
+    AND state <> 'failed'
+`
+
+type MarkImageForReanalysisResyncParams struct {
+	Name string
+	Tag  string
+}
+
+func (q *Queries) MarkImageForReanalysisResync(ctx context.Context, arg MarkImageForReanalysisResyncParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markImageForReanalysisResync, arg.Name, arg.Tag)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const markImagesAsUntracked = `-- name: MarkImagesAsUntracked :execrows
 UPDATE
     images
