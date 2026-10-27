@@ -112,9 +112,6 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	if filter == nil {
 		filter = &vulnerabilities.Filter{}
 	}
-	if err := rejectLabelFilters(filter); err != nil {
-		return nil, err
-	}
 
 	excludeNamespaces := request.GetExcludeNamespaces()
 	if excludeNamespaces == nil {
