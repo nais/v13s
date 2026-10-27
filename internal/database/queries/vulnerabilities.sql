@@ -259,8 +259,7 @@ input AS (
                 AND e.image_tag = r.image_tag
                 AND e.cve_id = r.cve_id
                 AND e.package = r.package
-                AND e.last_severity = r.last_severity)
-)
+                AND e.last_severity = r.last_severity))
 SELECT
     i.image_name::TEXT AS image_name,
     i.package::TEXT AS package,
@@ -843,17 +842,27 @@ WITH matched AS MATERIALIZED (
     FROM
         vulnerabilities
     WHERE
-        cve_id = ANY (ARRAY (
+        cve_id = ANY (
+            ARRAY (
                 SELECT
-                    unnest(sqlc.arg('cve_ids')::TEXT[])
+                    unnest(
+                        sqlc.arg(
+                            'cve_ids'
+)::TEXT[]
+)
                 UNION
                 SELECT
                     alias
                 FROM
                     cve_alias
                 WHERE
-                    canonical_cve_id = ANY (sqlc.arg('cve_ids')::TEXT[])))
+                    canonical_cve_id = ANY (
+                        sqlc.arg(
+                            'cve_ids'
+)::TEXT[]
 )
+)
+))
 SELECT
     v.id,
     w.name AS workload_name,
@@ -876,19 +885,19 @@ SELECT
     c.created_at AS cve_created_at,
     c.updated_at AS cve_updated_at,
     COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
-    sv.reason_text,
-    sv.suppressed_by,
-    sv.updated_at AS suppressed_at,
-    c.cvss_score,
-    c.epss_score,
-    c.epss_percentile,
-    c.has_kev_entry,
-    c.known_ransomware_use,
-    v.fix_version,
-    v.fix_status,
-    c.priority,
-    COUNT(v.id) OVER () AS total_count
+sv.reason,
+sv.reason_text,
+sv.suppressed_by,
+sv.updated_at AS suppressed_at,
+c.cvss_score,
+c.epss_score,
+c.epss_percentile,
+c.has_kev_entry,
+c.known_ransomware_use,
+v.fix_version,
+v.fix_status,
+c.priority,
+COUNT(v.id) OVER () AS total_count
 FROM
     matched v
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
