@@ -10,8 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/validate/content"
 )
 
-func summaryLabelParameters(filter *vulnerabilities.Filter) ([]byte, error) {
-	for _, label := range filter.GetLabels() {
+func summaryLabelParameters(labels []*vulnerabilities.LabelFilter) ([]byte, error) {
+	for _, label := range labels {
 		if label == nil {
 			return nil, status.Error(codes.InvalidArgument, "label filter is required")
 		}
@@ -22,17 +22,10 @@ func summaryLabelParameters(filter *vulnerabilities.Filter) ([]byte, error) {
 			return nil, status.Error(codes.InvalidArgument, "invalid label value")
 		}
 	}
-	if len(filter.GetLabels()) == 0 {
+	if len(labels) == 0 {
 		return nil, nil
 	}
-	return json.Marshal(filter.GetLabels())
-}
-
-func rejectLabelFilters(filter *vulnerabilities.Filter) error {
-	if len(filter.GetLabels()) > 0 {
-		return status.Error(codes.InvalidArgument, "label filters are only supported when listing vulnerability summaries")
-	}
-	return nil
+	return json.Marshal(labels)
 }
 
 func validateUserLabelKey(key, value string) error {

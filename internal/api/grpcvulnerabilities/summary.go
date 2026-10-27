@@ -31,7 +31,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
-	labelFilters, err := summaryLabelParameters(request.GetFilter())
+	labelFilters, err := summaryLabelParameters(request.GetLabels())
 	if err != nil {
 		return nil, err
 	}
@@ -152,9 +152,6 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
-	if err := rejectLabelFilters(request.GetFilter()); err != nil {
-		return nil, err
-	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
 
@@ -201,9 +198,6 @@ func (s *Server) GetVulnerabilitySummaries(ctx context.Context, request *vulnera
 	}
 	if filter.Namespace != nil || len(filter.GetNamespaces()) > 0 || filter.ImageName != nil || filter.ImageTag != nil {
 		return nil, status.Error(codes.InvalidArgument, "namespace and image filters are not supported for bulk summaries")
-	}
-	if err := rejectLabelFilters(filter); err != nil {
-		return nil, err
 	}
 	response := &vulnerabilities.GetVulnerabilitySummariesResponse{
 		Summaries: make(map[string]*vulnerabilities.GetVulnerabilitySummaryResponse, len(namespaces)),
@@ -304,9 +298,6 @@ func (s *Server) GetVulnerabilitySummaryTimeSeries(ctx context.Context, request 
 	}
 	if request.GetFilter().HasKev != nil {
 		return nil, status.Error(codes.InvalidArgument, "has_kev is not supported for vulnerability summary time series")
-	}
-	if err := rejectLabelFilters(request.GetFilter()); err != nil {
-		return nil, err
 	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
@@ -573,9 +564,6 @@ func mapIntPriority(v int32) vulnerabilities.Priority {
 func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.ListCveSummariesRequest) (*vulnerabilities.ListCveSummariesResponse, error) {
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
-	}
-	if err := rejectLabelFilters(request.GetFilter()); err != nil {
-		return nil, err
 	}
 
 	excludeNamespaces := request.GetExcludeNamespaces()

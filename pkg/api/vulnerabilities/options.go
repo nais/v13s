@@ -110,6 +110,7 @@ type Options struct {
 	SinceType         *SinceType
 	Severity          *Severity
 	SbomStatuses      []SbomStatus
+	Labels            []*LabelFilter
 	ExcludeNamespaces []string
 	ExcludeClusters   []string
 }
@@ -262,10 +263,7 @@ func SbomStatusFilter(statuses ...SbomStatus) Option {
 
 func LabelsFilter(labels ...*LabelFilter) Option {
 	return newFuncOption(func(o *Options) {
-		if o.Filter == nil {
-			o.Filter = &Filter{}
-		}
-		o.Filter.Labels = append(o.Filter.Labels, labels...)
+		o.Labels = append(o.Labels, labels...)
 	})
 }
 

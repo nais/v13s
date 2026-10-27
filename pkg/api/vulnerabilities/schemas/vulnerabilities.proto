@@ -82,7 +82,6 @@ message Filter {
   repeated Priority priorities = 9;
   // KEV filter. When set, only workloads/findings with a matching KEV status are returned.
   optional bool has_kev = 10;
-  repeated LabelFilter labels = 11;
 }
 
 message LabelFilter {
@@ -247,6 +246,8 @@ message ListVulnerabilitySummariesRequest {
   optional google.protobuf.Timestamp since = 5;
   // SBOM status filter. Multiple values use OR semantics.
   repeated SbomStatus sbom_statuses = 6;
+  // User label filter. Multiple values use AND semantics. A filter without a value matches any workload carrying the key.
+  repeated LabelFilter labels = 7;
 }
 
 message ListVulnerabilitySummariesResponse {
