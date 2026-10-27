@@ -9,7 +9,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nais/v13s v0.0.0-20260811092310-43ca3d998d55
 	github.com/nais/v13s/pkg/api v0.0.0-20260811092310-43ca3d998d55
-	github.com/rodaine/table v1.4.0
+	github.com/rodaine/table v1.4.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/urfave/cli/v3 v3.14.0
 	google.golang.org/grpc v1.84.0
@@ -94,7 +94,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
-	github.com/mattn/go-runewidth v0.0.30 // indirect
+	github.com/mattn/go-runewidth v0.0.31 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/moby/term v0.5.2 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
