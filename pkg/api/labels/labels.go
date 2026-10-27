@@ -9,5 +9,5 @@ func IsPlatformLabel(key, value string) bool {
 	case "app.kubernetes.io/managed-by":
 		return value == "console"
 	}
-	return strings.HasPrefix(key, "nais.io/") || strings.Contains(key, ".nais.io/")
+	return strings.Contains(key, "nais.io/")
 }
