@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: jdx/mise-action@v5.2.0
+      - uses: jdx/mise-action@v5.2.3
       - run: mise run ${{ matrix.mise-task }}
 
   integration_test:
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: jdx/mise-action@v5.2.0
+      - uses: jdx/mise-action@v5.2.3
       - run: mise run test-integration
 
   build_and_push:
