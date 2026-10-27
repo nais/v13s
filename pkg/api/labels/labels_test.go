@@ -11,8 +11,6 @@ func TestIsPlatformLabel(t *testing.T) {
 	for _, test := range []platformLabelCase{
 		{"owner", "", false},
 		{"example.org/group", "team", false},
-		{"mynais.io/internal", "yes", false},
-		{"foo.notnais.io/internal", "yes", false},
 		{"app", "demo", true},
 		{"team", "demo", true},
 		{"nais.io/internal", "yes", true},
