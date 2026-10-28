@@ -139,29 +139,51 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		namespaces = []string{}
 	}
 
-	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
+	params := sql.ListWorkloadsForVulnerabilitiesParams{
 		Cluster:           filter.Cluster,
 		Namespaces:        namespaces,
 		WorkloadTypes:     filter.GetWorkloadTypes(),
 		WorkloadName:      filter.Workload,
 		CveIds:            cveIDs,
 		CvssScore:         request.CvssScore,
+		ImageName:         filter.ImageName,
+		ImageTag:          filter.ImageTag,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
 		IncludeSuppressed: request.IncludeSuppressed,
 		Offset:            offset,
 		Limit:             limit,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
-	})
+	}
+	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("list workloads for vulnerability: %w", err)
 	}
 
-	total := 0
 	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
-		total = int(row.TotalCount)
 		return defaultVulnerabilityProjector.ToWorkloadForVulnerability(row)
 	})
+
+	counts := workloads
+	if len(counts) == 0 && (limit == 0 || offset > 0) {
+		params.Limit = 1
+		params.Offset = 0
+		counts, err = s.querier.ListWorkloadsForVulnerabilities(ctx, params)
+		if err != nil {
+			return nil, fmt.Errorf("get impact for vulnerability: %w", err)
+		}
+	}
+
+	total := 0
+	impact := &vulnerabilities.CveImpact{}
+	if len(counts) > 0 {
+		total = int(counts[0].TotalCount)
+		impact = &vulnerabilities.CveImpact{
+			WorkloadCount: counts[0].WorkloadCount,
+			ImageCount:    counts[0].ImageCount,
+			PackageCount:  counts[0].PackageCount,
+		}
+	}
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)
 	if err != nil {
@@ -170,6 +192,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	response := &vulnerabilities.ListWorkloadsForVulnerabilityResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
+		Impact:   impact,
 	}
 	return response, nil
 }
