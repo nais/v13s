@@ -165,7 +165,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	})
 
 	counts := workloads
-	if len(counts) == 0 {
+	if len(counts) == 0 && (limit == 0 || offset > 0) {
 		params.Limit = 1
 		params.Offset = 0
 		counts, err = s.querier.ListWorkloadsForVulnerabilities(ctx, params)
