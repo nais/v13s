@@ -271,6 +271,13 @@ message ListWorkloadsForVulnerabilityRequest {
 message ListWorkloadsForVulnerabilityResponse {
   repeated WorkloadForVulnerability nodes = 1;
   PageInfo page_info = 2;
+  CveImpact impact = 3;
+}
+
+message CveImpact {
+  int32 workload_count = 1;
+  int32 image_count = 2;
+  int32 package_count = 3;
 }
 
 message WorkloadForVulnerability {

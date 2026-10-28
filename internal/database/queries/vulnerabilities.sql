@@ -853,148 +853,199 @@ WITH matched AS MATERIALIZED (
                     cve_alias
                 WHERE
                     canonical_cve_id = ANY (sqlc.arg('cve_ids')::TEXT[])))
+),
+filtered AS (
+    SELECT
+        v.id,
+        w.id AS workload_id,
+        w.name AS workload_name,
+        w.workload_type,
+        w.namespace,
+        w.cluster,
+        w.image_name,
+        w.image_tag,
+        v.latest_version,
+        v.package,
+        v.cve_id,
+        v.created_at,
+        v.updated_at,
+        v.severity_since,
+        c.severity AS last_severity,
+        c.cve_title,
+        c.cve_desc,
+        c.cve_link,
+        c.severity AS severity,
+        c.created_at AS cve_created_at,
+        c.updated_at AS cve_updated_at,
+        COALESCE(sv.suppressed, FALSE) AS suppressed,
+        sv.reason,
+        sv.reason_text,
+        sv.suppressed_by,
+        sv.updated_at AS suppressed_at,
+        c.cvss_score,
+        c.epss_score,
+        c.epss_percentile,
+        c.has_kev_entry,
+        c.known_ransomware_use,
+        v.fix_version,
+        v.fix_status,
+        c.priority
+    FROM
+        matched v
+        LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+        JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+        JOIN workloads w ON v.image_name = w.image_name
+            AND v.image_tag = w.image_tag
+        JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
+        LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
+            AND v.package = sv.package
+            AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
+        LEFT JOIN vulnerabilities v_canonical ON ca.canonical_cve_id IS NOT NULL
+            AND v_canonical.image_name = v.image_name
+            AND v_canonical.image_tag = v.image_tag
+            AND v_canonical.package = v.package
+            AND v_canonical.cve_id = ca.canonical_cve_id
+    WHERE
+        v_canonical.id IS NULL
+        AND workload_has_usable_sbom(w.state, i.state)
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.arg('cve_ids')::TEXT[])
+        AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
+            OR (c.cvss_score IS NOT NULL
+                AND c.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
+        AND (
+            CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN
+                w.cluster = sqlc.narg('cluster')::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
+            OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
+        AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+            OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+        AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
+            OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
+        AND (sqlc.narg('workload_types')::TEXT[] IS NULL
+            OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
+        AND (
+            CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN
+                w.name = sqlc.narg('workload_name')::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (
+            CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
+                v.image_name = sqlc.narg('image_name')::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (
+            CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN
+                v.image_tag = sqlc.narg('image_tag')::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
+            OR COALESCE(sv.suppressed, FALSE) = FALSE)
+),
+impact AS (
+    SELECT
+        COUNT(DISTINCT workload_id)::INT AS workload_count,
+        COUNT(DISTINCT (image_name, image_tag))::INT AS image_count,
+        COUNT(DISTINCT package)::INT AS package_count
+    FROM
+        filtered
 )
 SELECT
-    v.id,
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    w.image_name,
-    w.image_tag,
-    v.latest_version,
-    v.package,
-    v.cve_id,
-    v.created_at,
-    v.updated_at,
-    v.severity_since,
-    c.severity AS last_severity,
-    c.cve_title,
-    c.cve_desc,
-    c.cve_link,
-    c.severity AS severity,
-    c.created_at AS cve_created_at,
-    c.updated_at AS cve_updated_at,
-    COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
-    sv.reason_text,
-    sv.suppressed_by,
-    sv.updated_at AS suppressed_at,
-    c.cvss_score,
-    c.epss_score,
-    c.epss_percentile,
-    c.has_kev_entry,
-    c.known_ransomware_use,
-    v.fix_version,
-    v.fix_status,
-    c.priority,
-    COUNT(v.id) OVER () AS total_count
+    f.id,
+    f.workload_name,
+    f.workload_type,
+    f.namespace,
+    f.cluster,
+    f.image_name,
+    f.image_tag,
+    f.latest_version,
+    f.package,
+    f.cve_id,
+    f.created_at,
+    f.updated_at,
+    f.severity_since,
+    f.last_severity,
+    f.cve_title,
+    f.cve_desc,
+    f.cve_link,
+    f.severity,
+    f.cve_created_at,
+    f.cve_updated_at,
+    f.suppressed,
+    f.reason,
+    f.reason_text,
+    f.suppressed_by,
+    f.suppressed_at,
+    f.cvss_score,
+    f.epss_score,
+    f.epss_percentile,
+    f.has_kev_entry,
+    f.known_ransomware_use,
+    f.fix_version,
+    f.fix_status,
+    f.priority,
+    COUNT(f.id) OVER () AS total_count,
+    impact.workload_count,
+    impact.image_count,
+    impact.package_count
 FROM
-    matched v
-    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
-    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
-    JOIN workloads w ON v.image_name = w.image_name
-        AND v.image_tag = w.image_tag
-    JOIN images i ON i.name = w.image_name
-        AND i.tag = w.image_tag
-    LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
-        AND v.package = sv.package
-        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-    LEFT JOIN vulnerabilities v_canonical ON ca.canonical_cve_id IS NOT NULL
-        AND v_canonical.image_name = v.image_name
-        AND v_canonical.image_tag = v.image_tag
-        AND v_canonical.package = v.package
-        AND v_canonical.cve_id = ca.canonical_cve_id
-WHERE
-    v_canonical.id IS NULL
-    AND workload_has_usable_sbom(w.state, i.state)
-    AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.arg('cve_ids')::TEXT[])
-    AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
-        OR (c.cvss_score IS NOT NULL
-            AND c.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
-    AND (
-        CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN
-            w.cluster = sqlc.narg('cluster')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
-        OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
-    AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-        OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
-    AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
-        OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
-    AND (sqlc.narg('workload_types')::TEXT[] IS NULL
-        OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
-    AND (
-        CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN
-            w.name = sqlc.narg('workload_name')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
-            v.image_name = sqlc.narg('image_name')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN
-            v.image_tag = sqlc.narg('image_tag')::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
-        OR COALESCE(sv.suppressed, FALSE) = FALSE)
+    filtered f
+    CROSS JOIN impact
 ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'priority_asc' THEN
-        c.priority
+        f.priority
     END ASC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'priority_desc' THEN
-        c.priority
+        f.priority
     END DESC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
-        CASE WHEN c.cvss_score = 0
-            OR c.cvss_score IS NULL THEN
+        CASE WHEN f.cvss_score = 0
+            OR f.cvss_score IS NULL THEN
             1
         ELSE
             0
         END
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_desc' THEN
-        c.cvss_score
+        f.cvss_score
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'cvss_score_asc' THEN
-        c.cvss_score
+        f.cvss_score
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_desc' THEN
-        v.cve_id
+        f.cve_id
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'cve_id_asc' THEN
-        v.cve_id
+        f.cve_id
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'workload_asc' THEN
-        w.name
+        f.workload_name
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'workload_desc' THEN
-        w.name
+        f.workload_name
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'namespace_asc' THEN
-        w.namespace
+        f.namespace
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'namespace_desc' THEN
-        w.namespace
+        f.namespace
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'cluster_asc' THEN
-        w.cluster
+        f.cluster
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'cluster_desc' THEN
-        w.cluster
+        f.cluster
     END DESC,
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
-        CASE WHEN v.fix_version IS NULL THEN
+        CASE WHEN f.fix_version IS NULL THEN
             1
         ELSE
             0
@@ -1003,24 +1054,49 @@ ORDER BY
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
-        c.epss_score
+        f.epss_score
     END DESC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
-        c.cvss_score
+        f.cvss_score
     END DESC NULLS LAST,
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
-        v.created_at
+        f.created_at
     END ASC,
     CASE WHEN sqlc.narg('order_by') = 'priority_asc'
         OR sqlc.narg('order_by') = 'priority_desc'
         OR sqlc.narg('order_by') IS NULL THEN
-        v.cve_id
+        f.cve_id
     END ASC,
-    v.id ASC
+    CASE WHEN sqlc.narg('order_by') = 'image_asc' THEN
+        f.image_name
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'image_asc' THEN
+        f.image_tag
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'image_desc' THEN
+        f.image_name
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'image_desc' THEN
+        f.image_tag
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'package_asc' THEN
+        f.package
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'package_desc' THEN
+        f.package
+    END DESC,
+    CASE WHEN sqlc.narg('order_by') = 'suppressed_asc' THEN
+        f.suppressed
+    END ASC,
+    CASE WHEN sqlc.narg('order_by') = 'suppressed_desc' THEN
+        f.suppressed
+    END DESC,
+    f.id ASC,
+    f.workload_id ASC
 LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
 

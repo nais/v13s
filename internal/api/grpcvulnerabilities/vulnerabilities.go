@@ -146,6 +146,8 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		WorkloadName:      filter.Workload,
 		CveIds:            cveIDs,
 		CvssScore:         request.CvssScore,
+		ImageName:         filter.ImageName,
+		ImageTag:          filter.ImageTag,
 		ExcludeClusters:   excludeClusters,
 		ExcludeNamespaces: excludeNamespaces,
 		IncludeSuppressed: request.IncludeSuppressed,
@@ -163,6 +165,17 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		return defaultVulnerabilityProjector.ToWorkloadForVulnerability(row)
 	})
 
+	var impact *vulnerabilities.CveImpact
+	if len(workloads) > 0 {
+		impact = &vulnerabilities.CveImpact{
+			WorkloadCount: workloads[0].WorkloadCount,
+			ImageCount:    workloads[0].ImageCount,
+			PackageCount:  workloads[0].PackageCount,
+		}
+	} else if offset == 0 {
+		impact = &vulnerabilities.CveImpact{}
+	}
+
 	pageInfo, err := grpcpagination.PageInfo(request, total)
 	if err != nil {
 		return nil, err
@@ -170,6 +183,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	response := &vulnerabilities.ListWorkloadsForVulnerabilityResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
+		Impact:   impact,
 	}
 	return response, nil
 }
