@@ -31,6 +31,11 @@ func TestSummaryLabelsRejectInvalidInput(t *testing.T) {
 			})
 			assert.Nil(t, response)
 			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+			aggregate, err := (&Server{}).GetVulnerabilitySummary(context.Background(), &vulnerabilities.GetVulnerabilitySummaryRequest{
+				Labels: tt.filter,
+			})
+			assert.Nil(t, aggregate)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
 		})
 	}
 }

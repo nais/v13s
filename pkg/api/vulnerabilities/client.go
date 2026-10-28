@@ -128,6 +128,7 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 		ctx,
 		&GetVulnerabilitySummaryRequest{
 			Filter: o.Filter,
+			Labels: o.Labels,
 		},
 	)
 }

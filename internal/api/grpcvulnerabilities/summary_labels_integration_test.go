@@ -43,11 +43,12 @@ func TestServer_SummaryLabels(t *testing.T) {
 			ImageName: fixture.name, ImageTag: "v1", RiskScore: fixture.risk,
 		})
 		require.NoError(t, err)
-		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+		id, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
 			Name: fixture.name, WorkloadType: "app", Namespace: "labels", Cluster: "dev",
 			ImageName: fixture.name, ImageTag: "v1", Labels: typeext.MapStringString(fixture.labels),
 		})
 		require.NoError(t, err)
+		require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{ID: id, State: sql.WorkloadStateUpdated}))
 	}
 	names := func(response *vulnerabilities.ListVulnerabilitySummariesResponse) []string {
 		out := make([]string, 0, len(response.GetNodes()))
@@ -71,8 +72,60 @@ func TestServer_SummaryLabels(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, names(response))
 			assert.Equal(t, int64(len(tt.want)), response.GetPageInfo().GetTotalCount())
+			aggregate, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter("labels"),
+				vulnerabilities.LabelsFilter(tt.filters...))
+			require.NoError(t, err)
+			assert.Equal(t, int32(len(tt.want)), aggregate.GetWorkloadCount())
+			assert.Equal(t, int32(len(tt.want)), aggregate.GetSbomCount())
+			var risk int32
+			for _, node := range response.GetNodes() {
+				risk += node.GetVulnerabilitySummary().GetRiskScore()
+			}
+			assert.Equal(t, risk, aggregate.GetVulnerabilitySummary().GetRiskScore())
+			coverage := float32(0)
+			if len(tt.want) > 0 {
+				coverage = 100
+			}
+			assert.Equal(t, coverage, aggregate.GetCoverage())
 		})
 	}
+	t.Run("aggregate combines labels with existing filters", func(t *testing.T) {
+		_, err := pool.Exec(ctx, `UPDATE vulnerability_summary SET top_risk_tier = 2, kev_count = 1 WHERE image_name = 'alpha-a'`)
+		require.NoError(t, err)
+		for _, option := range []vulnerabilities.Option{
+			vulnerabilities.PriorityFilter(vulnerabilities.Priority_PRIORITY_HIGH),
+			vulnerabilities.KevFilter(true),
+		} {
+			response, err := client.GetVulnerabilitySummary(ctx,
+				vulnerabilities.NamespaceFilter("labels"), vulnerabilities.ClusterFilter("dev"),
+				vulnerabilities.LabelsFilter(&vulnerabilities.LabelFilter{Key: "owner", Value: new("alpha")}), option)
+			require.NoError(t, err)
+			assert.Equal(t, int32(1), response.GetWorkloadCount())
+			assert.Equal(t, int32(20), response.GetVulnerabilitySummary().GetRiskScore())
+		}
+		response, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter("labels"),
+			vulnerabilities.ClusterFilter("missing"), vulnerabilities.LabelsFilter(&vulnerabilities.LabelFilter{Key: "owner"}))
+		require.NoError(t, err)
+		assert.Zero(t, response.GetWorkloadCount())
+	})
+	t.Run("aggregate coverage includes matching workloads without an SBOM", func(t *testing.T) {
+		require.NoError(t, db.CreateImage(ctx, sql.CreateImageParams{Name: "no-sbom", Tag: "v1"}))
+		for _, image := range []string{"alpha-low", "no-sbom"} {
+			id, err := db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
+				Name: image, WorkloadType: "app", Namespace: "coverage-labels", Cluster: "dev",
+				ImageName: image, ImageTag: "v1", Labels: typeext.MapStringString{"owner": "coverage"},
+			})
+			require.NoError(t, err)
+			require.NoError(t, db.UpdateWorkloadState(ctx, sql.UpdateWorkloadStateParams{ID: id, State: sql.WorkloadStateUpdated}))
+		}
+		response, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter("coverage-labels"),
+			vulnerabilities.LabelsFilter(&vulnerabilities.LabelFilter{Key: "owner", Value: new("coverage")}))
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), response.GetWorkloadCount())
+		assert.Equal(t, int32(1), response.GetSbomCount())
+		assert.Equal(t, float32(50), response.GetCoverage())
+		assert.Equal(t, int32(5), response.GetVulnerabilitySummary().GetRiskScore())
+	})
 	t.Run("filtering and ordering happen before pagination", func(t *testing.T) {
 		options := []vulnerabilities.Option{
 			vulnerabilities.NamespaceFilter("labels"),

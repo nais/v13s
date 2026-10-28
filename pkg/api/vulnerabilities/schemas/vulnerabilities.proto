@@ -337,6 +337,7 @@ message GetVulnerabilitySummaryForImageResponse {
 
 message GetVulnerabilitySummaryRequest {
   Filter filter = 1;
+  repeated LabelFilter labels = 2;
 }
 
 message GetVulnerabilitySummaryResponse {
