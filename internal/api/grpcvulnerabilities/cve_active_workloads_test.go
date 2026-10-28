@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -127,6 +129,7 @@ func TestServer_CveImpactAndOrdering(t *testing.T) {
 	}
 
 	t.Run("empty pages retain filtered totals", func(t *testing.T) {
+		server := grpcvulnerabilities.NewServer(pool, logrus.NewEntry(logrus.New()))
 		for _, tc := range []struct {
 			name   string
 			limit  int32
@@ -136,9 +139,13 @@ func TestServer_CveImpactAndOrdering(t *testing.T) {
 			{name: "page past the end", limit: 1, offset: 100},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
-					vulnerabilities.NamespaceFilter("team-a"), vulnerabilities.IncludeSuppressed(),
-					vulnerabilities.Limit(tc.limit), vulnerabilities.Offset(tc.offset))
+				resp, err := server.ListWorkloadsForVulnerability(ctx, &vulnerabilities.ListWorkloadsForVulnerabilityRequest{
+					CveIds:            []string{cveID},
+					Filter:            &vulnerabilities.Filter{Namespaces: []string{"team-a"}},
+					IncludeSuppressed: new(true),
+					Limit:             tc.limit,
+					Offset:            tc.offset,
+				})
 				require.NoError(t, err)
 				assert.Empty(t, resp.GetNodes())
 				want := &vulnerabilities.CveImpact{WorkloadCount: 3, ImageCount: 2, PackageCount: 2}
