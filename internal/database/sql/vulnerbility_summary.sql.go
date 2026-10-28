@@ -391,26 +391,36 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($3::TEXT[]))
     AND ($4::TEXT IS NULL
         OR w.name = $4::TEXT)
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            jsonb_to_recordset(COALESCE($5::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                value TEXT)
+        WHERE
+            NOT (w.labels ? f.key)
+            OR (f.value IS NOT NULL
+                AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 joined_data AS (
     SELECT
-        CASE WHEN ($5::INT[] IS NULL
-            AND $6::BOOL IS NULL)
+        CASE WHEN ($6::INT[] IS NULL
+            AND $7::BOOL IS NULL)
             OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
-                AND COALESCE(($5::INT[] IS NULL
-                    OR v.top_risk_tier = ANY ($5::INT[]))
-                AND ($6::BOOL IS NULL
-                    OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
+                AND COALESCE(($6::INT[] IS NULL
+                    OR v.top_risk_tier = ANY ($6::INT[]))
+                AND ($7::BOOL IS NULL
+                    OR (COALESCE(v.kev_count, 0) > 0) = $7::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(workload_has_usable_sbom(fw.state, i.state)
             AND v.id IS NOT NULL, FALSE)
-        AND COALESCE(($5::INT[] IS NULL
-            OR v.top_risk_tier = ANY ($5::INT[]))
-        AND ($6::BOOL IS NULL
+        AND COALESCE(($6::INT[] IS NULL
+            OR v.top_risk_tier = ANY ($6::INT[]))
+        AND ($7::BOOL IS NULL
             OR (v.id IS NOT NULL
-                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
+                AND (COALESCE(v.kev_count, 0) > 0) = $7::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -530,6 +540,7 @@ type GetVulnerabilitySummaryParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	LabelFilters  []byte
 	RiskTiers     []int32
 	HasKev        *bool
 }
@@ -562,6 +573,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.LabelFilters,
 		arg.RiskTiers,
 		arg.HasKev,
 	)

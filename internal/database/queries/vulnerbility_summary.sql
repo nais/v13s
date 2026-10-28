@@ -476,6 +476,16 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            jsonb_to_recordset(COALESCE(sqlc.narg('label_filters')::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                value TEXT)
+        WHERE
+            NOT (w.labels ? f.key)
+            OR (f.value IS NOT NULL
+                AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 joined_data AS (
     SELECT

@@ -149,6 +149,10 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow, history bool) *vu
 
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
+	labelFilters, err := summaryLabelParameters(request.GetLabels())
+	if err != nil {
+		return nil, err
+	}
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
@@ -162,6 +166,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTiers:     riskTiers,
 		HasKev:        request.GetFilter().HasKev,
+		LabelFilters:  labelFilters,
 	})
 	if err != nil {
 		return nil, err
