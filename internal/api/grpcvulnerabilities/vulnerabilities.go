@@ -139,7 +139,7 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		namespaces = []string{}
 	}
 
-	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, sql.ListWorkloadsForVulnerabilitiesParams{
+	params := sql.ListWorkloadsForVulnerabilitiesParams{
 		Cluster:           filter.Cluster,
 		Namespaces:        namespaces,
 		WorkloadTypes:     filter.GetWorkloadTypes(),
@@ -154,26 +154,35 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 		Offset:            offset,
 		Limit:             limit,
 		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
-	})
+	}
+	workloads, err := s.querier.ListWorkloadsForVulnerabilities(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("list workloads for vulnerability: %w", err)
 	}
 
-	total := 0
 	nodes := collections.Map(workloads, func(row *sql.ListWorkloadsForVulnerabilitiesRow) *vulnerabilities.WorkloadForVulnerability {
-		total = int(row.TotalCount)
 		return defaultVulnerabilityProjector.ToWorkloadForVulnerability(row)
 	})
 
-	var impact *vulnerabilities.CveImpact
-	if len(workloads) > 0 {
-		impact = &vulnerabilities.CveImpact{
-			WorkloadCount: workloads[0].WorkloadCount,
-			ImageCount:    workloads[0].ImageCount,
-			PackageCount:  workloads[0].PackageCount,
+	counts := workloads
+	if len(counts) == 0 {
+		params.Limit = 1
+		params.Offset = 0
+		counts, err = s.querier.ListWorkloadsForVulnerabilities(ctx, params)
+		if err != nil {
+			return nil, fmt.Errorf("get impact for vulnerability: %w", err)
 		}
-	} else if offset == 0 {
-		impact = &vulnerabilities.CveImpact{}
+	}
+
+	total := 0
+	impact := &vulnerabilities.CveImpact{}
+	if len(counts) > 0 {
+		total = int(counts[0].TotalCount)
+		impact = &vulnerabilities.CveImpact{
+			WorkloadCount: counts[0].WorkloadCount,
+			ImageCount:    counts[0].ImageCount,
+			PackageCount:  counts[0].PackageCount,
+		}
 	}
 
 	pageInfo, err := grpcpagination.PageInfo(request, total)

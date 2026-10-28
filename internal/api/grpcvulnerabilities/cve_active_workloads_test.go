@@ -116,7 +116,7 @@ func TestServer_CveImpactAndOrdering(t *testing.T) {
 		{"cluster", cveID, []vulnerabilities.Option{vulnerabilities.ClusterFilter("prod")}, &vulnerabilities.CveImpact{WorkloadCount: 1, ImageCount: 1, PackageCount: 1}},
 		{"image", cveID, []vulnerabilities.Option{vulnerabilities.ImageFilter("shared", "v2")}, &vulnerabilities.CveImpact{WorkloadCount: 1, ImageCount: 1, PackageCount: 1}},
 		{"no matches", cveID, []vulnerabilities.Option{vulnerabilities.NamespaceFilter("missing")}, &vulnerabilities.CveImpact{}},
-		{"page past the end", cveID, []vulnerabilities.Option{vulnerabilities.Offset(100), vulnerabilities.IncludeSuppressed()}, nil},
+		{"page past the end", cveID, []vulnerabilities.Option{vulnerabilities.Offset(100), vulnerabilities.IncludeSuppressed()}, &vulnerabilities.CveImpact{WorkloadCount: 4, ImageCount: 3, PackageCount: 3}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{CveIds: []string{tc.id}},
@@ -125,6 +125,28 @@ func TestServer_CveImpactAndOrdering(t *testing.T) {
 			assert.True(t, proto.Equal(tc.want, resp.GetImpact()), "want %v, got %v", tc.want, resp.GetImpact())
 		})
 	}
+
+	t.Run("empty pages retain filtered totals", func(t *testing.T) {
+		for _, tc := range []struct {
+			name   string
+			limit  int32
+			offset int32
+		}{
+			{name: "zero limit"},
+			{name: "page past the end", limit: 1, offset: 100},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				resp, err := client.ListWorkloadsForVulnerability(ctx, vulnerabilities.VulnerabilityFilter{CveIds: []string{cveID}},
+					vulnerabilities.NamespaceFilter("team-a"), vulnerabilities.IncludeSuppressed(),
+					vulnerabilities.Limit(tc.limit), vulnerabilities.Offset(tc.offset))
+				require.NoError(t, err)
+				assert.Empty(t, resp.GetNodes())
+				want := &vulnerabilities.CveImpact{WorkloadCount: 3, ImageCount: 2, PackageCount: 2}
+				assert.True(t, proto.Equal(want, resp.GetImpact()), "want %v, got %v", want, resp.GetImpact())
+				assert.Equal(t, int64(5), resp.GetPageInfo().GetTotalCount())
+			})
+		}
+	})
 
 	t.Run("workload count matches the CVE list", func(t *testing.T) {
 		require.NoError(t, db.RefreshCveWorkloadCounts(ctx))
