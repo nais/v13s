@@ -10,6 +10,8 @@
 - **Vulnerability summary**: the per-image or per-workload count of vulnerabilities and risk data.
 - **Priority**: the operational threat tier of a CVE or workload — `HIGH`, `ELEVATED`, or `MONITOR` in the API.
 - **Risk tier**: the database representation of Priority, an integer where lower is more severe (`2` = `HIGH`, `3` = `ELEVATED`, `4` = `MONITOR`). Stored as `cve.priority` and `vulnerability_summary.top_risk_tier`. Tier `1` is reserved (formerly `ACT_NOW`) and never produced by v13s.
+- **Finding**: one vulnerable package in one workload's image for a CVE; a workload can have several findings for the same CVE.
+- **CVE impact**: the distinct workloads, images and packages behind all findings for a CVE under the current filters, independent of pagination.
 - **Updater**: the part that syncs vulnerability data from external sources.
 - **Workload resync**: an operation that marks selected Workload and Image records for resync, enqueues Workload processing, and may trigger one updater cycle.
 - **Workload manager**: the part that reacts to workload changes and enqueues jobs.

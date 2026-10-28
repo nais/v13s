@@ -347,8 +347,7 @@ input AS (
                 AND e.image_tag = r.image_tag
                 AND e.cve_id = r.cve_id
                 AND e.package = r.package
-                AND e.last_severity = r.last_severity)
-)
+                AND e.last_severity = r.last_severity))
 SELECT
     i.image_name::TEXT AS image_name,
     i.package::TEXT AS package,
@@ -1049,187 +1048,266 @@ WITH matched AS MATERIALIZED (
     WHERE
         cve_id = ANY (ARRAY (
                 SELECT
-                    unnest($1::TEXT[])
+                    unnest($4::TEXT[])
                 UNION
                 SELECT
                     alias
                 FROM
                     cve_alias
                 WHERE
-                    canonical_cve_id = ANY ($1::TEXT[])))
+                    canonical_cve_id = ANY ($4::TEXT[])))
+),
+    filtered AS (
+        SELECT
+            v.id,
+            w.id AS workload_id,
+            w.name AS workload_name,
+            w.workload_type,
+            w.namespace,
+            w.cluster,
+            w.image_name,
+            w.image_tag,
+            v.latest_version,
+            v.package,
+            v.cve_id,
+            v.created_at,
+            v.updated_at,
+            v.severity_since,
+            c.severity AS last_severity,
+            c.cve_title,
+            c.cve_desc,
+            c.cve_link,
+            c.severity AS severity,
+            c.created_at AS cve_created_at,
+            c.updated_at AS cve_updated_at,
+            COALESCE(sv.suppressed, FALSE) AS suppressed,
+            sv.reason,
+            sv.reason_text,
+            sv.suppressed_by,
+            sv.updated_at AS suppressed_at,
+            c.cvss_score,
+            c.epss_score,
+            c.epss_percentile,
+            c.has_kev_entry,
+            c.known_ransomware_use,
+            v.fix_version,
+            v.fix_status,
+            c.priority
+        FROM
+            matched v
+        LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
+        JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+        JOIN workloads w ON v.image_name = w.image_name
+            AND v.image_tag = w.image_tag
+        JOIN images i ON i.name = w.image_name
+            AND i.tag = w.image_tag
+        LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
+            AND v.package = sv.package
+            AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
+        LEFT JOIN vulnerabilities v_canonical ON ca.canonical_cve_id IS NOT NULL
+            AND v_canonical.image_name = v.image_name
+            AND v_canonical.image_tag = v.image_tag
+            AND v_canonical.package = v.package
+            AND v_canonical.cve_id = ca.canonical_cve_id
+    WHERE
+        v_canonical.id IS NULL
+        AND workload_has_usable_sbom(w.state, i.state)
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($4::TEXT[])
+        AND ($5::FLOAT8 IS NULL
+            OR (c.cvss_score IS NOT NULL
+                AND c.cvss_score >= $5::FLOAT8))
+        AND (
+            CASE WHEN $6::TEXT IS NOT NULL THEN
+                w.cluster = $6::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (cardinality($7::TEXT[]) = 0
+            OR w.cluster <> ALL ($7::TEXT[]))
+        AND (cardinality($8::TEXT[]) = 0
+            OR w.namespace = ANY ($8::TEXT[]))
+        AND (cardinality($9::TEXT[]) = 0
+            OR w.namespace <> ALL ($9::TEXT[]))
+        AND ($10::TEXT[] IS NULL
+            OR w.workload_type = ANY ($10::TEXT[]))
+        AND (
+            CASE WHEN $11::TEXT IS NOT NULL THEN
+                w.name = $11::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (
+            CASE WHEN $12::TEXT IS NOT NULL THEN
+                v.image_name = $12::TEXT
+            ELSE
+                TRUE
+            END)
+        AND (
+            CASE WHEN $13::TEXT IS NOT NULL THEN
+                v.image_tag = $13::TEXT
+            ELSE
+                TRUE
+            END)
+        AND ($14::BOOLEAN IS TRUE
+            OR COALESCE(sv.suppressed, FALSE) = FALSE)
+),
+impact AS (
+    SELECT
+        COUNT(DISTINCT workload_id)::INT AS workload_count,
+        COUNT(DISTINCT (image_name, image_tag))::INT AS image_count,
+        COUNT(DISTINCT package)::INT AS package_count
+    FROM
+        filtered
 )
 SELECT
-    v.id,
-    w.name AS workload_name,
-    w.workload_type,
-    w.namespace,
-    w.cluster,
-    w.image_name,
-    w.image_tag,
-    v.latest_version,
-    v.package,
-    v.cve_id,
-    v.created_at,
-    v.updated_at,
-    v.severity_since,
-    c.severity AS last_severity,
-    c.cve_title,
-    c.cve_desc,
-    c.cve_link,
-    c.severity AS severity,
-    c.created_at AS cve_created_at,
-    c.updated_at AS cve_updated_at,
-    COALESCE(sv.suppressed, FALSE) AS suppressed,
-    sv.reason,
-    sv.reason_text,
-    sv.suppressed_by,
-    sv.updated_at AS suppressed_at,
-    c.cvss_score,
-    c.epss_score,
-    c.epss_percentile,
-    c.has_kev_entry,
-    c.known_ransomware_use,
-    v.fix_version,
-    v.fix_status,
-    c.priority,
-    COUNT(v.id) OVER () AS total_count
+    f.id,
+    f.workload_name,
+    f.workload_type,
+    f.namespace,
+    f.cluster,
+    f.image_name,
+    f.image_tag,
+    f.latest_version,
+    f.package,
+    f.cve_id,
+    f.created_at,
+    f.updated_at,
+    f.severity_since,
+    f.last_severity,
+    f.cve_title,
+    f.cve_desc,
+    f.cve_link,
+    f.severity,
+    f.cve_created_at,
+    f.cve_updated_at,
+    f.suppressed,
+    f.reason,
+    f.reason_text,
+    f.suppressed_by,
+    f.suppressed_at,
+    f.cvss_score,
+    f.epss_score,
+    f.epss_percentile,
+    f.has_kev_entry,
+    f.known_ransomware_use,
+    f.fix_version,
+    f.fix_status,
+    f.priority,
+    COUNT(f.id) OVER () AS total_count,
+    impact.workload_count,
+    impact.image_count,
+    impact.package_count
 FROM
-    matched v
-    LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
-    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
-    JOIN workloads w ON v.image_name = w.image_name
-        AND v.image_tag = w.image_tag
-    JOIN images i ON i.name = w.image_name
-        AND i.tag = w.image_tag
-    LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
-        AND v.package = sv.package
-        AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-    LEFT JOIN vulnerabilities v_canonical ON ca.canonical_cve_id IS NOT NULL
-        AND v_canonical.image_name = v.image_name
-        AND v_canonical.image_tag = v.image_tag
-        AND v_canonical.package = v.package
-        AND v_canonical.cve_id = ca.canonical_cve_id
-WHERE
-    v_canonical.id IS NULL
-    AND workload_has_usable_sbom(w.state, i.state)
-    AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($1::TEXT[])
-    AND ($2::FLOAT8 IS NULL
-        OR (c.cvss_score IS NOT NULL
-            AND c.cvss_score >= $2::FLOAT8))
-    AND (
-        CASE WHEN $3::TEXT IS NOT NULL THEN
-            w.cluster = $3::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (cardinality($4::TEXT[]) = 0
-        OR w.cluster <> ALL ($4::TEXT[]))
-    AND (cardinality($5::TEXT[]) = 0
-        OR w.namespace = ANY ($5::TEXT[]))
-    AND (cardinality($6::TEXT[]) = 0
-        OR w.namespace <> ALL ($6::TEXT[]))
-    AND ($7::TEXT[] IS NULL
-        OR w.workload_type = ANY ($7::TEXT[]))
-    AND (
-        CASE WHEN $8::TEXT IS NOT NULL THEN
-            w.name = $8::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN $9::TEXT IS NOT NULL THEN
-            v.image_name = $9::TEXT
-        ELSE
-            TRUE
-        END)
-    AND (
-        CASE WHEN $10::TEXT IS NOT NULL THEN
-            v.image_tag = $10::TEXT
-        ELSE
-            TRUE
-        END)
-    AND ($11::BOOLEAN IS TRUE
-        OR COALESCE(sv.suppressed, FALSE) = FALSE)
+    filtered f
+    CROSS JOIN impact
 ORDER BY
-    CASE WHEN $12 = 'priority_asc' THEN
-        c.priority
+    CASE WHEN $1 = 'priority_asc' THEN
+        f.priority
     END ASC NULLS LAST,
-    CASE WHEN $12 = 'priority_desc' THEN
-        c.priority
+    CASE WHEN $1 = 'priority_desc' THEN
+        f.priority
     END DESC NULLS LAST,
-    CASE WHEN $12 = 'cvss_score_desc' THEN
-        CASE WHEN c.cvss_score = 0
-            OR c.cvss_score IS NULL THEN
+    CASE WHEN $1 = 'cvss_score_desc' THEN
+        CASE WHEN f.cvss_score = 0
+            OR f.cvss_score IS NULL THEN
             1
         ELSE
             0
         END
     END ASC,
-    CASE WHEN $12 = 'cvss_score_desc' THEN
-        c.cvss_score
+    CASE WHEN $1 = 'cvss_score_desc' THEN
+        f.cvss_score
     END DESC,
-    CASE WHEN $12 = 'cvss_score_asc' THEN
-        c.cvss_score
+    CASE WHEN $1 = 'cvss_score_asc' THEN
+        f.cvss_score
     END ASC,
-    CASE WHEN $12 = 'cve_id_desc' THEN
-        v.cve_id
+    CASE WHEN $1 = 'cve_id_desc' THEN
+        f.cve_id
     END DESC,
-    CASE WHEN $12 = 'cve_id_asc' THEN
-        v.cve_id
+    CASE WHEN $1 = 'cve_id_asc' THEN
+        f.cve_id
     END ASC,
-    CASE WHEN $12 = 'workload_asc' THEN
-        w.name
+    CASE WHEN $1 = 'workload_asc' THEN
+        f.workload_name
     END ASC,
-    CASE WHEN $12 = 'workload_desc' THEN
-        w.name
+    CASE WHEN $1 = 'workload_desc' THEN
+        f.workload_name
     END DESC,
-    CASE WHEN $12 = 'namespace_asc' THEN
-        w.namespace
+    CASE WHEN $1 = 'namespace_asc' THEN
+        f.namespace
     END ASC,
-    CASE WHEN $12 = 'namespace_desc' THEN
-        w.namespace
+    CASE WHEN $1 = 'namespace_desc' THEN
+        f.namespace
     END DESC,
-    CASE WHEN $12 = 'cluster_asc' THEN
-        w.cluster
+    CASE WHEN $1 = 'cluster_asc' THEN
+        f.cluster
     END ASC,
-    CASE WHEN $12 = 'cluster_desc' THEN
-        w.cluster
+    CASE WHEN $1 = 'cluster_desc' THEN
+        f.cluster
     END DESC,
-    CASE WHEN $12 = 'priority_asc'
-        OR $12 = 'priority_desc'
-        OR $12 IS NULL THEN
-        CASE WHEN v.fix_version IS NULL THEN
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        CASE WHEN f.fix_version IS NULL THEN
             1
         ELSE
             0
         END
     END ASC,
-    CASE WHEN $12 = 'priority_asc'
-        OR $12 = 'priority_desc'
-        OR $12 IS NULL THEN
-        c.epss_score
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        f.epss_score
     END DESC NULLS LAST,
-    CASE WHEN $12 = 'priority_asc'
-        OR $12 = 'priority_desc'
-        OR $12 IS NULL THEN
-        c.cvss_score
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        f.cvss_score
     END DESC NULLS LAST,
-    CASE WHEN $12 = 'priority_asc'
-        OR $12 = 'priority_desc'
-        OR $12 IS NULL THEN
-        v.created_at
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        f.created_at
     END ASC,
-    CASE WHEN $12 = 'priority_asc'
-        OR $12 = 'priority_desc'
-        OR $12 IS NULL THEN
-        v.cve_id
+    CASE WHEN $1 = 'priority_asc'
+        OR $1 = 'priority_desc'
+        OR $1 IS NULL THEN
+        f.cve_id
     END ASC,
-    v.id ASC
-LIMIT $14
-OFFSET $13
+    CASE WHEN $1 = 'image_asc' THEN
+        f.image_name
+    END ASC,
+    CASE WHEN $1 = 'image_asc' THEN
+        f.image_tag
+    END ASC,
+    CASE WHEN $1 = 'image_desc' THEN
+        f.image_name
+    END DESC,
+    CASE WHEN $1 = 'image_desc' THEN
+        f.image_tag
+    END DESC,
+    CASE WHEN $1 = 'package_asc' THEN
+        f.package
+    END ASC,
+    CASE WHEN $1 = 'package_desc' THEN
+        f.package
+    END DESC,
+    CASE WHEN $1 = 'suppressed_asc' THEN
+        f.suppressed
+    END ASC,
+    CASE WHEN $1 = 'suppressed_desc' THEN
+        f.suppressed
+    END DESC,
+    f.id ASC,
+    f.workload_id ASC
+LIMIT $3
+    OFFSET $2
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
+	OrderBy           interface{}
+	Offset            int32
+	Limit             int32
 	CveIds            []string
 	CvssScore         *float64
 	Cluster           *string
@@ -1241,9 +1319,6 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	ImageName         *string
 	ImageTag          *string
 	IncludeSuppressed *bool
-	OrderBy           interface{}
-	Offset            int32
-	Limit             int32
 }
 
 type ListWorkloadsForVulnerabilitiesRow struct {
@@ -1281,10 +1356,16 @@ type ListWorkloadsForVulnerabilitiesRow struct {
 	FixStatus          *FixStatus
 	Priority           *int32
 	TotalCount         int64
+	WorkloadCount      int32
+	ImageCount         int32
+	PackageCount       int32
 }
 
 func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListWorkloadsForVulnerabilitiesParams) ([]*ListWorkloadsForVulnerabilitiesRow, error) {
 	rows, err := q.db.Query(ctx, listWorkloadsForVulnerabilities,
+		arg.OrderBy,
+		arg.Offset,
+		arg.Limit,
 		arg.CveIds,
 		arg.CvssScore,
 		arg.Cluster,
@@ -1296,9 +1377,6 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.ImageName,
 		arg.ImageTag,
 		arg.IncludeSuppressed,
-		arg.OrderBy,
-		arg.Offset,
-		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -1342,6 +1420,9 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 			&i.FixStatus,
 			&i.Priority,
 			&i.TotalCount,
+			&i.WorkloadCount,
+			&i.ImageCount,
+			&i.PackageCount,
 		); err != nil {
 			return nil, err
 		}
