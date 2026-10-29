@@ -78,6 +78,30 @@ func TestWorkloadLabelEvents(t *testing.T) {
 	}
 }
 
+func TestExtractWorkloadsNaisjobUsesObjectName(t *testing.T) {
+	obj := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "nais.io/v1",
+		"kind":       "Naisjob",
+		"metadata": map[string]any{
+			"name":      "my-job-q2",
+			"namespace": "my-team",
+			"labels":    map[string]any{"app": "my-job"},
+		},
+		"spec": map[string]any{
+			"image": "my-image:v1",
+		},
+	}}
+
+	workloads := extractWorkloads("dev", obj)
+	if len(workloads) != 1 {
+		t.Fatalf("got %d workloads, want 1", len(workloads))
+	}
+
+	if workloads[0].Name != "my-job-q2" {
+		t.Fatalf("name = %q, want %q", workloads[0].Name, "my-job-q2")
+	}
+}
+
 func TestImageNameTag(t *testing.T) {
 	tests := []struct {
 		name          string
