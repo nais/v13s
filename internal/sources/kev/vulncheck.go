@@ -21,6 +21,11 @@ import (
 
 const SourceVulnCheck = "vulncheck"
 
+const (
+	shadowserverHoneypotURL = "https://dashboard.shadowserver.org/statistics/honeypot/"
+	maxVulnCheckReferences  = 10
+)
+
 type vulnCheckBackupFile struct {
 	URL    string `json:"url"`
 	Sha256 string `json:"sha256"`
@@ -31,12 +36,16 @@ type vulnCheckBackup struct {
 }
 
 type vulnCheckEntry struct {
-	Cve                        []string `json:"cve"`
-	KnownRansomwareCampaignUse string   `json:"knownRansomwareCampaignUse"`
-	ShortDescription           string   `json:"shortDescription"`
-	ReportedExploitation       []struct {
-		URL string `json:"url"`
-	} `json:"vulncheck_reported_exploitation"`
+	Cve                        []string                      `json:"cve"`
+	KnownRansomwareCampaignUse string                        `json:"knownRansomwareCampaignUse"`
+	ShortDescription           string                        `json:"shortDescription"`
+	CisaDateAdded              string                        `json:"cisa_date_added"`
+	ReportedExploitation       []vulnCheckExploitationReport `json:"vulncheck_reported_exploitation"`
+}
+
+type vulnCheckExploitationReport struct {
+	URL       string `json:"url"`
+	DateAdded string `json:"date_added"`
 }
 
 type VulnCheckClient struct {
@@ -85,23 +94,50 @@ func (c *VulnCheckClient) Fetch(ctx context.Context) ([]Assertion, error) {
 			return nil, fmt.Errorf("reading %s from VulnCheck KEV backup: %w", f.Name, err)
 		}
 		for _, e := range entries {
-			var references []string
-			for _, exploitation := range e.ReportedExploitation {
-				if exploitation.URL != "" && !slices.Contains(references, exploitation.URL) {
-					references = append(references, exploitation.URL)
-				}
+			var description string
+			if e.CisaDateAdded != "" {
+				description = e.ShortDescription
 			}
+			references := e.referenceURLs()
 			for _, cve := range e.Cve {
 				assertions = append(assertions, Assertion{
 					CveID:            cve,
 					KnownRansomware:  strings.EqualFold(e.KnownRansomwareCampaignUse, "Known"),
-					ShortDescription: e.ShortDescription,
+					ShortDescription: description,
 					ReferenceURLs:    references,
 				})
 			}
 		}
 	}
 	return assertions, nil
+}
+
+func (e vulnCheckEntry) referenceURLs() []string {
+	var reports []vulnCheckExploitationReport
+	var honeypot vulnCheckExploitationReport
+	for _, r := range e.ReportedExploitation {
+		switch {
+		case r.URL == "" || strings.Contains(r.URL, "api.vulncheck.com/"):
+		case strings.HasPrefix(r.URL, shadowserverHoneypotURL):
+			if r.DateAdded >= honeypot.DateAdded {
+				honeypot = r
+			}
+		case !slices.ContainsFunc(reports, func(o vulnCheckExploitationReport) bool { return o.URL == r.URL }):
+			reports = append(reports, r)
+		}
+	}
+	if honeypot.URL != "" {
+		reports = append(reports, honeypot)
+	}
+	slices.SortStableFunc(reports, func(a, b vulnCheckExploitationReport) int {
+		return strings.Compare(b.DateAdded, a.DateAdded)
+	})
+
+	var references []string
+	for _, r := range reports[:min(len(reports), maxVulnCheckReferences)] {
+		references = append(references, r.URL)
+	}
+	return references
 }
 
 func (c *VulnCheckClient) backupFile(ctx context.Context) (vulnCheckBackupFile, error) {
