@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	sqldatabase "github.com/nais/v13s/internal/database/sql"
@@ -174,4 +175,31 @@ func TestCisaClient_Fetch_RealFixture(t *testing.T) {
 		"https://www.papercut.com/kb/Main/PO-1216-and-PO-1219",
 		"https://nvd.nist.gov/vuln/detail/CVE-2023-27351",
 	}, papercut.ReferenceURLs)
+}
+
+func TestFetcher_Sync_RealFixture(t *testing.T) {
+	srv := newFixtureServer(t)
+	defer srv.Close()
+
+	source := kev.NewCisaClient(srv.URL)
+	assertions, err := source.Fetch(context.Background())
+	require.NoError(t, err)
+	require.NotEmpty(t, assertions)
+
+	slices.SortFunc(assertions, func(a, b kev.Assertion) int { return strings.Compare(a.CveID, b.CveID) })
+	var expected sqldatabase.UpsertKevSourceEntriesParams
+	for _, entry := range assertions {
+		expected.CveIds = append(expected.CveIds, entry.CveID)
+		expected.Sources = append(expected.Sources, kev.SourceCISA)
+		expected.KnownRansomwareUse = append(expected.KnownRansomwareUse, entry.KnownRansomware)
+		expected.ShortDescriptions = append(expected.ShortDescriptions, entry.ShortDescription)
+		expected.ReferenceUrls = append(expected.ReferenceUrls, strings.Join(entry.ReferenceURLs, "\n"))
+	}
+
+	q := mockquerier.NewMockQuerier(t)
+	expectLock(q)
+	expectUpdate(q, expected)
+
+	f := kev.NewFetcherWithQuerier(q, testLogger(), source)
+	require.NoError(t, f.Sync(context.Background()))
 }

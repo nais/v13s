@@ -46,6 +46,7 @@ func SourcesFromConfig(cfg config.KevConfig) []Source {
 func referenceURLs(notes string) []string {
 	var urls []string
 	for _, u := range noteURL.FindAllString(notes, -1) {
+		u = strings.TrimRight(u, ",")
 		if strings.Contains(u, "cisa.gov/news-events/directives/") || slices.Contains(urls, u) {
 			continue
 		}
@@ -70,8 +71,10 @@ func entries(bySource map[string][]Assertion) sql.UpsertKevSourceEntriesParams {
 			m := merged[e]
 			m.KnownRansomware = m.KnownRansomware || a.KnownRansomware
 			m.ShortDescription = cmp.Or(m.ShortDescription, a.ShortDescription)
-			if len(m.ReferenceURLs) == 0 {
-				m.ReferenceURLs = a.ReferenceURLs
+			for _, ref := range a.ReferenceURLs {
+				if !slices.Contains(m.ReferenceURLs, ref) {
+					m.ReferenceURLs = append(m.ReferenceURLs, ref)
+				}
 			}
 			merged[e] = m
 		}
