@@ -28,12 +28,46 @@ func TestReferenceURLs(t *testing.T) {
 			notes: `https://example.com/advisory; "https://example.com/advisory"; https://www.cisa.gov/news-events/directives/bod-26-04`,
 			want:  []string{"https://example.com/advisory"},
 		},
+		{
+			name:  "comma separated references",
+			notes: "https://example.com/advisory, https://example.com/report",
+			want:  []string{"https://example.com/advisory", "https://example.com/report"},
+		},
+		{
+			name:  "deduplicates references after removing separator commas",
+			notes: "https://example.com/advisory, https://example.com/advisory",
+			want:  []string{"https://example.com/advisory"},
+		},
+		{
+			name:  "preserves commas inside URLs",
+			notes: "https://example.com/report?ids=one,two",
+			want:  []string{"https://example.com/report?ids=one,two"},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := referenceURLs(test.notes); !slices.Equal(got, test.want) {
 				t.Errorf("referenceURLs() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+func TestEntriesMergeReferenceURLs(t *testing.T) {
+	got := entries(map[string][]Assertion{
+		"enisa": {
+			{
+				CveID:         "CVE-2026-1234",
+				ReferenceURLs: []string{"https://example.com/advisory", "https://example.com/shared"},
+			},
+			{
+				CveID:         "CVE-2026-1234",
+				ReferenceURLs: []string{"https://example.com/shared", "https://example.com/report", "https://example.com/report"},
+			},
+		},
+	})
+	want := []string{"https://example.com/advisory\nhttps://example.com/shared\nhttps://example.com/report"}
+	if !slices.Equal(got.ReferenceUrls, want) {
+		t.Errorf("entries().ReferenceUrls = %q, want %q", got.ReferenceUrls, want)
 	}
 }
 
