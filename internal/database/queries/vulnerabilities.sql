@@ -846,9 +846,7 @@ WITH matched AS MATERIALIZED (
             ARRAY (
                 SELECT
                     unnest(
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
+                        @cve_ids::TEXT[]
 )
                 UNION
                 SELECT
@@ -857,9 +855,7 @@ WITH matched AS MATERIALIZED (
                     cve_alias
                 WHERE
                     canonical_cve_id = ANY (
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
+                        @cve_ids::TEXT[]
 )
 )
 )
@@ -919,7 +915,7 @@ WITH matched AS MATERIALIZED (
     WHERE
         v_canonical.id IS NULL
         AND workload_has_usable_sbom(w.state, i.state)
-        AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.arg('cve_ids')::TEXT[])
+        AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (@cve_ids::TEXT[])
         AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
             OR (c.cvss_score IS NOT NULL
                 AND c.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))

@@ -55,7 +55,12 @@ func (c *CisaClient) Fetch(ctx context.Context) ([]Assertion, error) {
 
 	assertions := make([]Assertion, 0, len(catalog.Vulnerabilities))
 	for _, v := range catalog.Vulnerabilities {
-		assertions = append(assertions, Assertion{CveID: v.CveID, KnownRansomware: v.KnownRansomware()})
+		assertions = append(assertions, Assertion{
+			CveID:            v.CveID,
+			KnownRansomware:  v.KnownRansomware(),
+			ShortDescription: v.ShortDescription,
+			ReferenceURLs:    referenceURLs(v.Notes),
+		})
 	}
 	return assertions, nil
 }

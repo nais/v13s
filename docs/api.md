@@ -31,6 +31,12 @@ Get operations retrieve specific vulnerability data, and typically return one it
 
 See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
 
+### KEV Details
+
+`Cve.kev_entry` is present for known exploited vulnerabilities. All endpoints populate `known_ransomware_use`; only `GetCve` also populates `sources`, `description`, `reference_urls` and `description_source`.
+
+The first catalog listing the CVE wins in this order: CISA, ENISA, VulnCheck, even if its description or reference URLs are empty. Description and reference URLs come from that catalog only. VulnCheck details require VulnCheck KEV to be enabled and synced. Required actions and due dates are not persisted.
+
 ### Suppress Operations
 
 - `SuppressVulnerability`: Suppress a vulnerability

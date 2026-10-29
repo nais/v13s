@@ -3,22 +3,42 @@
 INSERT INTO cve_kev_source(
     cve_id,
     source,
-    known_ransomware_use)
+    known_ransomware_use,
+    short_description,
+    reference_urls)
 SELECT
     d.cve_id,
     d.source,
-    d.known_ransomware_use
+    d.known_ransomware_use,
+    NULLIF(d.short_description, ''),
+    COALESCE(string_to_array(NULLIF(d.reference_urls, ''), E'\n'), '{}')
 FROM (
     SELECT
         unnest(@cve_ids::TEXT[]) AS cve_id,
         unnest(@sources::TEXT[]) AS source,
-        unnest(@known_ransomware_use::BOOLEAN[]) AS known_ransomware_use) AS d
+        unnest(@known_ransomware_use::BOOLEAN[]) AS known_ransomware_use,
+        unnest(@short_descriptions::TEXT[]) AS short_description,
+        unnest(@reference_urls::TEXT[]) AS reference_urls) AS d
     JOIN cve c ON c.cve_id = d.cve_id
 ON CONFLICT (cve_id,
     source)
     DO UPDATE SET
         known_ransomware_use = EXCLUDED.known_ransomware_use,
+        short_description = EXCLUDED.short_description,
+        reference_urls = EXCLUDED.reference_urls,
         last_seen_at = NOW();
+
+-- name: ListKevSourceEntriesForCve :many
+SELECT
+    source,
+    short_description,
+    reference_urls
+FROM
+    cve_kev_source
+WHERE
+    cve_id = @cve_id
+ORDER BY
+    source;
 
 -- name: RefreshCveKevFlags :many
 WITH changed AS (

@@ -63,6 +63,8 @@ func TestFetcher_Sync_OneEntryPerSource(t *testing.T) {
 		CveIds:             []string{"CVE-2015-7501", "CVE-2021-44228", "CVE-2021-44228", "CVE-2023-0001", "CVE-2023-0001"},
 		Sources:            []string{"enisa", "cisa", "enisa", "cisa", "enisa"},
 		KnownRansomwareUse: []bool{false, true, false, false, true},
+		ShortDescriptions:  []string{"", "", "", "", ""},
+		ReferenceUrls:      []string{"", "", "", "", ""},
 	})
 
 	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background()))
@@ -78,6 +80,8 @@ func TestFetcher_Sync_FailedSourceKeepsPreviousData(t *testing.T) {
 		CveIds:             []string{"CVE-2021-44228"},
 		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
+		ShortDescriptions:  []string{""},
+		ReferenceUrls:      []string{""},
 	})
 
 	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background())
@@ -106,6 +110,8 @@ func TestFetcher_Sync_EmptySourceTreatedAsFailed(t *testing.T) {
 		CveIds:             []string{"CVE-2021-44228"},
 		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
+		ShortDescriptions:  []string{""},
+		ReferenceUrls:      []string{""},
 	})
 
 	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background())
@@ -123,6 +129,8 @@ func TestFetcher_Sync_BlankCveSourceTreatedAsFailed(t *testing.T) {
 		CveIds:             []string{"CVE-2021-44228"},
 		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
+		ShortDescriptions:  []string{""},
+		ReferenceUrls:      []string{""},
 	})
 
 	err := kev.NewFetcherWithQuerier(q, testLogger(), cisa, enisa).Sync(context.Background())
@@ -149,6 +157,8 @@ func TestFetcher_Sync_MixedBlankCves(t *testing.T) {
 		CveIds:             []string{"CVE-2021-44228"},
 		Sources:            []string{"cisa"},
 		KnownRansomwareUse: []bool{false},
+		ShortDescriptions:  []string{""},
+		ReferenceUrls:      []string{""},
 	})
 
 	require.NoError(t, kev.NewFetcherWithQuerier(q, testLogger(), cisa).Sync(context.Background()))

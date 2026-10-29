@@ -1555,7 +1555,7 @@ func TestServer_KevFilter(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, resp.GetNodes(), tc.wantImageFindings)
 			for _, node := range resp.GetNodes() {
-				assert.Equal(t, tc.hasKev, node.GetCve().GetHasKevEntry())
+				assert.Equal(t, tc.hasKev, node.GetCve().GetKevEntry() != nil)
 			}
 		})
 
@@ -2000,9 +2000,11 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		epssScore := 0.75
 		epssPercentile := 0.92
 		_, err := db.UpsertKevSourceEntries(ctx, sql.UpsertKevSourceEntriesParams{
-			CveIds:             []string{cveID},
-			Sources:            []string{"cisa"},
-			KnownRansomwareUse: []bool{true},
+			CveIds:             []string{cveID, cveID},
+			Sources:            []string{"cisa", "vulncheck"},
+			KnownRansomwareUse: []bool{true, false},
+			ShortDescriptions:  []string{"Example contains a remote code execution vulnerability.", ""},
+			ReferenceUrls:      []string{"https://example.com/advisory\nhttps://nvd.nist.gov/vuln/detail/" + cveID, ""},
 		})
 		require.NoError(t, err)
 		_, err = db.RefreshCveKevFlags(ctx)
@@ -2032,8 +2034,13 @@ func TestServer_ListCveSummaries(t *testing.T) {
 		assert.Equal(t, details.GetCve().GetPriority(), summaryCve.GetPriority())
 		assert.InDelta(t, details.GetCve().GetEpssScore(), summaryCve.GetEpssScore(), 0.0001)
 		assert.InDelta(t, details.GetCve().GetEpssPercentile(), summaryCve.GetEpssPercentile(), 0.0001)
-		assert.Equal(t, details.GetCve().GetHasKevEntry(), summaryCve.GetHasKevEntry())
-		assert.Equal(t, details.GetCve().GetKnownRansomwareUse(), summaryCve.GetKnownRansomwareUse())
+		assert.True(t, summaryCve.GetKevEntry().GetKnownRansomwareUse())
+		assert.Empty(t, summaryCve.GetKevEntry().GetDescription(), "KEV details are only loaded by GetCve")
+		assert.True(t, details.GetCve().GetKevEntry().GetKnownRansomwareUse())
+		assert.Equal(t, "Example contains a remote code execution vulnerability.", details.GetCve().GetKevEntry().GetDescription())
+		assert.Equal(t, []string{"https://example.com/advisory", "https://nvd.nist.gov/vuln/detail/" + cveID}, details.GetCve().GetKevEntry().GetReferenceUrls())
+		assert.Equal(t, []string{"cisa", "vulncheck"}, details.GetCve().GetKevEntry().GetSources())
+		assert.Equal(t, "cisa", details.GetCve().GetKevEntry().GetDescriptionSource())
 	})
 
 	t.Run("ordering by affected workloads", func(t *testing.T) {
@@ -3168,8 +3175,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 
 		assert.InDelta(t, 0.75, enriched.GetCve().GetEpssScore(), 0.0001)
 		assert.InDelta(t, 0.92, enriched.GetCve().GetEpssPercentile(), 0.0001)
-		assert.True(t, enriched.GetCve().GetHasKevEntry())
-		assert.True(t, enriched.GetCve().GetKnownRansomwareUse())
+		assert.NotNil(t, enriched.GetCve().GetKevEntry())
+		assert.True(t, enriched.GetCve().GetKevEntry().GetKnownRansomwareUse())
 		assert.Equal(t, "1.2.3", enriched.GetFixVersion())
 		assert.InDelta(t, 8.5, enriched.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, enriched.GetCve().GetCvssScore(), enriched.GetCvssScore(), 0.0001)
@@ -3184,8 +3191,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, cveID, v.GetCve().GetId())
 		assert.InDelta(t, 0.75, v.GetCve().GetEpssScore(), 0.0001)
 		assert.InDelta(t, 0.92, v.GetCve().GetEpssPercentile(), 0.0001)
-		assert.True(t, v.GetCve().GetHasKevEntry())
-		assert.True(t, v.GetCve().GetKnownRansomwareUse())
+		assert.NotNil(t, v.GetCve().GetKevEntry())
+		assert.True(t, v.GetCve().GetKevEntry().GetKnownRansomwareUse())
 		assert.Equal(t, "1.2.3", v.GetFixVersion())
 		assert.InDelta(t, 8.5, v.GetCve().GetCvssScore(), 0.0001)
 		assert.InDelta(t, v.GetCve().GetCvssScore(), v.GetCvssScore(), 0.0001)
@@ -3201,8 +3208,8 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 		assert.Equal(t, cveID, cve.GetId())
 		assert.InDelta(t, 0.75, cve.GetEpssScore(), 0.0001)
 		assert.InDelta(t, 0.92, cve.GetEpssPercentile(), 0.0001)
-		assert.True(t, cve.GetHasKevEntry())
-		assert.True(t, cve.GetKnownRansomwareUse())
+		assert.NotNil(t, cve.GetKevEntry())
+		assert.True(t, cve.GetKevEntry().GetKnownRansomwareUse())
 		assert.InDelta(t, 8.5, cve.GetCvssScore(), 0.0001)
 	})
 
