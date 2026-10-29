@@ -32,14 +32,25 @@ func TestVulnCheckClientFetchGuidance(t *testing.T) {
 			"cve": ["CVE-2026-0001", "CVE-2026-0002"],
 			"knownRansomwareCampaignUse": "Known",
 			"shortDescription": "Example vulnerability description.",
+			"cisa_date_added": "2026-01-02T00:00:00Z",
 			"vulncheck_reported_exploitation": [
 				{"url": "https://example.com/report"},
 				{"url": ""},
 				{"url": "https://example.com/report"},
+				{"url": "https://api.vulncheck.com/v3/index/vulncheck-canaries?cve=CVE-2026-0001&date=2026-10-14"},
+				{"url": "https://dashboard.shadowserver.org/statistics/honeypot/vulnerability/map/?day=2026-01-03&vulnerability=cve-2026-0001", "date_added": "2026-01-03T00:00:00Z"},
+				{"url": "https://dashboard.shadowserver.org/statistics/honeypot/vulnerability/map/?day=2026-01-05&vulnerability=cve-2026-0001", "date_added": "2026-01-05T00:00:00Z"},
+				{"url": "https://dashboard.shadowserver.org/statistics/honeypot/vulnerability/map/?day=2026-01-04&vulnerability=cve-2026-0001", "date_added": "2026-01-04T00:00:00Z"},
 				{"url": "https://example.com/advisory"}
 			]
 		},
-		{"cve": ["CVE-2026-0003"]}
+		{
+			"cve": ["CVE-2026-0003"],
+			"shortDescription": "Copy of the NVD description.",
+			"vulncheck_reported_exploitation": [
+				{"url": "https://api.vulncheck.com/v3/index/vulncheck-canaries?cve=CVE-2026-0003&date=2026-10-14"}
+			]
+		}
 	]`)
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
@@ -64,13 +75,34 @@ func TestVulnCheckClientFetchGuidance(t *testing.T) {
 		{
 			CveID: "CVE-2026-0001", KnownRansomware: true,
 			ShortDescription: "Example vulnerability description.",
-			ReferenceURLs:    []string{"https://example.com/report", "https://example.com/advisory"},
+			ReferenceURLs: []string{
+				"https://dashboard.shadowserver.org/statistics/honeypot/vulnerability/map/?day=2026-01-05&vulnerability=cve-2026-0001",
+				"https://example.com/report", "https://example.com/advisory",
+			},
 		},
 		{
 			CveID: "CVE-2026-0002", KnownRansomware: true,
 			ShortDescription: "Example vulnerability description.",
-			ReferenceURLs:    []string{"https://example.com/report", "https://example.com/advisory"},
+			ReferenceURLs: []string{
+				"https://dashboard.shadowserver.org/statistics/honeypot/vulnerability/map/?day=2026-01-05&vulnerability=cve-2026-0001",
+				"https://example.com/report", "https://example.com/advisory",
+			},
 		},
 		{CveID: "CVE-2026-0003"},
 	}, assertions)
+}
+
+func TestVulnCheckReferenceURLsKeepsNewest(t *testing.T) {
+	var entry vulnCheckEntry
+	var expected []string
+	for day := 1; day <= 12; day++ {
+		url := fmt.Sprintf("https://example.com/report-%02d", day)
+		entry.ReportedExploitation = append(entry.ReportedExploitation, vulnCheckExploitationReport{
+			URL: url, DateAdded: fmt.Sprintf("2026-01-%02dT00:00:00Z", day),
+		})
+		if day > 2 {
+			expected = append([]string{url}, expected...)
+		}
+	}
+	assert.Equal(t, expected, entry.referenceURLs())
 }
