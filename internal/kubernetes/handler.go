@@ -145,7 +145,7 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 		name, tag := imageNameTag(image)
 		w := &model.Workload{
 			Cluster:   cluster,
-			Name:      jobName(job),
+			Name:      job.GetName(),
 			Namespace: job.GetNamespace(),
 			Type:      model.WorkloadTypeJob,
 			ImageName: name,
@@ -190,15 +190,6 @@ func setWorkloadName(containerName, workloadName string) string {
 		return workloadName
 	}
 	return workloadName + "-" + containerName
-}
-
-func jobName(job *nais.Naisjob) string {
-	workloadName := job.Labels["app"]
-	if workloadName != "" {
-		return workloadName
-	}
-
-	return job.GetName()
 }
 
 func imageNameTag(image string) (imageName, tagName string) {
