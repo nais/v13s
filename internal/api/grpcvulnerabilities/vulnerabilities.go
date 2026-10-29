@@ -210,24 +210,30 @@ func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequ
 		return nil, status.Errorf(codes.Internal, "get cve: %v", err)
 	}
 
-	return &vulnerabilities.GetCveResponse{
-		Cve: toCve(cvePayload{
-			id:                 cve.CveID,
-			title:              cve.CveTitle,
-			desc:               cve.CveDesc,
-			link:               cve.CveLink,
-			severity:           cve.Severity,
-			refs:               cve.Refs,
-			created:            timestamppb.New(cve.CreatedAt.Time),
-			lastUpdated:        timestamppb.New(cve.UpdatedAt.Time),
-			cvssScore:          cve.CvssScore,
-			epssScore:          cve.EpssScore,
-			epssPercentile:     cve.EpssPercentile,
-			hasKevEntry:        cve.HasKevEntry,
-			knownRansomwareUse: cve.KnownRansomwareUse,
-			priority:           cve.Priority,
-		}),
-	}, nil
+	kevEntries, err := s.querier.ListKevSourceEntriesForCve(ctx, cve.CveID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list kev entries: %v", err)
+	}
+
+	protoCve := toCve(cvePayload{
+		id:                 cve.CveID,
+		title:              cve.CveTitle,
+		desc:               cve.CveDesc,
+		link:               cve.CveLink,
+		severity:           cve.Severity,
+		refs:               cve.Refs,
+		created:            timestamppb.New(cve.CreatedAt.Time),
+		lastUpdated:        timestamppb.New(cve.UpdatedAt.Time),
+		cvssScore:          cve.CvssScore,
+		epssScore:          cve.EpssScore,
+		epssPercentile:     cve.EpssPercentile,
+		hasKevEntry:        cve.HasKevEntry,
+		knownRansomwareUse: cve.KnownRansomwareUse,
+		priority:           cve.Priority,
+	})
+	setKevDetails(protoCve, kevEntries)
+
+	return &vulnerabilities.GetCveResponse{Cve: protoCve}, nil
 }
 
 func validateInput(s string) error {

@@ -122,6 +122,45 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 	return items, nil
 }
 
+const listKevSourceEntriesForCve = `-- name: ListKevSourceEntriesForCve :many
+SELECT
+    source,
+    short_description,
+    reference_urls
+FROM
+    cve_kev_source
+WHERE
+    cve_id = $1
+ORDER BY
+    source
+`
+
+type ListKevSourceEntriesForCveRow struct {
+	Source           string
+	ShortDescription *string
+	ReferenceUrls    []string
+}
+
+func (q *Queries) ListKevSourceEntriesForCve(ctx context.Context, cveID string) ([]*ListKevSourceEntriesForCveRow, error) {
+	rows, err := q.db.Query(ctx, listKevSourceEntriesForCve, cveID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListKevSourceEntriesForCveRow{}
+	for rows.Next() {
+		var i ListKevSourceEntriesForCveRow
+		if err := rows.Scan(&i.Source, &i.ShortDescription, &i.ReferenceUrls); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsedImagesWithStaleKevSummaries = `-- name: ListUsedImagesWithStaleKevSummaries :many
 WITH candidate_cves AS (
     SELECT
@@ -253,21 +292,29 @@ const upsertKevSourceEntries = `-- name: UpsertKevSourceEntries :execrows
 INSERT INTO cve_kev_source(
     cve_id,
     source,
-    known_ransomware_use)
+    known_ransomware_use,
+    short_description,
+    reference_urls)
 SELECT
     d.cve_id,
     d.source,
-    d.known_ransomware_use
+    d.known_ransomware_use,
+    NULLIF(d.short_description, ''),
+    COALESCE(string_to_array(NULLIF(d.reference_urls, ''), E'\n'), '{}')
 FROM (
     SELECT
         unnest($1::TEXT[]) AS cve_id,
         unnest($2::TEXT[]) AS source,
-        unnest($3::BOOLEAN[]) AS known_ransomware_use) AS d
+        unnest($3::BOOLEAN[]) AS known_ransomware_use,
+        unnest($4::TEXT[]) AS short_description,
+        unnest($5::TEXT[]) AS reference_urls) AS d
     JOIN cve c ON c.cve_id = d.cve_id
 ON CONFLICT (cve_id,
     source)
     DO UPDATE SET
         known_ransomware_use = EXCLUDED.known_ransomware_use,
+        short_description = EXCLUDED.short_description,
+        reference_urls = EXCLUDED.reference_urls,
         last_seen_at = NOW()
 `
 
@@ -275,11 +322,19 @@ type UpsertKevSourceEntriesParams struct {
 	CveIds             []string
 	Sources            []string
 	KnownRansomwareUse []bool
+	ShortDescriptions  []string
+	ReferenceUrls      []string
 }
 
 // Rows are never deleted (see CONTEXT.md).
 func (q *Queries) UpsertKevSourceEntries(ctx context.Context, arg UpsertKevSourceEntriesParams) (int64, error) {
-	result, err := q.db.Exec(ctx, upsertKevSourceEntries, arg.CveIds, arg.Sources, arg.KnownRansomwareUse)
+	result, err := q.db.Exec(ctx, upsertKevSourceEntries,
+		arg.CveIds,
+		arg.Sources,
+		arg.KnownRansomwareUse,
+		arg.ShortDescriptions,
+		arg.ReferenceUrls,
+	)
 	if err != nil {
 		return 0, err
 	}

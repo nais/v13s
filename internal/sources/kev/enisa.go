@@ -14,6 +14,8 @@ const SourceENISA = "enisa"
 type enisaEntry struct {
 	CveID            string            `json:"cveID"`
 	ExploitationType exploitationTypes `json:"exploitationType"`
+	ShortDescription string            `json:"shortDescription"`
+	Notes            string            `json:"notes"`
 }
 
 // exploitationTypes accepts a string or an array of strings; the feed is normally a string but has shipped arrays.
@@ -63,8 +65,10 @@ func (c *EnisaClient) Fetch(ctx context.Context) ([]Assertion, error) {
 			continue
 		}
 		assertions = append(assertions, Assertion{
-			CveID:           e.CveID,
-			KnownRansomware: e.ExploitationType.ransomware(),
+			CveID:            e.CveID,
+			KnownRansomware:  e.ExploitationType.ransomware(),
+			ShortDescription: e.ShortDescription,
+			ReferenceURLs:    referenceURLs(e.Notes),
 		})
 	}
 	return assertions, nil

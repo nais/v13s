@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,6 +33,10 @@ type vulnCheckBackup struct {
 type vulnCheckEntry struct {
 	Cve                        []string `json:"cve"`
 	KnownRansomwareCampaignUse string   `json:"knownRansomwareCampaignUse"`
+	ShortDescription           string   `json:"shortDescription"`
+	ReportedExploitation       []struct {
+		URL string `json:"url"`
+	} `json:"vulncheck_reported_exploitation"`
 }
 
 type VulnCheckClient struct {
@@ -80,10 +85,18 @@ func (c *VulnCheckClient) Fetch(ctx context.Context) ([]Assertion, error) {
 			return nil, fmt.Errorf("reading %s from VulnCheck KEV backup: %w", f.Name, err)
 		}
 		for _, e := range entries {
+			var references []string
+			for _, exploitation := range e.ReportedExploitation {
+				if exploitation.URL != "" && !slices.Contains(references, exploitation.URL) {
+					references = append(references, exploitation.URL)
+				}
+			}
 			for _, cve := range e.Cve {
 				assertions = append(assertions, Assertion{
-					CveID:           cve,
-					KnownRansomware: strings.EqualFold(e.KnownRansomwareCampaignUse, "Known"),
+					CveID:            cve,
+					KnownRansomware:  strings.EqualFold(e.KnownRansomwareCampaignUse, "Known"),
+					ShortDescription: e.ShortDescription,
+					ReferenceURLs:    references,
 				})
 			}
 		}
