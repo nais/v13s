@@ -15,7 +15,7 @@ import (
 
 const feedTimeout = 60 * time.Second
 
-var noteURL = regexp.MustCompile(`https?://[^\s;]+`)
+var noteURL = regexp.MustCompile(`https?://[^\s;"']+`)
 
 type Assertion struct {
 	CveID            string
