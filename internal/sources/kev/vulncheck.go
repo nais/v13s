@@ -122,8 +122,13 @@ func (e vulnCheckEntry) referenceURLs() []string {
 			if r.DateAdded >= honeypot.DateAdded {
 				honeypot = r
 			}
-		case !slices.ContainsFunc(reports, func(o vulnCheckExploitationReport) bool { return o.URL == r.URL }):
-			reports = append(reports, r)
+		default:
+			i := slices.IndexFunc(reports, func(o vulnCheckExploitationReport) bool { return o.URL == r.URL })
+			if i == -1 {
+				reports = append(reports, r)
+			} else if r.DateAdded > reports[i].DateAdded {
+				reports[i] = r
+			}
 		}
 	}
 	if honeypot.URL != "" {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -105,4 +106,37 @@ func TestVulnCheckReferenceURLsKeepsNewest(t *testing.T) {
 		}
 	}
 	assert.Equal(t, expected, entry.referenceURLs())
+}
+
+func TestVulnCheckReferenceURLsKeepsNewestDuplicate(t *testing.T) {
+	const repeatedURL = "https://example.com/repeated"
+	reports := []vulnCheckExploitationReport{
+		{URL: repeatedURL, DateAdded: "2026-01-01T00:00:00Z"},
+		{URL: repeatedURL, DateAdded: "2026-01-12T00:00:00Z"},
+	}
+	for day := 2; day <= 11; day++ {
+		reports = append(reports, vulnCheckExploitationReport{
+			URL:       fmt.Sprintf("https://example.com/report-%02d", day),
+			DateAdded: fmt.Sprintf("2026-01-%02dT00:00:00Z", day),
+		})
+	}
+	expected := []string{repeatedURL}
+	for day := 11; day >= 3; day-- {
+		expected = append(expected, fmt.Sprintf("https://example.com/report-%02d", day))
+	}
+	newestFirst := slices.Clone(reports)
+	newestFirst[0], newestFirst[1] = newestFirst[1], newestFirst[0]
+
+	for _, test := range []struct {
+		name    string
+		reports []vulnCheckExploitationReport
+	}{
+		{name: "oldest duplicate first", reports: reports},
+		{name: "newest duplicate first", reports: newestFirst},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			entry := vulnCheckEntry{ReportedExploitation: test.reports}
+			assert.Equal(t, expected, entry.referenceURLs())
+		})
+	}
 }
