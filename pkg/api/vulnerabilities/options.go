@@ -109,6 +109,7 @@ type Options struct {
 	Since             *timestamppb.Timestamp
 	SinceType         *SinceType
 	Severity          *Severity
+	PackageType       *string
 	SbomStatuses      []SbomStatus
 	ExcludeNamespaces []string
 	ExcludeClusters   []string
@@ -171,6 +172,12 @@ func GetIncludedUnresolved(opts ...Option) bool { return applyOptions(opts...).I
 func CallOptions(opts ...grpc.CallOption) Option {
 	return newFuncOption(func(o *Options) {
 		o.CallOptions = opts
+	})
+}
+
+func PackageTypeFilter(packageType string) Option {
+	return newFuncOption(func(o *Options) {
+		o.PackageType = &packageType
 	})
 }
 
