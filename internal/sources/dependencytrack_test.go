@@ -8,13 +8,15 @@ import (
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 	ctx := context.Background()
-	log := logrus.NewEntry(logrus.New())
+	logger, hook := logrustest.NewNullLogger()
+	log := logrus.NewEntry(logger)
 	mockClient := new(dependencytrackMock.MockClient)
 	source := NewDependencytrackSource(mockClient, log)
 
@@ -77,6 +79,19 @@ func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 	assert.Equal(t, 7.5, *v1.CvssScore)
 	assert.Nil(t, v1.EpssScore)
 	assert.Nil(t, v1.EpssPercentile)
+
+	if entry := hook.LastEntry(); assert.NotNil(t, entry) {
+		assert.Equal(t, logrus.InfoLevel, entry.Level)
+		assert.Equal(t, "fetched vulnerability findings", entry.Message)
+		assert.Equal(t, logrus.Fields{
+			"image":              "my-image",
+			"tag":                "1.0.0",
+			"project_id":         "proj-1",
+			"source":             "dependencytrack",
+			"received_findings":  2,
+			"include_suppressed": false,
+		}, entry.Data)
+	}
 
 	mockClient.AssertExpectations(t)
 }

@@ -460,7 +460,7 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 
 	u.log.WithFields(logrus.Fields{
 		"duration": fmt.Sprintf("%fs", time.Since(start).Seconds()),
-	}).Infof("vulnerability data has been updated")
+	}).Info("finished updating vulnerability data")
 
 	return errors.Join(batchErrs...)
 }
@@ -503,9 +503,21 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
 	)
 
-	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
-	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
-	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
+	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec, func(i int) logrus.Fields {
+		return logrus.Fields{"cve_id": cves[i].CveID}
+	})
+	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec, func(i int) logrus.Fields {
+		return logrus.Fields{"cve_id": cveAliases[i].CanonicalCveID, "alias": cveAliases[i].Alias}
+	})
+	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec, func(i int) logrus.Fields {
+		return logrus.Fields{
+			"image":   vulns[i].ImageName,
+			"tag":     vulns[i].ImageTag,
+			"source":  vulns[i].Source,
+			"cve_id":  vulns[i].CveID,
+			"package": vulns[i].Package,
+		}
+	})
 
 	if len(cves) > 0 {
 		cveIDs := make([]string, 0, len(cves))
@@ -532,7 +544,12 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			ImageName: i.ImageName,
 			ImageTag:  i.ImageTag,
 		}); err != nil {
-			u.log.WithError(err).Error("recalculate vulnerability summary")
+			u.log.WithError(err).WithFields(logrus.Fields{
+				"image":             i.ImageName,
+				"tag":               i.ImageTag,
+				"source":            i.Source,
+				"received_findings": len(i.Vulnerabilities),
+			}).Error("recalculate vulnerability summary")
 		}
 	}
 
@@ -548,12 +565,16 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageName },
 		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageTag },
 	)
-	if errCount := u.runExec("update workload states", len(workloadStates), u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec); errCount > 0 {
+	if errCount := u.runExec("update workload states", len(workloadStates), u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec, func(i int) logrus.Fields {
+		return logrus.Fields{"image": workloadStates[i].ImageName, "tag": workloadStates[i].ImageTag}
+	}); errCount > 0 {
 		u.log.Errorf("skipping image state update: %d workload state update(s) failed", errCount)
 		return fmt.Errorf("batch workload state update had %d failure(s), image state update skipped", errCount)
 	}
 
-	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
+	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec, func(i int) logrus.Fields {
+		return logrus.Fields{"image": imageStates[i].Name, "tag": imageStates[i].Tag}
+	})
 	return nil
 }
 
@@ -561,6 +582,7 @@ func (u *Updater) runExec(
 	label string,
 	totalRows int,
 	exec func(handler func(int, error)),
+	rowFields func(int) logrus.Fields,
 ) (errCount int) {
 	start := time.Now()
 	handler := func(i int, err error) {
@@ -568,7 +590,7 @@ func (u *Updater) runExec(
 			return
 		}
 		errCount++
-		u.log.WithError(err).WithFields(logrus.Fields{
+		u.log.WithError(err).WithFields(rowFields(i)).WithFields(logrus.Fields{
 			"batch": label,
 			"row":   i,
 		}).Error("batch row failed")
@@ -584,7 +606,7 @@ func (u *Updater) runExec(
 	if errCount > 0 {
 		entry.Error(label)
 	} else {
-		entry.Info(label)
+		entry.Debug(label)
 	}
 
 	return errCount

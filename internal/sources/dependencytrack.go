@@ -149,6 +149,15 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		})
 	}
 
+	d.log.WithFields(logrus.Fields{
+		"image":              imageName,
+		"tag":                imageTag,
+		"project_id":         p.Uuid,
+		"source":             d.Name(),
+		"received_findings":  len(vv),
+		"include_suppressed": includeSuppressed,
+	}).Info("fetched vulnerability findings")
+
 	return vv, nil
 }
 
