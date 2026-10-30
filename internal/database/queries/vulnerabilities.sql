@@ -484,6 +484,8 @@ WITH image_all_vulns AS (
     WHERE
         v.image_name = @image_name
         AND v.image_tag = @image_tag
+        AND (sqlc.narg('package_type')::TEXT IS NULL
+            OR starts_with(v.package, 'pkg:' || sqlc.narg('package_type')::TEXT || '/'))
 ),
 resolved_vulnerabilities AS (
     SELECT
@@ -846,9 +848,7 @@ WITH matched AS MATERIALIZED (
             ARRAY (
                 SELECT
                     unnest(
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
+                        @cve_ids::TEXT[]
 )
                 UNION
                 SELECT
@@ -857,9 +857,7 @@ WITH matched AS MATERIALIZED (
                     cve_alias
                 WHERE
                     canonical_cve_id = ANY (
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
+                        @cve_ids::TEXT[]
 )
 )
 )

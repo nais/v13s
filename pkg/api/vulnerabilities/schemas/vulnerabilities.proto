@@ -225,6 +225,7 @@ message ListVulnerabilitiesForImageRequest {
   repeated Priority priorities = 9;
   // KEV filter. When set, only findings with a matching KEV status are returned.
   optional bool has_kev = 10;
+  optional string package_type = 11;
 }
 
 message ListVulnerabilitiesForImageResponse {

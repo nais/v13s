@@ -1595,7 +1595,8 @@ type ListVulnerabilitiesForImageRequest struct {
 	// Exact priority filter. When set, only findings whose priority is in this set are returned.
 	Priorities []Priority `protobuf:"varint,9,rep,packed,name=priorities,proto3,enum=v13s.api.protobuf.Priority" json:"priorities,omitempty"`
 	// KEV filter. When set, only findings with a matching KEV status are returned.
-	HasKev        *bool `protobuf:"varint,10,opt,name=has_kev,json=hasKev,proto3,oneof" json:"has_kev,omitempty"`
+	HasKev        *bool   `protobuf:"varint,10,opt,name=has_kev,json=hasKev,proto3,oneof" json:"has_kev,omitempty"`
+	PackageType   *string `protobuf:"bytes,11,opt,name=package_type,json=packageType,proto3,oneof" json:"package_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1698,6 +1699,13 @@ func (x *ListVulnerabilitiesForImageRequest) GetHasKev() bool {
 		return *x.HasKev
 	}
 	return false
+}
+
+func (x *ListVulnerabilitiesForImageRequest) GetPackageType() string {
+	if x != nil && x.PackageType != nil {
+		return *x.PackageType
+	}
+	return ""
 }
 
 type ListVulnerabilitiesForImageResponse struct {
@@ -3640,7 +3648,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\rsnapshot_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fsnapshotDate\x12@\n" +
 	"\x0efirst_fixed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ffirstFixedAt\x12>\n" +
 	"\rlast_fixed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vlastFixedAt\x12%\n" +
-	"\x0eworkload_count\x18\a \x01(\x05R\rworkloadCount\"\xf9\x03\n" +
+	"\x0eworkload_count\x18\a \x01(\x05R\rworkloadCount\"\xb2\x04\n" +
 	"\"ListVulnerabilitiesForImageRequest\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x01 \x01(\tR\timageName\x12\x1b\n" +
@@ -3655,12 +3663,14 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"priorities\x18\t \x03(\x0e2\x1b.v13s.api.protobuf.PriorityR\n" +
 	"priorities\x12\x1c\n" +
 	"\ahas_kev\x18\n" +
-	" \x01(\bH\x03R\x06hasKev\x88\x01\x01B\v\n" +
+	" \x01(\bH\x03R\x06hasKev\x88\x01\x01\x12&\n" +
+	"\fpackage_type\x18\v \x01(\tH\x04R\vpackageType\x88\x01\x01B\v\n" +
 	"\t_order_byB\b\n" +
 	"\x06_sinceB\v\n" +
 	"\t_severityB\n" +
 	"\n" +
-	"\b_has_kev\"\x97\x01\n" +
+	"\b_has_kevB\x0f\n" +
+	"\r_package_type\"\x97\x01\n" +
 	"#ListVulnerabilitiesForImageResponse\x126\n" +
 	"\x05nodes\x18\x01 \x03(\v2 .v13s.api.protobuf.VulnerabilityR\x05nodes\x128\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\xd2\x02\n" +
