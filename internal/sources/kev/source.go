@@ -4,7 +4,9 @@ import (
 	"cmp"
 	"context"
 	"maps"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/nais/v13s/internal/config"
@@ -13,9 +15,13 @@ import (
 
 const feedTimeout = 60 * time.Second
 
+var noteURL = regexp.MustCompile(`https?://[^\s;"']+`)
+
 type Assertion struct {
-	CveID           string
-	KnownRansomware bool
+	CveID            string
+	KnownRansomware  bool
+	ShortDescription string
+	ReferenceURLs    []string
 }
 
 type Source interface {
@@ -37,31 +43,54 @@ func SourcesFromConfig(cfg config.KevConfig) []Source {
 	return sources
 }
 
+func referenceURLs(notes string) []string {
+	var urls []string
+	for _, u := range noteURL.FindAllString(notes, -1) {
+		u = strings.TrimRight(u, ",")
+		if strings.Contains(u, "cisa.gov/news-events/directives/") || slices.Contains(urls, u) {
+			continue
+		}
+		urls = append(urls, u)
+	}
+	return urls
+}
+
 type sourceEntry struct {
 	cveID  string
 	source string
 }
 
 func entries(bySource map[string][]Assertion) sql.UpsertKevSourceEntriesParams {
-	ransomware := map[sourceEntry]bool{}
+	merged := map[sourceEntry]Assertion{}
 	for source, assertions := range bySource {
 		for _, a := range assertions {
 			if a.CveID == "" {
 				continue
 			}
 			e := sourceEntry{cveID: a.CveID, source: source}
-			ransomware[e] = ransomware[e] || a.KnownRansomware
+			m := merged[e]
+			m.KnownRansomware = m.KnownRansomware || a.KnownRansomware
+			m.ShortDescription = cmp.Or(m.ShortDescription, a.ShortDescription)
+			for _, ref := range a.ReferenceURLs {
+				if !slices.Contains(m.ReferenceURLs, ref) {
+					m.ReferenceURLs = append(m.ReferenceURLs, ref)
+				}
+			}
+			merged[e] = m
 		}
 	}
 
 	var params sql.UpsertKevSourceEntriesParams
-	sorted := slices.SortedFunc(maps.Keys(ransomware), func(a, b sourceEntry) int {
+	sorted := slices.SortedFunc(maps.Keys(merged), func(a, b sourceEntry) int {
 		return cmp.Or(cmp.Compare(a.cveID, b.cveID), cmp.Compare(a.source, b.source))
 	})
 	for _, e := range sorted {
+		m := merged[e]
 		params.CveIds = append(params.CveIds, e.cveID)
 		params.Sources = append(params.Sources, e.source)
-		params.KnownRansomwareUse = append(params.KnownRansomwareUse, ransomware[e])
+		params.KnownRansomwareUse = append(params.KnownRansomwareUse, m.KnownRansomware)
+		params.ShortDescriptions = append(params.ShortDescriptions, m.ShortDescription)
+		params.ReferenceUrls = append(params.ReferenceUrls, strings.Join(m.ReferenceURLs, "\n"))
 	}
 	return params
 }

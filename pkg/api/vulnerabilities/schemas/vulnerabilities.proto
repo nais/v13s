@@ -144,9 +144,21 @@ message Cve {
   optional double cvss_score = 9;
   optional double epss_score = 10;
   optional double epss_percentile = 11;
-  bool has_kev_entry = 12;
-  bool known_ransomware_use = 13;
+  bool has_kev_entry = 12 [deprecated = true];
+  bool known_ransomware_use = 13 [deprecated = true];
   Priority priority = 14;
+  optional KevEntry kev_entry = 15;
+}
+
+// Presence indicates known exploitation. Only GetCve populates description,
+// reference_urls, sources and description_source; other RPCs return only
+// known_ransomware_use.
+message KevEntry {
+  bool known_ransomware_use = 1;
+  optional string description = 2;
+  repeated string reference_urls = 3;
+  repeated string sources = 4;
+  optional string description_source = 5;
 }
 
 message Suppression {

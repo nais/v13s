@@ -2082,6 +2082,65 @@ func (_c *MockQuerier_ListJobsForWorkload_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// ListKevSourceEntriesForCve provides a mock function with given fields: ctx, cveID
+func (_m *MockQuerier) ListKevSourceEntriesForCve(ctx context.Context, cveID string) ([]*sql.ListKevSourceEntriesForCveRow, error) {
+	ret := _m.Called(ctx, cveID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListKevSourceEntriesForCve")
+	}
+
+	var r0 []*sql.ListKevSourceEntriesForCveRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*sql.ListKevSourceEntriesForCveRow, error)); ok {
+		return rf(ctx, cveID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []*sql.ListKevSourceEntriesForCveRow); ok {
+		r0 = rf(ctx, cveID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListKevSourceEntriesForCveRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, cveID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListKevSourceEntriesForCve_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListKevSourceEntriesForCve'
+type MockQuerier_ListKevSourceEntriesForCve_Call struct {
+	*mock.Call
+}
+
+// ListKevSourceEntriesForCve is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cveID string
+func (_e *MockQuerier_Expecter) ListKevSourceEntriesForCve(ctx interface{}, cveID interface{}) *MockQuerier_ListKevSourceEntriesForCve_Call {
+	return &MockQuerier_ListKevSourceEntriesForCve_Call{Call: _e.mock.On("ListKevSourceEntriesForCve", ctx, cveID)}
+}
+
+func (_c *MockQuerier_ListKevSourceEntriesForCve_Call) Run(run func(ctx context.Context, cveID string)) *MockQuerier_ListKevSourceEntriesForCve_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListKevSourceEntriesForCve_Call) Return(_a0 []*sql.ListKevSourceEntriesForCveRow, _a1 error) *MockQuerier_ListKevSourceEntriesForCve_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListKevSourceEntriesForCve_Call) RunAndReturn(run func(context.Context, string) ([]*sql.ListKevSourceEntriesForCveRow, error)) *MockQuerier_ListKevSourceEntriesForCve_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListMeanTimeToFixTrendBySeverity provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg sql.ListMeanTimeToFixTrendBySeverityParams) ([]*sql.ListMeanTimeToFixTrendBySeverityRow, error) {
 	ret := _m.Called(ctx, arg)
