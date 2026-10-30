@@ -3,6 +3,8 @@ package updater
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,7 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,6 +49,183 @@ func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
 }
 
 func (*contextBatchResults) Close() error { return nil }
+
+type batchUpdateDB struct {
+	sql.DBTX
+	failQuery     string
+	failValue     string
+	err           error
+	updatedImages []string
+	onExec        func(string, []any)
+}
+
+func (db *batchUpdateDB) Exec(_ context.Context, query string, args ...any) (pgconn.CommandTag, error) {
+	name := strings.Fields(query)[2]
+	if name == db.failQuery {
+		for _, arg := range args {
+			if value, ok := arg.(string); ok && value == db.failValue {
+				return pgconn.CommandTag{}, db.err
+			}
+		}
+	}
+	if name == "BatchUpdateImageState" {
+		db.updatedImages = append(db.updatedImages, args[1].(string))
+	}
+	if db.onExec != nil {
+		db.onExec(name, args)
+	}
+	return pgconn.NewCommandTag("UPDATE 1"), nil
+}
+
+func (*batchUpdateDB) Query(context.Context, string, ...any) (pgx.Rows, error) {
+	return &emptyBatchUpdateRows{}, nil
+}
+
+func (db *batchUpdateDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+	return &batchUpdateResults{db: db, ctx: ctx, batch: batch}
+}
+
+type emptyBatchUpdateRows struct{ pgx.Rows }
+
+func (*emptyBatchUpdateRows) Next() bool { return false }
+func (*emptyBatchUpdateRows) Err() error { return nil }
+func (*emptyBatchUpdateRows) Close()     {}
+
+type batchUpdateResults struct {
+	pgx.BatchResults
+	db    *batchUpdateDB
+	ctx   context.Context
+	batch *pgx.Batch
+	index int
+}
+
+func (r *batchUpdateResults) Exec() (pgconn.CommandTag, error) {
+	query := r.batch.QueuedQueries[r.index]
+	r.index++
+	return r.db.Exec(r.ctx, query.SQL, query.Arguments...)
+}
+
+func (*batchUpdateResults) Close() error { return nil }
+
+func TestBatchUpdateVulnerabilityDataContinuesAfterImageWriteFailure(t *testing.T) {
+	t.Parallel()
+
+	image := func(name string) *ImageVulnerabilityData {
+		return &ImageVulnerabilityData{
+			ImageName: "image-" + name,
+			ImageTag:  "v1",
+			Vulnerabilities: []*sources.Vulnerability{{
+				Package: "pkg:maven/example@1",
+				Cve: &sources.Cve{
+					Id:         "CVE-" + name,
+					Severity:   sources.SeverityHigh,
+					References: map[string]string{"CVE-" + name: "GHSA-" + name},
+				},
+			}},
+		}
+	}
+
+	for _, tt := range []struct {
+		name      string
+		failQuery string
+		failValue string
+	}{
+		{name: "success"},
+		{name: "CVEs", failQuery: "BatchUpsertCve", failValue: "CVE-failed"},
+		{name: "aliases", failQuery: "BatchUpsertCveAlias", failValue: "GHSA-failed"},
+		{name: "findings", failQuery: "BatchUpsertVulnerabilities", failValue: "image-failed"},
+		{name: "summary", failQuery: "RecalculateVulnerabilitySummary", failValue: "image-failed"},
+		{name: "workload state", failQuery: "BatchUpdateWorkloadStateByImage", failValue: "image-failed"},
+		{name: "image state", failQuery: "BatchUpdateImageState", failValue: "image-failed"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			writeErr := errors.New("database write failed")
+			db := &batchUpdateDB{failQuery: tt.failQuery, failValue: tt.failValue, err: writeErr}
+			log, _ := logrustest.NewNullLogger()
+			u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
+
+			err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
+				image("healthy-before"), image("failed"), image("healthy-after"),
+			})
+
+			if tt.failQuery == "" {
+				require.NoError(t, err)
+				assert.Equal(t, []string{"image-healthy-before", "image-failed", "image-healthy-after"}, db.updatedImages)
+			} else {
+				require.ErrorIs(t, err, writeErr)
+				assert.ErrorContains(t, err, "image-failed:v1")
+				assert.Equal(t, []string{"image-healthy-before", "image-healthy-after"}, db.updatedImages)
+			}
+		})
+	}
+}
+
+func TestBatchUpdateVulnerabilityDataContinuesThroughFullBatch(t *testing.T) {
+	t.Parallel()
+
+	writeErr := errors.New("database write failed")
+	db := &batchUpdateDB{
+		failQuery: "RecalculateVulnerabilitySummary",
+		failValue: "image-50",
+		err:       writeErr,
+	}
+	log, _ := logrustest.NewNullLogger()
+	u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
+	images := make([]*ImageVulnerabilityData, 100)
+	for i := range images {
+		images[i] = &ImageVulnerabilityData{ImageName: fmt.Sprintf("image-%d", i), ImageTag: "v1"}
+	}
+
+	err := u.BatchUpdateVulnerabilityData(t.Context(), images)
+
+	require.ErrorIs(t, err, writeErr)
+	require.Len(t, db.updatedImages, 99)
+	assert.NotContains(t, db.updatedImages, "image-50")
+	assert.Contains(t, db.updatedImages, "image-0")
+	assert.Contains(t, db.updatedImages, "image-99")
+}
+
+func TestBatchUpdateVulnerabilityDataSummariesUseFinalSharedCveSeverity(t *testing.T) {
+	t.Parallel()
+
+	var severity int32
+	summaries := make(map[string]int32)
+	db := &batchUpdateDB{
+		onExec: func(query string, args []any) {
+			switch query {
+			case "BatchUpsertCve":
+				severity = args[4].(int32)
+			case "RecalculateVulnerabilitySummary":
+				summaries[args[0].(string)] = severity
+			}
+		},
+	}
+	log, _ := logrustest.NewNullLogger()
+	u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
+	images := []*ImageVulnerabilityData{
+		{
+			ImageName: "image-first",
+			ImageTag:  "v1",
+			Vulnerabilities: []*sources.Vulnerability{{
+				Package: "pkg:maven/example@1",
+				Cve:     &sources.Cve{Id: "CVE-shared", Severity: sources.SeverityHigh},
+			}},
+		},
+		{
+			ImageName: "image-last",
+			ImageTag:  "v1",
+			Vulnerabilities: []*sources.Vulnerability{{
+				Package: "pkg:maven/example@1",
+				Cve:     &sources.Cve{Id: "CVE-shared", Severity: sources.SeverityLow},
+			}},
+		},
+	}
+
+	require.NoError(t, u.BatchUpdateVulnerabilityData(t.Context(), images))
+	assert.Equal(t, map[string]int32{"image-first": 3, "image-last": 3}, summaries)
+}
 
 func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
 	t.Parallel()
