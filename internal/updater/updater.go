@@ -518,12 +518,6 @@ func (u *Updater) writeImageVulnerabilityData(ctx context.Context, image *ImageV
 	if err := u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec); err != nil {
 		return err
 	}
-	if err := u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec); err != nil {
-		return err
-	}
-	if err := u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec); err != nil {
-		return err
-	}
 
 	if len(cves) > 0 {
 		cveIDs := make([]string, 0, len(cves))
@@ -543,6 +537,12 @@ func (u *Updater) writeImageVulnerabilityData(ctx context.Context, image *ImageV
 		if updated > 0 {
 			u.log.WithField("rows", updated).Debug("updated cve priorities")
 		}
+	}
+	if err := u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec); err != nil {
+		return err
+	}
+	if err := u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec); err != nil {
+		return err
 	}
 	return nil
 }

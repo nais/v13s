@@ -227,6 +227,77 @@ func TestBatchUpdateVulnerabilityDataSummariesUseFinalSharedCveSeverity(t *testi
 	assert.Equal(t, map[string]int32{"image-first": 3, "image-last": 3}, summaries)
 }
 
+func TestBatchUpdateVulnerabilityDataRefreshesSharedCvePriorityAfterImageWriteFailure(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		failQuery string
+		failValue string
+	}{
+		{name: "aliases", failQuery: "BatchUpsertCveAlias", failValue: "GHSA-shared"},
+		{name: "findings", failQuery: "BatchUpsertVulnerabilities", failValue: "image-last"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var severity, priority int32
+			priorityBySeverity := map[int32]int32{1: 3, 3: 4}
+			summaries := make(map[string]int32)
+			writeErr := errors.New("database write failed")
+			db := &batchUpdateDB{
+				failQuery: tt.failQuery,
+				failValue: tt.failValue,
+				err:       writeErr,
+				onExec: func(query string, args []any) {
+					switch query {
+					case "BatchUpsertCve":
+						severity = args[4].(int32)
+					case "UpdateCvePriorityForCves":
+						priority = priorityBySeverity[severity]
+					case "RecalculateVulnerabilitySummary":
+						summaries[args[0].(string)] = priorityBySeverity[severity]
+					}
+				},
+			}
+			log, _ := logrustest.NewNullLogger()
+			u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
+			epssPercentile := 0.91
+			images := []*ImageVulnerabilityData{
+				{
+					ImageName: "image-first",
+					ImageTag:  "v1",
+					Vulnerabilities: []*sources.Vulnerability{{
+						Package:        "pkg:maven/example@1",
+						EpssPercentile: &epssPercentile,
+						Cve:            &sources.Cve{Id: "CVE-shared", Severity: sources.SeverityHigh},
+					}},
+				},
+				{
+					ImageName: "image-last",
+					ImageTag:  "v1",
+					Vulnerabilities: []*sources.Vulnerability{{
+						Package:        "pkg:maven/example@1",
+						EpssPercentile: &epssPercentile,
+						Cve: &sources.Cve{
+							Id:         "CVE-shared",
+							Severity:   sources.SeverityLow,
+							References: map[string]string{"CVE-shared": "GHSA-shared"},
+						},
+					}},
+				},
+			}
+
+			err := u.BatchUpdateVulnerabilityData(t.Context(), images)
+
+			require.ErrorIs(t, err, writeErr)
+			assert.Equal(t, []string{"image-first"}, db.updatedImages)
+			assert.Equal(t, map[string]int32{"image-first": 4}, summaries)
+			assert.Equal(t, int32(4), priority)
+		})
+	}
+}
+
 func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
 	t.Parallel()
 
