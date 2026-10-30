@@ -75,6 +75,7 @@ func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option)
 		OrderBy:      o.OrderBy,
 		Since:        o.Since,
 		SbomStatuses: o.SbomStatuses,
+		Labels:       o.Labels,
 	}, o.CallOptions...)
 }
 
@@ -127,6 +128,7 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 		ctx,
 		&GetVulnerabilitySummaryRequest{
 			Filter: o.Filter,
+			Labels: o.Labels,
 		},
 	)
 }

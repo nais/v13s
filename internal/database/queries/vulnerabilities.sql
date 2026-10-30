@@ -842,27 +842,16 @@ WITH matched AS MATERIALIZED (
     FROM
         vulnerabilities
     WHERE
-        cve_id = ANY (
-            ARRAY (
+        cve_id = ANY (ARRAY (
                 SELECT
-                    unnest(
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
-)
+                    unnest(sqlc.arg('cve_ids')::TEXT[])
                 UNION
                 SELECT
                     alias
                 FROM
                     cve_alias
                 WHERE
-                    canonical_cve_id = ANY (
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
-)
-)
-)
+                    canonical_cve_id = ANY (sqlc.arg('cve_ids')::TEXT[])))
 ),
     filtered AS (
         SELECT

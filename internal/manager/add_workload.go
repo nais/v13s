@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/job"
 	"github.com/nais/v13s/internal/model"
 	"github.com/riverqueue/river"
@@ -42,6 +43,10 @@ type AddWorkloadWorker struct {
 
 func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkloadJob]) error {
 	workload := job.Args.Workload
+	var labels typeext.MapStringString
+	if workload.Labels != nil {
+		labels = model.UserLabels(workload.Labels)
+	}
 
 	if err := a.db.CreateImage(ctx, sql.CreateImageParams{
 		Name:     workload.ImageName,
@@ -59,6 +64,7 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 		WorkloadType: string(workload.Type),
 		ImageName:    workload.ImageName,
 		ImageTag:     workload.ImageTag,
+		Labels:       labels,
 	})
 	if err != nil {
 		a.log.WithError(err).Error("failed to initialize workload")
@@ -66,6 +72,15 @@ func (a *AddWorkloadWorker) Work(ctx context.Context, job *river.Job[AddWorkload
 	}
 
 	if !id.Valid {
+		if labels != nil {
+			if err := a.db.UpdateWorkloadLabels(ctx, sql.UpdateWorkloadLabelsParams{
+				Name: workload.Name, Cluster: workload.Cluster, Namespace: workload.Namespace,
+				WorkloadType: string(workload.Type), ImageName: workload.ImageName, ImageTag: workload.ImageTag,
+				Labels: labels,
+			}); err != nil {
+				return fmt.Errorf("updating workload labels: %w", err)
+			}
+		}
 		recordStatusOutput(ctx, JobStatusInitializeWorkloadSkipped)
 		return nil
 	}

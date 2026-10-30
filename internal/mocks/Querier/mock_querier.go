@@ -4074,6 +4074,53 @@ func (_c *MockQuerier_UpdateImageSyncStatus_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// UpdateWorkloadLabels provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) UpdateWorkloadLabels(ctx context.Context, arg sql.UpdateWorkloadLabelsParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateWorkloadLabels")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.UpdateWorkloadLabelsParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_UpdateWorkloadLabels_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWorkloadLabels'
+type MockQuerier_UpdateWorkloadLabels_Call struct {
+	*mock.Call
+}
+
+// UpdateWorkloadLabels is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.UpdateWorkloadLabelsParams
+func (_e *MockQuerier_Expecter) UpdateWorkloadLabels(ctx interface{}, arg interface{}) *MockQuerier_UpdateWorkloadLabels_Call {
+	return &MockQuerier_UpdateWorkloadLabels_Call{Call: _e.mock.On("UpdateWorkloadLabels", ctx, arg)}
+}
+
+func (_c *MockQuerier_UpdateWorkloadLabels_Call) Run(run func(ctx context.Context, arg sql.UpdateWorkloadLabelsParams)) *MockQuerier_UpdateWorkloadLabels_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.UpdateWorkloadLabelsParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadLabels_Call) Return(_a0 error) *MockQuerier_UpdateWorkloadLabels_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_UpdateWorkloadLabels_Call) RunAndReturn(run func(context.Context, sql.UpdateWorkloadLabelsParams) error) *MockQuerier_UpdateWorkloadLabels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateWorkloadState provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) UpdateWorkloadState(ctx context.Context, arg sql.UpdateWorkloadStateParams) error {
 	ret := _m.Called(ctx, arg)

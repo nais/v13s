@@ -83,6 +83,7 @@ type Querier interface {
 	UpdateImage(ctx context.Context, arg UpdateImageParams) error
 	UpdateImageState(ctx context.Context, arg UpdateImageStateParams) (int64, error)
 	UpdateImageSyncStatus(ctx context.Context, arg UpdateImageSyncStatusParams) error
+	UpdateWorkloadLabels(ctx context.Context, arg UpdateWorkloadLabelsParams) error
 	UpdateWorkloadState(ctx context.Context, arg UpdateWorkloadStateParams) error
 	UpdateWorkloadStateByImage(ctx context.Context, arg UpdateWorkloadStateByImageParams) error
 	UpdateWorkloadStateForImage(ctx context.Context, arg UpdateWorkloadStateForImageParams) error

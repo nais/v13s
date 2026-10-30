@@ -31,6 +31,10 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		request.Filter = &vulnerabilities.Filter{}
 	}
 
+	labelFilters, err := summaryLabelParameters(request.GetLabels())
+	if err != nil {
+		return nil, err
+	}
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
 		since.Time = request.GetSince().AsTime()
@@ -57,6 +61,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		Limit:         limit,
 		Offset:        offset,
 		Since:         since,
+		LabelFilters:  labelFilters,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
@@ -135,6 +140,7 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow, history bool) *vu
 			Type:      row.WorkloadType,
 			ImageName: imageName,
 			ImageTag:  imageTag,
+			Labels:    row.Labels,
 		},
 		VulnerabilitySummary: vulnSummary,
 		SbomStatus:           sbomStatus,
@@ -143,6 +149,10 @@ func toWorkloadSummary(row *sql.ListVulnerabilitySummariesRow, history bool) *vu
 
 // TLDR: make distinction between no summary found and summary found with 0 values
 func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabilities.GetVulnerabilitySummaryRequest) (*vulnerabilities.GetVulnerabilitySummaryResponse, error) {
+	labelFilters, err := summaryLabelParameters(request.GetLabels())
+	if err != nil {
+		return nil, err
+	}
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
@@ -156,6 +166,7 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 		WorkloadName:  request.GetFilter().Workload,
 		RiskTiers:     riskTiers,
 		HasKev:        request.GetFilter().HasKev,
+		LabelFilters:  labelFilters,
 	})
 	if err != nil {
 		return nil, err
