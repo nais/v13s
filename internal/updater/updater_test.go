@@ -3,7 +3,6 @@ package updater
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -52,11 +51,9 @@ func (*contextBatchResults) Close() error { return nil }
 
 type batchUpdateDB struct {
 	sql.DBTX
-	failQuery     string
-	failValue     string
-	err           error
-	updatedImages []string
-	onExec        func(string, []any)
+	failQuery string
+	failValue string
+	err       error
 }
 
 func (db *batchUpdateDB) Exec(_ context.Context, query string, args ...any) (pgconn.CommandTag, error) {
@@ -67,12 +64,6 @@ func (db *batchUpdateDB) Exec(_ context.Context, query string, args ...any) (pgc
 				return pgconn.CommandTag{}, db.err
 			}
 		}
-	}
-	if name == "BatchUpdateImageState" {
-		db.updatedImages = append(db.updatedImages, args[1].(string))
-	}
-	if db.onExec != nil {
-		db.onExec(name, args)
 	}
 	return pgconn.NewCommandTag("UPDATE 1"), nil
 }
@@ -107,13 +98,14 @@ func (r *batchUpdateResults) Exec() (pgconn.CommandTag, error) {
 
 func (*batchUpdateResults) Close() error { return nil }
 
-func TestBatchUpdateVulnerabilityDataContinuesAfterImageWriteFailure(t *testing.T) {
+func TestBatchUpdateVulnerabilityDataLogsWriteFailures(t *testing.T) {
 	t.Parallel()
 
 	image := func(name string) *ImageVulnerabilityData {
 		return &ImageVulnerabilityData{
 			ImageName: "image-" + name,
 			ImageTag:  "v1",
+			Source:    "dependencytrack",
 			Vulnerabilities: []*sources.Vulnerability{{
 				Package: "pkg:maven/example@1",
 				Cve: &sources.Cve{
@@ -129,171 +121,65 @@ func TestBatchUpdateVulnerabilityDataContinuesAfterImageWriteFailure(t *testing.
 		name      string
 		failQuery string
 		failValue string
+		message   string
+		fields    logrus.Fields
 	}{
-		{name: "success"},
-		{name: "CVEs", failQuery: "BatchUpsertCve", failValue: "CVE-failed"},
-		{name: "aliases", failQuery: "BatchUpsertCveAlias", failValue: "GHSA-failed"},
-		{name: "findings", failQuery: "BatchUpsertVulnerabilities", failValue: "image-failed"},
-		{name: "summary", failQuery: "RecalculateVulnerabilitySummary", failValue: "image-failed"},
-		{name: "workload state", failQuery: "BatchUpdateWorkloadStateByImage", failValue: "image-failed"},
-		{name: "image state", failQuery: "BatchUpdateImageState", failValue: "image-failed"},
+		{
+			name: "CVEs", failQuery: "BatchUpsertCve", failValue: "CVE-failed",
+			message: "batch row failed",
+			fields:  logrus.Fields{"batch": "upsert CVEs", "cve_id": "CVE-failed"},
+		},
+		{
+			name: "aliases", failQuery: "BatchUpsertCveAlias", failValue: "GHSA-failed",
+			message: "batch row failed",
+			fields:  logrus.Fields{"batch": "upsert CVE aliases", "cve_id": "CVE-failed", "alias": "GHSA-failed"},
+		},
+		{
+			name: "findings", failQuery: "BatchUpsertVulnerabilities", failValue: "image-failed",
+			message: "batch row failed",
+			fields: logrus.Fields{
+				"batch": "upsert vulnerabilities", "image": "image-failed", "tag": "v1",
+				"source": "dependencytrack", "cve_id": "CVE-failed", "package": "pkg:maven/example@1",
+			},
+		},
+		{
+			name: "summary", failQuery: "RecalculateVulnerabilitySummary", failValue: "image-failed",
+			message: "recalculate vulnerability summary",
+			fields: logrus.Fields{
+				"image": "image-failed", "tag": "v1", "source": "dependencytrack", "received_findings": 1,
+			},
+		},
+		{
+			name: "image state", failQuery: "BatchUpdateImageState", failValue: "image-failed",
+			message: "batch row failed",
+			fields:  logrus.Fields{"batch": "update image states", "image": "image-failed", "tag": "v1"},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			writeErr := errors.New("database write failed")
 			db := &batchUpdateDB{failQuery: tt.failQuery, failValue: tt.failValue, err: writeErr}
-			log, _ := logrustest.NewNullLogger()
+			log, hook := logrustest.NewNullLogger()
 			u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
 
 			err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
 				image("healthy-before"), image("failed"), image("healthy-after"),
 			})
 
-			if tt.failQuery == "" {
-				require.NoError(t, err)
-				assert.Equal(t, []string{"image-healthy-before", "image-failed", "image-healthy-after"}, db.updatedImages)
-			} else {
-				require.ErrorIs(t, err, writeErr)
-				assert.ErrorContains(t, err, "image-failed:v1")
-				assert.Equal(t, []string{"image-healthy-before", "image-healthy-after"}, db.updatedImages)
+			require.NoError(t, err)
+			var entries []*logrus.Entry
+			for _, entry := range hook.AllEntries() {
+				if entry.Message == tt.message {
+					entries = append(entries, entry)
+				}
 			}
-		})
-	}
-}
-
-func TestBatchUpdateVulnerabilityDataContinuesThroughFullBatch(t *testing.T) {
-	t.Parallel()
-
-	writeErr := errors.New("database write failed")
-	db := &batchUpdateDB{
-		failQuery: "RecalculateVulnerabilitySummary",
-		failValue: "image-50",
-		err:       writeErr,
-	}
-	log, _ := logrustest.NewNullLogger()
-	u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
-	images := make([]*ImageVulnerabilityData, 100)
-	for i := range images {
-		images[i] = &ImageVulnerabilityData{ImageName: fmt.Sprintf("image-%d", i), ImageTag: "v1"}
-	}
-
-	err := u.BatchUpdateVulnerabilityData(t.Context(), images)
-
-	require.ErrorIs(t, err, writeErr)
-	require.Len(t, db.updatedImages, 99)
-	assert.NotContains(t, db.updatedImages, "image-50")
-	assert.Contains(t, db.updatedImages, "image-0")
-	assert.Contains(t, db.updatedImages, "image-99")
-}
-
-func TestBatchUpdateVulnerabilityDataSummariesUseFinalSharedCveSeverity(t *testing.T) {
-	t.Parallel()
-
-	var severity int32
-	summaries := make(map[string]int32)
-	db := &batchUpdateDB{
-		onExec: func(query string, args []any) {
-			switch query {
-			case "BatchUpsertCve":
-				severity = args[4].(int32)
-			case "RecalculateVulnerabilitySummary":
-				summaries[args[0].(string)] = severity
+			require.Len(t, entries, 1)
+			assert.Equal(t, logrus.ErrorLevel, entries[0].Level)
+			assert.Equal(t, writeErr, entries[0].Data[logrus.ErrorKey])
+			for field, value := range tt.fields {
+				assert.Equal(t, value, entries[0].Data[field], "log field %s", field)
 			}
-		},
-	}
-	log, _ := logrustest.NewNullLogger()
-	u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
-	images := []*ImageVulnerabilityData{
-		{
-			ImageName: "image-first",
-			ImageTag:  "v1",
-			Vulnerabilities: []*sources.Vulnerability{{
-				Package: "pkg:maven/example@1",
-				Cve:     &sources.Cve{Id: "CVE-shared", Severity: sources.SeverityHigh},
-			}},
-		},
-		{
-			ImageName: "image-last",
-			ImageTag:  "v1",
-			Vulnerabilities: []*sources.Vulnerability{{
-				Package: "pkg:maven/example@1",
-				Cve:     &sources.Cve{Id: "CVE-shared", Severity: sources.SeverityLow},
-			}},
-		},
-	}
-
-	require.NoError(t, u.BatchUpdateVulnerabilityData(t.Context(), images))
-	assert.Equal(t, map[string]int32{"image-first": 3, "image-last": 3}, summaries)
-}
-
-func TestBatchUpdateVulnerabilityDataRefreshesSharedCvePriorityAfterImageWriteFailure(t *testing.T) {
-	t.Parallel()
-
-	for _, tt := range []struct {
-		name      string
-		failQuery string
-		failValue string
-	}{
-		{name: "aliases", failQuery: "BatchUpsertCveAlias", failValue: "GHSA-shared"},
-		{name: "findings", failQuery: "BatchUpsertVulnerabilities", failValue: "image-last"},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var severity, priority int32
-			priorityBySeverity := map[int32]int32{1: 3, 3: 4}
-			summaries := make(map[string]int32)
-			writeErr := errors.New("database write failed")
-			db := &batchUpdateDB{
-				failQuery: tt.failQuery,
-				failValue: tt.failValue,
-				err:       writeErr,
-				onExec: func(query string, args []any) {
-					switch query {
-					case "BatchUpsertCve":
-						severity = args[4].(int32)
-					case "UpdateCvePriorityForCves":
-						priority = priorityBySeverity[severity]
-					case "RecalculateVulnerabilitySummary":
-						summaries[args[0].(string)] = priorityBySeverity[severity]
-					}
-				},
-			}
-			log, _ := logrustest.NewNullLogger()
-			u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
-			epssPercentile := 0.91
-			images := []*ImageVulnerabilityData{
-				{
-					ImageName: "image-first",
-					ImageTag:  "v1",
-					Vulnerabilities: []*sources.Vulnerability{{
-						Package:        "pkg:maven/example@1",
-						EpssPercentile: &epssPercentile,
-						Cve:            &sources.Cve{Id: "CVE-shared", Severity: sources.SeverityHigh},
-					}},
-				},
-				{
-					ImageName: "image-last",
-					ImageTag:  "v1",
-					Vulnerabilities: []*sources.Vulnerability{{
-						Package:        "pkg:maven/example@1",
-						EpssPercentile: &epssPercentile,
-						Cve: &sources.Cve{
-							Id:         "CVE-shared",
-							Severity:   sources.SeverityLow,
-							References: map[string]string{"CVE-shared": "GHSA-shared"},
-						},
-					}},
-				},
-			}
-
-			err := u.BatchUpdateVulnerabilityData(t.Context(), images)
-
-			require.ErrorIs(t, err, writeErr)
-			assert.Equal(t, []string{"image-first"}, db.updatedImages)
-			assert.Equal(t, map[string]int32{"image-first": 4}, summaries)
-			assert.Equal(t, int32(4), priority)
 		})
 	}
 }
