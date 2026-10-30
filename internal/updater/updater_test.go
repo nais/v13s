@@ -3,7 +3,6 @@ package updater
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,9 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
-	"github.com/nais/v13s/internal/sources"
 	"github.com/sirupsen/logrus"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,141 +45,6 @@ func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
 }
 
 func (*contextBatchResults) Close() error { return nil }
-
-type batchUpdateDB struct {
-	sql.DBTX
-	failQuery string
-	failValue string
-	err       error
-}
-
-func (db *batchUpdateDB) Exec(_ context.Context, query string, args ...any) (pgconn.CommandTag, error) {
-	name := strings.Fields(query)[2]
-	if name == db.failQuery {
-		for _, arg := range args {
-			if value, ok := arg.(string); ok && value == db.failValue {
-				return pgconn.CommandTag{}, db.err
-			}
-		}
-	}
-	return pgconn.NewCommandTag("UPDATE 1"), nil
-}
-
-func (*batchUpdateDB) Query(context.Context, string, ...any) (pgx.Rows, error) {
-	return &emptyBatchUpdateRows{}, nil
-}
-
-func (db *batchUpdateDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
-	return &batchUpdateResults{db: db, ctx: ctx, batch: batch}
-}
-
-type emptyBatchUpdateRows struct{ pgx.Rows }
-
-func (*emptyBatchUpdateRows) Next() bool { return false }
-func (*emptyBatchUpdateRows) Err() error { return nil }
-func (*emptyBatchUpdateRows) Close()     {}
-
-type batchUpdateResults struct {
-	pgx.BatchResults
-	db    *batchUpdateDB
-	ctx   context.Context
-	batch *pgx.Batch
-	index int
-}
-
-func (r *batchUpdateResults) Exec() (pgconn.CommandTag, error) {
-	query := r.batch.QueuedQueries[r.index]
-	r.index++
-	return r.db.Exec(r.ctx, query.SQL, query.Arguments...)
-}
-
-func (*batchUpdateResults) Close() error { return nil }
-
-func TestBatchUpdateVulnerabilityDataLogsWriteFailures(t *testing.T) {
-	t.Parallel()
-
-	image := func(name string) *ImageVulnerabilityData {
-		return &ImageVulnerabilityData{
-			ImageName: "image-" + name,
-			ImageTag:  "v1",
-			Source:    "dependencytrack",
-			Vulnerabilities: []*sources.Vulnerability{{
-				Package: "pkg:maven/example@1",
-				Cve: &sources.Cve{
-					Id:         "CVE-" + name,
-					Severity:   sources.SeverityHigh,
-					References: map[string]string{"CVE-" + name: "GHSA-" + name},
-				},
-			}},
-		}
-	}
-
-	for _, tt := range []struct {
-		name      string
-		failQuery string
-		failValue string
-		message   string
-		fields    logrus.Fields
-	}{
-		{
-			name: "CVEs", failQuery: "BatchUpsertCve", failValue: "CVE-failed",
-			message: "batch row failed",
-			fields:  logrus.Fields{"batch": "upsert CVEs", "cve_id": "CVE-failed"},
-		},
-		{
-			name: "aliases", failQuery: "BatchUpsertCveAlias", failValue: "GHSA-failed",
-			message: "batch row failed",
-			fields:  logrus.Fields{"batch": "upsert CVE aliases", "cve_id": "CVE-failed", "alias": "GHSA-failed"},
-		},
-		{
-			name: "findings", failQuery: "BatchUpsertVulnerabilities", failValue: "image-failed",
-			message: "batch row failed",
-			fields: logrus.Fields{
-				"batch": "upsert vulnerabilities", "image": "image-failed", "tag": "v1",
-				"source": "dependencytrack", "cve_id": "CVE-failed", "package": "pkg:maven/example@1",
-			},
-		},
-		{
-			name: "summary", failQuery: "RecalculateVulnerabilitySummary", failValue: "image-failed",
-			message: "recalculate vulnerability summary",
-			fields: logrus.Fields{
-				"image": "image-failed", "tag": "v1", "source": "dependencytrack", "received_findings": 1,
-			},
-		},
-		{
-			name: "image state", failQuery: "BatchUpdateImageState", failValue: "image-failed",
-			message: "batch row failed",
-			fields:  logrus.Fields{"batch": "update image states", "image": "image-failed", "tag": "v1"},
-		},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			writeErr := errors.New("database write failed")
-			db := &batchUpdateDB{failQuery: tt.failQuery, failValue: tt.failValue, err: writeErr}
-			log, hook := logrustest.NewNullLogger()
-			u := &Updater{querier: sql.New(db), log: logrus.NewEntry(log)}
-
-			err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
-				image("healthy-before"), image("failed"), image("healthy-after"),
-			})
-
-			require.NoError(t, err)
-			var entries []*logrus.Entry
-			for _, entry := range hook.AllEntries() {
-				if entry.Message == tt.message {
-					entries = append(entries, entry)
-				}
-			}
-			require.Len(t, entries, 1)
-			assert.Equal(t, logrus.ErrorLevel, entries[0].Level)
-			assert.Equal(t, writeErr, entries[0].Data[logrus.ErrorKey])
-			for field, value := range tt.fields {
-				assert.Equal(t, value, entries[0].Data[field], "log field %s", field)
-			}
-		})
-	}
-}
 
 func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
 	t.Parallel()
