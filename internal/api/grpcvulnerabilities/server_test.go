@@ -262,6 +262,72 @@ func TestServer_ListWorkloadsForVulnerability_NamespacesFilter(t *testing.T) {
 	})
 }
 
+func TestServer_ListVulnerabilitiesForImagePackageType(t *testing.T) {
+	ctx, queries, pool, client, cleanup := setupTest(t, testSetupConfig{}, true)
+	defer cleanup()
+
+	const imageName, imageTag, cveID = "ecosystem-image", "tag", "CVE-ECOSYSTEM"
+	require.NoError(t, queries.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: imageTag, Metadata: map[string]string{}}))
+	queries.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+		CveID: cveID, Severity: int32(vulnerabilities.Severity_HIGH), Refs: map[string]string{},
+	}}).Exec(func(_ int, err error) { require.NoError(t, err) })
+	_, err := pool.Exec(ctx, "UPDATE cve SET priority = 3 WHERE cve_id = $1", cveID)
+	require.NoError(t, err)
+
+	packages := []string{"plain-package", "pkg:mavenish/not-maven@1", "pkg:maven"}
+	for _, ecosystem := range []string{"maven", "npm"} {
+		for i := range 12 {
+			packages = append(packages, fmt.Sprintf("pkg:%s/example-%02d@1", ecosystem, i))
+		}
+	}
+	params := make([]sql.BatchUpsertVulnerabilitiesParams, 0, len(packages))
+	for _, pkg := range packages {
+		params = append(params, sql.BatchUpsertVulnerabilitiesParams{
+			ImageName: imageName, ImageTag: imageTag, CveID: cveID, Package: pkg, Source: "test",
+		})
+	}
+	queries.BatchUpsertVulnerabilities(ctx, params).Exec(func(_ int, err error) { require.NoError(t, err) })
+
+	for _, tc := range []struct {
+		name        string
+		packageType *string
+		total       int64
+	}{
+		{name: "all", total: 27},
+		{name: "maven", packageType: new("maven"), total: 12},
+		{name: "npm", packageType: new("npm"), total: 12},
+		{name: "no matches", packageType: new("cargo")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, direction := range []vulnerabilities.Direction{vulnerabilities.Direction_ASC, vulnerabilities.Direction_DESC} {
+				for _, offset := range []int32{0, 10} {
+					opts := []vulnerabilities.Option{
+						vulnerabilities.Limit(10), vulnerabilities.Offset(offset),
+						vulnerabilities.Order(vulnerabilities.OrderByPackage, direction),
+						vulnerabilities.PriorityFilter(vulnerabilities.Priority_PRIORITY_ELEVATED),
+					}
+					if tc.packageType != nil {
+						opts = append(opts, vulnerabilities.PackageTypeFilter(*tc.packageType))
+					}
+					resp, err := client.ListVulnerabilitiesForImage(ctx, imageName, imageTag, opts...)
+					require.NoError(t, err)
+					require.Equal(t, tc.total, resp.PageInfo.TotalCount)
+					require.Len(t, resp.Nodes, max(0, min(10, int(tc.total)-int(offset))))
+					for i, node := range resp.Nodes {
+						if tc.packageType != nil {
+							index := int(offset) + i
+							if direction == vulnerabilities.Direction_DESC {
+								index = 11 - index
+							}
+							assert.Equal(t, fmt.Sprintf("pkg:%s/example-%02d@1", *tc.packageType, index), node.Package)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestServer_ListVulnerabilitiesForImage(t *testing.T) {
 	cfg := testSetupConfig{
 		clusters:              []string{"cluster-1"},

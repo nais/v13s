@@ -20,7 +20,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var packageTypePattern = regexp.MustCompile(`^[a-z][a-z0-9.+-]*$`)
+
 func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulnerabilities.ListVulnerabilitiesForImageRequest) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
+	if request.PackageType != nil && !packageTypePattern.MatchString(*request.PackageType) {
+		return nil, status.Error(codes.InvalidArgument, "package_type must be a lowercase PURL type")
+	}
+
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -37,6 +43,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		Severity:          toInt32Ptr(request.Severity),
 		RiskTiers:         priorityTiersFromPriorities(request.GetPriorities()),
 		HasKev:            request.HasKev,
+		PackageType:       request.PackageType,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
