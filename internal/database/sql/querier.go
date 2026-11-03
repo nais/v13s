@@ -19,6 +19,7 @@ type Querier interface {
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
+	ClearChainguardCorrections(ctx context.Context) error
 	CreateImage(ctx context.Context, arg CreateImageParams) error
 	CreateSourceRef(ctx context.Context, arg CreateSourceRefParams) error
 	CreateVulnerabilitySummary(ctx context.Context, arg CreateVulnerabilitySummaryParams) (*VulnerabilitySummary, error)
@@ -33,6 +34,7 @@ type Querier interface {
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
 	GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error)
 	GetSourceRef(ctx context.Context, arg GetSourceRefParams) (*SourceRef, error)
+	GetVulnerabilitiesForChainguardCorrection(ctx context.Context) ([]*GetVulnerabilitiesForChainguardCorrectionRow, error)
 	// apk/deb excluded: OSV has no purl-tagged fix data for OS-distro packages.
 	GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*GetVulnerabilitiesForOsvEnrichmentRow, error)
 	GetVulnerability(ctx context.Context, arg GetVulnerabilityParams) (*GetVulnerabilityRow, error)
@@ -46,6 +48,7 @@ type Querier interface {
 	ListCveSummaries(ctx context.Context, arg ListCveSummariesParams) ([]*ListCveSummariesRow, error)
 	ListCveSummariesFromCounts(ctx context.Context, arg ListCveSummariesFromCountsParams) ([]*ListCveSummariesFromCountsRow, error)
 	ListEarliestSeveritySince(ctx context.Context, arg ListEarliestSeveritySinceParams) ([]*ListEarliestSeveritySinceRow, error)
+	ListImagesWithChainguardCorrections(ctx context.Context) ([]*ListImagesWithChainguardCorrectionsRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
@@ -64,6 +67,7 @@ type Querier interface {
 	ListWorkloadsByImage(ctx context.Context, arg ListWorkloadsByImageParams) ([]*ListWorkloadsByImageRow, error)
 	ListWorkloadsForVulnerabilities(ctx context.Context, arg ListWorkloadsForVulnerabilitiesParams) ([]*ListWorkloadsForVulnerabilitiesRow, error)
 	ListWorkloadsForVulnerabilityById(ctx context.Context, vulnerabilityID pgtype.UUID) ([]*ListWorkloadsForVulnerabilityByIdRow, error)
+	LockChainguardCorrections(ctx context.Context) error
 	MarkImagesAsUntracked(ctx context.Context, arg MarkImagesAsUntrackedParams) (int64, error)
 	MarkImagesForResync(ctx context.Context, arg MarkImagesForResyncParams) error
 	MarkUntrackedImagesForResync(ctx context.Context) (int64, error)
@@ -75,6 +79,7 @@ type Querier interface {
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	RekeySuppressedAliasesToCanonical(ctx context.Context) (int64, error)
 	ResetDatabase(ctx context.Context) error
+	SaveChainguardCorrection(ctx context.Context, arg SaveChainguardCorrectionParams) error
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	TryAdvisoryLock(ctx context.Context, key int64) (bool, error)

@@ -536,6 +536,52 @@ func (_c *MockQuerier_BulkUpdateFixVersions_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// ClearChainguardCorrections provides a mock function with given fields: ctx
+func (_m *MockQuerier) ClearChainguardCorrections(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearChainguardCorrections")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_ClearChainguardCorrections_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClearChainguardCorrections'
+type MockQuerier_ClearChainguardCorrections_Call struct {
+	*mock.Call
+}
+
+// ClearChainguardCorrections is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) ClearChainguardCorrections(ctx interface{}) *MockQuerier_ClearChainguardCorrections_Call {
+	return &MockQuerier_ClearChainguardCorrections_Call{Call: _e.mock.On("ClearChainguardCorrections", ctx)}
+}
+
+func (_c *MockQuerier_ClearChainguardCorrections_Call) Run(run func(ctx context.Context)) *MockQuerier_ClearChainguardCorrections_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ClearChainguardCorrections_Call) Return(_a0 error) *MockQuerier_ClearChainguardCorrections_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_ClearChainguardCorrections_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_ClearChainguardCorrections_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateImage provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) CreateImage(ctx context.Context, arg sql.CreateImageParams) error {
 	ret := _m.Called(ctx, arg)
@@ -1318,6 +1364,64 @@ func (_c *MockQuerier_GetSourceRef_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
+// GetVulnerabilitiesForChainguardCorrection provides a mock function with given fields: ctx
+func (_m *MockQuerier) GetVulnerabilitiesForChainguardCorrection(ctx context.Context) ([]*sql.GetVulnerabilitiesForChainguardCorrectionRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetVulnerabilitiesForChainguardCorrection")
+	}
+
+	var r0 []*sql.GetVulnerabilitiesForChainguardCorrectionRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*sql.GetVulnerabilitiesForChainguardCorrectionRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*sql.GetVulnerabilitiesForChainguardCorrectionRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.GetVulnerabilitiesForChainguardCorrectionRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetVulnerabilitiesForChainguardCorrection'
+type MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call struct {
+	*mock.Call
+}
+
+// GetVulnerabilitiesForChainguardCorrection is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) GetVulnerabilitiesForChainguardCorrection(ctx interface{}) *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call {
+	return &MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call{Call: _e.mock.On("GetVulnerabilitiesForChainguardCorrection", ctx)}
+}
+
+func (_c *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call) Run(run func(ctx context.Context)) *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call) Return(_a0 []*sql.GetVulnerabilitiesForChainguardCorrectionRow, _a1 error) *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call) RunAndReturn(run func(context.Context) ([]*sql.GetVulnerabilitiesForChainguardCorrectionRow, error)) *MockQuerier_GetVulnerabilitiesForChainguardCorrection_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVulnerabilitiesForOsvEnrichment provides a mock function with given fields: ctx
 func (_m *MockQuerier) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*sql.GetVulnerabilitiesForOsvEnrichmentRow, error) {
 	ret := _m.Called(ctx)
@@ -2019,6 +2123,64 @@ func (_c *MockQuerier_ListEarliestSeveritySince_Call) Return(_a0 []*sql.ListEarl
 }
 
 func (_c *MockQuerier_ListEarliestSeveritySince_Call) RunAndReturn(run func(context.Context, sql.ListEarliestSeveritySinceParams) ([]*sql.ListEarliestSeveritySinceRow, error)) *MockQuerier_ListEarliestSeveritySince_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListImagesWithChainguardCorrections provides a mock function with given fields: ctx
+func (_m *MockQuerier) ListImagesWithChainguardCorrections(ctx context.Context) ([]*sql.ListImagesWithChainguardCorrectionsRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListImagesWithChainguardCorrections")
+	}
+
+	var r0 []*sql.ListImagesWithChainguardCorrectionsRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*sql.ListImagesWithChainguardCorrectionsRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*sql.ListImagesWithChainguardCorrectionsRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListImagesWithChainguardCorrectionsRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListImagesWithChainguardCorrections_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListImagesWithChainguardCorrections'
+type MockQuerier_ListImagesWithChainguardCorrections_Call struct {
+	*mock.Call
+}
+
+// ListImagesWithChainguardCorrections is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) ListImagesWithChainguardCorrections(ctx interface{}) *MockQuerier_ListImagesWithChainguardCorrections_Call {
+	return &MockQuerier_ListImagesWithChainguardCorrections_Call{Call: _e.mock.On("ListImagesWithChainguardCorrections", ctx)}
+}
+
+func (_c *MockQuerier_ListImagesWithChainguardCorrections_Call) Run(run func(ctx context.Context)) *MockQuerier_ListImagesWithChainguardCorrections_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListImagesWithChainguardCorrections_Call) Return(_a0 []*sql.ListImagesWithChainguardCorrectionsRow, _a1 error) *MockQuerier_ListImagesWithChainguardCorrections_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListImagesWithChainguardCorrections_Call) RunAndReturn(run func(context.Context) ([]*sql.ListImagesWithChainguardCorrectionsRow, error)) *MockQuerier_ListImagesWithChainguardCorrections_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3084,6 +3246,52 @@ func (_c *MockQuerier_ListWorkloadsForVulnerabilityById_Call) RunAndReturn(run f
 	return _c
 }
 
+// LockChainguardCorrections provides a mock function with given fields: ctx
+func (_m *MockQuerier) LockChainguardCorrections(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockChainguardCorrections")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_LockChainguardCorrections_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockChainguardCorrections'
+type MockQuerier_LockChainguardCorrections_Call struct {
+	*mock.Call
+}
+
+// LockChainguardCorrections is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockQuerier_Expecter) LockChainguardCorrections(ctx interface{}) *MockQuerier_LockChainguardCorrections_Call {
+	return &MockQuerier_LockChainguardCorrections_Call{Call: _e.mock.On("LockChainguardCorrections", ctx)}
+}
+
+func (_c *MockQuerier_LockChainguardCorrections_Call) Run(run func(ctx context.Context)) *MockQuerier_LockChainguardCorrections_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockChainguardCorrections_Call) Return(_a0 error) *MockQuerier_LockChainguardCorrections_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_LockChainguardCorrections_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_LockChainguardCorrections_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MarkImagesAsUntracked provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) MarkImagesAsUntracked(ctx context.Context, arg sql.MarkImagesAsUntrackedParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
@@ -3643,6 +3851,53 @@ func (_c *MockQuerier_ResetDatabase_Call) Return(_a0 error) *MockQuerier_ResetDa
 }
 
 func (_c *MockQuerier_ResetDatabase_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_ResetDatabase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveChainguardCorrection provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) SaveChainguardCorrection(ctx context.Context, arg sql.SaveChainguardCorrectionParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveChainguardCorrection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.SaveChainguardCorrectionParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_SaveChainguardCorrection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveChainguardCorrection'
+type MockQuerier_SaveChainguardCorrection_Call struct {
+	*mock.Call
+}
+
+// SaveChainguardCorrection is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.SaveChainguardCorrectionParams
+func (_e *MockQuerier_Expecter) SaveChainguardCorrection(ctx interface{}, arg interface{}) *MockQuerier_SaveChainguardCorrection_Call {
+	return &MockQuerier_SaveChainguardCorrection_Call{Call: _e.mock.On("SaveChainguardCorrection", ctx, arg)}
+}
+
+func (_c *MockQuerier_SaveChainguardCorrection_Call) Run(run func(ctx context.Context, arg sql.SaveChainguardCorrectionParams)) *MockQuerier_SaveChainguardCorrection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.SaveChainguardCorrectionParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SaveChainguardCorrection_Call) Return(_a0 error) *MockQuerier_SaveChainguardCorrection_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_SaveChainguardCorrection_Call) RunAndReturn(run func(context.Context, sql.SaveChainguardCorrectionParams) error) *MockQuerier_SaveChainguardCorrection_Call {
 	_c.Call.Return(run)
 	return _c
 }

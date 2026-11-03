@@ -169,6 +169,15 @@ Configuration is done via environment variables. See [`.env.sample`](../.env.sam
 | `KEV_VULNCHECK_TOKEN` | VulnCheck API token (required when VulnCheck is enabled; startup fails without it) | — |
 | `KEV_VULNCHECK_URL` | VulnCheck API URL | `https://api.vulncheck.com` |
 | `OSV_BASE_URL` | OSV API base URL | — |
+| `CHAINGUARD_ADVISORIES_ENABLED` | Apply Chainguard corrections to CGA findings from Chainguard's advisory feed | `false` |
+
+Chainguard corrections run in the existing OSV sync job (`UPDATER_SYNC_OSV_ENABLED`), including when `OSV_BASE_URL` is unset. They check APK packages in the `chainguard` and `wolfi` namespaces against `https://advisories.cgr.dev/chainguard/v3/osv/`. The advisory ID, ecosystem, package and architecture must match.
+
+Findings whose Chainguard correction says the installed version is fixed are excluded from active lists, risk scores and CVE counts, not suppressed in DependencyTrack. Team suppressions are unchanged. `chainguard_corrections` stores one assessment per advisory ID and full package PURL, including the source URL and check time. Queries join this shared assessment without changing the original finding's fix metadata. New images use the existing assessment immediately; a new package version waits for the next OSV sync. Corrected findings remain accessible through `GetVulnerabilityById`.
+
+The common summary-recalculation and CVE-count refresh functions take a shared transaction lock before reading assessments; correction writes hold the exclusive lock through both refreshes. This coordinates updater, suppression, KEV and scheduled CVE-count refreshes without serializing image inserts. Assessments are never copied between images.
+
+Version ordering uses `osv-scalibr`'s native APK support. Automatic corrections currently accept numeric releases with an explicit APK revision, such as `2.44-r11`; other formats remain uncorrected because the library's parser accepts malformed versions. Missing, withdrawn, malformed or failed advisory lookups remove previous corrections. Disabling the flag also removes corrections on the next OSV sync; leave that job enabled until rollback has run. Neither action removes findings or team suppression rules.
 
 ### Observability
 

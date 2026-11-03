@@ -16,6 +16,7 @@ const (
 	purlTypeCargo  = "cargo"
 	purlTypeNuget  = "nuget"
 	purlTypeGem    = "gem"
+	purlTypeApk    = "apk"
 )
 
 var osvEcosystems = map[string]string{
@@ -26,6 +27,12 @@ var osvEcosystems = map[string]string{
 	purlTypeCargo:  "crates.io",
 	purlTypeNuget:  "NuGet",
 	purlTypeGem:    "RubyGems",
+	purlTypeApk:    apkEcosystems["chainguard"],
+}
+
+var apkEcosystems = map[string]string{
+	"chainguard": "Chainguard",
+	"wolfi":      "Wolfi",
 }
 
 var (

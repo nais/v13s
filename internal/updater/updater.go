@@ -79,7 +79,7 @@ func NewUpdaterWithRuntimeConfig(pool *pgxpool.Pool, source sources.Source, log 
 		batchWriteTimeout:            BatchWriteTimeoutDefault,
 		log:                          log,
 		kevFetcher:                   kev.NewFetcher(pool, log, kev.SourcesFromConfig(kevCfg)...),
-		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log),
+		osvFetcher:                   osv.NewFetcherWithClient(osv.NewClientWithURL(osvCfg.BaseURL), pool, log).WithChainguard(osvCfg.ChainguardAdvisoriesEnabled),
 		cveWorkloadCountsRefresher:   v13sdatabase.NewCveWorkloadCountsRefresher(pool, log),
 		runtimeConfig:                runtimeCfg,
 	}

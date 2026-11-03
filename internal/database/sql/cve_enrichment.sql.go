@@ -80,6 +80,60 @@ func (q *Queries) BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVe
 	return result.RowsAffected(), nil
 }
 
+const clearChainguardCorrections = `-- name: ClearChainguardCorrections :exec
+UPDATE
+    chainguard_corrections
+SET
+    fix_status = 'unknown',
+    fix_version = NULL,
+    checked_at = NOW()
+`
+
+func (q *Queries) ClearChainguardCorrections(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearChainguardCorrections)
+	return err
+}
+
+const getVulnerabilitiesForChainguardCorrection = `-- name: GetVulnerabilitiesForChainguardCorrection :many
+SELECT DISTINCT
+    cve_id,
+    package
+FROM
+    vulnerabilities
+WHERE
+    cve_id LIKE 'CGA-%'
+    AND (package LIKE 'pkg:apk/chainguard/%'
+        OR package LIKE 'pkg:apk/wolfi/%')
+ORDER BY
+    cve_id,
+    package
+`
+
+type GetVulnerabilitiesForChainguardCorrectionRow struct {
+	CveID   string
+	Package string
+}
+
+func (q *Queries) GetVulnerabilitiesForChainguardCorrection(ctx context.Context) ([]*GetVulnerabilitiesForChainguardCorrectionRow, error) {
+	rows, err := q.db.Query(ctx, getVulnerabilitiesForChainguardCorrection)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*GetVulnerabilitiesForChainguardCorrectionRow{}
+	for rows.Next() {
+		var i GetVulnerabilitiesForChainguardCorrectionRow
+		if err := rows.Scan(&i.CveID, &i.Package); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVulnerabilitiesForOsvEnrichment = `-- name: GetVulnerabilitiesForOsvEnrichment :many
 SELECT DISTINCT
     cve_id,
@@ -112,6 +166,44 @@ func (q *Queries) GetVulnerabilitiesForOsvEnrichment(ctx context.Context) ([]*Ge
 	for rows.Next() {
 		var i GetVulnerabilitiesForOsvEnrichmentRow
 		if err := rows.Scan(&i.CveID, &i.Package); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImagesWithChainguardCorrections = `-- name: ListImagesWithChainguardCorrections :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    vulnerabilities v
+    JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+        AND cc.package_purl = v.package
+    ORDER BY
+        v.image_name,
+        v.image_tag
+`
+
+type ListImagesWithChainguardCorrectionsRow struct {
+	ImageName string
+	ImageTag  string
+}
+
+func (q *Queries) ListImagesWithChainguardCorrections(ctx context.Context) ([]*ListImagesWithChainguardCorrectionsRow, error) {
+	rows, err := q.db.Query(ctx, listImagesWithChainguardCorrections)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListImagesWithChainguardCorrectionsRow{}
+	for rows.Next() {
+		var i ListImagesWithChainguardCorrectionsRow
+		if err := rows.Scan(&i.ImageName, &i.ImageTag); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)
@@ -196,6 +288,16 @@ func (q *Queries) ListUsedImagesWithStaleKevSummaries(ctx context.Context, chang
 	return items, nil
 }
 
+const lockChainguardCorrections = `-- name: LockChainguardCorrections :exec
+SELECT
+    pg_advisory_xact_lock(7705370004)
+`
+
+func (q *Queries) LockChainguardCorrections(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockChainguardCorrections)
+	return err
+}
+
 const refreshCveKevFlags = `-- name: RefreshCveKevFlags :many
 WITH changed AS (
     UPDATE
@@ -247,6 +349,53 @@ func (q *Queries) RefreshCveKevFlags(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const saveChainguardCorrection = `-- name: SaveChainguardCorrection :exec
+INSERT INTO chainguard_corrections(
+    advisory_id,
+    package_purl,
+    fix_status,
+    fix_version,
+    source_url,
+    checked_at)
+SELECT
+    cve_id,
+    $1::TEXT,
+    $2::fix_status,
+    NULLIF($3::TEXT, ''),
+    $4::TEXT,
+    NOW()
+FROM
+    cve
+WHERE
+    cve_id = $5
+ON CONFLICT (advisory_id,
+    package_purl)
+    DO UPDATE SET
+        fix_status = EXCLUDED.fix_status,
+        fix_version = EXCLUDED.fix_version,
+        source_url = EXCLUDED.source_url,
+        checked_at = EXCLUDED.checked_at
+`
+
+type SaveChainguardCorrectionParams struct {
+	Package    string
+	FixStatus  FixStatus
+	FixVersion string
+	SourceUrl  string
+	CveID      string
+}
+
+func (q *Queries) SaveChainguardCorrection(ctx context.Context, arg SaveChainguardCorrectionParams) error {
+	_, err := q.db.Exec(ctx, saveChainguardCorrection,
+		arg.Package,
+		arg.FixStatus,
+		arg.FixVersion,
+		arg.SourceUrl,
+		arg.CveID,
+	)
+	return err
 }
 
 const upsertKevSourceEntries = `-- name: UpsertKevSourceEntries :execrows

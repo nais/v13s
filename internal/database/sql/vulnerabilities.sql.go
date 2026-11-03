@@ -111,8 +111,13 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    v.fix_version,
-    v.fix_status,
+    COALESCE(cc.fix_version, CASE WHEN cc.advisory_id IS NULL THEN
+            v.fix_version
+        END) AS fix_version,
+    COALESCE(
+        CASE WHEN cc.advisory_id IS NOT NULL THEN
+            cc.fix_status
+        END, v.fix_status) AS fix_status,
     c.cvss_score,
     c.epss_score,
     c.epss_percentile,
@@ -121,6 +126,8 @@ SELECT
     c.priority
 FROM
     vulnerabilities v
+    LEFT JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+        AND cc.package_purl = v.package
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
     JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
@@ -235,8 +242,13 @@ SELECT
     sv.reason_text,
     sv.suppressed_by,
     sv.updated_at AS suppressed_at,
-    v.fix_version,
-    v.fix_status,
+    COALESCE(cc.fix_version, CASE WHEN cc.advisory_id IS NULL THEN
+            v.fix_version
+        END) AS fix_version,
+    COALESCE(
+        CASE WHEN cc.advisory_id IS NOT NULL THEN
+            cc.fix_status
+        END, v.fix_status) AS fix_status,
     c.cvss_score,
     c.epss_score,
     c.epss_percentile,
@@ -245,6 +257,8 @@ SELECT
     c.priority
 FROM
     vulnerabilities v
+    LEFT JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+        AND cc.package_purl = v.package
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
     JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
@@ -347,8 +361,7 @@ input AS (
                 AND e.image_tag = r.image_tag
                 AND e.cve_id = r.cve_id
                 AND e.package = r.package
-                AND e.last_severity = r.last_severity)
-)
+                AND e.last_severity = r.last_severity))
 SELECT
     i.image_name::TEXT AS image_name,
     i.package::TEXT AS package,
@@ -494,11 +507,18 @@ SELECT
     c.epss_percentile,
     c.has_kev_entry,
     c.known_ransomware_use,
-    v.fix_version,
-    v.fix_status,
+    COALESCE(cc.fix_version, CASE WHEN cc.advisory_id IS NULL THEN
+            v.fix_version
+        END) AS fix_version,
+    COALESCE(
+        CASE WHEN cc.advisory_id IS NOT NULL THEN
+            cc.fix_status
+        END, v.fix_status) AS fix_status,
     c.priority
 FROM
     vulnerabilities v
+    LEFT JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+        AND cc.package_purl = v.package
     LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
     JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
     JOIN workloads w ON v.image_name = w.image_name
@@ -548,6 +568,7 @@ AND ($8::INT[] IS NULL
     OR c.priority = ANY ($8::INT[]))
 AND ($9::BOOL IS NULL
     OR c.has_kev_entry = $9::BOOL)
+AND cc.fix_status IS DISTINCT FROM 'installed_version_fixed'
 ORDER BY
     CASE WHEN $10 = 'priority_asc' THEN
         c.priority
@@ -594,7 +615,12 @@ ORDER BY
     CASE WHEN $10 = 'priority_asc'
         OR $10 = 'priority_desc'
         OR $10 IS NULL THEN
-        CASE WHEN v.fix_version IS NULL THEN
+        CASE WHEN (
+            CASE WHEN cc.advisory_id IS NOT NULL THEN
+                cc.fix_version
+            ELSE
+                v.fix_version
+            END) IS NULL THEN
             1
         ELSE
             0
@@ -745,12 +771,18 @@ const listVulnerabilitiesForImage = `-- name: ListVulnerabilitiesForImage :many
 WITH image_all_vulns AS (
     -- Only the vulnerabilities for this image/tag
     SELECT
-        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version, fix_status
+        v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, v.fix_version, v.fix_status,
+        cc.advisory_id AS correction_advisory_id,
+        cc.fix_version AS correction_fix_version,
+        cc.fix_status AS correction_fix_status
     FROM
         vulnerabilities v
+        LEFT JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+            AND cc.package_purl = v.package
     WHERE
         v.image_name = $4
         AND v.image_tag = $5
+        AND cc.fix_status IS DISTINCT FROM 'installed_version_fixed'
 ),
 resolved_vulnerabilities AS (
     SELECT
@@ -776,8 +808,10 @@ resolved_vulnerabilities AS (
         c.has_kev_entry,
         c.known_ransomware_use,
         c.priority,
-        v.fix_version,
-        v.fix_status
+        COALESCE(v.correction_fix_version, CASE WHEN v.correction_advisory_id IS NULL THEN
+                v.fix_version
+            END) AS fix_version,
+        COALESCE(v.correction_fix_status, v.fix_status) AS fix_status
     FROM
         image_all_vulns v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
@@ -1043,20 +1077,30 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 const listWorkloadsForVulnerabilities = `-- name: ListWorkloadsForVulnerabilities :many
 WITH matched AS MATERIALIZED (
     SELECT
-        id, image_name, image_tag, package, cve_id, source, latest_version, created_at, updated_at, last_severity, severity_since, cvss_score, fix_version, fix_status
+        v.id, v.image_name, v.image_tag, v.package, v.cve_id, v.source, v.latest_version, v.created_at, v.updated_at, v.last_severity, v.severity_since, v.cvss_score, v.fix_version, v.fix_status,
+        cc.advisory_id AS correction_advisory_id,
+        cc.fix_version AS correction_fix_version,
+        cc.fix_status AS correction_fix_status
     FROM
-        vulnerabilities
-    WHERE
-        cve_id = ANY (ARRAY (
-                SELECT
-                    unnest($4::TEXT[])
-                UNION
-                SELECT
-                    alias
-                FROM
-                    cve_alias
-                WHERE
-                    canonical_cve_id = ANY ($4::TEXT[])))
+        vulnerabilities v
+    LEFT JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+        AND cc.package_purl = v.package
+WHERE (
+    v.cve_id = ANY (
+        $4::TEXT[]
+)
+    OR v.cve_id IN (
+        SELECT
+            alias
+        FROM
+            cve_alias
+        WHERE
+            canonical_cve_id = ANY (
+                $4::TEXT[]
+)
+)
+)
+    AND cc.fix_status IS DISTINCT FROM 'installed_version_fixed'
 ),
 filtered AS (
     SELECT
@@ -1091,8 +1135,10 @@ filtered AS (
         c.epss_percentile,
         c.has_kev_entry,
         c.known_ransomware_use,
-        v.fix_version,
-        v.fix_status,
+        COALESCE(v.correction_fix_version, CASE WHEN v.correction_advisory_id IS NULL THEN
+                v.fix_version
+            END) AS fix_version,
+        COALESCE(v.correction_fix_status, v.fix_status) AS fix_status,
         c.priority
     FROM
         matched v
@@ -1105,7 +1151,7 @@ filtered AS (
         LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
             AND v.package = sv.package
             AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
-        LEFT JOIN vulnerabilities v_canonical ON ca.canonical_cve_id IS NOT NULL
+        LEFT JOIN matched v_canonical ON ca.canonical_cve_id IS NOT NULL
             AND v_canonical.image_name = v.image_name
             AND v_canonical.image_tag = v.image_tag
             AND v_canonical.package = v.package
@@ -1302,7 +1348,7 @@ ORDER BY
     f.id ASC,
     f.workload_id ASC
 LIMIT $3
-OFFSET $2
+    OFFSET $2
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
@@ -1495,137 +1541,8 @@ func (q *Queries) ListWorkloadsForVulnerabilityById(ctx context.Context, vulnera
 }
 
 const recalculateVulnerabilitySummary = `-- name: RecalculateVulnerabilitySummary :exec
-WITH resolved_vulnerabilities AS (
-    SELECT DISTINCT
-        c.cve_id AS id,
-        c.severity,
-        c.epss_score,
-        c.epss_percentile,
-        c.has_kev_entry,
-        c.known_ransomware_use,
-        v.package,
-        v.image_name,
-        v.image_tag
-    FROM
-        vulnerabilities v
-        LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
-        JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
-    WHERE
-        v.image_name = $1
-        AND v.image_tag = $2
-),
-unsuppressed_vulnerabilities AS (
-    SELECT
-        rv.id,
-        rv.severity,
-        rv.epss_score,
-        rv.epss_percentile,
-        rv.has_kev_entry,
-        rv.known_ransomware_use
-    FROM
-        resolved_vulnerabilities rv
-        LEFT JOIN suppressed_vulnerabilities sv ON rv.image_name = sv.image_name
-            AND rv.package = sv.package
-            AND rv.id = sv.cve_id
-    WHERE
-        NOT COALESCE(sv.suppressed, FALSE)
-),
-counts AS (
-    SELECT
-        COUNT(*) FILTER (WHERE severity = 0) AS critical,
-    COUNT(*) FILTER (WHERE severity = 1) AS high,
-    COUNT(*) FILTER (WHERE severity = 2) AS medium,
-    COUNT(*) FILTER (WHERE severity = 3) AS low,
-    COUNT(*) FILTER (WHERE severity = 4) AS unassigned,
-    COUNT(*) FILTER (WHERE has_kev_entry = TRUE) AS kev_count,
-    COUNT(*) FILTER (WHERE has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10) AS high_risk,
-    COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10)
-    AND severity IN (0, 1)
-    AND epss_percentile >= 0.90) AS elevated_risk,
-COUNT(*) FILTER (WHERE NOT (has_kev_entry = TRUE
-    OR known_ransomware_use = TRUE
-    OR COALESCE(epss_percentile, 0) >= 0.95
-    OR COALESCE(epss_score, 0) >= 0.10)
-AND (severity NOT IN (0, 1)
-    OR epss_percentile IS NULL
-    OR epss_percentile < 0.90)) AS monitor,
-COUNT(*) FILTER (WHERE known_ransomware_use = TRUE) AS ransomware_count,
-COUNT(*) FILTER (WHERE epss_percentile >= 0.90) AS high_epss_count,
-MIN(
-    CASE WHEN has_kev_entry = TRUE
-        OR known_ransomware_use = TRUE
-        OR COALESCE(epss_percentile, 0) >= 0.95
-        OR COALESCE(epss_score, 0) >= 0.10 THEN
-        2
-    WHEN severity IN (0, 1)
-        AND epss_percentile >= 0.90 THEN
-        3
-    ELSE
-        4
-    END) AS top_risk_tier
-FROM
-    unsuppressed_vulnerabilities)
-INSERT INTO vulnerability_summary(
-    image_name,
-    image_tag,
-    critical,
-    high,
-    medium,
-    low,
-    unassigned,
-    kev_count,
-    high_risk,
-    elevated_risk,
-    monitor,
-    ransomware_count,
-    high_epss_count,
-    top_risk_tier,
-    risk_score,
-    created_at,
-    updated_at)
 SELECT
-    $1,
-    $2,
-    critical,
-    high,
-    medium,
-    low,
-    unassigned,
-    kev_count,
-    high_risk,
-    elevated_risk,
-    monitor,
-    ransomware_count,
-    high_epss_count,
-    top_risk_tier,
-    10 * critical + 5 * high + 3 * medium + 1 * low + 5 * unassigned AS risk_score,
-    NOW(),
-    NOW()
-FROM
-    counts
-ON CONFLICT (image_name,
-    image_tag)
-    DO UPDATE SET
-        critical = EXCLUDED.critical,
-        high = EXCLUDED.high,
-        medium = EXCLUDED.medium,
-        low = EXCLUDED.low,
-        unassigned = EXCLUDED.unassigned,
-        kev_count = EXCLUDED.kev_count,
-        high_risk = EXCLUDED.high_risk,
-        elevated_risk = EXCLUDED.elevated_risk,
-        monitor = EXCLUDED.monitor,
-        ransomware_count = EXCLUDED.ransomware_count,
-        high_epss_count = EXCLUDED.high_epss_count,
-        top_risk_tier = EXCLUDED.top_risk_tier,
-        risk_score = EXCLUDED.risk_score,
-        updated_at = NOW()
+    recalculate_vulnerability_summary($1::TEXT, $2::TEXT)
 `
 
 type RecalculateVulnerabilitySummaryParams struct {

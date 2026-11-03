@@ -5,6 +5,8 @@ WITH cve_data AS (
         COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
+        LEFT JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+            AND cc.package_purl = v.package
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
         JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
         JOIN workloads w ON w.image_name = v.image_name
@@ -16,6 +18,7 @@ WITH cve_data AS (
             AND COALESCE(ca.canonical_cve_id, v.cve_id) = sv.cve_id
     WHERE
         workload_has_usable_sbom(w.state, i.state)
+        AND cc.fix_status IS DISTINCT FROM 'installed_version_fixed'
         AND (sqlc.narg('cluster')::TEXT IS NULL
             OR w.cluster = sqlc.narg('cluster')::TEXT)
         AND (sqlc.narg('namespace')::TEXT IS NULL
@@ -195,4 +198,5 @@ ORDER BY
     r.row_number;
 
 -- name: RefreshCveWorkloadCounts :exec
-REFRESH MATERIALIZED VIEW CONCURRENTLY mv_cve_workload_counts;
+SELECT
+    refresh_cve_workload_counts();

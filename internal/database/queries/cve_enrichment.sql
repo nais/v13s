@@ -152,3 +152,68 @@ WHERE
     AND vulnerabilities.package = data.package
     AND (vulnerabilities.fix_version IS NOT NULL
         OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status);
+
+-- name: GetVulnerabilitiesForChainguardCorrection :many
+SELECT DISTINCT
+    cve_id,
+    package
+FROM
+    vulnerabilities
+WHERE
+    cve_id LIKE 'CGA-%'
+    AND (package LIKE 'pkg:apk/chainguard/%'
+        OR package LIKE 'pkg:apk/wolfi/%')
+ORDER BY
+    cve_id,
+    package;
+
+-- name: LockChainguardCorrections :exec
+SELECT
+    pg_advisory_xact_lock(7705370004);
+
+-- name: SaveChainguardCorrection :exec
+INSERT INTO chainguard_corrections(
+    advisory_id,
+    package_purl,
+    fix_status,
+    fix_version,
+    source_url,
+    checked_at)
+SELECT
+    cve_id,
+    @package::TEXT,
+    @fix_status::fix_status,
+    NULLIF(@fix_version::TEXT, ''),
+    @source_url::TEXT,
+    NOW()
+FROM
+    cve
+WHERE
+    cve_id = @cve_id
+ON CONFLICT (advisory_id,
+    package_purl)
+    DO UPDATE SET
+        fix_status = EXCLUDED.fix_status,
+        fix_version = EXCLUDED.fix_version,
+        source_url = EXCLUDED.source_url,
+        checked_at = EXCLUDED.checked_at;
+
+-- name: ClearChainguardCorrections :exec
+UPDATE
+    chainguard_corrections
+SET
+    fix_status = 'unknown',
+    fix_version = NULL,
+    checked_at = NOW();
+
+-- name: ListImagesWithChainguardCorrections :many
+SELECT DISTINCT
+    v.image_name,
+    v.image_tag
+FROM
+    vulnerabilities v
+    JOIN chainguard_corrections cc ON cc.advisory_id = v.cve_id
+        AND cc.package_purl = v.package
+    ORDER BY
+        v.image_name,
+        v.image_tag;

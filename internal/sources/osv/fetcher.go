@@ -22,10 +22,12 @@ const (
 )
 
 type Fetcher struct {
-	client  *Client
-	pool    *pgxpool.Pool
-	querier sql.Querier
-	log     *logrus.Entry
+	client         *Client
+	chainguardMode chainguardMode
+	chainguard     *chainguardClient
+	pool           *pgxpool.Pool
+	querier        sql.Querier
+	log            *logrus.Entry
 }
 
 func NewFetcherWithClient(client *Client, pool *pgxpool.Pool, log *logrus.Entry) *Fetcher {
@@ -36,6 +38,18 @@ func NewFetcherWithQuerier(client *Client, querier sql.Querier, log *logrus.Entr
 	return &Fetcher{client: client, querier: querier, log: log}
 }
 
+func (f *Fetcher) WithChainguard(enabled bool) *Fetcher {
+	if enabled {
+		f.chainguardMode = chainguardCorrect
+		f.chainguard = newChainguardClient()
+	} else {
+		f.chainguardMode = chainguardClear
+	}
+	return f
+}
+
+type advisoryProcessor func(ctx context.Context, id string, packages []string, out chan<- fixResult, fetchErrors *atomic.Int64)
+
 type fixResult struct {
 	cveID      string
 	pkg        string
@@ -44,7 +58,7 @@ type fixResult struct {
 }
 
 func (f *Fetcher) Sync(ctx context.Context) error {
-	if f.client.baseURL == "" {
+	if f.client.baseURL == "" && f.chainguardMode == chainguardIgnored {
 		f.log.Warn("OSV_BASE_URL is not set, skipping OSV sync")
 		return nil
 	}
@@ -100,6 +114,15 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 		}
 	}()
 
+	if f.chainguardMode != chainguardIgnored {
+		if err := f.syncChainguard(ctx, querier, conn); err != nil {
+			return err
+		}
+	}
+	if f.client.baseURL == "" {
+		return nil
+	}
+
 	rows, err := querier.GetVulnerabilitiesForOsvEnrichment(ctx)
 	if err != nil {
 		return fmt.Errorf("loading vulnerabilities for OSV enrichment: %w", err)
@@ -113,7 +136,7 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	f.log.Infof("OSV sync: %d distinct CVE IDs to query (%d cve/package pairs)", len(byCve), len(rows))
 
 	fetchStart := time.Now()
-	results, errors := f.fetchAll(ctx, byCve)
+	results, errors := f.fetchAll(ctx, byCve, f.processCve)
 	misses := f.logMisses(results)
 	hits := len(results) - misses
 	f.log.Infof("OSV sync: fetched %d CVEs in %s (%d hits, %d misses, %d fetch errors)",
@@ -126,22 +149,22 @@ func (f *Fetcher) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (f *Fetcher) fetchAll(ctx context.Context, byCve map[string][]string) ([]fixResult, int64) {
-	jobs := make(chan string, len(byCve))
-	out := make(chan fixResult, len(byCve)*2)
+func (f *Fetcher) fetchAll(ctx context.Context, packagesByID map[string][]string, process advisoryProcessor) ([]fixResult, int64) {
+	jobs := make(chan string, len(packagesByID))
+	out := make(chan fixResult, len(packagesByID)*2)
 
 	var fetchErrors atomic.Int64
 	var wg sync.WaitGroup
 
 	for range workerCount {
 		wg.Go(func() {
-			for cveID := range jobs {
-				f.processCve(ctx, cveID, byCve[cveID], out, &fetchErrors)
+			for id := range jobs {
+				process(ctx, id, packagesByID[id], out, &fetchErrors)
 			}
 		})
 	}
 
-	for id := range byCve {
+	for id := range packagesByID {
 		jobs <- id
 	}
 	close(jobs)

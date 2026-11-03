@@ -79,7 +79,8 @@ func (c KevConfig) Validate() error {
 }
 
 type OsvConfig struct {
-	BaseURL string `envconfig:"OSV_BASE_URL"`
+	BaseURL                     string `envconfig:"OSV_BASE_URL"`
+	ChainguardAdvisoriesEnabled bool   `envconfig:"CHAINGUARD_ADVISORIES_ENABLED" default:"false"`
 }
 
 type K8sConfig struct {
