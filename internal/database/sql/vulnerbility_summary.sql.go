@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	typeext "github.com/nais/v13s/internal/database/typeext"
 )
 
 const createVulnerabilitySummary = `-- name: CreateVulnerabilitySummary :one
@@ -390,26 +391,36 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($3::TEXT[]))
     AND ($4::TEXT IS NULL
         OR w.name = $4::TEXT)
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            jsonb_to_recordset(COALESCE($5::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                value TEXT)
+        WHERE
+            NOT (w.labels ? f.key)
+            OR (f.value IS NOT NULL
+                AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 joined_data AS (
     SELECT
-        CASE WHEN ($5::INT[] IS NULL
-            AND $6::BOOL IS NULL)
+        CASE WHEN ($6::INT[] IS NULL
+            AND $7::BOOL IS NULL)
             OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
-                AND COALESCE(($5::INT[] IS NULL
-                    OR v.top_risk_tier = ANY ($5::INT[]))
-                AND ($6::BOOL IS NULL
-                    OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
+                AND COALESCE(($6::INT[] IS NULL
+                    OR v.top_risk_tier = ANY ($6::INT[]))
+                AND ($7::BOOL IS NULL
+                    OR (COALESCE(v.kev_count, 0) > 0) = $7::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(workload_has_usable_sbom(fw.state, i.state)
             AND v.id IS NOT NULL, FALSE)
-        AND COALESCE(($5::INT[] IS NULL
-            OR v.top_risk_tier = ANY ($5::INT[]))
-        AND ($6::BOOL IS NULL
+        AND COALESCE(($6::INT[] IS NULL
+            OR v.top_risk_tier = ANY ($6::INT[]))
+        AND ($7::BOOL IS NULL
             OR (v.id IS NOT NULL
-                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
+                AND (COALESCE(v.kev_count, 0) > 0) = $7::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -529,6 +540,7 @@ type GetVulnerabilitySummaryParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	LabelFilters  []byte
 	RiskTiers     []int32
 	HasKev        *bool
 }
@@ -561,6 +573,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.LabelFilters,
 		arg.RiskTiers,
 		arg.HasKev,
 	)
@@ -845,7 +858,7 @@ func (q *Queries) ListUpdatedWorkloadsWithSummaries(ctx context.Context) ([]*Lis
 const listVulnerabilitySummaries = `-- name: ListVulnerabilitySummaries :many
 WITH filtered_workloads AS (
     SELECT
-        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
     FROM
         workloads w
     WHERE ($4::TEXT IS NULL
@@ -856,6 +869,16 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($6::TEXT[]))
     AND ($7::TEXT IS NULL
         OR w.name = $7::TEXT)
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            jsonb_to_recordset(COALESCE($8::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                value TEXT)
+        WHERE
+            NOT (w.labels ? f.key)
+            OR (f.value IS NOT NULL
+                AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 vulnerability_data AS (
     SELECT
@@ -864,6 +887,7 @@ vulnerability_data AS (
         w.workload_type,
         w.namespace,
         w.cluster,
+        w.labels,
         w.image_name AS current_image_name,
         w.image_tag AS current_image_tag,
         v.image_name,
@@ -894,7 +918,7 @@ vulnerability_data AS (
         filtered_workloads w
         LEFT JOIN vulnerability_summary cur ON w.image_name = cur.image_name
             AND (
-                CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN
+                CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
                     w.image_tag = cur.image_tag
                 ELSE
                     TRUE
@@ -909,35 +933,35 @@ vulnerability_data AS (
             WHERE
                 cur.id IS NULL
                 AND i.state NOT IN ('updated', 'failed', 'unused')
-                AND $8::TIMESTAMP WITH TIME ZONE IS NULL
+                AND $9::TIMESTAMP WITH TIME ZONE IS NULL
                 AND ps.image_name = w.image_name
                 AND ps.image_tag <> w.image_tag
             ORDER BY
                 ps.updated_at DESC
             LIMIT 1) prev ON TRUE
         LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
-    WHERE ($9::TEXT IS NULL
-        OR v.image_name = $9::TEXT)
-    AND ($10::TEXT IS NULL
+    WHERE ($10::TEXT IS NULL
+        OR v.image_name = $10::TEXT)
+    AND ($11::TEXT IS NULL
         OR (
-            CASE WHEN $8::TIMESTAMP WITH TIME ZONE IS NULL THEN
+            CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
                 w.image_tag
             ELSE
                 v.image_tag
-            END) = $10::TEXT)
-    AND ($11::INT[] IS NULL
-        OR (v.top_risk_tier = ANY ($11::INT[])
+            END) = $11::TEXT)
+    AND ($12::INT[] IS NULL
+        OR (v.top_risk_tier = ANY ($12::INT[])
             AND workload_has_usable_sbom(w.state, i.state)))
-    AND ($12::BOOL IS NULL
+    AND ($13::BOOL IS NULL
         OR (v.id IS NOT NULL
             AND workload_has_usable_sbom(w.state, i.state)
-            AND (COALESCE(v.kev_count, 0) > 0) = $12::BOOL))
-    AND ($8::TIMESTAMP WITH TIME ZONE IS NULL
-        OR v.updated_at > $8::TIMESTAMP WITH TIME ZONE)
+            AND (COALESCE(v.kev_count, 0) > 0) = $13::BOOL))
+    AND ($9::TIMESTAMP WITH TIME ZONE IS NULL
+        OR v.updated_at > $9::TIMESTAMP WITH TIME ZONE)
 ),
 sbom_status_data AS (
     SELECT
-        id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, is_active, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, sbom_processing_started_at,
+        id, workload_name, workload_type, namespace, cluster, labels, current_image_name, current_image_tag, image_name, image_tag, is_active, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, workload_state, image_state, sbom_processing_started_at,
         CASE WHEN workload_state IN ('failed', 'unrecoverable') THEN
             'failed'
         WHEN workload_state = 'no_attestation' THEN
@@ -962,6 +986,7 @@ summary_data AS (
         workload_type,
         namespace,
         CLUSTER,
+        labels,
         current_image_name,
         current_image_tag,
         image_name,
@@ -1029,10 +1054,10 @@ summary_data AS (
         COUNT(*) OVER () AS total_count
 FROM
     sbom_status_data
-    WHERE ($13::TEXT[] IS NULL
-        OR sbom_status = ANY ($13::TEXT[])))
+    WHERE ($14::TEXT[] IS NULL
+        OR sbom_status = ANY ($14::TEXT[])))
 SELECT
-    id, workload_name, workload_type, namespace, cluster, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
+    id, workload_name, workload_type, namespace, cluster, labels, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
 FROM
     summary_data
 ORDER BY
@@ -1146,6 +1171,7 @@ type ListVulnerabilitySummariesParams struct {
 	Namespace     *string
 	WorkloadTypes []string
 	WorkloadName  *string
+	LabelFilters  []byte
 	Since         pgtype.Timestamptz
 	ImageName     *string
 	ImageTag      *string
@@ -1160,6 +1186,7 @@ type ListVulnerabilitySummariesRow struct {
 	WorkloadType            string
 	Namespace               string
 	Cluster                 string
+	Labels                  typeext.MapStringString
 	CurrentImageName        string
 	CurrentImageTag         string
 	ImageName               *string
@@ -1197,6 +1224,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.LabelFilters,
 		arg.Since,
 		arg.ImageName,
 		arg.ImageTag,
@@ -1217,6 +1245,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 			&i.WorkloadType,
 			&i.Namespace,
 			&i.Cluster,
+			&i.Labels,
 			&i.CurrentImageName,
 			&i.CurrentImageTag,
 			&i.ImageName,
@@ -1257,7 +1286,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 const listVulnerabilitySummariesForMetrics = `-- name: ListVulnerabilitySummariesForMetrics :many
 WITH filtered_workloads AS (
     SELECT
-        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state
+        id, name, workload_type, namespace, cluster, image_name, image_tag, created_at, updated_at, state, labels
     FROM
         workloads w
     WHERE ($1::TEXT[] IS NULL

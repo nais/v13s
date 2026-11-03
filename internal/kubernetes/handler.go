@@ -50,7 +50,7 @@ func (w eventHandler) OnUpdate(oldObj, newObj any) {
 	nu := w.convert(newObj)
 	oldWorkloads := extractWorkloads(w.cluster, ou)
 	newWorkloads := extractWorkloads(w.cluster, nu)
-	if hasChanged(oldWorkloads, newWorkloads) {
+	if hasChanged(oldWorkloads, newWorkloads) || isPeriodicResync(ou, nu) {
 		for _, workload := range newWorkloads {
 			w.log.WithField("workload_type", workload.Type).Debugf("updating workload name: %s", workload.Name)
 			w.eventQueue.Updated <- workload
@@ -84,6 +84,10 @@ func (w eventHandler) convert(obj any) *unstructured.Unstructured {
 		return nil
 	}
 	return o
+}
+
+func isPeriodicResync(old, new *unstructured.Unstructured) bool {
+	return old != nil && new != nil && old.GetResourceVersion() == new.GetResourceVersion()
 }
 
 func hasChanged(old []*model.Workload, new []*model.Workload) bool {
@@ -124,12 +128,14 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 			wType := getWorkloadType(deployment, c)
 
 			ret = append(ret, &model.Workload{
-				Name:      setWorkloadName(c.Name, deployment.GetName()),
-				Namespace: deployment.GetNamespace(),
-				Cluster:   cluster,
-				Type:      wType,
-				ImageName: name,
-				ImageTag:  tag,
+				Name:            setWorkloadName(c.Name, deployment.GetName()),
+				Namespace:       deployment.GetNamespace(),
+				Cluster:         cluster,
+				Type:            wType,
+				ImageName:       name,
+				ImageTag:        tag,
+				Labels:          model.UserLabels(deployment.GetLabels()),
+				ResourceVersion: deployment.GetResourceVersion(),
 			})
 		}
 	case "Naisjob":
@@ -144,12 +150,14 @@ func extractWorkloads(cluster string, obj *unstructured.Unstructured) []*model.W
 		}
 		name, tag := imageNameTag(image)
 		w := &model.Workload{
-			Cluster:   cluster,
-			Name:      job.GetName(),
-			Namespace: job.GetNamespace(),
-			Type:      model.WorkloadTypeJob,
-			ImageName: name,
-			ImageTag:  tag,
+			Cluster:         cluster,
+			Name:            job.GetName(),
+			Namespace:       job.GetNamespace(),
+			Type:            model.WorkloadTypeJob,
+			ImageName:       name,
+			ImageTag:        tag,
+			Labels:          model.UserLabels(job.GetLabels()),
+			ResourceVersion: job.GetResourceVersion(),
 		}
 		if job.Status.DeploymentRolloutStatus == "complete" {
 			w.Status.LastSuccessful = true
