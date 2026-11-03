@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"maps"
 )
 
 type WorkloadType string
@@ -14,13 +15,15 @@ const (
 )
 
 type Workload struct {
-	Cluster   string
-	Namespace string
-	Type      WorkloadType
-	Name      string
-	ImageName string
-	ImageTag  string
-	Status    Status
+	Cluster         string
+	Namespace       string
+	Type            WorkloadType
+	Name            string
+	ImageName       string
+	ImageTag        string
+	Status          Status
+	Labels          map[string]string
+	ResourceVersion string
 }
 
 type Status struct {
@@ -33,7 +36,8 @@ func (w *Workload) Equal(other *Workload) bool {
 		w.Namespace == other.Namespace &&
 		w.Type == other.Type &&
 		w.ImageName == other.ImageName &&
-		w.ImageTag == other.ImageTag
+		w.ImageTag == other.ImageTag &&
+		maps.Equal(w.Labels, other.Labels)
 }
 
 func (w *Workload) String() string {

@@ -84,6 +84,11 @@ message Filter {
   optional bool has_kev = 10;
 }
 
+message LabelFilter {
+  string key = 1;
+  optional string value = 2;
+}
+
 message OrderBy {
   string field = 1;
   Direction direction = 2;
@@ -96,6 +101,7 @@ message Workload {
   string type = 4;
   string image_name = 5;
   string image_tag = 6;
+  map<string, string> labels = 7;
 }
 
 message Summary {
@@ -240,6 +246,8 @@ message ListVulnerabilitySummariesRequest {
   optional google.protobuf.Timestamp since = 5;
   // SBOM status filter. Multiple values use OR semantics.
   repeated SbomStatus sbom_statuses = 6;
+  // User label filter. Multiple values use AND semantics. A filter without a value matches any workload carrying the key.
+  repeated LabelFilter labels = 7;
 }
 
 message ListVulnerabilitySummariesResponse {
@@ -329,6 +337,7 @@ message GetVulnerabilitySummaryForImageResponse {
 
 message GetVulnerabilitySummaryRequest {
   Filter filter = 1;
+  repeated LabelFilter labels = 2;
 }
 
 message GetVulnerabilitySummaryResponse {

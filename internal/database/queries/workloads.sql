@@ -6,6 +6,7 @@ INSERT INTO workloads(
     cluster,
     image_name,
     image_tag,
+    labels,
     state)
 VALUES (
     @name,
@@ -14,11 +15,15 @@ VALUES (
     @cluster,
     @image_name,
     @image_tag,
+    COALESCE(
+        sqlc.narg(
+            'labels'), '{}' ::JSONB),
     'initialized')
 ON CONFLICT ON CONSTRAINT workload_id
     DO UPDATE SET
         image_name = @image_name,
         image_tag = @image_tag,
+        labels = COALESCE(sqlc.narg('labels'), workloads.labels),
         state = 'initialized',
         updated_at = NOW()
     RETURNING
@@ -33,6 +38,7 @@ WITH upserted AS (
         cluster,
         image_name,
         image_tag,
+        labels,
         state)
     VALUES (
         @name,
@@ -41,13 +47,17 @@ WITH upserted AS (
         @cluster,
         @image_name,
         @image_tag,
+        COALESCE(
+            sqlc.narg(
+                'labels'), '{}' ::JSONB),
         'processing')
 ON CONFLICT ON CONSTRAINT workload_id
     DO UPDATE SET
         state = 'processing',
         updated_at = NOW(),
         image_name = @image_name,
-        image_tag = @image_tag
+        image_tag = @image_tag,
+        labels = COALESCE(sqlc.narg('labels'), workloads.labels)
     WHERE
         workloads.state = 'resync'
         OR (
@@ -69,6 +79,21 @@ ON CONFLICT ON CONSTRAINT workload_id
             FROM
                 upserted)
     LIMIT 1;
+
+-- name: UpdateWorkloadLabels :exec
+UPDATE
+    workloads
+SET
+    labels = COALESCE(sqlc.narg('labels'), '{}'::JSONB),
+    updated_at = NOW()
+WHERE
+    name = @name
+    AND workload_type = @workload_type
+    AND namespace = @namespace
+    AND CLUSTER = @cluster
+    AND image_name = @image_name
+    AND image_tag = @image_tag
+    AND labels IS DISTINCT FROM COALESCE(sqlc.narg('labels'), '{}'::JSONB);
 
 -- name: SetWorkloadState :many
 WITH updated AS (

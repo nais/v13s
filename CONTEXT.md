@@ -3,6 +3,8 @@
 ## Glossary
 
 - **Workload**: a Kubernetes Deployment or Job tracked by v13s.
+- **User label**: a workload label visible to users and available for filtering. A label is a key/value pair; an empty value is distinct from an absent key.
+- **Platform label**: a label reserved for platform management and hidden from user-label filtering. Whether a label is reserved can depend on its value.
 - **Image**: the container image used by a workload.
 - **SBOM**: the attestation uploaded for an image.
 - **Vulnerability summary**: the per-image or per-workload count of vulnerabilities and risk data.

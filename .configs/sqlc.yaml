@@ -31,6 +31,21 @@ sql:
         omit_unused_structs: true
         omit_sqlc_version: true
         overrides:
+          - column: "updated.labels"
+            go_type:
+              import: "github.com/nais/v13s/internal/database/typeext"
+              package: "typeext"
+              type: "MapStringString"
+          - column: "summary_data.labels"
+            go_type:
+              import: "github.com/nais/v13s/internal/database/typeext"
+              package: "typeext"
+              type: "MapStringString"
+          - column: "workloads.labels"
+            go_type:
+              import: "github.com/nais/v13s/internal/database/typeext"
+              package: "typeext"
+              type: "MapStringString"
           - column: "images.metadata"
             go_type:
               import: "github.com/nais/v13s/internal/database/typeext"

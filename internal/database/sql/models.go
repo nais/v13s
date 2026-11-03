@@ -467,4 +467,5 @@ type Workload struct {
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 	State        WorkloadState
+	Labels       typeext.MapStringString
 }
