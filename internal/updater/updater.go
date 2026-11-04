@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/config"
+	"github.com/nais/v13s/internal/cveexplanation"
 	v13sdatabase "github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
@@ -194,6 +195,14 @@ func (u *Updater) runSyncOsvFixVersions(ctx context.Context) error {
 	return u.osvFetcher.Sync(ctx)
 }
 
+func (u *Updater) runExplainCves(ctx context.Context) error {
+	client, err := cveexplanation.NewVertexClient(ctx, u.runtimeConfig.Explanation)
+	if err != nil {
+		return err
+	}
+	return cveexplanation.NewGenerator(u.pool, client, u.runtimeConfig.Explanation, u.log).Run(ctx)
+}
+
 func (u *Updater) runRekeySuppressedAliases(ctx context.Context) error {
 	rowsAffected, err := u.querier.RekeySuppressedAliasesToCanonical(ctx)
 	if err != nil {
@@ -206,7 +215,7 @@ func (u *Updater) runRekeySuppressedAliases(ctx context.Context) error {
 }
 
 func (u *Updater) buildJobs() []Job {
-	jobs := make([]Job, 0, 9)
+	jobs := make([]Job, 0, 10)
 
 	add := func(cfg JobRuntimeConfig, name string, run func(context.Context) error) {
 		if !cfg.Enabled {
@@ -225,6 +234,7 @@ func (u *Updater) buildJobs() []Job {
 	add(u.runtimeConfig.SyncOsv, "sync OSV fix versions", u.runSyncOsvFixVersions)
 	add(u.runtimeConfig.RekeySuppressedAliases, "rekey suppressed aliases to canonical", u.runRekeySuppressedAliases)
 	add(u.runtimeConfig.RefreshCveWorkloadCounts, "refresh CVE workload counts", u.cveWorkloadCountsRefresher.Refresh)
+	add(u.runtimeConfig.ExplainCves, "explain KEV CVEs", u.runExplainCves)
 
 	return jobs
 }

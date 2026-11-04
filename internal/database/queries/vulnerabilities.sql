@@ -846,9 +846,7 @@ WITH matched AS MATERIALIZED (
             ARRAY (
                 SELECT
                     unnest(
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
+                        @cve_ids::TEXT[]
 )
                 UNION
                 SELECT
@@ -857,9 +855,7 @@ WITH matched AS MATERIALIZED (
                     cve_alias
                 WHERE
                     canonical_cve_id = ANY (
-                        sqlc.arg(
-                            'cve_ids'
-)::TEXT[]
+                        @cve_ids::TEXT[]
 )
 )
 )

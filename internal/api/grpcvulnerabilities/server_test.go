@@ -2834,7 +2834,7 @@ func setupTest(t *testing.T, cfg testSetupConfig, testContainers bool) (context.
 // startGrpcServer initializes an in-memory gRPC server
 func startGrpcServer(db *pgxpool.Pool) (*grpc.Server, vulnerabilities.Client, func()) {
 	lis := bufconn.Listen(1024 * 1024)
-	server := grpcvulnerabilities.NewServer(db, logrus.NewEntry(logrus.StandardLogger()))
+	server := grpcvulnerabilities.NewServer(db, logrus.NewEntry(logrus.StandardLogger()), false)
 	grpcServer := grpc.NewServer()
 	vulnerabilities.RegisterVulnerabilitiesServer(grpcServer, server)
 

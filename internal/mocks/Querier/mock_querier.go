@@ -422,6 +422,53 @@ func (_c *MockQuerier_BatchUpsertVulnerabilitySummary_Call) RunAndReturn(run fun
 	return _c
 }
 
+// BeginCveExplanationAttempt provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) BeginCveExplanationAttempt(ctx context.Context, arg sql.BeginCveExplanationAttemptParams) error {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BeginCveExplanationAttempt")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.BeginCveExplanationAttemptParams) error); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuerier_BeginCveExplanationAttempt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BeginCveExplanationAttempt'
+type MockQuerier_BeginCveExplanationAttempt_Call struct {
+	*mock.Call
+}
+
+// BeginCveExplanationAttempt is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.BeginCveExplanationAttemptParams
+func (_e *MockQuerier_Expecter) BeginCveExplanationAttempt(ctx interface{}, arg interface{}) *MockQuerier_BeginCveExplanationAttempt_Call {
+	return &MockQuerier_BeginCveExplanationAttempt_Call{Call: _e.mock.On("BeginCveExplanationAttempt", ctx, arg)}
+}
+
+func (_c *MockQuerier_BeginCveExplanationAttempt_Call) Run(run func(ctx context.Context, arg sql.BeginCveExplanationAttemptParams)) *MockQuerier_BeginCveExplanationAttempt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.BeginCveExplanationAttemptParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_BeginCveExplanationAttempt_Call) Return(_a0 error) *MockQuerier_BeginCveExplanationAttempt_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuerier_BeginCveExplanationAttempt_Call) RunAndReturn(run func(context.Context, sql.BeginCveExplanationAttemptParams) error) *MockQuerier_BeginCveExplanationAttempt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BulkClearFixVersions provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) BulkClearFixVersions(ctx context.Context, arg sql.BulkClearFixVersionsParams) (int64, error) {
 	ret := _m.Called(ctx, arg)
@@ -1023,6 +1070,65 @@ func (_c *MockQuerier_GetCve_Call) Return(_a0 *sql.Cve, _a1 error) *MockQuerier_
 }
 
 func (_c *MockQuerier_GetCve_Call) RunAndReturn(run func(context.Context, string) (*sql.Cve, error)) *MockQuerier_GetCve_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetCveExplanation provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) GetCveExplanation(ctx context.Context, arg sql.GetCveExplanationParams) (*sql.GetCveExplanationRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCveExplanation")
+	}
+
+	var r0 *sql.GetCveExplanationRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetCveExplanationParams) (*sql.GetCveExplanationRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.GetCveExplanationParams) *sql.GetCveExplanationRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sql.GetCveExplanationRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.GetCveExplanationParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_GetCveExplanation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCveExplanation'
+type MockQuerier_GetCveExplanation_Call struct {
+	*mock.Call
+}
+
+// GetCveExplanation is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.GetCveExplanationParams
+func (_e *MockQuerier_Expecter) GetCveExplanation(ctx interface{}, arg interface{}) *MockQuerier_GetCveExplanation_Call {
+	return &MockQuerier_GetCveExplanation_Call{Call: _e.mock.On("GetCveExplanation", ctx, arg)}
+}
+
+func (_c *MockQuerier_GetCveExplanation_Call) Run(run func(ctx context.Context, arg sql.GetCveExplanationParams)) *MockQuerier_GetCveExplanation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.GetCveExplanationParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetCveExplanation_Call) Return(_a0 *sql.GetCveExplanationRow, _a1 error) *MockQuerier_GetCveExplanation_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_GetCveExplanation_Call) RunAndReturn(run func(context.Context, sql.GetCveExplanationParams) (*sql.GetCveExplanationRow, error)) *MockQuerier_GetCveExplanation_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1842,6 +1948,65 @@ func (_c *MockQuerier_InitializeWorkload_Call) Return(_a0 pgtype.UUID, _a1 error
 }
 
 func (_c *MockQuerier_InitializeWorkload_Call) RunAndReturn(run func(context.Context, sql.InitializeWorkloadParams) (pgtype.UUID, error)) *MockQuerier_InitializeWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListCveExplanationCandidates provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListCveExplanationCandidates(ctx context.Context, arg sql.ListCveExplanationCandidatesParams) ([]*sql.ListCveExplanationCandidatesRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListCveExplanationCandidates")
+	}
+
+	var r0 []*sql.ListCveExplanationCandidatesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListCveExplanationCandidatesParams) ([]*sql.ListCveExplanationCandidatesRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListCveExplanationCandidatesParams) []*sql.ListCveExplanationCandidatesRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListCveExplanationCandidatesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListCveExplanationCandidatesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListCveExplanationCandidates_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCveExplanationCandidates'
+type MockQuerier_ListCveExplanationCandidates_Call struct {
+	*mock.Call
+}
+
+// ListCveExplanationCandidates is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListCveExplanationCandidatesParams
+func (_e *MockQuerier_Expecter) ListCveExplanationCandidates(ctx interface{}, arg interface{}) *MockQuerier_ListCveExplanationCandidates_Call {
+	return &MockQuerier_ListCveExplanationCandidates_Call{Call: _e.mock.On("ListCveExplanationCandidates", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListCveExplanationCandidates_Call) Run(run func(ctx context.Context, arg sql.ListCveExplanationCandidatesParams)) *MockQuerier_ListCveExplanationCandidates_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListCveExplanationCandidatesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListCveExplanationCandidates_Call) Return(_a0 []*sql.ListCveExplanationCandidatesRow, _a1 error) *MockQuerier_ListCveExplanationCandidates_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListCveExplanationCandidates_Call) RunAndReturn(run func(context.Context, sql.ListCveExplanationCandidatesParams) ([]*sql.ListCveExplanationCandidatesRow, error)) *MockQuerier_ListCveExplanationCandidates_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3643,6 +3808,63 @@ func (_c *MockQuerier_ResetDatabase_Call) Return(_a0 error) *MockQuerier_ResetDa
 }
 
 func (_c *MockQuerier_ResetDatabase_Call) RunAndReturn(run func(context.Context) error) *MockQuerier_ResetDatabase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveCveExplanation provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) SaveCveExplanation(ctx context.Context, arg sql.SaveCveExplanationParams) (int64, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveCveExplanation")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.SaveCveExplanationParams) (int64, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.SaveCveExplanationParams) int64); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.SaveCveExplanationParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_SaveCveExplanation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveCveExplanation'
+type MockQuerier_SaveCveExplanation_Call struct {
+	*mock.Call
+}
+
+// SaveCveExplanation is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.SaveCveExplanationParams
+func (_e *MockQuerier_Expecter) SaveCveExplanation(ctx interface{}, arg interface{}) *MockQuerier_SaveCveExplanation_Call {
+	return &MockQuerier_SaveCveExplanation_Call{Call: _e.mock.On("SaveCveExplanation", ctx, arg)}
+}
+
+func (_c *MockQuerier_SaveCveExplanation_Call) Run(run func(ctx context.Context, arg sql.SaveCveExplanationParams)) *MockQuerier_SaveCveExplanation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.SaveCveExplanationParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SaveCveExplanation_Call) Return(_a0 int64, _a1 error) *MockQuerier_SaveCveExplanation_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_SaveCveExplanation_Call) RunAndReturn(run func(context.Context, sql.SaveCveExplanationParams) (int64, error)) *MockQuerier_SaveCveExplanation_Call {
 	_c.Call.Return(run)
 	return _c
 }

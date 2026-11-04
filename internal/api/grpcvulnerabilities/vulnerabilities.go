@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/api/grpcpagination"
 	"github.com/nais/v13s/internal/collections"
+	"github.com/nais/v13s/internal/cveexplanation"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"google.golang.org/grpc/codes"
@@ -210,7 +211,7 @@ func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequ
 		return nil, status.Errorf(codes.Internal, "get cve: %v", err)
 	}
 
-	return &vulnerabilities.GetCveResponse{
+	response := &vulnerabilities.GetCveResponse{
 		Cve: toCve(cvePayload{
 			id:                 cve.CveID,
 			title:              cve.CveTitle,
@@ -227,7 +228,25 @@ func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequ
 			knownRansomwareUse: cve.KnownRansomwareUse,
 			priority:           cve.Priority,
 		}),
-	}, nil
+	}
+	if s.explanationsVisible {
+		explanation, err := s.querier.GetCveExplanation(ctx, sql.GetCveExplanationParams{
+			CveID: cve.CveID, PromptVersion: cveexplanation.PromptVersion,
+		})
+		if err == nil {
+			response.Cve.Explanation = &vulnerabilities.CveExplanation{
+				Summary:       str(explanation.Summary, ""),
+				Action:        str(explanation.Action, ""),
+				Model:         str(explanation.Model, ""),
+				PromptVersion: explanation.PromptVersion,
+				SourceUrls:    explanation.SourceUrls,
+				CreatedAt:     timestamppb.New(explanation.CreatedAt.Time),
+			}
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			s.log.Warn("failed to load optional CVE explanation")
+		}
+	}
+	return response, nil
 }
 
 func validateInput(s string) error {

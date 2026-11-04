@@ -29,6 +29,8 @@ type RuntimeConfig struct {
 	SyncOsv                  JobRuntimeConfig
 	RekeySuppressedAliases   JobRuntimeConfig
 	RefreshCveWorkloadCounts JobRuntimeConfig
+	ExplainCves              JobRuntimeConfig
+	Explanation              config.ExplanationConfig
 }
 
 func NewRuntimeConfig(cfg config.UpdaterConfig, resync ScheduleConfig) RuntimeConfig {
@@ -45,6 +47,7 @@ func NewRuntimeConfig(cfg config.UpdaterConfig, resync ScheduleConfig) RuntimeCo
 		SyncOsv:                  cron(cfg.SyncOsvEnabled, cfg.SyncOsvCron),
 		RekeySuppressedAliases:   cron(cfg.RekeySuppressedEnabled, cfg.RekeySuppressedCron),
 		RefreshCveWorkloadCounts: cron(cfg.RefreshCveCountsEnabled, cfg.RefreshCveCountsCron),
+		ExplainCves:              cron(cfg.ExplainCvesEnabled, cfg.ExplainCvesCron),
 	}
 }
 

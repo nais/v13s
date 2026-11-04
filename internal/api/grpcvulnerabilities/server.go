@@ -12,13 +12,15 @@ var _ vulnerabilities.VulnerabilitiesServer = (*Server)(nil)
 
 type Server struct {
 	vulnerabilities.UnimplementedVulnerabilitiesServer
-	querier sql.Querier
-	log     logrus.FieldLogger
+	querier             sql.Querier
+	log                 logrus.FieldLogger
+	explanationsVisible bool
 }
 
-func NewServer(pool *pgxpool.Pool, field *logrus.Entry) *Server {
+func NewServer(pool *pgxpool.Pool, field *logrus.Entry, explanationsVisible bool) *Server {
 	return &Server{
-		querier: sql.New(pool),
-		log:     field,
+		querier:             sql.New(pool),
+		log:                 field,
+		explanationsVisible: explanationsVisible,
 	}
 }

@@ -129,7 +129,7 @@ func TestServer_CveImpactAndOrdering(t *testing.T) {
 	}
 
 	t.Run("empty pages retain filtered totals", func(t *testing.T) {
-		server := grpcvulnerabilities.NewServer(pool, logrus.NewEntry(logrus.New()))
+		server := grpcvulnerabilities.NewServer(pool, logrus.NewEntry(logrus.New()), false)
 		for _, tc := range []struct {
 			name   string
 			limit  int32

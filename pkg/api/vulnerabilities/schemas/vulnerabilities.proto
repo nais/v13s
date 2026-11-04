@@ -153,6 +153,16 @@ message Cve {
   bool has_kev_entry = 12;
   bool known_ransomware_use = 13;
   Priority priority = 14;
+  optional CveExplanation explanation = 16;
+}
+
+message CveExplanation {
+  string summary = 1;
+  string action = 2;
+  string model = 3;
+  int32 prompt_version = 4;
+  repeated string source_urls = 5;
+  google.protobuf.Timestamp created_at = 6;
 }
 
 message Suppression {

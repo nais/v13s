@@ -216,6 +216,8 @@ func TestNewRuntimeConfigUsesUpdaterConfig(t *testing.T) {
 		RekeySuppressedCron:     "7 * * * *",
 		RefreshCveCountsEnabled: true,
 		RefreshCveCountsCron:    "8 * * * *",
+		ExplainCvesEnabled:      true,
+		ExplainCvesCron:         "9 * * * *",
 	}, resync)
 
 	assert.Equal(t, JobRuntimeConfig{Enabled: true, Schedule: resync}, cfg.Resync)
@@ -232,6 +234,7 @@ func TestNewRuntimeConfigUsesUpdaterConfig(t *testing.T) {
 		"SyncOsv":                  {cfg.SyncOsv, false, "6 * * * *"},
 		"RekeySuppressedAliases":   {cfg.RekeySuppressedAliases, false, "7 * * * *"},
 		"RefreshCveWorkloadCounts": {cfg.RefreshCveWorkloadCounts, true, "8 * * * *"},
+		"ExplainCves":              {cfg.ExplainCves, true, "9 * * * *"},
 	} {
 		assert.Equal(t, JobRuntimeConfig{Enabled: test.enabled, Schedule: ScheduleConfig{Type: SchedulerCron, CronExpr: test.cron}}, test.job, name)
 	}

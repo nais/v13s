@@ -184,6 +184,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		Type:     updater.SchedulerInterval,
 		Interval: cfg.UpdateInterval,
 	})
+	runtimeCfg.Explanation = cfg.Explanation
 
 	u := updater.NewUpdaterWithRuntimeConfig(
 		pool,
@@ -257,7 +258,7 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	}
 
 	s := grpc.NewServer(opts...)
-	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
+	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities"), cfg.Explanation.Visible))
 	management.RegisterManagementServer(s, grpcmgmt.NewServer(pool, mgr, resyncModule, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)

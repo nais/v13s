@@ -25,6 +25,11 @@ spec:
       - sigstore-tuf-root.storage.googleapis.com
       - tuf-repo-cdn.sigstore.dev
       - europe-north1-docker.pkg.dev
+      {{- with .Values.explanations }}
+      {{- if .enabled }}
+      - {{ printf "%s-aiplatform.googleapis.com" (required "explanations.region is required when explanations are enabled" .region) }}
+      {{- end }}
+      {{- end }}
       {{- with .Values.kev.enisaURL }}
       - {{ (urlParse .).host }}
       {{- end }}

@@ -31,6 +31,32 @@ Get operations retrieve specific vulnerability data, and typically return one it
 
 See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
 
+### Generated CVE explanations
+
+Only `GetCve` populates `Cve.explanation`, and only when `CVE_EXPLANATIONS_VISIBLE=true`.
+Clients must render `summary` and `action` as plain text, label them as AI-generated and show `source_urls`.
+The explanation is general advisory guidance, not a reachability assessment or a version-specific upgrade recommendation.
+Package upgrade information still comes from `Vulnerability.fix_version`.
+
+Generation is disabled by default (`UPDATER_EXPLAIN_CVES_ENABLED=false`).
+When enabled, the updater uses only public CISA catalog fields for KEV CVEs on active workloads.
+No package, image, workload or DependencyTrack data is sent to the model.
+CVEs without a current public CISA entry are skipped.
+
+Configure `LLM_VERTEX_PROJECT`, `LLM_VERTEX_REGION` (an EU region) and `LLM_MODEL` (a Gemini model ID).
+The model must support structured output in that region. Authentication uses application default credentials
+from workload identity; the service account needs Vertex access, and the project needs the Vertex API enabled.
+The chart permits HTTPS egress to that regional endpoint only when generation is enabled.
+IAM and API enablement must be provisioned separately.
+
+`UPDATER_EXPLAIN_CVES_MAX_PER_RUN` limits calls including retries (default `200`),
+`UPDATER_EXPLAIN_CVES_CONCURRENCY` defaults to `2`, and `LLM_MAX_OUTPUT_TOKENS` defaults to `400`.
+The default schedule is `0 9 * * *` (`UPDATER_EXPLAIN_CVES_CRON`).
+Changed source inputs or prompt versions trigger regeneration; outdated explanations are hidden on a failed attempt.
+Disable generation to stop new calls, and disable visibility to hide stored explanations.
+Neither action deletes stored data or reverses data already sent to Vertex.
+Evaluate output quality and approve data handling before enabling generation or visibility.
+
 ### Suppress Operations
 
 - `SuppressVulnerability`: Suppress a vulnerability

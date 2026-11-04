@@ -17,6 +17,7 @@ type Querier interface {
 	BatchUpsertCveAlias(ctx context.Context, arg []BatchUpsertCveAliasParams) *BatchUpsertCveAliasBatchResults
 	BatchUpsertVulnerabilities(ctx context.Context, arg []BatchUpsertVulnerabilitiesParams) *BatchUpsertVulnerabilitiesBatchResults
 	BatchUpsertVulnerabilitySummary(ctx context.Context, arg []BatchUpsertVulnerabilitySummaryParams) *BatchUpsertVulnerabilitySummaryBatchResults
+	BeginCveExplanationAttempt(ctx context.Context, arg BeginCveExplanationAttemptParams) error
 	BulkClearFixVersions(ctx context.Context, arg BulkClearFixVersionsParams) (int64, error)
 	BulkUpdateFixVersions(ctx context.Context, arg BulkUpdateFixVersionsParams) (int64, error)
 	CreateImage(ctx context.Context, arg CreateImageParams) error
@@ -28,6 +29,7 @@ type Querier interface {
 	GetAliasesByCanonicalCveId(ctx context.Context, canonicalCveID string) ([]string, error)
 	GetCanonicalCveIdByAlias(ctx context.Context, alias string) (string, error)
 	GetCve(ctx context.Context, cveID string) (*Cve, error)
+	GetCveExplanation(ctx context.Context, arg GetCveExplanationParams) (*GetCveExplanationRow, error)
 	GetImage(ctx context.Context, arg GetImageParams) (*Image, error)
 	GetImagesScheduledForSync(ctx context.Context) ([]*Image, error)
 	GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context) (pgtype.Date, error)
@@ -43,6 +45,7 @@ type Querier interface {
 	GetVulnerabilitySummaryTimeSeries(ctx context.Context, arg GetVulnerabilitySummaryTimeSeriesParams) ([]*GetVulnerabilitySummaryTimeSeriesRow, error)
 	GetWorkload(ctx context.Context, arg GetWorkloadParams) (*Workload, error)
 	InitializeWorkload(ctx context.Context, arg InitializeWorkloadParams) (pgtype.UUID, error)
+	ListCveExplanationCandidates(ctx context.Context, arg ListCveExplanationCandidatesParams) ([]*ListCveExplanationCandidatesRow, error)
 	ListCveSummaries(ctx context.Context, arg ListCveSummariesParams) ([]*ListCveSummariesRow, error)
 	ListCveSummariesFromCounts(ctx context.Context, arg ListCveSummariesFromCountsParams) ([]*ListCveSummariesFromCountsRow, error)
 	ListEarliestSeveritySince(ctx context.Context, arg ListEarliestSeveritySinceParams) ([]*ListEarliestSeveritySinceRow, error)
@@ -75,6 +78,7 @@ type Querier interface {
 	RefreshVulnerabilitySummaryForDate(ctx context.Context, date pgtype.Date) error
 	RekeySuppressedAliasesToCanonical(ctx context.Context) (int64, error)
 	ResetDatabase(ctx context.Context) error
+	SaveCveExplanation(ctx context.Context, arg SaveCveExplanationParams) (int64, error)
 	SetWorkloadState(ctx context.Context, arg SetWorkloadStateParams) ([]*SetWorkloadStateRow, error)
 	SuppressVulnerability(ctx context.Context, arg SuppressVulnerabilityParams) error
 	TryAdvisoryLock(ctx context.Context, key int64) (bool, error)

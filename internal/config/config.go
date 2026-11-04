@@ -35,6 +35,7 @@ type Config struct {
 	Metrics                   MetricConfig
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 	Updater                   UpdaterConfig
+	Explanation               ExplanationConfig
 }
 
 type UpdaterConfig struct {
@@ -55,6 +56,8 @@ type UpdaterConfig struct {
 	RekeySuppressedCron     string `envconfig:"UPDATER_REKEY_SUPPRESSED_CRON" default:"0 8 * * *"`
 	RefreshCveCountsEnabled bool   `envconfig:"UPDATER_REFRESH_CVE_COUNTS_ENABLED" default:"true"`
 	RefreshCveCountsCron    string `envconfig:"UPDATER_REFRESH_CVE_COUNTS_CRON" default:"*/15 * * * *"`
+	ExplainCvesEnabled      bool   `envconfig:"UPDATER_EXPLAIN_CVES_ENABLED" default:"false"`
+	ExplainCvesCron         string `envconfig:"UPDATER_EXPLAIN_CVES_CRON" default:"0 9 * * *"`
 }
 
 type DependencyTrackConfig struct {
@@ -122,6 +125,9 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 	if err := cfg.Kev.Validate(); err != nil {
+		return nil, err
+	}
+	if err := cfg.Explanation.Validate(cfg.Updater.ExplainCvesEnabled); err != nil {
 		return nil, err
 	}
 

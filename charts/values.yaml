@@ -47,6 +47,16 @@ kev:
 osv:
   baseURL: "https://api.osv.dev/v1"
 reconcileDeletionEnabled: false
+explanations:
+  enabled: false
+  visible: false
+  cron: "0 9 * * *"
+  maxPerRun: 200
+  concurrency: 2
+  maxOutputTokens: 400
+  project: ""
+  region: ""
+  model: ""
 logLevel: info
 logFormat: json
 prometheus:
