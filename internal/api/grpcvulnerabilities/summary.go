@@ -268,8 +268,7 @@ func vulnerabilitySummaryResponse(filter *vulnerabilities.Filter, row *sql.GetVu
 		Unassigned:                row.Unassigned,
 		Total:                     row.Critical + row.High + row.Medium + row.Low + row.Unassigned,
 		RiskScore:                 row.RiskScore,
-		LastUpdated:               timestamppb.New(row.UpdatedAt.Time),
-		HasSbom:                   true,
+		HasSbom:                   row.WorkloadWithSbom > 0,
 		KevCount:                  row.KevCount,
 		HighRisk:                  row.HighRisk,
 		ElevatedRisk:              row.ElevatedRisk,
@@ -280,6 +279,9 @@ func vulnerabilitySummaryResponse(filter *vulnerabilities.Filter, row *sql.GetVu
 		HighRiskWorkloadCount:     row.HighRiskWorkloadCount,
 		ElevatedRiskWorkloadCount: row.ElevatedRiskWorkloadCount,
 		MonitorWorkloadCount:      row.MonitorWorkloadCount,
+	}
+	if row.UpdatedAt.Valid {
+		summary.LastUpdated = timestamppb.New(row.UpdatedAt.Time)
 	}
 
 	var coverage float32
@@ -355,24 +357,11 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 		ImageName: request.ImageName,
 		ImageTag:  request.ImageTag,
 	})
-	var staleTag string
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("failed to get vulnerability summary for image: %w", err)
 		}
-		staleSummary, fallbackErr := s.querier.GetLatestSummaryForImageName(ctx, sql.GetLatestSummaryForImageNameParams{
-			ImageName:  request.ImageName,
-			ExcludeTag: request.ImageTag,
-		})
-		if fallbackErr != nil && !errors.Is(fallbackErr, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("failed to get fallback vulnerability summary for image: %w", fallbackErr)
-		}
-		if fallbackErr == nil {
-			summary = staleSummary
-			staleTag = staleSummary.ImageTag
-		} else {
-			summary = nil
-		}
+		summary = nil
 	}
 
 	workloads, err := s.querier.ListWorkloadsByImage(ctx, sql.ListWorkloadsByImageParams{
@@ -462,9 +451,6 @@ func (s *Server) GetVulnerabilitySummaryForImage(ctx context.Context, request *v
 			RansomwareCount: derefInt32(summary.RansomwareCount),
 			HighEpssCount:   derefInt32(summary.HighEpssCount),
 			TopPriority:     toProtoPriority(summary.TopRiskTier),
-		}
-		if staleTag != "" {
-			vulnSummary.StaleImageTag = &staleTag
 		}
 	}
 
