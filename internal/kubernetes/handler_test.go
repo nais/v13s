@@ -60,11 +60,8 @@ func TestWorkloadLabelEvents(t *testing.T) {
 			handler.OnUpdate(removed, removed.DeepCopy())
 			select {
 			case got := <-queue.Updated:
-				if len(got.Labels) != 0 {
-					t.Fatalf("periodic resync labels = %v, want current labels", got.Labels)
-				}
+				t.Fatalf("periodic resync without workload changes enqueued %+v", got)
 			default:
-				t.Fatal("periodic resync must enqueue the workload so stale labels are rewritten")
 			}
 			unchanged := removed.DeepCopy()
 			unchanged.SetResourceVersion("12")
