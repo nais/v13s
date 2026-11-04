@@ -48,7 +48,8 @@ func TestUpdater(t *testing.T) {
 	verifierMock := new(attestation.MockVerifier)
 
 	jobCfg := &job.Config{
-		DbUrl: pool.Config().ConnString(),
+		DbUrl:          pool.Config().ConnString(),
+		MaxConnections: 12,
 	}
 
 	queue := &kubernetes.WorkloadEventQueue{

@@ -95,6 +95,24 @@ values:
       template: |
         {{ .Env.v13s_db_instance | quote }}
 
+  database.maxConnections:
+    displayName: Main database pool maximum connections
+    description: Maximum main pool connections per pod (minimum 2). Budget across all pools and overlapping pods during deployment.
+    config:
+      type: int
+
+  database.jobMaxConnections:
+    displayName: River job database pool maximum connections
+    description: Maximum River job pool connections per pod (minimum 1).
+    config:
+      type: int
+
+  database.riverUiMaxConnections:
+    displayName: River UI database pool maximum connections
+    description: Maximum River UI pool connections per pod (minimum 1).
+    config:
+      type: int
+
   database.public_ip:
     displayName: Cloud SQL instance public IP
     description: The Public IP Cloud SQL instance

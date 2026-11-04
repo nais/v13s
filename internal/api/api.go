@@ -39,7 +39,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	ctx, signalStop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer signalStop()
 
-	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("subsystem", "database"))
+	pool, err := database.New(ctx, cfg.DatabaseUrl, cfg.DatabasePools.MainMaxConnections, log.WithField("subsystem", "database"))
 	if err != nil {
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
@@ -80,7 +80,8 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}()
 
 	jobCfg := &job.Config{
-		DbUrl: cfg.DatabaseUrl,
+		DbUrl:          cfg.DatabaseUrl,
+		MaxConnections: cfg.DatabasePools.JobMaxConnections,
 	}
 
 	ready := &atomic.Bool{}
@@ -95,7 +96,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 			pool,
 			ready,
 			log,
-			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl)},
+			Handler{"/riverui", riverUI(ctx, jobCfg.DbUrl, cfg.DatabasePools.RiverUIMaxConnections)},
 		)
 	}()
 

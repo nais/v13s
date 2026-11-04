@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/database"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
@@ -108,8 +109,8 @@ func runInternalHTTPServer(ctx context.Context, listenAddress string, reg promet
 	return wg.Wait()
 }
 
-func riverUI(ctx context.Context, dbUrl string) *riverui.Handler {
-	config, err := pgxpool.ParseConfig(dbUrl)
+func riverUI(ctx context.Context, dbUrl string, maxConnections int32) *riverui.Handler {
+	config, err := database.ParsePoolConfig(dbUrl, maxConnections)
 	if err != nil {
 		logrus.Errorf("riverUI: failed to parse db url: %v", err)
 		return nil

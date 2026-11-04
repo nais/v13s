@@ -28,6 +28,9 @@ dependencytrack:
   username: v13s
   password:
 database:
+  maxConnections: 8
+  jobMaxConnections: 12
+  riverUiMaxConnections: 2
   instance:
   public_ip:
   name:
