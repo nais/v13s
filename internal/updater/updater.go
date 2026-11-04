@@ -160,9 +160,9 @@ func (u *Updater) runRefreshDailySummary(ctx context.Context) error {
 			Time:  d,
 			Valid: true,
 		}); err != nil {
-			u.log.Errorf("refreshing summary for %s: %v (continuing)", d.Format("2006-01-02"), err)
+			u.log.Errorf("refreshing summary for %s: %v (stopping)", d.Format("2006-01-02"), err)
 			refreshErrs = append(refreshErrs, fmt.Errorf("refreshing summary for %s: %w", d.Format("2006-01-02"), err))
-			continue
+			break
 		}
 		days++
 	}
@@ -532,7 +532,7 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			ImageName: i.ImageName,
 			ImageTag:  i.ImageTag,
 		}); err != nil {
-			u.log.WithError(err).Error("recalculate vulnerability summary")
+			return fmt.Errorf("recalculate vulnerability summary for %s:%s: %w", i.ImageName, i.ImageTag, err)
 		}
 	}
 

@@ -3,18 +3,130 @@ package updater
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type failingSummaryDB struct {
+	sql.DBTX
+	err             error
+	failAt          int
+	summaryWrites   int
+	nonEmptyBatches int
+}
+
+func (db *failingSummaryDB) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	db.summaryWrites++
+	if db.summaryWrites == db.failAt {
+		return pgconn.CommandTag{}, db.err
+	}
+	return pgconn.CommandTag{}, nil
+}
+
+func (db *failingSummaryDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+	if batch.Len() > 0 {
+		db.nonEmptyBatches++
+	}
+	return &contextBatchResults{ctx: ctx}
+}
+
+func TestBatchUpdateVulnerabilityData_SummaryWriteFailure(t *testing.T) {
+	for _, failAt := range []int{1, 2} {
+		t.Run(fmt.Sprintf("summary_%d", failAt), func(t *testing.T) {
+			log, _ := logrustest.NewNullLogger()
+			writeErr := errors.New("summary storage unavailable")
+			db := &failingSummaryDB{err: writeErr, failAt: failAt}
+			u := &Updater{
+				querier: sql.New(db),
+				log:     log.WithField("test", t.Name()),
+			}
+
+			err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
+				{ImageName: "same-image", ImageTag: "dev"},
+				{ImageName: "same-image", ImageTag: "prod"},
+			})
+
+			require.ErrorIs(t, err, writeErr)
+			require.Zero(t, db.nonEmptyBatches, "workloads and images must not be marked updated")
+		})
+	}
+}
+
+type snapshotDateRow struct {
+	date pgtype.Date
+}
+
+func (row snapshotDateRow) Scan(dest ...any) error {
+	*dest[0].(*pgtype.Date) = row.date
+	return nil
+}
+
+type dailySummaryDB struct {
+	sql.DBTX
+	latest   pgtype.Date
+	failDate string
+	attempts map[string]int
+	err      error
+}
+
+func (db *dailySummaryDB) QueryRow(context.Context, string, ...any) pgx.Row {
+	return snapshotDateRow{date: db.latest}
+}
+
+func (db *dailySummaryDB) Exec(_ context.Context, _ string, args ...any) (pgconn.CommandTag, error) {
+	if len(args) == 0 {
+		return pgconn.CommandTag{}, nil
+	}
+	date := args[0].(pgtype.Date)
+	key := date.Time.Format(time.DateOnly)
+	db.attempts[key]++
+	if key == db.failDate && db.attempts[key] == 1 {
+		return pgconn.CommandTag{}, db.err
+	}
+	if date.Time.After(db.latest.Time) {
+		db.latest = date
+	}
+	return pgconn.CommandTag{}, nil
+}
+
+func TestRefreshDailySummary_FailedDayIsRetried(t *testing.T) {
+	for _, daysAgo := range []int{2, 1} {
+		t.Run(fmt.Sprintf("failed_%d_days_ago", daysAgo), func(t *testing.T) {
+			log, _ := logrustest.NewNullLogger()
+			today := time.Now().UTC().Truncate(24 * time.Hour)
+			failedDay := today.AddDate(0, 0, -daysAgo).Format(time.DateOnly)
+			writeErr := errors.New("daily snapshot storage unavailable")
+			db := &dailySummaryDB{
+				latest:   pgtype.Date{Time: today.AddDate(0, 0, -3), Valid: true},
+				failDate: failedDay,
+				attempts: make(map[string]int),
+				err:      writeErr,
+			}
+			u := &Updater{
+				querier: sql.New(db),
+				log:     log.WithField("test", t.Name()),
+			}
+
+			require.ErrorIs(t, u.runRefreshDailySummary(t.Context()), writeErr)
+			assert.Zero(t, db.attempts[today.Format(time.DateOnly)], "later days must not be written after a failed day")
+			require.NoError(t, u.runRefreshDailySummary(t.Context()))
+			require.Equal(t, 2, db.attempts[failedDay], "the missing snapshot day must be retried")
+			require.Equal(t, 1, db.attempts[today.Format(time.DateOnly)])
+		})
+	}
+}
 
 type firstExecBlockingDB struct {
 	sql.DBTX
