@@ -28,7 +28,7 @@ const (
 	ResyncCycleLockKey                          = int64(7705370001)
 	ImageMarkAge                                = 30 * time.Minute
 	// ResyncImagesOlderThanMinutesDefault is the default duration after which images are marked for resync
-	ResyncImagesOlderThanMinutesDefault = 3 * time.Hour
+	ResyncImagesOlderThanMinutesDefault = 4 * time.Hour
 	ResyncBatchTimeoutDefault           = 15 * time.Minute
 	BatchWriteTimeoutDefault            = 15 * time.Minute
 )
