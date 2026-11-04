@@ -49,6 +49,9 @@ func ParsePoolConfig(dsn string, maxConnections int32) (*pgxpool.Config, error) 
 }
 
 func NewPool(ctx context.Context, dsn string, maxConnections int32, log logrus.FieldLogger, migrate bool) (*pgxpool.Pool, error) {
+	if maxConnections < 2 {
+		return nil, fmt.Errorf("main database pool maximum connections must be at least 2")
+	}
 	config, err := ParsePoolConfig(dsn, maxConnections)
 	if err != nil {
 		return nil, err

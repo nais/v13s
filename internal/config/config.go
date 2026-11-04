@@ -46,15 +46,16 @@ type DatabasePoolConfig struct {
 
 func (c DatabasePoolConfig) Validate() error {
 	for _, limit := range []struct {
-		name  string
-		value int32
+		name    string
+		value   int32
+		minimum int32
 	}{
-		{"DATABASE_MAX_CONNECTIONS", c.MainMaxConnections},
-		{"JOB_DATABASE_MAX_CONNECTIONS", c.JobMaxConnections},
-		{"RIVER_UI_DATABASE_MAX_CONNECTIONS", c.RiverUIMaxConnections},
+		{"DATABASE_MAX_CONNECTIONS", c.MainMaxConnections, 2},
+		{"JOB_DATABASE_MAX_CONNECTIONS", c.JobMaxConnections, 1},
+		{"RIVER_UI_DATABASE_MAX_CONNECTIONS", c.RiverUIMaxConnections, 1},
 	} {
-		if limit.value < 1 {
-			return fmt.Errorf("%s must be at least 1", limit.name)
+		if limit.value < limit.minimum {
+			return fmt.Errorf("%s must be at least %d", limit.name, limit.minimum)
 		}
 	}
 	return nil

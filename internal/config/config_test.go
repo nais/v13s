@@ -27,13 +27,13 @@ func TestDatabasePoolConfig(t *testing.T) {
 			want: DatabasePoolConfig{MainMaxConnections: 24, JobMaxConnections: 40, RiverUIMaxConnections: 3},
 		},
 		{
-			name: "single connection pools",
+			name: "minimum pool sizes",
 			env: map[string]string{
-				"DATABASE_MAX_CONNECTIONS":          "1",
+				"DATABASE_MAX_CONNECTIONS":          "2",
 				"JOB_DATABASE_MAX_CONNECTIONS":      "1",
 				"RIVER_UI_DATABASE_MAX_CONNECTIONS": "1",
 			},
-			want: DatabasePoolConfig{MainMaxConnections: 1, JobMaxConnections: 1, RiverUIMaxConnections: 1},
+			want: DatabasePoolConfig{MainMaxConnections: 2, JobMaxConnections: 1, RiverUIMaxConnections: 1},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -46,6 +46,14 @@ func TestDatabasePoolConfig(t *testing.T) {
 			require.Equal(t, tt.want, cfg.DatabasePools)
 		})
 	}
+}
+
+func TestDatabasePoolConfigRejectsSingleMainConnection(t *testing.T) {
+	setDatabasePoolEnv(t)
+	t.Setenv("DATABASE_MAX_CONNECTIONS", "1")
+	cfg, err := NewConfig()
+	require.ErrorContains(t, err, "DATABASE_MAX_CONNECTIONS must be at least 2")
+	require.Nil(t, cfg)
 }
 
 func TestDatabasePoolConfigRejectsInvalidLimits(t *testing.T) {

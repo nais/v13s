@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,10 +25,13 @@ func TestParsePoolConfig(t *testing.T) {
 }
 
 func TestNewPoolRejectsInvalidLimitsBeforeConnecting(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	log, _ := logrustest.NewNullLogger()
 	for _, migrate := range []bool{false, true} {
-		for _, maxConnections := range []int32{0, -1} {
-			pool, err := NewPool(context.Background(), unreachableDSN, maxConnections, nil, migrate)
-			require.ErrorContains(t, err, "maximum connections must be at least 1")
+		for _, maxConnections := range []int32{0, -1, 1} {
+			pool, err := NewPool(ctx, unreachableDSN, maxConnections, log, migrate)
+			require.ErrorContains(t, err, "main database pool maximum connections must be at least 2")
 			require.Nil(t, pool)
 		}
 	}
