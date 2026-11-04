@@ -50,7 +50,7 @@ func (w eventHandler) OnUpdate(oldObj, newObj any) {
 	nu := w.convert(newObj)
 	oldWorkloads := extractWorkloads(w.cluster, ou)
 	newWorkloads := extractWorkloads(w.cluster, nu)
-	if hasChanged(oldWorkloads, newWorkloads) || isPeriodicResync(ou, nu) {
+	if hasChanged(oldWorkloads, newWorkloads) {
 		for _, workload := range newWorkloads {
 			w.log.WithField("workload_type", workload.Type).Debugf("updating workload name: %s", workload.Name)
 			w.eventQueue.Updated <- workload
@@ -84,10 +84,6 @@ func (w eventHandler) convert(obj any) *unstructured.Unstructured {
 		return nil
 	}
 	return o
-}
-
-func isPeriodicResync(old, new *unstructured.Unstructured) bool {
-	return old != nil && new != nil && old.GetResourceVersion() == new.GetResourceVersion()
 }
 
 func hasChanged(old []*model.Workload, new []*model.Workload) bool {
