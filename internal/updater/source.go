@@ -2,10 +2,12 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/sources"
 	"golang.org/x/sync/errgroup"
 )
@@ -35,42 +37,52 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 			defer cancel()
 
 			// TODO: we havent updated the db yet so probably need to use another state than updated?
-			return SyncImage(ctxTimeout, image.Name, image.Tag, u.source.Name(), func(ctx context.Context) error {
+			return SyncImage(ctxTimeout, image.Name, image.Tag, u.source.Name(), func(fetchCtx context.Context) (fetchErr error) {
+				defer func() { metrics.RecordUpdaterImages("fetch", 1, fetchErr != nil) }()
 				u.log.Debug("update image")
 
-				imageData, err := u.fetchVulnerabilityData(ctx, image.Name, image.Tag, u.source)
+				imageData, err := u.fetchVulnerabilityData(fetchCtx, image.Name, image.Tag, u.source)
 				if err != nil {
 					return err
 				}
 
+				queueStart := time.Now()
 				select {
 				case ch <- imageData:
+					u.observeFetchStage("enqueue", queueStart, nil)
 					return nil
 				case <-ctx.Done():
+					u.observeFetchStage("enqueue", queueStart, ctx.Err())
 					return ctx.Err()
 				}
 			})
 		})
 	}
 
-	return g.Wait()
+	err := g.Wait()
+	return errors.Join(err, ctx.Err())
 }
 
 func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*ImageVulnerabilityData, error) {
 	// TODO: postgresriver fetch and filter vulnerabilities
+	stageStart := time.Now()
 	vulnerabilities, err := u.source.GetVulnerabilities(ctx, imageName, imageTag, true)
+	u.observeFetchStage("source_fetch", stageStart, err)
 	if err != nil {
 		return nil, err
 	}
 	u.log.Debugf("Got %d vulnerabilities", len(vulnerabilities))
 
 	// sync suppressed vulnerabilities
+	stageStart = time.Now()
 	suppressedVulns, err := u.querier.ListSuppressedVulnerabilitiesForImage(ctx, imageName)
+	u.observeFetchStage("suppression_lookup", stageStart, err)
 	if err != nil {
 		return nil, err
 	}
 
 	u.log.Debugf("Got %d suppressed vulnerabilities", len(suppressedVulns))
+	stageStart = time.Now()
 	filteredVulnerabilities := make([]*sources.SuppressedVulnerability, 0)
 	for _, s := range suppressedVulns {
 		for _, v := range vulnerabilities {
@@ -92,6 +104,7 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 
 	// TODO: postgresriver job to maintain suppressed vulnerabilities
 	err = u.source.MaintainSuppressedVulnerabilities(ctx, filteredVulnerabilities)
+	u.observeFetchStage("suppression_sync", stageStart, err)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +116,13 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 		Source:          source.Name(),
 		Vulnerabilities: vulnerabilities,
 	}, nil
+}
+
+func (u *Updater) observeFetchStage(stage string, start time.Time, err error) {
+	metrics.ObserveUpdaterStage(stage, time.Since(start), err != nil)
+	if err != nil {
+		u.log.WithField("stage", stage).Error("vulnerability fetch stage failed")
+	}
 }
 
 func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {

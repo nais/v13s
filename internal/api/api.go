@@ -44,6 +44,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 		log.Fatalf("Failed to create database pool: %v", err)
 	}
 	defer pool.Close()
+	metrics.TrackDatabasePool("main", pool)
 
 	source, err := sources.New(cfg.DependencyTrack, log)
 	if err != nil {

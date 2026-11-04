@@ -299,7 +299,7 @@ func (u *Updater) ResyncImageVulnerabilities(ctx context.Context) error {
 		return err
 	}
 
-	u.log.Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
+	u.log.WithField("num_scheduled_images", len(images)).Infof("images resynced successfully: %v, in %fs", updateSuccess, time.Since(start).Seconds())
 
 	return nil
 }
@@ -439,19 +439,24 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 
 	var batchErrs []error
 	for {
-		batch, err := collections.ReadChannel(ctx, ch, 100)
+		batchStart := time.Now()
+		batch, err := collections.ReadChannel(ctx, ch, 100, time.Second)
 		if err != nil {
+			metrics.ObserveUpdaterStage("batch_wait", time.Since(batchStart), true)
 			return errors.Join(append(batchErrs, err)...)
 		}
 
 		if len(batch) == 0 {
 			break
 		}
+		metrics.ObserveUpdaterStage("batch_wait", time.Since(batchStart), false)
 
 		writeCtx, cancel := context.WithTimeout(ctx, u.batchWriteTimeout)
+		writeStart := time.Now()
 		err = u.BatchUpdateVulnerabilityData(writeCtx, batch)
 		err = errors.Join(err, writeCtx.Err())
 		cancel()
+		metrics.ObserveUpdaterStage("write_batch", time.Since(writeStart), err != nil)
 		if err != nil {
 			u.log.WithError(err).WithField("images", len(batch)).Error("failed to update batch, continuing with next batch")
 			batchErrs = append(batchErrs, err)
@@ -466,12 +471,20 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 }
 
 func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) error {
+	imageStateWritesStarted := false
+	defer func() {
+		if !imageStateWritesStarted {
+			metrics.RecordUpdaterImages("write", len(images), true)
+		}
+	}()
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
 	vulns := make([]sql.BatchUpsertVulnerabilitiesParams, 0)
 	imageStates := make([]sql.BatchUpdateImageStateParams, 0)
 
+	severityStart := time.Now()
 	since, err := u.DetermineSeveritySince(ctx, images)
+	metrics.ObserveUpdaterStage("severity_history", time.Since(severityStart), err != nil)
 	if err != nil {
 		u.log.Errorf("determine severitySince: %v", err)
 	}
@@ -503,9 +516,15 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
 	)
 
-	u.runExec("upsert CVEs", len(cves), u.querier.BatchUpsertCve(ctx, cves).Exec)
-	u.runExec("upsert CVE aliases", len(cveAliases), u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec)
-	u.runExec("upsert vulnerabilities", len(vulns), u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec)
+	u.runExec("upsert_cves", len(cves), func(handler func(int, error)) {
+		u.querier.BatchUpsertCve(ctx, cves).Exec(handler)
+	})
+	u.runExec("upsert_aliases", len(cveAliases), func(handler func(int, error)) {
+		u.querier.BatchUpsertCveAlias(ctx, cveAliases).Exec(handler)
+	})
+	u.runExec("upsert_vulnerabilities", len(vulns), func(handler func(int, error)) {
+		u.querier.BatchUpsertVulnerabilities(ctx, vulns).Exec(handler)
+	})
 
 	if len(cves) > 0 {
 		cveIDs := make([]string, 0, len(cves))
@@ -518,7 +537,9 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 			cveIDs = append(cveIDs, c.CveID)
 		}
 
+		priorityStart := time.Now()
 		updated, err := u.querier.UpdateCvePriorityForCves(ctx, cveIDs)
+		metrics.ObserveUpdaterStage("cve_priority", time.Since(priorityStart), err != nil)
 		if err != nil {
 			return fmt.Errorf("updating cve priority after upserting CVEs: %w", err)
 		}
@@ -528,10 +549,13 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	}
 
 	for _, i := range images {
-		if err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
+		summaryStart := time.Now()
+		err := u.querier.RecalculateVulnerabilitySummary(ctx, sql.RecalculateVulnerabilitySummaryParams{
 			ImageName: i.ImageName,
 			ImageTag:  i.ImageTag,
-		}); err != nil {
+		})
+		metrics.ObserveUpdaterStage("recalculate_summary", time.Since(summaryStart), err != nil)
+		if err != nil {
 			return fmt.Errorf("recalculate vulnerability summary for %s:%s: %w", i.ImageName, i.ImageTag, err)
 		}
 	}
@@ -548,12 +572,20 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageName },
 		func(x sql.BatchUpdateWorkloadStateByImageParams) string { return x.ImageTag },
 	)
-	if errCount := u.runExec("update workload states", len(workloadStates), u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec); errCount > 0 {
+	if errCount := u.runExec("update_workload_states", len(workloadStates), func(handler func(int, error)) {
+		u.querier.BatchUpdateWorkloadStateByImage(ctx, workloadStates).Exec(handler)
+	}); errCount > 0 {
 		u.log.Errorf("skipping image state update: %d workload state update(s) failed", errCount)
 		return fmt.Errorf("batch workload state update had %d failure(s), image state update skipped", errCount)
 	}
 
-	u.runExec("update image states", len(images), u.querier.BatchUpdateImageState(ctx, imageStates).Exec)
+	imageStateWritesStarted = true
+	u.runExec("update_image_states", len(images), func(handler func(int, error)) {
+		u.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(index int, err error) {
+			metrics.RecordUpdaterImages("write", 1, err != nil)
+			handler(index, err)
+		})
+	})
 	return nil
 }
 
@@ -576,17 +608,12 @@ func (u *Updater) runExec(
 
 	exec(handler)
 
-	entry := u.log.WithFields(logrus.Fields{
-		"duration":   fmt.Sprintf("%fs", time.Since(start).Seconds()),
-		"num_rows":   totalRows - errCount,
-		"num_errors": errCount,
-	})
+	metrics.ObserveUpdaterStage(label, time.Since(start), errCount > 0)
 	if errCount > 0 {
-		entry.Error(label)
-	} else {
-		entry.Info(label)
+		u.log.WithFields(logrus.Fields{
+			"batch": label, "num_rows": totalRows - errCount, "num_errors": errCount,
+		}).Error("batch completed with errors")
 	}
-
 	return errCount
 }
 

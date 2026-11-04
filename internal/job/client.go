@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
@@ -89,6 +90,7 @@ func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueCo
 		pool.Close()
 		return nil, err
 	}
+	metrics.TrackDatabasePool("river", pool)
 	return &client{
 		workers:     workers,
 		pool:        pool,

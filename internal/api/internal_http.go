@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
@@ -119,6 +120,7 @@ func riverUI(ctx context.Context, dbUrl string) *riverui.Handler {
 		logrus.Errorf("%v", err)
 		return nil
 	}
+	metrics.TrackDatabasePool("river_ui", pool)
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,

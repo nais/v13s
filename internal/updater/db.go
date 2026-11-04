@@ -41,7 +41,10 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 		return nil
 	}
 
-	handleErr := handleError(ctx, imageName, imageTag, source, srcErr)
+	recoveryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+
+	handleErr := handleError(recoveryCtx, imageName, imageTag, source, srcErr)
 	if handleErr == nil {
 		return nil
 	}
@@ -49,7 +52,7 @@ func SyncImage(ctx context.Context, imageName, imageTag, source string, f func(c
 		return handleErr
 	}
 
-	return scheduleRecoverableResync(ctx, imageName, imageTag, d)
+	return scheduleRecoverableResync(recoveryCtx, imageName, imageTag, d)
 }
 
 func db(ctx context.Context) *database {
