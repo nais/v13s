@@ -3226,7 +3226,7 @@ func TestServer_EnrichedCveFields(t *testing.T) {
 	})
 }
 
-func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
+func TestServer_GetVulnerabilitySummaryForImage_NoCrossTagFallback(t *testing.T) {
 	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{
 		clusters:              []string{"cluster-1"},
 		namespaces:            []string{"namespace-1"},
@@ -3237,13 +3237,12 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 
 	const (
 		imageName = "image-cluster-1-namespace-1-workload-1"
-		knownTag  = "v1.0"
 		newTag    = "v2.0"
 	)
 
 	t.Run("unknown tag with NO_SBOM status returns nil summary", func(t *testing.T) {
 		// v1.0 was seeded by setupTest with 1 high vuln; v2.0 has no image or workload record
-		// so its status is NO_SBOM. Stale fallback is only shown for PROCESSING, not NO_SBOM.
+		// so its status is NO_SBOM.
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
 
@@ -3251,9 +3250,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_NO_SBOM, resp.GetSbomStatus().GetStatus())
 	})
 
-	t.Run("PROCESSING tag with stale summary shows stale data", func(t *testing.T) {
-		// Create image for v2.0 in initialized (PROCESSING) state, attach a workload,
-		// and verify that the stale v1.0 counts are surfaced with stale_image_tag set.
+	t.Run("PROCESSING tag without its own summary returns nil", func(t *testing.T) {
 		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
 		require.NoError(t, err)
 		_, err = db.UpsertWorkload(ctx, sql.UpsertWorkloadParams{
@@ -3269,15 +3266,11 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
 
-		sum := resp.GetVulnerabilitySummary()
-		require.NotNil(t, sum, "PROCESSING with stale tag must return stale summary")
-		assert.Equal(t, int32(1), sum.GetHigh(), "stale counts from v1.0 must be returned")
-		require.NotNil(t, sum.StaleImageTag, "stale_image_tag must be set")
-		assert.Equal(t, knownTag, *sum.StaleImageTag, "stale_image_tag must point to v1.0")
+		assert.Nil(t, resp.GetVulnerabilitySummary())
 		assert.Equal(t, vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, resp.GetSbomStatus().GetStatus())
 	})
 
-	t.Run("workload_ref and sbom_status are still populated when using stale summary", func(t *testing.T) {
+	t.Run("workload_ref and sbom_status are populated without a summary", func(t *testing.T) {
 		// Register v2.0 as the current image for the workload so workload_ref is non-empty.
 		err := db.CreateImage(ctx, sql.CreateImageParams{Name: imageName, Tag: newTag, Metadata: map[string]string{}})
 		require.NoError(t, err)
@@ -3293,7 +3286,7 @@ func TestServer_GetVulnerabilitySummaryForImage_StaleFallback(t *testing.T) {
 
 		resp, err := client.GetVulnerabilitySummaryForImage(ctx, imageName, newTag)
 		require.NoError(t, err)
-		assert.NotEmpty(t, resp.GetWorkloadRef(), "workload_ref must be populated even with stale summary")
+		assert.NotEmpty(t, resp.GetWorkloadRef(), "workload_ref must be populated without a summary")
 		assert.NotNil(t, resp.GetSbomStatus(), "sbom_status must be populated")
 	})
 

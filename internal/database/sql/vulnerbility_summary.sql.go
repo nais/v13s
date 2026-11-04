@@ -93,50 +93,6 @@ func (q *Queries) GetLastSnapshotDateForVulnerabilitySummary(ctx context.Context
 	return last_snapshot, err
 }
 
-const getLatestSummaryForImageName = `-- name: GetLatestSummaryForImageName :one
-SELECT
-    id, image_name, image_tag, critical, high, medium, low, unassigned, risk_score, created_at, updated_at, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier
-FROM
-    vulnerability_summary
-WHERE
-    image_name = $1
-    AND image_tag != $2
-ORDER BY
-    updated_at DESC
-LIMIT 1
-`
-
-type GetLatestSummaryForImageNameParams struct {
-	ImageName  string
-	ExcludeTag string
-}
-
-func (q *Queries) GetLatestSummaryForImageName(ctx context.Context, arg GetLatestSummaryForImageNameParams) (*VulnerabilitySummary, error) {
-	row := q.db.QueryRow(ctx, getLatestSummaryForImageName, arg.ImageName, arg.ExcludeTag)
-	var i VulnerabilitySummary
-	err := row.Scan(
-		&i.ID,
-		&i.ImageName,
-		&i.ImageTag,
-		&i.Critical,
-		&i.High,
-		&i.Medium,
-		&i.Low,
-		&i.Unassigned,
-		&i.RiskScore,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.KevCount,
-		&i.HighRisk,
-		&i.ElevatedRisk,
-		&i.Monitor,
-		&i.RansomwareCount,
-		&i.HighEpssCount,
-		&i.TopRiskTier,
-	)
-	return &i, err
-}
-
 const getVulnerabilitySummaries = `-- name: GetVulnerabilitySummaries :many
 WITH filtered_workloads AS (
     SELECT
@@ -192,24 +148,10 @@ joined_data AS (
         v.updated_at
     FROM
         filtered_workloads fw
-    LEFT JOIN vulnerability_summary cur ON fw.image_name = cur.image_name
-        AND fw.image_tag = cur.image_tag
+    LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
+        AND fw.image_tag = v.image_tag
     LEFT JOIN images i ON i.name = fw.image_name
-        AND i.tag = fw.image_tag
-    LEFT JOIN LATERAL (
-        SELECT
-            ps.id
-        FROM
-            vulnerability_summary ps
-        WHERE
-            cur.id IS NULL
-            AND i.state NOT IN ('updated', 'failed', 'unused')
-            AND ps.image_name = fw.image_name
-            AND ps.image_tag <> fw.image_tag
-        ORDER BY
-            ps.updated_at DESC
-        LIMIT 1) prev ON TRUE
-    LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id))
+        AND i.tag = fw.image_tag)
 SELECT
     namespace::TEXT AS namespace,
     CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
@@ -438,24 +380,10 @@ joined_data AS (
         v.updated_at
     FROM
         filtered_workloads fw
-        LEFT JOIN vulnerability_summary cur ON fw.image_name = cur.image_name
-            AND fw.image_tag = cur.image_tag
+        LEFT JOIN vulnerability_summary v ON fw.image_name = v.image_name
+            AND fw.image_tag = v.image_tag
         LEFT JOIN images i ON i.name = fw.image_name
-            AND i.tag = fw.image_tag
-        LEFT JOIN LATERAL (
-            SELECT
-                ps.id
-            FROM
-                vulnerability_summary ps
-            WHERE
-                cur.id IS NULL
-                AND i.state NOT IN ('updated', 'failed', 'unused')
-                AND ps.image_name = fw.image_name
-                AND ps.image_tag <> fw.image_tag
-            ORDER BY
-                ps.updated_at DESC
-            LIMIT 1) prev ON TRUE
-        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id))
+            AND i.tag = fw.image_tag)
 SELECT
     CAST(COUNT(DISTINCT id) AS INT4) AS workload_count,
     CAST(COUNT(DISTINCT CASE WHEN is_active
@@ -916,32 +844,17 @@ vulnerability_data AS (
         i.sbom_processing_started_at
     FROM
         filtered_workloads w
-        LEFT JOIN vulnerability_summary cur ON w.image_name = cur.image_name
+        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
             AND (
                 CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
-                    w.image_tag = cur.image_tag
+                    w.image_tag = v.image_tag
                 ELSE
                     TRUE
                 END)
         LEFT JOIN images i ON i.name = w.image_name
             AND i.tag = w.image_tag
-        LEFT JOIN LATERAL (
-            SELECT
-                ps.id
-            FROM
-                vulnerability_summary ps
-            WHERE
-                cur.id IS NULL
-                AND i.state NOT IN ('updated', 'failed', 'unused')
-                AND $9::TIMESTAMP WITH TIME ZONE IS NULL
-                AND ps.image_name = w.image_name
-                AND ps.image_tag <> w.image_tag
-            ORDER BY
-                ps.updated_at DESC
-            LIMIT 1) prev ON TRUE
-        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
     WHERE ($10::TEXT IS NULL
-        OR v.image_name = $10::TEXT)
+        OR w.image_name = $10::TEXT)
     AND ($11::TEXT IS NULL
         OR (
             CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
@@ -1315,24 +1228,10 @@ vulnerability_data AS (
         v.risk_score
     FROM
         filtered_workloads w
-        LEFT JOIN vulnerability_summary cur ON w.image_name = cur.image_name
-            AND w.image_tag = cur.image_tag
+        LEFT JOIN vulnerability_summary v ON w.image_name = v.image_name
+            AND w.image_tag = v.image_tag
         LEFT JOIN images i ON i.name = w.image_name
-            AND i.tag = w.image_tag
-        LEFT JOIN LATERAL (
-            SELECT
-                ps.id
-            FROM
-                vulnerability_summary ps
-            WHERE
-                cur.id IS NULL
-                AND i.state NOT IN ('updated', 'failed', 'unused')
-                AND ps.image_name = w.image_name
-                AND ps.image_tag <> w.image_tag
-            ORDER BY
-                ps.updated_at DESC
-            LIMIT 1) prev ON TRUE
-        LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id))
+            AND i.tag = w.image_tag)
 SELECT
     id,
     workload_name,

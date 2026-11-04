@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestServer_SummariesUsePreviousTagWhileProcessing(t *testing.T) {
+func TestServer_SummariesRequireCurrentTagWhileProcessing(t *testing.T) {
 	ctx, db, pool, client, cleanup := setupTest(t, testSetupConfig{}, true)
 	defer cleanup()
 
@@ -54,17 +54,17 @@ func TestServer_SummariesUsePreviousTagWhileProcessing(t *testing.T) {
 	t.Run("team summary counts processing workloads with data as covered", func(t *testing.T) {
 		resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter(namespace))
 		require.NoError(t, err)
-		assert.Equal(t, int32(2+3+5), resp.GetVulnerabilitySummary().GetCritical())
+		assert.Equal(t, int32(3+5), resp.GetVulnerabilitySummary().GetCritical())
 		assert.Equal(t, int32(4), resp.GetWorkloadCount())
-		assert.Equal(t, int32(3), resp.GetSbomCount())
+		assert.Equal(t, int32(2), resp.GetSbomCount())
 
 		batch, err := client.GetVulnerabilitySummaries(ctx, []string{namespace})
 		require.NoError(t, err)
-		assert.Equal(t, int32(2+3+5), batch.GetSummaries()[namespace].GetVulnerabilitySummary().GetCritical())
-		assert.Equal(t, int32(3), batch.GetSummaries()[namespace].GetSbomCount())
+		assert.Equal(t, int32(3+5), batch.GetSummaries()[namespace].GetVulnerabilitySummary().GetCritical())
+		assert.Equal(t, int32(2), batch.GetSummaries()[namespace].GetSbomCount())
 	})
 
-	t.Run("workload list shows previous tag data while processing", func(t *testing.T) {
+	t.Run("workload list only shows current tag data while processing", func(t *testing.T) {
 		resp, err := client.ListVulnerabilitySummaries(ctx, vulnerabilities.NamespaceFilter(namespace), vulnerabilities.Limit(10))
 		require.NoError(t, err)
 		type got struct {
@@ -85,7 +85,7 @@ func TestServer_SummariesUsePreviousTagWhileProcessing(t *testing.T) {
 			}
 		}
 		assert.Equal(t, map[string]got{
-			"w-fallback": {vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, "v2", 2, "v1", true},
+			"w-fallback": {vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, "v2", 0, "", false},
 			"w-resync":   {vulnerabilities.SbomStatus_SBOM_STATUS_PROCESSING, "v1", 3, "", true},
 			"w-failed":   {vulnerabilities.SbomStatus_SBOM_STATUS_FAILED, "v1", 0, "", false},
 			"w-ready":    {vulnerabilities.SbomStatus_SBOM_STATUS_READY, "v1", 5, "", true},
@@ -106,23 +106,23 @@ func TestServer_SummariesUsePreviousTagWhileProcessing(t *testing.T) {
 		assert.Empty(t, names("v1"))
 	})
 
-	t.Run("KEV filter uses previous tag data while processing", func(t *testing.T) {
+	t.Run("KEV filter excludes previous tag data while processing", func(t *testing.T) {
 		_, err := pool.Exec(ctx, `UPDATE vulnerability_summary SET kev_count = 1 WHERE image_name = 'fallback-image' AND image_tag = 'v1'`)
 		require.NoError(t, err)
 
 		resp, err := client.GetVulnerabilitySummary(ctx, vulnerabilities.NamespaceFilter(namespace), vulnerabilities.KevFilter(true))
 		require.NoError(t, err)
-		assert.Equal(t, int32(1), resp.GetWorkloadCount())
-		assert.Equal(t, int32(2), resp.GetVulnerabilitySummary().GetCritical())
+		assert.Zero(t, resp.GetWorkloadCount())
+		assert.Zero(t, resp.GetVulnerabilitySummary().GetCritical())
 
 		batch, err := client.GetVulnerabilitySummaries(ctx, []string{namespace, "empty-namespace"}, vulnerabilities.KevFilter(true))
 		require.NoError(t, err)
-		assert.Equal(t, int32(1), batch.GetSummaries()[namespace].GetWorkloadCount())
-		assert.Equal(t, int32(2), batch.GetSummaries()[namespace].GetVulnerabilitySummary().GetCritical())
+		assert.Zero(t, batch.GetSummaries()[namespace].GetWorkloadCount())
+		assert.Zero(t, batch.GetSummaries()[namespace].GetVulnerabilitySummary().GetCritical())
 		assert.Equal(t, int32(0), batch.GetSummaries()["empty-namespace"].GetWorkloadCount())
 	})
 
-	t.Run("metrics use previous tag data while processing", func(t *testing.T) {
+	t.Run("metrics only use current tag data while processing", func(t *testing.T) {
 		rows, err := db.ListVulnerabilitySummariesForMetrics(ctx, nil)
 		require.NoError(t, err)
 		critical := map[string]int32{}
@@ -131,6 +131,6 @@ func TestServer_SummariesUsePreviousTagWhileProcessing(t *testing.T) {
 				critical[r.WorkloadName] = r.Critical
 			}
 		}
-		assert.Equal(t, map[string]int32{"w-fallback": 2, "w-resync": 3, "w-failed": 0, "w-ready": 5}, critical)
+		assert.Equal(t, map[string]int32{"w-fallback": 0, "w-resync": 3, "w-failed": 0, "w-ready": 5}, critical)
 	})
 }
