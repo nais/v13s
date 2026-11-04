@@ -30,9 +30,10 @@ type source struct {
 }
 
 type envConfig struct {
-	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
-	Kev         config.KevConfig
-	Osv         config.OsvConfig
+	DatabaseURL            string `envconfig:"DATABASE_URL" required:"true"`
+	DatabaseMaxConnections int32  `envconfig:"DATABASE_MAX_CONNECTIONS" default:"8"`
+	Kev                    config.KevConfig
+	Osv                    config.OsvConfig
 }
 
 type prioritySyncer struct {
@@ -134,7 +135,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := database.NewPool(ctx, cfg.DatabaseURL, log, false)
+	pool, err := database.NewPool(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConnections, log, false)
 	if err != nil {
 		log.WithError(err).Fatal("failed to connect to database")
 	}

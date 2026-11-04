@@ -27,7 +27,7 @@ func GetPool(ctx context.Context, t *testing.T, testcontainers bool) *pgxpool.Po
 		}
 		return getConnection(ctx, t, container, dsn, log)
 	}
-	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", log.WithField("component", "database"))
+	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:3002/v13s?sslmode=disable", 8, log.WithField("component", "database"))
 	if err != nil {
 		t.Fatalf("failed to create database pool: %v", err)
 	}
@@ -54,7 +54,7 @@ func startPostgresql(ctx context.Context, log logrus.FieldLogger, t *testing.T) 
 		return nil, "", fmt.Errorf("failed to get connection string: %w", err)
 	}
 
-	pool, err := database.NewPool(ctx, dsn, log, true)
+	pool, err := database.NewPool(ctx, dsn, 8, log, true)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create pool: %w", err)
 	}
@@ -68,7 +68,7 @@ func startPostgresql(ctx context.Context, log logrus.FieldLogger, t *testing.T) 
 }
 
 func getConnection(ctx context.Context, t *testing.T, container *postgres.PostgresContainer, dsn string, log logrus.FieldLogger) *pgxpool.Pool {
-	pool, _ := database.NewPool(ctx, dsn, log, false)
+	pool, _ := database.NewPool(ctx, dsn, 8, log, false)
 
 	t.Cleanup(func() {
 		pool.Close()

@@ -17,9 +17,10 @@ import (
 )
 
 type Config struct {
-	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	InternalListenAddr        string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
-	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
+	ListenAddr                string `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	InternalListenAddr        string `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
+	DatabaseUrl               string `envconfig:"DATABASE_URL" required:"true"`
+	DatabasePools             DatabasePoolConfig
 	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
 	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
@@ -35,6 +36,28 @@ type Config struct {
 	Metrics                   MetricConfig
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 	Updater                   UpdaterConfig
+}
+
+type DatabasePoolConfig struct {
+	MainMaxConnections    int32 `envconfig:"DATABASE_MAX_CONNECTIONS" default:"8"`
+	JobMaxConnections     int32 `envconfig:"JOB_DATABASE_MAX_CONNECTIONS" default:"12"`
+	RiverUIMaxConnections int32 `envconfig:"RIVER_UI_DATABASE_MAX_CONNECTIONS" default:"2"`
+}
+
+func (c DatabasePoolConfig) Validate() error {
+	for _, limit := range []struct {
+		name  string
+		value int32
+	}{
+		{"DATABASE_MAX_CONNECTIONS", c.MainMaxConnections},
+		{"JOB_DATABASE_MAX_CONNECTIONS", c.JobMaxConnections},
+		{"RIVER_UI_DATABASE_MAX_CONNECTIONS", c.RiverUIMaxConnections},
+	} {
+		if limit.value < 1 {
+			return fmt.Errorf("%s must be at least 1", limit.name)
+		}
+	}
+	return nil
 }
 
 type UpdaterConfig struct {
@@ -122,6 +145,9 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 	if err := cfg.Kev.Validate(); err != nil {
+		return nil, err
+	}
+	if err := cfg.DatabasePools.Validate(); err != nil {
 		return nil, err
 	}
 

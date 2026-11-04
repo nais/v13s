@@ -47,7 +47,7 @@ func TestNewPoolStopsRetryingWhenCancelled(t *testing.T) {
 			defer cancel()
 
 			start := time.Now()
-			pool, err := NewPool(ctx, unreachableDSN, log, migrate)
+			pool, err := NewPool(ctx, unreachableDSN, 8, log, migrate)
 			require.Nil(t, pool)
 			assert.ErrorIs(t, err, context.DeadlineExceeded)
 			assert.Less(t, time.Since(start), 3*time.Second)

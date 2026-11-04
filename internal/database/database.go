@@ -26,15 +26,33 @@ const (
 
 var regParseSQLName = regexp.MustCompile(`\-\-\s*name:\s+(\S+)`)
 
-func New(ctx context.Context, dsn string, log logrus.FieldLogger) (*pgxpool.Pool, error) {
-	conn, err := NewPool(ctx, dsn, log, true)
+func New(ctx context.Context, dsn string, maxConnections int32, log logrus.FieldLogger) (*pgxpool.Pool, error) {
+	conn, err := NewPool(ctx, dsn, maxConnections, log, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the database: %w", err)
 	}
 	return conn, nil
 }
 
-func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bool) (*pgxpool.Pool, error) {
+func ParsePoolConfig(dsn string, maxConnections int32) (*pgxpool.Config, error) {
+	if maxConnections < 1 {
+		return nil, fmt.Errorf("database pool maximum connections must be at least 1")
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dsn config: %w", err)
+	}
+	config.MaxConns = maxConnections
+	config.MinConns = min(config.MinConns, maxConnections)
+	config.MinIdleConns = min(config.MinIdleConns, maxConnections)
+	return config, nil
+}
+
+func NewPool(ctx context.Context, dsn string, maxConnections int32, log logrus.FieldLogger, migrate bool) (*pgxpool.Pool, error) {
+	config, err := ParsePoolConfig(dsn, maxConnections)
+	if err != nil {
+		return nil, err
+	}
 	if migrate {
 		var migErr error
 		for i := range maxRetries {
@@ -61,11 +79,6 @@ func NewPool(ctx context.Context, dsn string, log logrus.FieldLogger, migrate bo
 		}
 	}
 
-	config, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse dsn config: %w", err)
-	}
-	config.MaxConns = 16
 	config.ConnConfig.Tracer = otelpgx.NewTracer(
 		otelpgx.WithSpanNameFunc(func(stmt string) string {
 			matches := regParseSQLName.FindStringSubmatch(stmt)
