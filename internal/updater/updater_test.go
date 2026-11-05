@@ -364,16 +364,21 @@ func TestBatchStageMetricsIncludeSendBatchWait(t *testing.T) {
 	})
 }
 
-type partialImageStateDB struct {
+type failingBatchDB struct {
 	failingSummaryDB
-	failAt   int
-	rowErr   error
-	closeErr error
+	failBatch int
+	failAt    int
+	rowErr    error
+	closeErr  error
 }
 
-func (db *partialImageStateDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+func (*failingBatchDB) Query(ctx context.Context, _ string, _ ...any) (pgx.Rows, error) {
+	return emptyFetchRows{}, ctx.Err()
+}
+
+func (db *failingBatchDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
 	result := db.failingSummaryDB.SendBatch(ctx, batch)
-	if db.nonEmptyBatches == 2 && batch.Len() > 0 {
+	if db.nonEmptyBatches == db.failBatch && batch.Len() > 0 {
 		return &partialImageStateResults{failAt: db.failAt, rowErr: db.rowErr, closeErr: db.closeErr}
 	}
 	return result
@@ -410,8 +415,8 @@ func TestUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
 	}{
 		{name: "success", db: &failingSummaryDB{}, success: 2},
 		{name: "summary_failure", db: &failingSummaryDB{failAt: 2, err: summaryErr}, failed: 2, err: summaryErr},
-		{name: "partial_image_state_failure", db: &partialImageStateDB{failAt: 2, rowErr: rowErr}, failed: 2},
-		{name: "image_state_close_failure", db: &partialImageStateDB{closeErr: closeErr}, failed: 2},
+		{name: "partial_image_state_failure", db: &failingBatchDB{failBatch: 2, failAt: 2, rowErr: rowErr}, failed: 2, err: rowErr},
+		{name: "image_state_close_failure", db: &failingBatchDB{failBatch: 2, closeErr: closeErr}, failed: 2, err: closeErr},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			metrics.ResetUpdaterMetrics()
@@ -437,6 +442,80 @@ func TestUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBatchUpdateStopsAfterBatchFailure(t *testing.T) {
+	for i, stage := range []string{"cves", "aliases", "vulnerabilities", "workload_states", "image_states"} {
+		for _, failure := range []string{"row", "commit"} {
+			t.Run(stage+"/"+failure, func(t *testing.T) {
+				writeErr := errors.New("batch write failed")
+				db := &failingBatchDB{failBatch: i + 1}
+				if failure == "row" {
+					db.failAt, db.rowErr = 1, writeErr
+				} else {
+					db.closeErr = writeErr
+				}
+				log, _ := logrustest.NewNullLogger()
+				u := &Updater{querier: sql.New(db), log: log.WithField("test", t.Name())}
+				err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{{
+					ImageName: "image",
+					ImageTag:  "v1",
+					Vulnerabilities: []*sources.Vulnerability{{
+						Package: "package",
+						Cve: &sources.Cve{
+							Id:         "CVE-2026-1234",
+							Severity:   sources.SeverityHigh,
+							References: map[string]string{"CVE-2026-1234": "GHSA-test"},
+						},
+					}},
+				}})
+				assert.ErrorIs(t, err, writeErr)
+				assert.Equal(t, db.failBatch, db.nonEmptyBatches, "later batches must not run after a write failure")
+			})
+		}
+	}
+}
+
+type resyncFailureDB struct{ failingBatchDB }
+
+func (db *resyncFailureDB) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+	if len(args) == 0 {
+		return &scheduledImageRows{}, nil
+	}
+	return db.failingBatchDB.Query(ctx, query, args...)
+}
+
+type scheduledImageRows struct {
+	emptyFetchRows
+	read bool
+}
+
+func (r *scheduledImageRows) Next() bool {
+	if r.read {
+		return false
+	}
+	r.read = true
+	return true
+}
+
+func (*scheduledImageRows) Scan(dest ...any) error {
+	*dest[0].(*string) = "image"
+	*dest[1].(*string) = "v1"
+	return nil
+}
+
+func TestResyncImageVulnerabilitiesReturnsWriteFailure(t *testing.T) {
+	writeErr := errors.New("image state commit failed")
+	db := &resyncFailureDB{failingBatchDB{failBatch: 2, closeErr: writeErr}}
+	log, _ := logrustest.NewNullLogger()
+	u := &Updater{
+		querier:            sql.New(db),
+		source:             fetchMetricsSource{},
+		log:                log.WithField("test", t.Name()),
+		resyncBatchTimeout: time.Minute,
+		batchWriteTimeout:  time.Minute,
+	}
+	require.ErrorIs(t, u.ResyncImageVulnerabilities(t.Context()), writeErr)
 }
 
 func updaterImageCount(t *testing.T, stage, outcome string) float64 {
