@@ -3140,31 +3140,35 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 	return nil
 }
 
-func TestServer_GetCveReferenceTextAndCwes(t *testing.T) {
+func TestServer_GetCveRefLinksAndCwes(t *testing.T) {
 	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{}, true)
 	defer cleanup()
 
 	const cveID = "CVE-2026-111497"
 	aliases := map[string]string{cveID: "GHSA-9v8h-qqgm-4m35"}
 	text := "https://example.com/advisory\r\n- [Release](https://example.com/release)\r\n"
+	links := []string{"https://example.com/advisory", "https://example.com/release"}
 	tests := []struct {
-		name string
-		text string
-		cwes []typeext.Cwe
+		name  string
+		text  string
+		links []string
+		cwes  []typeext.Cwe
 	}{
 		{name: "absent details"},
-		{name: "reference text updated", text: text},
+		{name: "reference links updated", text: text, links: links},
 		{
-			name: "weaknesses updated",
-			text: text,
+			name:  "weaknesses updated",
+			text:  text,
+			links: links,
 			cwes: []typeext.Cwe{
 				{Id: 252, Name: "Unchecked Return Value"},
 				{Id: 787, Name: "Out-of-bounds Write"},
 			},
 		},
 		{
-			name: "weakness links updated",
-			text: text,
+			name:  "weakness links updated",
+			text:  text,
+			links: links,
 			cwes: []typeext.Cwe{
 				{Id: 252, Name: "Unchecked Return Value", Link: "https://cwe.mitre.org/data/definitions/252.html"},
 				{Id: 787, Name: "Out-of-bounds Write", Link: "https://cwe.mitre.org/data/definitions/787.html"},
@@ -3194,7 +3198,7 @@ func TestServer_GetCveReferenceTextAndCwes(t *testing.T) {
 			require.NoError(t, err)
 			cve := response.GetCve()
 			require.NotNil(t, cve)
-			assert.Equal(t, tt.text, cve.GetReferenceText())
+			assert.Equal(t, tt.links, cve.GetRefLinks())
 			require.Len(t, cve.GetCwes(), len(tt.cwes))
 			for i, cwe := range tt.cwes {
 				assert.Equal(t, cwe.Id, cve.Cwes[i].GetId())

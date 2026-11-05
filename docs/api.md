@@ -31,7 +31,7 @@ Get operations retrieve specific vulnerability data, and typically return one it
 
 See the interface [pkg/api/vulnerabilities/client.go](../pkg/api/vulnerabilities/client.go) definitions for the full list of available operations.
 
-`GetCve` also returns `reference_text` and `cwes` from Dependency-Track. Each CWE includes a MITRE link generated from its ID by the Dependency-Track client. Reference text preserves the source's formatting; it is not sanitized HTML. Other RPCs do not populate these fields. The existing `references` map contains CVE aliases, not advisory links.
+`GetCve` also returns `ref_links` and `cwes` from Dependency-Track. `ref_links` contains HTTP(S) URLs parsed from Markdown links and plain URLs, in source order without duplicates. Links without a host or with userinfo are excluded. Raw reference text stays in the database and is not exposed through the API. Each CWE includes a MITRE link generated from its ID by the Dependency-Track client. Other RPCs do not populate these fields. The existing `references` map contains CVE aliases, not advisory links.
 
 ### Suppress Operations
 

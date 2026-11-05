@@ -936,8 +936,8 @@ type Cve struct {
 	HasKevEntry        bool                   `protobuf:"varint,12,opt,name=has_kev_entry,json=hasKevEntry,proto3" json:"has_kev_entry,omitempty"`
 	KnownRansomwareUse bool                   `protobuf:"varint,13,opt,name=known_ransomware_use,json=knownRansomwareUse,proto3" json:"known_ransomware_use,omitempty"`
 	Priority           Priority               `protobuf:"varint,14,opt,name=priority,proto3,enum=v13s.api.protobuf.Priority" json:"priority,omitempty"`
-	ReferenceText      string                 `protobuf:"bytes,15,opt,name=reference_text,json=referenceText,proto3" json:"reference_text,omitempty"`
 	Cwes               []*Cwe                 `protobuf:"bytes,16,rep,name=cwes,proto3" json:"cwes,omitempty"`
+	RefLinks           []string               `protobuf:"bytes,17,rep,name=ref_links,json=refLinks,proto3" json:"ref_links,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1070,16 +1070,16 @@ func (x *Cve) GetPriority() Priority {
 	return Priority_PRIORITY_UNSPECIFIED
 }
 
-func (x *Cve) GetReferenceText() string {
-	if x != nil {
-		return x.ReferenceText
-	}
-	return ""
-}
-
 func (x *Cve) GetCwes() []*Cwe {
 	if x != nil {
 		return x.Cwes
+	}
+	return nil
+}
+
+func (x *Cve) GetRefLinks() []string {
+	if x != nil {
+		return x.RefLinks
 	}
 	return nil
 }
@@ -3709,7 +3709,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x1celevated_risk_workload_count\x18\x13 \x01(\x05R\x19elevatedRiskWorkloadCount\x124\n" +
 	"\x16monitor_workload_count\x18\x14 \x01(\x05R\x14monitorWorkloadCountB\x0f\n" +
 	"\r_last_updatedB\x12\n" +
-	"\x10_stale_image_tag\"\xc7\x06\n" +
+	"\x10_stale_image_tag\"\xbd\x06\n" +
 	"\x03Cve\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -3729,9 +3729,9 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x0fepss_percentile\x18\v \x01(\x01H\x04R\x0eepssPercentile\x88\x01\x01\x12\"\n" +
 	"\rhas_kev_entry\x18\f \x01(\bR\vhasKevEntry\x120\n" +
 	"\x14known_ransomware_use\x18\r \x01(\bR\x12knownRansomwareUse\x127\n" +
-	"\bpriority\x18\x0e \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\bpriority\x12%\n" +
-	"\x0ereference_text\x18\x0f \x01(\tR\rreferenceText\x12*\n" +
-	"\x04cwes\x18\x10 \x03(\v2\x16.v13s.api.protobuf.CweR\x04cwes\x1a=\n" +
+	"\bpriority\x18\x0e \x01(\x0e2\x1b.v13s.api.protobuf.PriorityR\bpriority\x12*\n" +
+	"\x04cwes\x18\x10 \x03(\v2\x16.v13s.api.protobuf.CweR\x04cwes\x12\x1b\n" +
+	"\tref_links\x18\x11 \x03(\tR\brefLinks\x1a=\n" +
 	"\x0fReferencesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\n" +

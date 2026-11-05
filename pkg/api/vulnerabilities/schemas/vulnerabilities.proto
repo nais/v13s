@@ -153,8 +153,8 @@ message Cve {
   bool has_kev_entry = 12;
   bool known_ransomware_use = 13;
   Priority priority = 14;
-  string reference_text = 15;
   repeated Cwe cwes = 16;
+  repeated string ref_links = 17;
 }
 
 message Cwe {
