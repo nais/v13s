@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/metrics"
+	"github.com/nais/v13s/internal/sources"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -157,6 +162,186 @@ func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
 }
 
 func (*contextBatchResults) Close() error { return nil }
+
+type fetchMetricsSource struct {
+	sources.Source
+	err error
+}
+
+func (fetchMetricsSource) Name() string { return "metrics-test" }
+
+func (s fetchMetricsSource) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
+	return nil, s.err
+}
+
+func (fetchMetricsSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
+	return nil
+}
+
+type fetchMetricsDB struct{ sql.DBTX }
+
+func (fetchMetricsDB) Exec(ctx context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+	return pgconn.NewCommandTag("UPDATE 1"), ctx.Err()
+}
+
+func (fetchMetricsDB) Query(ctx context.Context, _ string, _ ...any) (pgx.Rows, error) {
+	return emptyFetchRows{}, ctx.Err()
+}
+
+type emptyFetchRows struct{ pgx.Rows }
+
+func (emptyFetchRows) Next() bool { return false }
+func (emptyFetchRows) Err() error { return nil }
+func (emptyFetchRows) Close()     {}
+
+func TestFetchVulnerabilityDataForImages_RecordsOutcomes(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		sourceErr error
+		success   float64
+		failed    float64
+		queued    int
+	}{
+		{name: "success", success: 1, queued: 1},
+		{name: "source_failure", sourceErr: errors.New("source unavailable"), failed: 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics.ResetUpdaterMetrics()
+			t.Cleanup(metrics.ResetUpdaterMetrics)
+			log, _ := logrustest.NewNullLogger()
+			u := &Updater{
+				source:  fetchMetricsSource{err: tt.sourceErr},
+				querier: sql.New(fetchMetricsDB{}),
+				log:     log.WithField("test", t.Name()),
+			}
+			ctx := NewDbContext(t.Context(), u.querier, u.log)
+			ch := make(chan *ImageVulnerabilityData, 1)
+			require.NoError(t, u.FetchVulnerabilityDataForImages(ctx, []*sql.Image{{Name: "image", Tag: "v1"}}, 1, ch))
+			require.Len(t, ch, tt.queued)
+			require.Equal(t, tt.success, updaterImageCount(t, "fetch", "success"))
+			require.Equal(t, tt.failed, updaterImageCount(t, "fetch", "failed"))
+		})
+	}
+}
+
+type delayedSendBatchDB struct {
+	failingSummaryDB
+}
+
+func (db *delayedSendBatchDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+	time.Sleep(15 * time.Second)
+	return db.failingSummaryDB.SendBatch(ctx, batch)
+}
+
+func TestBatchStageMetricsIncludeSendBatchWait(t *testing.T) {
+	metrics.ResetUpdaterMetrics()
+	t.Cleanup(metrics.ResetUpdaterMetrics)
+	synctest.Test(t, func(t *testing.T) {
+		log, _ := logrustest.NewNullLogger()
+		u := &Updater{querier: sql.New(&delayedSendBatchDB{}), log: log.WithField("test", t.Name())}
+		require.NoError(t, u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{{ImageName: "image", ImageTag: "v1"}}))
+
+		reg := prometheus.NewRegistry()
+		reg.MustRegister(metrics.UpdaterStageDuration)
+		families, err := reg.Gather()
+		require.NoError(t, err)
+		var samples int
+		for _, family := range families {
+			for _, metric := range family.Metric {
+				for _, label := range metric.Label {
+					if label.GetName() == "stage" && label.GetValue() == "upsert_cves" {
+						samples++
+						require.Equal(t, uint64(1), metric.GetHistogram().GetSampleCount())
+						require.Equal(t, 15.0, metric.GetHistogram().GetSampleSum(), "pool acquisition happens inside SendBatch")
+					}
+				}
+			}
+		}
+		require.Equal(t, 1, samples)
+	})
+}
+
+type partialImageStateDB struct {
+	failingSummaryDB
+	failAt   int
+	rowErr   error
+	closeErr error
+}
+
+func (db *partialImageStateDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+	result := db.failingSummaryDB.SendBatch(ctx, batch)
+	if db.nonEmptyBatches == 2 && batch.Len() > 0 {
+		return &partialImageStateResults{failAt: db.failAt, rowErr: db.rowErr, closeErr: db.closeErr}
+	}
+	return result
+}
+
+type partialImageStateResults struct {
+	pgx.BatchResults
+	calls    int
+	failAt   int
+	rowErr   error
+	closeErr error
+}
+
+func (r *partialImageStateResults) Exec() (pgconn.CommandTag, error) {
+	r.calls++
+	if r.calls == r.failAt {
+		return pgconn.CommandTag{}, r.rowErr
+	}
+	return pgconn.NewCommandTag("UPDATE 1"), nil
+}
+
+func (r *partialImageStateResults) Close() error { return errors.Join(r.rowErr, r.closeErr) }
+
+func TestUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
+	summaryErr := errors.New("summary unavailable")
+	rowErr := errors.New("image state write failed")
+	closeErr := errors.New("image state commit failed")
+	for _, tt := range []struct {
+		name    string
+		db      sql.DBTX
+		success float64
+		failed  float64
+		err     error
+	}{
+		{name: "success", db: &failingSummaryDB{}, success: 2},
+		{name: "summary_failure", db: &failingSummaryDB{failAt: 2, err: summaryErr}, failed: 2, err: summaryErr},
+		{name: "partial_image_state_failure", db: &partialImageStateDB{failAt: 2, rowErr: rowErr}, failed: 2},
+		{name: "image_state_close_failure", db: &partialImageStateDB{closeErr: closeErr}, failed: 2},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics.ResetUpdaterMetrics()
+			t.Cleanup(metrics.ResetUpdaterMetrics)
+			log, _ := logrustest.NewNullLogger()
+			u := &Updater{querier: sql.New(tt.db), log: log.WithField("test", t.Name()), batchWriteTimeout: time.Minute}
+			ch := make(chan *ImageVulnerabilityData, 2)
+			ch <- &ImageVulnerabilityData{ImageName: "first", ImageTag: "v1"}
+			ch <- &ImageVulnerabilityData{ImageName: "second", ImageTag: "v1"}
+			close(ch)
+			err := u.Update(t.Context(), ch)
+			require.Equal(t, tt.success, updaterImageCount(t, "write", "success"))
+			require.Equal(t, tt.failed, updaterImageCount(t, "write", "failed"))
+			require.ErrorIs(t, err, tt.err)
+			for _, outcome := range []string{"success", "failed"} {
+				var count uint64
+				if (outcome == "failed") == (tt.failed > 0) {
+					count = 1
+				}
+				metric := new(dto.Metric)
+				require.NoError(t, metrics.UpdaterStageDuration.WithLabelValues("write_batch", outcome).(prometheus.Metric).Write(metric))
+				require.Equal(t, count, metric.GetHistogram().GetSampleCount(), outcome)
+			}
+		})
+	}
+}
+
+func updaterImageCount(t *testing.T, stage, outcome string) float64 {
+	t.Helper()
+	metric := new(dto.Metric)
+	require.NoError(t, metrics.UpdaterImages.WithLabelValues(stage, outcome).Write(metric))
+	return metric.GetCounter().GetValue()
+}
 
 func TestUpdateContinuesAfterBatchWriteTimeout(t *testing.T) {
 	t.Parallel()

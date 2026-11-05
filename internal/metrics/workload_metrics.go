@@ -54,6 +54,9 @@ var (
 func Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		UpdaterResyncCycles,
+		UpdaterStageDuration,
+		UpdaterImages,
+		databaseMetrics,
 		WorkloadResyncRequests,
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
@@ -63,7 +66,7 @@ func Collectors() []prometheus.Collector {
 }
 
 func ResetWorkloadMetrics() {
-	ResetUpdaterMetrics()
+	UpdaterResyncCycles.Reset()
 	WorkloadResyncRequests.Reset()
 	WorkloadRiskScore.Reset()
 	WorkloadVulnerabilities.Reset()
