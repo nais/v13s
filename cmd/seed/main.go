@@ -22,7 +22,7 @@ func main() {
 
 	log.Infof("initializing database")
 
-	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:4002/v13s?sslmode=disable", log.WithField("component", "database"))
+	pool, err := database.New(ctx, "postgres://v13s:v13s@127.0.0.1:4002/v13s?sslmode=disable", 8, log.WithField("component", "database"))
 	if err != nil {
 		panic(err)
 	}

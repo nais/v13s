@@ -17,9 +17,10 @@ import (
 )
 
 type Config struct {
-	ListenAddr                string        `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
-	InternalListenAddr        string        `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
-	DatabaseUrl               string        `envconfig:"DATABASE_URL" required:"true"`
+	ListenAddr                string `envconfig:"LISTEN_ADDR" default:"0.0.0.0:50051"`
+	InternalListenAddr        string `envconfig:"INTERNAL_LISTEN_ADDR" default:"127.0.0.1:8000"`
+	DatabaseUrl               string `envconfig:"DATABASE_URL" required:"true"`
+	DatabasePools             DatabasePoolConfig
 	UpdateInterval            time.Duration `envconfig:"UPDATE_INTERVAL" default:"1m"`
 	RequiredAudience          string        `envconfig:"REQUIRED_AUDIENCE" default:"vulnz"`
 	AuthorizedServiceAccounts []string      `envconfig:"AUTHORIZED_SERVICE_ACCOUNTS" required:"true"`
@@ -35,6 +36,29 @@ type Config struct {
 	Metrics                   MetricConfig
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 	Updater                   UpdaterConfig
+}
+
+type DatabasePoolConfig struct {
+	MainMaxConnections    int32 `envconfig:"DATABASE_MAX_CONNECTIONS" default:"8"`
+	JobMaxConnections     int32 `envconfig:"JOB_DATABASE_MAX_CONNECTIONS" default:"12"`
+	RiverUIMaxConnections int32 `envconfig:"RIVER_UI_DATABASE_MAX_CONNECTIONS" default:"2"`
+}
+
+func (c DatabasePoolConfig) Validate() error {
+	for _, limit := range []struct {
+		name    string
+		value   int32
+		minimum int32
+	}{
+		{"DATABASE_MAX_CONNECTIONS", c.MainMaxConnections, 2},
+		{"JOB_DATABASE_MAX_CONNECTIONS", c.JobMaxConnections, 1},
+		{"RIVER_UI_DATABASE_MAX_CONNECTIONS", c.RiverUIMaxConnections, 1},
+	} {
+		if limit.value < limit.minimum {
+			return fmt.Errorf("%s must be at least %d", limit.name, limit.minimum)
+		}
+	}
+	return nil
 }
 
 type UpdaterConfig struct {
@@ -122,6 +146,9 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 	if err := cfg.Kev.Validate(); err != nil {
+		return nil, err
+	}
+	if err := cfg.DatabasePools.Validate(); err != nil {
 		return nil, err
 	}
 

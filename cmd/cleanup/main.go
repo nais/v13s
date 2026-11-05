@@ -25,7 +25,7 @@ func main() {
 
 	log.Infof("initializing database")
 
-	pool, err := database.New(ctx, cfg.DatabaseUrl, log.WithField("component", "database"))
+	pool, err := database.New(ctx, cfg.DatabaseUrl, cfg.DatabasePools.MainMaxConnections, log.WithField("component", "database"))
 	if err != nil {
 		panic(err)
 	}

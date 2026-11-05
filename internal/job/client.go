@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nais/v13s/internal/database"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -30,7 +31,8 @@ func AddWorker[T river.JobArgs](c Client, worker river.Worker[T]) {
 
 // TODO: rename to Options ?
 type Config struct {
-	DbUrl string
+	DbUrl          string
+	MaxConnections int32
 }
 
 type Client interface {
@@ -49,12 +51,11 @@ type client struct {
 var _ Client = (*client)(nil)
 
 func NewClient(ctx context.Context, cfg *Config, queues map[string]river.QueueConfig) (Client, error) {
-	dbConfig, err := pgxpool.ParseConfig(cfg.DbUrl)
+	dbConfig, err := database.ParsePoolConfig(cfg.DbUrl, cfg.MaxConnections)
 	if err != nil {
 		return nil, err
 	}
-	dbConfig.MaxConns = 50
-	dbConfig.MinConns = 2
+	dbConfig.MinConns = min(2, cfg.MaxConnections)
 	dbConfig.MaxConnIdleTime = 5 * time.Minute
 	dbConfig.HealthCheckPeriod = 30 * time.Second
 
