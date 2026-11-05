@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -51,16 +50,15 @@ func (u *Updater) FetchVulnerabilityDataForImages(ctx context.Context, images []
 				case ch <- imageData:
 					u.observeFetchStage("enqueue", queueStart, nil)
 					return nil
-				case <-ctx.Done():
-					u.observeFetchStage("enqueue", queueStart, ctx.Err())
-					return ctx.Err()
+				case <-fetchCtx.Done():
+					u.observeFetchStage("enqueue", queueStart, fetchCtx.Err())
+					return fetchCtx.Err()
 				}
 			})
 		})
 	}
 
-	err := g.Wait()
-	return errors.Join(err, ctx.Err())
+	return g.Wait()
 }
 
 func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, imageTag string, source sources.Source) (*ImageVulnerabilityData, error) {

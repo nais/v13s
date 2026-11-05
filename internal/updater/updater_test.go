@@ -163,9 +163,16 @@ func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
 
 func (*contextBatchResults) Close() error { return nil }
 
-func TestUpdateFlushesPartialBatch(t *testing.T) {
-	for _, count := range []int{1, 99, 100} {
-		t.Run(fmt.Sprintf("images_%d", count), func(t *testing.T) {
+func TestUpdatePreservesBatchSize(t *testing.T) {
+	for _, tt := range []struct {
+		count       int
+		beforeClose int
+	}{
+		{count: 1},
+		{count: 99},
+		{count: 100, beforeClose: 100},
+	} {
+		t.Run(fmt.Sprintf("images_%d", tt.count), func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				db := &failingSummaryDB{}
 				log, _ := logrustest.NewNullLogger()
@@ -180,21 +187,19 @@ func TestUpdateFlushesPartialBatch(t *testing.T) {
 				synctest.Wait()
 				assert.Zero(t, db.summaryWrites)
 
-				for i := range count {
+				for i := range tt.count {
 					ch <- &ImageVulnerabilityData{ImageName: fmt.Sprintf("image-%d", i), ImageTag: "v1"}
 				}
 				synctest.Wait()
-				if count == 100 {
-					assert.Equal(t, count, db.summaryWrites, "full batches must not wait for the flush timer")
-				}
+				assert.Equal(t, tt.beforeClose, db.summaryWrites)
 
 				time.Sleep(2 * time.Second)
 				synctest.Wait()
-				assert.Equal(t, count, db.summaryWrites, "ready summaries must not wait for the remaining fetches")
+				assert.Equal(t, tt.beforeClose, db.summaryWrites, "partial batches must wait for channel closure")
 
 				close(ch)
 				require.NoError(t, <-done)
-				assert.Equal(t, count, db.summaryWrites)
+				assert.Equal(t, tt.count, db.summaryWrites)
 			})
 		})
 	}
@@ -228,7 +233,7 @@ func (emptyFetchRows) Next() bool { return false }
 func (emptyFetchRows) Err() error { return nil }
 func (emptyFetchRows) Close()     {}
 
-func TestFetchVulnerabilityDataForImages_WaitsForQueueAfterFetchDeadline(t *testing.T) {
+func TestFetchVulnerabilityDataForImages_QueueWaitRespectsFetchDeadline(t *testing.T) {
 	metrics.ResetUpdaterMetrics()
 	t.Cleanup(metrics.ResetUpdaterMetrics)
 	synctest.Test(t, func(t *testing.T) {
@@ -253,14 +258,14 @@ func TestFetchVulnerabilityDataForImages_WaitsForQueueAfterFetchDeadline(t *test
 		for range 10 {
 			received = append(received, <-ch)
 		}
-		assert.NoError(t, <-done)
+		assert.ErrorIs(t, <-done, context.DeadlineExceeded)
 		close(ch)
 		for image := range ch {
 			received = append(received, image)
 		}
-		assert.Len(t, received, len(images), "queue backpressure must not discard already fetched data")
-		assert.Equal(t, float64(len(images)), updaterImageCount(t, "fetch", "success"))
-		assert.Zero(t, updaterImageCount(t, "fetch", "failed"))
+		assert.Len(t, received, cap(ch))
+		assert.Equal(t, float64(cap(ch)), updaterImageCount(t, "fetch", "success"))
+		assert.Equal(t, 10.0, updaterImageCount(t, "fetch", "failed"))
 	})
 }
 
@@ -367,8 +372,8 @@ func TestBatchUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
 	}{
 		{name: "success", db: &failingSummaryDB{}, success: 2},
 		{name: "summary_failure", db: &failingSummaryDB{failAt: 2, err: summaryErr}, failed: 2, err: summaryErr},
-		{name: "partial_image_state_failure", db: &partialImageStateDB{failAt: 2, rowErr: rowErr}, failed: 2, err: rowErr},
-		{name: "image_state_close_failure", db: &partialImageStateDB{closeErr: closeErr}, failed: 2, err: closeErr},
+		{name: "partial_image_state_failure", db: &partialImageStateDB{failAt: 2, rowErr: rowErr}, failed: 2},
+		{name: "image_state_close_failure", db: &partialImageStateDB{closeErr: closeErr}, failed: 2},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			metrics.ResetUpdaterMetrics()

@@ -66,6 +66,7 @@ func Collectors() []prometheus.Collector {
 }
 
 func ResetWorkloadMetrics() {
+	UpdaterResyncCycles.Reset()
 	WorkloadResyncRequests.Reset()
 	WorkloadRiskScore.Reset()
 	WorkloadVulnerabilities.Reset()

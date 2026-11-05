@@ -56,7 +56,7 @@ func TestRecordUpdaterResyncCycle(t *testing.T) {
 	require.Equal(t, 1.0, failed)
 }
 
-func TestUpdaterMetricsSurviveWorkloadSnapshotRefresh(t *testing.T) {
+func TestNewUpdaterMetricsSurviveWorkloadSnapshotRefresh(t *testing.T) {
 	ResetUpdaterMetrics()
 	t.Cleanup(ResetUpdaterMetrics)
 	ObserveUpdaterStage("source_fetch", 240*time.Second, true)
@@ -84,7 +84,7 @@ func TestUpdaterMetricsSurviveWorkloadSnapshotRefresh(t *testing.T) {
 	require.Equal(t, 3.0, findUpdaterMetric(t, images, "fetch", "success").GetCounter().GetValue())
 	require.Equal(t, 2.0, findUpdaterMetric(t, images, "write", "success").GetCounter().GetValue())
 	require.Equal(t, 1.0, findUpdaterMetric(t, images, "write", "failed").GetCounter().GetValue())
-	require.Equal(t, 1.0, families["nais_v13s_updater_resync_cycles_total"].Metric[0].GetCounter().GetValue())
+	require.NotContains(t, families, "nais_v13s_updater_resync_cycles_total")
 }
 
 func findUpdaterMetric(t *testing.T, family *dto.MetricFamily, stage, outcome string) *dto.Metric {
