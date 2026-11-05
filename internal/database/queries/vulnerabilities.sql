@@ -139,6 +139,8 @@ INSERT INTO cve(
     cve_link,
     severity,
     refs,
+    reference_text,
+    cwes,
     cvss_score,
     epss_score,
     epss_percentile)
@@ -149,6 +151,8 @@ VALUES (
     @cve_link,
     @severity,
     @refs,
+    @reference_text,
+    @cwes,
     @cvss_score,
     @epss_score,
     @epss_percentile)
@@ -160,6 +164,8 @@ ON CONFLICT (
         cve_link = EXCLUDED.cve_link,
         severity = EXCLUDED.severity,
         refs = EXCLUDED.refs,
+        reference_text = EXCLUDED.reference_text,
+        cwes = EXCLUDED.cwes,
         cvss_score = EXCLUDED.cvss_score,
         epss_score = EXCLUDED.epss_score,
         epss_percentile = EXCLUDED.epss_percentile,
@@ -170,6 +176,8 @@ ON CONFLICT (
         OR cve.cve_link IS DISTINCT FROM EXCLUDED.cve_link
         OR cve.severity IS DISTINCT FROM EXCLUDED.severity
         OR cve.refs IS DISTINCT FROM EXCLUDED.refs
+        OR cve.reference_text IS DISTINCT FROM EXCLUDED.reference_text
+        OR cve.cwes IS DISTINCT FROM EXCLUDED.cwes
         OR cve.cvss_score IS DISTINCT FROM EXCLUDED.cvss_score
         OR cve.epss_score IS DISTINCT FROM EXCLUDED.epss_score
         OR cve.epss_percentile IS DISTINCT FROM EXCLUDED.epss_percentile;

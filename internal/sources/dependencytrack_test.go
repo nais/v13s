@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/nais/v13s/internal/database/typeext"
 	dependencytrackMock "github.com/nais/v13s/internal/mocks/Client"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -29,8 +30,13 @@ func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 			{
 				Package: "pkg:maven/org.infinispan/infinispan-core@10.1.8.Final",
 				Cve: &dependencytrack.Cve{
-					Id:       "GHSA-gg57-587f-h5v6",
-					Severity: dependencytrack.SeverityMedium,
+					Id:            "GHSA-gg57-587f-h5v6",
+					Severity:      dependencytrack.SeverityMedium,
+					ReferenceText: "https://example.com/advisory\r\n- [Release](https://example.com/release)\r\n",
+					Cwes: []dependencytrack.Cwe{
+						{Id: 252, Name: "Unchecked Return Value", Link: "https://cwe.mitre.org/data/definitions/252.html"},
+						{Id: 787, Name: "Out-of-bounds Write", Link: "https://cwe.mitre.org/data/definitions/787.html"},
+					},
 				},
 				Cvss:           &cvss1,
 				EpssScore:      &epss1,
@@ -64,6 +70,11 @@ func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 
 	v0 := vulns[0]
 	assert.Equal(t, "GHSA-gg57-587f-h5v6", v0.Cve.Id)
+	assert.Equal(t, "https://example.com/advisory\r\n- [Release](https://example.com/release)\r\n", v0.Cve.ReferenceText)
+	assert.Equal(t, []typeext.Cwe{
+		{Id: 252, Name: "Unchecked Return Value", Link: "https://cwe.mitre.org/data/definitions/252.html"},
+		{Id: 787, Name: "Out-of-bounds Write", Link: "https://cwe.mitre.org/data/definitions/787.html"},
+	}, v0.Cve.Cwes)
 	assert.NotNil(t, v0.CvssScore)
 	assert.Equal(t, 5.1, *v0.CvssScore)
 	assert.NotNil(t, v0.EpssScore)
@@ -73,6 +84,8 @@ func TestGetVulnerabilities_EpssAndCvssFieldsMapped(t *testing.T) {
 
 	v1 := vulns[1]
 	assert.Equal(t, "GHSA-3vqj-43w4-2q58", v1.Cve.Id)
+	assert.Empty(t, v1.Cve.ReferenceText)
+	assert.Empty(t, v1.Cve.Cwes)
 	assert.NotNil(t, v1.CvssScore)
 	assert.Equal(t, 7.5, *v1.CvssScore)
 	assert.Nil(t, v1.EpssScore)

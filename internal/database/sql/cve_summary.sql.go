@@ -13,7 +13,20 @@ import (
 const listCveSummaries = `-- name: ListCveSummaries :many
 WITH cve_data AS (
     SELECT
-        c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
+        c.cve_id,
+        c.cve_title,
+        c.cve_desc,
+        c.cve_link,
+        c.severity,
+        c.refs,
+        c.created_at,
+        c.updated_at,
+        c.cvss_score,
+        c.epss_score,
+        c.epss_percentile,
+        c.has_kev_entry,
+        c.known_ransomware_use,
+        c.priority,
         COUNT(DISTINCT w.id)::INT AS affected_workloads
     FROM
         vulnerabilities v
@@ -281,7 +294,20 @@ ranked AS (
         AND ($10::INT[] IS NULL
             OR COALESCE(c.priority, 4) = ANY ($10::INT[])))
 SELECT
-    c.cve_id, c.cve_title, c.cve_desc, c.cve_link, c.severity, c.refs, c.created_at, c.updated_at, c.cvss_score, c.epss_score, c.epss_percentile, c.has_kev_entry, c.known_ransomware_use, c.priority,
+    c.cve_id,
+    c.cve_title,
+    c.cve_desc,
+    c.cve_link,
+    c.severity,
+    c.refs,
+    c.created_at,
+    c.updated_at,
+    c.cvss_score,
+    c.epss_score,
+    c.epss_percentile,
+    c.has_kev_entry,
+    c.known_ransomware_use,
+    c.priority,
     r.affected_workloads,
     r.total_count
 FROM

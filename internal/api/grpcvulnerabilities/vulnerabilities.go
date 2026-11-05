@@ -233,6 +233,8 @@ func (s *Server) GetCve(ctx context.Context, request *vulnerabilities.GetCveRequ
 			hasKevEntry:        cve.HasKevEntry,
 			knownRansomwareUse: cve.KnownRansomwareUse,
 			priority:           cve.Priority,
+			referenceText:      cve.ReferenceText,
+			cwes:               cve.Cwes,
 		}),
 	}, nil
 }

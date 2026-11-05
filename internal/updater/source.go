@@ -209,6 +209,8 @@ func (i *ImageVulnerabilityData) ToCveSqlParams() []sql.BatchUpsertCveParams {
 			CveLink:        v.Cve.Link,
 			Severity:       v.Cve.Severity.ToInt32(),
 			Refs:           v.Cve.References,
+			ReferenceText:  v.Cve.ReferenceText,
+			Cwes:           v.Cve.Cwes,
 			CvssScore:      v.CvssScore,
 			EpssScore:      v.EpssScore,
 			EpssPercentile: v.EpssPercentile,

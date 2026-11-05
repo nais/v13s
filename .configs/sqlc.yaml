@@ -56,6 +56,12 @@ sql:
               import: "github.com/nais/v13s/internal/database/typeext"
               package: "typeext"
               type: "MapStringString"
+          - column: "cve.cwes"
+            go_type:
+              import: "github.com/nais/v13s/internal/database/typeext"
+              package: "typeext"
+              type: "Cwe"
+              slice: true
           - column: "ListVulnerabilitiesForImage.CveRefs"
             go_type:
               import: "github.com/nais/v13s/internal/database/typeext"

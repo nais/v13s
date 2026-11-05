@@ -16,6 +16,7 @@ import (
 	"github.com/nais/v13s/internal/api/grpcvulnerabilities"
 	"github.com/nais/v13s/internal/collections"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/test"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/sirupsen/logrus"
@@ -3137,6 +3138,72 @@ func seedDb(t *testing.T, db sql.Querier, workloads []*Workload) error {
 	}
 
 	return nil
+}
+
+func TestServer_GetCveReferenceTextAndCwes(t *testing.T) {
+	ctx, db, _, client, cleanup := setupTest(t, testSetupConfig{}, true)
+	defer cleanup()
+
+	const cveID = "CVE-2026-111497"
+	aliases := map[string]string{cveID: "GHSA-9v8h-qqgm-4m35"}
+	text := "https://example.com/advisory\r\n- [Release](https://example.com/release)\r\n"
+	tests := []struct {
+		name string
+		text string
+		cwes []typeext.Cwe
+	}{
+		{name: "absent details"},
+		{name: "reference text updated", text: text},
+		{
+			name: "weaknesses updated",
+			text: text,
+			cwes: []typeext.Cwe{
+				{Id: 252, Name: "Unchecked Return Value"},
+				{Id: 787, Name: "Out-of-bounds Write"},
+			},
+		},
+		{
+			name: "weakness links updated",
+			text: text,
+			cwes: []typeext.Cwe{
+				{Id: 252, Name: "Unchecked Return Value", Link: "https://cwe.mitre.org/data/definitions/252.html"},
+				{Id: 787, Name: "Out-of-bounds Write", Link: "https://cwe.mitre.org/data/definitions/787.html"},
+			},
+		},
+		{name: "details removed"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db.BatchUpsertCve(ctx, []sql.BatchUpsertCveParams{{
+				CveID:         cveID,
+				CveTitle:      "Brotli",
+				CveDesc:       "Decoder issue",
+				Severity:      1,
+				Refs:          aliases,
+				ReferenceText: tt.text,
+				Cwes:          tt.cwes,
+			}}).Exec(func(_ int, err error) {
+				require.NoError(t, err)
+			})
+			stored, err := db.GetCve(ctx, cveID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.text, stored.ReferenceText)
+			assert.Equal(t, tt.cwes, stored.Cwes)
+
+			response, err := client.GetCve(ctx, cveID)
+			require.NoError(t, err)
+			cve := response.GetCve()
+			require.NotNil(t, cve)
+			assert.Equal(t, tt.text, cve.GetReferenceText())
+			require.Len(t, cve.GetCwes(), len(tt.cwes))
+			for i, cwe := range tt.cwes {
+				assert.Equal(t, cwe.Id, cve.Cwes[i].GetId())
+				assert.Equal(t, cwe.Name, cve.Cwes[i].GetName())
+				assert.Equal(t, cwe.Link, cve.Cwes[i].GetLink())
+			}
+			assert.Equal(t, aliases, cve.GetReferences())
+		})
+	}
 }
 
 // TestServer_EnrichedCveFields verifies that EPSS, KEV, ransomware, fix_version and cvss_score

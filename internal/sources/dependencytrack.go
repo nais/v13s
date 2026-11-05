@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 )
@@ -120,6 +121,10 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 
 	vv := make([]*Vulnerability, 0, len(vulns))
 	for _, v := range vulns {
+		cwes := make([]typeext.Cwe, 0, len(v.Cve.Cwes))
+		for _, cwe := range v.Cve.Cwes {
+			cwes = append(cwes, typeext.Cwe{Id: cwe.Id, Name: cwe.Name, Link: cwe.Link})
+		}
 		var m *dependencytrack.VulnMetadata
 		if v.Metadata != nil {
 			m = &dependencytrack.VulnMetadata{
@@ -132,12 +137,14 @@ func (d *dependencytrackSource) GetVulnerabilities(ctx context.Context, imageNam
 		}
 		vv = append(vv, &Vulnerability{
 			Cve: &Cve{
-				Id:          v.Cve.Id,
-				Description: v.Cve.Description,
-				Title:       v.Cve.Title,
-				Link:        v.Cve.Link,
-				Severity:    Severity(v.Cve.Severity),
-				References:  v.Cve.References,
+				Id:            v.Cve.Id,
+				Description:   v.Cve.Description,
+				Title:         v.Cve.Title,
+				Link:          v.Cve.Link,
+				Severity:      Severity(v.Cve.Severity),
+				References:    v.Cve.References,
+				ReferenceText: v.Cve.ReferenceText,
+				Cwes:          cwes,
 			},
 			CvssScore:      v.Cvss,
 			EpssScore:      v.EpssScore,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nais/dependencytrack/pkg/dependencytrack"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -109,12 +110,14 @@ const (
 )
 
 type Cve struct {
-	Id          string
-	Description string
-	Title       string
-	Link        string
-	Severity    Severity
-	References  map[string]string
+	Id            string
+	Description   string
+	Title         string
+	Link          string
+	Severity      Severity
+	References    map[string]string
+	ReferenceText string
+	Cwes          []typeext.Cwe
 }
 
 type Vulnerability struct {

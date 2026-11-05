@@ -59,7 +59,7 @@ func (q *Queries) GetCanonicalCveIdByAlias(ctx context.Context, alias string) (s
 
 const getCve = `-- name: GetCve :one
 SELECT
-    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority
+    cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority, reference_text, cwes
 FROM
     cve
 WHERE
@@ -84,6 +84,8 @@ func (q *Queries) GetCve(ctx context.Context, cveID string) (*Cve, error) {
 		&i.HasKevEntry,
 		&i.KnownRansomwareUse,
 		&i.Priority,
+		&i.ReferenceText,
+		&i.Cwes,
 	)
 	return &i, err
 }

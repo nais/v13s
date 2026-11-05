@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/database/typeext"
 	"github.com/nais/v13s/internal/sources"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,6 +69,41 @@ func TestToCveSqlParams_EpssFields(t *testing.T) {
 			assert.Equal(t, tt.wantCvss, p.CvssScore)
 			assert.Equal(t, tt.wantEpssScore, p.EpssScore)
 			assert.Equal(t, tt.wantEpssPercent, p.EpssPercentile)
+		})
+	}
+}
+
+func TestToCveSqlParams_ReferenceTextAndCwes(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		cwes []typeext.Cwe
+	}{
+		{
+			name: "details present",
+			text: "- [Advisory](https://example.com/advisory)\r\n",
+			cwes: []typeext.Cwe{{Id: 252, Name: "Unchecked Return Value", Link: "https://cwe.mitre.org/data/definitions/252.html"}},
+		},
+		{name: "details absent"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			aliases := map[string]string{"CVE-2026-111497": "GHSA-9v8h-qqgm-4m35"}
+			data := &ImageVulnerabilityData{
+				Vulnerabilities: []*sources.Vulnerability{{
+					Cve: &sources.Cve{
+						Id:            "CVE-2026-111497",
+						References:    aliases,
+						ReferenceText: tt.text,
+						Cwes:          tt.cwes,
+					},
+				}},
+			}
+			params := data.ToCveSqlParams()
+			assert.Len(t, params, 1)
+			assert.Equal(t, tt.text, params[0].ReferenceText)
+			assert.Equal(t, tt.cwes, params[0].Cwes)
+			assert.Equal(t, aliases, map[string]string(params[0].Refs))
 		})
 	}
 }
