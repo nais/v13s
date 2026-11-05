@@ -120,9 +120,6 @@ func (u *Updater) fetchVulnerabilityData(ctx context.Context, imageName string, 
 
 func (u *Updater) observeFetchStage(stage string, start time.Time, err error) {
 	metrics.ObserveUpdaterStage(stage, time.Since(start), err != nil)
-	if err != nil {
-		u.log.WithField("stage", stage).Error("vulnerability fetch stage failed")
-	}
 }
 
 func vulnerabilitySuppressReasonToState(reason sql.VulnerabilitySuppressReason) string {
