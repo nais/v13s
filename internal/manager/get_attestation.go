@@ -81,6 +81,9 @@ func (g *GetAttestationWorker) Work(ctx context.Context, job *river.Job[GetAttes
 	g.workloadCounter.Add(ctx, 1, metric.WithAttributes(
 		attribute.String("hasAttestation", fmt.Sprint(att != nil)),
 	))
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
 
 	// 2. Classify the verifier result into a domain event.
 	event := classifyGetAttestationEvent(att, err)

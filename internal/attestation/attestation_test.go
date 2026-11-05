@@ -2,20 +2,78 @@ package attestation
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
 	"github.com/sigstore/cosign/v3/pkg/cosign/bundle"
 	"github.com/sigstore/cosign/v3/pkg/oci"
+	"github.com/sigstore/cosign/v3/pkg/oci/remote"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetAttestation_RegistryRequestsRespectCancellation(t *testing.T) {
+	for _, format := range []string{"v3", "legacy"} {
+		t.Run(format, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/v2/" {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     make(http.Header),
+						Body:       io.NopCloser(strings.NewReader("")),
+						Request:    req,
+					}, nil
+				}
+				cancel()
+				assert.ErrorIs(t, req.Context().Err(), context.Canceled)
+				return nil, context.Canceled
+			})
+			v := &verifier{
+				log: logrus.NewEntry(logrus.New()),
+				optsV3: &cosign.CheckOpts{
+					RootCerts: x509.NewCertPool(),
+					RegistryClientOpts: []remote.Option{
+						remote.WithRemoteOptions(
+							ociremote.WithAuth(authn.Anonymous),
+							ociremote.WithTransport(transport),
+						),
+					},
+				},
+				verifyFunc: func(ctx context.Context, ref name.Reference, opts *cosign.CheckOpts) ([]oci.Signature, error) {
+					if format == "legacy" && opts.NewBundleFormat {
+						return nil, fmt.Errorf("no v3 attestations")
+					}
+					sigs, _, err := cosign.VerifyImageAttestations(ctx, ref, opts)
+					return sigs, err
+				},
+			}
+
+			_, err := v.GetAttestation(ctx, "registry.invalid/test/image:tag")
+			require.ErrorIs(t, err, context.Canceled)
+		})
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 func TestGetAttestation_NoAttestation(t *testing.T) {
 	v := &verifier{
