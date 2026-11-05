@@ -471,11 +471,9 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 }
 
 func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) error {
-	imageStateWritesStarted := false
+	imageStateWritesSucceeded := false
 	defer func() {
-		if !imageStateWritesStarted {
-			metrics.RecordUpdaterImages("write", len(images), true)
-		}
+		metrics.RecordUpdaterImages("write", len(images), !imageStateWritesSucceeded)
 	}()
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
@@ -579,13 +577,18 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		return fmt.Errorf("batch workload state update had %d failure(s), image state update skipped", errCount)
 	}
 
-	imageStateWritesStarted = true
-	u.runExec("update_image_states", len(images), func(handler func(int, error)) {
-		u.querier.BatchUpdateImageState(ctx, imageStates).Exec(func(index int, err error) {
-			metrics.RecordUpdaterImages("write", 1, err != nil)
-			handler(index, err)
-		})
+	imageStateStart := time.Now()
+	imageStateBatch := u.querier.BatchUpdateImageState(ctx, imageStates)
+	var imageStateErr error
+	imageStateBatch.Exec(func(_ int, err error) {
+		imageStateErr = errors.Join(imageStateErr, err)
 	})
+	imageStateErr = errors.Join(imageStateErr, imageStateBatch.Close())
+	metrics.ObserveUpdaterStage("update_image_states", time.Since(imageStateStart), imageStateErr != nil)
+	if imageStateErr != nil {
+		return fmt.Errorf("updating image states: %w", imageStateErr)
+	}
+	imageStateWritesSucceeded = true
 	return nil
 }
 

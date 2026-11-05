@@ -321,53 +321,67 @@ func TestBatchStageMetricsIncludeSendBatchWait(t *testing.T) {
 	})
 }
 
-type partialImageStateDB struct{ failingSummaryDB }
+type partialImageStateDB struct {
+	failingSummaryDB
+	failAt   int
+	rowErr   error
+	closeErr error
+}
 
 func (db *partialImageStateDB) SendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
 	result := db.failingSummaryDB.SendBatch(ctx, batch)
 	if db.nonEmptyBatches == 2 && batch.Len() > 0 {
-		return &partialImageStateResults{}
+		return &partialImageStateResults{failAt: db.failAt, rowErr: db.rowErr, closeErr: db.closeErr}
 	}
 	return result
 }
 
 type partialImageStateResults struct {
 	pgx.BatchResults
-	calls int
+	calls    int
+	failAt   int
+	rowErr   error
+	closeErr error
 }
 
 func (r *partialImageStateResults) Exec() (pgconn.CommandTag, error) {
 	r.calls++
-	if r.calls == 2 {
-		return pgconn.CommandTag{}, errors.New("image state write failed")
+	if r.calls == r.failAt {
+		return pgconn.CommandTag{}, r.rowErr
 	}
 	return pgconn.NewCommandTag("UPDATE 1"), nil
 }
 
-func (*partialImageStateResults) Close() error { return nil }
+func (r *partialImageStateResults) Close() error { return errors.Join(r.rowErr, r.closeErr) }
 
 func TestBatchUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
+	summaryErr := errors.New("summary unavailable")
+	rowErr := errors.New("image state write failed")
+	closeErr := errors.New("image state commit failed")
 	for _, tt := range []struct {
 		name    string
 		db      sql.DBTX
 		success float64
 		failed  float64
+		err     error
 	}{
 		{name: "success", db: &failingSummaryDB{}, success: 2},
-		{name: "summary_failure", db: &failingSummaryDB{failAt: 2, err: errors.New("summary unavailable")}, failed: 2},
-		{name: "partial_image_state_failure", db: &partialImageStateDB{}, success: 1, failed: 1},
+		{name: "summary_failure", db: &failingSummaryDB{failAt: 2, err: summaryErr}, failed: 2, err: summaryErr},
+		{name: "partial_image_state_failure", db: &partialImageStateDB{failAt: 2, rowErr: rowErr}, failed: 2, err: rowErr},
+		{name: "image_state_close_failure", db: &partialImageStateDB{closeErr: closeErr}, failed: 2, err: closeErr},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			metrics.ResetUpdaterMetrics()
 			t.Cleanup(metrics.ResetUpdaterMetrics)
 			log, _ := logrustest.NewNullLogger()
 			u := &Updater{querier: sql.New(tt.db), log: log.WithField("test", t.Name())}
-			_ = u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
+			err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
 				{ImageName: "first", ImageTag: "v1"},
 				{ImageName: "second", ImageTag: "v1"},
 			})
 			require.Equal(t, tt.success, updaterImageCount(t, "write", "success"))
 			require.Equal(t, tt.failed, updaterImageCount(t, "write", "failed"))
+			require.ErrorIs(t, err, tt.err)
 		})
 	}
 }
