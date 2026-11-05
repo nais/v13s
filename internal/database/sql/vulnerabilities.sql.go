@@ -320,28 +320,55 @@ func (q *Queries) GetVulnerabilityById(ctx context.Context, id pgtype.UUID) (*Ge
 }
 
 const listEarliestSeveritySince = `-- name: ListEarliestSeveritySince :many
-WITH requested AS (
+WITH requested AS MATERIALIZED (
     SELECT
-        unnest($1::TEXT[]) AS image_name,
-        unnest($2::TEXT[]) AS image_tag,
-        unnest($3::TEXT[]) AS package,
-        unnest($4::TEXT[]) AS cve_id,
-        unnest($5::INT[]) AS last_severity
+        unnest(
+            $1::TEXT[]
+) AS image_name,
+        unnest(
+            $2::TEXT[]
+) AS image_tag,
+        unnest(
+            $3::TEXT[]
+) AS package,
+        unnest(
+            $4::TEXT[]
+) AS cve_id,
+        unnest(
+            $5::INT[]
+) AS last_severity
 ),
-input AS (
-    SELECT DISTINCT
-        r.image_name,
-        r.package,
-        r.cve_id,
-        r.last_severity
-    FROM
-        requested r
+existing AS MATERIALIZED (
+    SELECT
+        e.image_name,
+        e.image_tag,
+        e.package,
+        e.cve_id,
+        e.last_severity
+    FROM (
+        SELECT DISTINCT
+            image_name,
+            image_tag
+        FROM
+            requested
+) r
+        JOIN vulnerabilities e ON e.image_name = r.image_name
+            AND e.image_tag = r.image_tag
+),
+    input AS (
+        SELECT DISTINCT
+            r.image_name,
+            r.package,
+            r.cve_id,
+            r.last_severity
+        FROM
+            requested r
     WHERE
         NOT EXISTS (
             SELECT
                 1
             FROM
-                vulnerabilities e
+                existing e
             WHERE
                 e.image_name = r.image_name
                 AND e.image_tag = r.image_tag

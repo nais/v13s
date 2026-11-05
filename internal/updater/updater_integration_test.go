@@ -1139,6 +1139,50 @@ func TestUpdater_DetermineSeveritySince(t *testing.T) {
 		assert.WithinDuration(t, ts, since[updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: cveID, LastSeverity: 2}], time.Second)
 		assert.WithinDuration(t, time.Now(), since[updater.SeveritySinceKey{ImageName: imageName, Package: pkg, CveID: "CVE-unknown", LastSeverity: 1}], 5*time.Second)
 	})
+
+	t.Run("deduplicates mixed tags and keeps cross-tag history isolated by image", func(t *testing.T) {
+		now := time.Now().UTC()
+		params := make([]sql.BatchUpsertVulnerabilitiesParams, 0, 3)
+		for _, row := range []struct {
+			name  string
+			tag   string
+			since time.Time
+		}{
+			{name: "history-a", tag: "v1", since: now.Add(-time.Hour)},
+			{name: "history-a", tag: "v2", since: now.Add(-2 * time.Hour)},
+			{name: "history-b", tag: "v1", since: now.Add(-4 * time.Hour)},
+		} {
+			require.NoError(t, querier.CreateImage(ctx, sql.CreateImageParams{
+				Name: row.name, Tag: row.tag, Metadata: map[string]string{},
+			}))
+			params = append(params, sql.BatchUpsertVulnerabilitiesParams{
+				ImageName: row.name, ImageTag: row.tag, Package: pkg, CveID: cveID,
+				Source: "source", LastSeverity: sources.SeverityMedium.ToInt32(),
+				SeveritySince: pgtype.Timestamptz{Time: row.since, Valid: true},
+			})
+		}
+		querier.BatchUpsertVulnerabilities(ctx, params).Exec(func(_ int, err error) {
+			require.NoError(t, err)
+		})
+		_, err := pool.Exec(ctx, `UPDATE vulnerabilities SET severity_since = NULL, created_at = $1 WHERE image_name = $2`, now.Add(-4*time.Hour), "history-b")
+		require.NoError(t, err)
+
+		finding := &sources.Vulnerability{Package: pkg, Cve: &sources.Cve{Id: cveID, Severity: sources.SeverityMedium}}
+		since, err := u.DetermineSeveritySince(ctx, []*updater.ImageVulnerabilityData{
+			{ImageName: "history-a", ImageTag: "v1", Vulnerabilities: []*sources.Vulnerability{finding}},
+			{ImageName: "history-a", ImageTag: "new", Vulnerabilities: []*sources.Vulnerability{finding, finding}},
+			{ImageName: "history-b", ImageTag: "new", Vulnerabilities: []*sources.Vulnerability{finding}},
+		})
+		require.NoError(t, err)
+		require.Len(t, since, 2)
+		for name, want := range map[string]time.Time{
+			"history-a": now.Add(-2 * time.Hour),
+			"history-b": now.Add(-4 * time.Hour),
+		} {
+			key := updater.SeveritySinceKey{ImageName: name, Package: pkg, CveID: cveID, LastSeverity: sources.SeverityMedium.ToInt32()}
+			assert.WithinDuration(t, want, since[key], time.Second)
+		}
+	})
 }
 
 // - cve row is upserted for the CVE canonical (not the GHSA)
