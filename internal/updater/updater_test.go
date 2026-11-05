@@ -294,7 +294,7 @@ func (r *partialImageStateResults) Exec() (pgconn.CommandTag, error) {
 
 func (r *partialImageStateResults) Close() error { return errors.Join(r.rowErr, r.closeErr) }
 
-func TestBatchUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
+func TestUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
 	summaryErr := errors.New("summary unavailable")
 	rowErr := errors.New("image state write failed")
 	closeErr := errors.New("image state commit failed")
@@ -314,14 +314,24 @@ func TestBatchUpdateRecordsActualImageWriteOutcomes(t *testing.T) {
 			metrics.ResetUpdaterMetrics()
 			t.Cleanup(metrics.ResetUpdaterMetrics)
 			log, _ := logrustest.NewNullLogger()
-			u := &Updater{querier: sql.New(tt.db), log: log.WithField("test", t.Name())}
-			err := u.BatchUpdateVulnerabilityData(t.Context(), []*ImageVulnerabilityData{
-				{ImageName: "first", ImageTag: "v1"},
-				{ImageName: "second", ImageTag: "v1"},
-			})
+			u := &Updater{querier: sql.New(tt.db), log: log.WithField("test", t.Name()), batchWriteTimeout: time.Minute}
+			ch := make(chan *ImageVulnerabilityData, 2)
+			ch <- &ImageVulnerabilityData{ImageName: "first", ImageTag: "v1"}
+			ch <- &ImageVulnerabilityData{ImageName: "second", ImageTag: "v1"}
+			close(ch)
+			err := u.Update(t.Context(), ch)
 			require.Equal(t, tt.success, updaterImageCount(t, "write", "success"))
 			require.Equal(t, tt.failed, updaterImageCount(t, "write", "failed"))
 			require.ErrorIs(t, err, tt.err)
+			for _, outcome := range []string{"success", "failed"} {
+				var count uint64
+				if (outcome == "failed") == (tt.failed > 0) {
+					count = 1
+				}
+				metric := new(dto.Metric)
+				require.NoError(t, metrics.UpdaterStageDuration.WithLabelValues("write_batch", outcome).(prometheus.Metric).Write(metric))
+				require.Equal(t, count, metric.GetHistogram().GetSampleCount(), outcome)
+			}
 		})
 	}
 }

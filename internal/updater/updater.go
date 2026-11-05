@@ -452,11 +452,9 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 		metrics.ObserveUpdaterStage("batch_wait", time.Since(batchStart), false)
 
 		writeCtx, cancel := context.WithTimeout(ctx, u.batchWriteTimeout)
-		writeStart := time.Now()
 		err = u.BatchUpdateVulnerabilityData(writeCtx, batch)
 		err = errors.Join(err, writeCtx.Err())
 		cancel()
-		metrics.ObserveUpdaterStage("write_batch", time.Since(writeStart), err != nil)
 		if err != nil {
 			u.log.WithError(err).WithField("images", len(batch)).Error("failed to update batch, continuing with next batch")
 			batchErrs = append(batchErrs, err)
@@ -471,9 +469,11 @@ func (u *Updater) Update(ctx context.Context, ch chan *ImageVulnerabilityData) e
 }
 
 func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*ImageVulnerabilityData) error {
+	writeStart := time.Now()
 	imageStateWritesSucceeded := false
 	defer func() {
 		metrics.RecordUpdaterImages("write", len(images), !imageStateWritesSucceeded)
+		metrics.ObserveUpdaterStage("write_batch", time.Since(writeStart), !imageStateWritesSucceeded || ctx.Err() != nil)
 	}()
 	cves := make([]sql.BatchUpsertCveParams, 0)
 	cveAliases := make([]sql.BatchUpsertCveAliasParams, 0)
