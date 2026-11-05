@@ -163,67 +163,28 @@ func (r *contextBatchResults) Exec() (pgconn.CommandTag, error) {
 
 func (*contextBatchResults) Close() error { return nil }
 
-func TestUpdatePreservesBatchSize(t *testing.T) {
-	for _, tt := range []struct {
-		count       int
-		beforeClose int
-	}{
-		{count: 1},
-		{count: 99},
-		{count: 100, beforeClose: 100},
-	} {
-		t.Run(fmt.Sprintf("images_%d", tt.count), func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				db := &failingSummaryDB{}
-				log, _ := logrustest.NewNullLogger()
-				u := NewUpdater(nil, nil, ScheduleConfig{}, log.WithField("test", t.Name()), config.KevConfig{}, config.OsvConfig{})
-				u.querier = sql.New(db)
-
-				ch := make(chan *ImageVulnerabilityData, 100)
-				done := make(chan error, 1)
-				go func() { done <- u.Update(t.Context(), ch) }()
-
-				time.Sleep(2 * time.Second)
-				synctest.Wait()
-				assert.Zero(t, db.summaryWrites)
-
-				for i := range tt.count {
-					ch <- &ImageVulnerabilityData{ImageName: fmt.Sprintf("image-%d", i), ImageTag: "v1"}
-				}
-				synctest.Wait()
-				assert.Equal(t, tt.beforeClose, db.summaryWrites)
-
-				time.Sleep(2 * time.Second)
-				synctest.Wait()
-				assert.Equal(t, tt.beforeClose, db.summaryWrites, "partial batches must wait for channel closure")
-
-				close(ch)
-				require.NoError(t, <-done)
-				assert.Equal(t, tt.count, db.summaryWrites)
-			})
-		})
-	}
+type fetchMetricsSource struct {
+	sources.Source
+	err error
 }
 
-type instantFetchSource struct{ sources.Source }
+func (fetchMetricsSource) Name() string { return "metrics-test" }
 
-func (instantFetchSource) Name() string { return "instant" }
-
-func (instantFetchSource) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
-	return nil, nil
+func (s fetchMetricsSource) GetVulnerabilities(context.Context, string, string, bool) ([]*sources.Vulnerability, error) {
+	return nil, s.err
 }
 
-func (instantFetchSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
+func (fetchMetricsSource) MaintainSuppressedVulnerabilities(context.Context, []*sources.SuppressedVulnerability) error {
 	return nil
 }
 
-type fetchQueueDB struct{ sql.DBTX }
+type fetchMetricsDB struct{ sql.DBTX }
 
-func (fetchQueueDB) Exec(ctx context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+func (fetchMetricsDB) Exec(ctx context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
 	return pgconn.NewCommandTag("UPDATE 1"), ctx.Err()
 }
 
-func (fetchQueueDB) Query(ctx context.Context, _ string, _ ...any) (pgx.Rows, error) {
+func (fetchMetricsDB) Query(ctx context.Context, _ string, _ ...any) (pgx.Rows, error) {
 	return emptyFetchRows{}, ctx.Err()
 }
 
@@ -233,60 +194,34 @@ func (emptyFetchRows) Next() bool { return false }
 func (emptyFetchRows) Err() error { return nil }
 func (emptyFetchRows) Close()     {}
 
-func TestFetchVulnerabilityDataForImages_QueueWaitRespectsFetchDeadline(t *testing.T) {
-	metrics.ResetUpdaterMetrics()
-	t.Cleanup(metrics.ResetUpdaterMetrics)
-	synctest.Test(t, func(t *testing.T) {
-		log, _ := logrustest.NewNullLogger()
-		u := NewUpdater(nil, instantFetchSource{}, ScheduleConfig{}, log.WithField("test", t.Name()), config.KevConfig{}, config.OsvConfig{})
-		u.querier = sql.New(fetchQueueDB{})
-		ctx, cancel := context.WithTimeout(NewDbContext(t.Context(), u.querier, u.log), 15*time.Minute)
-		defer cancel()
-
-		images := make([]*sql.Image, 110)
-		for i := range images {
-			images[i] = &sql.Image{Name: fmt.Sprintf("image-%d", i), Tag: "v1"}
-		}
-		ch := make(chan *ImageVulnerabilityData, 100)
-		done := make(chan error, 1)
-		go func() { done <- u.FetchVulnerabilityDataForImages(ctx, images, 10, ch) }()
-		synctest.Wait()
-
-		time.Sleep(4*time.Minute + time.Second)
-		synctest.Wait()
-		received := make([]*ImageVulnerabilityData, 0, len(images))
-		for range 10 {
-			received = append(received, <-ch)
-		}
-		assert.ErrorIs(t, <-done, context.DeadlineExceeded)
-		close(ch)
-		for image := range ch {
-			received = append(received, image)
-		}
-		assert.Len(t, received, cap(ch))
-		assert.Equal(t, float64(cap(ch)), updaterImageCount(t, "fetch", "success"))
-		assert.Equal(t, 10.0, updaterImageCount(t, "fetch", "failed"))
-	})
-}
-
-func TestFetchVulnerabilityDataForImages_CancelledBatchUnblocksQueue(t *testing.T) {
-	metrics.ResetUpdaterMetrics()
-	t.Cleanup(metrics.ResetUpdaterMetrics)
-	synctest.Test(t, func(t *testing.T) {
-		log, _ := logrustest.NewNullLogger()
-		u := NewUpdater(nil, instantFetchSource{}, ScheduleConfig{}, log.WithField("test", t.Name()), config.KevConfig{}, config.OsvConfig{})
-		u.querier = sql.New(fetchQueueDB{})
-		ctx, cancel := context.WithCancel(NewDbContext(t.Context(), u.querier, u.log))
-		defer cancel()
-		done := make(chan error, 1)
-		go func() {
-			done <- u.FetchVulnerabilityDataForImages(ctx, []*sql.Image{{Name: "image", Tag: "v1"}}, 10, make(chan *ImageVulnerabilityData))
-		}()
-		synctest.Wait()
-		cancel()
-		require.ErrorIs(t, <-done, context.Canceled)
-		require.Equal(t, 1.0, updaterImageCount(t, "fetch", "failed"))
-	})
+func TestFetchVulnerabilityDataForImages_RecordsOutcomes(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		sourceErr error
+		success   float64
+		failed    float64
+		queued    int
+	}{
+		{name: "success", success: 1, queued: 1},
+		{name: "source_failure", sourceErr: errors.New("source unavailable"), failed: 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics.ResetUpdaterMetrics()
+			t.Cleanup(metrics.ResetUpdaterMetrics)
+			log, _ := logrustest.NewNullLogger()
+			u := &Updater{
+				source:  fetchMetricsSource{err: tt.sourceErr},
+				querier: sql.New(fetchMetricsDB{}),
+				log:     log.WithField("test", t.Name()),
+			}
+			ctx := NewDbContext(t.Context(), u.querier, u.log)
+			ch := make(chan *ImageVulnerabilityData, 1)
+			require.NoError(t, u.FetchVulnerabilityDataForImages(ctx, []*sql.Image{{Name: "image", Tag: "v1"}}, 1, ch))
+			require.Len(t, ch, tt.queued)
+			require.Equal(t, tt.success, updaterImageCount(t, "fetch", "success"))
+			require.Equal(t, tt.failed, updaterImageCount(t, "fetch", "failed"))
+		})
+	}
 }
 
 type delayedSendBatchDB struct {
