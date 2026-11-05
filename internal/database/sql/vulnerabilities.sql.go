@@ -347,8 +347,7 @@ input AS (
                 AND e.image_tag = r.image_tag
                 AND e.cve_id = r.cve_id
                 AND e.package = r.package
-                AND e.last_severity = r.last_severity)
-)
+                AND e.last_severity = r.last_severity))
 SELECT
     i.image_name::TEXT AS image_name,
     i.package::TEXT AS package,
@@ -751,6 +750,8 @@ WITH image_all_vulns AS (
     WHERE
         v.image_name = $4
         AND v.image_tag = $5
+        AND ($6::TEXT IS NULL
+            OR starts_with(v.package, 'pkg:' || $6::TEXT || '/'))
 ),
 resolved_vulnerabilities AS (
     SELECT
@@ -799,16 +800,16 @@ distinct_image_vulnerabilities AS (
         LEFT JOIN suppressed_vulnerabilities sv ON v.image_name = sv.image_name
             AND v.package = sv.package
             AND v.cve_id = sv.cve_id
-    WHERE ($6::BOOLEAN IS TRUE
+    WHERE ($7::BOOLEAN IS TRUE
         OR COALESCE(sv.suppressed, FALSE) = FALSE)
-    AND ($7::TIMESTAMPTZ IS NULL
-        OR v.severity_since > $7::TIMESTAMPTZ)
-    AND ($8::INT IS NULL
-        OR v.severity = $8::INT)
-    AND ($9::INT[] IS NULL
-        OR v.priority = ANY ($9::INT[]))
-    AND ($10::BOOL IS NULL
-        OR v.has_kev_entry = $10::BOOL))
+    AND ($8::TIMESTAMPTZ IS NULL
+        OR v.severity_since > $8::TIMESTAMPTZ)
+    AND ($9::INT IS NULL
+        OR v.severity = $9::INT)
+    AND ($10::INT[] IS NULL
+        OR v.priority = ANY ($10::INT[]))
+    AND ($11::BOOL IS NULL
+        OR v.has_kev_entry = $11::BOOL))
 SELECT
     id,
     image_name,
@@ -938,6 +939,7 @@ type ListVulnerabilitiesForImageParams struct {
 	Limit             int32
 	ImageName         string
 	ImageTag          string
+	PackageType       *string
 	IncludeSuppressed *bool
 	Since             pgtype.Timestamptz
 	Severity          *int32
@@ -985,6 +987,7 @@ func (q *Queries) ListVulnerabilitiesForImage(ctx context.Context, arg ListVulne
 		arg.Limit,
 		arg.ImageName,
 		arg.ImageTag,
+		arg.PackageType,
 		arg.IncludeSuppressed,
 		arg.Since,
 		arg.Severity,
@@ -1047,55 +1050,62 @@ WITH matched AS MATERIALIZED (
     FROM
         vulnerabilities
     WHERE
-        cve_id = ANY (ARRAY (
+        cve_id = ANY (
+            ARRAY (
                 SELECT
-                    unnest($4::TEXT[])
+                    unnest(
+                        $4::TEXT[]
+)
                 UNION
                 SELECT
                     alias
                 FROM
                     cve_alias
                 WHERE
-                    canonical_cve_id = ANY ($4::TEXT[])))
+                    canonical_cve_id = ANY (
+                        $4::TEXT[]
+)
+)
+)
 ),
-filtered AS (
-    SELECT
-        v.id,
-        w.id AS workload_id,
-        w.name AS workload_name,
-        w.workload_type,
-        w.namespace,
-        w.cluster,
-        w.image_name,
-        w.image_tag,
-        v.latest_version,
-        v.package,
-        v.cve_id,
-        v.created_at,
-        v.updated_at,
-        v.severity_since,
-        c.severity AS last_severity,
-        c.cve_title,
-        c.cve_desc,
-        c.cve_link,
-        c.severity AS severity,
-        c.created_at AS cve_created_at,
-        c.updated_at AS cve_updated_at,
-        COALESCE(sv.suppressed, FALSE) AS suppressed,
-        sv.reason,
-        sv.reason_text,
-        sv.suppressed_by,
-        sv.updated_at AS suppressed_at,
-        c.cvss_score,
-        c.epss_score,
-        c.epss_percentile,
-        c.has_kev_entry,
-        c.known_ransomware_use,
-        v.fix_version,
-        v.fix_status,
-        c.priority
-    FROM
-        matched v
+    filtered AS (
+        SELECT
+            v.id,
+            w.id AS workload_id,
+            w.name AS workload_name,
+            w.workload_type,
+            w.namespace,
+            w.cluster,
+            w.image_name,
+            w.image_tag,
+            v.latest_version,
+            v.package,
+            v.cve_id,
+            v.created_at,
+            v.updated_at,
+            v.severity_since,
+            c.severity AS last_severity,
+            c.cve_title,
+            c.cve_desc,
+            c.cve_link,
+            c.severity AS severity,
+            c.created_at AS cve_created_at,
+            c.updated_at AS cve_updated_at,
+            COALESCE(sv.suppressed, FALSE) AS suppressed,
+            sv.reason,
+            sv.reason_text,
+            sv.suppressed_by,
+            sv.updated_at AS suppressed_at,
+            c.cvss_score,
+            c.epss_score,
+            c.epss_percentile,
+            c.has_kev_entry,
+            c.known_ransomware_use,
+            v.fix_version,
+            v.fix_status,
+            c.priority
+        FROM
+            matched v
         LEFT JOIN cve_alias ca ON v.cve_id = ca.alias
         JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
         JOIN workloads w ON v.image_name = w.image_name
@@ -1302,7 +1312,7 @@ ORDER BY
     f.id ASC,
     f.workload_id ASC
 LIMIT $3
-OFFSET $2
+    OFFSET $2
 `
 
 type ListWorkloadsForVulnerabilitiesParams struct {
