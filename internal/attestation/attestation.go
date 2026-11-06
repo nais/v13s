@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	gh "github.com/google/go-containerregistry/pkg/authn/github"
@@ -142,7 +143,10 @@ func Decompress(data []byte) (*Attestation, error) {
 }
 
 func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
+	registryOpts := append(slices.Clone(v.optsV3.RegistryClientOpts),
+		remote.WithMoreRemoteOptions(ociremote.WithContext(ctx)))
 	coV3 := *v.optsV3
+	coV3.RegistryClientOpts = registryOpts
 	coV3.NewBundleFormat = true
 
 	sigs, err := v.verifyFunc(ctx, ref, &coV3)
@@ -165,6 +169,7 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 	}).Info("No v3 attestations (or v3 reported none), switching to legacy bundle format")
 
 	coLegacy := *v.optsV3
+	coLegacy.RegistryClientOpts = registryOpts
 	coLegacy.NewBundleFormat = false
 
 	legacySigs, legacyErr := v.verifyFunc(ctx, ref, &coLegacy)

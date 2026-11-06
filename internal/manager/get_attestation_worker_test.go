@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
@@ -117,6 +118,60 @@ func TestGetAttestationWorker_AttestationFound_EnqueuesUpload(t *testing.T) {
 	job := makeGetAttestationJob(1, 4)
 	err := worker.Work(ctx, job)
 	require.NoError(t, err)
+}
+
+func TestGetAttestationWorker_ContextDoneDuringVerification(t *testing.T) {
+	tests := []struct {
+		name        string
+		deadline    bool
+		attestation *attestation.Attestation
+		sourceErr   error
+		wantErr     error
+	}{
+		{
+			name:        "canceled after attestation found",
+			attestation: &attestation.Attestation{Predicate: []byte(`{}`)},
+			wantErr:     context.Canceled,
+		},
+		{
+			name:      "deadline exceeded before terminal result",
+			deadline:  true,
+			sourceErr: model.ToUnrecoverableError(errors.New("permanent"), "attestation"),
+			wantErr:   context.DeadlineExceeded,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			timeout := time.Hour
+			if tt.deadline {
+				timeout = time.Millisecond
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+
+			db := sqmock.NewMockQuerier(t)
+			verifier := attmock.NewMockVerifier(t)
+			verifier.EXPECT().GetAttestation(mock.Anything, "myimage:v1").RunAndReturn(
+				func(context.Context, string) (*attestation.Attestation, error) {
+					if tt.deadline {
+						<-ctx.Done()
+					} else {
+						cancel()
+					}
+					return tt.attestation, tt.sourceErr
+				},
+			)
+			jobs := &fakeJobClient{}
+			worker := newGetAttestationWorker(t, db, verifier)
+			worker.jobClient = jobs
+
+			err := worker.Work(ctx, makeGetAttestationJob(1, 4))
+
+			require.ErrorIs(t, err, tt.wantErr)
+			require.Empty(t, jobs.addedJobs)
+		})
+	}
 }
 
 func TestImageReference(t *testing.T) {
