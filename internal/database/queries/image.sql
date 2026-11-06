@@ -76,6 +76,25 @@ SET
 WHERE
     name = @name
     AND tag = @tag
+    AND state <> 'failed'
+    AND ready_for_resync_at IS NOT DISTINCT FROM sqlc.arg('expected_ready_for_resync_at')::TIMESTAMPTZ;
+
+-- name: MarkImageForReanalysisResync :execrows
+UPDATE
+    images
+SET
+    state = 'resync',
+    ready_for_resync_at = NOW(),
+    sbom_processing_started_at = CASE WHEN state IN ('resync', 'initialized')
+        AND sbom_processing_started_at IS NOT NULL THEN
+        sbom_processing_started_at
+    ELSE
+        NOW()
+    END,
+    updated_at = NOW()
+WHERE
+    name = @name
+    AND tag = @tag
     AND state <> 'failed';
 
 -- name: MarkImagesAsUntracked :execrows

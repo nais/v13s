@@ -11,6 +11,7 @@ service Management{
   rpc GetWorkloadStatus(GetWorkloadStatusRequest) returns (GetWorkloadStatusResponse);
   rpc GetWorkloadJobs(GetWorkloadJobsRequest) returns (GetWorkloadJobsResponse);
   rpc Resync(ResyncRequest) returns (ResyncResponse);
+  rpc Reanalyze(ReanalyzeRequest) returns (ReanalyzeResponse);
   rpc DeleteWorkload(DeleteWorkloadRequest) returns (DeleteWorkloadResponse);
 }
 
@@ -105,6 +106,20 @@ message ResyncResponse {
   repeated string workloads = 2; // List of workload identifiers that were resynced
   int32 num_failures = 3;
   repeated ResyncFailure failures = 4;
+}
+
+message ReanalyzeRequest {
+  string cluster = 1;
+  string namespace = 2;
+  optional string workload = 3;
+  optional string workload_type = 4;
+}
+
+message ReanalyzeResponse {
+  // Number of eligible image tags; requests already queued may be deduplicated.
+  int32 num_images = 1;
+  // Time this request was accepted, absent when no image was eligible.
+  google.protobuf.Timestamp requested_at = 2;
 }
 
 message DeleteWorkloadRequest {

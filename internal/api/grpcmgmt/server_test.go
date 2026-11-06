@@ -5,7 +5,10 @@ import (
 	"errors"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/manager"
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/resync"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -14,6 +17,80 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+type fakeReanalysisManager struct {
+	params sql.ListImagesForReanalysisParams
+	count  int
+}
+
+func (*fakeReanalysisManager) AddWorkload(context.Context, *model.Workload) error    { return nil }
+func (*fakeReanalysisManager) DeleteWorkload(context.Context, *model.Workload) error { return nil }
+func (f *fakeReanalysisManager) Reanalyze(_ context.Context, params sql.ListImagesForReanalysisParams) (int, error) {
+	f.params = params
+	return f.count, nil
+}
+
+func TestReanalyzeScopesRequestsToNamespaceOrWorkload(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		workload     *string
+		workloadType *string
+	}{
+		{name: "whole namespace"},
+		{name: "one job", workload: ptrString("my-job"), workloadType: ptrString("job")},
+		{name: "one deployment", workload: ptrString("my-deployment"), workloadType: ptrString("deployment")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			mgr := &fakeReanalysisManager{count: 2}
+			server := &Server{mgr: mgr, log: logrus.NewEntry(logrus.New())}
+			resp, err := server.Reanalyze(context.Background(), &management.ReanalyzeRequest{
+				Cluster: "dev", Namespace: "my-team", Workload: tt.workload, WorkloadType: tt.workloadType,
+			})
+			require.NoError(t, err)
+			require.Equal(t, int32(2), resp.NumImages)
+			require.NotNil(t, resp.RequestedAt)
+			require.WithinDuration(t, time.Now(), resp.RequestedAt.AsTime(), time.Second)
+			require.Equal(t, sql.ListImagesForReanalysisParams{
+				Cluster: "dev", Namespace: "my-team",
+				WorkloadName: tt.workload, WorkloadType: tt.workloadType,
+			}, mgr.params)
+		})
+	}
+}
+
+func TestReanalyzeNoEligibleImagesHasNoRequestedAt(t *testing.T) {
+	server := &Server{mgr: &fakeReanalysisManager{}, log: logrus.NewEntry(logrus.New())}
+	response, err := server.Reanalyze(context.Background(), &management.ReanalyzeRequest{
+		Cluster: "dev", Namespace: "my-team",
+	})
+	require.NoError(t, err)
+	require.Zero(t, response.NumImages)
+	require.Nil(t, response.RequestedAt)
+}
+
+func TestReanalyzeRejectsInvalidManagerCount(t *testing.T) {
+	for _, count := range []int{-1, manager.MaxReanalysisImages + 1} {
+		server := &Server{mgr: &fakeReanalysisManager{count: count}, log: logrus.NewEntry(logrus.New())}
+		response, err := server.Reanalyze(context.Background(), &management.ReanalyzeRequest{
+			Cluster: "dev", Namespace: "my-team",
+		})
+		require.Nil(t, response)
+		require.Equal(t, codes.Internal, status.Code(err))
+	}
+}
+
+func TestReanalyzeRejectsUnscopedRequests(t *testing.T) {
+	server := &Server{mgr: &fakeReanalysisManager{}, log: logrus.NewEntry(logrus.New())}
+	for _, req := range []*management.ReanalyzeRequest{
+		{Namespace: "my-team"},
+		{Cluster: "dev"},
+		{Cluster: "dev", Namespace: "my-team", Workload: ptrString("my-job")},
+		{Cluster: "dev", Namespace: "my-team", WorkloadType: ptrString("platform")},
+	} {
+		_, err := server.Reanalyze(context.Background(), req)
+		require.Equal(t, codes.InvalidArgument, status.Code(err))
+	}
+}
 
 type fakeResyncModule struct {
 	calls  atomic.Int32
