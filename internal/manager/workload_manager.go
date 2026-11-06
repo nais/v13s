@@ -154,64 +154,72 @@ func (m *WorkloadManager) DeleteWorkload(ctx context.Context, workload *model.Wo
 	return nil
 }
 
-// Only clusters present in liveByCluster are reconciled — clusters not managed
-// by the informer are left untouched.
 func (m *WorkloadManager) ReconcileWorkloads(ctx context.Context, liveByCluster map[string][]*model.Workload) {
 	for cluster, liveWorkloads := range liveByCluster {
-		live := make(map[string]bool, len(liveWorkloads))
-		for _, w := range liveWorkloads {
-			live[w.Name+"/"+w.Namespace+"/"+string(w.Type)] = true
-		}
+		m.ReconcileCluster(ctx, cluster, func() []*model.Workload { return liveWorkloads })
+	}
+}
 
-		dbWorkloads, err := m.db.ListWorkloadsByCluster(ctx, cluster)
-		if err != nil {
-			m.log.WithError(err).Errorf("reconcile: failed to list workloads for cluster %s", cluster)
+func (m *WorkloadManager) ReconcileCluster(ctx context.Context, cluster string, snapshot func() []*model.Workload) {
+	dbWorkloads, err := m.db.ListWorkloadsByCluster(ctx, cluster)
+	if err != nil {
+		m.log.WithError(err).Errorf("reconcile: failed to list workloads for cluster %s", cluster)
+		return
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	liveWorkloads := snapshot()
+	live := make(map[string]bool, len(liveWorkloads))
+	for _, w := range liveWorkloads {
+		live[w.Name+"/"+w.Namespace+"/"+string(w.Type)] = true
+	}
+
+	orphanTotal := 0
+	enqueuedTotal := 0
+	orphanByType := make(map[string]int)
+
+	for _, dbW := range dbWorkloads {
+		if ctx.Err() != nil {
+			return
+		}
+		key := dbW.Name + "/" + dbW.Namespace + "/" + dbW.WorkloadType
+		if live[key] {
 			continue
 		}
-
-		orphanTotal := 0
-		enqueuedTotal := 0
-		orphanByType := make(map[string]int)
-
-		for _, dbW := range dbWorkloads {
-			key := dbW.Name + "/" + dbW.Namespace + "/" + dbW.WorkloadType
-			if live[key] {
-				continue
-			}
-			orphanTotal++
-			orphanByType[dbW.WorkloadType]++
-			if !m.reconcileDeletionEnabled {
-				m.log.Infof("[DRY RUN] reconcile: would delete workload %s/%s (not found in k8s)", cluster, key)
-				continue
-			}
-			m.log.Infof("[DELETE] reconcile: workload %s/%s not found in k8s, enqueuing delete", cluster, key)
-			if err := m.DeleteWorkload(ctx, &model.Workload{
-				Name:      dbW.Name,
-				Namespace: dbW.Namespace,
-				Cluster:   dbW.Cluster,
-				Type:      model.WorkloadType(dbW.WorkloadType),
-				ImageName: dbW.ImageName,
-				ImageTag:  dbW.ImageTag,
-			}); err != nil {
-				m.log.WithError(err).Warnf("reconcile: failed to enqueue delete for %s/%s", cluster, key)
-				continue
-			}
-			enqueuedTotal++
+		orphanTotal++
+		orphanByType[dbW.WorkloadType]++
+		if !m.reconcileDeletionEnabled {
+			m.log.Infof("[DRY RUN] reconcile: would delete workload %s/%s (not found in k8s)", cluster, key)
+			continue
 		}
-
-		mode := "dry-run"
-		if m.reconcileDeletionEnabled {
-			mode = "delete"
+		m.log.Infof("[DELETE] reconcile: workload %s/%s not found in k8s, enqueuing delete", cluster, key)
+		if err := m.DeleteWorkload(ctx, &model.Workload{
+			Name:      dbW.Name,
+			Namespace: dbW.Namespace,
+			Cluster:   dbW.Cluster,
+			Type:      model.WorkloadType(dbW.WorkloadType),
+			ImageName: dbW.ImageName,
+			ImageTag:  dbW.ImageTag,
+		}); err != nil {
+			m.log.WithError(err).Warnf("reconcile: failed to enqueue delete for %s/%s", cluster, key)
+			continue
 		}
-
-		m.log.WithFields(logrus.Fields{
-			"cluster":         cluster,
-			"mode":            mode,
-			"orphans_total":   orphanTotal,
-			"orphans_by_type": formatTypeCounts(orphanByType),
-			"enqueued_total":  enqueuedTotal,
-		}).Info("reconcile summary")
+		enqueuedTotal++
 	}
+
+	mode := "dry-run"
+	if m.reconcileDeletionEnabled {
+		mode = "delete"
+	}
+
+	m.log.WithFields(logrus.Fields{
+		"cluster":         cluster,
+		"mode":            mode,
+		"orphans_total":   orphanTotal,
+		"orphans_by_type": formatTypeCounts(orphanByType),
+		"enqueued_total":  enqueuedTotal,
+	}).Info("reconcile summary")
 }
 
 func formatTypeCounts(counts map[string]int) string {

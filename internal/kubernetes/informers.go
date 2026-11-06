@@ -4,18 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/nais/v13s/internal/config"
 	"github.com/nais/v13s/internal/model"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -24,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// discoveryResourceLister lets tests fake discovery.DiscoveryInterface.
 type discoveryResourceLister interface {
 	ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error)
 }
@@ -38,18 +44,17 @@ func checkServerResources(disc discoveryResourceLister, gvr schema.GroupVersionR
 }
 
 type InformerManager struct {
-	clusters   map[string]*clusterManager
-	cacheSyncs []cache.InformerSynced
-	log        logrus.FieldLogger
-	// TODO: not in use
-	// resourceCounter metric.Int64UpDownCounter
+	clusters map[string]*clusterManager
+	ctx      context.Context
+	cancel   context.CancelFunc
+	queue    *WorkloadEventQueue
+	log      logrus.FieldLogger
 }
 
 type clusterManager struct {
-	client     dynamic.Interface
-	factory    dynamicinformer.DynamicSharedInformerFactory
-	informers  map[schema.GroupVersionResource]cache.SharedIndexInformer
-	registered bool
+	discovery discoveryResourceLister
+	factory   dynamicinformer.DynamicSharedInformerFactory
+	informers map[schema.GroupVersionResource]cache.SharedIndexInformer
 }
 
 var gvrs = []schema.GroupVersionResource{
@@ -71,11 +76,9 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 		return nil, fmt.Errorf("creating cluster config map: %w", err)
 	}
 
-	clusters := map[string]*clusterManager{}
-	mgr := &InformerManager{
-		log: log,
-	}
+	clusters := make(map[string]*clusterManager, len(clusterConfig))
 	for cluster, cfg := range clusterConfig {
+		cfg.UserAgent = "nais.io/v13s"
 		dynamicClient, err := dynamic.NewForConfig(cfg)
 		if err != nil {
 			return nil, err
@@ -83,137 +86,192 @@ func NewInformerManager(ctx context.Context, tenant string, k8sCfg config.K8sCon
 		if cfg.NegotiatedSerializer == nil {
 			cfg.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: schemepkg.Codecs}
 		}
-		cfg.UserAgent = "nais.io/v13s"
-
-		discoveryClient, err := newDiscoveryClientForConfig(cfg)
+		discoveryConfig := rest.CopyConfig(cfg)
+		discoveryConfig.Timeout = 10 * time.Second
+		discoveryClient, err := newDiscoveryClientForConfig(discoveryConfig)
 		if err != nil {
 			return nil, fmt.Errorf("creating discovery client: %w", err)
 		}
-
-		factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, corev1.NamespaceAll, nil)
-		infs := map[schema.GroupVersionResource]cache.SharedIndexInformer{}
-		for _, gvr := range gvrs {
-			// Check if the resource is available in the cluster.
-			resList, err := checkServerResources(discoveryClient, gvr)
-			if err != nil {
-				if _, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
-					mgr.Stop()
-					return nil, fmt.Errorf("authentication error for cluster %s: %w", cluster, err)
-				}
-				if apierrors.IsNotFound(err) {
-					// Resource not registered in this cluster (e.g. CRD not installed) — safe to skip.
-					log.WithError(err).Warnf("group version %s not available in cluster %s", gvr.String(), cluster)
-					continue
-				}
-				// Unknown failure (e.g. network/DNS) — fail fast instead of silently running without this informer.
-				mgr.Stop()
-				return nil, fmt.Errorf("discovery failed for group version %s in cluster %s: %w", gvr.String(), cluster, err)
-			}
-
-			found := false
-			for _, apiRes := range resList.APIResources {
-				if apiRes.Name == gvr.Resource {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				log.Warnf("resource %s not available in cluster %s", gvr.String(), cluster)
-				continue
-			}
-
-			informer := factory.ForResource(gvr).Informer()
-			log.WithFields(logrus.Fields{
-				"cluster":  cluster,
-				"resource": gvr.String(),
-			}).Info("creating informer")
-
-			_, err = informer.AddEventHandler(newEventHandler(cluster, workloadQueue, log.WithField("cluster", cluster)))
-			if err != nil {
-				log.WithError(err).Warnf("failed to add event handler for resource %s in cluster %s", gvr.String(), cluster)
-				continue
-			}
-			infs[gvr] = informer
-			mgr.addCacheSync(informer.HasSynced)
-		}
-
 		clusters[cluster] = &clusterManager{
-			client:    dynamicClient,
-			informers: infs,
-			factory:   factory,
+			discovery: discoveryClient,
+			factory:   dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 4*time.Hour, corev1.NamespaceAll, nil),
+			informers: make(map[schema.GroupVersionResource]cache.SharedIndexInformer),
 		}
-
 	}
-	mgr.clusters = clusters
-	mgr.start(ctx)
 
-	return mgr, nil
+	ctx, cancel := context.WithCancel(ctx)
+	return &InformerManager{
+		clusters: clusters,
+		ctx:      ctx,
+		cancel:   cancel,
+		queue:    workloadQueue,
+		log:      log,
+	}, nil
 }
 
 func (m *InformerManager) Stop() {
-	for _, cluster := range m.clusters {
-		cluster.factory.Shutdown()
-	}
+	m.cancel()
 }
 
-func (m *InformerManager) WaitForReady(ctx context.Context) bool {
-	select {
-	case <-ctx.Done():
-		m.log.WithError(ctx.Err()).Error("WaitForReady: context already cancelled before WaitForCacheSync")
-		return false
-	default:
+func (m *InformerManager) Run(onReady func(context.Context, string, func() []*model.Workload)) error {
+	defer m.Stop()
+	group, ctx := errgroup.WithContext(m.ctx)
+	for name, cluster := range m.clusters {
+		group.Go(func() error {
+			return m.runCluster(ctx, name, cluster, onReady)
+		})
 	}
-	m.log.Infof("WaitForReady: waiting for %d cache syncs", len(m.cacheSyncs))
-	result := cache.WaitForCacheSync(ctx.Done(), m.cacheSyncs...)
-	if !result {
+	if err := group.Wait(); err != nil {
+		return err
+	}
+	<-m.ctx.Done()
+	return nil
+}
+
+func (m *InformerManager) runCluster(ctx context.Context, name string, cluster *clusterManager, onReady func(context.Context, string, func() []*model.Workload)) error {
+	log := m.log.WithField("cluster", name)
+	delay := time.Second
+	var resources []schema.GroupVersionResource
+	for {
+		if ctx.Err() != nil {
+			return nil
+		}
+		var err error
+		resources, err = cluster.discover(ctx, log)
+		if ctx.Err() != nil {
+			return nil
+		}
+		if err == nil {
+			break
+		}
+		if !retryableDiscoveryError(err) {
+			return fmt.Errorf("discovery failed in cluster %s (%s)", name, discoveryErrorDescription(err))
+		}
+		retryIn := wait.Jitter(delay, 0.2)
+		log.WithFields(logrus.Fields{
+			"retry_in":   retryIn,
+			"error_type": discoveryErrorDescription(err),
+		}).Warn("cluster discovery unavailable; retrying")
+		timer := time.NewTimer(retryIn)
 		select {
 		case <-ctx.Done():
-			m.log.WithError(ctx.Err()).Error("WaitForReady: context cancelled during WaitForCacheSync")
-		default:
-			m.log.Error("WaitForReady: timed out before all caches synced")
+			timer.Stop()
+			return nil
+		case <-timer.C:
 		}
+		delay = min(2*delay, 30*time.Second)
 	}
-	return result
+
+	if len(resources) == 0 {
+		log.Warn("no active informers; skipping cluster reconciliation")
+		<-ctx.Done()
+		return nil
+	}
+
+	var syncs []cache.InformerSynced
+	for _, gvr := range resources {
+		informer := cluster.factory.ForResource(gvr).Informer()
+		if _, err := informer.AddEventHandler(newEventHandler(name, m.queue, log)); err != nil {
+			return fmt.Errorf("adding event handler for %s in cluster %s: %w", gvr.String(), name, err)
+		}
+		cluster.informers[gvr] = informer
+		syncs = append(syncs, informer.HasSynced)
+	}
+	cluster.factory.Start(ctx.Done())
+	defer cluster.factory.Shutdown()
+
+	log.Info("waiting for cluster caches to sync")
+	for {
+		syncCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		synced := cache.WaitForCacheSync(syncCtx.Done(), syncs...)
+		cancel()
+		if ctx.Err() != nil {
+			return nil
+		}
+		if synced {
+			break
+		}
+		log.Warn("cluster caches not synced; reconciliation deferred")
+	}
+	log.Info("cluster informers synced; reconciling workloads")
+	onReady(ctx, name, func() []*model.Workload {
+		return cluster.workloads(name)
+	})
+	<-ctx.Done()
+	return nil
 }
 
-func (m *InformerManager) start(ctx context.Context) {
-	for _, cluster := range m.clusters {
-		if cluster.registered {
+func (c *clusterManager) discover(ctx context.Context, log logrus.FieldLogger) ([]schema.GroupVersionResource, error) {
+	var resources []schema.GroupVersionResource
+	for _, gvr := range gvrs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		resList, err := checkServerResources(c.discovery, gvr)
+		if apierrors.IsNotFound(err) {
+			log.Warnf("group version %s not available", gvr.String())
 			continue
 		}
-		for _, informer := range cluster.informers {
-			go informer.Run(ctx.Done())
+		if err != nil {
+			return nil, err
 		}
-		cluster.registered = true
-	}
-}
-
-func (m *InformerManager) addCacheSync(sync cache.InformerSynced) {
-	m.cacheSyncs = append(m.cacheSyncs, sync)
-}
-
-// ListWorkloadsByCluster returns all workloads currently in the informer cache,
-// keyed by cluster name. Every managed cluster is present in the map — clusters
-// with no live workloads have an empty slice, which lets ReconcileWorkloads
-// delete DB entries for those clusters too.
-// Clusters with no active informers are excluded to avoid false positives.
-func (m *InformerManager) ListWorkloadsByCluster() map[string][]*model.Workload {
-	result := make(map[string][]*model.Workload, len(m.clusters))
-	for cluster, clusterMgr := range m.clusters {
-		if len(clusterMgr.informers) == 0 {
-			m.log.Warnf("reconcile: skipping cluster %s — no active informers, cannot safely determine live workloads", cluster)
-			continue
-		}
-		result[cluster] = make([]*model.Workload, 0)
-		for _, informer := range clusterMgr.informers {
-			for _, obj := range informer.GetStore().List() {
-				u, ok := obj.(*unstructured.Unstructured)
-				if !ok {
-					continue
-				}
-				result[cluster] = append(result[cluster], extractWorkloads(cluster, u)...)
+		for _, resource := range resList.APIResources {
+			if resource.Name == gvr.Resource {
+				resources = append(resources, gvr)
+				break
 			}
+		}
+	}
+	return resources, nil
+}
+
+func discoveryErrorDescription(err error) string {
+	var causes []string
+	for err != nil {
+		cause := fmt.Sprintf("%T", err)
+		switch err := err.(type) {
+		case syscall.Errno:
+			cause += ": " + err.Error()
+		case apierrors.APIStatus:
+			cause += fmt.Sprintf(" (HTTP %d)", err.Status().Code)
+		}
+		if errors.Is(err, http.ErrSchemeMismatch) {
+			return http.ErrSchemeMismatch.Error()
+		}
+		causes = append(causes, cause)
+		err = errors.Unwrap(err)
+	}
+	return strings.Join(causes, ": ")
+}
+
+func retryableDiscoveryError(err error) bool {
+	if _, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
+		return false
+	}
+	if apierrors.IsUnauthorized(err) || apierrors.IsForbidden(err) {
+		return false
+	}
+	if _, ok := errors.AsType[*net.DNSError](err); ok {
+		return true
+	}
+	if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {
+		return true
+	}
+	return apierrors.IsServiceUnavailable(err) || apierrors.IsTooManyRequests(err) ||
+		apierrors.IsTimeout(err) || apierrors.IsServerTimeout(err) || apierrors.IsInternalError(err) ||
+		errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+}
+
+func (c *clusterManager) workloads(name string) []*model.Workload {
+	var result []*model.Workload
+	for _, informer := range c.informers {
+		for _, obj := range informer.GetStore().List() {
+			u, ok := obj.(*unstructured.Unstructured)
+			if !ok {
+				continue
+			}
+			result = append(result, extractWorkloads(name, u)...)
 		}
 	}
 	return result

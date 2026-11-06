@@ -167,3 +167,43 @@ func TestReconcileWorkloads_EmptyCluster_DeletesAll(t *testing.T) {
 
 	require.Equal(t, 1, counter.count, "should enqueue one delete job when cluster has no live workloads")
 }
+
+func TestReconcileCluster_ReadsDatabaseBeforeSnapshot(t *testing.T) {
+	q := sqmock.NewMockQuerier(t)
+	databaseRead := false
+	q.On("ListWorkloadsByCluster", mock.Anything, "dev").
+		Run(func(mock.Arguments) { databaseRead = true }).
+		Return([]*sql.Workload{{
+			Name: "app", Namespace: "team", Cluster: "dev", WorkloadType: "deployment",
+		}}, nil).Once()
+
+	counter := &countingJobClient{}
+	mgr := newTestWorkloadManager(t, q)
+	mgr.jobClient = counter
+	mgr.ReconcileCluster(t.Context(), "dev", func() []*model.Workload {
+		require.True(t, databaseRead, "database candidates must be selected before reading the live cache")
+		return []*model.Workload{{
+			Name: "app", Namespace: "team", Cluster: "dev", Type: model.WorkloadTypeDeployment,
+		}}
+	})
+	require.Zero(t, counter.count)
+}
+
+func TestReconcileCluster_CancellationDoesNotDelete(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	q := sqmock.NewMockQuerier(t)
+	q.On("ListWorkloadsByCluster", mock.Anything, "dev").
+		Run(func(mock.Arguments) { cancel() }).
+		Return([]*sql.Workload{{
+			Name: "app", Namespace: "team", Cluster: "dev", WorkloadType: "deployment",
+		}}, nil).Once()
+	counter := &countingJobClient{}
+	mgr := newTestWorkloadManager(t, q)
+	mgr.jobClient = counter
+	mgr.ReconcileCluster(ctx, "dev", func() []*model.Workload {
+		t.Error("cancelled reconciliation must not read the cache")
+		return nil
+	})
+	require.Zero(t, counter.count)
+}

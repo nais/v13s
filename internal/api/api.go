@@ -151,36 +151,9 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 
 	informerMgr, err := kubernetes.NewInformerManager(ctx, cfg.Tenant, cfg.K8s, workloadEventQueue, log.WithField("subsystem", "k8s_watcher"))
 	if err != nil {
-		log.Fatalf("Failed to create informer manager: %v", err)
+		return fmt.Errorf("create informer manager: %w", err)
 	}
 	defer informerMgr.Stop()
-
-	syncCtx, cancelSync := context.WithTimeout(ctx, 60*time.Second)
-	defer cancelSync()
-
-	syncDone := make(chan bool, 1)
-	go func() {
-		syncDone <- informerMgr.WaitForReady(syncCtx)
-	}()
-
-	select {
-	case err := <-httpErrCh:
-		if ctx.Err() != nil {
-			// SIGTERM/SIGINT arrived before watchers synced — this is a clean shutdown, not a crash.
-			return nil
-		}
-		return fmt.Errorf("HTTP server failed before watchers became ready: %w", err)
-	case ready := <-syncDone:
-		if !ready {
-			if ctx.Err() != nil {
-				return fmt.Errorf("context cancelled before watchers became ready: %w", ctx.Err())
-			}
-			log.Fatalf("timed out waiting for watchers to be ready")
-		}
-	}
-
-	log.Info("reconciling workloads against k8s state")
-	mgr.ReconcileWorkloads(ctx, informerMgr.ListWorkloadsByCluster())
 
 	runtimeCfg := updater.NewRuntimeConfig(cfg.Updater, updater.ScheduleConfig{
 		Type:     updater.SchedulerInterval,
@@ -207,6 +180,10 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	resyncModule := resync.NewWorkloadResyncModule(ctx, dbsql.New(pool), mgr, u, log.WithField("subsystem", "workload_resync"))
 
 	wg, ctx := errgroup.WithContext(ctx)
+
+	wg.Go(func() error {
+		return informerMgr.Run(mgr.ReconcileCluster)
+	})
 
 	wg.Go(func() error {
 		select {
