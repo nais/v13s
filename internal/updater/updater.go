@@ -501,14 +501,6 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 	sortByFields(cves, func(x sql.BatchUpsertCveParams) string {
 		return x.CveID
 	})
-	sortByFields(vulns,
-		func(x sql.BatchUpsertVulnerabilitiesParams) string {
-			return x.ImageName
-		},
-		func(x sql.BatchUpsertVulnerabilitiesParams) string {
-			return x.ImageTag
-		},
-	)
 	sortByFields(imageStates,
 		func(x sql.BatchUpdateImageStateParams) string { return x.Name },
 		func(x sql.BatchUpdateImageStateParams) string { return x.Tag },
@@ -524,11 +516,17 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		batch.Exec(handler)
 		return batch.Close()
 	})
+	var vulnerabilityErr error
 	u.runExec("upsert vulnerabilities", "upsert_vulnerabilities", len(vulns), func(handler func(int, error)) error {
-		batch := u.querier.BatchUpsertVulnerabilities(ctx, vulns)
-		batch.Exec(handler)
-		return batch.Close()
+		vulnerabilityErr = u.upsertVulnerabilities(ctx, vulns)
+		if vulnerabilityErr != nil {
+			handler(0, vulnerabilityErr)
+		}
+		return vulnerabilityErr
 	})
+	if vulnerabilityErr != nil {
+		return fmt.Errorf("upserting vulnerabilities: %w", vulnerabilityErr)
+	}
 
 	if len(cves) > 0 {
 		cveIDs := make([]string, 0, len(cves))
@@ -593,6 +591,32 @@ func (u *Updater) BatchUpdateVulnerabilityData(ctx context.Context, images []*Im
 		return imageStateCloseErr
 	})
 	imageStateWritesSucceeded = imageStateErrors == 0 && imageStateCloseErr == nil
+	return nil
+}
+
+func (u *Updater) upsertVulnerabilities(ctx context.Context, vulns []sql.BatchUpsertVulnerabilitiesParams) error {
+	sortByFields(vulns,
+		func(x sql.BatchUpsertVulnerabilitiesParams) string { return x.ImageName },
+		func(x sql.BatchUpsertVulnerabilitiesParams) string { return x.ImageTag },
+		func(x sql.BatchUpsertVulnerabilitiesParams) string { return x.Package },
+		func(x sql.BatchUpsertVulnerabilitiesParams) string { return x.CveID },
+	)
+	for start := 0; start < len(vulns); start += 1000 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		end := min(start+1000, len(vulns))
+		batch := u.querier.BatchUpsertVulnerabilities(ctx, vulns[start:end])
+		var execErr error
+		batch.Exec(func(_ int, err error) {
+			if execErr == nil {
+				execErr = err
+			}
+		})
+		if err := errors.Join(execErr, batch.Close()); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -23,6 +24,108 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type vulnerabilityBatchDB struct {
+	sql.DBTX
+	batches  [][]sql.BatchUpsertVulnerabilitiesParams
+	results  []*vulnerabilityBatchResults
+	failAt   int
+	writeErr error
+	closeErr error
+}
+
+func (db *vulnerabilityBatchDB) SendBatch(_ context.Context, batch *pgx.Batch) pgx.BatchResults {
+	var keys []sql.BatchUpsertVulnerabilitiesParams
+	for _, query := range batch.QueuedQueries {
+		keys = append(keys, sql.BatchUpsertVulnerabilitiesParams{
+			ImageName: query.Arguments[0].(string),
+			ImageTag:  query.Arguments[1].(string),
+			Package:   query.Arguments[2].(string),
+			CveID:     query.Arguments[3].(string),
+		})
+	}
+	db.batches = append(db.batches, keys)
+	result := &vulnerabilityBatchResults{}
+	if len(db.batches) == db.failAt {
+		result.writeErr = db.writeErr
+		result.closeErr = db.closeErr
+	}
+	db.results = append(db.results, result)
+	return result
+}
+
+type vulnerabilityBatchResults struct {
+	pgx.BatchResults
+	writeErr error
+	closeErr error
+	closed   bool
+}
+
+func (r *vulnerabilityBatchResults) Exec() (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, r.writeErr
+}
+
+func (r *vulnerabilityBatchResults) Close() error {
+	r.closed = true
+	return r.closeErr
+}
+
+func TestUpsertVulnerabilitiesOrdersAndBoundsBatches(t *testing.T) {
+	input := []sql.BatchUpsertVulnerabilitiesParams{
+		{ImageName: "b", ImageTag: "1", Package: "a", CveID: "a"},
+		{ImageName: "a", ImageTag: "2", Package: "a", CveID: "a"},
+		{ImageName: "a", ImageTag: "1", Package: "b", CveID: "a"},
+		{ImageName: "a", ImageTag: "1", Package: "a", CveID: "b"},
+		{ImageName: "a", ImageTag: "1", Package: "a", CveID: "a"},
+	}
+	want := slices.Clone(input)
+	slices.Reverse(want)
+	for range 2000 {
+		input = append(input, sql.BatchUpsertVulnerabilitiesParams{ImageName: "z"})
+	}
+	db := &vulnerabilityBatchDB{}
+	u := &Updater{querier: sql.New(db)}
+	require.NoError(t, u.upsertVulnerabilities(t.Context(), input))
+	require.Len(t, db.batches, 3)
+	require.Equal(t, want, db.batches[0][:5])
+	require.Len(t, db.batches[0], 1000)
+	require.Len(t, db.batches[1], 1000)
+	require.Len(t, db.batches[2], 5)
+	for _, result := range db.results {
+		require.True(t, result.closed)
+	}
+}
+
+func TestUpsertVulnerabilitiesReturnsBatchErrors(t *testing.T) {
+	for _, closeOnly := range []bool{false, true} {
+		t.Run(fmt.Sprint(closeOnly), func(t *testing.T) {
+			writeErr := errors.New("write failed")
+			db := &vulnerabilityBatchDB{failAt: 1}
+			if closeOnly {
+				db.closeErr = writeErr
+			} else {
+				db.writeErr = writeErr
+			}
+			u := &Updater{querier: sql.New(db)}
+			err := u.upsertVulnerabilities(t.Context(), make([]sql.BatchUpsertVulnerabilitiesParams, 1001))
+			require.ErrorIs(t, err, writeErr)
+			require.Len(t, db.batches, 1)
+			require.True(t, db.results[0].closed)
+		})
+	}
+}
+
+func TestUpsertVulnerabilitiesReturnsDeadlockWithoutRetrying(t *testing.T) {
+	deadlock := &pgconn.PgError{Code: "40P01"}
+	db := &vulnerabilityBatchDB{failAt: 2, writeErr: deadlock}
+	u := &Updater{querier: sql.New(db)}
+	err := u.upsertVulnerabilities(t.Context(), make([]sql.BatchUpsertVulnerabilitiesParams, 2001))
+	require.ErrorIs(t, err, deadlock)
+	require.Len(t, db.batches, 2)
+	for _, result := range db.results {
+		require.True(t, result.closed)
+	}
+}
 
 type failingSummaryDB struct {
 	sql.DBTX

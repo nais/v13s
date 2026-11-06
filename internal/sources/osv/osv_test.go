@@ -1497,7 +1497,7 @@ func TestFetcher_Persist_BatchesUpdates(t *testing.T) {
 		BulkUpdateFixVersions(mock.Anything, mock.Anything).
 		RunAndReturn(func(_ context.Context, p sqldatabase.BulkUpdateFixVersionsParams) (int64, error) {
 			batchSizes = append(batchSizes, len(p.CveIds))
-			return int64(len(p.CveIds)), nil
+			return int64(1), nil
 		}).
 		Times(2)
 
