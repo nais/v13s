@@ -117,38 +117,89 @@ ORDER BY
     package;
 
 -- name: BulkUpdateFixVersions :execrows
+WITH targets AS MATERIALIZED (
+    SELECT
+        v.id,
+        data.fix_version,
+        data.fix_status
+    FROM
+        vulnerabilities v
+        JOIN (
+            SELECT
+                unnest(
+                    @cve_ids::TEXT[]
+) AS cve_id,
+                unnest(
+                    @packages::TEXT[]
+) AS package,
+                unnest(
+                    @fix_versions::TEXT[]
+) AS fix_version,
+                unnest(
+                    @fix_statuses::TEXT[]
+)::fix_status AS fix_status
+) AS data ON v.cve_id = data.cve_id
+                AND v.package = data.package
+        WHERE
+            v.fix_version IS DISTINCT FROM data.fix_version
+            OR v.fix_status IS DISTINCT FROM data.fix_status
+        ORDER BY
+            v.image_name COLLATE "C",
+            v.image_tag COLLATE "C",
+            v.package COLLATE "C",
+            v.cve_id COLLATE "C"
+        LIMIT 1000
+        FOR NO KEY UPDATE
+            OF v)
 UPDATE
     vulnerabilities
 SET
-    fix_version = data.fix_version,
-    fix_status = data.fix_status,
+    fix_version = targets.fix_version,
+    fix_status = targets.fix_status,
     updated_at = NOW()
-FROM (
-    SELECT
-        unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@packages::TEXT[]) AS package,
-        unnest(@fix_versions::TEXT[]) AS fix_version,
-        unnest(@fix_statuses::TEXT[])::fix_status AS fix_status) AS data
+FROM
+    targets
 WHERE
-    vulnerabilities.cve_id = data.cve_id
-    AND vulnerabilities.package = data.package
-    AND (vulnerabilities.fix_version IS DISTINCT FROM data.fix_version
-        OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status);
+    vulnerabilities.id = targets.id;
 
 -- name: BulkClearFixVersions :execrows
+WITH targets AS MATERIALIZED (
+    SELECT
+        v.id,
+        data.fix_status
+    FROM
+        vulnerabilities v
+        JOIN (
+            SELECT
+                unnest(
+                    @cve_ids::TEXT[]
+) AS cve_id,
+                unnest(
+                    @packages::TEXT[]
+) AS package,
+                unnest(
+                    @fix_statuses::TEXT[]
+)::fix_status AS fix_status
+) AS data ON v.cve_id = data.cve_id
+                AND v.package = data.package
+        WHERE
+            v.fix_version IS NOT NULL
+            OR v.fix_status IS DISTINCT FROM data.fix_status
+        ORDER BY
+            v.image_name COLLATE "C",
+            v.image_tag COLLATE "C",
+            v.package COLLATE "C",
+            v.cve_id COLLATE "C"
+        LIMIT 1000
+        FOR NO KEY UPDATE
+            OF v)
 UPDATE
     vulnerabilities
 SET
     fix_version = NULL,
-    fix_status = data.fix_status,
+    fix_status = targets.fix_status,
     updated_at = NOW()
-FROM (
-    SELECT
-        unnest(@cve_ids::TEXT[]) AS cve_id,
-        unnest(@packages::TEXT[]) AS package,
-        unnest(@fix_statuses::TEXT[])::fix_status AS fix_status) AS data
+FROM
+    targets
 WHERE
-    vulnerabilities.cve_id = data.cve_id
-    AND vulnerabilities.package = data.package
-    AND (vulnerabilities.fix_version IS NOT NULL
-        OR vulnerabilities.fix_status IS DISTINCT FROM data.fix_status);
+    vulnerabilities.id = targets.id;

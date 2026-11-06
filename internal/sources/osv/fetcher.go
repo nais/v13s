@@ -245,11 +245,13 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 
 	for i := 0; i < len(updateCveIDs); i += BatchSize {
 		end := min(i+BatchSize, len(updateCveIDs))
-		n, err := querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
-			CveIds:      updateCveIDs[i:end],
-			Packages:    updatePackages[i:end],
-			FixVersions: updateFixes[i:end],
-			FixStatuses: updateStatuses[i:end],
+		n, err := persistFindingBatches(ctx, func() (int64, error) {
+			return querier.BulkUpdateFixVersions(ctx, sql.BulkUpdateFixVersionsParams{
+				CveIds:      updateCveIDs[i:end],
+				Packages:    updatePackages[i:end],
+				FixVersions: updateFixes[i:end],
+				FixStatuses: updateStatuses[i:end],
+			})
 		})
 		if err != nil {
 			return fmt.Errorf("bulk updating fix versions: %w", err)
@@ -259,10 +261,12 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 
 	for i := 0; i < len(clearCveIDs); i += BatchSize {
 		end := min(i+BatchSize, len(clearCveIDs))
-		n, err := querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
-			CveIds:      clearCveIDs[i:end],
-			Packages:    clearPackages[i:end],
-			FixStatuses: clearStatuses[i:end],
+		n, err := persistFindingBatches(ctx, func() (int64, error) {
+			return querier.BulkClearFixVersions(ctx, sql.BulkClearFixVersionsParams{
+				CveIds:      clearCveIDs[i:end],
+				Packages:    clearPackages[i:end],
+				FixStatuses: clearStatuses[i:end],
+			})
 		})
 		if err != nil {
 			return fmt.Errorf("bulk clearing stale fix versions: %w", err)
@@ -272,6 +276,23 @@ func (f *Fetcher) persist(ctx context.Context, querier sql.Querier, results []fi
 
 	f.log.Infof("OSV sync complete: %d rows updated, %d stale rows cleared", totalUpdated, totalCleared)
 	return nil
+}
+
+func persistFindingBatches(ctx context.Context, write func() (int64, error)) (int64, error) {
+	var total int64
+	for {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+		n, err := write()
+		if err != nil {
+			return total, err
+		}
+		total += n
+		if n < BatchSize {
+			return total, nil
+		}
+	}
 }
 
 func groupByCve(rows []*sql.GetVulnerabilitiesForOsvEnrichmentRow) map[string][]string {
