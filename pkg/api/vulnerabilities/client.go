@@ -70,13 +70,14 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
-		Filter:       o.Filter,
-		Limit:        o.Limit,
-		Offset:       o.Offset,
-		OrderBy:      o.OrderBy,
-		Since:        o.Since,
-		SbomStatuses: o.SbomStatuses,
-		Labels:       o.Labels,
+		Filter:            o.Filter,
+		WorkloadSelection: o.WorkloadSelection,
+		Limit:             o.Limit,
+		Offset:            o.Offset,
+		OrderBy:           o.OrderBy,
+		Since:             o.Since,
+		SbomStatuses:      o.SbomStatuses,
+		Labels:            o.Labels,
 	}, o.CallOptions...)
 }
 
@@ -90,6 +91,7 @@ func (c *client) ListWorkloadsForVulnerability(ctx context.Context, vulnerabilit
 	o := applyOptions(opts...)
 	return c.v.ListWorkloadsForVulnerability(ctx, &ListWorkloadsForVulnerabilityRequest{
 		Filter:            o.Filter,
+		WorkloadSelection: o.WorkloadSelection,
 		Limit:             o.Limit,
 		Offset:            o.Offset,
 		OrderBy:           o.OrderBy,
@@ -105,6 +107,7 @@ func (c *client) ListCveSummaries(ctx context.Context, opts ...Option) (*ListCve
 	o := applyOptions(opts...)
 	return c.v.ListCveSummaries(ctx, &ListCveSummariesRequest{
 		Filter:            o.Filter,
+		WorkloadSelection: o.WorkloadSelection,
 		Limit:             o.Limit,
 		Offset:            o.Offset,
 		OrderBy:           o.OrderBy,
@@ -128,8 +131,9 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 	return c.v.GetVulnerabilitySummary(
 		ctx,
 		&GetVulnerabilitySummaryRequest{
-			Filter: o.Filter,
-			Labels: o.Labels,
+			Filter:            o.Filter,
+			WorkloadSelection: o.WorkloadSelection,
+			Labels:            o.Labels,
 		},
 	)
 }
@@ -137,8 +141,9 @@ func (c *client) GetVulnerabilitySummary(ctx context.Context, opts ...Option) (*
 func (c *client) GetVulnerabilitySummaries(ctx context.Context, namespaces []string, opts ...Option) (*GetVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.GetVulnerabilitySummaries(ctx, &GetVulnerabilitySummariesRequest{
-		Namespaces: namespaces,
-		Filter:     o.Filter,
+		Namespaces:        namespaces,
+		Filter:            o.Filter,
+		WorkloadSelection: o.WorkloadSelection,
 	}, o.CallOptions...)
 }
 

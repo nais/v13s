@@ -101,6 +101,7 @@ const DefaultLimit = 50
 type Options struct {
 	CallOptions       []grpc.CallOption
 	Filter            *Filter
+	WorkloadSelection *WorkloadSelection
 	IncludeSuppressed bool
 	IncludeUnresolved bool
 	Limit             int32
@@ -227,6 +228,12 @@ func WorkloadFilter(name string) Option {
 			o.Filter = &Filter{}
 		}
 		o.Filter.Workload = &name
+	})
+}
+
+func WorkloadsFilter(workloads ...*WorkloadIdentity) Option {
+	return newFuncOption(func(o *Options) {
+		o.WorkloadSelection = &WorkloadSelection{Workloads: workloads}
 	})
 }
 

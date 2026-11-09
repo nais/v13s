@@ -1,6 +1,41 @@
 package vulnerabilities
 
-import "testing"
+import (
+	"testing"
+
+	"google.golang.org/protobuf/proto"
+)
+
+func TestWorkloadsFilterPreservesSelectionPresence(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		opts []Option
+		want *WorkloadSelection
+	}{
+		{name: "absent"},
+		{name: "empty", opts: []Option{WorkloadsFilter()}, want: &WorkloadSelection{}},
+		{
+			name: "selected",
+			opts: []Option{WorkloadsFilter(&WorkloadIdentity{Cluster: "dev", Namespace: "team", Name: "app", Type: "app"})},
+			want: &WorkloadSelection{Workloads: []*WorkloadIdentity{{Cluster: "dev", Namespace: "team", Name: "app", Type: "app"}}},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			request := &ListVulnerabilitySummariesRequest{WorkloadSelection: GetOptions(tt.opts...).WorkloadSelection}
+			encoded, err := proto.Marshal(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded := &ListVulnerabilitySummariesRequest{}
+			if err := proto.Unmarshal(encoded, decoded); err != nil {
+				t.Fatal(err)
+			}
+			if !proto.Equal(decoded.GetWorkloadSelection(), tt.want) {
+				t.Fatalf("selection after serialization = %v, want %v", decoded.GetWorkloadSelection(), tt.want)
+			}
+		})
+	}
+}
 
 func TestPriorityFilterAcceptsMultiplePriorities(t *testing.T) {
 	filter := GetFilter(

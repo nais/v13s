@@ -84,6 +84,17 @@ message Filter {
   optional bool has_kev = 10;
 }
 
+message WorkloadIdentity {
+  string cluster = 1;
+  string namespace = 2;
+  string name = 3;
+  string type = 4;
+}
+
+message WorkloadSelection {
+  repeated WorkloadIdentity workloads = 1;
+}
+
 message LabelFilter {
   string key = 1;
   optional string value = 2;
@@ -249,6 +260,7 @@ message ListVulnerabilitySummariesRequest {
   repeated SbomStatus sbom_statuses = 6;
   // User label filter. Multiple values use AND semantics. A filter without a value matches any workload carrying the key.
   repeated LabelFilter labels = 7;
+  WorkloadSelection workload_selection = 8;
 }
 
 message ListVulnerabilitySummariesResponse {
@@ -275,6 +287,7 @@ message ListWorkloadsForVulnerabilityRequest {
   repeated string exclude_namespaces = 7;
   repeated string  exclude_clusters = 8;
   optional bool include_suppressed = 9;
+  WorkloadSelection workload_selection = 10;
 }
 
 message ListWorkloadsForVulnerabilityResponse {
@@ -302,6 +315,7 @@ message ListCveSummariesRequest {
   repeated string exclude_namespaces = 5;
   repeated string  exclude_clusters = 6;
   optional bool include_suppressed = 7;
+  WorkloadSelection workload_selection = 8;
 }
 
 message ListCveSummariesResponse {
@@ -339,6 +353,7 @@ message GetVulnerabilitySummaryForImageResponse {
 message GetVulnerabilitySummaryRequest {
   Filter filter = 1;
   repeated LabelFilter labels = 2;
+  WorkloadSelection workload_selection = 3;
 }
 
 message GetVulnerabilitySummaryResponse {
@@ -354,6 +369,7 @@ message GetVulnerabilitySummariesRequest {
   repeated string namespaces = 1;
   // Shared filters. Namespace, namespaces and image filters are not supported here.
   Filter filter = 2;
+  WorkloadSelection workload_selection = 3;
 }
 
 message GetVulnerabilitySummariesResponse {

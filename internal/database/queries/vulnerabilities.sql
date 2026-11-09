@@ -945,43 +945,58 @@ WITH matched AS MATERIALIZED (
         v_canonical.id IS NULL
         AND workload_has_usable_sbom(w.state, i.state)
         AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY (sqlc.arg('cve_ids')::TEXT[])
-        AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
-            OR (c.cvss_score IS NOT NULL
-                AND c.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
-        AND (
-            CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN
-                w.cluster = sqlc.narg('cluster')::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
-            OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
-        AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
-            OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
-        AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
-            OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
-        AND (sqlc.narg('workload_types')::TEXT[] IS NULL
-            OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
-        AND (
-            CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN
-                w.name = sqlc.narg('workload_name')::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (
-            CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
-                v.image_name = sqlc.narg('image_name')::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (
-            CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN
-                v.image_tag = sqlc.narg('image_tag')::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
-            OR COALESCE(sv.suppressed, FALSE) = FALSE)
+        AND (sqlc.narg('workload_selection')::JSONB IS NULL
+            OR (w.cluster,
+                w.namespace,
+                w.name,
+                w.workload_type) IN (
+                SELECT
+                    selected.cluster,
+                    selected.namespace,
+                    selected.name,
+                    selected.type
+                FROM
+                    jsonb_to_recordset(sqlc.narg('workload_selection')::JSONB) AS selected(CLUSTER TEXT,
+                        namespace TEXT,
+                        name TEXT,
+                        type TEXT)))
+            AND (sqlc.narg('cvss_score')::FLOAT8 IS NULL
+                OR (c.cvss_score IS NOT NULL
+                    AND c.cvss_score >= sqlc.narg('cvss_score')::FLOAT8))
+            AND (
+                CASE WHEN sqlc.narg('cluster')::TEXT IS NOT NULL THEN
+                    w.cluster = sqlc.narg('cluster')::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (cardinality(sqlc.arg('exclude_clusters')::TEXT[]) = 0
+                OR w.cluster <> ALL (sqlc.arg('exclude_clusters')::TEXT[]))
+            AND (cardinality(sqlc.arg('namespaces')::TEXT[]) = 0
+                OR w.namespace = ANY (sqlc.arg('namespaces')::TEXT[]))
+            AND (cardinality(sqlc.arg('exclude_namespaces')::TEXT[]) = 0
+                OR w.namespace <> ALL (sqlc.arg('exclude_namespaces')::TEXT[]))
+            AND (sqlc.narg('workload_types')::TEXT[] IS NULL
+                OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
+            AND (
+                CASE WHEN sqlc.narg('workload_name')::TEXT IS NOT NULL THEN
+                    w.name = sqlc.narg('workload_name')::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (
+                CASE WHEN sqlc.narg('image_name')::TEXT IS NOT NULL THEN
+                    v.image_name = sqlc.narg('image_name')::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (
+                CASE WHEN sqlc.narg('image_tag')::TEXT IS NOT NULL THEN
+                    v.image_tag = sqlc.narg('image_tag')::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (sqlc.narg('include_suppressed')::BOOLEAN IS TRUE
+                OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ),
 impact AS (
     SELECT

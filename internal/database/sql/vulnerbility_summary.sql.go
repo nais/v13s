@@ -154,27 +154,42 @@ WITH filtered_workloads AS (
                 OR w.workload_type = ANY ($3::TEXT[]))
             AND ($4::TEXT IS NULL
                 OR w.name = $4::TEXT)
+            AND ($5::JSONB IS NULL
+                OR (w.cluster,
+                    w.namespace,
+                    w.name,
+                    w.workload_type) IN (
+                    SELECT
+                        selected.cluster,
+                        selected.namespace,
+                        selected.name,
+                        selected.type
+                    FROM
+                        jsonb_to_recordset($5::JSONB) AS selected(CLUSTER TEXT,
+                            namespace TEXT,
+                            name TEXT,
+                            type TEXT)))
 ),
 joined_data AS (
     SELECT
         fw.namespace,
-        CASE WHEN ($5::INT[] IS NULL
-            AND $6::BOOL IS NULL)
+        CASE WHEN ($6::INT[] IS NULL
+            AND $7::BOOL IS NULL)
             OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
-                AND COALESCE(($5::INT[] IS NULL
-                    OR v.top_risk_tier = ANY ($5::INT[]))
-                AND ($6::BOOL IS NULL
-                    OR (COALESCE(v.kev_count, 0) > 0) = $6::BOOL), FALSE)) THEN
+                AND COALESCE(($6::INT[] IS NULL
+                    OR v.top_risk_tier = ANY ($6::INT[]))
+                AND ($7::BOOL IS NULL
+                    OR (COALESCE(v.kev_count, 0) > 0) = $7::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(workload_has_usable_sbom(fw.state, i.state)
             AND v.id IS NOT NULL, FALSE)
-        AND COALESCE(($5::INT[] IS NULL
-            OR v.top_risk_tier = ANY ($5::INT[]))
-        AND ($6::BOOL IS NULL
+        AND COALESCE(($6::INT[] IS NULL
+            OR v.top_risk_tier = ANY ($6::INT[]))
+        AND ($7::BOOL IS NULL
             OR (v.id IS NOT NULL
-                AND (COALESCE(v.kev_count, 0) > 0) = $6::BOOL)), FALSE) AS is_active,
+                AND (COALESCE(v.kev_count, 0) > 0) = $7::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -295,12 +310,13 @@ ORDER BY
 `
 
 type GetVulnerabilitySummariesParams struct {
-	Namespaces    []string
-	Cluster       *string
-	WorkloadTypes []string
-	WorkloadName  *string
-	RiskTiers     []int32
-	HasKev        *bool
+	Namespaces        []string
+	Cluster           *string
+	WorkloadTypes     []string
+	WorkloadName      *string
+	WorkloadSelection []byte
+	RiskTiers         []int32
+	HasKev            *bool
 }
 
 type GetVulnerabilitySummariesRow struct {
@@ -332,6 +348,7 @@ func (q *Queries) GetVulnerabilitySummaries(ctx context.Context, arg GetVulnerab
 		arg.Cluster,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.WorkloadSelection,
 		arg.RiskTiers,
 		arg.HasKev,
 	)
@@ -391,36 +408,51 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($3::TEXT[]))
     AND ($4::TEXT IS NULL
         OR w.name = $4::TEXT)
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            jsonb_to_recordset(COALESCE($5::JSONB, '[]'::JSONB)) AS f(key TEXT,
-                value TEXT)
-        WHERE
-            NOT (w.labels ? f.key)
-            OR (f.value IS NOT NULL
-                AND w.labels ->> f.key IS DISTINCT FROM f.value))
+    AND ($5::JSONB IS NULL
+        OR (w.cluster,
+            w.namespace,
+            w.name,
+            w.workload_type) IN (
+            SELECT
+                selected.cluster,
+                selected.namespace,
+                selected.name,
+                selected.type
+            FROM
+                jsonb_to_recordset($5::JSONB) AS selected(CLUSTER TEXT,
+                    namespace TEXT,
+                    name TEXT,
+                    type TEXT)))
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                jsonb_to_recordset(COALESCE($6::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                    value TEXT)
+            WHERE
+                NOT (w.labels ? f.key)
+                OR (f.value IS NOT NULL
+                    AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 joined_data AS (
     SELECT
-        CASE WHEN ($6::INT[] IS NULL
-            AND $7::BOOL IS NULL)
+        CASE WHEN ($7::INT[] IS NULL
+            AND $8::BOOL IS NULL)
             OR (COALESCE(workload_has_usable_sbom(fw.state, i.state)
                     AND v.id IS NOT NULL, FALSE)
-                AND COALESCE(($6::INT[] IS NULL
-                    OR v.top_risk_tier = ANY ($6::INT[]))
-                AND ($7::BOOL IS NULL
-                    OR (COALESCE(v.kev_count, 0) > 0) = $7::BOOL), FALSE)) THEN
+                AND COALESCE(($7::INT[] IS NULL
+                    OR v.top_risk_tier = ANY ($7::INT[]))
+                AND ($8::BOOL IS NULL
+                    OR (COALESCE(v.kev_count, 0) > 0) = $8::BOOL), FALSE)) THEN
             fw.id
         END AS id,
         COALESCE(workload_has_usable_sbom(fw.state, i.state)
             AND v.id IS NOT NULL, FALSE)
-        AND COALESCE(($6::INT[] IS NULL
-            OR v.top_risk_tier = ANY ($6::INT[]))
-        AND ($7::BOOL IS NULL
+        AND COALESCE(($7::INT[] IS NULL
+            OR v.top_risk_tier = ANY ($7::INT[]))
+        AND ($8::BOOL IS NULL
             OR (v.id IS NOT NULL
-                AND (COALESCE(v.kev_count, 0) > 0) = $7::BOOL)), FALSE) AS is_active,
+                AND (COALESCE(v.kev_count, 0) > 0) = $8::BOOL)), FALSE) AS is_active,
         v.id AS summary_id,
         v.critical,
         v.high,
@@ -536,13 +568,14 @@ FROM
 `
 
 type GetVulnerabilitySummaryParams struct {
-	Cluster       *string
-	Namespace     *string
-	WorkloadTypes []string
-	WorkloadName  *string
-	LabelFilters  []byte
-	RiskTiers     []int32
-	HasKev        *bool
+	Cluster           *string
+	Namespace         *string
+	WorkloadTypes     []string
+	WorkloadName      *string
+	WorkloadSelection []byte
+	LabelFilters      []byte
+	RiskTiers         []int32
+	HasKev            *bool
 }
 
 type GetVulnerabilitySummaryRow struct {
@@ -573,6 +606,7 @@ func (q *Queries) GetVulnerabilitySummary(ctx context.Context, arg GetVulnerabil
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.WorkloadSelection,
 		arg.LabelFilters,
 		arg.RiskTiers,
 		arg.HasKev,
@@ -869,16 +903,31 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY ($6::TEXT[]))
     AND ($7::TEXT IS NULL
         OR w.name = $7::TEXT)
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            jsonb_to_recordset(COALESCE($8::JSONB, '[]'::JSONB)) AS f(key TEXT,
-                value TEXT)
-        WHERE
-            NOT (w.labels ? f.key)
-            OR (f.value IS NOT NULL
-                AND w.labels ->> f.key IS DISTINCT FROM f.value))
+    AND ($8::JSONB IS NULL
+        OR (w.cluster,
+            w.namespace,
+            w.name,
+            w.workload_type) IN (
+            SELECT
+                selected.cluster,
+                selected.namespace,
+                selected.name,
+                selected.type
+            FROM
+                jsonb_to_recordset($8::JSONB) AS selected(CLUSTER TEXT,
+                    namespace TEXT,
+                    name TEXT,
+                    type TEXT)))
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                jsonb_to_recordset(COALESCE($9::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                    value TEXT)
+            WHERE
+                NOT (w.labels ? f.key)
+                OR (f.value IS NOT NULL
+                    AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 vulnerability_data AS (
     SELECT
@@ -918,7 +967,7 @@ vulnerability_data AS (
         filtered_workloads w
         LEFT JOIN vulnerability_summary cur ON w.image_name = cur.image_name
             AND (
-                CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
+                CASE WHEN $10::TIMESTAMP WITH TIME ZONE IS NULL THEN
                     w.image_tag = cur.image_tag
                 ELSE
                     TRUE
@@ -933,31 +982,31 @@ vulnerability_data AS (
             WHERE
                 cur.id IS NULL
                 AND i.state NOT IN ('updated', 'failed', 'unused')
-                AND $9::TIMESTAMP WITH TIME ZONE IS NULL
+                AND $10::TIMESTAMP WITH TIME ZONE IS NULL
                 AND ps.image_name = w.image_name
                 AND ps.image_tag <> w.image_tag
             ORDER BY
                 ps.updated_at DESC
             LIMIT 1) prev ON TRUE
         LEFT JOIN vulnerability_summary v ON v.id = COALESCE(cur.id, prev.id)
-    WHERE ($10::TEXT IS NULL
-        OR v.image_name = $10::TEXT)
-    AND ($11::TEXT IS NULL
+    WHERE ($11::TEXT IS NULL
+        OR v.image_name = $11::TEXT)
+    AND ($12::TEXT IS NULL
         OR (
-            CASE WHEN $9::TIMESTAMP WITH TIME ZONE IS NULL THEN
+            CASE WHEN $10::TIMESTAMP WITH TIME ZONE IS NULL THEN
                 w.image_tag
             ELSE
                 v.image_tag
-            END) = $11::TEXT)
-    AND ($12::INT[] IS NULL
-        OR (v.top_risk_tier = ANY ($12::INT[])
+            END) = $12::TEXT)
+    AND ($13::INT[] IS NULL
+        OR (v.top_risk_tier = ANY ($13::INT[])
             AND workload_has_usable_sbom(w.state, i.state)))
-    AND ($13::BOOL IS NULL
+    AND ($14::BOOL IS NULL
         OR (v.id IS NOT NULL
             AND workload_has_usable_sbom(w.state, i.state)
-            AND (COALESCE(v.kev_count, 0) > 0) = $13::BOOL))
-    AND ($9::TIMESTAMP WITH TIME ZONE IS NULL
-        OR v.updated_at > $9::TIMESTAMP WITH TIME ZONE)
+            AND (COALESCE(v.kev_count, 0) > 0) = $14::BOOL))
+    AND ($10::TIMESTAMP WITH TIME ZONE IS NULL
+        OR v.updated_at > $10::TIMESTAMP WITH TIME ZONE)
 ),
 sbom_status_data AS (
     SELECT
@@ -1054,8 +1103,8 @@ summary_data AS (
         COUNT(*) OVER () AS total_count
 FROM
     sbom_status_data
-    WHERE ($14::TEXT[] IS NULL
-        OR sbom_status = ANY ($14::TEXT[])))
+    WHERE ($15::TEXT[] IS NULL
+        OR sbom_status = ANY ($15::TEXT[])))
 SELECT
     id, workload_name, workload_type, namespace, cluster, labels, current_image_name, current_image_tag, image_name, image_tag, critical, high, medium, low, unassigned, kev_count, high_risk, elevated_risk, monitor, ransomware_count, high_epss_count, top_risk_tier, risk_score, workload_created_at, workload_updated_at, summary_created_at, summary_updated_at, has_sbom, workload_state, image_state, sbom_processing_started_at, total_count
 FROM
@@ -1164,20 +1213,21 @@ LIMIT $3
 `
 
 type ListVulnerabilitySummariesParams struct {
-	OrderBy       interface{}
-	Offset        int32
-	Limit         int32
-	Cluster       *string
-	Namespace     *string
-	WorkloadTypes []string
-	WorkloadName  *string
-	LabelFilters  []byte
-	Since         pgtype.Timestamptz
-	ImageName     *string
-	ImageTag      *string
-	RiskTiers     []int32
-	HasKev        *bool
-	SbomStatuses  []string
+	OrderBy           interface{}
+	Offset            int32
+	Limit             int32
+	Cluster           *string
+	Namespace         *string
+	WorkloadTypes     []string
+	WorkloadName      *string
+	WorkloadSelection []byte
+	LabelFilters      []byte
+	Since             pgtype.Timestamptz
+	ImageName         *string
+	ImageTag          *string
+	RiskTiers         []int32
+	HasKev            *bool
+	SbomStatuses      []string
 }
 
 type ListVulnerabilitySummariesRow struct {
@@ -1224,6 +1274,7 @@ func (q *Queries) ListVulnerabilitySummaries(ctx context.Context, arg ListVulner
 		arg.Namespace,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.WorkloadSelection,
 		arg.LabelFilters,
 		arg.Since,
 		arg.ImageName,

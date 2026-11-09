@@ -38,18 +38,33 @@ WITH cve_data AS (
             OR w.workload_type = ANY ($7::TEXT[]))
         AND ($8::TEXT IS NULL
             OR w.name = $8::TEXT)
-        AND ($9::TEXT IS NULL
-            OR v.image_name = $9::TEXT)
-        AND ($10::TEXT IS NULL
-            OR v.image_tag = $10::TEXT)
-        AND (cardinality($11::TEXT[]) = 0
-            OR w.cluster <> ALL ($11::TEXT[]))
-        AND ($12::BOOLEAN IS TRUE
-            OR COALESCE(sv.suppressed, FALSE) = FALSE)
-        AND ($13::INT[] IS NULL
-            OR COALESCE(c.priority, 4) = ANY ($13::INT[]))
-    GROUP BY
-        c.cve_id
+        AND ($9::JSONB IS NULL
+            OR (w.cluster,
+                w.namespace,
+                w.name,
+                w.workload_type) IN (
+                SELECT
+                    selected.cluster,
+                    selected.namespace,
+                    selected.name,
+                    selected.type
+                FROM
+                    jsonb_to_recordset($9::JSONB) AS selected(CLUSTER TEXT,
+                        namespace TEXT,
+                        name TEXT,
+                        type TEXT)))
+            AND ($10::TEXT IS NULL
+                OR v.image_name = $10::TEXT)
+            AND ($11::TEXT IS NULL
+                OR v.image_tag = $11::TEXT)
+            AND (cardinality($12::TEXT[]) = 0
+                OR w.cluster <> ALL ($12::TEXT[]))
+            AND ($13::BOOLEAN IS TRUE
+                OR COALESCE(sv.suppressed, FALSE) = FALSE)
+            AND ($14::INT[] IS NULL
+                OR COALESCE(c.priority, 4) = ANY ($14::INT[]))
+        GROUP BY
+            c.cve_id
 )
 SELECT
     cve_id, cve_title, cve_desc, cve_link, severity, refs, created_at, updated_at, cvss_score, epss_score, epss_percentile, has_kev_entry, known_ransomware_use, priority, affected_workloads,
@@ -118,6 +133,7 @@ type ListCveSummariesParams struct {
 	ExcludeNamespaces []string
 	WorkloadTypes     []string
 	WorkloadName      *string
+	WorkloadSelection []byte
 	ImageName         *string
 	ImageTag          *string
 	ExcludeClusters   []string
@@ -154,6 +170,7 @@ func (q *Queries) ListCveSummaries(ctx context.Context, arg ListCveSummariesPara
 		arg.ExcludeNamespaces,
 		arg.WorkloadTypes,
 		arg.WorkloadName,
+		arg.WorkloadSelection,
 		arg.ImageName,
 		arg.ImageTag,
 		arg.ExcludeClusters,

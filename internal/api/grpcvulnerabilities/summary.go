@@ -35,6 +35,10 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	if err != nil {
 		return nil, err
 	}
+	workloadSelection, err := workloadSelectionParameters(request.GetWorkloadSelection())
+	if err != nil {
+		return nil, err
+	}
 	since := pgtype.Timestamptz{}
 	if request.GetSince() != nil {
 		since.Time = request.GetSince().AsTime()
@@ -47,22 +51,24 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		return nil, err
 	}
 
-	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
-		Cluster:       request.GetFilter().Cluster,
-		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: request.Filter.GetWorkloadTypes(),
-		WorkloadName:  request.GetFilter().Workload,
-		ImageName:     request.GetFilter().ImageName,
-		ImageTag:      request.GetFilter().ImageTag,
-		RiskTiers:     riskTiers,
-		HasKev:        request.GetFilter().HasKev,
-		SbomStatuses:  sbomStatuses,
-		OrderBy:       SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
-		Limit:         limit,
-		Offset:        offset,
-		Since:         since,
-		LabelFilters:  labelFilters,
-	})
+	params := sql.ListVulnerabilitySummariesParams{
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadTypes:     workloadTypesForSelection(request.Filter, request.GetWorkloadSelection()),
+		WorkloadName:      request.GetFilter().Workload,
+		WorkloadSelection: workloadSelection,
+		ImageName:         request.GetFilter().ImageName,
+		ImageTag:          request.GetFilter().ImageTag,
+		RiskTiers:         riskTiers,
+		HasKev:            request.GetFilter().HasKev,
+		SbomStatuses:      sbomStatuses,
+		OrderBy:           SanitizeOrderBy(request.OrderBy, vulnerabilities.OrderByCritical),
+		Limit:             limit,
+		Offset:            offset,
+		Since:             since,
+		LabelFilters:      labelFilters,
+	}
+	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 	}
@@ -72,6 +78,16 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		total = int(row.TotalCount)
 		return toWorkloadSummary(row, since.Valid)
 	})
+	if len(summaries) == 0 && (limit == 0 || offset > 0) {
+		params.Offset, params.Limit = 0, 1
+		counts, err := s.querier.ListVulnerabilitySummaries(ctx, params)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count vulnerability summaries: %w", err)
+		}
+		if len(counts) > 0 {
+			total = int(counts[0].TotalCount)
+		}
+	}
 
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
@@ -156,17 +172,22 @@ func (s *Server) GetVulnerabilitySummary(ctx context.Context, request *vulnerabi
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
+	workloadSelection, err := workloadSelectionParameters(request.GetWorkloadSelection())
+	if err != nil {
+		return nil, err
+	}
 
 	riskTiers := priorityTiersFromFilter(request.GetFilter())
 
 	row, err := s.querier.GetVulnerabilitySummary(ctx, sql.GetVulnerabilitySummaryParams{
-		Cluster:       request.GetFilter().Cluster,
-		Namespace:     request.GetFilter().Namespace,
-		WorkloadTypes: request.Filter.GetWorkloadTypes(),
-		WorkloadName:  request.GetFilter().Workload,
-		RiskTiers:     riskTiers,
-		HasKev:        request.GetFilter().HasKev,
-		LabelFilters:  labelFilters,
+		Cluster:           request.GetFilter().Cluster,
+		Namespace:         request.GetFilter().Namespace,
+		WorkloadTypes:     workloadTypesForSelection(request.Filter, request.GetWorkloadSelection()),
+		WorkloadName:      request.GetFilter().Workload,
+		WorkloadSelection: workloadSelection,
+		RiskTiers:         riskTiers,
+		HasKev:            request.GetFilter().HasKev,
+		LabelFilters:      labelFilters,
 	})
 	if err != nil {
 		return nil, err
@@ -204,6 +225,10 @@ func (s *Server) GetVulnerabilitySummaries(ctx context.Context, request *vulnera
 	if filter.Namespace != nil || len(filter.GetNamespaces()) > 0 || filter.ImageName != nil || filter.ImageTag != nil {
 		return nil, status.Error(codes.InvalidArgument, "namespace and image filters are not supported for bulk summaries")
 	}
+	workloadSelection, err := workloadSelectionParameters(request.GetWorkloadSelection())
+	if err != nil {
+		return nil, err
+	}
 	response := &vulnerabilities.GetVulnerabilitySummariesResponse{
 		Summaries: make(map[string]*vulnerabilities.GetVulnerabilitySummaryResponse, len(namespaces)),
 	}
@@ -212,12 +237,13 @@ func (s *Server) GetVulnerabilitySummaries(ctx context.Context, request *vulnera
 	}
 
 	rows, err := s.querier.GetVulnerabilitySummaries(ctx, sql.GetVulnerabilitySummariesParams{
-		Namespaces:    namespaces,
-		Cluster:       filter.Cluster,
-		WorkloadTypes: filter.GetWorkloadTypes(),
-		WorkloadName:  filter.Workload,
-		RiskTiers:     priorityTiersFromFilter(filter),
-		HasKev:        filter.HasKev,
+		Namespaces:        namespaces,
+		Cluster:           filter.Cluster,
+		WorkloadTypes:     workloadTypesForSelection(filter, request.GetWorkloadSelection()),
+		WorkloadName:      filter.Workload,
+		WorkloadSelection: workloadSelection,
+		RiskTiers:         priorityTiersFromFilter(filter),
+		HasKev:            filter.HasKev,
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to get vulnerability summaries: "+err.Error())
@@ -570,6 +596,10 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 	if request.GetFilter() == nil {
 		request.Filter = &vulnerabilities.Filter{}
 	}
+	workloadSelection, err := workloadSelectionParameters(request.GetWorkloadSelection())
+	if err != nil {
+		return nil, err
+	}
 
 	excludeNamespaces := request.GetExcludeNamespaces()
 	if excludeNamespaces == nil {
@@ -585,7 +615,8 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 		Cluster:           request.GetFilter().Cluster,
 		Namespace:         request.GetFilter().Namespace,
 		WorkloadName:      request.GetFilter().Workload,
-		WorkloadTypes:     request.GetFilter().GetWorkloadTypes(),
+		WorkloadSelection: workloadSelection,
+		WorkloadTypes:     workloadTypesForSelection(request.Filter, request.GetWorkloadSelection()),
 		ImageName:         request.GetFilter().ImageName,
 		ImageTag:          request.GetFilter().ImageTag,
 		ExcludeClusters:   excludeClusters,
@@ -620,7 +651,7 @@ func (s *Server) ListCveSummaries(ctx context.Context, request *vulnerabilities.
 
 func (s *Server) listCveSummaries(ctx context.Context, params sql.ListCveSummariesParams) ([]*vulnerabilities.CveSummary, int, error) {
 	total := 0
-	if params.WorkloadName != nil || params.ImageName != nil || params.ImageTag != nil {
+	if params.WorkloadName != nil || params.ImageName != nil || params.ImageTag != nil || params.WorkloadSelection != nil {
 		rows, err := s.querier.ListCveSummaries(ctx, params)
 		if err != nil {
 			return nil, 0, err

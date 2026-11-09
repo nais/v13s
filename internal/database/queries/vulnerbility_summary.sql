@@ -63,16 +63,31 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            jsonb_to_recordset(COALESCE(sqlc.narg('label_filters')::JSONB, '[]'::JSONB)) AS f(key TEXT,
-                value TEXT)
-        WHERE
-            NOT (w.labels ? f.key)
-            OR (f.value IS NOT NULL
-                AND w.labels ->> f.key IS DISTINCT FROM f.value))
+    AND (sqlc.narg('workload_selection')::JSONB IS NULL
+        OR (w.cluster,
+            w.namespace,
+            w.name,
+            w.workload_type) IN (
+            SELECT
+                selected.cluster,
+                selected.namespace,
+                selected.name,
+                selected.type
+            FROM
+                jsonb_to_recordset(sqlc.narg('workload_selection')::JSONB) AS selected(CLUSTER TEXT,
+                    namespace TEXT,
+                    name TEXT,
+                    type TEXT)))
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                jsonb_to_recordset(COALESCE(sqlc.narg('label_filters')::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                    value TEXT)
+            WHERE
+                NOT (w.labels ? f.key)
+                OR (f.value IS NOT NULL
+                    AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 vulnerability_data AS (
     SELECT
@@ -476,16 +491,31 @@ WITH filtered_workloads AS (
         OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
     AND (sqlc.narg('workload_name')::TEXT IS NULL
         OR w.name = sqlc.narg('workload_name')::TEXT)
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            jsonb_to_recordset(COALESCE(sqlc.narg('label_filters')::JSONB, '[]'::JSONB)) AS f(key TEXT,
-                value TEXT)
-        WHERE
-            NOT (w.labels ? f.key)
-            OR (f.value IS NOT NULL
-                AND w.labels ->> f.key IS DISTINCT FROM f.value))
+    AND (sqlc.narg('workload_selection')::JSONB IS NULL
+        OR (w.cluster,
+            w.namespace,
+            w.name,
+            w.workload_type) IN (
+            SELECT
+                selected.cluster,
+                selected.namespace,
+                selected.name,
+                selected.type
+            FROM
+                jsonb_to_recordset(sqlc.narg('workload_selection')::JSONB) AS selected(CLUSTER TEXT,
+                    namespace TEXT,
+                    name TEXT,
+                    type TEXT)))
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                jsonb_to_recordset(COALESCE(sqlc.narg('label_filters')::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                    value TEXT)
+            WHERE
+                NOT (w.labels ? f.key)
+                OR (f.value IS NOT NULL
+                    AND w.labels ->> f.key IS DISTINCT FROM f.value))
 ),
 joined_data AS (
     SELECT
@@ -636,6 +666,21 @@ WITH filtered_workloads AS (
                 OR w.workload_type = ANY (sqlc.narg('workload_types')::TEXT[]))
             AND (sqlc.narg('workload_name')::TEXT IS NULL
                 OR w.name = sqlc.narg('workload_name')::TEXT)
+            AND (sqlc.narg('workload_selection')::JSONB IS NULL
+                OR (w.cluster,
+                    w.namespace,
+                    w.name,
+                    w.workload_type) IN (
+                    SELECT
+                        selected.cluster,
+                        selected.namespace,
+                        selected.name,
+                        selected.type
+                    FROM
+                        jsonb_to_recordset(sqlc.narg('workload_selection')::JSONB) AS selected(CLUSTER TEXT,
+                            namespace TEXT,
+                            name TEXT,
+                            type TEXT)))
 ),
 joined_data AS (
     SELECT

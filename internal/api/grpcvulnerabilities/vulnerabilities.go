@@ -119,6 +119,10 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	if filter == nil {
 		filter = &vulnerabilities.Filter{}
 	}
+	workloadSelection, err := workloadSelectionParameters(request.GetWorkloadSelection())
+	if err != nil {
+		return nil, err
+	}
 
 	excludeNamespaces := request.GetExcludeNamespaces()
 	if excludeNamespaces == nil {
@@ -149,8 +153,9 @@ func (s *Server) ListWorkloadsForVulnerability(ctx context.Context, request *vul
 	params := sql.ListWorkloadsForVulnerabilitiesParams{
 		Cluster:           filter.Cluster,
 		Namespaces:        namespaces,
-		WorkloadTypes:     filter.GetWorkloadTypes(),
+		WorkloadTypes:     workloadTypesForSelection(filter, request.GetWorkloadSelection()),
 		WorkloadName:      filter.Workload,
+		WorkloadSelection: workloadSelection,
 		CveIds:            cveIDs,
 		CvssScore:         request.CvssScore,
 		ImageName:         filter.ImageName,

@@ -1151,43 +1151,58 @@ WITH matched AS MATERIALIZED (
         v_canonical.id IS NULL
         AND workload_has_usable_sbom(w.state, i.state)
         AND COALESCE(ca.canonical_cve_id, v.cve_id) = ANY ($4::TEXT[])
-        AND ($5::FLOAT8 IS NULL
-            OR (c.cvss_score IS NOT NULL
-                AND c.cvss_score >= $5::FLOAT8))
-        AND (
-            CASE WHEN $6::TEXT IS NOT NULL THEN
-                w.cluster = $6::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (cardinality($7::TEXT[]) = 0
-            OR w.cluster <> ALL ($7::TEXT[]))
-        AND (cardinality($8::TEXT[]) = 0
-            OR w.namespace = ANY ($8::TEXT[]))
-        AND (cardinality($9::TEXT[]) = 0
-            OR w.namespace <> ALL ($9::TEXT[]))
-        AND ($10::TEXT[] IS NULL
-            OR w.workload_type = ANY ($10::TEXT[]))
-        AND (
-            CASE WHEN $11::TEXT IS NOT NULL THEN
-                w.name = $11::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (
-            CASE WHEN $12::TEXT IS NOT NULL THEN
-                v.image_name = $12::TEXT
-            ELSE
-                TRUE
-            END)
-        AND (
-            CASE WHEN $13::TEXT IS NOT NULL THEN
-                v.image_tag = $13::TEXT
-            ELSE
-                TRUE
-            END)
-        AND ($14::BOOLEAN IS TRUE
-            OR COALESCE(sv.suppressed, FALSE) = FALSE)
+        AND ($5::JSONB IS NULL
+            OR (w.cluster,
+                w.namespace,
+                w.name,
+                w.workload_type) IN (
+                SELECT
+                    selected.cluster,
+                    selected.namespace,
+                    selected.name,
+                    selected.type
+                FROM
+                    jsonb_to_recordset($5::JSONB) AS selected(CLUSTER TEXT,
+                        namespace TEXT,
+                        name TEXT,
+                        type TEXT)))
+            AND ($6::FLOAT8 IS NULL
+                OR (c.cvss_score IS NOT NULL
+                    AND c.cvss_score >= $6::FLOAT8))
+            AND (
+                CASE WHEN $7::TEXT IS NOT NULL THEN
+                    w.cluster = $7::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (cardinality($8::TEXT[]) = 0
+                OR w.cluster <> ALL ($8::TEXT[]))
+            AND (cardinality($9::TEXT[]) = 0
+                OR w.namespace = ANY ($9::TEXT[]))
+            AND (cardinality($10::TEXT[]) = 0
+                OR w.namespace <> ALL ($10::TEXT[]))
+            AND ($11::TEXT[] IS NULL
+                OR w.workload_type = ANY ($11::TEXT[]))
+            AND (
+                CASE WHEN $12::TEXT IS NOT NULL THEN
+                    w.name = $12::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (
+                CASE WHEN $13::TEXT IS NOT NULL THEN
+                    v.image_name = $13::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND (
+                CASE WHEN $14::TEXT IS NOT NULL THEN
+                    v.image_tag = $14::TEXT
+                ELSE
+                    TRUE
+                END)
+            AND ($15::BOOLEAN IS TRUE
+                OR COALESCE(sv.suppressed, FALSE) = FALSE)
 ),
 impact AS (
     SELECT
@@ -1347,6 +1362,7 @@ type ListWorkloadsForVulnerabilitiesParams struct {
 	Offset            int32
 	Limit             int32
 	CveIds            []string
+	WorkloadSelection []byte
 	CvssScore         *float64
 	Cluster           *string
 	ExcludeClusters   []string
@@ -1405,6 +1421,7 @@ func (q *Queries) ListWorkloadsForVulnerabilities(ctx context.Context, arg ListW
 		arg.Offset,
 		arg.Limit,
 		arg.CveIds,
+		arg.WorkloadSelection,
 		arg.CvssScore,
 		arg.Cluster,
 		arg.ExcludeClusters,
