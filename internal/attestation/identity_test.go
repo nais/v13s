@@ -19,6 +19,7 @@ const googleIssuer = "https://accounts.google.com"
 func TestCertificateIdentities(t *testing.T) {
 	identities, err := certificateIdentities([]string{"nais", "navikt"}, googleIssuer, []string{" NAV.NO ", "example.org"})
 	require.NoError(t, err)
+	require.Len(t, identities, 2)
 
 	for _, tt := range []struct {
 		name    string
@@ -38,6 +39,11 @@ func TestCertificateIdentities(t *testing.T) {
 		{"domain suffix", googleIssuer, "signer@nav.no.example.com", false},
 		{"domain prefix", googleIssuer, "signer@evil-nav.no", false},
 		{"unescaped dot", googleIssuer, "signer@navXno", false},
+		{"second domain suffix", googleIssuer, "signer@example.org.evil.com", false},
+		{"second domain prefix", googleIssuer, "signer@evil-example.org", false},
+		{"second domain unescaped dot", googleIssuer, "signer@exampleXorg", false},
+		{"second domain missing local part", googleIssuer, "@example.org", false},
+		{"second domain wrong issuer", github.IssuerUrl, "signer@example.org", false},
 		{"uppercase domain", googleIssuer, "signer@NAV.NO", false},
 		{"newline", googleIssuer, "signer@nav.no\n", false},
 		{"multiple at signs", googleIssuer, "signer@other@nav.no", false},
@@ -104,7 +110,7 @@ func TestCertificateIdentitiesCustomIssuer(t *testing.T) {
 	issuer := "https://login.example.org/tenant/"
 	identities, err := certificateIdentities(nil, " "+issuer+" ", []string{"nav.no", "example.org"})
 	require.NoError(t, err)
-	require.Len(t, identities, 2)
+	require.Len(t, identities, 1)
 
 	for _, tt := range []struct {
 		issuer  string

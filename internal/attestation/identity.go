@@ -34,14 +34,18 @@ func certificateIdentities(organizations []string, emailIssuer string, allowedEm
 			return nil, fmt.Errorf("attestation email issuer must be an HTTPS URL for an email identity provider, without credentials, query or fragment")
 		}
 	}
+	domains := make([]string, len(allowedEmailDomains))
 	for i, domain := range allowedEmailDomains {
 		domain = strings.ToLower(strings.TrimSpace(domain))
 		if !validEmailDomain(domain) {
 			return nil, fmt.Errorf("invalid attestation email domain at index %d", i)
 		}
+		domains[i] = regexp.QuoteMeta(domain)
+	}
+	if len(domains) > 0 {
 		identities = append(identities, cosign.Identity{
 			Issuer:        emailIssuer,
-			SubjectRegExp: `^[^@\s:]+@` + regexp.QuoteMeta(domain) + `$`,
+			SubjectRegExp: `^[^@\s:]+@(` + strings.Join(domains, "|") + `)$`,
 		})
 	}
 	if len(identities) == 0 {
