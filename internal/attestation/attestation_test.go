@@ -1,9 +1,11 @@
 package attestation
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,6 +89,132 @@ func TestGetAttestation_NoAttestation(t *testing.T) {
 	_, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), ErrNoAttestation)
+}
+
+func TestVerifyBundleFormatPreservesIdentities(t *testing.T) {
+	identities, err := certificateIdentities([]string{"nais"}, "https://issuer.example.org", []string{"nav.no"})
+	require.NoError(t, err)
+
+	for _, legacy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("legacy=%t", legacy), func(t *testing.T) {
+			calls := 0
+			v := &verifier{
+				log:    logrus.NewEntry(logrus.New()),
+				optsV3: &cosign.CheckOpts{Identities: identities, NewBundleFormat: true},
+				verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+					calls++
+					require.False(t, co.IgnoreTlog)
+					require.False(t, co.IgnoreSCT)
+					if co.NewBundleFormat {
+						require.Equal(t, []cosign.Identity{identities[calls-1]}, co.Identities)
+						if legacy {
+							return nil, &cosign.ErrNoMatchingAttestations{}
+						}
+					} else {
+						require.True(t, legacy)
+						require.Equal(t, identities, co.Identities)
+					}
+					return []oci.Signature{&fakeSig{}}, nil
+				},
+			}
+			ref, err := name.ParseReference("example.com/test/image:tag")
+			require.NoError(t, err)
+			sigs, err := v.verifyBundleFormat(context.Background(), ref)
+			require.NoError(t, err)
+			if legacy {
+				require.Len(t, sigs, 1)
+				require.Equal(t, 3, calls)
+			} else {
+				require.Len(t, sigs, 2)
+				require.Equal(t, 2, calls)
+			}
+			require.True(t, v.optsV3.NewBundleFormat)
+			require.Equal(t, identities, v.optsV3.Identities)
+		})
+	}
+}
+
+func TestVerifyBundleFormatAcceptsAnyV3Identity(t *testing.T) {
+	identities, err := certificateIdentities([]string{"nais"}, "https://issuer.example.org", []string{"nav.no"})
+	require.NoError(t, err)
+
+	for _, successfulIdentity := range []int{0, 1} {
+		t.Run(fmt.Sprint(successfulIdentity), func(t *testing.T) {
+			verified := &fakeSig{payload: []byte("verified")}
+			unverified := &fakeSig{payload: []byte("unverified")}
+			calls := 0
+			v := &verifier{
+				log:    logrus.NewEntry(logrus.New()),
+				optsV3: &cosign.CheckOpts{Identities: identities, NewBundleFormat: true},
+				verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+					require.True(t, co.NewBundleFormat)
+					require.Equal(t, []cosign.Identity{identities[calls]}, co.Identities)
+					calls++
+					if calls-1 == successfulIdentity {
+						return []oci.Signature{verified}, nil
+					}
+					return []oci.Signature{unverified}, &cosign.ErrNoMatchingAttestations{}
+				},
+			}
+			ref, err := name.ParseReference("example.com/test/image:tag")
+			require.NoError(t, err)
+			sigs, err := v.verifyBundleFormat(context.Background(), ref)
+			require.NoError(t, err)
+			require.Equal(t, []oci.Signature{verified}, sigs)
+			require.Equal(t, len(identities), calls)
+		})
+	}
+}
+
+func TestVerifyBundleFormatPreservesV3IdentityErrors(t *testing.T) {
+	identities, err := certificateIdentities([]string{"nais"}, "https://issuer.example.org", []string{"nav.no"})
+	require.NoError(t, err)
+	causes := []error{errors.New("first identity failed"), errors.New("second identity failed")}
+	calls := 0
+	v := &verifier{
+		log:    logrus.NewEntry(logrus.New()),
+		optsV3: &cosign.CheckOpts{Identities: identities, NewBundleFormat: true},
+		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			if !co.NewBundleFormat {
+				return nil, nil
+			}
+			require.Equal(t, []cosign.Identity{identities[calls]}, co.Identities)
+			err := errors.Join(&cosign.ErrNoMatchingAttestations{}, causes[calls])
+			calls++
+			return nil, err
+		},
+	}
+	ref, err := name.ParseReference("example.com/test/image:tag")
+	require.NoError(t, err)
+	sigs, err := v.verifyBundleFormat(context.Background(), ref)
+	require.Nil(t, sigs)
+	for _, cause := range causes {
+		require.ErrorIs(t, err, cause)
+	}
+	_, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err)
+	require.True(t, ok)
+	require.Equal(t, len(identities), calls)
+}
+
+func TestGetAttestationRedactsCertificateIdentityErrors(t *testing.T) {
+	var logs bytes.Buffer
+	logger := logrus.New()
+	logger.SetOutput(&logs)
+	cause := errors.Join(&cosign.ErrNoMatchingAttestations{}, fmt.Errorf("unexpected certificate subject: signer@nav.no"))
+	v := &verifier{
+		log:    logrus.NewEntry(logger),
+		optsV3: &cosign.CheckOpts{NewBundleFormat: true},
+		verifyFunc: func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error) {
+			return nil, cause
+		},
+	}
+
+	_, err := v.GetAttestation(context.Background(), "example.com/test/image:tag")
+	require.ErrorIs(t, err, cause)
+	_, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err)
+	require.True(t, ok)
+	require.NotContains(t, err.Error(), "signer@nav.no")
+	require.NotContains(t, logs.String(), "signer@nav.no")
 }
 
 func TestGetAttestation_Success(t *testing.T) {

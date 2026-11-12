@@ -74,6 +74,49 @@ func TestDatabasePoolConfigRejectsInvalidLimits(t *testing.T) {
 	}
 }
 
+func TestAttestationAllowedEmailDomains(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		value string
+		want  []string
+	}{
+		{"disabled", "", []string{}},
+		{"multiple domains", "nav.no,example.org", []string{"nav.no", "example.org"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			setDatabasePoolEnv(t)
+			t.Setenv("ATTESTATION_ALLOWED_EMAIL_DOMAINS", tt.value)
+			cfg, err := NewConfig()
+			require.NoError(t, err)
+			require.Equal(t, tt.want, cfg.Attestation.AllowedEmailDomains)
+		})
+	}
+}
+
+func TestAttestationEmailIssuer(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		value string
+		unset bool
+		want  string
+	}{
+		{"default", "", true, "https://accounts.google.com"},
+		{"custom", "https://login.example.org/tenant", false, "https://login.example.org/tenant"},
+		{"explicitly empty", "", false, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			setDatabasePoolEnv(t)
+			t.Setenv("ATTESTATION_EMAIL_ISSUER", tt.value)
+			if tt.unset {
+				require.NoError(t, os.Unsetenv("ATTESTATION_EMAIL_ISSUER"))
+			}
+			cfg, err := NewConfig()
+			require.NoError(t, err)
+			require.Equal(t, tt.want, cfg.Attestation.EmailIssuer)
+		})
+	}
+}
+
 func setDatabasePoolEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "host=localhost dbname=test")
