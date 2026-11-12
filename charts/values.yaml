@@ -10,6 +10,9 @@ updateInterval: 1m
 github:
   organizations:
     - nais
+attestation:
+  emailIssuer: https://accounts.google.com
+  allowedEmailDomains: []
 dockerconfigjson: '{"auths":{}}'
 auth:
   audience: "v13s"

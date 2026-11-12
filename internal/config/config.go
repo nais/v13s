@@ -33,6 +33,7 @@ type Config struct {
 	K8s                       K8sConfig
 	LeaderElection            LeaderElectionConfig
 	GithubOrganizations       []string `envconfig:"GITHUB_ORGANIZATIONS"`
+	Attestation               AttestationConfig
 	Metrics                   MetricConfig
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 	Updater                   UpdaterConfig
@@ -42,6 +43,11 @@ type DatabasePoolConfig struct {
 	MainMaxConnections    int32 `envconfig:"DATABASE_MAX_CONNECTIONS" default:"8"`
 	JobMaxConnections     int32 `envconfig:"JOB_DATABASE_MAX_CONNECTIONS" default:"12"`
 	RiverUIMaxConnections int32 `envconfig:"RIVER_UI_DATABASE_MAX_CONNECTIONS" default:"2"`
+}
+
+type AttestationConfig struct {
+	EmailIssuer         string   `envconfig:"ATTESTATION_EMAIL_ISSUER" default:"https://accounts.google.com"`
+	AllowedEmailDomains []string `envconfig:"ATTESTATION_ALLOWED_EMAIL_DOMAINS"`
 }
 
 func (c DatabasePoolConfig) Validate() error {

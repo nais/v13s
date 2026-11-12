@@ -55,6 +55,18 @@ values:
     config:
       type: string_array
 
+  attestation.emailIssuer:
+    displayName: Attestation email issuer
+    description: Exact OIDC issuer for email attestations. It must be supported by Sigstore and verify email ownership for the allowed domains.
+    config:
+      type: string
+
+  attestation.allowedEmailDomains:
+    displayName: Allowed attestation email domains
+    description: Trust attestations from any email address on these exact domains with the configured email issuer. Email ownership does not guarantee current employment.
+    config:
+      type: string_array
+
   dockerconfigjson:
     displayName: Docker config json
     description: Docker config json for pulling images from registries

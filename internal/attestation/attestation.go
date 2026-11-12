@@ -18,7 +18,6 @@ import (
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/in-toto/in-toto-golang/in_toto"
-	"github.com/nais/v13s/internal/attestation/github"
 	"github.com/nais/v13s/internal/model"
 	ssldsse "github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
@@ -43,8 +42,27 @@ type verifier struct {
 	verifyFunc func(ctx context.Context, ref name.Reference, co *cosign.CheckOpts) ([]oci.Signature, error)
 }
 
-func NewVerifier(_ context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
-	ids := github.NewCertificateIdentity(organizations).GetIdentities()
+type verificationError struct {
+	cause error
+}
+
+func (e *verificationError) Error() string {
+	return ErrNoAttestation
+}
+
+func (e *verificationError) Unwrap() error {
+	return e.cause
+}
+
+func NewVerifier(ctx context.Context, log *logrus.Entry, organizations ...string) (Verifier, error) {
+	return NewVerifierWithEmailIdentity(ctx, log, organizations, "", nil)
+}
+
+func NewVerifierWithEmailIdentity(_ context.Context, log *logrus.Entry, organizations []string, emailIssuer string, allowedEmailDomains []string) (Verifier, error) {
+	ids, err := certificateIdentities(organizations, emailIssuer, allowedEmailDomains)
+	if err != nil {
+		return nil, err
+	}
 
 	keychain := authn.NewMultiKeychain(
 		authn.DefaultKeychain,
@@ -142,6 +160,29 @@ func Decompress(data []byte) (*Attestation, error) {
 	return attestation, nil
 }
 
+func (v *verifier) verifyBundleIdentities(ctx context.Context, ref name.Reference, opts *cosign.CheckOpts) ([]oci.Signature, error) {
+	if len(opts.Identities) <= 1 {
+		return v.verifyFunc(ctx, ref, opts)
+	}
+
+	var verified []oci.Signature
+	var failures []error
+	for _, identity := range opts.Identities {
+		co := *opts
+		co.Identities = []cosign.Identity{identity}
+		sigs, err := v.verifyFunc(ctx, ref, &co)
+		if err != nil {
+			failures = append(failures, err)
+			continue
+		}
+		verified = append(verified, sigs...)
+	}
+	if len(verified) > 0 {
+		return verified, nil
+	}
+	return nil, errors.Join(failures...)
+}
+
 func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) ([]oci.Signature, error) {
 	registryOpts := append(slices.Clone(v.optsV3.RegistryClientOpts),
 		remote.WithMoreRemoteOptions(ociremote.WithContext(ctx)))
@@ -149,7 +190,7 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 	coV3.RegistryClientOpts = registryOpts
 	coV3.NewBundleFormat = true
 
-	sigs, err := v.verifyFunc(ctx, ref, &coV3)
+	sigs, err := v.verifyBundleIdentities(ctx, ref, &coV3)
 	if err == nil && len(sigs) > 0 {
 		return sigs, nil
 	}
@@ -157,6 +198,7 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 	shouldFallback := len(sigs) == 0
 	if _, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](err); ok {
 		shouldFallback = true
+		err = &verificationError{cause: err}
 	}
 
 	if !shouldFallback {
@@ -180,6 +222,7 @@ func (v *verifier) verifyBundleFormat(ctx context.Context, ref name.Reference) (
 	// Prefer legacy error if we tried it; otherwise return v3 error
 	if legacyErr != nil {
 		if _, ok := errors.AsType[*cosign.ErrNoMatchingAttestations](legacyErr); ok {
+			legacyErr = &verificationError{cause: legacyErr}
 			v.log.WithError(legacyErr).WithField("ref", ref.String()).Info("legacy attestation reported no matching attestations")
 			return nil, legacyErr
 		}
