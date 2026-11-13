@@ -74,20 +74,24 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	if err != nil {
 		return nil, fmt.Errorf("list image package types: %w", err)
 	}
-	packageTypeFacets := make([]*vulnerabilities.PackageTypeFacet, 0, len(facets))
+	packageTypeCounts := make([]*vulnerabilities.PackageTypeCount, 0, len(facets))
+	packageTypes := make([]string, 0, len(facets))
 	for _, facet := range facets {
 		if !packageTypePattern.MatchString(facet.Value) {
 			return nil, status.Error(codes.Internal, "invalid registered package type")
 		}
-		packageTypeFacets = append(packageTypeFacets, &vulnerabilities.PackageTypeFacet{
+		packageTypeCounts = append(packageTypeCounts, &vulnerabilities.PackageTypeCount{
 			Value: facet.Value, Count: facet.Count,
 		})
+		packageTypes = append(packageTypes, facet.Value)
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:        nodes,
-		PageInfo:     pageInfo,
-		PackageTypes: packageTypeFacets,
+		Nodes:    nodes,
+		PageInfo: pageInfo,
+		//lint:ignore SA1019 Populate the deprecated field for older clients.
+		PackageTypes:      packageTypes,
+		PackageTypeCounts: packageTypeCounts,
 	}, nil
 }
 

@@ -237,11 +237,11 @@ message ListVulnerabilitiesForImageRequest {
 message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
-  reserved 3;
-  repeated PackageTypeFacet package_types = 4;
+  repeated string package_types = 3 [deprecated = true];
+  repeated PackageTypeCount package_type_counts = 4;
 }
 
-message PackageTypeFacet {
+message PackageTypeCount {
   string value = 1;
   int64 count = 2;
 }

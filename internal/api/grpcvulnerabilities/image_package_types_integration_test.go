@@ -58,7 +58,7 @@ func TestServer_ImagePackageTypes(t *testing.T) {
 			response, err := client.ListVulnerabilitiesForImage(ctx, "packages", "current", tc.options...)
 			require.NoError(t, err)
 			got := map[string]int64{}
-			for _, facet := range response.GetPackageTypes() {
+			for _, facet := range response.GetPackageTypeCounts() {
 				got[facet.GetValue()] = facet.GetCount()
 			}
 			assert.Equal(t, tc.want, got)
@@ -66,10 +66,10 @@ func TestServer_ImagePackageTypes(t *testing.T) {
 	}
 	response, err := client.ListVulnerabilitiesForImage(ctx, "packages", "old")
 	require.NoError(t, err)
-	require.Len(t, response.GetPackageTypes(), 1)
-	assert.Equal(t, "cargo", response.PackageTypes[0].GetValue())
-	assert.Equal(t, int64(1), response.PackageTypes[0].GetCount())
+	require.Len(t, response.GetPackageTypeCounts(), 1)
+	assert.Equal(t, "cargo", response.PackageTypeCounts[0].GetValue())
+	assert.Equal(t, int64(1), response.PackageTypeCounts[0].GetCount())
 	response, err = client.ListVulnerabilitiesForImage(ctx, "clean", "current")
 	require.NoError(t, err)
-	assert.Empty(t, response.GetPackageTypes())
+	assert.Empty(t, response.GetPackageTypeCounts())
 }
