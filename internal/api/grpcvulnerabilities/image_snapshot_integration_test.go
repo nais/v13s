@@ -27,7 +27,7 @@ func (q *afterImageListQuerier) ListVulnerabilitiesForImage(ctx context.Context,
 }
 
 func TestImagePackageCountsShareSnapshotWithNodes(t *testing.T) {
-	ctx := t.Context()
+	ctx := context.Background()
 	pool := test.GetPool(ctx, t, true)
 	_, err := pool.Exec(ctx, `
 		INSERT INTO images (name, tag, state) VALUES ('snapshot-image', 'current', 'updated');
