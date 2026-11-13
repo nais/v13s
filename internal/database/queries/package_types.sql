@@ -1,4 +1,4 @@
--- name: ListImagePackageTypeFacets :many
+-- name: ListImagePackageTypes :many
 SELECT
     split_part(split_part(v.package, '/', 1), ':', 2)::TEXT AS value,
     COUNT(DISTINCT (v.package, c.cve_id))::BIGINT AS count

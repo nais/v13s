@@ -61,7 +61,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	facets, err := s.querier.ListImagePackageTypeFacets(ctx, sql.ListImagePackageTypeFacetsParams{
+	facets, err := s.querier.ListImagePackageTypes(ctx, sql.ListImagePackageTypesParams{
 		ImageName:         params.ImageName,
 		ImageTag:          params.ImageTag,
 		IncludeSuppressed: params.IncludeSuppressed,

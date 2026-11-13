@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listImagePackageTypeFacets = `-- name: ListImagePackageTypeFacets :many
+const listImagePackageTypes = `-- name: ListImagePackageTypes :many
 SELECT
     split_part(split_part(v.package, '/', 1), ':', 2)::TEXT AS value,
     COUNT(DISTINCT (v.package, c.cve_id))::BIGINT AS count
@@ -42,7 +42,7 @@ ORDER BY
     value
 `
 
-type ListImagePackageTypeFacetsParams struct {
+type ListImagePackageTypesParams struct {
 	ImageName         string
 	ImageTag          string
 	PackageType       *string
@@ -53,13 +53,13 @@ type ListImagePackageTypeFacetsParams struct {
 	HasKev            *bool
 }
 
-type ListImagePackageTypeFacetsRow struct {
+type ListImagePackageTypesRow struct {
 	Value string
 	Count int64
 }
 
-func (q *Queries) ListImagePackageTypeFacets(ctx context.Context, arg ListImagePackageTypeFacetsParams) ([]*ListImagePackageTypeFacetsRow, error) {
-	rows, err := q.db.Query(ctx, listImagePackageTypeFacets,
+func (q *Queries) ListImagePackageTypes(ctx context.Context, arg ListImagePackageTypesParams) ([]*ListImagePackageTypesRow, error) {
+	rows, err := q.db.Query(ctx, listImagePackageTypes,
 		arg.ImageName,
 		arg.ImageTag,
 		arg.PackageType,
@@ -73,9 +73,9 @@ func (q *Queries) ListImagePackageTypeFacets(ctx context.Context, arg ListImageP
 		return nil, err
 	}
 	defer rows.Close()
-	items := []*ListImagePackageTypeFacetsRow{}
+	items := []*ListImagePackageTypesRow{}
 	for rows.Next() {
-		var i ListImagePackageTypeFacetsRow
+		var i ListImagePackageTypesRow
 		if err := rows.Scan(&i.Value, &i.Count); err != nil {
 			return nil, err
 		}

@@ -2023,28 +2023,28 @@ func (_c *MockQuerier_ListEarliestSeveritySince_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// ListImagePackageTypeFacets provides a mock function with given fields: ctx, arg
-func (_m *MockQuerier) ListImagePackageTypeFacets(ctx context.Context, arg sql.ListImagePackageTypeFacetsParams) ([]*sql.ListImagePackageTypeFacetsRow, error) {
+// ListImagePackageTypes provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListImagePackageTypes(ctx context.Context, arg sql.ListImagePackageTypesParams) ([]*sql.ListImagePackageTypesRow, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListImagePackageTypeFacets")
+		panic("no return value specified for ListImagePackageTypes")
 	}
 
-	var r0 []*sql.ListImagePackageTypeFacetsRow
+	var r0 []*sql.ListImagePackageTypesRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagePackageTypeFacetsParams) ([]*sql.ListImagePackageTypeFacetsRow, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagePackageTypesParams) ([]*sql.ListImagePackageTypesRow, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagePackageTypeFacetsParams) []*sql.ListImagePackageTypeFacetsRow); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListImagePackageTypesParams) []*sql.ListImagePackageTypesRow); ok {
 		r0 = rf(ctx, arg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*sql.ListImagePackageTypeFacetsRow)
+			r0 = ret.Get(0).([]*sql.ListImagePackageTypesRow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, sql.ListImagePackageTypeFacetsParams) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListImagePackageTypesParams) error); ok {
 		r1 = rf(ctx, arg)
 	} else {
 		r1 = ret.Error(1)
@@ -2053,31 +2053,31 @@ func (_m *MockQuerier) ListImagePackageTypeFacets(ctx context.Context, arg sql.L
 	return r0, r1
 }
 
-// MockQuerier_ListImagePackageTypeFacets_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListImagePackageTypeFacets'
-type MockQuerier_ListImagePackageTypeFacets_Call struct {
+// MockQuerier_ListImagePackageTypes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListImagePackageTypes'
+type MockQuerier_ListImagePackageTypes_Call struct {
 	*mock.Call
 }
 
-// ListImagePackageTypeFacets is a helper method to define mock.On call
+// ListImagePackageTypes is a helper method to define mock.On call
 //   - ctx context.Context
-//   - arg sql.ListImagePackageTypeFacetsParams
-func (_e *MockQuerier_Expecter) ListImagePackageTypeFacets(ctx interface{}, arg interface{}) *MockQuerier_ListImagePackageTypeFacets_Call {
-	return &MockQuerier_ListImagePackageTypeFacets_Call{Call: _e.mock.On("ListImagePackageTypeFacets", ctx, arg)}
+//   - arg sql.ListImagePackageTypesParams
+func (_e *MockQuerier_Expecter) ListImagePackageTypes(ctx interface{}, arg interface{}) *MockQuerier_ListImagePackageTypes_Call {
+	return &MockQuerier_ListImagePackageTypes_Call{Call: _e.mock.On("ListImagePackageTypes", ctx, arg)}
 }
 
-func (_c *MockQuerier_ListImagePackageTypeFacets_Call) Run(run func(ctx context.Context, arg sql.ListImagePackageTypeFacetsParams)) *MockQuerier_ListImagePackageTypeFacets_Call {
+func (_c *MockQuerier_ListImagePackageTypes_Call) Run(run func(ctx context.Context, arg sql.ListImagePackageTypesParams)) *MockQuerier_ListImagePackageTypes_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(sql.ListImagePackageTypeFacetsParams))
+		run(args[0].(context.Context), args[1].(sql.ListImagePackageTypesParams))
 	})
 	return _c
 }
 
-func (_c *MockQuerier_ListImagePackageTypeFacets_Call) Return(_a0 []*sql.ListImagePackageTypeFacetsRow, _a1 error) *MockQuerier_ListImagePackageTypeFacets_Call {
+func (_c *MockQuerier_ListImagePackageTypes_Call) Return(_a0 []*sql.ListImagePackageTypesRow, _a1 error) *MockQuerier_ListImagePackageTypes_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockQuerier_ListImagePackageTypeFacets_Call) RunAndReturn(run func(context.Context, sql.ListImagePackageTypeFacetsParams) ([]*sql.ListImagePackageTypeFacetsRow, error)) *MockQuerier_ListImagePackageTypeFacets_Call {
+func (_c *MockQuerier_ListImagePackageTypes_Call) RunAndReturn(run func(context.Context, sql.ListImagePackageTypesParams) ([]*sql.ListImagePackageTypesRow, error)) *MockQuerier_ListImagePackageTypes_Call {
 	_c.Call.Return(run)
 	return _c
 }

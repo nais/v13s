@@ -46,7 +46,7 @@ type Querier interface {
 	ListCveSummaries(ctx context.Context, arg ListCveSummariesParams) ([]*ListCveSummariesRow, error)
 	ListCveSummariesFromCounts(ctx context.Context, arg ListCveSummariesFromCountsParams) ([]*ListCveSummariesFromCountsRow, error)
 	ListEarliestSeveritySince(ctx context.Context, arg ListEarliestSeveritySinceParams) ([]*ListEarliestSeveritySinceRow, error)
-	ListImagePackageTypeFacets(ctx context.Context, arg ListImagePackageTypeFacetsParams) ([]*ListImagePackageTypeFacetsRow, error)
+	ListImagePackageTypes(ctx context.Context, arg ListImagePackageTypesParams) ([]*ListImagePackageTypesRow, error)
 	ListJobsForWorkload(ctx context.Context, arg ListJobsForWorkloadParams) ([]*ListJobsForWorkloadRow, error)
 	ListMeanTimeToFixTrendBySeverity(ctx context.Context, arg ListMeanTimeToFixTrendBySeverityParams) ([]*ListMeanTimeToFixTrendBySeverityRow, error)
 	ListRiverJobs(ctx context.Context, arg ListRiverJobsParams) ([]*RiverJob, error)
