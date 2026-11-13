@@ -60,9 +60,23 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
+	packageTypes, err := s.querier.ListImagePackageTypes(ctx, sql.ListImagePackageTypesParams{
+		ImageName: request.GetImageName(),
+		ImageTag:  request.GetImageTag(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list image package types: %w", err)
+	}
+	for _, packageType := range packageTypes {
+		if !packageTypePattern.MatchString(packageType) {
+			return nil, status.Error(codes.Internal, "invalid registered package type")
+		}
+	}
+
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:    nodes,
-		PageInfo: pageInfo,
+		Nodes:        nodes,
+		PageInfo:     pageInfo,
+		PackageTypes: packageTypes,
 	}, nil
 }
 

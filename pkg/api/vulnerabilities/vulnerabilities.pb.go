@@ -1772,6 +1772,7 @@ type ListVulnerabilitiesForImageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Nodes         []*Vulnerability       `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
 	PageInfo      *PageInfo              `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	PackageTypes  []string               `protobuf:"bytes,3,rep,name=package_types,json=packageTypes,proto3" json:"package_types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1816,6 +1817,13 @@ func (x *ListVulnerabilitiesForImageResponse) GetNodes() []*Vulnerability {
 func (x *ListVulnerabilitiesForImageResponse) GetPageInfo() *PageInfo {
 	if x != nil {
 		return x.PageInfo
+	}
+	return nil
+}
+
+func (x *ListVulnerabilitiesForImageResponse) GetPackageTypes() []string {
+	if x != nil {
+		return x.PackageTypes
 	}
 	return nil
 }
@@ -3755,10 +3763,11 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\t_severityB\n" +
 	"\n" +
 	"\b_has_kevB\x0f\n" +
-	"\r_package_type\"\x97\x01\n" +
+	"\r_package_type\"\xbc\x01\n" +
 	"#ListVulnerabilitiesForImageResponse\x126\n" +
 	"\x05nodes\x18\x01 \x03(\v2 .v13s.api.protobuf.VulnerabilityR\x05nodes\x128\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\"\x8a\x03\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\x12#\n" +
+	"\rpackage_types\x18\x03 \x03(\tR\fpackageTypes\"\x8a\x03\n" +
 	"!ListVulnerabilitySummariesRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +

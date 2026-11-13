@@ -237,6 +237,7 @@ message ListVulnerabilitiesForImageRequest {
 message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
+  repeated string package_types = 3;
 }
 
 message ListVulnerabilitySummariesRequest {
