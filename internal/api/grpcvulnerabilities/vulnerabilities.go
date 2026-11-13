@@ -45,7 +45,20 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		HasKev:            request.HasKev,
 		PackageType:       request.PackageType,
 	}
-	vulnz, err := s.querier.ListVulnerabilitiesForImage(ctx, params)
+	var response *vulnerabilities.ListVulnerabilitiesForImageResponse
+	err = s.readSnapshot(ctx, func(ctx context.Context, q sql.Querier) error {
+		var readErr error
+		response, readErr = listVulnerabilitiesForImage(ctx, q, request, params)
+		return readErr
+	})
+	if err != nil {
+		return nil, fmt.Errorf("read image vulnerability snapshot: %w", err)
+	}
+	return response, nil
+}
+
+func listVulnerabilitiesForImage(ctx context.Context, q sql.Querier, request *vulnerabilities.ListVulnerabilitiesForImageRequest, params sql.ListVulnerabilitiesForImageParams) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
+	vulnz, err := q.ListVulnerabilitiesForImage(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
@@ -61,7 +74,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	facets, err := s.querier.ListImagePackageTypes(ctx, sql.ListImagePackageTypesParams{
+	facets, err := q.ListImagePackageTypes(ctx, sql.ListImagePackageTypesParams{
 		ImageName:         params.ImageName,
 		ImageTag:          params.ImageTag,
 		IncludeSuppressed: params.IncludeSuppressed,
