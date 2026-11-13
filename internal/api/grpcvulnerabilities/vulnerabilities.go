@@ -32,7 +32,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	vulnz, err := s.querier.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
+	params := sql.ListVulnerabilitiesForImageParams{
 		ImageName:         request.GetImageName(),
 		ImageTag:          request.GetImageTag(),
 		IncludeSuppressed: &request.IncludeSuppressed,
@@ -44,7 +44,21 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		RiskTiers:         priorityTiersFromPriorities(request.GetPriorities()),
 		HasKev:            request.HasKev,
 		PackageType:       request.PackageType,
+	}
+	var response *vulnerabilities.ListVulnerabilitiesForImageResponse
+	err = s.readSnapshot(ctx, func(ctx context.Context, q sql.Querier) error {
+		var readErr error
+		response, readErr = listVulnerabilitiesForImage(ctx, q, request, params)
+		return readErr
 	})
+	if err != nil {
+		return nil, fmt.Errorf("read image vulnerability snapshot: %w", err)
+	}
+	return response, nil
+}
+
+func listVulnerabilitiesForImage(ctx context.Context, q sql.Querier, request *vulnerabilities.ListVulnerabilitiesForImageRequest, params sql.ListVulnerabilitiesForImageParams) (*vulnerabilities.ListVulnerabilitiesForImageResponse, error) {
+	vulnz, err := q.ListVulnerabilitiesForImage(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
@@ -60,9 +74,37 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
+	facets, err := q.ListImagePackageTypes(ctx, sql.ListImagePackageTypesParams{
+		ImageName:         params.ImageName,
+		ImageTag:          params.ImageTag,
+		IncludeSuppressed: params.IncludeSuppressed,
+		Since:             params.Since,
+		Severity:          params.Severity,
+		RiskTiers:         params.RiskTiers,
+		HasKev:            params.HasKev,
+		PackageType:       params.PackageType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list image package types: %w", err)
+	}
+	packageTypeCounts := make([]*vulnerabilities.PackageTypeCount, 0, len(facets))
+	packageTypes := make([]string, 0, len(facets))
+	for _, facet := range facets {
+		if !packageTypePattern.MatchString(facet.Value) {
+			return nil, status.Error(codes.Internal, "invalid registered package type")
+		}
+		packageTypeCounts = append(packageTypeCounts, &vulnerabilities.PackageTypeCount{
+			Value: facet.Value, Count: facet.Count,
+		})
+		packageTypes = append(packageTypes, facet.Value)
+	}
+
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
 		Nodes:    nodes,
 		PageInfo: pageInfo,
+		//lint:ignore SA1019 Populate the deprecated field for older clients.
+		PackageTypes:      packageTypes,
+		PackageTypeCounts: packageTypeCounts,
 	}, nil
 }
 
