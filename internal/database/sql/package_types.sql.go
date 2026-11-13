@@ -5,39 +5,81 @@ package sql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listImagePackageTypes = `-- name: ListImagePackageTypes :many
-SELECT DISTINCT
-    split_part(split_part(package, '/', 1), ':', 2)::TEXT AS package_type
+const listImagePackageTypeFacets = `-- name: ListImagePackageTypeFacets :many
+SELECT
+    split_part(split_part(v.package, '/', 1), ':', 2)::TEXT AS value,
+    COUNT(DISTINCT (v.package, c.cve_id))::BIGINT AS count
 FROM
-    vulnerabilities
+    vulnerabilities v
+    LEFT JOIN cve_alias ca ON ca.alias = v.cve_id
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+    LEFT JOIN suppressed_vulnerabilities sv ON sv.image_name = v.image_name
+        AND sv.package = v.package
+        AND sv.cve_id = c.cve_id
 WHERE
-    image_name = $1::TEXT
-    AND image_tag = $2::TEXT
-    AND package ~ '^pkg:[a-z][a-z0-9.+-]*/'
+    v.image_name = $1::TEXT
+    AND v.image_tag = $2::TEXT
+    AND v.package ~ '^pkg:[a-z][a-z0-9.+-]*/'
+    AND ($3::TEXT IS NULL
+        OR starts_with(v.package, 'pkg:' || $3::TEXT || '/'))
+    AND ($4::BOOLEAN IS TRUE
+        OR COALESCE(sv.suppressed, FALSE) = FALSE)
+    AND ($5::TIMESTAMPTZ IS NULL
+        OR v.severity_since > $5::TIMESTAMPTZ)
+    AND ($6::INT IS NULL
+        OR c.severity = $6::INT)
+    AND ($7::INT[] IS NULL
+        OR c.priority = ANY ($7::INT[]))
+    AND ($8::BOOL IS NULL
+        OR c.has_kev_entry = $8::BOOL)
+GROUP BY
+    value
 ORDER BY
-    package_type
+    value
 `
 
-type ListImagePackageTypesParams struct {
-	ImageName string
-	ImageTag  string
+type ListImagePackageTypeFacetsParams struct {
+	ImageName         string
+	ImageTag          string
+	PackageType       *string
+	IncludeSuppressed *bool
+	Since             pgtype.Timestamptz
+	Severity          *int32
+	RiskTiers         []int32
+	HasKev            *bool
 }
 
-func (q *Queries) ListImagePackageTypes(ctx context.Context, arg ListImagePackageTypesParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, listImagePackageTypes, arg.ImageName, arg.ImageTag)
+type ListImagePackageTypeFacetsRow struct {
+	Value string
+	Count int64
+}
+
+func (q *Queries) ListImagePackageTypeFacets(ctx context.Context, arg ListImagePackageTypeFacetsParams) ([]*ListImagePackageTypeFacetsRow, error) {
+	rows, err := q.db.Query(ctx, listImagePackageTypeFacets,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.PackageType,
+		arg.IncludeSuppressed,
+		arg.Since,
+		arg.Severity,
+		arg.RiskTiers,
+		arg.HasKev,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []string{}
+	items := []*ListImagePackageTypeFacetsRow{}
 	for rows.Next() {
-		var package_type string
-		if err := rows.Scan(&package_type); err != nil {
+		var i ListImagePackageTypeFacetsRow
+		if err := rows.Scan(&i.Value, &i.Count); err != nil {
 			return nil, err
 		}
-		items = append(items, package_type)
+		items = append(items, &i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

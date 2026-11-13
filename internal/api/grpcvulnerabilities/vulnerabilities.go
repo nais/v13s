@@ -32,7 +32,7 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	vulnz, err := s.querier.ListVulnerabilitiesForImage(ctx, sql.ListVulnerabilitiesForImageParams{
+	params := sql.ListVulnerabilitiesForImageParams{
 		ImageName:         request.GetImageName(),
 		ImageTag:          request.GetImageTag(),
 		IncludeSuppressed: &request.IncludeSuppressed,
@@ -44,7 +44,8 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		RiskTiers:         priorityTiersFromPriorities(request.GetPriorities()),
 		HasKev:            request.HasKev,
 		PackageType:       request.PackageType,
-	})
+	}
+	vulnz, err := s.querier.ListVulnerabilitiesForImage(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerabilities for image: %w", err)
 	}
@@ -60,23 +61,33 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 		return nil, err
 	}
 
-	packageTypes, err := s.querier.ListImagePackageTypes(ctx, sql.ListImagePackageTypesParams{
-		ImageName: request.GetImageName(),
-		ImageTag:  request.GetImageTag(),
+	facets, err := s.querier.ListImagePackageTypeFacets(ctx, sql.ListImagePackageTypeFacetsParams{
+		ImageName:         params.ImageName,
+		ImageTag:          params.ImageTag,
+		IncludeSuppressed: params.IncludeSuppressed,
+		Since:             params.Since,
+		Severity:          params.Severity,
+		RiskTiers:         params.RiskTiers,
+		HasKev:            params.HasKev,
+		PackageType:       params.PackageType,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list image package types: %w", err)
 	}
-	for _, packageType := range packageTypes {
-		if !packageTypePattern.MatchString(packageType) {
+	packageTypeFacets := make([]*vulnerabilities.PackageTypeFacet, 0, len(facets))
+	for _, facet := range facets {
+		if !packageTypePattern.MatchString(facet.Value) {
 			return nil, status.Error(codes.Internal, "invalid registered package type")
 		}
+		packageTypeFacets = append(packageTypeFacets, &vulnerabilities.PackageTypeFacet{
+			Value: facet.Value, Count: facet.Count,
+		})
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:        nodes,
-		PageInfo:     pageInfo,
-		PackageTypes: packageTypes,
+		Nodes:             nodes,
+		PageInfo:          pageInfo,
+		PackageTypeFacets: packageTypeFacets,
 	}, nil
 }
 
