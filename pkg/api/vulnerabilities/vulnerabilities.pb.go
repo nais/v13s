@@ -1769,12 +1769,12 @@ func (x *ListVulnerabilitiesForImageRequest) GetPackageType() string {
 }
 
 type ListVulnerabilitiesForImageResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Nodes             []*Vulnerability       `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	PageInfo          *PageInfo              `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	PackageTypeFacets []*PackageTypeFacet    `protobuf:"bytes,4,rep,name=package_type_facets,json=packageTypeFacets,proto3" json:"package_type_facets,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nodes         []*Vulnerability       `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	PageInfo      *PageInfo              `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	PackageTypes  []*PackageTypeFacet    `protobuf:"bytes,4,rep,name=package_types,json=packageTypes,proto3" json:"package_types,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListVulnerabilitiesForImageResponse) Reset() {
@@ -1821,9 +1821,9 @@ func (x *ListVulnerabilitiesForImageResponse) GetPageInfo() *PageInfo {
 	return nil
 }
 
-func (x *ListVulnerabilitiesForImageResponse) GetPackageTypeFacets() []*PackageTypeFacet {
+func (x *ListVulnerabilitiesForImageResponse) GetPackageTypes() []*PackageTypeFacet {
 	if x != nil {
-		return x.PackageTypeFacets
+		return x.PackageTypes
 	}
 	return nil
 }
@@ -3815,11 +3815,11 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\t_severityB\n" +
 	"\n" +
 	"\b_has_kevB\x0f\n" +
-	"\r_package_type\"\x81\x02\n" +
+	"\r_package_type\"\xe7\x01\n" +
 	"#ListVulnerabilitiesForImageResponse\x126\n" +
 	"\x05nodes\x18\x01 \x03(\v2 .v13s.api.protobuf.VulnerabilityR\x05nodes\x128\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\x12S\n" +
-	"\x13package_type_facets\x18\x04 \x03(\v2#.v13s.api.protobuf.PackageTypeFacetR\x11packageTypeFacetsJ\x04\b\x03\x10\x04R\rpackage_types\">\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\x12H\n" +
+	"\rpackage_types\x18\x04 \x03(\v2#.v13s.api.protobuf.PackageTypeFacetR\fpackageTypesJ\x04\b\x03\x10\x04\">\n" +
 	"\x10PackageTypeFacet\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x03R\x05count\"\x8a\x03\n" +
@@ -4141,7 +4141,7 @@ var file_vulnerabilities_proto_depIdxs = []int32{
 	4,  // 38: v13s.api.protobuf.ListVulnerabilitiesForImageRequest.priorities:type_name -> v13s.api.protobuf.Priority
 	14, // 39: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.nodes:type_name -> v13s.api.protobuf.Vulnerability
 	55, // 40: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	22, // 41: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.package_type_facets:type_name -> v13s.api.protobuf.PackageTypeFacet
+	22, // 41: v13s.api.protobuf.ListVulnerabilitiesForImageResponse.package_types:type_name -> v13s.api.protobuf.PackageTypeFacet
 	7,  // 42: v13s.api.protobuf.ListVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
 	9,  // 43: v13s.api.protobuf.ListVulnerabilitySummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
 	54, // 44: v13s.api.protobuf.ListVulnerabilitySummariesRequest.since:type_name -> google.protobuf.Timestamp

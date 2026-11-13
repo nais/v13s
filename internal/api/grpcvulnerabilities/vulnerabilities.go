@@ -85,9 +85,9 @@ func (s *Server) ListVulnerabilitiesForImage(ctx context.Context, request *vulne
 	}
 
 	return &vulnerabilities.ListVulnerabilitiesForImageResponse{
-		Nodes:             nodes,
-		PageInfo:          pageInfo,
-		PackageTypeFacets: packageTypeFacets,
+		Nodes:        nodes,
+		PageInfo:     pageInfo,
+		PackageTypes: packageTypeFacets,
 	}, nil
 }
 

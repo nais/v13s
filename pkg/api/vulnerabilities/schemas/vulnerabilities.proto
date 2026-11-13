@@ -238,8 +238,7 @@ message ListVulnerabilitiesForImageResponse {
   repeated Vulnerability nodes = 1;
   PageInfo page_info = 2;
   reserved 3;
-  reserved "package_types";
-  repeated PackageTypeFacet package_type_facets = 4;
+  repeated PackageTypeFacet package_types = 4;
 }
 
 message PackageTypeFacet {
