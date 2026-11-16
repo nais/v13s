@@ -1900,9 +1900,12 @@ type ListVulnerabilitySummariesRequest struct {
 	// SBOM status filter. Multiple values use OR semantics.
 	SbomStatuses []SbomStatus `protobuf:"varint,6,rep,packed,name=sbom_statuses,json=sbomStatuses,proto3,enum=v13s.api.protobuf.SbomStatus" json:"sbom_statuses,omitempty"`
 	// User label filter. Multiple values use AND semantics. A filter without a value matches any workload carrying the key.
-	Labels        []*LabelFilter `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels      []*LabelFilter `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty"`
+	PackageType *string        `protobuf:"bytes,8,opt,name=package_type,json=packageType,proto3,oneof" json:"package_type,omitempty"`
+	// Counts are included when unset. Set false for callers that only need workloads or pagination.
+	IncludePackageTypeCounts *bool `protobuf:"varint,9,opt,name=include_package_type_counts,json=includePackageTypeCounts,proto3,oneof" json:"include_package_type_counts,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *ListVulnerabilitySummariesRequest) Reset() {
@@ -1984,12 +1987,27 @@ func (x *ListVulnerabilitySummariesRequest) GetLabels() []*LabelFilter {
 	return nil
 }
 
+func (x *ListVulnerabilitySummariesRequest) GetPackageType() string {
+	if x != nil && x.PackageType != nil {
+		return *x.PackageType
+	}
+	return ""
+}
+
+func (x *ListVulnerabilitySummariesRequest) GetIncludePackageTypeCounts() bool {
+	if x != nil && x.IncludePackageTypeCounts != nil {
+		return *x.IncludePackageTypeCounts
+	}
+	return false
+}
+
 type ListVulnerabilitySummariesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Nodes         []*WorkloadSummary     `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	PageInfo      *PageInfo              `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Nodes             []*WorkloadSummary     `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	PageInfo          *PageInfo              `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	PackageTypeCounts []*PackageTypeCount    `protobuf:"bytes,3,rep,name=package_type_counts,json=packageTypeCounts,proto3" json:"package_type_counts,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ListVulnerabilitySummariesResponse) Reset() {
@@ -2032,6 +2050,13 @@ func (x *ListVulnerabilitySummariesResponse) GetNodes() []*WorkloadSummary {
 func (x *ListVulnerabilitySummariesResponse) GetPageInfo() *PageInfo {
 	if x != nil {
 		return x.PageInfo
+	}
+	return nil
+}
+
+func (x *ListVulnerabilitySummariesResponse) GetPackageTypeCounts() []*PackageTypeCount {
+	if x != nil {
+		return x.PackageTypeCounts
 	}
 	return nil
 }
@@ -3833,7 +3858,7 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\x13package_type_counts\x18\x04 \x03(\v2#.v13s.api.protobuf.PackageTypeCountR\x11packageTypeCounts\">\n" +
 	"\x10PackageTypeCount\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\x12\x14\n" +
-	"\x05count\x18\x02 \x01(\x03R\x05count\"\x8a\x03\n" +
+	"\x05count\x18\x02 \x01(\x03R\x05count\"\xa7\x04\n" +
 	"!ListVulnerabilitySummariesRequest\x121\n" +
 	"\x06filter\x18\x01 \x01(\v2\x19.v13s.api.protobuf.FilterR\x06filter\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
@@ -3841,12 +3866,17 @@ const file_vulnerabilities_proto_rawDesc = "" +
 	"\border_by\x18\x04 \x01(\v2\x1a.v13s.api.protobuf.OrderByH\x00R\aorderBy\x88\x01\x01\x125\n" +
 	"\x05since\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x05since\x88\x01\x01\x12B\n" +
 	"\rsbom_statuses\x18\x06 \x03(\x0e2\x1d.v13s.api.protobuf.SbomStatusR\fsbomStatuses\x126\n" +
-	"\x06labels\x18\a \x03(\v2\x1e.v13s.api.protobuf.LabelFilterR\x06labelsB\v\n" +
+	"\x06labels\x18\a \x03(\v2\x1e.v13s.api.protobuf.LabelFilterR\x06labels\x12&\n" +
+	"\fpackage_type\x18\b \x01(\tH\x02R\vpackageType\x88\x01\x01\x12B\n" +
+	"\x1binclude_package_type_counts\x18\t \x01(\bH\x03R\x18includePackageTypeCounts\x88\x01\x01B\v\n" +
 	"\t_order_byB\b\n" +
-	"\x06_since\"\x98\x01\n" +
+	"\x06_sinceB\x0f\n" +
+	"\r_package_typeB\x1e\n" +
+	"\x1c_include_package_type_counts\"\xed\x01\n" +
 	"\"ListVulnerabilitySummariesResponse\x128\n" +
 	"\x05nodes\x18\x01 \x03(\v2\".v13s.api.protobuf.WorkloadSummaryR\x05nodes\x128\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\":\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1b.v13s.api.protobuf.PageInfoR\bpageInfo\x12S\n" +
+	"\x13package_type_counts\x18\x03 \x03(\v2#.v13s.api.protobuf.PackageTypeCountR\x11packageTypeCounts\":\n" +
 	"(ListWorkloadsForVulnerabilityByIdRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"z\n" +
 	")ListWorkloadsForVulnerabilityByIdResponse\x12\x0e\n" +
@@ -4160,73 +4190,74 @@ var file_vulnerabilities_proto_depIdxs = []int32{
 	8,  // 46: v13s.api.protobuf.ListVulnerabilitySummariesRequest.labels:type_name -> v13s.api.protobuf.LabelFilter
 	17, // 47: v13s.api.protobuf.ListVulnerabilitySummariesResponse.nodes:type_name -> v13s.api.protobuf.WorkloadSummary
 	55, // 48: v13s.api.protobuf.ListVulnerabilitySummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	10, // 49: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse.workloadRef:type_name -> v13s.api.protobuf.Workload
-	7,  // 50: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.filter:type_name -> v13s.api.protobuf.Filter
-	9,  // 51: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	30, // 52: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.nodes:type_name -> v13s.api.protobuf.WorkloadForVulnerability
-	55, // 53: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	29, // 54: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.impact:type_name -> v13s.api.protobuf.CveImpact
-	10, // 55: v13s.api.protobuf.WorkloadForVulnerability.workload_ref:type_name -> v13s.api.protobuf.Workload
-	14, // 56: v13s.api.protobuf.WorkloadForVulnerability.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	7,  // 57: v13s.api.protobuf.ListCveSummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	9,  // 58: v13s.api.protobuf.ListCveSummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
-	33, // 59: v13s.api.protobuf.ListCveSummariesResponse.nodes:type_name -> v13s.api.protobuf.CveSummary
-	55, // 60: v13s.api.protobuf.ListCveSummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
-	12, // 61: v13s.api.protobuf.CveSummary.cve:type_name -> v13s.api.protobuf.Cve
-	7,  // 62: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.filter:type_name -> v13s.api.protobuf.Filter
-	54, // 63: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since:type_name -> google.protobuf.Timestamp
-	3,  // 64: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType
-	7,  // 65: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
-	19, // 66: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.points:type_name -> v13s.api.protobuf.MeanTimeToFixTrendPoint
-	11, // 67: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	10, // 68: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.workload_ref:type_name -> v13s.api.protobuf.Workload
-	18, // 69: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
-	7,  // 70: v13s.api.protobuf.GetVulnerabilitySummaryRequest.filter:type_name -> v13s.api.protobuf.Filter
-	8,  // 71: v13s.api.protobuf.GetVulnerabilitySummaryRequest.labels:type_name -> v13s.api.protobuf.LabelFilter
-	7,  // 72: v13s.api.protobuf.GetVulnerabilitySummaryResponse.filter:type_name -> v13s.api.protobuf.Filter
-	11, // 73: v13s.api.protobuf.GetVulnerabilitySummaryResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
-	7,  // 74: v13s.api.protobuf.GetVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	53, // 75: v13s.api.protobuf.GetVulnerabilitySummariesResponse.summaries:type_name -> v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry
-	7,  // 76: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.filter:type_name -> v13s.api.protobuf.Filter
-	54, // 77: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.since:type_name -> google.protobuf.Timestamp
-	44, // 78: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse.points:type_name -> v13s.api.protobuf.VulnerabilitySummaryPoint
-	54, // 79: v13s.api.protobuf.VulnerabilitySummaryPoint.bucket_time:type_name -> google.protobuf.Timestamp
-	4,  // 80: v13s.api.protobuf.VulnerabilitySummaryPoint.top_priority:type_name -> v13s.api.protobuf.Priority
-	14, // 81: v13s.api.protobuf.GetVulnerabilityByIdResponse.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
-	12, // 82: v13s.api.protobuf.GetCveResponse.cve:type_name -> v13s.api.protobuf.Cve
-	0,  // 83: v13s.api.protobuf.SuppressVulnerabilityRequest.state:type_name -> v13s.api.protobuf.SuppressState
-	39, // 84: v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry.value:type_name -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
-	23, // 85: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:input_type -> v13s.api.protobuf.ListVulnerabilitySummariesRequest
-	20, // 86: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:input_type -> v13s.api.protobuf.ListVulnerabilitiesForImageRequest
-	25, // 87: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest
-	27, // 88: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest
-	31, // 89: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:input_type -> v13s.api.protobuf.ListCveSummariesRequest
-	34, // 90: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:input_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest
-	38, // 91: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryRequest
-	40, // 92: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:input_type -> v13s.api.protobuf.GetVulnerabilitySummariesRequest
-	42, // 93: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest
-	36, // 94: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest
-	45, // 95: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:input_type -> v13s.api.protobuf.GetVulnerabilityByIdRequest
-	47, // 96: v13s.api.protobuf.Vulnerabilities.GetCve:input_type -> v13s.api.protobuf.GetCveRequest
-	49, // 97: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:input_type -> v13s.api.protobuf.SuppressVulnerabilityRequest
-	24, // 98: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:output_type -> v13s.api.protobuf.ListVulnerabilitySummariesResponse
-	21, // 99: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:output_type -> v13s.api.protobuf.ListVulnerabilitiesForImageResponse
-	26, // 100: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse
-	28, // 101: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse
-	32, // 102: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:output_type -> v13s.api.protobuf.ListCveSummariesResponse
-	35, // 103: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:output_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse
-	39, // 104: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
-	41, // 105: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:output_type -> v13s.api.protobuf.GetVulnerabilitySummariesResponse
-	43, // 106: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse
-	37, // 107: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse
-	46, // 108: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:output_type -> v13s.api.protobuf.GetVulnerabilityByIdResponse
-	48, // 109: v13s.api.protobuf.Vulnerabilities.GetCve:output_type -> v13s.api.protobuf.GetCveResponse
-	50, // 110: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:output_type -> v13s.api.protobuf.SuppressVulnerabilityResponse
-	98, // [98:111] is the sub-list for method output_type
-	85, // [85:98] is the sub-list for method input_type
-	85, // [85:85] is the sub-list for extension type_name
-	85, // [85:85] is the sub-list for extension extendee
-	0,  // [0:85] is the sub-list for field type_name
+	22, // 49: v13s.api.protobuf.ListVulnerabilitySummariesResponse.package_type_counts:type_name -> v13s.api.protobuf.PackageTypeCount
+	10, // 50: v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse.workloadRef:type_name -> v13s.api.protobuf.Workload
+	7,  // 51: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.filter:type_name -> v13s.api.protobuf.Filter
+	9,  // 52: v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	30, // 53: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.nodes:type_name -> v13s.api.protobuf.WorkloadForVulnerability
+	55, // 54: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	29, // 55: v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse.impact:type_name -> v13s.api.protobuf.CveImpact
+	10, // 56: v13s.api.protobuf.WorkloadForVulnerability.workload_ref:type_name -> v13s.api.protobuf.Workload
+	14, // 57: v13s.api.protobuf.WorkloadForVulnerability.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
+	7,  // 58: v13s.api.protobuf.ListCveSummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	9,  // 59: v13s.api.protobuf.ListCveSummariesRequest.order_by:type_name -> v13s.api.protobuf.OrderBy
+	33, // 60: v13s.api.protobuf.ListCveSummariesResponse.nodes:type_name -> v13s.api.protobuf.CveSummary
+	55, // 61: v13s.api.protobuf.ListCveSummariesResponse.page_info:type_name -> v13s.api.protobuf.PageInfo
+	12, // 62: v13s.api.protobuf.CveSummary.cve:type_name -> v13s.api.protobuf.Cve
+	7,  // 63: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.filter:type_name -> v13s.api.protobuf.Filter
+	54, // 64: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since:type_name -> google.protobuf.Timestamp
+	3,  // 65: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest.since_type:type_name -> v13s.api.protobuf.SinceType
+	7,  // 66: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.filter:type_name -> v13s.api.protobuf.Filter
+	19, // 67: v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse.points:type_name -> v13s.api.protobuf.MeanTimeToFixTrendPoint
+	11, // 68: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
+	10, // 69: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.workload_ref:type_name -> v13s.api.protobuf.Workload
+	18, // 70: v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse.sbom_status:type_name -> v13s.api.protobuf.SbomStatusInfo
+	7,  // 71: v13s.api.protobuf.GetVulnerabilitySummaryRequest.filter:type_name -> v13s.api.protobuf.Filter
+	8,  // 72: v13s.api.protobuf.GetVulnerabilitySummaryRequest.labels:type_name -> v13s.api.protobuf.LabelFilter
+	7,  // 73: v13s.api.protobuf.GetVulnerabilitySummaryResponse.filter:type_name -> v13s.api.protobuf.Filter
+	11, // 74: v13s.api.protobuf.GetVulnerabilitySummaryResponse.vulnerability_summary:type_name -> v13s.api.protobuf.Summary
+	7,  // 75: v13s.api.protobuf.GetVulnerabilitySummariesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	53, // 76: v13s.api.protobuf.GetVulnerabilitySummariesResponse.summaries:type_name -> v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry
+	7,  // 77: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.filter:type_name -> v13s.api.protobuf.Filter
+	54, // 78: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest.since:type_name -> google.protobuf.Timestamp
+	44, // 79: v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse.points:type_name -> v13s.api.protobuf.VulnerabilitySummaryPoint
+	54, // 80: v13s.api.protobuf.VulnerabilitySummaryPoint.bucket_time:type_name -> google.protobuf.Timestamp
+	4,  // 81: v13s.api.protobuf.VulnerabilitySummaryPoint.top_priority:type_name -> v13s.api.protobuf.Priority
+	14, // 82: v13s.api.protobuf.GetVulnerabilityByIdResponse.vulnerability:type_name -> v13s.api.protobuf.Vulnerability
+	12, // 83: v13s.api.protobuf.GetCveResponse.cve:type_name -> v13s.api.protobuf.Cve
+	0,  // 84: v13s.api.protobuf.SuppressVulnerabilityRequest.state:type_name -> v13s.api.protobuf.SuppressState
+	39, // 85: v13s.api.protobuf.GetVulnerabilitySummariesResponse.SummariesEntry.value:type_name -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
+	23, // 86: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:input_type -> v13s.api.protobuf.ListVulnerabilitySummariesRequest
+	20, // 87: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:input_type -> v13s.api.protobuf.ListVulnerabilitiesForImageRequest
+	25, // 88: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdRequest
+	27, // 89: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:input_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityRequest
+	31, // 90: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:input_type -> v13s.api.protobuf.ListCveSummariesRequest
+	34, // 91: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:input_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityRequest
+	38, // 92: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryRequest
+	40, // 93: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:input_type -> v13s.api.protobuf.GetVulnerabilitySummariesRequest
+	42, // 94: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesRequest
+	36, // 95: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:input_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageRequest
+	45, // 96: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:input_type -> v13s.api.protobuf.GetVulnerabilityByIdRequest
+	47, // 97: v13s.api.protobuf.Vulnerabilities.GetCve:input_type -> v13s.api.protobuf.GetCveRequest
+	49, // 98: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:input_type -> v13s.api.protobuf.SuppressVulnerabilityRequest
+	24, // 99: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitySummaries:output_type -> v13s.api.protobuf.ListVulnerabilitySummariesResponse
+	21, // 100: v13s.api.protobuf.Vulnerabilities.ListVulnerabilitiesForImage:output_type -> v13s.api.protobuf.ListVulnerabilitiesForImageResponse
+	26, // 101: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerabilityById:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityByIdResponse
+	28, // 102: v13s.api.protobuf.Vulnerabilities.ListWorkloadsForVulnerability:output_type -> v13s.api.protobuf.ListWorkloadsForVulnerabilityResponse
+	32, // 103: v13s.api.protobuf.Vulnerabilities.ListCveSummaries:output_type -> v13s.api.protobuf.ListCveSummariesResponse
+	35, // 104: v13s.api.protobuf.Vulnerabilities.ListMeanTimeToFixTrendBySeverity:output_type -> v13s.api.protobuf.ListMeanTimeToFixTrendBySeverityResponse
+	39, // 105: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummary:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryResponse
+	41, // 106: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaries:output_type -> v13s.api.protobuf.GetVulnerabilitySummariesResponse
+	43, // 107: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryTimeSeries:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryTimeSeriesResponse
+	37, // 108: v13s.api.protobuf.Vulnerabilities.GetVulnerabilitySummaryForImage:output_type -> v13s.api.protobuf.GetVulnerabilitySummaryForImageResponse
+	46, // 109: v13s.api.protobuf.Vulnerabilities.GetVulnerabilityById:output_type -> v13s.api.protobuf.GetVulnerabilityByIdResponse
+	48, // 110: v13s.api.protobuf.Vulnerabilities.GetCve:output_type -> v13s.api.protobuf.GetCveResponse
+	50, // 111: v13s.api.protobuf.Vulnerabilities.SuppressVulnerability:output_type -> v13s.api.protobuf.SuppressVulnerabilityResponse
+	99, // [99:112] is the sub-list for method output_type
+	86, // [86:99] is the sub-list for method input_type
+	86, // [86:86] is the sub-list for extension type_name
+	86, // [86:86] is the sub-list for extension extendee
+	0,  // [0:86] is the sub-list for field type_name
 }
 
 func init() { file_vulnerabilities_proto_init() }

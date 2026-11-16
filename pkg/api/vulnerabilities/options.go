@@ -99,21 +99,22 @@ func (o OrderByField) IsValid() bool {
 const DefaultLimit = 50
 
 type Options struct {
-	CallOptions       []grpc.CallOption
-	Filter            *Filter
-	IncludeSuppressed bool
-	IncludeUnresolved bool
-	Limit             int32
-	Offset            int32
-	OrderBy           *OrderBy
-	Since             *timestamppb.Timestamp
-	SinceType         *SinceType
-	Severity          *Severity
-	PackageType       *string
-	SbomStatuses      []SbomStatus
-	Labels            []*LabelFilter
-	ExcludeNamespaces []string
-	ExcludeClusters   []string
+	CallOptions              []grpc.CallOption
+	Filter                   *Filter
+	IncludeSuppressed        bool
+	IncludeUnresolved        bool
+	Limit                    int32
+	Offset                   int32
+	OrderBy                  *OrderBy
+	Since                    *timestamppb.Timestamp
+	SinceType                *SinceType
+	Severity                 *Severity
+	PackageType              *string
+	IncludePackageTypeCounts *bool
+	SbomStatuses             []SbomStatus
+	Labels                   []*LabelFilter
+	ExcludeNamespaces        []string
+	ExcludeClusters          []string
 }
 
 type VulnerabilityFilter struct {
@@ -179,6 +180,12 @@ func CallOptions(opts ...grpc.CallOption) Option {
 func PackageTypeFilter(packageType string) Option {
 	return newFuncOption(func(o *Options) {
 		o.PackageType = &packageType
+	})
+}
+
+func IncludePackageTypeCounts(include bool) Option {
+	return newFuncOption(func(o *Options) {
+		o.IncludePackageTypeCounts = &include
 	})
 }
 

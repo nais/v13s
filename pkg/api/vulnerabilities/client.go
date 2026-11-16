@@ -70,13 +70,15 @@ func (c *client) ListVulnerabilitiesForImage(ctx context.Context, imageName, ima
 func (c *client) ListVulnerabilitySummaries(ctx context.Context, opts ...Option) (*ListVulnerabilitySummariesResponse, error) {
 	o := applyOptions(opts...)
 	return c.v.ListVulnerabilitySummaries(ctx, &ListVulnerabilitySummariesRequest{
-		Filter:       o.Filter,
-		Limit:        o.Limit,
-		Offset:       o.Offset,
-		OrderBy:      o.OrderBy,
-		Since:        o.Since,
-		SbomStatuses: o.SbomStatuses,
-		Labels:       o.Labels,
+		Filter:                   o.Filter,
+		Limit:                    o.Limit,
+		Offset:                   o.Offset,
+		OrderBy:                  o.OrderBy,
+		Since:                    o.Since,
+		SbomStatuses:             o.SbomStatuses,
+		Labels:                   o.Labels,
+		PackageType:              o.PackageType,
+		IncludePackageTypeCounts: o.IncludePackageTypeCounts,
 	}, o.CallOptions...)
 }
 

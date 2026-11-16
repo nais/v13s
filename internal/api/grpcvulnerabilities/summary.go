@@ -22,6 +22,12 @@ import (
 const maxSummaryNamespaces = 200
 
 func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulnerabilities.ListVulnerabilitySummariesRequest) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
+	if request.PackageType != nil && !packageTypePattern.MatchString(*request.PackageType) {
+		return nil, status.Error(codes.InvalidArgument, "package_type must be a lowercase PURL type")
+	}
+	if request.PackageType != nil && request.GetSince() != nil {
+		return nil, status.Error(codes.InvalidArgument, "package_type cannot be combined with since")
+	}
 	limit, offset, err := grpcpagination.Pagination(request)
 	if err != nil {
 		return nil, err
@@ -47,7 +53,7 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		return nil, err
 	}
 
-	summaries, err := s.querier.ListVulnerabilitySummaries(ctx, sql.ListVulnerabilitySummariesParams{
+	params := sql.ListVulnerabilitySummariesParams{
 		Cluster:       request.GetFilter().Cluster,
 		Namespace:     request.GetFilter().Namespace,
 		WorkloadTypes: request.Filter.GetWorkloadTypes(),
@@ -62,7 +68,22 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		Offset:        offset,
 		Since:         since,
 		LabelFilters:  labelFilters,
+		PackageType:   request.PackageType,
+	}
+	var response *vulnerabilities.ListVulnerabilitySummariesResponse
+	err = s.readSnapshot(ctx, func(ctx context.Context, q sql.Querier) error {
+		var readErr error
+		response, readErr = listVulnerabilitySummaries(ctx, q, request, params)
+		return readErr
 	})
+	if err != nil {
+		return nil, fmt.Errorf("read workload vulnerability snapshot: %w", err)
+	}
+	return response, nil
+}
+
+func listVulnerabilitySummaries(ctx context.Context, q sql.Querier, request *vulnerabilities.ListVulnerabilitySummariesRequest, params sql.ListVulnerabilitySummariesParams) (*vulnerabilities.ListVulnerabilitySummariesResponse, error) {
+	summaries, err := q.ListVulnerabilitySummaries(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list vulnerability summaries: %w", err)
 	}
@@ -70,8 +91,18 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 	total := 0
 	ws := collections.Map(summaries, func(row *sql.ListVulnerabilitySummariesRow) *vulnerabilities.WorkloadSummary {
 		total = int(row.TotalCount)
-		return toWorkloadSummary(row, since.Valid)
+		return toWorkloadSummary(row, params.Since.Valid)
 	})
+	if len(summaries) == 0 && request.PackageType != nil && (params.Limit == 0 || params.Offset > 0) {
+		params.Limit, params.Offset = 1, 0
+		counts, err := q.ListVulnerabilitySummaries(ctx, params)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count vulnerability summaries: %w", err)
+		}
+		if len(counts) > 0 {
+			total = int(counts[0].TotalCount)
+		}
+	}
 
 	pageInfo, err := grpcpagination.PageInfo(request, int(total))
 	if err != nil {
@@ -81,6 +112,32 @@ func (s *Server) ListVulnerabilitySummaries(ctx context.Context, request *vulner
 		Nodes:    ws,
 		PageInfo: pageInfo,
 	}
+	if request.IncludePackageTypeCounts != nil && !request.GetIncludePackageTypeCounts() {
+		return response, nil
+	}
+	packageTypes, err := q.ListWorkloadPackageTypes(ctx, sql.ListWorkloadPackageTypesParams{
+		Cluster:       params.Cluster,
+		Namespace:     params.Namespace,
+		WorkloadTypes: params.WorkloadTypes,
+		WorkloadName:  params.WorkloadName,
+		ImageName:     params.ImageName,
+		ImageTag:      params.ImageTag,
+		LabelFilters:  params.LabelFilters,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workload package types: %w", err)
+	}
+	packageTypeCounts := make([]*vulnerabilities.PackageTypeCount, 0, len(packageTypes))
+	for _, packageType := range packageTypes {
+		if !packageTypePattern.MatchString(packageType.Value) {
+			return nil, status.Error(codes.Internal, "invalid registered package type")
+		}
+		packageTypeCounts = append(packageTypeCounts, &vulnerabilities.PackageTypeCount{
+			Value: packageType.Value,
+			Count: packageType.Count,
+		})
+	}
+	response.PackageTypeCounts = packageTypeCounts
 	return response, nil
 }
 

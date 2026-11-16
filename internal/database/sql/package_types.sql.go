@@ -86,3 +86,92 @@ func (q *Queries) ListImagePackageTypes(ctx context.Context, arg ListImagePackag
 	}
 	return items, nil
 }
+
+const listWorkloadPackageTypes = `-- name: ListWorkloadPackageTypes :many
+WITH scoped_images AS (
+    SELECT DISTINCT
+        w.image_name,
+        w.image_tag
+    FROM
+        workloads w
+    WHERE ($1::TEXT IS NULL
+        OR w.cluster = $1::TEXT)
+    AND ($2::TEXT IS NULL
+        OR w.namespace = $2::TEXT)
+    AND ($3::TEXT[] IS NULL
+        OR w.workload_type = ANY ($3::TEXT[]))
+    AND ($4::TEXT IS NULL
+        OR w.name = $4::TEXT)
+    AND ($5::TEXT IS NULL
+        OR w.image_name = $5::TEXT)
+    AND ($6::TEXT IS NULL
+        OR w.image_tag = $6::TEXT)
+    AND NOT EXISTS (
+        SELECT
+            1
+        FROM
+            jsonb_to_recordset(COALESCE($7::JSONB, '[]'::JSONB)) AS f(key TEXT,
+                value TEXT)
+        WHERE
+            NOT (w.labels ? f.key)
+            OR (f.value IS NOT NULL
+                AND w.labels ->> f.key IS DISTINCT FROM f.value)))
+SELECT
+    split_part(split_part(v.package, '/', 1), ':', 2)::TEXT AS value,
+    COUNT(DISTINCT (v.image_name, v.image_tag, v.package, c.cve_id))::BIGINT AS count
+FROM
+    scoped_images i
+    JOIN vulnerabilities v ON v.image_name = i.image_name
+        AND v.image_tag = i.image_tag
+    LEFT JOIN cve_alias ca ON ca.alias = v.cve_id
+    JOIN cve c ON c.cve_id = COALESCE(ca.canonical_cve_id, v.cve_id)
+WHERE
+    v.package ~ '^pkg:[a-z][a-z0-9.+-]*/'
+GROUP BY
+    value
+ORDER BY
+    value
+`
+
+type ListWorkloadPackageTypesParams struct {
+	Cluster       *string
+	Namespace     *string
+	WorkloadTypes []string
+	WorkloadName  *string
+	ImageName     *string
+	ImageTag      *string
+	LabelFilters  []byte
+}
+
+type ListWorkloadPackageTypesRow struct {
+	Value string
+	Count int64
+}
+
+func (q *Queries) ListWorkloadPackageTypes(ctx context.Context, arg ListWorkloadPackageTypesParams) ([]*ListWorkloadPackageTypesRow, error) {
+	rows, err := q.db.Query(ctx, listWorkloadPackageTypes,
+		arg.Cluster,
+		arg.Namespace,
+		arg.WorkloadTypes,
+		arg.WorkloadName,
+		arg.ImageName,
+		arg.ImageTag,
+		arg.LabelFilters,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListWorkloadPackageTypesRow{}
+	for rows.Next() {
+		var i ListWorkloadPackageTypesRow
+		if err := rows.Scan(&i.Value, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

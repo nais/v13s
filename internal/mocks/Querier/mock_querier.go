@@ -2789,6 +2789,65 @@ func (_c *MockQuerier_ListVulnerabilitySummariesForMetrics_Call) RunAndReturn(ru
 	return _c
 }
 
+// ListWorkloadPackageTypes provides a mock function with given fields: ctx, arg
+func (_m *MockQuerier) ListWorkloadPackageTypes(ctx context.Context, arg sql.ListWorkloadPackageTypesParams) ([]*sql.ListWorkloadPackageTypesRow, error) {
+	ret := _m.Called(ctx, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkloadPackageTypes")
+	}
+
+	var r0 []*sql.ListWorkloadPackageTypesRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListWorkloadPackageTypesParams) ([]*sql.ListWorkloadPackageTypesRow, error)); ok {
+		return rf(ctx, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, sql.ListWorkloadPackageTypesParams) []*sql.ListWorkloadPackageTypesRow); ok {
+		r0 = rf(ctx, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*sql.ListWorkloadPackageTypesRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, sql.ListWorkloadPackageTypesParams) error); ok {
+		r1 = rf(ctx, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerier_ListWorkloadPackageTypes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkloadPackageTypes'
+type MockQuerier_ListWorkloadPackageTypes_Call struct {
+	*mock.Call
+}
+
+// ListWorkloadPackageTypes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arg sql.ListWorkloadPackageTypesParams
+func (_e *MockQuerier_Expecter) ListWorkloadPackageTypes(ctx interface{}, arg interface{}) *MockQuerier_ListWorkloadPackageTypes_Call {
+	return &MockQuerier_ListWorkloadPackageTypes_Call{Call: _e.mock.On("ListWorkloadPackageTypes", ctx, arg)}
+}
+
+func (_c *MockQuerier_ListWorkloadPackageTypes_Call) Run(run func(ctx context.Context, arg sql.ListWorkloadPackageTypesParams)) *MockQuerier_ListWorkloadPackageTypes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(sql.ListWorkloadPackageTypesParams))
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadPackageTypes_Call) Return(_a0 []*sql.ListWorkloadPackageTypesRow, _a1 error) *MockQuerier_ListWorkloadPackageTypes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerier_ListWorkloadPackageTypes_Call) RunAndReturn(run func(context.Context, sql.ListWorkloadPackageTypesParams) ([]*sql.ListWorkloadPackageTypesRow, error)) *MockQuerier_ListWorkloadPackageTypes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListWorkloadStatus provides a mock function with given fields: ctx, arg
 func (_m *MockQuerier) ListWorkloadStatus(ctx context.Context, arg sql.ListWorkloadStatusParams) ([]*sql.ListWorkloadStatusRow, error) {
 	ret := _m.Called(ctx, arg)

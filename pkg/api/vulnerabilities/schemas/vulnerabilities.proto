@@ -256,11 +256,15 @@ message ListVulnerabilitySummariesRequest {
   repeated SbomStatus sbom_statuses = 6;
   // User label filter. Multiple values use AND semantics. A filter without a value matches any workload carrying the key.
   repeated LabelFilter labels = 7;
+  optional string package_type = 8;
+  // Counts are included when unset. Set false for callers that only need workloads or pagination.
+  optional bool include_package_type_counts = 9;
 }
 
 message ListVulnerabilitySummariesResponse {
   repeated WorkloadSummary nodes = 1;
   PageInfo page_info = 2;
+  repeated PackageTypeCount package_type_counts = 3;
 }
 
 message ListWorkloadsForVulnerabilityByIdRequest {
