@@ -37,7 +37,7 @@ func TestImagePackageCountsShareSnapshotWithNodes(t *testing.T) {
 			VALUES ('snapshot-image', 'current', 'pkg:npm/example@1', 'CVE-snapshot', 'test', '');
 	`)
 	require.NoError(t, err)
-	server := NewServer(pool, logrus.NewEntry(logrus.New()))
+	server := NewServer(pool, logrus.NewEntry(logrus.New()), nil)
 	readSnapshot := server.readSnapshot
 	server.readSnapshot = func(ctx context.Context, read func(context.Context, sql.Querier) error) error {
 		return readSnapshot(ctx, func(ctx context.Context, q sql.Querier) error {

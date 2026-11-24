@@ -25,6 +25,8 @@ import (
 	"github.com/nais/v13s/internal/model"
 	"github.com/nais/v13s/internal/resync"
 	"github.com/nais/v13s/internal/sources"
+	"github.com/nais/v13s/internal/sources/osv"
+	"github.com/nais/v13s/internal/suppressionforwarding"
 	"github.com/nais/v13s/internal/updater"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 	"github.com/nais/v13s/pkg/api/vulnerabilities/management"
@@ -33,6 +35,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error {
@@ -45,6 +48,12 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	}
 	defer pool.Close()
 	metrics.TrackDatabasePool("main", pool)
+
+	forwarder, closeForwarder, err := newSuppressionForwarder(cfg, log.WithField("subsystem", "suppression_forwarding"))
+	if err != nil {
+		return err
+	}
+	defer closeForwarder()
 
 	source, err := sources.New(cfg.DependencyTrack, log)
 	if err != nil {
@@ -218,7 +227,7 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	})
 
 	wg.Go(func() error {
-		if err = runGrpcServer(ctx, cfg, pool, mgr, resyncModule, log, func() { ready.Store(true) }); err != nil {
+		if err = runGrpcServer(ctx, cfg, pool, mgr, resyncModule, forwarder, log, func() { ready.Store(true) }); err != nil {
 			log.WithError(err).Errorf("error in GRPC server")
 			return err
 		}
@@ -244,7 +253,20 @@ func Run(ctx context.Context, cfg *config.Config, log logrus.FieldLogger) error 
 	return nil
 }
 
-func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, resyncModule resync.Module, log logrus.FieldLogger, onReady func()) error {
+func newSuppressionForwarder(cfg *config.Config, log logrus.FieldLogger) (*suppressionforwarding.Forwarder, func(), error) {
+	if !cfg.SuppressionForwarding.Enabled {
+		return nil, func() {}, nil
+	}
+	conn, err := grpc.NewClient(cfg.SuppressionForwarding.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating v0s client: %w", err)
+	}
+	log.WithField("address", cfg.SuppressionForwarding.Address).Info("forwarding suppressions to v0s")
+	upstream := suppressionforwarding.NewUpstream(osv.NewClientWithURL(cfg.Osv.BaseURL))
+	return suppressionforwarding.New(conn, cfg.SuppressionForwarding.Timeout, upstream, log), func() { _ = conn.Close() }, nil
+}
+
+func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, mgr *manager.WorkloadManager, resyncModule resync.Module, forwarder *suppressionforwarding.Forwarder, log logrus.FieldLogger, onReady func()) error {
 	log.Info("GRPC serving on ", cfg.ListenAddr)
 	lis, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
@@ -259,7 +281,7 @@ func runGrpcServer(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	}
 
 	s := grpc.NewServer(opts...)
-	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities")))
+	vulnerabilities.RegisterVulnerabilitiesServer(s, grpcvulnerabilities.NewServer(pool, log.WithField("subsystem", "vulnerabilities"), forwarder))
 	management.RegisterManagementServer(s, grpcmgmt.NewServer(pool, mgr, resyncModule, log.WithField("subsystem", "management")))
 
 	g, ctx := errgroup.WithContext(ctx)

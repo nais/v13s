@@ -293,6 +293,7 @@ func validateInput(s string) error {
 
 func (s *Server) SuppressVulnerability(ctx context.Context, request *vulnerabilities.SuppressVulnerabilityRequest) (*vulnerabilities.SuppressVulnerabilityResponse, error) {
 	workflow := newSuppressionWorkflow(s.querier, s.resolveCanonicalCveIDs)
+	workflow.forwarder = s.forwarder
 	result, err := workflow.SuppressOne(ctx, suppressOneInput{
 		id:           convert.StringToUUID(request.Id),
 		suppressedBy: request.GetSuppressedBy(),

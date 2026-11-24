@@ -1,0 +1,387 @@
+syntax = "proto3";
+
+package v0s.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/nais/v0s/api/v0s/v1;v0sv1";
+
+// The API has no authentication. NetworkPolicy limits who reaches it, and callers are trusted
+// services: they decide what their users may see and authorize suppression changes.
+// v0s keeps the results updated; callers use its current view without checking inventory age
+// or a target scan DB version. There is no client-facing freshness protocol.
+
+// Vulnerabilities exposes mechanical facts about vulnerabilities in the images of team workloads.
+// Nothing here is a judgement: no priority, no risk score. Everything is readable by every
+// caller: team filters narrow a query, they do not restrict it.
+service VulnerabilityService {
+  // ListWorkloads lists team workloads, the image each is deployed with, and its SBOM/scan coverage.
+  rpc ListWorkloads(ListWorkloadsRequest) returns (ListWorkloadsResponse);
+  // ListFindings lists the findings of workloads. A finding in an image used by several
+  // workloads is listed once for each of them. Filter by vulnerability and include
+  // suppressed findings to discover other affected workloads before an explicit batch assessment.
+  rpc ListFindings(ListFindingsRequest) returns (ListFindingsResponse);
+  // CountFindings counts findings as ListFindings lists them, grouped by one dimension.
+  rpc CountFindings(CountFindingsRequest) returns (CountFindingsResponse);
+  // GetVulnerability returns the vulnerability record for an ID or alias.
+  rpc GetVulnerability(GetVulnerabilityRequest) returns (GetVulnerabilityResponse);
+  // SearchComponents finds packages in SBOMs of images in use, whether or not they have findings.
+  rpc SearchComponents(SearchComponentsRequest) returns (SearchComponentsResponse);
+}
+
+// Suppressions manages teams' durable assessments of findings, owned by v0s. Only the current
+// state is kept; the caller keeps the history of changes if it wants one.
+service SuppressionService {
+  // SetSuppressions sets suppressions atomically, replacing any with the same key.
+  // Each item targets one workload in the authorized team; no other workloads inherit it.
+  rpc SetSuppressions(SetSuppressionsRequest) returns (SetSuppressionsResponse);
+  // DeleteSuppressions deletes suppressions atomically. Deleting one that does not exist is not an error.
+  rpc DeleteSuppressions(DeleteSuppressionsRequest) returns (DeleteSuppressionsResponse);
+  // ListSuppressions lists suppressions.
+  rpc ListSuppressions(ListSuppressionsRequest) returns (ListSuppressionsResponse);
+  rpc ForwardV13sSuppression(ForwardV13sSuppressionRequest) returns (ForwardV13sSuppressionResponse);
+}
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_UNKNOWN = 1;
+  SEVERITY_LOW = 2;
+  SEVERITY_MEDIUM = 3;
+  SEVERITY_HIGH = 4;
+  SEVERITY_CRITICAL = 5;
+}
+
+// How far an image has got towards having findings.
+enum ImageStatus {
+  IMAGE_STATUS_UNSPECIFIED = 0;
+  // The SBOM is not fetched or the image not scanned yet.
+  IMAGE_STATUS_PENDING = 1;
+  // A scan completed; see scanned_at on the image.
+  IMAGE_STATUS_SCANNED = 2;
+  // No attested SBOM was found for the image.
+  IMAGE_STATUS_NO_SBOM = 3;
+  // Fetching, verifying or scanning failed; see error.
+  IMAGE_STATUS_FAILED = 4;
+}
+
+enum SuppressionState {
+  SUPPRESSION_STATE_UNSPECIFIED = 0;
+  SUPPRESSION_STATE_NOT_AFFECTED = 1;
+  SUPPRESSION_STATE_FALSE_POSITIVE = 2;
+  SUPPRESSION_STATE_ACCEPTED_RISK = 3;
+}
+
+message Image {
+  reserved 3, 4, 6, 7;
+  reserved "scanned_db_version";
+  string name = 1;
+  string digest = 2;
+  ImageStatus status = 8;
+  // Why the last fetch or scan failed. Also set on a SCANNED image whose rescan with a newer
+  // vulnerability DB failed; its findings are still those of the last successful scan.
+  string error = 9;
+  google.protobuf.Timestamp scanned_at = 5;
+}
+
+message Workload {
+  string environment = 1;
+  string team = 2;
+  string name = 3;
+  // The image as deployed, e.g. "ghcr.io/navikt/app:1.2.3". Tags are resolved once while in use;
+  // changes to what an existing tag points to are not tracked.
+  string image_reference = 5;
+  // The image image_reference resolved to. Unset if it could not be resolved; see resolve_error.
+  Image image = 4;
+  string resolve_error = 6;
+}
+
+// FindingFilter narrows findings. Empty fields do not filter. Severities match any value.
+// A workload name requires both team and environment.
+message FindingFilter {
+  reserved 1;
+  reserved "teams", "kev";
+  string team = 12;
+  string environment = 2;
+  string workload = 3;
+  string image_name = 4;
+  string image_digest = 5;
+  // Vulnerability ID or alias.
+  string vulnerability_id = 6;
+  // Package key or full purl. A full purl matches only that version.
+  string package = 7;
+  repeated Severity severities = 8;
+  // Only findings with a known fixed version.
+  bool has_fix = 9;
+  // Only findings for vulnerabilities known exploited in the wild according to CISA KEV.
+  bool only_known_exploited = 10;
+  SuppressedFilter suppressed = 11;
+}
+
+enum SuppressedFilter {
+  // Defaults to EXCLUDE.
+  SUPPRESSED_FILTER_UNSPECIFIED = 0;
+  SUPPRESSED_FILTER_EXCLUDE = 1;
+  SUPPRESSED_FILTER_INCLUDE = 2;
+  SUPPRESSED_FILTER_ONLY = 3;
+}
+
+// A vulnerability in a package in a workload's image.
+message Finding {
+  reserved 8, 12, 13, 15;
+  reserved "status", "title", "cvss_score", "kev";
+  WorkloadRef workload = 1;
+  Image image = 2;
+  string vulnerability_id = 3;
+  string purl = 4;
+  string package_key = 5;
+  string installed_version = 6;
+  string fixed_version = 7;
+  // Severity as the source named in severity_source rates it.
+  Severity severity = 9;
+  string severity_source = 10;
+  // Advisory source that produced the match, e.g. "ghsa", "alpine".
+  string data_source = 11;
+  Epss epss = 14;
+  // Known exploited in the wild according to CISA KEV, not proof this workload is exploitable.
+  // False means not listed, not proof of no exploitation.
+  // Reads fail with Unavailable until a catalog has been loaded.
+  bool known_exploited = 17;
+  // This workload's suppression of the finding, unset if not suppressed.
+  Suppression suppression = 16;
+}
+
+message Epss {
+  reserved 2;
+  reserved "percentile";
+  double score = 1;
+  string date = 3;
+}
+
+message ListWorkloadsRequest {
+  reserved 1;
+  reserved "teams";
+  string team = 5;
+  string environment = 2;
+  // Requires team and environment.
+  string workload = 6;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListWorkloadsResponse {
+  repeated Workload workloads = 1;
+  string next_page_token = 2;
+}
+
+message ListFindingsRequest {
+  FindingFilter filter = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListFindingsResponse {
+  // Ordered by workload, vulnerability ID and purl.
+  repeated Finding findings = 1;
+  string next_page_token = 2;
+  // One cursor per finding, in the same order. Each can be used as page_token
+  // to continue after that finding, including when it is no longer present.
+  repeated string cursors = 3;
+}
+
+message CountFindingsRequest {
+  FindingFilter filter = 1;
+  GroupBy group_by = 2;
+
+  enum GroupBy {
+    GROUP_BY_UNSPECIFIED = 0;
+    GROUP_BY_SEVERITY = 1;
+    GROUP_BY_TEAM = 2;
+    GROUP_BY_WORKLOAD = 3;
+    GROUP_BY_IMAGE = 4;
+    GROUP_BY_VULNERABILITY = 5;
+  }
+}
+
+message CountFindingsResponse {
+  repeated Bucket buckets = 1;
+
+  message Bucket {
+    // Value of the grouped dimension. For WORKLOAD: "environment/team/name". For IMAGE: "name@digest".
+    string key = 1;
+    int64 count = 2;
+  }
+}
+
+message GetVulnerabilityRequest {
+  string id = 1;
+}
+
+message GetVulnerabilityResponse {
+  Vulnerability vulnerability = 1;
+}
+
+message Vulnerability {
+  reserved 5, 8, 9, 11;
+  reserved "severities", "published_at", "modified_at", "kev";
+  string id = 1;
+  repeated string aliases = 2;
+  string title = 3;
+  string description = 4;
+  repeated Cvss cvss = 6;
+  repeated string references = 7;
+  Epss epss = 10;
+  // Known exploited in the wild according to CISA KEV.
+  // False means not listed, not proof of no exploitation.
+  // Reads fail with Unavailable until a catalog has been loaded.
+  bool known_exploited = 12;
+}
+
+// One CVSS version from one source. Missing scores are absent, not zero.
+message Cvss {
+  reserved 2, 3, 4, 5;
+  reserved "v3_vector", "v3_score", "v40_vector", "v40_score";
+  string source = 1;
+  // "3.0", "3.1" or "4.0"; "3.x" when the source has a v3 score without a versioned vector.
+  string version = 6;
+  optional double score = 7;
+  optional string vector = 8;
+}
+
+message SearchComponentsRequest {
+  reserved 2;
+  reserved "teams";
+  // Package key, full purl, or name prefix (case-insensitive) when it does not start with "pkg:".
+  string query = 1;
+  string team = 5;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message SearchComponentsResponse {
+  repeated ComponentMatch matches = 1;
+  string next_page_token = 2;
+}
+
+message ComponentMatch {
+  string purl = 1;
+  string name = 2;
+  string version = 3;
+  Image image = 4;
+  // Workloads currently using the image, limited to the requested team.
+  repeated WorkloadRef workloads = 5;
+}
+
+message WorkloadRef {
+  string environment = 1;
+  string team = 2;
+  string name = 3;
+}
+
+// Identifies a suppression within the request's team. Environment and workload are required.
+message SuppressionKey {
+  string image_name = 1;
+  // Package key or full purl. Version, qualifiers and subpath are dropped.
+  string package = 2;
+  // Vulnerability ID or alias. Must resolve to exactly one vulnerability.
+  string vulnerability_id = 3;
+  string environment = 4;
+  string workload = 5;
+}
+
+// An assessment for one environment/team/workload and image name, independent of image and
+// package versions. Other workloads never inherit it, even when they share the image.
+message Suppression {
+  reserved 9;
+  string team = 1;
+  string image_name = 2;
+  string package_key = 3;
+  string vulnerability_id = 4;
+  SuppressionState state = 5;
+  // Why, in the team's words.
+  string detail = 6;
+  string updated_by = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  string environment = 10;
+  string workload = 11;
+}
+
+message NewSuppression {
+  reserved 4;
+  SuppressionKey key = 1;
+  SuppressionState state = 2;
+  string detail = 3;
+}
+
+message SetSuppressionsRequest {
+  // The team whose assessments these are. The caller has authorized the actor for it.
+  string team = 1;
+  // Identity of the human the caller acts for.
+  string actor = 2;
+  repeated NewSuppression suppressions = 3;
+}
+
+message SetSuppressionsResponse {
+  repeated Suppression suppressions = 1;
+}
+
+message DeleteSuppressionsRequest {
+  // The team the suppressions belong to. The caller has authorized the actor for it.
+  string team = 1;
+  repeated SuppressionKey keys = 2;
+}
+
+message DeleteSuppressionsResponse {
+  // The suppressions that existed and were deleted.
+  repeated Suppression deleted = 1;
+}
+
+message ListSuppressionsRequest {
+  reserved 1;
+  reserved "teams";
+  string team = 8;
+  string image_name = 2;
+  // Vulnerability ID or alias.
+  string vulnerability_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  string environment = 6;
+  // Requires team and environment.
+  string workload = 7;
+}
+
+message ListSuppressionsResponse {
+  // Ordered by team, environment, workload, image name, package key and vulnerability ID.
+  repeated Suppression suppressions = 1;
+  string next_page_token = 2;
+  // One cursor per suppression, in the same order. Each can be used as page_token
+  // to continue after that suppression, including when it has been deleted.
+  repeated string cursors = 3;
+}
+
+message ForwardV13sSuppressionRequest {
+  string image_name = 1;
+  string package = 2;
+  repeated string vulnerability_ids = 3;
+  V13sAssessment assessment = 4;
+}
+
+message V13sAssessment {
+  SuppressionState state = 1;
+  string detail = 2;
+  string updated_by = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ForwardV13sSuppressionResponse {
+  ForwardOutcome outcome = 1;
+  int32 applied = 2;
+  int32 removed = 3;
+}
+
+enum ForwardOutcome {
+  FORWARD_OUTCOME_UNSPECIFIED = 0;
+  FORWARD_OUTCOME_APPLIED = 1;
+  FORWARD_OUTCOME_NO_WORKLOADS = 2;
+  FORWARD_OUTCOME_UNKNOWN_VULNERABILITY = 3;
+  FORWARD_OUTCOME_AMBIGUOUS_VULNERABILITY = 4;
+}

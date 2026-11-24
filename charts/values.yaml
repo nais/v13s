@@ -53,6 +53,10 @@ kev:
 osv:
   baseURL: "https://api.osv.dev/v1"
 reconcileDeletionEnabled: false
+suppressionForwarding:
+  enabled: false
+  address: v0s:50051
+  timeout: 5s
 logLevel: info
 logFormat: json
 prometheus:
