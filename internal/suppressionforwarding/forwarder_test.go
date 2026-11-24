@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	v0sapi "github.com/nais/v0s/api/v0s/v1"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
 	"github.com/nais/v13s/internal/suppressionforwarding"
-	"github.com/nais/v13s/internal/suppressionforwarding/v0sapi"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"

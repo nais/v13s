@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	v0sapi "github.com/nais/v0s/api/v0s/v1"
 	"github.com/nais/v13s/internal/database/sql"
 	mockquerier "github.com/nais/v13s/internal/mocks/Querier"
 	"github.com/nais/v13s/internal/suppressionforwarding"
-	"github.com/nais/v13s/internal/suppressionforwarding/v0sapi"
 	"github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"

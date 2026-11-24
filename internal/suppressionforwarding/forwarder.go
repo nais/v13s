@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	v0sapi "github.com/nais/v0s/api/v0s/v1"
 	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/metrics"
-	"github.com/nais/v13s/internal/suppressionforwarding/v0sapi"
 	"github.com/package-url/packageurl-go"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
