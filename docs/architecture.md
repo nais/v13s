@@ -93,7 +93,8 @@ suppress. They must agree on whether they suppress, and on state and actor, or n
 forwarded. Differing reason texts are merged into one, each labelled with its package versions,
 newest first. Chainguard `CGA-*` advisories are sent with the upstream IDs their OSV record names for
 the same package, unless it is withdrawn or names more than one ID of a kind, since v0s only knows
-the upstream IDs. `in_triage` and `resolved` become `accepted_risk`; `not_set` and
+the upstream IDs. Rows under an advisory and under its upstream IDs are checked together, from
+either side. `in_triage` and `resolved` become `accepted_risk`; `not_set` and
 assessments without reason text or actor are not forwarded. v0s applies the assessment to
 every workload currently running the image name, keeping the source actor and update time.
 

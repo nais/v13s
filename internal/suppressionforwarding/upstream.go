@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nais/v13s/internal/database/sql"
 	"github.com/nais/v13s/internal/sources/osv"
 )
 
@@ -55,6 +56,30 @@ func (u *Upstream) IDs(ctx context.Context, ids []string, packageKey string) ([]
 		return nil, nil
 	}
 	return upstream, nil
+}
+
+func (u *Upstream) identities(ctx context.Context, rows []*sql.SuppressedVulnerability, packageKey string, ids []string) ([]string, error) {
+	extra, err := u.IDs(ctx, ids, packageKey)
+	if err != nil {
+		return nil, err
+	}
+	ids = slices.Concat(ids, extra)
+	for _, row := range rows {
+		if slices.Contains(ids, row.CveID) || !chainguardAdvisoryID.MatchString(row.CveID) {
+			continue
+		}
+		if key, err := PackageKey(row.Package); err != nil || key != packageKey {
+			continue
+		}
+		linked, err := u.IDs(ctx, []string{row.CveID}, packageKey)
+		if err != nil {
+			return nil, err
+		}
+		if slices.ContainsFunc(linked, func(id string) bool { return slices.Contains(ids, id) }) {
+			ids = append(ids, row.CveID)
+		}
+	}
+	return ids, nil
 }
 
 func (u *Upstream) advisory(ctx context.Context, id string) (*osv.VulnRecord, error) {

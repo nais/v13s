@@ -73,7 +73,13 @@ func Expect(ctx context.Context, source SourceReader, upstream *Upstream, change
 	if err != nil {
 		return exp, OutcomeSourceReadFailed
 	}
-	group := groupRows(rows, key, change.VulnerabilityIDs)
+	ids := change.VulnerabilityIDs
+	if upstream != nil {
+		if ids, err = upstream.identities(ctx, rows, key, ids); err != nil {
+			return exp, OutcomeAdvisoryLookupFailed
+		}
+	}
+	group := groupRows(rows, key, ids)
 	if len(group) == 0 {
 		return exp, OutcomeNoSourceRows
 	}
@@ -83,14 +89,7 @@ func Expect(ctx context.Context, source SourceReader, upstream *Upstream, change
 		return exp, blocked
 	}
 	exp.Assessment = assessment
-	exp.TargetIDs = change.VulnerabilityIDs
-	if upstream != nil {
-		extra, err := upstream.IDs(ctx, change.VulnerabilityIDs, key)
-		if err != nil {
-			return exp, OutcomeAdvisoryLookupFailed
-		}
-		exp.TargetIDs = slices.Concat(change.VulnerabilityIDs, extra)
-	}
+	exp.TargetIDs = ids
 	return exp, ""
 }
 
