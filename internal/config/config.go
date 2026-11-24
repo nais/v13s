@@ -37,6 +37,26 @@ type Config struct {
 	Metrics                   MetricConfig
 	ReconcileDeletionEnabled  bool `envconfig:"RECONCILE_DELETION_ENABLED" default:"false"`
 	Updater                   UpdaterConfig
+	SuppressionForwarding     SuppressionForwardingConfig
+}
+
+type SuppressionForwardingConfig struct {
+	Enabled bool          `envconfig:"SUPPRESSION_FORWARDING_ENABLED" default:"false"`
+	Address string        `envconfig:"SUPPRESSION_FORWARDING_ADDRESS" default:"v0s:50051"`
+	Timeout time.Duration `envconfig:"SUPPRESSION_FORWARDING_TIMEOUT" default:"5s"`
+}
+
+func (c SuppressionForwardingConfig) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+	if c.Address == "" {
+		return errors.New("SUPPRESSION_FORWARDING_ENABLED is true but SUPPRESSION_FORWARDING_ADDRESS is not set")
+	}
+	if c.Timeout <= 0 {
+		return errors.New("SUPPRESSION_FORWARDING_TIMEOUT must be positive")
+	}
+	return nil
 }
 
 type DatabasePoolConfig struct {
@@ -155,6 +175,9 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 	if err := cfg.DatabasePools.Validate(); err != nil {
+		return nil, err
+	}
+	if err := cfg.SuppressionForwarding.Validate(); err != nil {
 		return nil, err
 	}
 

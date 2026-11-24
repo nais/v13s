@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -130,4 +131,26 @@ func setDatabasePoolEnv(t *testing.T) {
 		require.NoError(t, os.Unsetenv(key))
 	}
 	t.Setenv("KEV_VULNCHECK_ENABLED", "false")
+}
+
+func TestSuppressionForwardingConfig(t *testing.T) {
+	setDatabasePoolEnv(t)
+	cfg, err := NewConfig()
+	require.NoError(t, err)
+	require.Equal(t, SuppressionForwardingConfig{Address: "v0s:50051", Timeout: 5 * time.Second}, cfg.SuppressionForwarding)
+
+	t.Setenv("SUPPRESSION_FORWARDING_ENABLED", "true")
+	t.Setenv("SUPPRESSION_FORWARDING_TIMEOUT", "2s")
+	cfg, err = NewConfig()
+	require.NoError(t, err)
+	require.Equal(t, SuppressionForwardingConfig{Enabled: true, Address: "v0s:50051", Timeout: 2 * time.Second}, cfg.SuppressionForwarding)
+
+	t.Setenv("SUPPRESSION_FORWARDING_TIMEOUT", "0s")
+	_, err = NewConfig()
+	require.ErrorContains(t, err, "SUPPRESSION_FORWARDING_TIMEOUT must be positive")
+
+	t.Setenv("SUPPRESSION_FORWARDING_TIMEOUT", "2s")
+	t.Setenv("SUPPRESSION_FORWARDING_ADDRESS", "")
+	_, err = NewConfig()
+	require.ErrorContains(t, err, "SUPPRESSION_FORWARDING_ADDRESS is not set")
 }

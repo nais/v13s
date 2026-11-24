@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/suppressionforwarding"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,6 +19,7 @@ type suppressionWorkflow struct {
 	querier                sql.Querier
 	resolveCanonicalCveIDs func(ctx context.Context, ids []string) ([]string, error)
 	now                    func() time.Time
+	forwarder              *suppressionforwarding.Forwarder
 }
 
 func newSuppressionWorkflow(querier sql.Querier, resolver func(ctx context.Context, ids []string) ([]string, error)) suppressionWorkflow {
@@ -70,6 +72,13 @@ func (w suppressionWorkflow) SuppressOne(ctx context.Context, in suppressOneInpu
 		if supErr := w.querier.SuppressVulnerability(ctx, suppressParams); supErr != nil {
 			suppressErrs = append(suppressErrs, fmt.Sprintf("%s: %v", cveID, supErr))
 		}
+	}
+	if len(suppressErrs) < len(cveIDs) {
+		defer w.forwarder.Forward(ctx, w.querier, suppressionforwarding.Change{
+			ImageName:        vuln.ImageName,
+			Package:          vuln.Package,
+			VulnerabilityIDs: cveIDs,
+		})
 	}
 	if len(suppressErrs) > 0 {
 		return nil, fmt.Errorf("failed to suppress %d/%d CVE IDs for %s/%s: %s", len(suppressErrs), len(cveIDs), vuln.ImageName, vuln.Package, strings.Join(suppressErrs, "; "))

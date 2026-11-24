@@ -31,6 +31,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/nais/dependencytrack/pkg/dependencytrack v0.0.0-20260811105727-d6cf79df3a0b
 	github.com/nais/liberator v0.0.0-20260814130931-bc9d09eb389e
+	github.com/nais/v0s/api v0.4.0
 	github.com/nais/v13s/pkg/api v0.0.0-20260811092310-43ca3d998d55
 	github.com/package-url/packageurl-go v0.1.7
 	github.com/pressly/goose/v3 v3.30.1
@@ -174,6 +175,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.20.4 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect

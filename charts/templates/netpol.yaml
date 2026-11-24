@@ -19,6 +19,15 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "dependencytrack.selectorLabels" . | nindent 14 }}
+    {{- if .Values.suppressionForwarding.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app: v0s
+      ports:
+        - port: 50051
+          protocol: TCP
+    {{- end }}
   podSelector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}

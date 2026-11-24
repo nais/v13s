@@ -212,6 +212,12 @@ values:
     config:
       type: bool
 
+  suppressionForwarding.enabled:
+    displayName: Forward suppressions to v0s
+    description: Defaults to false. Enable only after v0s accepts suppressions from v13s, and only until cutover.
+    config:
+      type: bool
+
   kev.vulncheck.enabled:
     displayName: Enable VulnCheck KEV
     description: Adds VulnCheck KEV as a known exploited vulnerability source. Requires prominent attribution to VulnCheck where KEV data is shown.

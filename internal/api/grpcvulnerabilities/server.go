@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/nais/v13s/internal/database/sql"
+	"github.com/nais/v13s/internal/suppressionforwarding"
 	"github.com/nais/v13s/pkg/api/vulnerabilities"
 )
 
@@ -19,12 +20,14 @@ type Server struct {
 	querier      sql.Querier
 	log          logrus.FieldLogger
 	readSnapshot func(context.Context, func(context.Context, sql.Querier) error) error
+	forwarder    *suppressionforwarding.Forwarder
 }
 
-func NewServer(pool *pgxpool.Pool, field *logrus.Entry) *Server {
+func NewServer(pool *pgxpool.Pool, field *logrus.Entry, forwarder *suppressionforwarding.Forwarder) *Server {
 	return &Server{
-		querier: sql.New(pool),
-		log:     field,
+		querier:   sql.New(pool),
+		log:       field,
+		forwarder: forwarder,
 		readSnapshot: func(ctx context.Context, read func(context.Context, sql.Querier) error) error {
 			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()

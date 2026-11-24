@@ -58,6 +58,7 @@ func Collectors() []prometheus.Collector {
 		UpdaterImages,
 		databaseMetrics,
 		WorkloadResyncRequests,
+		SuppressionForwards,
 		WorkloadRiskScore,
 		WorkloadVulnerabilities,
 		WorkloadVulnerabilitiesKEV,

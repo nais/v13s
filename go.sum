@@ -478,6 +478,8 @@ github.com/nais/liberator v0.0.0-20260814130931-bc9d09eb389e h1:ZpewkfnthbnCpdFY
 github.com/nais/liberator v0.0.0-20260814130931-bc9d09eb389e/go.mod h1:ufNzUdzWCtHgQTpmvbx2BCR/dcdFR8BeUpUPnRTv5xM=
 github.com/nais/pgrator/pkg/api v0.0.0-20260702113208-b469e505b1d5 h1:fOWAxiK6MoEX4rwAzxilRXYjTxMSm66D3zsInrahEkg=
 github.com/nais/pgrator/pkg/api v0.0.0-20260702113208-b469e505b1d5/go.mod h1:0/2qMyI55tTpDy5sEjyfe6er76m8I2UdlZYNJ2ZNsyM=
+github.com/nais/v0s/api v0.4.0 h1:WPX5psnQgNzoczt5Xr3p/ij7et7CulL1IYoxJoGe0bs=
+github.com/nais/v0s/api v0.4.0/go.mod h1:Cy70zkr+UThxdN8LVsmr/b2l+nrxjgDRi5uvGZQTVwE=
 github.com/natefinch/atomic v1.0.1 h1:ZPYKxkqQOx3KZ+RsbnP/YsgvxWQPGxjC0oBt2AhwV0A=
 github.com/natefinch/atomic v1.0.1/go.mod h1:N/D/ELrljoqDyT3rZrsUmtsuzvHkeB/wWjHV22AZRbM=
 github.com/ncruces/go-sqlite3 v0.32.0 h1:hNBUXp88LrfQCsuyXLqWTbTUG35sUuktDsqhhgHvU20=

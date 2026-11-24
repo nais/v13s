@@ -15,9 +15,11 @@ import (
 )
 
 type VulnRecord struct {
-	ID       string     `json:"id"`
-	Aliases  []string   `json:"aliases"`
-	Affected []Affected `json:"affected"`
+	ID        string     `json:"id"`
+	Aliases   []string   `json:"aliases"`
+	Upstream  []string   `json:"upstream"`
+	Withdrawn string     `json:"withdrawn"`
+	Affected  []Affected `json:"affected"`
 }
 
 type Affected struct {
