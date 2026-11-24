@@ -159,3 +159,19 @@ func TestForwardChecksChainguardAndUpstreamRowsTogether(t *testing.T) {
 	assert.Equal(t, []string{"CVE-1", "CGA-aaaa-bbbb-cccc"}, v0s.requests[0].GetVulnerabilityIds())
 	assert.True(t, v0s.requests[0].GetAssessment().GetUpdatedAt().AsTime().Equal(later))
 }
+
+func TestForwardChecksAllIDsLinkedThroughAnAdvisory(t *testing.T) {
+	fetcher := &fakeAdvisories{records: map[string]*osv.VulnRecord{"CGA-aaaa-bbbb-cccc": advisory("CGA-aaaa-bbbb-cccc", []string{"CVE-1", "GHSA-1"}, glibc)}}
+	log, hook := newLogger()
+	v0s := &fakeV0s{response: applied(1)}
+	f := suppressionforwarding.New(v0s, time.Second, suppressionforwarding.NewUpstream(fetcher), log)
+	source := fakeSource{rows: []*sql.SuppressedVulnerability{
+		row(glibc+"@2.43-r0", "CVE-1", false, sql.VulnerabilitySuppressReasonNotSet, later),
+		row(glibc+"@2.44-r1", "CGA-aaaa-bbbb-cccc", false, sql.VulnerabilitySuppressReasonNotSet, later),
+		row(glibc+"@2.42-r0", "GHSA-1", true, sql.VulnerabilitySuppressReasonNotAffected, earlier),
+	}}
+
+	f.Forward(context.Background(), source, suppressionforwarding.Change{ImageName: "ghcr.io/navikt/app", Package: glibc + "@2.43-r0", VulnerabilityIDs: []string{"CVE-1"}})
+	assert.Equal(t, suppressionforwarding.OutcomeConflictingAssessments, lastEntry(t, hook).Data["outcome"])
+	assert.Empty(t, v0s.requests)
+}

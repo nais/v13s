@@ -64,19 +64,28 @@ func (u *Upstream) identities(ctx context.Context, rows []*sql.SuppressedVulnera
 		return nil, err
 	}
 	ids = slices.Concat(ids, extra)
-	for _, row := range rows {
-		if slices.Contains(ids, row.CveID) || !chainguardAdvisoryID.MatchString(row.CveID) {
-			continue
-		}
-		if key, err := PackageKey(row.Package); err != nil || key != packageKey {
-			continue
-		}
-		linked, err := u.IDs(ctx, []string{row.CveID}, packageKey)
-		if err != nil {
-			return nil, err
-		}
-		if slices.ContainsFunc(linked, func(id string) bool { return slices.Contains(ids, id) }) {
-			ids = append(ids, row.CveID)
+	for changed := true; changed; {
+		changed = false
+		for _, row := range rows {
+			if slices.Contains(ids, row.CveID) || !chainguardAdvisoryID.MatchString(row.CveID) {
+				continue
+			}
+			if key, err := PackageKey(row.Package); err != nil || key != packageKey {
+				continue
+			}
+			linked, err := u.IDs(ctx, []string{row.CveID}, packageKey)
+			if err != nil {
+				return nil, err
+			}
+			if !slices.ContainsFunc(linked, func(id string) bool { return slices.Contains(ids, id) }) {
+				continue
+			}
+			ids, changed = append(ids, row.CveID), true
+			for _, id := range linked {
+				if !slices.Contains(ids, id) && !hasSameFamily(slices.Concat(ids, []string{id}), []string{id}) {
+					ids = append(ids, id)
+				}
+			}
 		}
 	}
 	return ids, nil
